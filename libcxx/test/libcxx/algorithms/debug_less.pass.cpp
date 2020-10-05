@@ -111,7 +111,7 @@ void test_passing() {
         called = 0;
 
         assert(d(two, one) == false);
-        assert(called == 1);
+        assert(called == 2);
         called = 0;
     }
     {
