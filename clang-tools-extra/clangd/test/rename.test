@@ -23,7 +23,7 @@
 {"jsonrpc":"2.0","id":2,"method":"textDocument/prepareRename","params":{"textDocument":{"uri":"test:///foo.cpp"},"position":{"line":0,"character":2}}}
 #      CHECK:  "error": {
 # CHECK-NEXT:    "code": -32001,
-# CHECK-NEXT:    "message": "Cannot rename symbol: there is no symbol at the given location"
+# CHECK-NEXT:    "message": "Cannot delete symbol: there is no symbol at the given location"
 # CHECK-NEXT:  },
 # CHECK-NEXT:  "id": 2,
 # CHECK-NEXT:  "jsonrpc": "2.0"
