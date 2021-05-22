@@ -40,6 +40,9 @@ void AsanOnDeadlySignal(int signo, void *siginfo, void *context) {
 }
 
 bool PlatformUnpoisonStacks() {
+#if SANITIZER_EMSCRIPTEN
+  return false;
+#else
   stack_t signal_stack;
   CHECK_EQ(0, sigaltstack(nullptr, &signal_stack));
   uptr sigalt_bottom = (uptr)signal_stack.ss_sp;
@@ -63,6 +66,7 @@ bool PlatformUnpoisonStacks() {
                        &tls_size);
   UnpoisonStack(default_bottom, default_bottom + stack_size, "default");
   return true;
+#endif
 }
 
 // ---------------------- TSD ---------------- {{{1
@@ -111,7 +115,7 @@ void PlatformTSDDtor(void *tsd) {
   atomic_signal_fence(memory_order_seq_cst);
   AsanThread::TSDDtor(tsd);
 }
-#else
+#elif !SANITIZER_EMSCRIPTEN
 static pthread_key_t tsd_key;
 static bool tsd_key_inited = false;
 void AsanTSDInit(void (*destructor)(void *tsd)) {

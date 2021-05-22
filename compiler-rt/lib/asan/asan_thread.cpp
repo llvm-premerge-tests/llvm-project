@@ -101,7 +101,9 @@ void AsanThread::Destroy() {
   VReport(1, "T%d exited\n", tid);
 
   malloc_storage().CommitBack();
+#if !SANITIZER_EMSCRIPTEN
   if (common_flags()->use_sigaltstack) UnsetAlternateSignalStack();
+#endif
   asanThreadRegistry().FinishThread(tid);
   FlushToDeadThreadStats(&stats_);
   // We also clear the shadow on thread destruction because
@@ -257,7 +259,9 @@ thread_return_t AsanThread::ThreadStart(tid_t os_id) {
   Init();
   asanThreadRegistry().StartThread(tid(), os_id, ThreadType::Regular, nullptr);
 
+#if !SANITIZER_EMSCRIPTEN
   if (common_flags()->use_sigaltstack) SetAlternateSignalStack();
+#endif
 
   if (!start_routine_) {
     // start_routine_ == 0 if we're on the main thread or on one of the

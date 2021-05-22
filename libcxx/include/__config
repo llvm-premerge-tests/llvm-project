@@ -1,3 +1,6 @@
+// XXX EMSCRIPTEN: macros that would ordinarily be added from __config_site.in
+#define _LIBCPP_HAS_NO_VENDOR_AVAILABILITY_ANNOTATIONS
+
 // -*- C++ -*-
 //===--------------------------- __config ---------------------------------===//
 //
@@ -101,7 +104,8 @@
 // Previously libc++ used "unsigned int" exclusively.
 #  define _LIBCPP_ABI_VARIANT_INDEX_TYPE_OPTIMIZATION
 // Unstable attempt to provide a more optimized std::function
-#  define _LIBCPP_ABI_OPTIMIZED_FUNCTION
+// XXX EMSCRIPTEN https://github.com/emscripten-core/emscripten/issues/11022
+//#  define _LIBCPP_ABI_OPTIMIZED_FUNCTION
 // All the regex constants must be distinct and nonzero.
 #  define _LIBCPP_ABI_REGEX_CONSTANTS_NONZERO
 // Re-worked external template instantiations for std::string with a focus on
@@ -318,7 +322,7 @@
    // random data even when using sandboxing mechanisms such as chroots,
    // Capsicum, etc.
 #  define _LIBCPP_USING_ARC4_RANDOM
-#elif defined(__Fuchsia__) || defined(__wasi__)
+#elif defined(__Fuchsia__) || defined(__wasi__) || defined(__EMSCRIPTEN__)
 #  define _LIBCPP_USING_GETENTROPY
 #elif defined(__native_client__)
    // NaCl's sandbox (which PNaCl also runs in) doesn't allow filesystem access,
@@ -920,7 +924,7 @@ typedef unsigned int   char32_t;
 
 #if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
 // Most unix variants have catopen.  These are the specific ones that don't.
-#  if !defined(__BIONIC__) && !defined(_NEWLIB_VERSION)
+#  if !defined(__BIONIC__) && !defined(_NEWLIB_VERSION) && !defined(__EMSCRIPTEN__) // XXX Emscripten catopen always returns -1
 #    define _LIBCPP_HAS_CATOPEN 1
 #  endif
 #endif
@@ -1132,6 +1136,7 @@ extern "C" _LIBCPP_FUNC_VIS void __sanitizer_annotate_contiguous_container(
       defined(__CloudABI__) || \
       defined(__sun__) || \
       defined(__MVS__) || \
+      defined(__EMSCRIPTEN__) || \
       (defined(__MINGW32__) && __has_include(<pthread.h>))
 #    define _LIBCPP_HAS_THREAD_API_PTHREAD
 #  elif defined(__Fuchsia__)

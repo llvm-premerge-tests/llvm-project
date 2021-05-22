@@ -15,7 +15,7 @@
 #if !defined(__linux__) && !defined(__FreeBSD__) && !defined(__NetBSD__) && \
   !defined(__APPLE__) && !defined(_WIN32) && \
   !defined(__Fuchsia__) && !defined(__rtems__) && \
-  !(defined(__sun__) && defined(__svr4__))
+  !(defined(__sun__) && defined(__svr4__)) && !defined(__EMSCRIPTEN__)
 # error "This operating system is not supported"
 #endif
 
@@ -117,9 +117,15 @@
 # define SANITIZER_RTEMS 0
 #endif
 
+#if defined(__EMSCRIPTEN__)
+# define SANITIZER_EMSCRIPTEN 1
+#else
+# define SANITIZER_EMSCRIPTEN 0
+#endif
+
 #define SANITIZER_POSIX \
   (SANITIZER_FREEBSD || SANITIZER_LINUX || SANITIZER_MAC || \
-    SANITIZER_NETBSD || SANITIZER_SOLARIS)
+    SANITIZER_NETBSD || SANITIZER_SOLARIS || SANITIZER_EMSCRIPTEN)
 
 #if __LP64__ || defined(_WIN64)
 #  define SANITIZER_WORDSIZE 64

@@ -211,7 +211,9 @@ void InstallDeadlySignalHandlers(SignalHandlerType handler) {
   // Set the alternate signal stack for the main thread.
   // This will cause SetAlternateSignalStack to be called twice, but the stack
   // will be actually set only once.
+#if !SANITIZER_EMSCRIPTEN
   if (common_flags()->use_sigaltstack) SetAlternateSignalStack();
+#endif
   MaybeInstallSigaction(SIGSEGV, handler);
   MaybeInstallSigaction(SIGBUS, handler);
   MaybeInstallSigaction(SIGABRT, handler);
@@ -271,6 +273,11 @@ bool SignalContext::IsStackOverflow() const {
 #endif  // SANITIZER_GO
 
 bool IsAccessibleMemoryRange(uptr beg, uptr size) {
+#if SANITIZER_EMSCRIPTEN
+  // Avoid pulling in __sys_pipe for the trick below, which doesn't work on
+  // WebAssembly anyways because there are no memory protections.
+  return true;
+#else
   uptr page_size = GetPageSizeCached();
   // Checking too large memory ranges is slow.
   CHECK_LT(size, page_size * 10);
@@ -290,6 +297,7 @@ bool IsAccessibleMemoryRange(uptr beg, uptr size) {
   internal_close(sock_pair[0]);
   internal_close(sock_pair[1]);
   return result;
+#endif // SANITIZER_EMSCRIPTEN
 }
 
 void PlatformPrepareForSandboxing(__sanitizer_sandbox_arguments *args) {
@@ -297,7 +305,9 @@ void PlatformPrepareForSandboxing(__sanitizer_sandbox_arguments *args) {
   // to read the file mappings from /proc/self/maps. Luckily, neither the
   // process will be able to load additional libraries, so it's fine to use the
   // cached mappings.
+#ifndef SANITIZER_EMSCRIPTEN
   MemoryMappingLayout::CacheMemoryMappings();
+#endif
 }
 
 static bool MmapFixed(uptr fixed_addr, uptr size, int additional_flags,
