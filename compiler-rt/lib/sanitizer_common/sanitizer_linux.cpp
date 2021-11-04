@@ -261,8 +261,11 @@ uptr internal_write(fd_t fd, const void *buf, uptr count) {
 uptr internal_ftruncate(fd_t fd, uptr size) {
   sptr res;
 #if SANITIZER_EMSCRIPTEN
+  // The __SYSCALL_LL_O macros that musl uses to split 64-bit arguments
+  // doesn't work in C++ code so we have to do it manually.
+  union { long long ll; long l[2]; } split{ .ll = size };
   HANDLE_EINTR(res, (sptr)internal_syscall(SYSCALL(ftruncate), fd,
-               0, size, 0));
+               split.l[0], split.l[1]));
 #else
   HANDLE_EINTR(res, (sptr)internal_syscall(SYSCALL(ftruncate), fd,
                (OFF_T)size));
@@ -483,7 +486,9 @@ uptr internal_execve(const char *filename, char *const argv[],
 
 #if !SANITIZER_NETBSD
 void internal__exit(int exitcode) {
-#if SANITIZER_FREEBSD || SANITIZER_SOLARIS
+#if SANITIZER_EMSCRIPTEN
+  __wasi_proc_exit(exitcode);
+#elif SANITIZER_FREEBSD || SANITIZER_SOLARIS
   internal_syscall(SYSCALL(exit), exitcode);
 #else
   internal_syscall(SYSCALL(exit_group), exitcode);
