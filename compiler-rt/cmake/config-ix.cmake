@@ -662,6 +662,7 @@ endif()
 message(STATUS "Compiler-RT supported architectures: ${COMPILER_RT_SUPPORTED_ARCH}")
 
 set(ALL_SANITIZERS asan;dfsan;msan;hwasan;tsan;safestack;cfi;scudo;ubsan_minimal;gwp_asan)
+
 set(COMPILER_RT_SANITIZERS_TO_BUILD all CACHE STRING
     "sanitizers to build if supported on the target (all;${ALL_SANITIZERS})")
 list_replace(COMPILER_RT_SANITIZERS_TO_BUILD all "${ALL_SANITIZERS}")
@@ -744,13 +745,13 @@ else()
 endif()
 
 if (COMPILER_RT_HAS_SANITIZER_COMMON AND TSAN_SUPPORTED_ARCH AND
-    OS_NAME MATCHES "Darwin|Linux|FreeBSD|Android|NetBSD")
+    OS_NAME MATCHES "Darwin|Linux|FreeBSD|Android|NetBSD" AND ANDROID_PLATFORM_LEVEL GREATER 23)
   set(COMPILER_RT_HAS_TSAN TRUE)
 else()
   set(COMPILER_RT_HAS_TSAN FALSE)
 endif()
 
-if (OS_NAME MATCHES "Linux|FreeBSD|Windows|NetBSD|SunOS")
+if (OS_NAME MATCHES "Linux|FreeBSD|Windows|NetBSD|SunOS" AND ANDROID_PLATFORM_LEVEL GREATER 23)
   set(COMPILER_RT_TSAN_HAS_STATIC_RUNTIME TRUE)
 else()
   set(COMPILER_RT_TSAN_HAS_STATIC_RUNTIME FALSE)
