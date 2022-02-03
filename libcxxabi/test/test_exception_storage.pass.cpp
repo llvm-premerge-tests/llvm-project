@@ -42,7 +42,19 @@ std::__libcpp_thread_t   threads        [ NUMTHREADS ];
 #endif
 
 int main() {
-#ifndef _LIBCXXABI_HAS_NO_THREADS
+#ifdef _LIBCXXABI_HAS_NO_THREADS
+    size_t thread_globals;
+    thread_code(&thread_globals);
+    // Check that __cxa_get_globals() is not NULL.
+    return (thread_globals == 0) ? 1 : 0;
+#else  // !_LIBCXXABI_HAS_NO_THREADS
+    // If threads are disabled at runtime, revert to single-threaded test.
+    if (!std::__libcpp_is_threading_api_enabled()) {
+        thread_code((void*)thread_globals);
+        // Check that __cxa_get_globals() is not NULL.
+        return (thread_globals[0] == 0) ? 1 : 0;
+    }
+
 //  Make the threads, let them run, and wait for them to finish
     for ( int i = 0; i < NUMTHREADS; ++i )
         std::__libcpp_thread_create ( threads + i, thread_code, (void *) (thread_globals + i));
@@ -65,10 +77,5 @@ int main() {
         }
     }
     return retVal;
-#else // _LIBCXXABI_HAS_NO_THREADS
-    size_t thread_globals;
-    thread_code(&thread_globals);
-    // Check that __cxa_get_globals() is not NULL.
-    return (thread_globals == 0) ? 1 : 0;
 #endif // !_LIBCXXABI_HAS_NO_THREADS
 }

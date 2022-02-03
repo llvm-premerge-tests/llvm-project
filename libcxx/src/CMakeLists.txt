@@ -18,6 +18,7 @@ set(LIBCXX_SOURCES
   include/apple_availability.h
   include/atomic_support.h
   include/config_elast.h
+  include/internal_threading_support.h
   include/refstring.h
   include/ryu/common.h
   include/ryu/d2fixed.h

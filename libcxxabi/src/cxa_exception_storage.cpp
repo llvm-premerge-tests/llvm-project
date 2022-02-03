@@ -12,8 +12,6 @@
 
 #include "cxa_exception.h"
 
-#include <__threading_support>
-
 #if defined(_LIBCXXABI_HAS_NO_THREADS)
 
 namespace __cxxabiv1 {
@@ -92,6 +90,11 @@ extern "C" {
     // to the Itanium ABI and is taken advantage of in several places in
     // libc++abi.
     __cxa_eh_globals *__cxa_get_globals_fast() {
+        // If threads are disabled at runtime, revert to single-threaded implementation.
+        if (!std::__libcpp_is_threading_api_enabled()) {
+            static __cxa_eh_globals eh_globals;
+            return &eh_globals;
+        }
         // First time through, create the key.
         if (0 != std::__libcpp_execute_once(&flag_, construct_))
             abort_message("execute once failure in __cxa_get_globals_fast()");

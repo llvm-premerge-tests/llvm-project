@@ -252,7 +252,14 @@ int __libcpp_tls_set(__libcpp_tls_key __key, void *__p);
 #if (!defined(_LIBCPP_HAS_THREAD_LIBRARY_EXTERNAL) || \
      defined(_LIBCPP_BUILDING_THREAD_LIBRARY_EXTERNAL))
 
-#if defined(_LIBCPP_HAS_THREAD_API_PTHREAD)
+#if defined(_LIBCPP_HAS_THREAD_LIBRARY_OPTIONAL)
+// Empty - function definitions are provided by src/include/internal_threading_support.h
+#if !defined(_LIBCPP_BUILDING_LIBRARY)
+#error _LIBCPP_HAS_THREAD_LIBRARY_OPTIONAL is only intended to protect internal \
+       uses of __threading_support by libcxx.
+#endif
+
+#elif defined(_LIBCPP_HAS_THREAD_API_PTHREAD)
 
 _LIBCPP_HIDE_FROM_ABI inline
 int __libcpp_recursive_mutex_init(__libcpp_recursive_mutex_t *__m)

@@ -12,6 +12,8 @@
 #define _LCONV_C99
 #endif
 
+// This must come before any file that #includes <__threading_support>.
+#include "include/internal_threading_support.h"
 #include "algorithm"
 #include "clocale"
 #include "codecvt"

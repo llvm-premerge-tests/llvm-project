@@ -14,7 +14,7 @@
 #include "cstdio"
 #include "__hash_table"
 #ifndef _LIBCPP_HAS_NO_THREADS
-#include "mutex"
+#include "include/internal_threading_support.h"
 #if defined(__ELF__) && defined(_LIBCPP_LINK_PTHREAD_LIB)
 #pragma comment(lib, "pthread")
 #endif
