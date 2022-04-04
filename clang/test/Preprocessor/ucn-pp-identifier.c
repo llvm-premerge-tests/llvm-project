@@ -29,9 +29,14 @@
 
 // Make sure we reject disallowed UCNs
 #define \ufffe // expected-error {{macro name must be an identifier}}
-#define \U10000000  // expected-error {{macro name must be an identifier}}
-#define \u0061  // expected-error {{character 'a' cannot be specified by a universal character name}} expected-error {{macro name must be an identifier}}
-#define \u{fffe} // expected-error {{macro name must be an identifier}} expected-warning {{Clang extension}}
+#define \U10000000 // expected-error {{macro name must be an identifier}}
+#define \u0061     // expected-error {{character 'a' cannot be specified by a universal character name}} expected-error {{macro name must be an identifier}}
+#define \u{fffe}   // expected-error {{macro name must be an identifier}} expected-warning {{Clang extension}}
+#define \N{ALERT}  // expected-error {{universal character name refers to a control character}} \
+                   // expected-error {{macro name must be an identifier}} \
+                   // expected-warning {{Clang extension}}
+#define \N{WASTEBASKET} // expected-error {{macro name must be an identifier}} \
+                        // expected-warning {{Clang extension}}
 
 #define a\u0024
 
@@ -113,3 +118,9 @@ C 1
 #define \u{123456789}  // expected-error {{hex escape sequence out of range}} expected-error {{macro name must be an identifier}}
 #define \u{            // expected-warning {{incomplete delimited universal character name; treating as '\' 'u' '{' identifier}} expected-error {{macro name must be an identifier}}
 #define \u{fgh}        // expected-warning {{incomplete delimited universal character name; treating as '\' 'u' '{' identifier}} expected-error {{macro name must be an identifier}}
+#define \u{fgh}        // expected-warning {{incomplete delimited universal character name; treating as '\' 'u' '{' identifier}} expected-error {{macro name must be an identifier}}
+#define \N{            // expected-warning {{incomplete delimited universal character name; treating as '\' 'N' '{' identifier}} expected-error {{macro name must be an identifier}}
+#define \N{}           // expected-warning {{empty delimited universal character name; treating as '\' 'N' '{' '}'}} expected-error {{macro name must be an identifier}}
+#define \N{NOTATHING}  // expected-error {{'NOTATHING' is not a valid Unicode character name}} \
+                       // expected-error {{macro name must be an identifier}}
+#define \NN            // expected-warning {{incomplete universal character name; treating as '\' followed by identifier}} expected-error {{macro name must be an identifier}}

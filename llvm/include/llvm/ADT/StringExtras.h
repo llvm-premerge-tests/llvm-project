@@ -326,6 +326,8 @@ inline std::string toString(const APSInt &I, unsigned Radix) {
   return toString(I, Radix, I.isSigned());
 }
 
+std::string to_hexString(uint64_t Value, bool UpperCase = true);
+
 /// StrInStrNoCase - Portable version of strcasestr.  Locates the first
 /// occurrence of string 's1' in string 's2', ignoring case.  Returns
 /// the offset of s2 in s1 or npos if s2 cannot be found.

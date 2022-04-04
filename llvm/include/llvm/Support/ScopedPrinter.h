@@ -81,7 +81,6 @@ struct FlagEntry {
 };
 
 raw_ostream &operator<<(raw_ostream &OS, const HexNumber &Value);
-std::string to_hexString(uint64_t Value, bool UpperCase = true);
 
 template <class T> std::string to_string(const T &Value) {
   std::string number;

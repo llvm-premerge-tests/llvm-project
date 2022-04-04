@@ -12,6 +12,7 @@
 
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cctype>
 
@@ -28,6 +29,13 @@ StringRef::size_type llvm::StrInStrNoCase(StringRef s1, StringRef s2) {
     if (s1.substr(i, N).equals_insensitive(s2))
       return i;
   return StringRef::npos;
+}
+
+std::string llvm::to_hexString(uint64_t Value, bool UpperCase) {
+  std::string number;
+  llvm::raw_string_ostream stream(number);
+  stream << format_hex_no_prefix(Value, 1, UpperCase);
+  return stream.str();
 }
 
 /// getToken - This function extracts one token from source, ignoring any
