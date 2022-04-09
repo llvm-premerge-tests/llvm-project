@@ -31,6 +31,10 @@
 // is textually included.
 #define COVMAP_V3
 
+namespace llvm {
+extern cl::opt<bool> EnableBooleanCounters;
+}
+
 static llvm::cl::opt<bool> EmptyLineCommentCoverage(
     "emptyline-comment-coverage",
     llvm::cl::desc("Emit emptylines and comment lines as skipped regions (only "
@@ -572,6 +576,15 @@ struct CounterCoverageMappingBuilder
     return addCounters(addCounters(C1, C2, Simplify), C3, Simplify);
   }
 
+  /// Return a counter for the result of \c LHS or \c RHS.
+  Counter orCounters(Counter LHS, Counter RHS) {
+    return Builder.orCounters(LHS, RHS);
+  }
+
+  Counter orCounters(Counter C1, Counter C2, Counter C3) {
+    return orCounters(orCounters(C1, C2), C3);
+  }
+
   /// Return the region counter for the given statement.
   ///
   /// This should only be called on statements that have a dedicated counter.
@@ -1053,8 +1066,12 @@ struct CounterCoverageMappingBuilder
 
   void VisitBreakStmt(const BreakStmt *S) {
     assert(!BreakContinueStack.empty() && "break not in a loop or switch!");
-    BreakContinueStack.back().BreakCount = addCounters(
-        BreakContinueStack.back().BreakCount, getRegion().getCounter());
+    if (llvm::EnableBooleanCounters)
+      BreakContinueStack.back().BreakCount = orCounters(
+          BreakContinueStack.back().BreakCount, getRegion().getCounter());
+    else
+      BreakContinueStack.back().BreakCount = addCounters(
+          BreakContinueStack.back().BreakCount, getRegion().getCounter());
     // FIXME: a break in a switch should terminate regions for all preceding
     // case statements, not just the most recent one.
     terminateRegion(S);
@@ -1062,8 +1079,12 @@ struct CounterCoverageMappingBuilder
 
   void VisitContinueStmt(const ContinueStmt *S) {
     assert(!BreakContinueStack.empty() && "continue stmt not in a loop!");
-    BreakContinueStack.back().ContinueCount = addCounters(
-        BreakContinueStack.back().ContinueCount, getRegion().getCounter());
+    if (llvm::EnableBooleanCounters)
+      BreakContinueStack.back().ContinueCount = orCounters(
+          BreakContinueStack.back().ContinueCount, getRegion().getCounter());
+    else
+      BreakContinueStack.back().ContinueCount = addCounters(
+          BreakContinueStack.back().ContinueCount, getRegion().getCounter());
     terminateRegion(S);
   }
 
@@ -1081,7 +1102,9 @@ struct CounterCoverageMappingBuilder
     extendRegion(S);
 
     Counter ParentCount = getRegion().getCounter();
-    Counter BodyCount = getRegionCounter(S);
+    Counter BodyCount = llvm::EnableBooleanCounters
+                            ? getRegionCounter(S->getBody())
+                            : getRegionCounter(S);
 
     // Handle the body first so that we can get the backedge count.
     BreakContinueStack.push_back(BreakContinue());
@@ -1094,7 +1117,10 @@ struct CounterCoverageMappingBuilder
 
     // Go back to handle the condition.
     Counter CondCount =
-        addCounters(ParentCount, BackedgeCount, BC.ContinueCount);
+        llvm::EnableBooleanCounters
+            ? orCounters(ParentCount, BackedgeCount, BC.ContinueCount)
+            : addCounters(ParentCount, BackedgeCount, BC.ContinueCount);
+
     propagateCounts(CondCount, S->getCond());
     adjustForOutOfOrderTraversal(getEnd(S));
 
@@ -1104,7 +1130,11 @@ struct CounterCoverageMappingBuilder
       fillGapAreaWithCount(Gap->getBegin(), Gap->getEnd(), BodyCount);
 
     Counter OutCount =
-        addCounters(BC.BreakCount, subtractCounters(CondCount, BodyCount));
+        llvm::EnableBooleanCounters
+            ? getRegionCounter(S)
+            : addCounters(BC.BreakCount,
+                          subtractCounters(CondCount, BodyCount));
+
     if (OutCount != ParentCount) {
       pushRegion(OutCount);
       GapRegionCounter = OutCount;
@@ -1113,8 +1143,9 @@ struct CounterCoverageMappingBuilder
     }
 
     // Create Branch Region around condition.
-    createBranchRegion(S->getCond(), BodyCount,
-                       subtractCounters(CondCount, BodyCount));
+    if (!llvm::EnableBooleanCounters)
+      createBranchRegion(S->getCond(), BodyCount,
+                         subtractCounters(CondCount, BodyCount));
   }
 
   void VisitDoStmt(const DoStmt *S) {
@@ -1156,7 +1187,9 @@ struct CounterCoverageMappingBuilder
       Visit(S->getInit());
 
     Counter ParentCount = getRegion().getCounter();
-    Counter BodyCount = getRegionCounter(S);
+    Counter BodyCount = llvm::EnableBooleanCounters
+                            ? getRegionCounter(S->getBody())
+                            : getRegionCounter(S);
 
     // The loop increment may contain a break or continue.
     if (S->getInc())
@@ -1175,14 +1208,23 @@ struct CounterCoverageMappingBuilder
     // the count for all the continue statements.
     BreakContinue IncrementBC;
     if (const Stmt *Inc = S->getInc()) {
-      propagateCounts(addCounters(BackedgeCount, BodyBC.ContinueCount), Inc);
+      if (llvm::EnableBooleanCounters)
+        propagateCounts(orCounters(BackedgeCount, BodyBC.ContinueCount), Inc);
+      else
+        propagateCounts(addCounters(BackedgeCount, BodyBC.ContinueCount), Inc);
       IncrementBC = BreakContinueStack.pop_back_val();
     }
 
     // Go back to handle the condition.
-    Counter CondCount = addCounters(
-        addCounters(ParentCount, BackedgeCount, BodyBC.ContinueCount),
-        IncrementBC.ContinueCount);
+    Counter CondCount =
+        llvm::EnableBooleanCounters
+            ? orCounters(
+                  orCounters(ParentCount, BackedgeCount, BodyBC.ContinueCount),
+                  IncrementBC.ContinueCount)
+            : addCounters(
+                  addCounters(ParentCount, BackedgeCount, BodyBC.ContinueCount),
+                  IncrementBC.ContinueCount);
+
     if (const Expr *Cond = S->getCond()) {
       propagateCounts(CondCount, Cond);
       adjustForOutOfOrderTraversal(getEnd(S));
@@ -1193,8 +1235,11 @@ struct CounterCoverageMappingBuilder
     if (Gap)
       fillGapAreaWithCount(Gap->getBegin(), Gap->getEnd(), BodyCount);
 
-    Counter OutCount = addCounters(BodyBC.BreakCount, IncrementBC.BreakCount,
-                                   subtractCounters(CondCount, BodyCount));
+    Counter OutCount =
+        llvm::EnableBooleanCounters
+            ? getRegionCounter(S)
+            : addCounters(BodyBC.BreakCount, IncrementBC.BreakCount,
+                          subtractCounters(CondCount, BodyCount));
     if (OutCount != ParentCount) {
       pushRegion(OutCount);
       GapRegionCounter = OutCount;
@@ -1203,8 +1248,9 @@ struct CounterCoverageMappingBuilder
     }
 
     // Create Branch Region around condition.
-    createBranchRegion(S->getCond(), BodyCount,
-                       subtractCounters(CondCount, BodyCount));
+    if (!llvm::EnableBooleanCounters)
+      createBranchRegion(S->getCond(), BodyCount,
+                         subtractCounters(CondCount, BodyCount));
   }
 
   void VisitCXXForRangeStmt(const CXXForRangeStmt *S) {
@@ -1319,6 +1365,11 @@ struct CounterCoverageMappingBuilder
     MostRecentLocation = getStart(S);
     handleFileExit(ExitLoc);
 
+    // Early return so do not create branch regions when boolean counters are
+    // enabled.
+    if (llvm::EnableBooleanCounters)
+      return;
+
     // Create a Branch Region around each Case. Subtract the case's
     // counter from the Parent counter to track the "False" branch count.
     Counter CaseCountSum;
@@ -1380,7 +1431,9 @@ struct CounterCoverageMappingBuilder
     extendRegion(S->getCond());
 
     Counter ParentCount = getRegion().getCounter();
-    Counter ThenCount = getRegionCounter(S);
+    Counter ThenCount = llvm::EnableBooleanCounters
+                            ? getRegionCounter(S->getThen())
+                            : getRegionCounter(S);
 
     // Emitting a counter for the condition makes it easier to interpret the
     // counter for the body when looking at the coverage.
@@ -1394,7 +1447,13 @@ struct CounterCoverageMappingBuilder
     extendRegion(S->getThen());
     Counter OutCount = propagateCounts(ThenCount, S->getThen());
 
-    Counter ElseCount = subtractCounters(ParentCount, ThenCount);
+    Counter ElseCount;
+    if (llvm::EnableBooleanCounters) {
+      if (S->getElse())
+        ElseCount = getRegionCounter(S->getElse());
+    } else
+      ElseCount = subtractCounters(ParentCount, ThenCount);
+
     if (const Stmt *Else = S->getElse()) {
       bool ThenHasTerminateStmt = HasTerminateStmt;
       HasTerminateStmt = false;
@@ -1404,12 +1463,16 @@ struct CounterCoverageMappingBuilder
       if (Gap)
         fillGapAreaWithCount(Gap->getBegin(), Gap->getEnd(), ElseCount);
       extendRegion(Else);
-      OutCount = addCounters(OutCount, propagateCounts(ElseCount, Else));
+      Counter ElseOutCount = propagateCounts(ElseCount, Else);
+      OutCount = llvm::EnableBooleanCounters
+                     ? orCounters(OutCount, ElseOutCount)
+                     : addCounters(OutCount, ElseOutCount);
 
       if (ThenHasTerminateStmt)
         HasTerminateStmt = true;
     } else
-      OutCount = addCounters(OutCount, ElseCount);
+      OutCount = llvm::EnableBooleanCounters ? getRegionCounter(S)
+                                             : addCounters(OutCount, ElseCount);
 
     if (OutCount != ParentCount) {
       pushRegion(OutCount);
@@ -1417,8 +1480,9 @@ struct CounterCoverageMappingBuilder
     }
 
     // Create Branch Region around condition.
-    createBranchRegion(S->getCond(), ThenCount,
-                       subtractCounters(ParentCount, ThenCount));
+    if (!llvm::EnableBooleanCounters)
+      createBranchRegion(S->getCond(), ThenCount,
+                         subtractCounters(ParentCount, ThenCount));
   }
 
   void VisitCXXTryStmt(const CXXTryStmt *S) {

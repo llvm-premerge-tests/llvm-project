@@ -198,7 +198,8 @@ Error RawCoverageMappingReader::decodeCounter(unsigned Value, Counter &C) {
   Tag -= Counter::Expression;
   switch (Tag) {
   case CounterExpression::Subtract:
-  case CounterExpression::Add: {
+  case CounterExpression::Add:
+  case CounterExpression::Or: {
     auto ID = Value >> Counter::EncodingTagBits;
     if (ID >= Expressions.size())
       return make_error<CoverageMapError>(coveragemap_error::malformed);

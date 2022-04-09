@@ -40,6 +40,10 @@ using namespace CodeGen;
 //                              Statement Emission
 //===----------------------------------------------------------------------===//
 
+namespace llvm {
+extern cl::opt<bool> EnableBooleanCounters;
+}
+
 void CodeGenFunction::EmitStopPoint(const Stmt *S) {
   if (CGDebugInfo *DI = getDebugInfo()) {
     SourceLocation Loc;
@@ -823,7 +827,10 @@ void CodeGenFunction::EmitIfStmt(const IfStmt &S) {
 
   // Emit the 'then' code.
   EmitBlock(ThenBlock);
-  incrementProfileCounter(&S);
+  if (llvm::EnableBooleanCounters)
+    incrementProfileCounter(S.getThen());
+  else
+    incrementProfileCounter(&S);
   {
     RunCleanupsScope ThenScope(*this);
     EmitStmt(S.getThen());
@@ -837,6 +844,9 @@ void CodeGenFunction::EmitIfStmt(const IfStmt &S) {
       auto NL = ApplyDebugLocation::CreateEmpty(*this);
       EmitBlock(ElseBlock);
     }
+    // When boolean counters are enabled, add a counter to else block.
+    if (llvm::EnableBooleanCounters)
+      incrementProfileCounter(Else);
     {
       RunCleanupsScope ElseScope(*this);
       EmitStmt(Else);
@@ -850,6 +860,9 @@ void CodeGenFunction::EmitIfStmt(const IfStmt &S) {
 
   // Emit the continuation block for code after the if.
   EmitBlock(ContBlock, true);
+  // When there is no else, add a counter to continuation block.
+  if (llvm::EnableBooleanCounters && !S.getElse())
+    incrementProfileCounter(&S);
 }
 
 void CodeGenFunction::EmitWhileStmt(const WhileStmt &S,
@@ -926,7 +939,10 @@ void CodeGenFunction::EmitWhileStmt(const WhileStmt &S,
   {
     RunCleanupsScope BodyScope(*this);
     EmitBlock(LoopBody);
-    incrementProfileCounter(&S);
+    if (llvm::EnableBooleanCounters)
+      incrementProfileCounter(S.getBody());
+    else
+      incrementProfileCounter(&S);
     EmitStmt(S.getBody());
   }
 
@@ -948,6 +964,10 @@ void CodeGenFunction::EmitWhileStmt(const WhileStmt &S,
   // a branch, try to erase it.
   if (!EmitBoolCondBranch)
     SimplifyForwardingBlocks(LoopHeader.getBlock());
+
+  // When boolean counters are enabled, add a counter to continuation block.
+  if (llvm::EnableBooleanCounters)
+    incrementProfileCounter(&S);
 }
 
 void CodeGenFunction::EmitDoStmt(const DoStmt &S,
@@ -1098,8 +1118,11 @@ void CodeGenFunction::EmitForStmt(const ForStmt &S,
     // Treat it as a non-zero constant.  Don't even create a new block for the
     // body, just fall into it.
   }
-  incrementProfileCounter(&S);
 
+  if (llvm::EnableBooleanCounters)
+    incrementProfileCounter(S.getBody());
+  else
+    incrementProfileCounter(&S);
   {
     // Create a separate cleanup scope for the body, in case it is not
     // a compound statement.
@@ -1126,6 +1149,10 @@ void CodeGenFunction::EmitForStmt(const ForStmt &S,
 
   // Emit the fall-through block.
   EmitBlock(LoopExit.getBlock(), true);
+
+  // When boolean counters are enabled, add a counter to continuation block.
+  if (llvm::EnableBooleanCounters)
+    incrementProfileCounter(&S);
 }
 
 void

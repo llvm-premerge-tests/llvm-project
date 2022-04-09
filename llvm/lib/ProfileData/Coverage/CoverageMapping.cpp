@@ -133,6 +133,14 @@ Counter CounterExpressionBuilder::subtract(Counter LHS, Counter RHS,
   return Simplify ? simplify(Cnt) : Cnt;
 }
 
+Counter CounterExpressionBuilder::orCounters(Counter LHS, Counter RHS) {
+  if (LHS.getKind() == Counter::Zero)
+    return Counter::getCounter(RHS.getCounterID());
+  if (RHS.getKind() == Counter::Zero)
+    return Counter::getCounter(LHS.getCounterID());
+  return get(CounterExpression(CounterExpression::Or, LHS, RHS));
+}
+
 void CounterMappingContext::dump(const Counter &C, raw_ostream &OS) const {
   switch (C.getKind()) {
   case Counter::Zero:
@@ -147,7 +155,10 @@ void CounterMappingContext::dump(const Counter &C, raw_ostream &OS) const {
     const auto &E = Expressions[C.getExpressionID()];
     OS << '(';
     dump(E.LHS, OS);
-    OS << (E.Kind == CounterExpression::Subtract ? " - " : " + ");
+    if (E.Kind == CounterExpression::Or)
+      OS << " || ";
+    else
+      OS << (E.Kind == CounterExpression::Subtract ? " - " : " + ");
     dump(E.RHS, OS);
     OS << ')';
     break;
@@ -181,6 +192,9 @@ Expected<int64_t> CounterMappingContext::evaluate(const Counter &C) const {
     Expected<int64_t> RHS = evaluate(E.RHS);
     if (!RHS)
       return RHS;
+    if (E.Kind == CounterExpression::Or)
+      return *RHS || *LHS;
+
     return E.Kind == CounterExpression::Subtract ? *LHS - *RHS : *LHS + *RHS;
   }
   }

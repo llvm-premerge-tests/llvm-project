@@ -91,6 +91,8 @@ public:
   // Set a module flag indicating if value profiling is enabled.
   void setValueProfilingFlag(llvm::Module &M);
 
+  void setProfileVersion(llvm::Module &M);
+
 private:
   void setFuncName(llvm::Function *Fn);
   void setFuncName(StringRef Name, llvm::GlobalValue::LinkageTypes Linkage);

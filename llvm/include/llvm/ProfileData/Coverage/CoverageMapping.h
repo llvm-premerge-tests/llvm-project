@@ -93,8 +93,8 @@ struct Counter {
   /// The CounterExpression kind (Add or Subtract) is encoded in bit 0 next to
   /// the CounterKind. This means CounterKind has to leave bit 0 free.
   enum CounterKind { Zero, CounterValueReference, Expression };
-  static const unsigned EncodingTagBits = 2;
-  static const unsigned EncodingTagMask = 0x3;
+  static const unsigned EncodingTagBits = 3;
+  static const unsigned EncodingTagMask = 0x7;
   static const unsigned EncodingCounterTagAndExpansionRegionTagBits =
       EncodingTagBits + 1;
 
@@ -147,7 +147,7 @@ public:
 /// A Counter expression is a value that represents an arithmetic operation
 /// with two counters.
 struct CounterExpression {
-  enum ExprKind { Subtract, Add };
+  enum ExprKind { Subtract, Add, Or };
   ExprKind Kind;
   Counter LHS, RHS;
 
@@ -200,6 +200,9 @@ public:
   /// Return a counter that represents the expression that subtracts RHS from
   /// LHS.
   Counter subtract(Counter LHS, Counter RHS, bool Simplify = true);
+
+  /// Return a counter that represents the expression RHS || LHS
+  Counter orCounters(Counter LHS, Counter RHS);
 };
 
 using LineColPair = std::pair<unsigned, unsigned>;
