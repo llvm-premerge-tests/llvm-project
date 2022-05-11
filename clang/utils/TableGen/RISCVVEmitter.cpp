@@ -20,6 +20,7 @@
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/ADT/StringSet.h"
+#include "llvm/ADT/StringSwitch.h"
 #include "llvm/ADT/Twine.h"
 #include "llvm/TableGen/Error.h"
 #include "llvm/TableGen/Record.h"
@@ -29,9 +30,48 @@ using namespace llvm;
 using namespace clang::RISCV;
 
 namespace {
+struct SemaRecord {
+  // Intrinsic name, e.g. vadd_vv
+  std::string Name;
+
+  // Overloaded intrinsic name, could be empty if can be computed from Name
+  // e.g. vadd
+  std::string OverloadedName;
+
+  // Supported type, mask of BasicType
+  unsigned TypeRangeMask;
+
+  // Supported LMUL.
+  unsigned Log2LMULMask;
+
+  // Required target features for this intrinsic.
+  std::vector<std::string> RequiredFeatures;
+
+  // Prototype for this intrinsic.
+  SmallVector<TypeProfile> Prototype;
+
+  // Prototype for masked intrinsic.
+  SmallVector<TypeProfile> MaskedPrototype;
+
+  // Suffix of intrinsic name.
+  SmallVector<TypeProfile> Suffix;
+
+  // Suffix of overloaded intrinsic name.
+  SmallVector<TypeProfile> OverloadedSuffix;
+
+  // Number of field, large than 1 if it's segment load/store.
+  unsigned NF;
+};
+
 class RVVEmitter {
 private:
   RecordKeeper &Records;
+  // Concat BasicType, LMUL and Proto as key
+  StringMap<RVVType> LegalTypes;
+  StringSet<> IllegalTypes;
+
+  std::vector<SemaRecord> SemaRecords;
+  std::vector<TypeProfile> SemaSignatureTable;
 
 public:
   RVVEmitter(RecordKeeper &R) : Records(R) {}
@@ -45,22 +85,27 @@ public:
   /// Emit all the information needed to map builtin -> LLVM IR intrinsic.
   void createCodeGen(raw_ostream &o);
 
+  /// Emit all the information needed by SemaRVVLookup.cpp.
+  /// We've large number of intrinsic function for RVV, creating a customized
+  /// could speed up the compilation time.
+  void createSema(raw_ostream &o);
+
 private:
   /// Create all intrinsics and add them to \p Out
   void createRVVIntrinsics(std::vector<std::unique_ptr<RVVIntrinsic>> &Out);
   /// Print HeaderCode in RVVHeader Record to \p Out
   void printHeaderCode(raw_ostream &OS);
 
-  /// Emit Acrh predecessor definitions and body, assume the element of Defs are
-  /// sorted by extension.
-  void emitArchMacroAndBody(
-      std::vector<std::unique_ptr<RVVIntrinsic>> &Defs, raw_ostream &o,
-      std::function<void(raw_ostream &, const RVVIntrinsic &)>);
+  /// Construct a compressed signature table used for createSema.
+  void ConstructSemaSignatureTable();
+  /// Get index from the signature table.
+  unsigned GetSemaSignatureIndex(const SmallVector<TypeProfile> &Signature);
 
-  // Emit the architecture preprocessor definitions. Return true when emits
-  // non-empty string.
-  bool emitMacroRestrictionStr(RISCVPredefinedMacroT PredefinedMacros,
-                               raw_ostream &o);
+  /// Emit all SemaRecord for SemaRVVLookup.cpp.
+  void EmitSemaRecords(raw_ostream &OS);
+
+  /// Emit signature table for SemaRVVLookup.cpp.
+  void EmitSemaSignatureTable(raw_ostream &OS);
 };
 
 } // namespace
@@ -141,35 +186,6 @@ void emitCodeGenSwitchBody(const RVVIntrinsic *RVVI, raw_ostream &OS) {
   OS << "  break;\n";
 }
 
-void emitIntrinsicFuncDef(const RVVIntrinsic &RVVI, raw_ostream &OS) {
-  OS << "__attribute__((__clang_builtin_alias__(";
-  OS << "__builtin_rvv_" << RVVI.getBuiltinName() << ")))\n";
-  OS << RVVI.getOutputType()->getTypeStr() << " " << RVVI.getName() << "(";
-  // Emit function arguments
-  const RVVTypes &InputTypes = RVVI.getInputTypes();
-  if (!InputTypes.empty()) {
-    ListSeparator LS;
-    for (unsigned i = 0; i < InputTypes.size(); ++i)
-      OS << LS << InputTypes[i]->getTypeStr();
-  }
-  OS << ");\n";
-}
-
-void emitMangledFuncDef(const RVVIntrinsic &RVVI, raw_ostream &OS) {
-  OS << "__attribute__((__clang_builtin_alias__(";
-  OS << "__builtin_rvv_" << RVVI.getBuiltinName() << ")))\n";
-  OS << RVVI.getOutputType()->getTypeStr() << " " << RVVI.getMangledName()
-     << "(";
-  // Emit function arguments
-  const RVVTypes &InputTypes = RVVI.getInputTypes();
-  if (!InputTypes.empty()) {
-    ListSeparator LS;
-    for (unsigned i = 0; i < InputTypes.size(); ++i)
-      OS << LS << InputTypes[i]->getTypeStr();
-  }
-  OS << ");\n";
-}
-
 //===----------------------------------------------------------------------===//
 // RVVEmitter implementation
 //===----------------------------------------------------------------------===//
@@ -202,10 +218,9 @@ void RVVEmitter::createHeader(raw_ostream &OS) {
   OS << "extern \"C\" {\n";
   OS << "#endif\n\n";
 
-  printHeaderCode(OS);
+  OS << "#pragma clang riscv intrinsic vector\n\n";
 
-  std::vector<std::unique_ptr<RVVIntrinsic>> Defs;
-  createRVVIntrinsics(Defs);
+  printHeaderCode(OS);
 
   auto printType = [&](auto T) {
     OS << "typedef " << T->getClangBuiltinStr() << " " << T->getTypeStr()
@@ -260,36 +275,7 @@ void RVVEmitter::createHeader(raw_ostream &OS) {
   }
   OS << "#endif\n\n";
 
-  // The same extension include in the same arch guard marco.
-  llvm::stable_sort(Defs, [](const std::unique_ptr<RVVIntrinsic> &A,
-                             const std::unique_ptr<RVVIntrinsic> &B) {
-    return A->getRISCVPredefinedMacros() < B->getRISCVPredefinedMacros();
-  });
-
-  OS << "#define __rvv_ai static __inline__\n";
-
-  // Print intrinsic functions with macro
-  emitArchMacroAndBody(Defs, OS, [](raw_ostream &OS, const RVVIntrinsic &Inst) {
-    OS << "__rvv_ai ";
-    emitIntrinsicFuncDef(Inst, OS);
-  });
-
-  OS << "#undef __rvv_ai\n\n";
-
   OS << "#define __riscv_v_intrinsic_overloading 1\n";
-
-  // Print Overloaded APIs
-  OS << "#define __rvv_aio static __inline__ "
-        "__attribute__((__overloadable__))\n";
-
-  emitArchMacroAndBody(Defs, OS, [](raw_ostream &OS, const RVVIntrinsic &Inst) {
-    if (!Inst.isMasked() && !Inst.hasUnMaskedOverloaded())
-      return;
-    OS << "__rvv_aio ";
-    emitMangledFuncDef(Inst, OS);
-  });
-
-  OS << "#undef __rvv_aio\n";
 
   OS << "\n#ifdef __cplusplus\n";
   OS << "}\n";
@@ -383,9 +369,9 @@ void RVVEmitter::createRVVIntrinsics(
   std::vector<Record *> RV = Records.getAllDerivedDefinitions("RVVBuiltin");
   for (auto *R : RV) {
     StringRef Name = R->getValueAsString("Name");
-    StringRef SuffixProto = R->getValueAsString("Suffix");
+    StringRef Suffix = R->getValueAsString("Suffix");
     StringRef MangledName = R->getValueAsString("MangledName");
-    StringRef MangledSuffixProto = R->getValueAsString("MangledSuffix");
+    StringRef OverloadedSuffix = R->getValueAsString("MangledSuffix");
     StringRef Prototypes = R->getValueAsString("Prototype");
     StringRef TypeRange = R->getValueAsString("TypeRange");
     bool HasMasked = R->getValueAsBit("HasMasked");
@@ -411,29 +397,30 @@ void RVVEmitter::createRVVIntrinsics(
     unsigned NF = R->getValueAsInt("NF");
 
     // Parse prototype and create a list of primitive type with transformers
-    // (operand) in ProtoSeq. ProtoSeq[0] is output operand.
-    SmallVector<TypeProfile> ProtoSeq = parsePrototypes(Prototypes);
+    // (operand) in Prototype. Prototype[0] is output operand.
+    SmallVector<TypeProfile> Prototype = parsePrototypes(Prototypes);
 
-    SmallVector<TypeProfile> SuffixProtoSeq = parsePrototypes(SuffixProto);
-    SmallVector<TypeProfile> MangledSuffixProtoSeq =
-        parsePrototypes(MangledSuffixProto);
+    SmallVector<TypeProfile> Suffixtype = parsePrototypes(Suffix);
+    SmallVector<TypeProfile> OverloadedSuffixtype =
+        parsePrototypes(OverloadedSuffix);
 
     // Compute Builtin types
-    SmallVector<TypeProfile> ProtoMaskSeq = ProtoSeq;
+    SmallVector<TypeProfile> MaskedPrototype = Prototype;
     if (HasMasked) {
       // If HasMaskedOffOperand, insert result type as first input operand.
       if (HasMaskedOffOperand) {
         if (NF == 1) {
-          ProtoMaskSeq.insert(ProtoMaskSeq.begin() + 1, ProtoSeq[0]);
+          MaskedPrototype.insert(MaskedPrototype.begin() + 1, Prototype[0]);
         } else {
           // Convert
           // (void, op0 address, op1 address, ...)
           // to
           // (void, op0 address, op1 address, ..., maskedoff0, maskedoff1, ...)
-          TypeProfile MaskoffType = ProtoSeq[1];
+          TypeProfile MaskoffType = Prototype[1];
           MaskoffType.TM &= ~static_cast<uint8_t>(TypeModifier::Pointer);
           for (unsigned I = 0; I < NF; ++I)
-            ProtoMaskSeq.insert(ProtoMaskSeq.begin() + NF + 1, MaskoffType);
+            MaskedPrototype.insert(MaskedPrototype.begin() + NF + 1,
+                                   MaskoffType);
         }
       }
       if (HasMaskedOffOperand && NF > 1) {
@@ -442,16 +429,17 @@ void RVVEmitter::createRVVIntrinsics(
         // to
         // (void, op0 address, op1 address, ..., mask, maskedoff0, maskedoff1,
         // ...)
-        ProtoMaskSeq.insert(ProtoMaskSeq.begin() + NF + 1, TypeProfile::Mask);
+        MaskedPrototype.insert(MaskedPrototype.begin() + NF + 1,
+                               TypeProfile::Mask);
       } else {
         // If HasMasked, insert TypeProfile:Mask as first input operand.
-        ProtoMaskSeq.insert(ProtoMaskSeq.begin() + 1, TypeProfile::Mask);
+        MaskedPrototype.insert(MaskedPrototype.begin() + 1, TypeProfile::Mask);
       }
     }
     // If HasVL, append TypeProfile:VL to last operand
     if (HasVL) {
-      ProtoSeq.push_back(TypeProfile::VL);
-      ProtoMaskSeq.push_back(TypeProfile::VL);
+      Prototype.push_back(TypeProfile::VL);
+      MaskedPrototype.push_back(TypeProfile::VL);
     }
 
     // Create Intrinsics for each type and LMUL.
@@ -459,15 +447,14 @@ void RVVEmitter::createRVVIntrinsics(
       for (int Log2LMUL : Log2LMULList) {
         BasicType BT = ParseBasicType(I);
         Optional<RVVTypes> Types =
-            RVVType::computeTypes(BT, Log2LMUL, NF, ProtoSeq);
+            RVVType::computeTypes(BT, Log2LMUL, NF, Prototype);
         // Ignored to create new intrinsic if there are any illegal types.
         if (!Types.hasValue())
           continue;
 
-        auto SuffixStr =
-            RVVIntrinsic::getSuffixStr(BT, Log2LMUL, SuffixProtoSeq);
+        auto SuffixStr = RVVIntrinsic::getSuffixStr(BT, Log2LMUL, Suffixtype);
         auto MangledSuffixStr =
-            RVVIntrinsic::getSuffixStr(BT, Log2LMUL, MangledSuffixProtoSeq);
+            RVVIntrinsic::getSuffixStr(BT, Log2LMUL, OverloadedSuffixtype);
         // Create a unmasked intrinsic
         Out.push_back(std::make_unique<RVVIntrinsic>(
             Name, SuffixStr, MangledName, MangledSuffixStr, IRName,
@@ -478,7 +465,7 @@ void RVVEmitter::createRVVIntrinsics(
         if (HasMasked) {
           // Create a masked intrinsic
           Optional<RVVTypes> MaskTypes =
-              RVVType::computeTypes(BT, Log2LMUL, NF, ProtoMaskSeq);
+              RVVType::computeTypes(BT, Log2LMUL, NF, MaskedPrototype);
           Out.push_back(std::make_unique<RVVIntrinsic>(
               Name, SuffixStr, MangledName, MangledSuffixStr, MaskedIRName,
               /*IsMasked=*/true, HasMaskedOffOperand, HasVL, MaskedPolicy,
@@ -487,6 +474,46 @@ void RVVEmitter::createRVVIntrinsics(
         }
       } // end for Log2LMULList
     }   // end for TypeRange
+
+    // We don't emit vsetvli and vsetvlimax for SemaRecord.
+    // They are handled by riscv_vector.h
+    if (Name == "vsetvli" || Name == "vsetvlimax")
+      continue;
+    // Create SemaRecord
+    SemaRecord SR;
+    SR.Name = Name.str();
+    SR.OverloadedName = MangledName.str();
+    BasicType TypeRangeMask = BasicType::Unknown;
+    for (char I : TypeRange) {
+      TypeRangeMask |= ParseBasicType(I);
+    }
+    SR.TypeRangeMask = static_cast<unsigned>(TypeRangeMask);
+
+    unsigned Log2LMULMask = 0;
+    for (int Log2LMUL : Log2LMULList) {
+      Log2LMULMask |= 1 << (Log2LMUL + 3);
+    }
+
+    SR.Log2LMULMask = Log2LMULMask;
+    for (auto RequiredFeature : RequiredFeatures)
+      SR.RequiredFeatures.push_back(RequiredFeature.str());
+
+    SR.NF = NF;
+
+    SR.Prototype = std::move(Prototype);
+
+    if (HasMasked)
+      SR.MaskedPrototype = std::move(MaskedPrototype);
+
+    auto InitSuffixtype = [&](SmallVectorImpl<TypeProfile> &PS,
+                              StringRef Prototypes) {
+      PS = parsePrototypes(Prototypes);
+    };
+
+    InitSuffixtype(SR.Suffix, Suffix);
+    InitSuffixtype(SR.OverloadedSuffix, OverloadedSuffix);
+
+    SemaRecords.push_back(SR);
   }
 }
 
@@ -499,47 +526,131 @@ void RVVEmitter::printHeaderCode(raw_ostream &OS) {
   }
 }
 
-void RVVEmitter::emitArchMacroAndBody(
-    std::vector<std::unique_ptr<RVVIntrinsic>> &Defs, raw_ostream &OS,
-    std::function<void(raw_ostream &, const RVVIntrinsic &)> PrintBody) {
-  RISCVPredefinedMacroT PrevMacros =
-      (*Defs.begin())->getRISCVPredefinedMacros();
-  bool NeedEndif = emitMacroRestrictionStr(PrevMacros, OS);
-  for (auto &Def : Defs) {
-    RISCVPredefinedMacroT CurMacros = Def->getRISCVPredefinedMacros();
-    if (CurMacros != PrevMacros) {
-      if (NeedEndif)
-        OS << "#endif\n\n";
-      NeedEndif = emitMacroRestrictionStr(CurMacros, OS);
-      PrevMacros = CurMacros;
+unsigned
+RVVEmitter::GetSemaSignatureIndex(const SmallVector<TypeProfile> &Signature) {
+  if (Signature.size() == 0)
+    return 0;
+
+  // Checking Signature already in table or not.
+  if (Signature.size() < SemaSignatureTable.size()) {
+    size_t Bound = SemaSignatureTable.size() - Signature.size() + 1;
+    for (size_t Index = 0; Index < Bound; ++Index) {
+      bool Match = true;
+      for (size_t i = 0; i < Signature.size(); ++i) {
+        if (Signature[i] != SemaSignatureTable[Index + i]) {
+          Match = false;
+          break;
+        }
+      }
+      // Reuse if found in table.
+      if (Match)
+        return Index;
     }
-    if (Def->hasBuiltinAlias())
-      PrintBody(OS, *Def);
   }
-  if (NeedEndif)
-    OS << "#endif\n\n";
+
+  // Insert Signature into SemaSignatureTable if not found in the table.
+  size_t Index = SemaSignatureTable.size();
+  for (const auto &Type : Signature) {
+    SemaSignatureTable.push_back(Type);
+  }
+  return Index;
 }
 
-bool RVVEmitter::emitMacroRestrictionStr(RISCVPredefinedMacroT PredefinedMacros,
-                                         raw_ostream &OS) {
-  if (PredefinedMacros == RISCVPredefinedMacro::Basic)
-    return false;
-  OS << "#if ";
-  ListSeparator LS(" && ");
-  if (PredefinedMacros & RISCVPredefinedMacro::V)
-    OS << LS << "defined(__riscv_v)";
-  if (PredefinedMacros & RISCVPredefinedMacro::Zvfh)
-    OS << LS << "defined(__riscv_zvfh)";
-  if (PredefinedMacros & RISCVPredefinedMacro::RV64)
-    OS << LS << "(__riscv_xlen == 64)";
-  if (PredefinedMacros & RISCVPredefinedMacro::VectorMaxELen64)
-    OS << LS << "(__riscv_v_elen >= 64)";
-  if (PredefinedMacros & RISCVPredefinedMacro::VectorMaxELenFp32)
-    OS << LS << "(__riscv_v_elen_fp >= 32)";
-  if (PredefinedMacros & RISCVPredefinedMacro::VectorMaxELenFp64)
-    OS << LS << "(__riscv_v_elen_fp >= 64)";
-  OS << "\n";
-  return true;
+void RVVEmitter::ConstructSemaSignatureTable() {
+  // Sort signature entries by length, let longer signature insert first, to
+  // make it more possible to reuse table entries, that can reduce ~10% table
+  // size.
+  struct Compare {
+    bool operator()(const SmallVector<TypeProfile> &A,
+                    const SmallVector<TypeProfile> &B) {
+      if (A.size() != B.size())
+        return A.size() > B.size();
+
+      size_t Len = A.size();
+      for (size_t i = 0; i < Len; ++i) {
+        if (A[i] != B[i])
+          return A[i] > B[i];
+      }
+
+      return false;
+    }
+  };
+
+  std::set<SmallVector<TypeProfile>, Compare> Signatures;
+  auto InsertToSignatureSet = [&](const SmallVector<TypeProfile> &Signature) {
+    if (Signature.empty())
+      return;
+
+    Signatures.insert(Signature);
+  };
+
+  for (const auto &SemaRecord : SemaRecords) {
+    InsertToSignatureSet(SemaRecord.Prototype);
+    InsertToSignatureSet(SemaRecord.MaskedPrototype);
+    InsertToSignatureSet(SemaRecord.Suffix);
+    InsertToSignatureSet(SemaRecord.OverloadedSuffix);
+  }
+
+  for (const auto &Sig : Signatures) {
+    GetSemaSignatureIndex(Sig);
+  }
+}
+
+void RVVEmitter::EmitSemaSignatureTable(raw_ostream &OS) {
+  OS << "#ifdef DECL_SIGNATURE_TABLE\n";
+  for (const auto &Sig : SemaSignatureTable)
+    OS << "TypeProfile(" << static_cast<int>(Sig.PT) << ", "
+       << static_cast<int>(Sig.VTM) << ", " << static_cast<int>(Sig.TM)
+       << "),\n";
+  OS << "#endif\n";
+}
+
+void RVVEmitter::EmitSemaRecords(raw_ostream &OS) {
+  OS << "#ifdef DECL_INTRINSIC_RECORDS\n";
+  for (const auto &SR : SemaRecords) {
+    // Output *MUST* sync with RVVIntrinsicRecord in SemaRVVLookup.cpp.
+    OS << "{"
+       << "\"" << SR.Name << "\", ";
+
+    if (SR.OverloadedName.empty())
+      OS << "nullptr, ";
+    else
+      OS << "\"" << SR.OverloadedName << "\", ";
+
+    OS << GetSemaSignatureIndex(SR.Prototype) << ", ";
+    OS << GetSemaSignatureIndex(SR.MaskedPrototype) << ", ";
+    OS << GetSemaSignatureIndex(SR.Suffix) << ", ";
+    OS << GetSemaSignatureIndex(SR.OverloadedSuffix) << ", ";
+
+    OS << SR.Prototype.size() << ", ";
+    OS << SR.MaskedPrototype.size() << ", ";
+    OS << SR.Suffix.size() << ", ";
+    OS << SR.OverloadedSuffix.size() << ", ";
+
+    if (SR.RequiredFeatures.empty())
+      OS << "RVVRequire::None";
+    else {
+      ListSeparator LS(" | ");
+      for (auto RequiredFeature : SR.RequiredFeatures)
+        OS << LS << "RVVRequire::" << RequiredFeature;
+    }
+    OS << ",";
+
+    OS << " /* Type Range Mask*/" << SR.TypeRangeMask << ", ";
+    OS << " /* LMUL Mask = */ " << SR.Log2LMULMask << ", ";
+
+    OS << SR.NF << "},\n";
+  }
+  OS << "#endif\n";
+}
+
+void RVVEmitter::createSema(raw_ostream &OS) {
+  std::vector<std::unique_ptr<RVVIntrinsic>> Defs;
+  createRVVIntrinsics(Defs);
+
+  ConstructSemaSignatureTable();
+  EmitSemaSignatureTable(OS);
+  EmitSemaRecords(OS);
 }
 
 namespace clang {
@@ -553,6 +664,10 @@ void EmitRVVBuiltins(RecordKeeper &Records, raw_ostream &OS) {
 
 void EmitRVVBuiltinCG(RecordKeeper &Records, raw_ostream &OS) {
   RVVEmitter(Records).createCodeGen(OS);
+}
+
+void EmitRVVBuiltinSema(RecordKeeper &Records, raw_ostream &OS) {
+  RVVEmitter(Records).createSema(OS);
 }
 
 } // End namespace clang

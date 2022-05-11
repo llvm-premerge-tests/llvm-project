@@ -218,6 +218,12 @@ public:
   bool isFloat(unsigned Width) const {
     return isFloat() && ElementBitwidth == Width;
   }
+  bool isConstant() const { return IsConstant; }
+  bool isPointer() const { return IsPointer; }
+  unsigned getElementBitwidth() const { return ElementBitwidth; }
+
+  ScalarTypeKind getScalarType() const { return ScalarType; }
+  VScaleVal getScale() const { return Scale; }
 
 private:
   // Verify RVV vector type and set Valid.
@@ -255,18 +261,6 @@ public:
                                                 TypeProfile Proto);
 };
 
-using RISCVPredefinedMacroT = uint8_t;
-
-enum RISCVPredefinedMacro : RISCVPredefinedMacroT {
-  Basic = 0,
-  V = 1 << 1,
-  Zvfh = 1 << 2,
-  RV64 = 1 << 3,
-  VectorMaxELen64 = 1 << 4,
-  VectorMaxELenFp32 = 1 << 5,
-  VectorMaxELenFp64 = 1 << 6,
-};
-
 enum PolicyScheme : uint8_t {
   SchemeNone,
   HasPassthruOperand,
@@ -294,7 +288,6 @@ private:
   // The types we use to obtain the specific LLVM intrinsic. They are index of
   // InputTypes. -1 means the return type.
   std::vector<int64_t> IntrinsicTypes;
-  RISCVPredefinedMacroT RISCVPredefinedMacros = 0;
   unsigned NF = 1;
 
 public:
@@ -323,9 +316,6 @@ public:
   llvm::StringRef getIRName() const { return IRName; }
   llvm::StringRef getManualCodegen() const { return ManualCodegen; }
   PolicyScheme getPolicyScheme() const { return Scheme; }
-  RISCVPredefinedMacroT getRISCVPredefinedMacros() const {
-    return RISCVPredefinedMacros;
-  }
   unsigned getNF() const { return NF; }
   const std::vector<int64_t> &getIntrinsicTypes() const {
     return IntrinsicTypes;
@@ -336,7 +326,7 @@ public:
 
   static std::string
   getSuffixStr(BasicType Type, int Log2LMUL,
-               const llvm::SmallVector<TypeProfile> &TypeProfiles);
+               const llvm::ArrayRef<TypeProfile> &TypeProfiles);
 };
 
 } // end namespace RISCV

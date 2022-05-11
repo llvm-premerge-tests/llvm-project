@@ -1576,6 +1576,9 @@ public:
   /// assignment.
   llvm::DenseMap<const VarDecl *, int> RefsMinusAssignments;
 
+  /// Indicate RVV builtin funtions enabled or not.
+  bool DeclareRVVBuiltins = false;
+
 private:
   Optional<std::unique_ptr<DarwinSDKInfo>> CachedDarwinSDKInfo;
 
@@ -13370,6 +13373,8 @@ void Sema::PragmaStack<Sema::AlignPackInfo>::Act(SourceLocation PragmaLocation,
                                                  llvm::StringRef StackSlotLabel,
                                                  AlignPackInfo Value);
 
+bool GetRVVBuiltinInfo(Sema &S, LookupResult &LR, IdentifierInfo *II,
+                       Preprocessor &PP);
 } // end namespace clang
 
 namespace llvm {

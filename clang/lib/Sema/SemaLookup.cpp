@@ -928,6 +928,12 @@ bool Sema::LookupBuiltin(LookupResult &R) {
         }
       }
 
+      if (DeclareRVVBuiltins) {
+        if (GetRVVBuiltinInfo(*this, R, II, PP)) {
+          return true;
+        }
+      }
+
       // If this is a builtin on this (or all) targets, create the decl.
       if (unsigned BuiltinID = II->getBuiltinID()) {
         // In C++, C2x, and OpenCL (spec v1.2 s6.9.f), we don't have any
