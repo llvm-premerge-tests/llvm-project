@@ -552,3 +552,21 @@ union U2 {
   int A;
   // CHECK-FIXES-NOT: int A{};
 };
+
+struct S1 {
+  S1() {}
+  // CHECK-MESSAGES-NOT: warning:
+  union {
+    int a = 0;
+    int b;
+  };
+};
+
+struct S2 {
+  S2() : a{} {}
+  // CHECK-MESSAGES-NOT: warning:
+  union {
+    int a;
+    int b;
+  };
+};
