@@ -168,10 +168,19 @@ void DeadCodeAnalysis::initializeSymbolCallables(Operation *top) {
                                 walkFn);
 }
 
+/// Returns true if the operation terminates a block. It is insufficient to
+/// check for `OpTrait::IsTerminator` because unregistered operations can be
+/// terminators.
+static bool isTerminator(Operation *op) {
+  if (op->hasTrait<OpTrait::IsTerminator>())
+    return true;
+  return &op->getBlock()->back() == op;
+}
+
 LogicalResult DeadCodeAnalysis::initializeRecursively(Operation *op) {
   // Initialize the analysis by visiting every op with control-flow semantics.
-  if (op->getNumRegions() || op->getNumSuccessors() ||
-      op->hasTrait<OpTrait::IsTerminator>() || isa<CallOpInterface>(op)) {
+  if (op->getNumRegions() || op->getNumSuccessors() || isTerminator(op) ||
+      isa<CallOpInterface>(op)) {
     // When the liveness of the parent block changes, make sure to re-invoke the
     // analysis on the op.
     if (op->getBlock())
@@ -241,7 +250,7 @@ LogicalResult DeadCodeAnalysis::visit(ProgramPoint point) {
     }
   }
 
-  if (op->hasTrait<OpTrait::IsTerminator>() && !op->getNumSuccessors()) {
+  if (isTerminator(op) && !op->getNumSuccessors()) {
     if (auto branch = dyn_cast<RegionBranchOpInterface>(op->getParentOp())) {
       // Visit the exiting terminator of a region.
       visitRegionTerminator(op, branch);
