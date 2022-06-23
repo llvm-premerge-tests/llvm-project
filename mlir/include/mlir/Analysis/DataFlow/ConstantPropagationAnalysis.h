@@ -28,6 +28,9 @@ namespace dataflow {
 /// This lattice value represents a known constant value of a lattice.
 class ConstantValue {
 public:
+  /// The pessimistic value state of the constant value is unknown.
+  static ConstantValue getPessimisticValueState(Value value) { return {}; }
+
   /// Construct a constant value with a known constant.
   ConstantValue(Attribute knownValue = {}, Dialect *dialect = nullptr)
       : constant(knownValue), dialect(dialect) {}
