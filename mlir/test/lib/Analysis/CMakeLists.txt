@@ -4,6 +4,7 @@ add_mlir_library(MLIRTestAnalysis
   TestCallGraph.cpp
   TestDataFlow.cpp
   TestDataFlowFramework.cpp
+  TestDeadCodeAnalysis.cpp
   TestLiveness.cpp
   TestMatchReduction.cpp
   TestMemRefBoundCheck.cpp

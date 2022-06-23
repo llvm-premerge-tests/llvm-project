@@ -7,6 +7,7 @@ set(LLVM_OPTIONAL_SOURCES
   IntRangeAnalysis.cpp
   Liveness.cpp
   SliceAnalysis.cpp
+  SparseDataFlowAnalysis.cpp
 
   AliasAnalysis/LocalAliasAnalysis.cpp
   )
@@ -21,6 +22,7 @@ add_mlir_library(MLIRAnalysis
   IntRangeAnalysis.cpp
   Liveness.cpp
   SliceAnalysis.cpp
+  SparseDataFlowAnalysis.cpp
 
   AliasAnalysis/LocalAliasAnalysis.cpp
 
