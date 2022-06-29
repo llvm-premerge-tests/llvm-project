@@ -25,20 +25,76 @@ namespace mlir {
 namespace dataflow {
 
 //===----------------------------------------------------------------------===//
+// CFGEdge
+//===----------------------------------------------------------------------===//
+
+/// This program point represents a control-flow edge between a block and one
+/// of its successors.
+class CFGEdge
+    : public GenericProgramPointBase<CFGEdge, std::pair<Block *, Block *>> {
+public:
+  using Base::Base;
+
+  /// Get the block from which the edge originates.
+  Block *getFrom() const { return getValue().first; }
+  /// Get the target block.
+  Block *getTo() const { return getValue().second; }
+
+  /// Print the blocks between the control-flow edge.
+  void print(raw_ostream &os) const override;
+  /// Get a fused location of both blocks.
+  Location getLoc() const override;
+};
+
+//===----------------------------------------------------------------------===//
 // Executable
 //===----------------------------------------------------------------------===//
 
 /// This is a simple analysis state that represents whether the associated
 /// program point (either a block or a control-flow edge) is live.
-class Executable : public AnalysisState {
+class Executable : public AbstractState {
 public:
-  using AnalysisState::AnalysisState;
+  template <typename ExecutableT>
+  class Element : public SingleStateElement<ExecutableT> {
+  public:
+    using SingleStateElement<ExecutableT>::SingleStateElement;
 
-  /// The state is initialized by default.
-  bool isUninitialized() const override { return false; }
+    /// When the state of the program point is changed to live, re-invoke
+    /// subscribed analyses on the operations in the block and on the block
+    /// itself.
+    void onUpdate() override {
+      if (auto *block = this->point.template dyn_cast<Block *>()) {
+        // Re-invoke the analyses on the block itself.
+        for (DataFlowAnalysis *analysis : subscribers)
+          this->solver.enqueue({block, analysis});
+        // Re-invoke the analyses on all operations in the block.
+        for (DataFlowAnalysis *analysis : subscribers)
+          for (Operation &op : *block)
+            this->solver.enqueue({&op, analysis});
+      } else if (auto *programPoint =
+                     this->point.template dyn_cast<GenericProgramPoint *>()) {
+        // Re-invoke the analysis on the successor block.
+        if (auto *edge = dyn_cast<CFGEdge>(programPoint))
+          for (DataFlowAnalysis *analysis : subscribers)
+            this->solver.enqueue({edge->getTo(), analysis});
+      }
+    }
 
-  /// The state is always initialized.
-  ChangeResult defaultInitialize() override { return ChangeResult::NoChange; }
+    /// Subscribe an analysis to changes to the liveness.
+    void blockContentSubscribe(DataFlowAnalysis *analysis) {
+      subscribers.insert(analysis);
+    }
+
+  private:
+    /// A set of analyses that should be updated when this state changes.
+    SetVector<DataFlowAnalysis *, SmallVector<DataFlowAnalysis *, 4>,
+              SmallPtrSet<DataFlowAnalysis *, 4>>
+        subscribers;
+  };
+  using ElementT = Element<Executable>;
+
+  /// Optimistically assume the program point is dead.
+  explicit Executable(ProgramPoint point) : live(false) {}
 
   /// Set the state of the program point to live.
   ChangeResult setToLive();
@@ -46,28 +102,12 @@ public:
   /// Get whether the program point is live.
   bool isLive() const { return live; }
 
-  /// Print the liveness.
+  /// Print the liveness;
   void print(raw_ostream &os) const override;
 
-  /// When the state of the program point is changed to live, re-invoke
-  /// subscribed analyses on the operations in the block and on the block
-  /// itself.
-  void onUpdate(DataFlowSolver *solver) const override;
-
-  /// Subscribe an analysis to changes to the liveness.
-  void blockContentSubscribe(DataFlowAnalysis *analysis) {
-    subscribers.insert(analysis);
-  }
-
 private:
-  /// Whether the program point is live. Optimistically assume that the program
-  /// point is dead.
-  bool live = false;
-
-  /// A set of analyses that should be updated when this state changes.
-  SetVector<DataFlowAnalysis *, SmallVector<DataFlowAnalysis *, 4>,
-            SmallPtrSet<DataFlowAnalysis *, 4>>
-      subscribers;
+  /// Whether the program point is live.
+  bool live;
 };
 
 //===----------------------------------------------------------------------===//
@@ -90,15 +130,11 @@ private:
 ///
 /// The state can indicate that it is underdefined, meaning that not all live
 /// control-flow predecessors can be known.
-class PredecessorState : public AnalysisState {
+class PredecessorState : public AbstractState {
 public:
-  using AnalysisState::AnalysisState;
+  using ElementT = SingleStateElement<PredecessorState>;
 
-  /// The state is initialized by default.
-  bool isUninitialized() const override { return false; }
-
-  /// The state is always initialized.
-  ChangeResult defaultInitialize() override { return ChangeResult::NoChange; }
+  explicit PredecessorState(ProgramPoint point) {}
 
   /// Print the known predecessors.
   void print(raw_ostream &os) const override;
@@ -140,28 +176,6 @@ private:
 
   /// The successor inputs when branching from a given predecessor.
   DenseMap<Operation *, ValueRange> successorInputs;
-};
-
-//===----------------------------------------------------------------------===//
-// CFGEdge
-//===----------------------------------------------------------------------===//
-
-/// This program point represents a control-flow edge between a block and one
-/// of its successors.
-class CFGEdge
-    : public GenericProgramPointBase<CFGEdge, std::pair<Block *, Block *>> {
-public:
-  using Base::Base;
-
-  /// Get the block from which the edge originates.
-  Block *getFrom() const { return getValue().first; }
-  /// Get the target block.
-  Block *getTo() const { return getValue().second; }
-
-  /// Print the blocks between the control-flow edge.
-  void print(raw_ostream &os) const override;
-  /// Get a fused location of both blocks.
-  Location getLoc() const override;
 };
 
 //===----------------------------------------------------------------------===//

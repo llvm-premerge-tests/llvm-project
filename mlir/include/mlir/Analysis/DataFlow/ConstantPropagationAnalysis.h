@@ -29,7 +29,7 @@ namespace dataflow {
 class ConstantValue {
 public:
   /// The pessimistic value state of the constant value is unknown.
-  static ConstantValue getPessimisticValueState(Value value) { return {}; }
+  static ConstantValue getPessimisticValue(Value value) { return {}; }
 
   /// Construct a constant value with a known constant.
   ConstantValue(Attribute knownValue = {}, Dialect *dialect = nullptr)
@@ -53,6 +53,14 @@ public:
     return lhs == rhs ? lhs : ConstantValue();
   }
 
+  static ConstantValue meet(const ConstantValue &lhs,
+                            const ConstantValue &rhs) {
+    if (lhs == rhs) return lhs;
+    if (!lhs.constant) return rhs;
+    if (!rhs.constant) return lhs;
+    return ConstantValue();
+  }
+
   /// Print the constant value.
   void print(raw_ostream &os) const;
 
@@ -61,6 +69,13 @@ private:
   Attribute constant;
   /// An dialect instance that can be used to materialize the constant.
   Dialect *dialect;
+};
+
+class ConstantValueState : public OptimisticSparseState<ConstantValue> {
+public:
+  using OptimisticSparseState::OptimisticSparseState;
+  using ElementT =
+      SparseElement<ConstantValueState, MultiStateElement>;
 };
 
 //===----------------------------------------------------------------------===//
@@ -72,13 +87,13 @@ private:
 /// operands, by speculatively folding operations. When combined with dead-code
 /// analysis, this becomes sparse conditional constant propagation (SCCP).
 class SparseConstantPropagation
-    : public SparseDataFlowAnalysis<Lattice<ConstantValue>> {
+    : public SparseDataFlowAnalysis<ConstantValueState> {
 public:
   using SparseDataFlowAnalysis::SparseDataFlowAnalysis;
 
-  void visitOperation(Operation *op,
-                      ArrayRef<const Lattice<ConstantValue> *> operands,
-                      ArrayRef<Lattice<ConstantValue> *> results) override;
+  void
+  visitOperation(Operation *op, ArrayRef<const ConstantValueState *> operands,
+                 ArrayRef<ConstantValueState::ElementT *> results) override;
 };
 
 } // end namespace dataflow

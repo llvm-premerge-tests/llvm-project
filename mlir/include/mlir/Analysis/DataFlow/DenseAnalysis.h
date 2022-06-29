@@ -16,33 +16,26 @@
 #define MLIR_ANALYSIS_DENSEDATAFLOWANALYSIS_H
 
 #include "mlir/Analysis/DataFlow/DeadCodeAnalysis.h"
+#include "mlir/Analysis/DataFlow/SparseAnalysis.h"
 
 namespace mlir {
 namespace dataflow {
 
 //===----------------------------------------------------------------------===//
-// AbstractDenseLattice
+// AbstractDenseState
 //===----------------------------------------------------------------------===//
 
 /// This class represents a dense lattice. A dense lattice is attached to
 /// operations to represent the program state after their execution or to blocks
 /// to represent the program state at the beginning of the block. A dense
 /// lattice is propagated through the IR by dense data-flow analysis.
-class AbstractDenseLattice : public AnalysisState {
+using AbstractDenseState = AbstractSparseState;
+
+class AbstractDenseElement : public AbstractElement {
 public:
-  /// A dense lattice can only be created for operations and blocks.
-  using AnalysisState::AnalysisState;
+  using AbstractElement::AbstractElement;
 
-  /// Join the lattice across control-flow or callgraph edges.
-  virtual ChangeResult join(const AbstractDenseLattice &rhs) = 0;
-
-  /// Reset the dense lattice to a pessimistic value. This occurs when the
-  /// analysis cannot reason about the data-flow.
-  virtual ChangeResult reset() = 0;
-
-  /// Returns true if the lattice state has reached a pessimistic fixpoint. That
-  /// is, no further modifications to the lattice can occur.
-  virtual bool isAtFixpoint() const = 0;
+  virtual const AbstractDenseState *get() const override = 0;
 };
 
 //===----------------------------------------------------------------------===//
@@ -78,26 +71,29 @@ protected:
   /// Propagate the dense lattice before the execution of an operation to the
   /// lattice after its execution.
   virtual void visitOperationImpl(Operation *op,
-                                  const AbstractDenseLattice &before,
-                                  AbstractDenseLattice *after) = 0;
+                                  const AbstractDenseState &before,
+                                  AbstractDenseElement *after) = 0;
 
-  /// Get the dense lattice after the execution of the given program point.
-  virtual AbstractDenseLattice *getLattice(ProgramPoint point) = 0;
+  /// Get the dense element after the execution of the given program point.
+  virtual AbstractDenseElement *getLattice(ProgramPoint point) = 0;
 
   /// Get the dense lattice after the execution of the given program point and
   /// add it as a dependency to a program point.
-  const AbstractDenseLattice *getLatticeFor(ProgramPoint dependent,
-                                            ProgramPoint point);
+  const AbstractDenseState *getLatticeFor(ProgramPoint dependent,
+                                          ProgramPoint point);
 
-  /// Mark the dense lattice as having reached its pessimistic fixpoint and
-  /// propagate an update if it changed.
-  void reset(AbstractDenseLattice *lattice) {
-    propagateIfChanged(lattice, lattice->reset());
+  void update(AbstractDenseElement *element,
+              function_ref<ChangeResult(AbstractDenseState *)> updateFn) {
+    element->update(this, [updateFn](AbstractState *state) {
+      return updateFn(static_cast<AbstractDenseState *>(state));
+    });
   }
 
-  /// Join a lattice with another and propagate an update if it changed.
-  void join(AbstractDenseLattice *lhs, const AbstractDenseLattice &rhs) {
-    propagateIfChanged(lhs, lhs->join(rhs));
+  void markPessimisticFixpoint(AbstractDenseElement *element) {
+    element->update(this, [](AbstractState *state) {
+      return static_cast<AbstractDenseState *>(state)
+          ->markPessimisticFixpoint();
+    });
   }
 
 private:
@@ -116,7 +112,7 @@ private:
   /// parent operation itself.
   void visitRegionBranchOperation(ProgramPoint point,
                                   RegionBranchOpInterface branch,
-                                  AbstractDenseLattice *after);
+                                  AbstractDenseElement *after);
 };
 
 //===----------------------------------------------------------------------===//
@@ -128,29 +124,29 @@ private:
 /// transfer functions for operations.
 ///
 /// `StateT` is expected to be a subclass of `AbstractDenseLattice`.
-template <typename LatticeT>
+template <typename StateT>
 class DenseDataFlowAnalysis : public AbstractDenseDataFlowAnalysis {
 public:
   using AbstractDenseDataFlowAnalysis::AbstractDenseDataFlowAnalysis;
 
   /// Visit an operation with the dense lattice before its execution. This
   /// function is expected to set the dense lattice after its execution.
-  virtual void visitOperation(Operation *op, const LatticeT &before,
-                              LatticeT *after) = 0;
+  virtual void visitOperation(Operation *op, const StateT &before,
+                              typename StateT::ElementT *after) = 0;
 
 protected:
   /// Get the dense lattice after this program point.
-  LatticeT *getLattice(ProgramPoint point) override {
-    return getOrCreate<LatticeT>(point);
+  typename StateT::ElementT *getLattice(ProgramPoint point) override {
+    return getOrCreate<StateT>(point);
   }
 
 private:
   /// Type-erased wrappers that convert the abstract dense lattice to a derived
   /// lattice and invoke the virtual hooks operating on the derived lattice.
-  void visitOperationImpl(Operation *op, const AbstractDenseLattice &before,
-                          AbstractDenseLattice *after) override {
-    visitOperation(op, static_cast<const LatticeT &>(before),
-                   static_cast<LatticeT *>(after));
+  void visitOperationImpl(Operation *op, const AbstractDenseState &before,
+                          AbstractDenseElement *after) override {
+    visitOperation(op, static_cast<const StateT &>(before),
+                   static_cast<typename StateT::ElementT *>(after));
   }
 };
 

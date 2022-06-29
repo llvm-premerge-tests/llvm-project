@@ -29,7 +29,7 @@ static void printAnalysisResults(DataFlowSolver &solver, Operation *op,
         os << "  ";
         block.printAsOperand(os);
         os << " = ";
-        auto *live = solver.lookupState<Executable>(&block);
+        auto *live = solver.lookup<Executable>(&block);
         if (live)
           os << *live;
         else
@@ -39,7 +39,7 @@ static void printAnalysisResults(DataFlowSolver &solver, Operation *op,
           os << "   from ";
           pred->printAsOperand(os);
           os << " = ";
-          auto *live = solver.lookupState<Executable>(
+          auto *live = solver.lookup<Executable>(
               solver.getProgramPoint<CFGEdge>(pred, &block));
           if (live)
             os << *live;
@@ -49,12 +49,12 @@ static void printAnalysisResults(DataFlowSolver &solver, Operation *op,
         }
       }
       if (!region.empty()) {
-        auto *preds = solver.lookupState<PredecessorState>(&region.front());
+        auto *preds = solver.lookup<PredecessorState>(&region.front());
         if (preds)
           os << "region_preds: " << *preds << "\n";
       }
     }
-    auto *preds = solver.lookupState<PredecessorState>(op);
+    auto *preds = solver.lookup<PredecessorState>(op);
     if (preds)
       os << "op_preds: " << *preds << "\n";
   });
@@ -79,9 +79,10 @@ struct ConstantAnalysis : public DataFlowAnalysis {
     Operation *op = point.get<Operation *>();
     Attribute value;
     if (matchPattern(op, m_Constant(&value))) {
-      auto *constant = getOrCreate<Lattice<ConstantValue>>(op->getResult(0));
-      propagateIfChanged(
-          constant, constant->join(ConstantValue(value, op->getDialect())));
+      auto *constant = getOrCreate<ConstantValueState>(op->getResult(0));
+      constant->update(this, [value, op](ConstantValueState *state) {
+        return state->join(ConstantValue(value, op->getDialect()));
+      });
       return success();
     }
     markAllPessimisticFixpoint(op->getResults());
@@ -94,9 +95,10 @@ struct ConstantAnalysis : public DataFlowAnalysis {
   /// pessimistic fixpoint.
   void markAllPessimisticFixpoint(ValueRange values) {
     for (Value value : values) {
-      auto *constantValue = getOrCreate<Lattice<ConstantValue>>(value);
-      propagateIfChanged(constantValue,
-                         constantValue->markPessimisticFixpoint());
+      auto *constant = getOrCreate<ConstantValueState>(value);
+      constant->update(this, [](ConstantValueState *state) {
+        return state->markPessimisticFixpoint();
+      });
     }
   }
 };

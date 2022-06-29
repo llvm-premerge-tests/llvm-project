@@ -25,12 +25,6 @@ using namespace mlir;
 GenericProgramPoint::~GenericProgramPoint() = default;
 
 //===----------------------------------------------------------------------===//
-// AnalysisState
-//===----------------------------------------------------------------------===//
-
-AnalysisState::~AnalysisState() = default;
-
-//===----------------------------------------------------------------------===//
 // ProgramPoint
 //===----------------------------------------------------------------------===//
 
@@ -56,6 +50,34 @@ Location ProgramPoint::getLoc() const {
   if (auto value = dyn_cast<Value>())
     return value.getLoc();
   return get<Block *>()->getParent()->getLoc();
+}
+
+//===----------------------------------------------------------------------===//
+// AbstractState and AbstractElement
+//===----------------------------------------------------------------------===//
+
+AbstractState::~AbstractState() = default;
+AbstractElement::~AbstractElement() = default;
+
+void AbstractElement::addDependency(DataFlowAnalysis *analysis,
+                                            ProgramPoint point) {
+  auto inserted = dependents.insert({point, analysis});
+  (void)inserted;
+  DATAFLOW_DEBUG({
+    if (inserted) {
+      llvm::dbgs() << "Adding dependency from " << debugName << " of "
+                   << this->point << " to " << analysis->debugName << " on "
+                   << point << "\n";
+    }
+  });
+}
+
+void AbstractElement::propagateUpdate() {
+  DATAFLOW_DEBUG(llvm::dbgs() << "Propagating update to " << debugName << " of "
+                              << point << "\nValue: " << *get() << "\n");
+  for (auto &item : dependents)
+    solver.enqueue(item);
+  onUpdate();
 }
 
 //===----------------------------------------------------------------------===//
@@ -94,30 +116,12 @@ LogicalResult DataFlowSolver::initializeAndRun(Operation *top) {
   return success();
 }
 
-void DataFlowSolver::propagateIfChanged(AnalysisState *state,
-                                        ChangeResult changed) {
-  if (changed == ChangeResult::Change) {
-    DATAFLOW_DEBUG(llvm::dbgs() << "Propagating update to " << state->debugName
-                                << " of " << state->point << "\n"
-                                << "Value: " << *state << "\n");
-    for (const WorkItem &item : state->dependents)
-      enqueue(item);
-    state->onUpdate(this);
-  }
-}
-
-void DataFlowSolver::addDependency(AnalysisState *state,
-                                   DataFlowAnalysis *analysis,
-                                   ProgramPoint point) {
-  auto inserted = state->dependents.insert({point, analysis});
-  (void)inserted;
-  DATAFLOW_DEBUG({
-    if (inserted) {
-      llvm::dbgs() << "Creating dependency between " << state->debugName
-                   << " of " << state->point << "\nand " << analysis->debugName
-                   << " on " << point << "\n";
-    }
-  });
+void DataFlowSolver::getStaticProvidersFor(
+    TypeID stateID, ProgramPoint point,
+    SmallVectorImpl<DataFlowAnalysis *> &staticProviders) const {
+  for (DataFlowAnalysis &analysis : llvm::make_pointee_range(childAnalyses))
+    if (analysis.staticallyProvides(stateID, point))
+      staticProviders.push_back(&analysis);
 }
 
 //===----------------------------------------------------------------------===//
@@ -127,12 +131,3 @@ void DataFlowSolver::addDependency(AnalysisState *state,
 DataFlowAnalysis::~DataFlowAnalysis() = default;
 
 DataFlowAnalysis::DataFlowAnalysis(DataFlowSolver &solver) : solver(solver) {}
-
-void DataFlowAnalysis::addDependency(AnalysisState *state, ProgramPoint point) {
-  solver.addDependency(state, this, point);
-}
-
-void DataFlowAnalysis::propagateIfChanged(AnalysisState *state,
-                                          ChangeResult changed) {
-  solver.propagateIfChanged(state, changed);
-}

@@ -45,8 +45,8 @@ void AbstractDenseDataFlowAnalysis::visitOperation(Operation *op) {
     return;
 
   // Get the dense lattice to update.
-  AbstractDenseLattice *after = getLattice(op);
-  if (after->isAtFixpoint())
+  AbstractDenseElement *after = getLattice(op);
+  if (after->get()->isAtFixpoint())
     return;
 
   // If this op implements region control-flow, then control-flow dictates its
@@ -61,14 +61,17 @@ void AbstractDenseDataFlowAnalysis::visitOperation(Operation *op) {
     // If not all return sites are known, then conservatively assume we can't
     // reason about the data-flow.
     if (!predecessors->allPredecessorsKnown())
-      return reset(after);
-    for (Operation *predecessor : predecessors->getKnownPredecessors())
-      join(after, *getLatticeFor(op, predecessor));
-    return;
+      return markPessimisticFixpoint(after);
+    return update(after, [this, predecessors, op](AbstractDenseState *state) {
+      ChangeResult result = ChangeResult::NoChange;
+      for (Operation *predecessor : predecessors->getKnownPredecessors())
+        result |= state->join(*getLatticeFor(op, predecessor));
+      return result;
+    });
   }
 
   // Get the dense state before the execution of the op.
-  const AbstractDenseLattice *before;
+  const AbstractDenseState *before;
   if (Operation *prev = op->getPrevNode())
     before = getLatticeFor(op, prev);
   else
@@ -87,8 +90,8 @@ void AbstractDenseDataFlowAnalysis::visitBlock(Block *block) {
     return;
 
   // Get the dense lattice to update.
-  AbstractDenseLattice *after = getLattice(block);
-  if (after->isAtFixpoint())
+  AbstractDenseElement *after = getLattice(block);
+  if (after->get()->isAtFixpoint())
     return;
 
   // The dense lattices of entry blocks are set by region control-flow or the
@@ -101,15 +104,17 @@ void AbstractDenseDataFlowAnalysis::visitBlock(Block *block) {
       // If not all callsites are known, conservatively mark all lattices as
       // having reached their pessimistic fixpoints.
       if (!callsites->allPredecessorsKnown())
-        return reset(after);
-      for (Operation *callsite : callsites->getKnownPredecessors()) {
-        // Get the dense lattice before the callsite.
-        if (Operation *prev = callsite->getPrevNode())
-          join(after, *getLatticeFor(block, prev));
-        else
-          join(after, *getLatticeFor(block, callsite->getBlock()));
-      }
-      return;
+        return markPessimisticFixpoint(after);
+      return update(after, [this, callsites, block](AbstractDenseState *state) {
+        ChangeResult result = ChangeResult::NoChange;
+        for (Operation *callsite : callsites->getKnownPredecessors()) {
+          if (Operation *prev = callsite->getPrevNode())
+            result |= state->join(*getLatticeFor(block, prev));
+          else
+            result |= state->join(*getLatticeFor(block, callsite->getBlock()));
+        }
+        return result;
+      });
     }
 
     // Check if we can reason about the control-flow.
@@ -117,53 +122,62 @@ void AbstractDenseDataFlowAnalysis::visitBlock(Block *block) {
       return visitRegionBranchOperation(block, branch, after);
 
     // Otherwise, we can't reason about the data-flow.
-    return reset(after);
+    return markPessimisticFixpoint(after);
   }
 
   // Join the state with the state after the block's predecessors.
-  for (Block::pred_iterator it = block->pred_begin(), e = block->pred_end();
-       it != e; ++it) {
-    // Skip control edges that aren't executable.
-    Block *predecessor = *it;
-    if (!getOrCreateFor<Executable>(
-             block, getProgramPoint<CFGEdge>(predecessor, block))
-             ->isLive())
-      continue;
+  update(after, [this, block](AbstractDenseState *state) {
+    ChangeResult result = ChangeResult::NoChange;
+    for (Block::pred_iterator it = block->pred_begin(), e = block->pred_end();
+         it != e; ++it) {
+      // Skip control edges that aren't executable.
+      Block *predecessor = *it;
+      if (!getOrCreateFor<Executable>(
+               block, getProgramPoint<CFGEdge>(predecessor, block))
+               ->isLive())
+        continue;
 
-    // Merge in the state from the predecessor's terminator.
-    join(after, *getLatticeFor(block, predecessor->getTerminator()));
-  }
+      // Merge in the state from the predecessor's terminator.
+      result |=
+          state->join(*getLatticeFor(block, predecessor->getTerminator()));
+    }
+    return result;
+  });
 }
 
 void AbstractDenseDataFlowAnalysis::visitRegionBranchOperation(
     ProgramPoint point, RegionBranchOpInterface branch,
-    AbstractDenseLattice *after) {
+    AbstractDenseElement *after) {
   // Get the terminator predecessors.
   const auto *predecessors = getOrCreateFor<PredecessorState>(point, point);
   assert(predecessors->allPredecessorsKnown() &&
          "unexpected unresolved region successors");
 
-  for (Operation *op : predecessors->getKnownPredecessors()) {
-    const AbstractDenseLattice *before;
-    // If the predecessor is the parent, get the state before the parent.
-    if (op == branch) {
-      if (Operation *prev = op->getPrevNode())
-        before = getLatticeFor(point, prev);
-      else
-        before = getLatticeFor(point, op->getBlock());
+  update(after, [&](AbstractDenseState *state) {
+    ChangeResult result = ChangeResult::NoChange;
+    for (Operation *op : predecessors->getKnownPredecessors()) {
+      const AbstractDenseState *before;
+      // If the predecessor is the parent, get the state before the parent.
+      if (op == branch) {
+        if (Operation *prev = op->getPrevNode())
+          before = getLatticeFor(point, prev);
+        else
+          before = getLatticeFor(point, op->getBlock());
 
-      // Otherwise, get the state after the terminator.
-    } else {
-      before = getLatticeFor(point, op);
+        // Otherwise, get the state after the terminator.
+      } else {
+        before = getLatticeFor(point, op);
+      }
+      result |= state->join(*before);
     }
-    join(after, *before);
-  }
+    return result;
+  });
 }
 
-const AbstractDenseLattice *
+const AbstractDenseState *
 AbstractDenseDataFlowAnalysis::getLatticeFor(ProgramPoint dependent,
                                              ProgramPoint point) {
-  AbstractDenseLattice *state = getLattice(point);
-  addDependency(state, dependent);
-  return state;
+  AbstractDenseElement *element = getLattice(point);
+  element->addDependency(this, dependent);
+  return element->get();
 }

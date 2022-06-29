@@ -23,7 +23,7 @@
 using namespace mlir;
 using namespace mlir::dataflow;
 
-IntegerValueRange IntegerValueRange::getPessimisticValueState(Value value) {
+IntegerValueRange IntegerValueRange::getPessimisticValue(Value value) {
   unsigned width = ConstantIntRanges::getStorageBitwidth(value.getType());
   APInt umin = APInt::getMinValue(width);
   APInt umax = APInt::getMaxValue(width);
@@ -32,30 +32,9 @@ IntegerValueRange IntegerValueRange::getPessimisticValueState(Value value) {
   return {{umin, umax, smin, smax}};
 }
 
-void IntegerValueRangeLattice::onUpdate(DataFlowSolver *solver) const {
-  Lattice::onUpdate(solver);
-
-  // If the integer range can be narrowed to a constant, update the constant
-  // value of the SSA value.
-  Optional<APInt> constant = getValue().getValue().getConstantValue();
-  auto value = point.get<Value>();
-  auto *cv = solver->getOrCreateState<Lattice<ConstantValue>>(value);
-  if (!constant)
-    return solver->propagateIfChanged(cv, cv->markPessimisticFixpoint());
-
-  Dialect *dialect;
-  if (auto *parent = value.getDefiningOp())
-    dialect = parent->getDialect();
-  else
-    dialect = value.getParentBlock()->getParentOp()->getDialect();
-  solver->propagateIfChanged(
-      cv, cv->join(ConstantValue(IntegerAttr::get(value.getType(), *constant),
-                                 dialect)));
-}
-
 void IntegerRangeAnalysis::visitOperation(
-    Operation *op, ArrayRef<const IntegerValueRangeLattice *> operands,
-    ArrayRef<IntegerValueRangeLattice *> results) {
+    Operation *op, ArrayRef<const IntegerValueRangeState *> operands,
+    ArrayRef<IntegerValueRangeState::ElementT *> results) {
   // Ignore non-integer outputs - return early if the op has no scalar
   // integer results
   bool hasIntegerResult = false;
@@ -63,8 +42,9 @@ void IntegerRangeAnalysis::visitOperation(
     if (std::get<1>(it).getType().isIntOrIndex()) {
       hasIntegerResult = true;
     } else {
-      propagateIfChanged(std::get<0>(it),
-                         std::get<0>(it)->markPessimisticFixpoint());
+      std::get<0>(it)->update(this, [](IntegerValueRangeState *state) {
+        return state->markPessimisticFixpoint();
+      });
     }
   }
   if (!hasIntegerResult)
@@ -76,7 +56,7 @@ void IntegerRangeAnalysis::visitOperation(
 
   LLVM_DEBUG(llvm::dbgs() << "Inferring ranges for " << *op << "\n");
   SmallVector<ConstantIntRanges> argRanges(
-      llvm::map_range(operands, [](const IntegerValueRangeLattice *val) {
+      llvm::map_range(operands, [](const IntegerValueRangeState *val) {
         return val->getValue().getValue();
       }));
 
@@ -87,26 +67,28 @@ void IntegerRangeAnalysis::visitOperation(
     assert(llvm::find(op->getResults(), result) != op->result_end());
 
     LLVM_DEBUG(llvm::dbgs() << "Inferred range " << attrs << "\n");
-    IntegerValueRangeLattice *lattice = results[result.getResultNumber()];
-    Optional<IntegerValueRange> oldRange;
-    if (!lattice->isUninitialized())
-      oldRange = lattice->getValue();
+    results[result.getResultNumber()]->update(
+        this, [&](IntegerValueRangeState *state) {
+          Optional<IntegerValueRange> oldRange;
+          if (!state->isUninitialized())
+            oldRange = state->getValue();
 
-    ChangeResult changed = lattice->join(attrs);
+          ChangeResult changed = state->join(attrs);
 
-    // Catch loop results with loop variant bounds and conservatively make
-    // them [-inf, inf] so we don't circle around infinitely often (because
-    // the dataflow analysis in MLIR doesn't attempt to work out trip counts
-    // and often can't).
-    bool isYieldedResult = llvm::any_of(v.getUsers(), [](Operation *op) {
-      return op->hasTrait<OpTrait::IsTerminator>();
-    });
-    if (isYieldedResult && oldRange.hasValue() &&
-        !(lattice->getValue() == *oldRange)) {
-      LLVM_DEBUG(llvm::dbgs() << "Loop variant loop result detected\n");
-      changed |= lattice->markPessimisticFixpoint();
-    }
-    propagateIfChanged(lattice, changed);
+          // Catch loop results with loop variant bounds and conservatively make
+          // them [-inf, inf] so we don't circle around infinitely often
+          // (because the dataflow analysis in MLIR doesn't attempt to work out
+          // trip counts and often can't).
+          bool isYieldedResult = llvm::any_of(v.getUsers(), [](Operation *op) {
+            return op->hasTrait<OpTrait::IsTerminator>();
+          });
+          if (isYieldedResult && oldRange.hasValue() &&
+              !(state->getValue() == *oldRange)) {
+            LLVM_DEBUG(llvm::dbgs() << "Loop variant loop result detected\n");
+            changed |= state->markPessimisticFixpoint();
+          }
+          return changed;
+        });
   };
 
   inferrable.inferResultRanges(argRanges, joinCallback);
@@ -114,7 +96,8 @@ void IntegerRangeAnalysis::visitOperation(
 
 void IntegerRangeAnalysis::visitNonControlFlowArguments(
     Operation *op, const RegionSuccessor &successor,
-    ArrayRef<IntegerValueRangeLattice *> argLattices, unsigned firstIndex) {
+    ArrayRef<IntegerValueRangeState::ElementT *> argLattices,
+    unsigned firstIndex) {
   if (auto inferrable = dyn_cast<InferIntRangeInterface>(op)) {
     LLVM_DEBUG(llvm::dbgs() << "Inferring ranges for " << *op << "\n");
     SmallVector<ConstantIntRanges> argRanges(
@@ -131,25 +114,28 @@ void IntegerRangeAnalysis::visitNonControlFlowArguments(
         return;
 
       LLVM_DEBUG(llvm::dbgs() << "Inferred range " << attrs << "\n");
-      IntegerValueRangeLattice *lattice = argLattices[arg.getArgNumber()];
-      Optional<IntegerValueRange> oldRange;
-      if (!lattice->isUninitialized())
-        oldRange = lattice->getValue();
+      argLattices[arg.getArgNumber()]->update(
+          this, [&](IntegerValueRangeState *state) {
+            Optional<IntegerValueRange> oldRange;
+            if (!state->isUninitialized())
+              oldRange = state->getValue();
 
-      ChangeResult changed = lattice->join(attrs);
+            ChangeResult changed = state->join(attrs);
 
-      // Catch loop results with loop variant bounds and conservatively make
-      // them [-inf, inf] so we don't circle around infinitely often (because
-      // the dataflow analysis in MLIR doesn't attempt to work out trip counts
-      // and often can't).
-      bool isYieldedValue = llvm::any_of(v.getUsers(), [](Operation *op) {
-        return op->hasTrait<OpTrait::IsTerminator>();
-      });
-      if (isYieldedValue && oldRange && !(lattice->getValue() == *oldRange)) {
-        LLVM_DEBUG(llvm::dbgs() << "Loop variant loop result detected\n");
-        changed |= lattice->markPessimisticFixpoint();
-      }
-      propagateIfChanged(lattice, changed);
+            // Catch loop results with loop variant bounds and conservatively
+            // make them [-inf, inf] so we don't circle around infinitely often
+            // (because the dataflow analysis in MLIR doesn't attempt to work
+            // out trip counts and often can't).
+            bool isYieldedValue = llvm::any_of(v.getUsers(), [](Operation *op) {
+              return op->hasTrait<OpTrait::IsTerminator>();
+            });
+            if (isYieldedValue && oldRange &&
+                !(state->getValue() == *oldRange)) {
+              LLVM_DEBUG(llvm::dbgs() << "Loop variant loop result detected\n");
+              changed |= state->markPessimisticFixpoint();
+            }
+            return changed;
+          });
     };
 
     inferrable.inferResultRanges(argRanges, joinCallback);
@@ -168,11 +154,9 @@ void IntegerRangeAnalysis::visitNonControlFlowArguments(
                 loopBound->get<Attribute>().dyn_cast_or_null<IntegerAttr>())
           return bound.getValue();
       } else if (auto value = loopBound->dyn_cast<Value>()) {
-        const IntegerValueRangeLattice *lattice =
-            getLatticeElementFor(op, value);
-        if (lattice != nullptr)
-          return getUpper ? lattice->getValue().getValue().smax()
-                          : lattice->getValue().getValue().smin();
+        const IntegerValueRangeState *state = getLatticeElementFor(op, value);
+        return getUpper ? state->getValue().getValue().smax()
+                        : state->getValue().getValue().smin();
       }
     }
     // Given the results of getConstant{Lower,Upper}Bound()
@@ -192,13 +176,10 @@ void IntegerRangeAnalysis::visitNonControlFlowArguments(
     Optional<OpFoldResult> lowerBound = loop.getSingleLowerBound();
     Optional<OpFoldResult> upperBound = loop.getSingleUpperBound();
     Optional<OpFoldResult> step = loop.getSingleStep();
-    APInt min = getLoopBoundFromFold(lowerBound, iv->getType(),
-                                     /*getUpper=*/false);
-    APInt max = getLoopBoundFromFold(upperBound, iv->getType(),
-                                     /*getUpper=*/true);
+    APInt min = getLoopBoundFromFold(lowerBound, iv->getType(), false);
+    APInt max = getLoopBoundFromFold(upperBound, iv->getType(), true);
     // Assume positivity for uniscoverable steps by way of getUpper = true.
-    APInt stepVal =
-        getLoopBoundFromFold(step, iv->getType(), /*getUpper=*/true);
+    APInt stepVal = getLoopBoundFromFold(step, iv->getType(), true);
 
     if (stepVal.isNegative()) {
       std::swap(min, max);
@@ -208,12 +189,53 @@ void IntegerRangeAnalysis::visitNonControlFlowArguments(
       max -= 1;
     }
 
-    IntegerValueRangeLattice *ivEntry = getLatticeElement(*iv);
+    auto *ivEntry = getLatticeElement(*iv);
     auto ivRange = ConstantIntRanges::fromSigned(min, max);
-    propagateIfChanged(ivEntry, ivEntry->join(ivRange));
-    return;
+    return ivEntry->update(this, [&ivRange](IntegerValueRangeState *state) {
+      return state->join(ivRange);
+    });
   }
 
   return SparseDataFlowAnalysis::visitNonControlFlowArguments(
       op, successor, argLattices, firstIndex);
+}
+
+LogicalResult IntegerRangeToConstant::initialize(Operation *top) {
+  auto visitValues = [this](ValueRange values) {
+    for (Value value : values)
+      (void)visit(value);
+  };
+  top->walk([&](Operation *op) {
+    visitValues(op->getResults());
+    for (Region &region : op->getRegions())
+      for (Block &block : region)
+        visitValues(block.getArguments());
+  });
+  return success();
+}
+
+LogicalResult IntegerRangeToConstant::visit(ProgramPoint point) {
+  auto value = point.get<Value>();
+  auto *rangeState = getOrCreateFor<IntegerValueRangeState>(value, value);
+  if (rangeState->isUninitialized())
+    return success();
+
+  update<ConstantValueState>(value, [&](ConstantValueState *state) {
+    const ConstantIntRanges &range = rangeState->getValue().getValue();
+    // Try to narrow to a constant.
+    Optional<APInt> constant = range.getConstantValue();
+    if (!constant)
+      return state->markPessimisticFixpoint();
+
+    // Find a dialect to materialize the constant.
+    Dialect *dialect;
+    if (Operation *op = value.getDefiningOp())
+      dialect = op->getDialect();
+    else
+      dialect = value.getParentRegion()->getParentOp()->getDialect();
+
+    Attribute attr = IntegerAttr::get(value.getType(), *constant);
+    return state->join(ConstantValue(attr, dialect));
+  });
+  return success();
 }

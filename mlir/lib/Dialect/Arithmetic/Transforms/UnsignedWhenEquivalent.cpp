@@ -23,8 +23,8 @@ using namespace mlir::dataflow;
 /// bound on its value (if it is treated as signed) and that bound is
 /// non-negative.
 static LogicalResult staticallyNonNegative(DataFlowSolver &solver, Value v) {
-  auto *result = solver.lookupState<IntegerValueRangeLattice>(v);
-  if (!result)
+  auto *result = solver.lookup<IntegerValueRangeState>(v);
+  if (!result || result->isUninitialized())
     return failure();
   const ConstantIntRanges &range = result->getValue().getValue();
   return success(range.smin().isNonNegative());
@@ -113,6 +113,7 @@ struct ArithmeticUnsignedWhenEquivalentPass
     DataFlowSolver solver;
     solver.load<DeadCodeAnalysis>();
     solver.load<IntegerRangeAnalysis>();
+    solver.load<IntegerRangeToConstant>();
     if (failed(solver.initializeAndRun(op)))
       return signalPassFailure();
 

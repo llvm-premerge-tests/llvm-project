@@ -45,9 +45,6 @@ inline ChangeResult operator&(ChangeResult lhs, ChangeResult rhs) {
   return lhs == ChangeResult::NoChange ? lhs : rhs;
 }
 
-/// Forward declare the analysis state class.
-class AnalysisState;
-
 //===----------------------------------------------------------------------===//
 // GenericProgramPoint
 //===----------------------------------------------------------------------===//
@@ -178,6 +175,8 @@ class DataFlowAnalysis;
 // DataFlowSolver
 //===----------------------------------------------------------------------===//
 
+class AbstractElement;
+
 /// The general data-flow analysis solver. This class is responsible for
 /// orchestrating child data-flow analyses, running the fixed-point iteration
 /// algorithm, managing analysis state and program point memory, and tracking
@@ -202,16 +201,19 @@ public:
   /// operation and run the analysis until fixpoint.
   LogicalResult initializeAndRun(Operation *top);
 
-  /// Lookup an analysis state for the given program point. Returns null if one
-  /// does not exist.
   template <typename StateT, typename PointT>
-  const StateT *lookupState(PointT point) const {
-    auto it = analysisStates.find({ProgramPoint(point), TypeID::get<StateT>()});
-    if (it == analysisStates.end())
+  const StateT *lookup(PointT point) const {
+    using ElementT = typename StateT::ElementT;
+    auto it = elements.find({TypeID::get<StateT>(), ProgramPoint(point)});
+    if (it == elements.end())
       return nullptr;
-    return static_cast<const StateT *>(it->second.get());
+    return static_cast<const ElementT &>(*it->second).get();
   }
 
+  template <typename StateT, typename PointT>
+  typename StateT::ElementT *getOrCreate(PointT point);
+
+public:
   /// Get a uniqued program point instance. If one is not present, it is
   /// created with the provided arguments.
   template <typename PointT, typename... Args>
@@ -226,20 +228,9 @@ public:
   /// Push a work item onto the worklist.
   void enqueue(WorkItem item) { worklist.push(std::move(item)); }
 
-  /// Get the state associated with the given program point. If it does not
-  /// exist, create an uninitialized state.
-  template <typename StateT, typename PointT>
-  StateT *getOrCreateState(PointT point);
-
-  /// Propagate an update to an analysis state if it changed by pushing
-  /// dependent work items to the back of the queue.
-  void propagateIfChanged(AnalysisState *state, ChangeResult changed);
-
-  /// Add a dependency to an analysis state on a child analysis and program
-  /// point. If the state is updated, the child analysis must be invoked on the
-  /// given program point again.
-  void addDependency(AnalysisState *state, DataFlowAnalysis *analysis,
-                     ProgramPoint point);
+  void getStaticProvidersFor(
+      TypeID stateID, ProgramPoint point,
+      SmallVectorImpl<DataFlowAnalysis *> &staticProviders) const;
 
 private:
   /// The solver's work queue. Work items can be inserted to the front of the
@@ -254,78 +245,129 @@ private:
   /// points.
   StorageUniquer uniquer;
 
-  /// A type-erased map of program points to associated analysis states for
-  /// first-class program points.
-  DenseMap<std::pair<ProgramPoint, TypeID>, std::unique_ptr<AnalysisState>>
-      analysisStates;
+  /// A type-erased map of program points to associated analysis states.
+  DenseMap<std::pair<TypeID, ProgramPoint>,
+           std::unique_ptr<AbstractElement>>
+      elements;
 
   /// Allow the base child analysis class to access the internals of the solver.
   friend class DataFlowAnalysis;
 };
 
 //===----------------------------------------------------------------------===//
-// AnalysisState
+// AbstractElement
 //===----------------------------------------------------------------------===//
 
-/// Base class for generic analysis states. Analysis states contain data-flow
-/// information that are attached to program points and which evolve as the
-/// analysis iterates.
-///
-/// This class places no restrictions on the semantics of analysis states beyond
-/// these requirements.
-///
-/// 1. Querying the state of a program point prior to visiting that point
-///    results in uninitialized state. Analyses must be aware of unintialized
-///    states.
-/// 2. Analysis states can reach fixpoints, where subsequent updates will never
-///    trigger a change in the state.
-/// 3. Analysis states that are uninitialized can be forcefully initialized to a
-///    default value.
-class AnalysisState {
+class AbstractState {
 public:
-  virtual ~AnalysisState();
+  virtual ~AbstractState();
 
-  /// Create the analysis state at the given program point.
-  AnalysisState(ProgramPoint point) : point(point) {}
-
-  /// Returns true if the analysis state is uninitialized.
-  virtual bool isUninitialized() const = 0;
-
-  /// Force an uninitialized analysis state to initialize itself with a default
-  /// value.
-  virtual ChangeResult defaultInitialize() = 0;
-
-  /// Print the contents of the analysis state.
   virtual void print(raw_ostream &os) const = 0;
+};
+
+/// Subclasses are required to implement `get` and `update`.
+class AbstractElement {
+public:
+  virtual ~AbstractElement();
+
+  explicit AbstractElement(DataFlowSolver &solver, ProgramPoint point)
+      : solver(solver), point(point) {}
+
+  void addDependency(DataFlowAnalysis *analysis, ProgramPoint point);
+
+  virtual const AbstractState *get() const = 0;
+  virtual void update(DataFlowAnalysis *provider,
+                      function_ref<ChangeResult(AbstractState *)> updateFn) = 0;
 
 protected:
-  /// This function is called by the solver when the analysis state is updated
-  /// to optionally enqueue more work items. For example, if a state tracks
-  /// dependents through the IR (e.g. use-def chains), this function can be
-  /// implemented to push those dependents on the worklist.
-  virtual void onUpdate(DataFlowSolver *solver) const {}
+  void propagateUpdate();
 
-  /// The dependency relations originating from this analysis state. An entry
-  /// `state -> (analysis, point)` is created when `analysis` queries `state`
-  /// when updating `point`.
-  ///
-  /// When this state is updated, all dependent child analysis invocations are
-  /// pushed to the back of the queue. Use a `SetVector` to keep the analysis
-  /// deterministic.
-  ///
-  /// Store the dependents on the analysis state for efficiency.
-  SetVector<DataFlowSolver::WorkItem> dependents;
+  virtual void onUpdate() {}
 
-  /// The program point to which the state belongs.
+  DataFlowSolver &solver;
   ProgramPoint point;
 
+private:
+  SetVector<DataFlowSolver::WorkItem, SmallVector<DataFlowSolver::WorkItem>,
+            llvm::SmallDenseSet<DataFlowSolver::WorkItem>>
+      dependents;
+
 #if LLVM_ENABLE_ABI_BREAKING_CHECKS
-  /// When compiling with debugging, keep a name for the analysis state.
+  /// When compiling with debugging, keep a name for the element.
   StringRef debugName;
 #endif // LLVM_ENABLE_ABI_BREAKING_CHECKS
 
-  /// Allow the framework to access the dependents.
-  friend class DataFlowSolver;
+  friend class ::mlir::DataFlowSolver;
+};
+
+template <typename StateT, typename BaseT = AbstractElement>
+class SingleStateElement : public BaseT {
+public:
+  template <typename PointT>
+  explicit SingleStateElement(DataFlowSolver &solver, PointT point)
+      : BaseT(solver, point), state(point) {}
+
+  const StateT *get() const override { return &state; }
+
+  void update(DataFlowAnalysis *provider,
+              function_ref<ChangeResult(AbstractState *)> updateFn) override {
+    if (updateFn(&state) == ChangeResult::Change)
+      BaseT::propagateUpdate();
+  }
+  void update(DataFlowAnalysis *provider,
+              function_ref<ChangeResult(StateT *)> updateFn) {
+    return update(provider, function_ref<ChangeResult(AbstractState *)>(
+                                [updateFn](AbstractState *state) {
+                                  return updateFn(static_cast<StateT *>(state));
+                                }));
+  }
+
+private:
+  StateT state;
+};
+
+/// StateT is required to implement `join` and `meet`.
+template <typename StateT, typename BaseT = AbstractElement>
+class MultiStateElement : public BaseT {
+public:
+  template <typename PointT>
+  explicit MultiStateElement(DataFlowSolver &solver, PointT point)
+      : BaseT(solver, point), state(point) {
+    SmallVector<DataFlowAnalysis *, 2> staticProviders;
+    solver.getStaticProvidersFor(TypeID::get<StateT>(), point, staticProviders);
+    for (DataFlowAnalysis *staticProvider : staticProviders)
+      states.try_emplace(staticProvider, StateT(point));
+  }
+
+  const StateT *get() const override { return &state; }
+
+  void update(DataFlowAnalysis *provider,
+              function_ref<ChangeResult(AbstractState *)> updateFn) override {
+    auto it = states.find(provider);
+    if (it == states.end()) {
+      if (updateFn(&state) == ChangeResult::Change)
+        BaseT::propagateUpdate();
+      return;
+    }
+    if (updateFn(&it->second) == ChangeResult::NoChange)
+      return;
+    StateT newState(it->second);
+    for (auto &entry : states)
+      (void)newState.meet(entry.second);
+    if (state.join(newState) == ChangeResult::Change)
+      BaseT::propagateUpdate();
+  }
+  void update(DataFlowAnalysis *provider,
+              function_ref<ChangeResult(StateT *)> updateFn) {
+    return update(provider, function_ref<ChangeResult(AbstractState *)>(
+                                [updateFn](AbstractState *state) {
+                                  return updateFn(static_cast<StateT *>(state));
+                                }));
+  }
+
+private:
+  StateT state;
+  llvm::SmallDenseMap<DataFlowAnalysis *, StateT, 2> states;
 };
 
 //===----------------------------------------------------------------------===//
@@ -385,12 +427,13 @@ public:
   virtual LogicalResult visit(ProgramPoint point) = 0;
 
 protected:
-  /// Create a dependency between the given analysis state and program point
-  /// on this analysis.
-  void addDependency(AnalysisState *state, ProgramPoint point);
-
-  /// Propagate an update to a state if it changed.
-  void propagateIfChanged(AnalysisState *state, ChangeResult changed);
+  /// Returns true if this analysis *statically* provides values for the given
+  /// state kind for the given program point. This means the analysis will
+  /// always provide values for this state regardless of the state of the
+  /// analysis.
+  virtual bool staticallyProvides(TypeID stateID, ProgramPoint point) const {
+    return false;
+  }
 
   /// Register a custom program point class.
   template <typename PointT>
@@ -404,12 +447,18 @@ protected:
     return solver.getProgramPoint<PointT>(std::forward<Args>(args)...);
   }
 
+  template <typename StateT, typename PointT>
+  void update(PointT point, function_ref<ChangeResult(StateT *)> updateFn) {
+    auto *element = getOrCreate<StateT>(point);
+    element->update(this, updateFn);
+  }
+
   /// Get the analysis state assiocated with the program point. The returned
   /// state is expected to be "write-only", and any updates need to be
   /// propagated by `propagateIfChanged`.
   template <typename StateT, typename PointT>
-  StateT *getOrCreate(PointT point) {
-    return solver.getOrCreateState<StateT>(point);
+  typename StateT::ElementT *getOrCreate(PointT point) {
+    return solver.getOrCreate<StateT>(point);
   }
 
   /// Get a read-only analysis state for the given point and create a dependency
@@ -417,14 +466,15 @@ protected:
   /// re-invoked on the dependent.
   template <typename StateT, typename PointT>
   const StateT *getOrCreateFor(ProgramPoint dependent, PointT point) {
-    StateT *state = getOrCreate<StateT>(point);
-    addDependency(state, dependent);
-    return state;
+    auto *element = getOrCreate<StateT>(point);
+    element->addDependency(this, dependent);
+    return element->get();
   }
 
 #if LLVM_ENABLE_ABI_BREAKING_CHECKS
   /// When compiling with debugging, keep a name for the analyis.
   StringRef debugName;
+  friend class AbstractElement;
 #endif // LLVM_ENABLE_ABI_BREAKING_CHECKS
 
 private:
@@ -445,19 +495,21 @@ AnalysisT *DataFlowSolver::load(Args &&...args) {
 }
 
 template <typename StateT, typename PointT>
-StateT *DataFlowSolver::getOrCreateState(PointT point) {
-  std::unique_ptr<AnalysisState> &state =
-      analysisStates[{ProgramPoint(point), TypeID::get<StateT>()}];
-  if (!state) {
-    state = std::unique_ptr<StateT>(new StateT(point));
-#if LLVM_ENABLE_ABI_BREAKING_CHECKS
-    state->debugName = llvm::getTypeName<StateT>();
-#endif // LLVM_ENABLE_ABI_BREAKING_CHECKS
+typename StateT::ElementT *DataFlowSolver::getOrCreate(PointT point) {
+  using ElementT = typename StateT::ElementT;
+  static_assert(std::is_base_of<AbstractElement, ElementT>::value,
+                "expected an abstract element");
+  std::unique_ptr<AbstractElement> &element =
+      elements[{TypeID::get<StateT>(), ProgramPoint(point)}];
+  if (!element) {
+    element = std::unique_ptr<ElementT>(new ElementT(*this, point));
+    element->debugName = llvm::getTypeName<StateT>();
   }
-  return static_cast<StateT *>(state.get());
+  return static_cast<ElementT *>(element.get());
 }
 
-inline raw_ostream &operator<<(raw_ostream &os, const AnalysisState &state) {
+inline raw_ostream &operator<<(raw_ostream &os,
+                               const AbstractState &state) {
   state.print(os);
   return os;
 }

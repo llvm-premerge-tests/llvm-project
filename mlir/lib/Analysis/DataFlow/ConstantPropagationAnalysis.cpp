@@ -30,8 +30,8 @@ void ConstantValue::print(raw_ostream &os) const {
 //===----------------------------------------------------------------------===//
 
 void SparseConstantPropagation::visitOperation(
-    Operation *op, ArrayRef<const Lattice<ConstantValue> *> operands,
-    ArrayRef<Lattice<ConstantValue> *> results) {
+    Operation *op, ArrayRef<const ConstantValueState *> operands,
+    ArrayRef<ConstantValueState::ElementT *> results) {
   LLVM_DEBUG(llvm::dbgs() << "SCP: Visiting operation: " << *op << "\n");
 
   // Don't try to simulate the results of a region operation as we can't
@@ -39,12 +39,12 @@ void SparseConstantPropagation::visitOperation(
   // folds as the desire here is for simulated execution, and not general
   // folding.
   if (op->getNumRegions())
-    return;
+    return markAllPessimisticFixpoint(results);
 
   SmallVector<Attribute, 8> constantOperands;
   constantOperands.reserve(op->getNumOperands());
-  for (auto *operandLattice : operands)
-    constantOperands.push_back(operandLattice->getValue().getConstantValue());
+  for (auto *operandState : operands)
+    constantOperands.push_back(operandState->getValue().getConstantValue());
 
   // Save the original operands and attributes just in case the operation
   // folds in-place. The constant passed in may not correspond to the real
@@ -56,10 +56,8 @@ void SparseConstantPropagation::visitOperation(
   // fails or was an in-place fold, mark the results as overdefined.
   SmallVector<OpFoldResult, 8> foldResults;
   foldResults.reserve(op->getNumResults());
-  if (failed(op->fold(constantOperands, foldResults))) {
-    markAllPessimisticFixpoint(results);
-    return;
-  }
+  if (failed(op->fold(constantOperands, foldResults)))
+    return markAllPessimisticFixpoint(results);
 
   // If the folding was in-place, mark the results as overdefined and reset
   // the operation. We don't allow in-place folds as the desire here is for
@@ -67,25 +65,26 @@ void SparseConstantPropagation::visitOperation(
   if (foldResults.empty()) {
     op->setOperands(originalOperands);
     op->setAttrs(originalAttrs);
-    return;
+    return markAllPessimisticFixpoint(results);
   }
 
   // Merge the fold results into the lattice for this operation.
   assert(foldResults.size() == op->getNumResults() && "invalid result size");
   for (const auto it : llvm::zip(results, foldResults)) {
-    Lattice<ConstantValue> *lattice = std::get<0>(it);
+    ConstantValueState::ElementT *element = std::get<0>(it);
 
     // Merge in the result of the fold, either a constant or a value.
     OpFoldResult foldResult = std::get<1>(it);
     if (Attribute attr = foldResult.dyn_cast<Attribute>()) {
       LLVM_DEBUG(llvm::dbgs() << "Folded to constant: " << attr << "\n");
-      propagateIfChanged(lattice,
-                         lattice->join(ConstantValue(attr, op->getDialect())));
+      element->update(this, [attr, op](ConstantValueState *state) {
+        return state->join(ConstantValue(attr, op->getDialect()));
+      });
     } else {
       LLVM_DEBUG(llvm::dbgs()
                  << "Folded to value: " << foldResult.get<Value>() << "\n");
       AbstractSparseDataFlowAnalysis::join(
-          lattice, *getLatticeElement(foldResult.get<Value>()));
+          element, *getLatticeElement(foldResult.get<Value>())->get());
     }
   }
 }

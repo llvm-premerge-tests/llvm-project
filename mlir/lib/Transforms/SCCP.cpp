@@ -37,7 +37,7 @@ using namespace mlir::dataflow;
 static LogicalResult replaceWithConstant(DataFlowSolver &solver,
                                          OpBuilder &builder,
                                          OperationFolder &folder, Value value) {
-  auto *lattice = solver.lookupState<Lattice<ConstantValue>>(value);
+  auto *lattice = solver.lookup<ConstantValueState>(value);
   if (!lattice || lattice->isUninitialized())
     return failure();
   const ConstantValue &latticeValue = lattice->getValue();

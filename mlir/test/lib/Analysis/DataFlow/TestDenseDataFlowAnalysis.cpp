@@ -20,9 +20,7 @@ namespace {
 class UnderlyingValue {
 public:
   /// The pessimistic underlying value of a value is itself.
-  static UnderlyingValue getPessimisticValueState(Value value) {
-    return {value};
-  }
+  static UnderlyingValue getPessimisticValue(Value value) { return {value}; }
 
   /// Create an underlying value state with a known underlying value.
   UnderlyingValue(Value underlyingValue = {})
@@ -51,21 +49,21 @@ private:
 
 /// This lattice represents, for a given memory resource, the potential last
 /// operations that modified the resource.
-class LastModification : public AbstractDenseLattice {
+class LastModification : public AbstractDenseState {
 public:
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LastModification)
 
-  using AbstractDenseLattice::AbstractDenseLattice;
+  using ElementT =
+      SingleStateElement<LastModification, AbstractDenseElement>;
+
+  explicit LastModification(ProgramPoint point) {}
 
   /// The lattice is always initialized.
   bool isUninitialized() const override { return false; }
 
-  /// Initialize the lattice. Does nothing.
-  ChangeResult defaultInitialize() override { return ChangeResult::NoChange; }
-
   /// Mark the lattice as having reached its pessimistic fixpoint. That is, the
   /// last modifications of all memory resources are unknown.
-  ChangeResult reset() override {
+  ChangeResult markPessimisticFixpoint() override {
     if (lastMods.empty())
       return ChangeResult::NoChange;
     lastMods.clear();
@@ -76,7 +74,7 @@ public:
   bool isAtFixpoint() const override { return false; }
 
   /// Join the last modifications.
-  ChangeResult join(const AbstractDenseLattice &lattice) override {
+  ChangeResult join(const AbstractDenseState &lattice) override {
     const auto &rhs = static_cast<const LastModification &>(lattice);
     ChangeResult result = ChangeResult::NoChange;
     for (const auto &mod : rhs.lastMods) {
@@ -135,13 +133,16 @@ public:
   /// its reaching definitions is set to empty. If the operation writes to a
   /// resource, then its reaching definition is set to the written value.
   void visitOperation(Operation *op, const LastModification &before,
-                      LastModification *after) override;
+                      LastModification::ElementT *after) override;
 };
 
 /// Define the lattice class explicitly to provide a type ID.
-struct UnderlyingValueLattice : public Lattice<UnderlyingValue> {
-  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(UnderlyingValueLattice)
-  using Lattice::Lattice;
+struct UnderlyingValueState : public OptimisticSparseState<UnderlyingValue> {
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(UnderlyingValueState)
+
+  using OptimisticSparseState::OptimisticSparseState;
+  using ElementT =
+      SparseElement<UnderlyingValueState, SingleStateElement>;
 };
 
 /// An analysis that uses forwarding of values along control-flow and callgraph
@@ -149,14 +150,14 @@ struct UnderlyingValueLattice : public Lattice<UnderlyingValue> {
 /// analysis exists so that the test analysis and pass can test the behaviour of
 /// the dense data-flow analysis on the callgraph.
 class UnderlyingValueAnalysis
-    : public SparseDataFlowAnalysis<UnderlyingValueLattice> {
+    : public SparseDataFlowAnalysis<UnderlyingValueState> {
 public:
   using SparseDataFlowAnalysis::SparseDataFlowAnalysis;
 
   /// The underlying value of the results of an operation are not known.
-  void visitOperation(Operation *op,
-                      ArrayRef<const UnderlyingValueLattice *> operands,
-                      ArrayRef<UnderlyingValueLattice *> results) override {
+  void
+  visitOperation(Operation *op, ArrayRef<const UnderlyingValueState *> operands,
+                 ArrayRef<UnderlyingValueState::ElementT *> results) override {
     markAllPessimisticFixpoint(results);
   }
 };
@@ -165,8 +166,8 @@ public:
 /// Look for the most underlying value of a value.
 static Value getMostUnderlyingValue(
     Value value,
-    function_ref<const UnderlyingValueLattice *(Value)> getUnderlyingValueFn) {
-  const UnderlyingValueLattice *underlying;
+    function_ref<const UnderlyingValueState *(Value)> getUnderlyingValueFn) {
+  const UnderlyingValueState *underlying;
   do {
     underlying = getUnderlyingValueFn(value);
     if (!underlying || underlying->isUninitialized())
@@ -181,38 +182,42 @@ static Value getMostUnderlyingValue(
 
 void LastModifiedAnalysis::visitOperation(Operation *op,
                                           const LastModification &before,
-                                          LastModification *after) {
+                                          LastModification::ElementT *after) {
   auto memory = dyn_cast<MemoryEffectOpInterface>(op);
   // If we can't reason about the memory effects, then conservatively assume we
   // can't deduce anything about the last modifications.
   if (!memory)
-    return reset(after);
+    return markPessimisticFixpoint(after);
 
   SmallVector<MemoryEffects::EffectInstance> effects;
   memory.getEffects(effects);
 
-  ChangeResult result = after->join(before);
-  for (const auto &effect : effects) {
-    Value value = effect.getValue();
+  after->update(this, [&](LastModification *state) {
+    ChangeResult result = state->join(before);
+    for (const auto &effect : effects) {
+      Value value = effect.getValue();
 
-    // If we see an effect on anything other than a value, assume we can't
-    // deduce anything about the last modifications.
-    if (!value)
-      return reset(after);
+      // If we see an effect on anything other than a value, assume we can't
+      // deduce anything about the last modifications.
+      if (!value) {
+        result |= state->markPessimisticFixpoint();
+        break;
+      }
 
-    value = getMostUnderlyingValue(value, [&](Value value) {
-      return getOrCreateFor<UnderlyingValueLattice>(op, value);
-    });
-    if (!value)
-      return;
+      value = getMostUnderlyingValue(value, [&](Value value) {
+        return getOrCreateFor<UnderlyingValueState>(op, value);
+      });
+      if (!value)
+        return ChangeResult::NoChange;
 
-    // Nothing to do for reads.
-    if (isa<MemoryEffects::Read>(effect.getEffect()))
-      continue;
+      // Nothing to do for reads.
+      if (isa<MemoryEffects::Read>(effect.getEffect()))
+        continue;
 
-    result |= after->set(value, op);
-  }
-  propagateIfChanged(after, result);
+      result |= state->set(value, op);
+    }
+    return result;
+  });
 }
 
 namespace {
@@ -240,13 +245,12 @@ struct TestLastModifiedPass
       if (!tag)
         return;
       os << "test_tag: " << tag.getValue() << ":\n";
-      const LastModification *lastMods =
-          solver.lookupState<LastModification>(op);
+      const auto *lastMods = solver.lookup<LastModification>(op);
       assert(lastMods && "expected a dense lattice");
       for (auto &it : llvm::enumerate(op->getOperands())) {
         os << " operand #" << it.index() << "\n";
         Value value = getMostUnderlyingValue(it.value(), [&](Value value) {
-          return solver.lookupState<UnderlyingValueLattice>(value);
+          return solver.lookup<UnderlyingValueState>(value);
         });
         assert(value && "expected an underlying value");
         if (Optional<ArrayRef<Operation *>> lastMod =

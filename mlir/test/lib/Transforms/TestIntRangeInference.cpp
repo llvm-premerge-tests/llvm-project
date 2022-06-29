@@ -23,23 +23,15 @@ using namespace mlir::dataflow;
 /// Patterned after SCCP
 static LogicalResult replaceWithConstant(DataFlowSolver &solver, OpBuilder &b,
                                          OperationFolder &folder, Value value) {
-  auto *maybeInferredRange =
-      solver.lookupState<IntegerValueRangeLattice>(value);
-  if (!maybeInferredRange || maybeInferredRange->isUninitialized())
-    return failure();
-  const ConstantIntRanges &inferredRange =
-      maybeInferredRange->getValue().getValue();
-  Optional<APInt> maybeConstValue = inferredRange.getConstantValue();
-  if (!maybeConstValue.hasValue())
+  auto *constantState = solver.lookup<ConstantValueState>(value);
+  if (!constantState || constantState->isUninitialized() ||
+      !constantState->getValue().getConstantValue())
     return failure();
 
-  Operation *maybeDefiningOp = value.getDefiningOp();
-  Dialect *valueDialect =
-      maybeDefiningOp ? maybeDefiningOp->getDialect()
-                      : value.getParentRegion()->getParentOp()->getDialect();
-  Attribute constAttr = b.getIntegerAttr(value.getType(), *maybeConstValue);
-  Value constant = folder.getOrCreateConstant(b, valueDialect, constAttr,
-                                              value.getType(), value.getLoc());
+  const ConstantValue &constantValue = constantState->getValue();
+  Value constant = folder.getOrCreateConstant(
+      b, constantValue.getConstantDialect(), constantValue.getConstantValue(),
+      value.getType(), value.getLoc());
   if (!constant)
     return failure();
 
@@ -106,6 +98,7 @@ struct TestIntRangeInference
     DataFlowSolver solver;
     solver.load<DeadCodeAnalysis>();
     solver.load<IntegerRangeAnalysis>();
+    solver.load<IntegerRangeToConstant>();
     if (failed(solver.initializeAndRun(op)))
       return signalPassFailure();
     rewrite(solver, op->getContext(), op->getRegions());

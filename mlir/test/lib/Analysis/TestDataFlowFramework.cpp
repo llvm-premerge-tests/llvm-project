@@ -14,17 +14,15 @@ using namespace mlir;
 
 namespace {
 /// This analysis state represents an integer that is XOR'd with other states.
-class FooState : public AnalysisState {
+class FooState : public AbstractState {
 public:
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(FooState)
 
-  using AnalysisState::AnalysisState;
+  using ElementT = SingleStateElement<FooState>;
 
-  /// Default-initialize the state to zero.
-  ChangeResult defaultInitialize() override { return join(0); }
+  explicit FooState(ProgramPoint point) {}
 
-  /// Returns true if the state is uninitialized.
-  bool isUninitialized() const override { return !state; }
+  bool isUninitialized() const { return !state; }
 
   /// Print the integer value or "none" if uninitialized.
   void print(raw_ostream &os) const override {
@@ -99,7 +97,8 @@ LogicalResult FooAnalysis::initialize(Operation *top) {
     return top->emitError("expected a single region top-level op");
 
   // Initialize the top-level state.
-  getOrCreate<FooState>(&top->getRegion(0).front())->join(0);
+  update<FooState>(&top->getRegion(0).front(),
+                   [](FooState *state) { return state->join(0); });
 
   // Visit all nested blocks and operations.
   for (Block &block : top->getRegion(0)) {
@@ -130,35 +129,37 @@ void FooAnalysis::visitBlock(Block *block) {
     // This is the initial state. Let the framework default-initialize it.
     return;
   }
-  FooState *state = getOrCreate<FooState>(block);
-  ChangeResult result = ChangeResult::NoChange;
-  for (Block *pred : block->getPredecessors()) {
-    // Join the state at the terminators of all predecessors.
-    const FooState *predState =
-        getOrCreateFor<FooState>(block, pred->getTerminator());
-    result |= state->join(*predState);
-  }
-  propagateIfChanged(state, result);
+  update<FooState>(block, [&](FooState *state) {
+    ChangeResult result = ChangeResult::NoChange;
+    for (Block *pred : block->getPredecessors()) {
+      // Join the state at the terminators of all predecessors.
+      const FooState *predState =
+          getOrCreateFor<FooState>(block, pred->getTerminator());
+      result |= state->join(*predState);
+    }
+    return result;
+  });
 }
 
 void FooAnalysis::visitOperation(Operation *op) {
-  FooState *state = getOrCreate<FooState>(op);
-  ChangeResult result = ChangeResult::NoChange;
+  update<FooState>(op, [&](FooState *state) {
+    ChangeResult result = ChangeResult::NoChange;
 
-  // Copy the state across the operation.
-  const FooState *prevState;
-  if (Operation *prev = op->getPrevNode())
-    prevState = getOrCreateFor<FooState>(op, prev);
-  else
-    prevState = getOrCreateFor<FooState>(op, op->getBlock());
-  result |= state->set(*prevState);
+    // Copy the state across the operation.
+    const FooState *prevState;
+    if (Operation *prev = op->getPrevNode())
+      prevState = getOrCreateFor<FooState>(op, prev);
+    else
+      prevState = getOrCreateFor<FooState>(op, op->getBlock());
+    result |= state->set(*prevState);
 
-  // Modify the state with the attribute, if specified.
-  if (auto attr = op->getAttrOfType<IntegerAttr>("foo")) {
-    uint64_t value = attr.getUInt();
-    result |= state->join(value);
-  }
-  propagateIfChanged(state, result);
+    // Modify the state with the attribute, if specified.
+    if (auto attr = op->getAttrOfType<IntegerAttr>("foo")) {
+      uint64_t value = attr.getUInt();
+      result |= state->join(value);
+    }
+    return result;
+  });
 }
 
 void TestFooAnalysisPass::runOnOperation() {
@@ -175,7 +176,7 @@ void TestFooAnalysisPass::runOnOperation() {
     auto tag = op->getAttrOfType<StringAttr>("tag");
     if (!tag)
       return;
-    const FooState *state = solver.lookupState<FooState>(op);
+    const FooState *state = solver.lookup<FooState>(op);
     assert(state && !state->isUninitialized());
     os << tag.getValue() << " -> " << state->getValue() << "\n";
   });

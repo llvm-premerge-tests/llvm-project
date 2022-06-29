@@ -27,24 +27,6 @@ void Executable::print(raw_ostream &os) const {
   os << (live ? "live" : "dead");
 }
 
-void Executable::onUpdate(DataFlowSolver *solver) const {
-  if (auto *block = point.dyn_cast<Block *>()) {
-    // Re-invoke the analyses on the block itself.
-    for (DataFlowAnalysis *analysis : subscribers)
-      solver->enqueue({block, analysis});
-    // Re-invoke the analyses on all operations in the block.
-    for (DataFlowAnalysis *analysis : subscribers)
-      for (Operation &op : *block)
-        solver->enqueue({&op, analysis});
-  } else if (auto *programPoint = point.dyn_cast<GenericProgramPoint *>()) {
-    // Re-invoke the analysis on the successor block.
-    if (auto *edge = dyn_cast<CFGEdge>(programPoint)) {
-      for (DataFlowAnalysis *analysis : subscribers)
-        solver->enqueue({edge->getTo(), analysis});
-    }
-  }
-}
-
 //===----------------------------------------------------------------------===//
 // PredecessorState
 //===----------------------------------------------------------------------===//
@@ -104,8 +86,8 @@ LogicalResult DeadCodeAnalysis::initialize(Operation *top) {
   for (Region &region : top->getRegions()) {
     if (region.empty())
       continue;
-    auto *state = getOrCreate<Executable>(&region.front());
-    propagateIfChanged(state, state->setToLive());
+    update<Executable>(&region.front(),
+                       [](Executable *state) { return state->setToLive(); });
   }
 
   // Mark as overdefined the predecessors of symbol callables with potentially
@@ -132,8 +114,9 @@ void DeadCodeAnalysis::initializeSymbolCallables(Operation *top) {
       // Public symbol callables or those for which we can't see all uses have
       // potentially unknown callsites.
       if (symbol.isPublic() || (!allUsesVisible && symbol.isNested())) {
-        auto *state = getOrCreate<PredecessorState>(callable);
-        propagateIfChanged(state, state->setHasUnknownPredecessors());
+        update<PredecessorState>(callable, [](PredecessorState *state) {
+          return state->setHasUnknownPredecessors();
+        });
       }
       foundSymbolCallable = true;
     }
@@ -149,8 +132,9 @@ void DeadCodeAnalysis::initializeSymbolCallables(Operation *top) {
       // If we couldn't gather the symbol uses, conservatively assume that
       // we can't track information for any nested symbols.
       return top->walk([&](CallableOpInterface callable) {
-        auto *state = getOrCreate<PredecessorState>(callable);
-        propagateIfChanged(state, state->setHasUnknownPredecessors());
+        update<PredecessorState>(callable, [](PredecessorState *state) {
+          return state->setHasUnknownPredecessors();
+        });
       });
     }
 
@@ -160,12 +144,12 @@ void DeadCodeAnalysis::initializeSymbolCallables(Operation *top) {
       // If a callable symbol has a non-call use, then we can't be guaranteed to
       // know all callsites.
       Operation *symbol = symbolTable.lookupSymbolIn(top, use.getSymbolRef());
-      auto *state = getOrCreate<PredecessorState>(symbol);
-      propagateIfChanged(state, state->setHasUnknownPredecessors());
+      update<PredecessorState>(symbol, [](PredecessorState *state) {
+        return state->setHasUnknownPredecessors();
+      });
     }
   };
-  SymbolTable::walkSymbolTables(top, /*allSymUsesVisible=*/!top->getBlock(),
-                                walkFn);
+  SymbolTable::walkSymbolTables(top, !top->getBlock(), walkFn);
 }
 
 /// Returns true if the operation terminates a block. It is insufficient to
@@ -198,18 +182,17 @@ LogicalResult DeadCodeAnalysis::initializeRecursively(Operation *op) {
 }
 
 void DeadCodeAnalysis::markEdgeLive(Block *from, Block *to) {
-  auto *state = getOrCreate<Executable>(to);
-  propagateIfChanged(state, state->setToLive());
-  auto *edgeState = getOrCreate<Executable>(getProgramPoint<CFGEdge>(from, to));
-  propagateIfChanged(edgeState, edgeState->setToLive());
+  update<Executable>(to, [](Executable *state) { return state->setToLive(); });
+  update<Executable>(getProgramPoint<CFGEdge>(from, to),
+                     [](Executable *state) { return state->setToLive(); });
 }
 
 void DeadCodeAnalysis::markEntryBlocksLive(Operation *op) {
   for (Region &region : op->getRegions()) {
     if (region.empty())
       continue;
-    auto *state = getOrCreate<Executable>(&region.front());
-    propagateIfChanged(state, state->setToLive());
+    update<Executable>(&region.front(),
+                       [](Executable *state) { return state->setToLive(); });
   }
 }
 
@@ -221,7 +204,7 @@ LogicalResult DeadCodeAnalysis::visit(ProgramPoint point) {
     return emitError(point.getLoc(), "unknown program point kind");
 
   // If the parent block is not executable, there is nothing to do.
-  if (!getOrCreate<Executable>(op->getBlock())->isLive())
+  if (!getOrCreate<Executable>(op->getBlock())->get()->isLive())
     return success();
 
   // We have a live call op. Add this as a live predecessor of the callee.
@@ -296,25 +279,27 @@ void DeadCodeAnalysis::visitCallOperation(CallOpInterface call) {
   if (isa_and_nonnull<SymbolOpInterface>(callableOp) &&
       !isExternalCallable(callableOp)) {
     // Add the live callsite.
-    auto *callsites = getOrCreate<PredecessorState>(callableOp);
-    propagateIfChanged(callsites, callsites->join(call));
+    update<PredecessorState>(callableOp, [call](PredecessorState *state) {
+      return state->join(call);
+    });
   } else {
     // Mark this call op's predecessors as overdefined.
-    auto *predecessors = getOrCreate<PredecessorState>(call);
-    propagateIfChanged(predecessors, predecessors->setHasUnknownPredecessors());
+    update<PredecessorState>(call, [](PredecessorState *state) {
+      return state->setHasUnknownPredecessors();
+    });
   }
 }
 
 /// Get the constant values of the operands of an operation. If any of the
 /// constant value lattices are uninitialized, return none to indicate the
 /// analysis should bail out.
-static Optional<SmallVector<Attribute>> getOperandValuesImpl(
-    Operation *op,
-    function_ref<const Lattice<ConstantValue> *(Value)> getLattice) {
+static Optional<SmallVector<Attribute>>
+getOperandValuesImpl(Operation *op,
+                     function_ref<const ConstantValueState *(Value)> getState) {
   SmallVector<Attribute> operands;
   operands.reserve(op->getNumOperands());
   for (Value operand : op->getOperands()) {
-    const Lattice<ConstantValue> *cv = getLattice(operand);
+    const ConstantValueState *cv = getState(operand);
     // If any of the operands' values are uninitialized, bail out.
     if (cv->isUninitialized())
       return {};
@@ -325,11 +310,12 @@ static Optional<SmallVector<Attribute>> getOperandValuesImpl(
 
 Optional<SmallVector<Attribute>>
 DeadCodeAnalysis::getOperandValues(Operation *op) {
-  return getOperandValuesImpl(op, [&](Value value) {
-    auto *lattice = getOrCreate<Lattice<ConstantValue>>(value);
-    lattice->useDefSubscribe(this);
-    return lattice;
-  });
+  return getOperandValuesImpl(
+      op, [&](Value value) -> const ConstantValueState * {
+        auto *element = getOrCreate<ConstantValueState>(value);
+        element->useDefSubscribe(this);
+        return element->get();
+      });
 }
 
 void DeadCodeAnalysis::visitBranchOperation(BranchOpInterface branch) {
@@ -362,13 +348,13 @@ void DeadCodeAnalysis::visitRegionBranchOperation(
                              ? &successor.getSuccessor()->front()
                              : ProgramPoint(branch);
     // Mark the entry block as executable.
-    auto *state = getOrCreate<Executable>(point);
-    propagateIfChanged(state, state->setToLive());
+    update<Executable>(point,
+                       [](Executable *state) { return state->setToLive(); });
     // Add the parent op as a predecessor.
-    auto *predecessors = getOrCreate<PredecessorState>(point);
-    propagateIfChanged(
-        predecessors,
-        predecessors->join(branch, successor.getSuccessorInputs()));
+    update<PredecessorState>(
+        point, [branch, &successor](PredecessorState *state) {
+          return state->join(branch, successor.getSuccessorInputs());
+        });
   }
 }
 
@@ -385,17 +371,20 @@ void DeadCodeAnalysis::visitRegionTerminator(Operation *op,
   // Mark successor region entry blocks as executable and add this op to the
   // list of predecessors.
   for (const RegionSuccessor &successor : successors) {
-    PredecessorState *predecessors;
     if (Region *region = successor.getSuccessor()) {
-      auto *state = getOrCreate<Executable>(&region->front());
-      propagateIfChanged(state, state->setToLive());
-      predecessors = getOrCreate<PredecessorState>(&region->front());
+      update<Executable>(&region->front(),
+                         [](Executable *state) { return state->setToLive(); });
+      update<PredecessorState>(
+          &region->front(), [op, &successor](PredecessorState *state) {
+            return state->join(op, successor.getSuccessorInputs());
+          });
     } else {
       // Add this terminator as a predecessor to the parent op.
-      predecessors = getOrCreate<PredecessorState>(branch);
+      update<PredecessorState>(
+          branch, [op, &successor](PredecessorState *state) {
+            return state->join(op, successor.getSuccessorInputs());
+          });
     }
-    propagateIfChanged(predecessors,
-                       predecessors->join(op, successor.getSuccessorInputs()));
   }
 }
 
@@ -412,12 +401,14 @@ void DeadCodeAnalysis::visitCallableTerminator(Operation *op,
     assert(isa<CallOpInterface>(predecessor));
     auto *predecessors = getOrCreate<PredecessorState>(predecessor);
     if (canResolve) {
-      propagateIfChanged(predecessors, predecessors->join(op));
+      predecessors->update(
+          this, [op](PredecessorState *state) { return state->join(op); });
     } else {
       // If the terminator is not a return-like, then conservatively assume we
       // can't resolve the predecessor.
-      propagateIfChanged(predecessors,
-                         predecessors->setHasUnknownPredecessors());
+      predecessors->update(this, [](PredecessorState *state) {
+        return state->setHasUnknownPredecessors();
+      });
     }
   }
 }

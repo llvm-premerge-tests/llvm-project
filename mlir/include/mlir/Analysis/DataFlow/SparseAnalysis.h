@@ -23,67 +23,87 @@ namespace mlir {
 namespace dataflow {
 
 //===----------------------------------------------------------------------===//
-// AbstractSparseLattice
+// AbstractSparseState
 //===----------------------------------------------------------------------===//
 
-/// This class represents an abstract lattice. A lattice contains information
-/// about an SSA value and is what's propagated across the IR by sparse
-/// data-flow analysis.
-class AbstractSparseLattice : public AnalysisState {
+class AbstractSparseState : public AbstractState {
 public:
-  /// Lattices can only be created for values.
-  AbstractSparseLattice(Value value) : AnalysisState(value) {}
+  /// Join the information contained in 'rhs' into this state. Returns
+  /// if the value of the state changed.
+  virtual ChangeResult join(const AbstractSparseState &rhs) = 0;
 
-  /// Join the information contained in 'rhs' into this lattice. Returns
-  /// if the value of the lattice changed.
-  virtual ChangeResult join(const AbstractSparseLattice &rhs) = 0;
-
-  /// Returns true if the lattice element is at fixpoint and further calls to
-  /// `join` will not update the value of the element.
+  /// Returns true if the lattice state is at fixpoint and further calls to
+  /// `join` will not update the value of the state.
   virtual bool isAtFixpoint() const = 0;
 
-  /// Mark the lattice element as having reached a pessimistic fixpoint. This
-  /// means that the lattice may potentially have conflicting value states, and
-  /// only the most conservative value should be relied on.
+  /// Mark the lattice state as having reached a pessimistic fixpoint. This
+  /// means that the lattice may potentially have an overdefined or underdefined
+  /// value state, and only the most conservative value should be relied on.
   virtual ChangeResult markPessimisticFixpoint() = 0;
 
-  /// When the lattice gets updated, propagate an update to users of the value
-  /// using its use-def chain to subscribed analyses.
-  void onUpdate(DataFlowSolver *solver) const override;
+  /// Returns true if the value of this lattice hasn't yet been initialized.
+  virtual bool isUninitialized() const = 0;
+};
 
-  /// Subscribe an analysis to updates of the lattice. When the lattice changes,
-  /// subscribed analyses are re-invoked on all users of the value. This is
-  /// more efficient than relying on the dependency map.
-  void useDefSubscribe(DataFlowAnalysis *analysis) {
+//===----------------------------------------------------------------------===//
+// AbstractSparseElement
+//===----------------------------------------------------------------------===//
+
+class AbstractSparseElement : public AbstractElement {
+public:
+  /// Sparse elements can only be created on SSA values.
+  explicit AbstractSparseElement(DataFlowSolver &solver, Value value)
+      : AbstractElement(solver, value) {}
+
+  virtual void useDefSubscribe(DataFlowAnalysis *analysis) = 0;
+
+  virtual const AbstractSparseState *get() const override = 0;
+};
+
+/// This class represents a sparse analysis element. A sparse element is
+/// attached to an SSA value and can track its dependents through the value's
+/// use-def chain. This is useful for improving the performance of sparse
+/// analyses where users are always dependents of SSA value elements.
+template <typename StateT, template <typename, typename> class BaseT>
+class SparseElement : public BaseT<StateT, AbstractSparseElement> {
+public:
+  using BaseT<StateT, AbstractSparseElement>::BaseT;
+
+  /// When the sparse element gets updated, propagate an update to users of the
+  /// value using its use-def chain to subscribed analyses.
+  void onUpdate() override {
+    for (Operation *user : this->point.template get<Value>().getUsers())
+      for (DataFlowAnalysis *analysis : useDefSubscribers)
+        this->solver.enqueue({user, analysis});
+  }
+
+  /// Subscribe an analysis to updates of the sparse element. When the element
+  /// changes, subscribed analyses are re-invoked on all users of the value.
+  /// This is more efficient than relying on the dependency map.
+  void useDefSubscribe(DataFlowAnalysis *analysis) override {
     useDefSubscribers.insert(analysis);
   }
 
 private:
-  /// A set of analyses that should be updated when this lattice changes.
+  /// A set of analyses that should be updated when this element changes.
   SetVector<DataFlowAnalysis *, SmallVector<DataFlowAnalysis *, 4>,
             SmallPtrSet<DataFlowAnalysis *, 4>>
       useDefSubscribers;
 };
 
 //===----------------------------------------------------------------------===//
-// Lattice
+// OptimisticSparseState
 //===----------------------------------------------------------------------===//
 
-/// This class represents a lattice holding a specific value of type `ValueT`.
-/// Lattice values (`ValueT`) are required to adhere to the following:
-///
-///   * static ValueT join(const ValueT &lhs, const ValueT &rhs);
-///     - This method conservatively joins the information held by `lhs`
-///       and `rhs` into a new value. This method is required to be monotonic.
-///   * bool operator==(const ValueT &rhs) const;
-///
+/// This class represents a sparse state that has an optimistic and known value.
+/// This class should be used when the overdefined/underdefined value state is
+/// not finitely representable.
 template <typename ValueT>
-class Lattice : public AbstractSparseLattice {
+class OptimisticSparseState : public AbstractSparseState {
 public:
-  /// Construct a lattice with a known value.
-  explicit Lattice(Value value)
-      : AbstractSparseLattice(value),
-        knownValue(ValueT::getPessimisticValueState(value)) {}
+  template <typename PointT>
+  explicit OptimisticSparseState(PointT point)
+      : knownValue(ValueT::getPessimisticValue(point)) {}
 
   /// Return the value held by this lattice. This requires that the value is
   /// initialized.
@@ -92,16 +112,11 @@ public:
     return *optimisticValue;
   }
   const ValueT &getValue() const {
-    return const_cast<Lattice<ValueT> *>(this)->getValue();
+    return const_cast<OptimisticSparseState<ValueT> *>(this)->getValue();
   }
 
   /// Returns true if the value of this lattice hasn't yet been initialized.
   bool isUninitialized() const override { return !optimisticValue.hasValue(); }
-  /// Force the initialization of the element by setting it to its pessimistic
-  /// fixpoint.
-  ChangeResult defaultInitialize() override {
-    return markPessimisticFixpoint();
-  }
 
   /// Returns true if the lattice has reached a fixpoint. A fixpoint is when
   /// the information optimistically assumed to be true is the same as the
@@ -110,9 +125,8 @@ public:
 
   /// Join the information contained in the 'rhs' lattice into this
   /// lattice. Returns if the state of the current lattice changed.
-  ChangeResult join(const AbstractSparseLattice &rhs) override {
-    const Lattice<ValueT> &rhsLattice =
-        static_cast<const Lattice<ValueT> &>(rhs);
+  ChangeResult join(const AbstractSparseState &rhs) override {
+    auto &rhsLattice = static_cast<const OptimisticSparseState<ValueT> &>(rhs);
 
     // If we are at a fixpoint, or rhs is uninitialized, there is nothing to do.
     if (isAtFixpoint() || rhsLattice.isUninitialized())
@@ -120,6 +134,21 @@ public:
 
     // Join the rhs value into this lattice.
     return join(rhsLattice.getValue());
+  }
+
+  ChangeResult meet(const OptimisticSparseState<ValueT> &rhs) {
+    if (isUninitialized())
+      return ChangeResult::NoChange;
+    if (rhs.isUninitialized()) {
+      optimisticValue.reset();
+      return ChangeResult::Change;
+    }
+    ValueT newValue = ValueT::meet(getValue(), rhs.getValue());
+    if (newValue == optimisticValue)
+      return ChangeResult::NoChange;
+
+    optimisticValue = newValue;
+    return ChangeResult::Change;
   }
 
   /// Join the information contained in the 'rhs' value into this
@@ -159,16 +188,14 @@ public:
     return ChangeResult::Change;
   }
 
-  /// Print the lattice element.
   void print(raw_ostream &os) const override {
-    os << "[";
+    os << '[';
     knownValue.print(os);
-    os << ", ";
-    if (optimisticValue)
+    if (optimisticValue) {
+      os << ", ";
       optimisticValue->print(os);
-    else
-      os << "<NULL>";
-    os << "]";
+    }
+    os << ']';
   }
 
 private:
@@ -206,10 +233,10 @@ protected:
 
   /// The operation transfer function. Given the operand lattices, this
   /// function is expected to set the result lattices.
-  virtual void
-  visitOperationImpl(Operation *op,
-                     ArrayRef<const AbstractSparseLattice *> operandLattices,
-                     ArrayRef<AbstractSparseLattice *> resultLattices) = 0;
+  virtual void visitOperationImpl(
+      Operation *op,
+      ArrayRef<const AbstractSparseState *> operandLattices,
+      ArrayRef<AbstractSparseElement *> resultLattices) = 0;
 
   /// Given an operation with region control-flow, the lattices of the operands,
   /// and a region successor, compute the lattice values for block arguments
@@ -217,26 +244,29 @@ protected:
   /// of loops).
   virtual void visitNonControlFlowArgumentsImpl(
       Operation *op, const RegionSuccessor &successor,
-      ArrayRef<AbstractSparseLattice *> argLattices, unsigned firstIndex) = 0;
+      ArrayRef<AbstractSparseElement *> argLattices,
+      unsigned firstIndex) = 0;
 
   /// Get the lattice element of a value.
-  virtual AbstractSparseLattice *getLatticeElement(Value value) = 0;
+  virtual AbstractSparseElement *getLatticeElement(Value value) = 0;
 
   /// Get a read-only lattice element for a value and add it as a dependency to
   /// a program point.
-  const AbstractSparseLattice *getLatticeElementFor(ProgramPoint point,
-                                                    Value value);
+  const AbstractSparseState *getLatticeElementFor(ProgramPoint point,
+                                                          Value value);
 
   /// Mark a lattice element as having reached its pessimistic fixpoint and
   /// propgate an update if changed.
-  void markPessimisticFixpoint(AbstractSparseLattice *lattice);
+  void markPessimisticFixpoint(AbstractSparseElement *element);
 
   /// Mark the given lattice elements as having reached their pessimistic
   /// fixpoints and propagate an update if any changed.
-  void markAllPessimisticFixpoint(ArrayRef<AbstractSparseLattice *> lattices);
+  void markAllPessimisticFixpoint(
+      ArrayRef<AbstractSparseElement *> elements);
 
   /// Join the lattice element and propagate and update if it changed.
-  void join(AbstractSparseLattice *lhs, const AbstractSparseLattice &rhs);
+  void join(AbstractSparseElement *lhs,
+            const AbstractSparseState &rhs);
 
 private:
   /// Recursively initialize the analysis on nested operations and blocks.
@@ -255,9 +285,10 @@ private:
   /// operation `branch`, which can either be the entry block of one of the
   /// regions or the parent operation itself, and set either the argument or
   /// parent result lattices.
-  void visitRegionSuccessors(ProgramPoint point, RegionBranchOpInterface branch,
-                             Optional<unsigned> successorIndex,
-                             ArrayRef<AbstractSparseLattice *> lattices);
+  void
+  visitRegionSuccessors(ProgramPoint point, RegionBranchOpInterface branch,
+                        Optional<unsigned> successorIndex,
+                        ArrayRef<AbstractSparseElement *> elements);
 };
 
 //===----------------------------------------------------------------------===//
@@ -267,7 +298,7 @@ private:
 /// A sparse (forward) data-flow analysis for propagating SSA value lattices
 /// across the IR by implementing transfer functions for operations.
 ///
-/// `StateT` is expected to be a subclass of `AbstractSparseLattice`.
+/// `StateT` is expected to be a subclass of `AbstractSparseState`.
 template <typename StateT>
 class SparseDataFlowAnalysis : public AbstractSparseDataFlowAnalysis {
 public:
@@ -276,8 +307,9 @@ public:
 
   /// Visit an operation with the lattices of its operands. This function is
   /// expected to set the lattices of the operation's results.
-  virtual void visitOperation(Operation *op, ArrayRef<const StateT *> operands,
-                              ArrayRef<StateT *> results) = 0;
+  virtual void
+  visitOperation(Operation *op, ArrayRef<const StateT *> operands,
+                 ArrayRef<typename StateT::ElementT *> results) = 0;
 
   /// Given an operation with possible region control-flow, the lattices of the
   /// operands, and a region successor, compute the lattice values for block
@@ -285,18 +317,21 @@ public:
   /// the bounds of loops). By default, this method marks all such lattice
   /// elements as having reached a pessimistic fixpoint. `firstIndex` is the
   /// index of the first element of `argLattices` that is set by control-flow.
-  virtual void visitNonControlFlowArguments(Operation *op,
-                                            const RegionSuccessor &successor,
-                                            ArrayRef<StateT *> argLattices,
-                                            unsigned firstIndex) {
+  virtual void visitNonControlFlowArguments(
+      Operation *op, const RegionSuccessor &successor,
+      ArrayRef<typename StateT::ElementT *> argLattices, unsigned firstIndex) {
     markAllPessimisticFixpoint(argLattices.take_front(firstIndex));
     markAllPessimisticFixpoint(argLattices.drop_front(
         firstIndex + successor.getSuccessorInputs().size()));
   }
 
 protected:
+  bool staticallyProvides(TypeID stateID, ProgramPoint point) const override {
+    return stateID == TypeID::get<StateT>() && point.is<Value>();
+  }
+
   /// Get the lattice element for a value.
-  StateT *getLatticeElement(Value value) override {
+  typename StateT::ElementT *getLatticeElement(Value value) override {
     return getOrCreate<StateT>(value);
   }
 
@@ -309,32 +344,37 @@ protected:
 
   /// Mark the lattice elements of a range of values as having reached their
   /// pessimistic fixpoint.
-  void markAllPessimisticFixpoint(ArrayRef<StateT *> lattices) {
+  void
+  markAllPessimisticFixpoint(ArrayRef<typename StateT::ElementT *> elements) {
     AbstractSparseDataFlowAnalysis::markAllPessimisticFixpoint(
-        {reinterpret_cast<AbstractSparseLattice *const *>(lattices.begin()),
-         lattices.size()});
+        {reinterpret_cast<AbstractSparseElement *const *>(
+             elements.begin()),
+         elements.size()});
   }
 
 private:
   /// Type-erased wrappers that convert the abstract lattice operands to derived
   /// lattices and invoke the virtual hooks operating on the derived lattices.
   void visitOperationImpl(
-      Operation *op, ArrayRef<const AbstractSparseLattice *> operandLattices,
-      ArrayRef<AbstractSparseLattice *> resultLattices) override {
+      Operation *op,
+      ArrayRef<const AbstractSparseState *> operandLattices,
+      ArrayRef<AbstractSparseElement *> resultLattices) override {
     visitOperation(
         op,
         {reinterpret_cast<const StateT *const *>(operandLattices.begin()),
          operandLattices.size()},
-        {reinterpret_cast<StateT *const *>(resultLattices.begin()),
+        {reinterpret_cast<typename StateT::ElementT *const *>(
+             resultLattices.begin()),
          resultLattices.size()});
   }
   void visitNonControlFlowArgumentsImpl(
       Operation *op, const RegionSuccessor &successor,
-      ArrayRef<AbstractSparseLattice *> argLattices,
+      ArrayRef<AbstractSparseElement *> argLattices,
       unsigned firstIndex) override {
     visitNonControlFlowArguments(
         op, successor,
-        {reinterpret_cast<StateT *const *>(argLattices.begin()),
+        {reinterpret_cast<typename StateT::ElementT *const *>(
+             argLattices.begin()),
          argLattices.size()},
         firstIndex);
   }

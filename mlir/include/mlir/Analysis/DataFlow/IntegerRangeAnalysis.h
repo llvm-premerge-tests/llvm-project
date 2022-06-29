@@ -16,6 +16,7 @@
 #define MLIR_ANALYSIS_DATAFLOW_INTEGERANGEANALYSIS_H
 
 #include "mlir/Analysis/DataFlow/SparseAnalysis.h"
+#include "mlir/Analysis/DataFlow/ConstantPropagationAnalysis.h"
 #include "mlir/Interfaces/InferIntRangeInterface.h"
 
 namespace mlir {
@@ -27,7 +28,7 @@ public:
   /// Create a maximal range ([0, uint_max(t)] / [int_min(t), int_max(t)])
   /// range that is used to mark the value as unable to be analyzed further,
   /// where `t` is the type of `value`.
-  static IntegerValueRange getPessimisticValueState(Value value);
+  static IntegerValueRange getPessimisticValue(Value value);
 
   /// Create an integer value range lattice value.
   IntegerValueRange(ConstantIntRanges value) : value(std::move(value)) {}
@@ -45,6 +46,10 @@ public:
                                 const IntegerValueRange &rhs) {
     return lhs.value.rangeUnion(rhs.value);
   }
+  static IntegerValueRange meet(const IntegerValueRange &lhs,
+                                const IntegerValueRange &rhs) {
+    return lhs.value.intersection(rhs.value);
+  }
 
   /// Print the integer value range.
   void print(raw_ostream &os) const { os << value; }
@@ -57,38 +62,49 @@ private:
 /// This lattice element represents the integer value range of an SSA value.
 /// When this lattice is updated, it automatically updates the constant value
 /// of the SSA value (if the range can be narrowed to one).
-class IntegerValueRangeLattice : public Lattice<IntegerValueRange> {
+class IntegerValueRangeState : public OptimisticSparseState<IntegerValueRange> {
 public:
-  using Lattice::Lattice;
-
-  /// If the range can be narrowed to an integer constant, update the constant
-  /// value of the SSA value.
-  void onUpdate(DataFlowSolver *solver) const override;
+  using OptimisticSparseState::OptimisticSparseState;
+  using ElementT =
+      SparseElement<IntegerValueRangeState, SingleStateElement>;
 };
 
 /// Integer range analysis determines the integer value range of SSA values
 /// using operations that define `InferIntRangeInterface` and also sets the
 /// range of iteration indices of loops with known bounds.
 class IntegerRangeAnalysis
-    : public SparseDataFlowAnalysis<IntegerValueRangeLattice> {
+    : public SparseDataFlowAnalysis<IntegerValueRangeState> {
 public:
   using SparseDataFlowAnalysis::SparseDataFlowAnalysis;
 
   /// Visit an operation. Invoke the transfer function on each operation that
   /// implements `InferIntRangeInterface`.
-  void visitOperation(Operation *op,
-                      ArrayRef<const IntegerValueRangeLattice *> operands,
-                      ArrayRef<IntegerValueRangeLattice *> results) override;
+  void
+  visitOperation(Operation *op,
+                 ArrayRef<const IntegerValueRangeState *> operands,
+                 ArrayRef<IntegerValueRangeState::ElementT *> results) override;
 
   /// Visit block arguments or operation results of an operation with region
   /// control-flow for which values are not defined by region control-flow. This
   /// function calls `InferIntRangeInterface` to provide values for block
   /// arguments or tries to reduce the range on loop induction variables with
   /// known bounds.
-  void
-  visitNonControlFlowArguments(Operation *op, const RegionSuccessor &successor,
-                               ArrayRef<IntegerValueRangeLattice *> argLattices,
-                               unsigned firstIndex) override;
+  void visitNonControlFlowArguments(
+      Operation *op, const RegionSuccessor &successor,
+      ArrayRef<IntegerValueRangeState::ElementT *> argLattices,
+      unsigned firstIndex) override;
+};
+
+class IntegerRangeToConstant : public DataFlowAnalysis {
+public:
+  using DataFlowAnalysis::DataFlowAnalysis;
+
+  LogicalResult initialize(Operation *top) override;
+  LogicalResult visit(ProgramPoint point) override;
+
+  bool staticallyProvides(TypeID stateID, ProgramPoint point) const override {
+    return stateID == TypeID::get<ConstantValueState>() && point.is<Value>();
+  }
 };
 
 } // end namespace dataflow
