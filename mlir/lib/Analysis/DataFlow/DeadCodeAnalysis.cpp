@@ -1,4 +1,4 @@
-//===- SparseDataFlowAnalysis.cpp - Sparse data-flow analysis -------------===//
+//===- DeadCodeAnalysis.cpp - Dead code analysis --------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -6,22 +6,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/Analysis/SparseDataFlowAnalysis.h"
-
-#define DEBUG_TYPE "dataflow"
+#include "mlir/Analysis/DataFlow/DeadCodeAnalysis.h"
+#include "mlir/Analysis/DataFlow/ConstantPropagationAnalysis.h"
 
 using namespace mlir;
-
-//===----------------------------------------------------------------------===//
-// AbstractSparseLattice
-//===----------------------------------------------------------------------===//
-
-void AbstractSparseLattice::onUpdate(DataFlowSolver *solver) const {
-  // Push all users of the value to the queue.
-  for (Operation *user : point.get<Value>().getUsers())
-    for (DataFlowAnalysis *analysis : useDefSubscribers)
-      solver->enqueue({user, analysis});
-}
+using namespace mlir::dataflow;
 
 //===----------------------------------------------------------------------===//
 // Executable
@@ -49,20 +38,11 @@ void Executable::onUpdate(DataFlowSolver *solver) const {
         solver->enqueue({&op, analysis});
   } else if (auto *programPoint = point.dyn_cast<GenericProgramPoint *>()) {
     // Re-invoke the analysis on the successor block.
-    if (auto *edge = dyn_cast<CFGEdge>(programPoint))
+    if (auto *edge = dyn_cast<CFGEdge>(programPoint)) {
       for (DataFlowAnalysis *analysis : subscribers)
         solver->enqueue({edge->getTo(), analysis});
+    }
   }
-}
-
-//===----------------------------------------------------------------------===//
-// ConstantValue
-//===----------------------------------------------------------------------===//
-
-void ConstantValue::print(raw_ostream &os) const {
-  if (constant)
-    return constant.print(os);
-  os << "<NO VALUE>";
 }
 
 //===----------------------------------------------------------------------===//
@@ -350,7 +330,6 @@ void DeadCodeAnalysis::visitRegionBranchOperation(
 
   SmallVector<RegionSuccessor> successors;
   branch.getSuccessorRegions(/*index=*/{}, *operands, successors);
-
   for (const RegionSuccessor &successor : successors) {
     // Mark the entry block as executable.
     Region *region = successor.getSuccessor();

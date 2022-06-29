@@ -6,11 +6,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/Analysis/SparseDataFlowAnalysis.h"
+#include "mlir/Analysis/DataFlow/ConstantPropagationAnalysis.h"
+#include "mlir/Analysis/DataFlow/DeadCodeAnalysis.h"
 #include "mlir/IR/Matchers.h"
 #include "mlir/Pass/Pass.h"
 
 using namespace mlir;
+using namespace mlir::dataflow;
 
 /// Print the liveness of every block, control-flow edge, and the predecessors
 /// of all regions, callables, and calls.
