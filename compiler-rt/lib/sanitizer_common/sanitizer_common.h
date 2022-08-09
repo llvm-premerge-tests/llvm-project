@@ -56,6 +56,7 @@ inline void SetVerbosity(int verbosity) {
   atomic_store(&current_verbosity, verbosity, memory_order_relaxed);
 }
 inline int Verbosity() {
+  current_verbosity = {};
   return atomic_load(&current_verbosity, memory_order_relaxed);
 }
 
