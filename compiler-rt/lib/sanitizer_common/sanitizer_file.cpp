@@ -13,6 +13,8 @@
 //
 //===---------------------------------------------------------------------===//
 
+#include <unistd.h>
+
 #include "sanitizer_platform.h"
 
 #if !SANITIZER_FUCHSIA

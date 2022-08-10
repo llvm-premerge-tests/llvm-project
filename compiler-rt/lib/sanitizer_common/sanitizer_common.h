@@ -226,14 +226,8 @@ void RemoveANSIEscapeSequencesFromString(char *buffer);
 void Printf(const char *format, ...) FORMAT(1, 2);
 void Report(const char *format, ...) FORMAT(1, 2);
 void SetPrintfAndReportCallback(void (*callback)(const char *));
-#define VReport(level, ...)                                              \
-  do {                                                                   \
-    if ((uptr)Verbosity() >= (level)) Report(__VA_ARGS__); \
-  } while (0)
-#define VPrintf(level, ...)                                              \
-  do {                                                                   \
-    if ((uptr)Verbosity() >= (level)) Printf(__VA_ARGS__); \
-  } while (0)
+#define VReport(level, ...) Report(__VA_ARGS__);
+#define VPrintf(level, ...) Printf(__VA_ARGS__);
 
 // Lock sanitizer error reporting and protects against nested errors.
 class ScopedErrorReportLock {

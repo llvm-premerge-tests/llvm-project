@@ -11,6 +11,8 @@
 ///
 //===----------------------------------------------------------------------===//
 
+#include <stdlib.h>
+
 #include "sanitizer_common.h"
 #include "sanitizer_libc.h"
 
@@ -48,6 +50,7 @@ void SetUserDieCallback(DieCallbackType callback) {
 }
 
 void NORETURN Die() {
+  abort();
   if (UserDieCallback)
     UserDieCallback();
   for (int i = kMaxNumOfInternalDieCallbacks - 1; i >= 0; i--) {
