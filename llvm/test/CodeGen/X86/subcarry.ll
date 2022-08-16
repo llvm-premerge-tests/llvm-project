@@ -310,15 +310,16 @@ define { i64, i64, i1 } @subcarry_2x64_add_reversed(i64 %x0, i64 %x1, i64 %y0, i
 ; CHECK-LABEL: subcarry_2x64_add_reversed:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    movq %rdi, %rax
-; CHECK-NEXT:    movq %rsi, %rdi
-; CHECK-NEXT:    subq %rcx, %rdi
+; CHECK-NEXT:    xorl %edi, %edi
 ; CHECK-NEXT:    subq %rdx, %rax
-; CHECK-NEXT:    sbbq $0, %rdi
-; CHECK-NEXT:    setb %r8b
+; CHECK-NEXT:    setb %dil
+; CHECK-NEXT:    movq %rsi, %rdx
+; CHECK-NEXT:    subq %rcx, %rdx
+; CHECK-NEXT:    subq %rdi, %rdx
+; CHECK-NEXT:    setb %dil
 ; CHECK-NEXT:    cmpq %rcx, %rsi
-; CHECK-NEXT:    adcb $0, %r8b
-; CHECK-NEXT:    movq %rdi, %rdx
-; CHECK-NEXT:    movl %r8d, %ecx
+; CHECK-NEXT:    adcb $0, %dil
+; CHECK-NEXT:    movl %edi, %ecx
 ; CHECK-NEXT:    retq
   %t0 = call { i64, i1 } @llvm.usub.with.overflow.i64(i64 %x0, i64 %y0)
   %s0 = extractvalue { i64, i1 } %t0, 0
@@ -346,7 +347,8 @@ define { i64, i1 } @subcarry_fake_carry(i64 %a, i64 %b, i1 %carryin) {
 ; CHECK-LABEL: subcarry_fake_carry:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    movq %rdi, %rax
-; CHECK-NEXT:    btl $0, %edx
+; CHECK-NEXT:    andb $1, %dl
+; CHECK-NEXT:    addb $-1, %dl
 ; CHECK-NEXT:    sbbq %rsi, %rax
 ; CHECK-NEXT:    setb %dl
 ; CHECK-NEXT:    retq
