@@ -75,7 +75,34 @@ PPCInstructionSelector::PPCInstructionSelector(const PPCTargetMachine &TM,
 {
 }
 
+static bool selectCopy(MachineInstr &I, const TargetInstrInfo &TII,
+                       MachineRegisterInfo &MRI, const TargetRegisterInfo &TRI,
+                       const RegisterBankInfo &RBI) {
+  Register DstReg = I.getOperand(0).getReg();
+  Register SrcReg = I.getOperand(1).getReg();
+
+  if (!Register::isPhysicalRegister(DstReg))
+    if (!RBI.constrainGenericRegister(DstReg, PPC::G8RCRegClass, MRI))
+      return false;
+  if (!Register::isPhysicalRegister(SrcReg))
+    if (!RBI.constrainGenericRegister(SrcReg, PPC::G8RCRegClass, MRI))
+      return false;
+
+  return true;
+}
+
 bool PPCInstructionSelector::select(MachineInstr &I) {
+  auto &MBB = *I.getParent();
+  auto &MF = *MBB.getParent();
+  auto &MRI = MF.getRegInfo();
+
+  if (!isPreISelGenericOpcode(I.getOpcode())) {
+    if (I.isCopy())
+      return selectCopy(I, TII, MRI, TRI, RBI);
+
+    return true;
+  }
+
   if (selectImpl(I, *CoverageInfo))
     return true;
   return false;
