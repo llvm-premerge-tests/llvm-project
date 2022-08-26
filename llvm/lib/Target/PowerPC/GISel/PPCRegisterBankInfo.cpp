@@ -35,6 +35,8 @@ PPCRegisterBankInfo::getRegBankFromRegClass(const TargetRegisterClass &RC,
   case PPC::G8RCRegClassID:
   case PPC::G8RC_NOX0RegClassID:
   case PPC::G8RC_and_G8RC_NOX0RegClassID:
+  case PPC::G8pRCRegClassID:
+  case PPC::G8pRC_with_sub_32_in_GPRC_NOR0RegClassID:
     return getRegBank(PPC::GPRRegBankID);
   default:
     llvm_unreachable("Unexpected register class");
@@ -73,9 +75,18 @@ PPCRegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
   case TargetOpcode::G_AND:
   case TargetOpcode::G_OR:
   case TargetOpcode::G_XOR:
+  // Truncation & extension ops.
+  case TargetOpcode::G_SEXT:
+  case TargetOpcode::G_ZEXT:
+  case TargetOpcode::G_ANYEXT:
+  case TargetOpcode::G_TRUNC:
     assert(NumOperands <= 3 &&
            "This code is for instructions with 3 or less operands");
     OperandsMapping = getValueMapping(PMI_GPR64);
+    break;
+  case TargetOpcode::G_SEXT_INREG:
+    OperandsMapping = getOperandsMapping(
+        {getValueMapping(PMI_GPR64), getValueMapping(PMI_GPR64), nullptr});
     break;
   case TargetOpcode::G_CONSTANT:
     OperandsMapping = getOperandsMapping({getValueMapping(PMI_GPR64), nullptr});

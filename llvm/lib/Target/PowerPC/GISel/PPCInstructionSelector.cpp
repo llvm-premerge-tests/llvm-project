@@ -43,6 +43,11 @@ private:
   /// selector for the patterns that do not require complex C++.
   bool selectImpl(MachineInstr &I, CodeGenCoverage &CoverageInfo) const;
 
+  bool selectConst(MachineInstr &I, MachineBasicBlock &MBB,
+                   MachineRegisterInfo &MRI) const;
+  bool selectSExt(MachineInstr &I, MachineBasicBlock &MBB,
+                  MachineRegisterInfo &MRI) const;
+
   const PPCInstrInfo &TII;
   const PPCRegisterInfo &TRI;
   const PPCRegisterBankInfo &RBI;
@@ -91,6 +96,102 @@ static bool selectCopy(MachineInstr &I, const TargetInstrInfo &TII,
   return true;
 }
 
+bool PPCInstructionSelector::selectConst(MachineInstr &I,
+                                         MachineBasicBlock &MBB,
+                                         MachineRegisterInfo &MRI) const {
+  assert(I.getOpcode() == TargetOpcode::G_CONSTANT && "Unexpected G code");
+
+  MachineInstr *MI = nullptr;
+  Register DstReg = I.getOperand(0).getReg();
+  APInt ConstValue = I.getOperand(1).getCImm()->getValue();
+  if (ConstValue.isIntN(16)) {
+    bool NeedMask = !ConstValue.isIntN(15);
+    uint64_t Cst = ConstValue.getZExtValue();
+    Register TmpReg =
+        NeedMask ? MRI.createVirtualRegister(&PPC::G8RCRegClass) : DstReg;
+    MI =
+        BuildMI(MBB, I, I.getDebugLoc(), TII.get(PPC::LI8), TmpReg).addImm(Cst);
+    if (NeedMask) {
+      constrainSelectedInstRegOperands(*MI, TII, TRI, RBI);
+      MI = BuildMI(MBB, I, I.getDebugLoc(), TII.get(PPC::RLDIC), DstReg)
+               .addReg(TmpReg, RegState::Kill)
+               .addImm(0)
+               .addImm(16);
+    }
+  } else if (ConstValue.isSignedIntN(16)) {
+    int64_t Cst = ConstValue.getSExtValue();
+    MI =
+        BuildMI(MBB, I, I.getDebugLoc(), TII.get(PPC::LI8), DstReg).addImm(Cst);
+  } else if (ConstValue.isSignedIntN(32)) {
+    int64_t Cst = ConstValue.getSExtValue();
+    int64_t UpperCst = Cst >> 16;
+    int64_t LowerCst = Cst & 0xffff;
+    Register TmpReg = MRI.createVirtualRegister(&PPC::G8RCRegClass);
+    MI = BuildMI(MBB, I, I.getDebugLoc(), TII.get(PPC::LIS8), TmpReg)
+             .addImm(UpperCst);
+    constrainSelectedInstRegOperands(*MI, TII, TRI, RBI);
+    MI = BuildMI(MBB, I, I.getDebugLoc(), TII.get(PPC::ORI8), DstReg)
+             .addReg(TmpReg, RegState::Kill)
+             .addImm(LowerCst);
+  } else if (ConstValue.isIntN(32)) {
+    bool NeedMask = !ConstValue.isIntN(31);
+    uint64_t Cst = ConstValue.getZExtValue();
+    uint64_t UpperCst = Cst >> 16;
+    uint64_t LowerCst = Cst & 0xffff;
+    Register TmpReg =
+        NeedMask ? MRI.createVirtualRegister(&PPC::G8RCRegClass) : DstReg;
+    if (UpperCst == 0xffff && (LowerCst & 0x8000) == 0x8000) {
+      MI = BuildMI(MBB, I, I.getDebugLoc(), TII.get(PPC::LI8), TmpReg)
+               .addImm(LowerCst);
+    } else {
+      Register Tmp2Reg = MRI.createVirtualRegister(&PPC::G8RCRegClass);
+      MI = BuildMI(MBB, I, I.getDebugLoc(), TII.get(PPC::LIS8), Tmp2Reg)
+               .addImm(UpperCst);
+      constrainSelectedInstRegOperands(*MI, TII, TRI, RBI);
+      MI = BuildMI(MBB, I, I.getDebugLoc(), TII.get(PPC::ORI8), TmpReg)
+               .addReg(Tmp2Reg, RegState::Kill)
+               .addImm(LowerCst);
+    }
+    if (NeedMask) {
+      constrainSelectedInstRegOperands(*MI, TII, TRI, RBI);
+      MI = BuildMI(MBB, I, I.getDebugLoc(), TII.get(PPC::RLDIC), DstReg)
+               .addReg(TmpReg, RegState::Kill)
+               .addImm(0)
+               .addImm(32);
+    }
+  } else
+    return false;
+  I.eraseFromParent();
+  return constrainSelectedInstRegOperands(*MI, TII, TRI, RBI);
+}
+
+bool PPCInstructionSelector::selectSExt(MachineInstr &I, MachineBasicBlock &MBB,
+                                        MachineRegisterInfo &MRI) const {
+  assert(I.getOpcode() == TargetOpcode::G_SEXT_INREG && "Unexpected G code");
+
+  Register DstReg = I.getOperand(0).getReg();
+  Register SrcReg = I.getOperand(1).getReg();
+
+  unsigned Opc;
+  switch (I.getOperand(2).getImm()) {
+  case 8:
+    Opc = PPC::EXTSB8;
+    break;
+  case 16:
+    Opc = PPC::EXTSH8;
+    break;
+  case 32:
+    Opc = PPC::EXTSW;
+    break;
+  default:
+    return false;
+  }
+  MachineInstr *MI =
+      BuildMI(MBB, I, I.getDebugLoc(), TII.get(Opc), DstReg).addReg(SrcReg);
+  I.eraseFromParent();
+  return constrainSelectedInstRegOperands(*MI, TII, TRI, RBI);
+}
+
 bool PPCInstructionSelector::select(MachineInstr &I) {
   auto &MBB = *I.getParent();
   auto &MF = *MBB.getParent();
@@ -105,7 +206,15 @@ bool PPCInstructionSelector::select(MachineInstr &I) {
 
   if (selectImpl(I, *CoverageInfo))
     return true;
-  return false;
+
+  switch (I.getOpcode()) {
+  case TargetOpcode::G_CONSTANT:
+    return selectConst(I, MBB, MRI);
+  case TargetOpcode::G_SEXT_INREG:
+    return selectSExt(I, MBB, MRI);
+  default:
+    return false;
+  }
 }
 
 namespace llvm {
