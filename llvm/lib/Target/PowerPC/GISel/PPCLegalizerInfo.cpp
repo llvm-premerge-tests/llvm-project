@@ -40,5 +40,9 @@ PPCLegalizerInfo::PPCLegalizerInfo(const PPCSubtarget &ST) {
   getActionDefinitionsBuilder({G_ADD, G_SUB})
       .legalFor({S64})
       .clampScalar(0, S64, S64);
+
+  getActionDefinitionsBuilder({G_FADD, G_FSUB, G_FMUL, G_FDIV})
+      .legalFor({S32, S64});
+
   getLegacyLegalizerInfo().computeTables();
 }

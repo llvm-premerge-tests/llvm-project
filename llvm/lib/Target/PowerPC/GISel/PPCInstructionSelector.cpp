@@ -80,18 +80,45 @@ PPCInstructionSelector::PPCInstructionSelector(const PPCTargetMachine &TM,
 {
 }
 
+static const TargetRegisterClass *getRegClass(LLT Ty, const RegisterBank *RB) {
+  if (RB->getID() == PPC::GPRRegBankID) {
+    if (Ty.getSizeInBits() == 64)
+      return &PPC::G8RCRegClass;
+  }
+  if (RB->getID() == PPC::FPRRegBankID) {
+    if (Ty.getSizeInBits() == 32)
+      return &PPC::F4RCRegClass;
+    if (Ty.getSizeInBits() == 64)
+      return &PPC::F8RCRegClass;
+  }
+
+  llvm_unreachable("Unknown RegBank!");
+}
+
 static bool selectCopy(MachineInstr &I, const TargetInstrInfo &TII,
                        MachineRegisterInfo &MRI, const TargetRegisterInfo &TRI,
                        const RegisterBankInfo &RBI) {
   Register DstReg = I.getOperand(0).getReg();
   Register SrcReg = I.getOperand(1).getReg();
 
-  if (!Register::isPhysicalRegister(DstReg))
-    if (!RBI.constrainGenericRegister(DstReg, PPC::G8RCRegClass, MRI))
+  if (!Register::isPhysicalRegister(DstReg)) {
+    const TargetRegisterClass *RC =
+        getRegClass(MRI.getType(DstReg), RBI.getRegBank(DstReg, MRI, TRI));
+    if (!RBI.constrainGenericRegister(DstReg, *RC, MRI)) {
+      LLVM_DEBUG(dbgs() << "Failed to constrain " << TII.getName(I.getOpcode())
+                        << " dest operand\n");
       return false;
-  if (!Register::isPhysicalRegister(SrcReg))
-    if (!RBI.constrainGenericRegister(SrcReg, PPC::G8RCRegClass, MRI))
+    }
+  }
+  if (!Register::isPhysicalRegister(SrcReg)) {
+    const TargetRegisterClass *RC =
+        getRegClass(MRI.getType(SrcReg), RBI.getRegBank(SrcReg, MRI, TRI));
+    if (!RBI.constrainGenericRegister(SrcReg, *RC, MRI)) {
+      LLVM_DEBUG(dbgs() << "Failed to constrain " << TII.getName(I.getOpcode())
+                        << " source operand\n");
       return false;
+    }
+  }
 
   return true;
 }

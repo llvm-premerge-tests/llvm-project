@@ -38,6 +38,15 @@ PPCRegisterBankInfo::getRegBankFromRegClass(const TargetRegisterClass &RC,
   case PPC::G8pRCRegClassID:
   case PPC::G8pRC_with_sub_32_in_GPRC_NOR0RegClassID:
     return getRegBank(PPC::GPRRegBankID);
+  case PPC::VSFRCRegClassID:
+  case PPC::SPILLTOVSRRC_and_VSFRCRegClassID:
+  case PPC::SPILLTOVSRRC_and_VFRCRegClassID:
+  case PPC::SPILLTOVSRRC_and_F4RCRegClassID:
+  case PPC::F8RCRegClassID:
+  case PPC::VFRCRegClassID:
+  case PPC::VSSRCRegClassID:
+  case PPC::F4RCRegClassID:
+    return getRegBank(PPC::FPRRegBankID);
   default:
     llvm_unreachable("Unexpected register class");
   }
@@ -49,8 +58,7 @@ PPCRegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
 
   // Try the default logic for non-generic instructions that are either copies
   // or already have some operands assigned to banks.
-  if ((Opc != TargetOpcode::COPY && !isPreISelGenericOpcode(Opc)) ||
-      Opc == TargetOpcode::G_PHI) {
+  if (!isPreISelGenericOpcode(Opc) || Opc == TargetOpcode::G_PHI) {
     const RegisterBankInfo::InstructionMapping &Mapping =
         getInstrMappingImpl(MI);
     if (Mapping.isValid())
@@ -88,26 +96,23 @@ PPCRegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
     OperandsMapping = getOperandsMapping(
         {getValueMapping(PMI_GPR64), getValueMapping(PMI_GPR64), nullptr});
     break;
+  case TargetOpcode::G_FADD:
+  case TargetOpcode::G_FSUB:
+  case TargetOpcode::G_FMUL:
+  case TargetOpcode::G_FDIV: {
+    Register SrcReg = MI.getOperand(1).getReg();
+    unsigned Size = getSizeInBits(SrcReg, MRI, TRI);
+
+    assert((Size == 32 || Size == 64) && "Unsupport float point types!\n");
+    if (Size == 32)
+      OperandsMapping = getValueMapping(PMI_FPR32);
+    else
+      OperandsMapping = getValueMapping(PMI_FPR64);
+    break;
+  }
   case TargetOpcode::G_CONSTANT:
     OperandsMapping = getOperandsMapping({getValueMapping(PMI_GPR64), nullptr});
     break;
-  case TargetOpcode::COPY: {
-    Register DstReg = MI.getOperand(0).getReg();
-    Register SrcReg = MI.getOperand(1).getReg();
-    const RegisterBank *DstRB = getRegBank(DstReg, MRI, TRI);
-    const RegisterBank *SrcRB = getRegBank(SrcReg, MRI, TRI);
-    if (!DstRB)
-      DstRB = SrcRB;
-    else if (!SrcRB)
-      SrcRB = DstRB;
-    assert(DstRB && SrcRB && "Both RegBank were nullptr");
-    unsigned Size = getSizeInBits(DstReg, MRI, TRI);
-    Cost = copyCost(*DstRB, *SrcRB, Size);
-    OperandsMapping = getCopyMapping(DstRB->getID(), SrcRB->getID(), Size);
-    // We only care about the mapping of the destination.
-    NumOperands = 1;
-    break;
-  }
   default:
     return getInvalidInstructionMapping();
   }
