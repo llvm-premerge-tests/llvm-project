@@ -12,6 +12,7 @@
 
 #include "PPCRegisterBankInfo.h"
 #include "PPCRegisterInfo.h"
+#include "PPCSubtarget.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/Support/Debug.h"
@@ -47,6 +48,10 @@ PPCRegisterBankInfo::getRegBankFromRegClass(const TargetRegisterClass &RC,
   case PPC::VSSRCRegClassID:
   case PPC::F4RCRegClassID:
     return getRegBank(PPC::FPRRegBankID);
+  case PPC::VSRCRegClassID:
+  case PPC::VRRCRegClassID:
+  case PPC::VRRC_with_sub_64_in_SPILLTOVSRRCRegClassID:
+    return getRegBank(PPC::VSXRegBankID);
   default:
     llvm_unreachable("Unexpected register class");
   }
@@ -90,7 +95,7 @@ PPCRegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
   case TargetOpcode::G_TRUNC:
     assert(NumOperands <= 3 &&
            "This code is for instructions with 3 or less operands");
-    OperandsMapping = getValueMapping(PMI_GPR64);
+    OperandsMapping = getValueMapping(MF.getSubtarget<PPCSubtarget>().hasAltivec() ? PMI_VSX128 : PMI_GPR64);
     break;
   case TargetOpcode::G_SEXT_INREG:
     OperandsMapping = getOperandsMapping(

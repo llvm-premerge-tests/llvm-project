@@ -113,6 +113,8 @@ bool PPCCallLowering::lowerFormalArguments(MachineIRBuilder &MIRBuilder,
   SmallVector<ArgInfo, 8> SplitArgs;
   unsigned I = 0;
   for (const auto &Arg : F.args()) {
+    fprintf(stderr, "AKWAN - in lowerFormalArguments() - Dumping arguments\n");
+    Arg.dump();
     if (DL.getTypeStoreSize(Arg.getType()).isZero())
       continue;
 

@@ -23,6 +23,10 @@ PPCLegalizerInfo::PPCLegalizerInfo(const PPCSubtarget &ST) {
   const LLT S16 = LLT::scalar(16);
   const LLT S32 = LLT::scalar(32);
   const LLT S64 = LLT::scalar(64);
+  const LLT V16S8 = LLT::fixed_vector(16, 8);
+  const LLT V8S16 = LLT::fixed_vector(8, 16);
+  //const LLT V4S32 = LLT::fixed_vector(4, 32);
+  //const LLT V2S64 = LLT::fixed_vector(2, 64);
   getActionDefinitionsBuilder(G_IMPLICIT_DEF).legalFor({S64});
   getActionDefinitionsBuilder(G_CONSTANT)
       .legalFor({S64})
@@ -35,7 +39,7 @@ PPCLegalizerInfo::PPCLegalizerInfo(const PPCSubtarget &ST) {
   getActionDefinitionsBuilder(G_SEXT_INREG)
        .legalForTypeWithAnyImm({S64});
   getActionDefinitionsBuilder({G_AND, G_OR, G_XOR})
-      .legalFor({S64})
+      .legalFor({S64, V16S8, V8S16})
       .clampScalar(0, S64, S64);
   getActionDefinitionsBuilder({G_ADD, G_SUB})
       .legalFor({S64})

@@ -31,6 +31,7 @@ protected:
     PMI_GPR64 = 1,
     PMI_FPR32 = 2,
     PMI_FPR64 = 3,
+    PMI_VSX128 = 4,
     PMI_Min = PMI_GPR64,
   };
 

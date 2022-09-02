@@ -20,6 +20,8 @@ RegisterBankInfo::PartialMapping PPCGenRegisterBankInfo::PartMappings[]{
     {0, 32, PPC::FPRRegBank},
     // 2: FPR 64-bit value
     {0, 64, PPC::FPRRegBank},
+    // 3: VSX 128-bit vector
+    {0, 128, PPC::VSXRegBank}
 };
 
 // ValueMappings.
@@ -49,6 +51,10 @@ RegisterBankInfo::ValueMapping PPCGenRegisterBankInfo::ValMappings[]{
     {&PPCGenRegisterBankInfo::PartMappings[PMI_FPR64 - PMI_Min], 1},
     {&PPCGenRegisterBankInfo::PartMappings[PMI_FPR64 - PMI_Min], 1},
     {&PPCGenRegisterBankInfo::PartMappings[PMI_FPR64 - PMI_Min], 1},
+    // 5: VSX 128-bit vector.
+    {&PPCGenRegisterBankInfo::PartMappings[PMI_VSX128 - PMI_Min], 1},
+    {&PPCGenRegisterBankInfo::PartMappings[PMI_VSX128 - PMI_Min], 1},
+    {&PPCGenRegisterBankInfo::PartMappings[PMI_VSX128 - PMI_Min], 1},
 };
 
 // TODO Too simple!

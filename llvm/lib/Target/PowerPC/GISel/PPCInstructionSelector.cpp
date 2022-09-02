@@ -91,6 +91,11 @@ static const TargetRegisterClass *getRegClass(LLT Ty, const RegisterBank *RB) {
     if (Ty.getSizeInBits() == 64)
       return &PPC::F8RCRegClass;
   }
+  if (RB->getID() == PPC::VSXRegBankID) {
+    if (Ty.getSizeInBits() == 128)
+      //return &PPC::VSRCRegClass;
+      return &PPC::VRRCRegClass;
+  }
 
   llvm_unreachable("Unknown RegBank!");
 }
@@ -223,6 +228,9 @@ bool PPCInstructionSelector::select(MachineInstr &I) {
   auto &MBB = *I.getParent();
   auto &MF = *MBB.getParent();
   auto &MRI = MF.getRegInfo();
+
+  fprintf(stderr, "AKWAN - Global ISel begins:\n");
+  I.dump();
 
   if (!isPreISelGenericOpcode(I.getOpcode())) {
     if (I.isCopy())
