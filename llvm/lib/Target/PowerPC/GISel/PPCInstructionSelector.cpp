@@ -91,7 +91,7 @@ static const TargetRegisterClass *getRegClass(LLT Ty, const RegisterBank *RB) {
     if (Ty.getSizeInBits() == 64)
       return &PPC::F8RCRegClass;
   }
-  if (RB->getID() == PPC::VSXRegBankID) {
+  if (RB->getID() == PPC::VECRegBankID) {
     if (Ty.getSizeInBits() == 128)
       //return &PPC::VSRCRegClass;
       return &PPC::VRRCRegClass;

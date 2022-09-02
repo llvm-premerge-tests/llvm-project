@@ -51,7 +51,7 @@ PPCRegisterBankInfo::getRegBankFromRegClass(const TargetRegisterClass &RC,
   case PPC::VSRCRegClassID:
   case PPC::VRRCRegClassID:
   case PPC::VRRC_with_sub_64_in_SPILLTOVSRRCRegClassID:
-    return getRegBank(PPC::VSXRegBankID);
+    return getRegBank(PPC::VECRegBankID);
   default:
     llvm_unreachable("Unexpected register class");
   }
@@ -95,7 +95,7 @@ PPCRegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
   case TargetOpcode::G_TRUNC:
     assert(NumOperands <= 3 &&
            "This code is for instructions with 3 or less operands");
-    OperandsMapping = getValueMapping(MF.getSubtarget<PPCSubtarget>().hasAltivec() ? PMI_VSX128 : PMI_GPR64);
+    OperandsMapping = getValueMapping(MF.getSubtarget<PPCSubtarget>().hasAltivec() ? PMI_VEC128 : PMI_GPR64);
     break;
   case TargetOpcode::G_SEXT_INREG:
     OperandsMapping = getOperandsMapping(

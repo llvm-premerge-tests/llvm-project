@@ -15,6 +15,5 @@
 def GPRRegBank : RegisterBank<"GPR", [G8RC, G8RC_NOX0]>;
 /// Float point Registers
 def FPRRegBank : RegisterBank<"FPR", [VSSRC]>;
-/// VSX Vector Registers
-//def VSXRegBank : RegisterBank<"VSX", [VSRC]>;
-def VSXRegBank : RegisterBank<"VSX", [VRRC]>;
+/// Vector Registers
+def VECRegBank : RegisterBank<"VEC", [VSRC]>;
