@@ -30,7 +30,6 @@
 
 #include <string.h>
 
-
 // Don't inline function otherwise stacktrace changes.
 __attribute__((noinline)) void bad_function() {
   char buffer[] = "hello\0XXX";
