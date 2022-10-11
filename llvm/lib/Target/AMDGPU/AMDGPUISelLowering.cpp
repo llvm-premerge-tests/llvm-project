@@ -322,7 +322,8 @@ AMDGPUTargetLowering::AMDGPUTargetLowering(const TargetMachine &TM,
        MVT::v7i32,  MVT::v8f32,  MVT::v8i32,  MVT::v16f16, MVT::v16i16,
        MVT::v16f32, MVT::v16i32, MVT::v32f32, MVT::v32i32, MVT::v2f64,
        MVT::v2i64,  MVT::v3f64,  MVT::v3i64,  MVT::v4f64,  MVT::v4i64,
-       MVT::v8f64,  MVT::v8i64,  MVT::v16f64, MVT::v16i64},
+       MVT::v8f64,  MVT::v8i64,  MVT::v16f64, MVT::v16i64, MVT::v2i8,
+       MVT::v4i8},
       Custom);
 
   setOperationAction(ISD::FP16_TO_FP, MVT::f64, Expand);
@@ -1246,6 +1247,15 @@ SDValue AMDGPUTargetLowering::LowerCONCAT_VECTORS(SDValue Op,
   SmallVector<SDValue, 8> Args;
 
   EVT VT = Op.getValueType();
+  if (VT == MVT::v4i8) {
+    SDLoc SL(Op);
+    SDValue Lo = DAG.getNode(ISD::BITCAST, SL, MVT::i16, Op.getOperand(0));
+    SDValue Hi = DAG.getNode(ISD::BITCAST, SL, MVT::i16, Op.getOperand(1));
+    SDValue BV = DAG.getBuildVector(MVT::v2i16, SL, { Lo, Hi });
+    return DAG.getNode(ISD::BITCAST, SL, VT, BV);
+  }
+
+
   if (VT == MVT::v4i16 || VT == MVT::v4f16) {
     SDLoc SL(Op);
     SDValue Lo = DAG.getNode(ISD::BITCAST, SL, MVT::i32, Op.getOperand(0));
@@ -1270,6 +1280,36 @@ SDValue AMDGPUTargetLowering::LowerEXTRACT_SUBVECTOR(SDValue Op,
   EVT SrcVT = Op.getOperand(0).getValueType();
 
   // For these types, we have some TableGen patterns except if the index is 1
+    if ((SrcVT == MVT::v4i8 && VT == MVT::v2i8) &&
+       Start != 1) {
+      SDLoc SL(Op);
+      SDValue Vec = Op.getOperand(0);
+      SDValue Idx = Op.getOperand(1);
+      unsigned VecSize = SrcVT.getSizeInBits();
+      EVT EltVT = SrcVT.getVectorElementType();
+      unsigned EltSize = EltVT.getSizeInBits();
+      SDValue ScaleFactor = DAG.getConstant(Log2_32(EltSize), SL, MVT::i32);
+
+      MVT IntVT = MVT::getIntegerVT(VecSize);
+      MVT RestIntVT = MVT::getIntegerVT(VT.getSizeInBits());
+
+      // Convert vector index to bit-index (* EltSize)
+      SDValue ScaledIdx = DAG.getNode(ISD::SHL, SL, MVT::i32, Idx, ScaleFactor);
+
+      // Convert source vector to corresponding scalar
+      SDValue BC = DAG.getNode(ISD::BITCAST, SL, IntVT, Vec);
+
+      // Shift to get the appropriate bits for subvector
+      SDValue Elt = DAG.getNode(ISD::SRL, SL, IntVT, BC, ScaledIdx);
+
+      // Trunc to bitsize of result vector of extract_subvector
+      SDValue Result = DAG.getNode(ISD::TRUNCATE, SL, RestIntVT, Elt);
+
+      SDValue Recast = DAG.getNode(ISD::BITCAST, SL, VT, Result);
+      return Recast;
+    }
+
+
   if (((SrcVT == MVT::v4f16 && VT == MVT::v2f16) ||
        (SrcVT == MVT::v4i16 && VT == MVT::v2i16)) &&
       Start != 1)

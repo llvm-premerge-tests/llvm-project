@@ -1313,6 +1313,9 @@ def : BitConvert <f16, i16, VGPR_32>;
 def : BitConvert <i16, f16, SReg_32>;
 def : BitConvert <f16, i16, SReg_32>;
 
+def : BitConvert <v2i8, i16, SReg_32>;
+def : BitConvert <i16, v2i8, SReg_32>;
+
 // 32-bit bitcast
 def : BitConvert <i32, f32, VGPR_32>;
 def : BitConvert <f32, i32, VGPR_32>;
@@ -1328,6 +1331,9 @@ def : BitConvert <v2f16, f32, SReg_32>;
 def : BitConvert <f32, v2f16, SReg_32>;
 def : BitConvert <v2i16, f32, SReg_32>;
 def : BitConvert <f32, v2i16, SReg_32>;
+
+def : BitConvert <v4i8, i32, SReg_32>;
+def : BitConvert <v4i8, v2i16, SReg_32>;
 
 // 64-bit bitcast
 def : BitConvert <i64, f64, VReg_64>;

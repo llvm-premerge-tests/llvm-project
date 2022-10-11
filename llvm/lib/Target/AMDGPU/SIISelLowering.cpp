@@ -83,6 +83,9 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
   addRegisterClass(MVT::i32, &AMDGPU::SReg_32RegClass);
   addRegisterClass(MVT::f32, &AMDGPU::VGPR_32RegClass);
 
+  addRegisterClass(MVT::v4i8, &AMDGPU::SReg_32RegClass);
+  addRegisterClass(MVT::v2i8, &AMDGPU::SReg_32RegClass);
+
   addRegisterClass(MVT::v2i32, &AMDGPU::SReg_64RegClass);
 
   const SIRegisterInfo *TRI = STI.getRegisterInfo();
@@ -173,20 +176,20 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
   setTruncStoreAction(MVT::v8i32, MVT::v8i16, Expand);
   setTruncStoreAction(MVT::v16i32, MVT::v16i16, Expand);
   setTruncStoreAction(MVT::v32i32, MVT::v32i16, Expand);
-  setTruncStoreAction(MVT::v2i32, MVT::v2i8, Expand);
-  setTruncStoreAction(MVT::v4i32, MVT::v4i8, Expand);
+  //setTruncStoreAction(MVT::v2i32, MVT::v2i8, Expand);
+  //setTruncStoreAction(MVT::v4i32, MVT::v4i8, Expand);
   setTruncStoreAction(MVT::v8i32, MVT::v8i8, Expand);
   setTruncStoreAction(MVT::v16i32, MVT::v16i8, Expand);
   setTruncStoreAction(MVT::v32i32, MVT::v32i8, Expand);
-  setTruncStoreAction(MVT::v2i16, MVT::v2i8, Expand);
-  setTruncStoreAction(MVT::v4i16, MVT::v4i8, Expand);
+  //setTruncStoreAction(MVT::v2i16, MVT::v2i8, Expand);
+  //setTruncStoreAction(MVT::v4i16, MVT::v4i8, Expand);
   setTruncStoreAction(MVT::v8i16, MVT::v8i8, Expand);
   setTruncStoreAction(MVT::v16i16, MVT::v16i8, Expand);
   setTruncStoreAction(MVT::v32i16, MVT::v32i8, Expand);
 
   setTruncStoreAction(MVT::v3i64, MVT::v3i16, Expand);
   setTruncStoreAction(MVT::v3i64, MVT::v3i32, Expand);
-  setTruncStoreAction(MVT::v4i64, MVT::v4i8, Expand);
+  //setTruncStoreAction(MVT::v4i64, MVT::v4i8, Expand);
   setTruncStoreAction(MVT::v8i64, MVT::v8i8, Expand);
   setTruncStoreAction(MVT::v8i64, MVT::v8i16, Expand);
   setTruncStoreAction(MVT::v8i64, MVT::v8i32, Expand);
@@ -242,7 +245,7 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
         MVT::v2f64,  MVT::v4i16,  MVT::v4f16,  MVT::v3i64,  MVT::v3f64,
         MVT::v6i32,  MVT::v6f32,  MVT::v4i64,  MVT::v4f64,  MVT::v8i64,
         MVT::v8f64,  MVT::v8i16,  MVT::v8f16,  MVT::v16i16, MVT::v16f16,
-        MVT::v16i64, MVT::v16f64, MVT::v32i32, MVT::v32f32}) {
+        MVT::v16i64, MVT::v16f64, MVT::v32i32, MVT::v32f32, MVT::v4i8}) {
     for (unsigned Op = 0; Op < ISD::BUILTIN_OP_END; ++Op) {
       switch (Op) {
       case ISD::LOAD:
@@ -607,7 +610,9 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
 
     if (!Subtarget->hasVOP3PInsts())
       setOperationAction(ISD::BUILD_VECTOR, {MVT::v2i16, MVT::v2f16}, Custom);
-
+    
+    setOperationAction(ISD::BUILD_VECTOR, MVT::v2i8, Custom);
+    
     setOperationAction(ISD::FNEG, MVT::v2f16, Legal);
     // This isn't really legal, but this avoids the legalizer unrolling it (and
     // allows matching fneg (fabs x) patterns)
@@ -645,7 +650,7 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
 
     setOperationAction(ISD::VECTOR_SHUFFLE,
                        {MVT::v4f16, MVT::v4i16, MVT::v8f16, MVT::v8i16,
-                        MVT::v16f16, MVT::v16i16},
+                        MVT::v16f16, MVT::v16i16, MVT::v4i8},
                        Custom);
 
     for (MVT VT : {MVT::v4i16, MVT::v8i16, MVT::v16i16})
@@ -826,8 +831,10 @@ MVT SITargetLowering::getRegisterTypeForCallingConv(LLVMContext &Context,
         return VT.isInteger() ? MVT::v2i16 : MVT::v2f16;
       return VT.isInteger() ? MVT::i32 : MVT::f32;
     }
+    if (Size == 8)
+      return Subtarget->has16BitInsts() ? MVT::v4i8 : MVT::i32;
 
-    if (Size < 16)
+    if (Size < 16 && Size != 8)
       return Subtarget->has16BitInsts() ? MVT::i16 : MVT::i32;
     return Size == 32 ? ScalarVT.getSimpleVT() : MVT::i32;
   }
@@ -850,6 +857,9 @@ unsigned SITargetLowering::getNumRegistersForCallingConv(LLVMContext &Context,
     unsigned Size = ScalarVT.getSizeInBits();
 
     // FIXME: Should probably promote 8-bit vectors to i16.
+    if (Size == 8 && Subtarget->has16BitInsts()) 
+      return (NumElts + 1) / 4;
+
     if (Size == 16 && Subtarget->has16BitInsts())
       return (NumElts + 1) / 2;
 
@@ -872,6 +882,12 @@ unsigned SITargetLowering::getVectorTypeBreakdownForCallingConv(
     unsigned NumElts = VT.getVectorNumElements();
     EVT ScalarVT = VT.getScalarType();
     unsigned Size = ScalarVT.getSizeInBits();
+    if (Size == 8 && Subtarget->has16BitInsts()) {
+      RegisterVT = MVT::v4i8;
+      NumIntermediates = (NumElts + 1) / 4;
+      IntermediateVT = RegisterVT;
+      return NumIntermediates;
+    }
     // FIXME: We should fix the ABI to be the same on targets without 16-bit
     // support, but unless we can properly handle 3-vectors, it will be still be
     // inconsistent.
@@ -5857,8 +5873,16 @@ SDValue SITargetLowering::lowerVECTOR_SHUFFLE(SDValue Op,
   EVT ResultVT = Op.getValueType();
   ShuffleVectorSDNode *SVN = cast<ShuffleVectorSDNode>(Op);
 
-  EVT PackVT = ResultVT.isInteger() ? MVT::v2i16 : MVT::v2f16;
-  EVT EltVT = PackVT.getVectorElementType();
+  EVT PackVT;
+  EVT EltVT;
+  auto ScalarSize = ResultVT.getVectorElementType().getSizeInBits() ;
+  if (ScalarSize == 8) {
+    PackVT = MVT::v2i8;
+  }
+  else  {
+    PackVT = ResultVT.isInteger() ? MVT::v2i16 : MVT::v2f16;
+  }
+  EltVT = PackVT.getVectorElementType();
   int SrcNumElts = Op.getOperand(0).getValueType().getVectorNumElements();
 
   // vector_shuffle <0,1,6,7> lhs, rhs
@@ -5969,32 +5993,56 @@ SDValue SITargetLowering::lowerBUILD_VECTOR(SDValue Op,
     return DAG.getNode(ISD::BITCAST, SL, VT, Blend);
   }
 
-  assert(VT == MVT::v2f16 || VT == MVT::v2i16);
-  assert(!Subtarget->hasVOP3PInsts() && "this should be legal");
+  if (VT != MVT::v2i8) {
+    assert(VT == MVT::v2f16 || VT == MVT::v2i16);
+    assert(!Subtarget->hasVOP3PInsts() && "this should be legal");
+  }
+
+
+  EVT SrcVT = Op.getOperand(1).getValueType(); // i8, i16
+  EVT BCVT = (SrcVT) == MVT::f16 ? MVT::i16 : SrcVT;
+
+  unsigned VecSize = VT.getSizeInBits(); // 16, 32
+  EVT EltVT = SrcVT.getVectorElementType();
+  unsigned EltSize = EltVT.getSizeInBits();
+  
+  SDValue ScaleFactor = DAG.getConstant(Log2_32(EltSize), SL, MVT::i32);
+  // Convert vector index to bit-index (* EltSize)
+  SDValue ScaledShift = DAG.getNode(ISD::SHL, SL, MVT::i32, DAG.getConstant(1, SL, MVT::i32), ScaleFactor);
+
+  MVT IntVT = MVT::getIntegerVT(VecSize); // i16, i32
+  MVT FloatVT = MVT::getFloatingPointVT(VecSize); // f32
+  MVT RestIntVT = MVT::getIntegerVT(VT.getSizeInBits());
+
+
+
 
   SDValue Lo = Op.getOperand(0);
   SDValue Hi = Op.getOperand(1);
 
   // Avoid adding defined bits with the zero_extend.
   if (Hi.isUndef()) {
-    Lo = DAG.getNode(ISD::BITCAST, SL, MVT::i16, Lo);
-    SDValue ExtLo = DAG.getNode(ISD::ANY_EXTEND, SL, MVT::i32, Lo);
+    Lo = DAG.getNode(ISD::BITCAST, SL, BCVT, Lo);
+    SDValue ExtLo = DAG.getNode(ISD::ANY_EXTEND, SL, IntVT, Lo);
     return DAG.getNode(ISD::BITCAST, SL, VT, ExtLo);
   }
 
-  Hi = DAG.getNode(ISD::BITCAST, SL, MVT::i16, Hi);
-  Hi = DAG.getNode(ISD::ZERO_EXTEND, SL, MVT::i32, Hi);
+  Hi = DAG.getNode(ISD::BITCAST, SL, BCVT, Hi);
+  Hi = DAG.getNode(ISD::ZERO_EXTEND, SL, IntVT, Hi);
 
-  SDValue ShlHi = DAG.getNode(ISD::SHL, SL, MVT::i32, Hi,
-                              DAG.getConstant(16, SL, MVT::i32));
+  SDValue ShlHi = DAG.getNode(ISD::SHL, SL, IntVT, Hi, ScaledShift);
   if (Lo.isUndef())
     return DAG.getNode(ISD::BITCAST, SL, VT, ShlHi);
 
-  Lo = DAG.getNode(ISD::BITCAST, SL, MVT::i16, Lo);
-  Lo = DAG.getNode(ISD::ZERO_EXTEND, SL, MVT::i32, Lo);
+  Lo = DAG.getNode(ISD::BITCAST, SL, BCVT, Lo);
+  Lo = DAG.getNode(ISD::ZERO_EXTEND, SL, IntVT, Lo);
 
-  SDValue Or = DAG.getNode(ISD::OR, SL, MVT::i32, Lo, ShlHi);
-  return DAG.getNode(ISD::BITCAST, SL, VT, Or);
+  SDValue Or = DAG.getNode(ISD::OR, SL, IntVT, Lo, ShlHi);
+  auto temp = DAG.getNode(ISD::BITCAST, SL, VT, Or);
+  errs() << "Build Final node : \n";
+  temp->dump();
+  errs() << "\n";
+  return temp;
 }
 
 bool
