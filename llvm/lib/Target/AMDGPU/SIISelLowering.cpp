@@ -245,7 +245,8 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
         MVT::v2f64,  MVT::v4i16,  MVT::v4f16,  MVT::v3i64,  MVT::v3f64,
         MVT::v6i32,  MVT::v6f32,  MVT::v4i64,  MVT::v4f64,  MVT::v8i64,
         MVT::v8f64,  MVT::v8i16,  MVT::v8f16,  MVT::v16i16, MVT::v16f16,
-        MVT::v16i64, MVT::v16f64, MVT::v32i32, MVT::v32f32, MVT::v4i8}) {
+        MVT::v16i64, MVT::v16f64, MVT::v32i32, MVT::v32f32, MVT::v4i8,
+        MVT::v2i8}) {
     for (unsigned Op = 0; Op < ISD::BUILTIN_OP_END; ++Op) {
       switch (Op) {
       case ISD::LOAD:
@@ -5777,12 +5778,16 @@ SDValue SITargetLowering::lowerEXTRACT_VECTOR_ELT(SDValue Op,
                                                   SelectionDAG &DAG) const {
   SDLoc SL(Op);
 
+
+
   EVT ResultVT = Op.getValueType();
   SDValue Vec = Op.getOperand(0);
   SDValue Idx = Op.getOperand(1);
   EVT VecVT = Vec.getValueType();
   unsigned VecSize = VecVT.getSizeInBits();
   EVT EltVT = VecVT.getVectorElementType();
+
+  errs() << "found EVE with res: " << ResultVT.getEVTString() << " and src: " << VecVT.getEVTString() << "\n";
 
   DAGCombinerInfo DCI(DAG, AfterLegalizeVectorOps, true, nullptr);
 
@@ -5856,6 +5861,11 @@ SDValue SITargetLowering::lowerEXTRACT_VECTOR_ELT(SDValue Op,
 
   if (ResultVT == MVT::f16) {
     SDValue Result = DAG.getNode(ISD::TRUNCATE, SL, MVT::i16, Elt);
+    return DAG.getNode(ISD::BITCAST, SL, ResultVT, Result);
+  }
+
+  if (ResultVT == MVT::i8) {
+    SDValue Result = DAG.getNode(ISD::TRUNCATE, SL, MVT::i8, Elt);
     return DAG.getNode(ISD::BITCAST, SL, ResultVT, Result);
   }
 
@@ -6038,11 +6048,11 @@ SDValue SITargetLowering::lowerBUILD_VECTOR(SDValue Op,
   Lo = DAG.getNode(ISD::ZERO_EXTEND, SL, IntVT, Lo);
 
   SDValue Or = DAG.getNode(ISD::OR, SL, IntVT, Lo, ShlHi);
-  auto temp = DAG.getNode(ISD::BITCAST, SL, VT, Or);
-  errs() << "Build Final node : \n";
-  temp->dump();
-  errs() << "\n";
-  return temp;
+  return DAG.getNode(ISD::BITCAST, SL, VT, Or);
+  //errs() << "Build Final node : \n";
+  //temp->dump();
+  //errs() << "\n";
+  //return Or;
 }
 
 bool

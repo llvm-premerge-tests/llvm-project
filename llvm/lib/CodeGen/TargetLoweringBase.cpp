@@ -954,12 +954,16 @@ void TargetLoweringBase::setJumpIsExpensive(bool isExpensive) {
 
 TargetLoweringBase::LegalizeKind
 TargetLoweringBase::getTypeConversion(LLVMContext &Context, EVT VT) const {
+  errs() << "in TLB::getTypeConv\n";
   // If this is a simple type, use the ComputeRegisterProp mechanism.
   if (VT.isSimple()) {
+    errs() << "isSimple]\n";
     MVT SVT = VT.getSimpleVT();
     assert((unsigned)SVT.SimpleTy < std::size(TransformToType));
     MVT NVT = TransformToType[SVT.SimpleTy];
+    errs() << "Found TypeTransform" << (int)NVT.SimpleTy << "\n";
     LegalizeTypeAction LA = ValueTypeActions.getTypeAction(SVT);
+    errs() << "Found TypeAction: " << (int)LA << "\n";
 
     assert((LA == TypeLegal || LA == TypeSoftenFloat ||
             LA == TypeSoftPromoteHalf ||
