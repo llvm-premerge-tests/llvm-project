@@ -1131,6 +1131,7 @@ SDValue SelectionDAGBuilder::getControlRoot() {
 void SelectionDAGBuilder::visit(const Instruction &I) {
   // Set up outgoing PHI node register values before emitting the terminator.
   if (I.isTerminator()) {
+    errs() << "Is terminator\n";
     HandlePHINodesInSuccessorBlocks(I.getParent());
   }
 
@@ -1149,6 +1150,7 @@ void SelectionDAGBuilder::visit(const Instruction &I) {
         DAG, [&](SDNode *) { NodeInserted = true; });
   }
 
+  errs() << "calling visit with opcode " << I.getOpcodeName() << "\n";
   visit(I.getOpcode(), I);
 
   if (!I.isTerminator() && !HasTailCall &&
@@ -1936,6 +1938,7 @@ void SelectionDAGBuilder::visitCatchSwitch(const CatchSwitchInst &CSI) {
 }
 
 void SelectionDAGBuilder::visitRet(const ReturnInst &I) {
+  errs() << "in visitRet\n";
   const TargetLowering &TLI = DAG.getTargetLoweringInfo();
   auto &DL = DAG.getDataLayout();
   SDValue Chain = getControlRoot();
@@ -1955,6 +1958,7 @@ void SelectionDAGBuilder::visitRet(const ReturnInst &I) {
   }
 
   if (!FuncInfo.CanLowerReturn) {
+    errs() << "!CanLowerReturn\n";
     unsigned DemoteReg = FuncInfo.DemoteRegister;
     const Function *F = I.getParent()->getParent();
 
@@ -1998,9 +2002,11 @@ void SelectionDAGBuilder::visitRet(const ReturnInst &I) {
     Chain = DAG.getNode(ISD::TokenFactor, getCurSDLoc(),
                         MVT::Other, Chains);
   } else if (I.getNumOperands() != 0) {
+    errs() << "CanReturn && NumOpers !=0\n";
     SmallVector<EVT, 4> ValueVTs;
     ComputeValueVTs(TLI, DL, I.getOperand(0)->getType(), ValueVTs);
     unsigned NumValues = ValueVTs.size();
+    errs() << "NumValues: " << NumValues << "\n";
     if (NumValues) {
       SDValue RetOp = getValue(I.getOperand(0));
 
@@ -2027,9 +2033,11 @@ void SelectionDAGBuilder::visitRet(const ReturnInst &I) {
 
         CallingConv::ID CC = F->getCallingConv();
 
+        errs() << "calling getNumRegs for CallConv\n";
         unsigned NumParts = TLI.getNumRegistersForCallingConv(Context, CC, VT);
         MVT PartVT = TLI.getRegisterTypeForCallingConv(Context, CC, VT);
         SmallVector<SDValue, 4> Parts(NumParts);
+        errs() << "Calling getCopyToParts with NumParts: " << NumParts << "\n";
         getCopyToParts(DAG, getCurSDLoc(),
                        SDValue(RetOp.getNode(), RetOp.getResNo() + j),
                        &Parts[0], NumParts, PartVT, &I, CC, ExtendKind);
@@ -2067,6 +2075,8 @@ void SelectionDAGBuilder::visitRet(const ReturnInst &I) {
     }
   }
 
+  errs() << "Made it passed end of condition\n";
+
   // Push in swifterror virtual register as the last element of Outs. This makes
   // sure swifterror virtual register will be returned in the swifterror
   // physical register.
@@ -2086,6 +2096,7 @@ void SelectionDAGBuilder::visitRet(const ReturnInst &I) {
                         EVT(TLI.getPointerTy(DL))));
   }
 
+  errs() << "doing calling conv stuff\n";
   bool isVarArg = DAG.getMachineFunction().getFunction().isVarArg();
   CallingConv::ID CallConv =
     DAG.getMachineFunction().getFunction().getCallingConv();

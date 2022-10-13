@@ -371,6 +371,7 @@ static void computeUsesMSVCFloatingPoint(const Triple &TT, const Function &F,
 }
 
 bool SelectionDAGISel::runOnMachineFunction(MachineFunction &mf) {
+  errs() << "SelectionDAGIsel ROMF\n";
   // If we already selected that function, we do not need to run SDISel.
   if (mf.getProperties().hasProperty(
           MachineFunctionProperties::Property::Selected))
@@ -673,8 +674,12 @@ void SelectionDAGISel::SelectBasicBlock(BasicBlock::const_iterator Begin,
   // Lower the instructions. If a call is emitted as a tail call, cease emitting
   // nodes for this block.
   for (BasicBlock::const_iterator I = Begin; I != End && !SDB->HasTailCall; ++I) {
-    if (!ElidedArgCopyInstrs.count(&*I))
+    if (!ElidedArgCopyInstrs.count(&*I)) {
+      errs() << "SelectBB :SDB visit:";
+      I->dump();
+      errs() << "\n";
       SDB->visit(*I);
+    }
   }
 
   // Make sure the root of the DAG is up-to-date.
@@ -1342,6 +1347,7 @@ static void processDbgDeclares(FunctionLoweringInfo &FuncInfo) {
 }
 
 void SelectionDAGISel::SelectAllBasicBlocks(const Function &Fn) {
+  errs() << "Select ALL basic blocks\n";
   FastISelFailed = false;
   // Initialize the Fast-ISel state, if needed.
   FastISel *FastIS = nullptr;

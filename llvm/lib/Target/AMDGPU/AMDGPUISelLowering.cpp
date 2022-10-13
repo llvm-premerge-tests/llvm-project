@@ -1141,6 +1141,7 @@ SDValue AMDGPUTargetLowering::LowerDYNAMIC_STACKALLOC(SDValue Op,
 
 SDValue AMDGPUTargetLowering::LowerOperation(SDValue Op,
                                              SelectionDAG &DAG) const {
+  errs() << "AMDGPUTL::LowerOp\n";
   switch (Op.getOpcode()) {
   default:
     Op->print(errs(), &DAG);

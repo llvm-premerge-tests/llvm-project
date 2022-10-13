@@ -124,6 +124,7 @@ AMDGPUDAGToDAGISel::AMDGPUDAGToDAGISel(
 }
 
 bool AMDGPUDAGToDAGISel::runOnMachineFunction(MachineFunction &MF) {
+  errs() << "amdgpuisel ROMF\n";
 #ifdef EXPENSIVE_CHECKS
   DominatorTree & DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   LoopInfo * LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();

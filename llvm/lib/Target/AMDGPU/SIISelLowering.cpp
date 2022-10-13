@@ -85,6 +85,7 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
 
   addRegisterClass(MVT::v4i8, &AMDGPU::SReg_32RegClass);
   addRegisterClass(MVT::v2i8, &AMDGPU::SReg_32RegClass);
+  addRegisterClass(MVT::i8, &AMDGPU::SReg_32RegClass);
 
   addRegisterClass(MVT::v2i32, &AMDGPU::SReg_64RegClass);
 
@@ -651,7 +652,7 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
 
     setOperationAction(ISD::VECTOR_SHUFFLE,
                        {MVT::v4f16, MVT::v4i16, MVT::v8f16, MVT::v8i16,
-                        MVT::v16f16, MVT::v16i16, MVT::v4i8},
+                        MVT::v16f16, MVT::v16i16, MVT::v4i8, MVT::v2i8},
                        Custom);
 
     for (MVT VT : {MVT::v4i16, MVT::v8i16, MVT::v16i16})
@@ -851,7 +852,7 @@ unsigned SITargetLowering::getNumRegistersForCallingConv(LLVMContext &Context,
                                                          EVT VT) const {
   if (CC == CallingConv::AMDGPU_KERNEL)
     return TargetLowering::getNumRegistersForCallingConv(Context, CC, VT);
-
+  
   if (VT.isVector()) {
     unsigned NumElts = VT.getVectorNumElements();
     EVT ScalarVT = VT.getScalarType();
@@ -859,7 +860,7 @@ unsigned SITargetLowering::getNumRegistersForCallingConv(LLVMContext &Context,
 
     // FIXME: Should probably promote 8-bit vectors to i16.
     if (Size == 8 && Subtarget->has16BitInsts()) 
-      return (NumElts + 1) / 4;
+      return (NumElts + 2) / 4;
 
     if (Size == 16 && Subtarget->has16BitInsts())
       return (NumElts + 1) / 2;
@@ -4670,6 +4671,10 @@ SDValue SITargetLowering::splitTernaryVectorOp(SDValue Op,
 
 
 SDValue SITargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
+  errs() << "SITL::LowerOp on op\n";
+  Op.dump();
+  errs() << "\n";
+
   switch (Op.getOpcode()) {
   default: return AMDGPUTargetLowering::LowerOperation(Op, DAG);
   case ISD::BRCOND: return LowerBRCOND(Op, DAG);
@@ -4703,6 +4708,7 @@ SDValue SITargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   case ISD::INSERT_VECTOR_ELT:
     return lowerINSERT_VECTOR_ELT(Op, DAG);
   case ISD::EXTRACT_VECTOR_ELT:
+    errs() << "calling lowerEVE\n";
     return lowerEXTRACT_VECTOR_ELT(Op, DAG);
   case ISD::VECTOR_SHUFFLE:
     return lowerVECTOR_SHUFFLE(Op, DAG);
@@ -5779,6 +5785,8 @@ SDValue SITargetLowering::lowerEXTRACT_VECTOR_ELT(SDValue Op,
   SDLoc SL(Op);
 
 
+  errs() << "in lowerEVE\n";
+
 
   EVT ResultVT = Op.getValueType();
   SDValue Vec = Op.getOperand(0);
@@ -5879,6 +5887,7 @@ static bool elementPairIsContiguous(ArrayRef<int> Mask, int Elt) {
 
 SDValue SITargetLowering::lowerVECTOR_SHUFFLE(SDValue Op,
                                               SelectionDAG &DAG) const {
+  errs() << "in SIISelLowering lowerVECTOR_SHUFFLE\n";
   SDLoc SL(Op);
   EVT ResultVT = Op.getValueType();
   ShuffleVectorSDNode *SVN = cast<ShuffleVectorSDNode>(Op);
@@ -5887,6 +5896,7 @@ SDValue SITargetLowering::lowerVECTOR_SHUFFLE(SDValue Op,
   EVT EltVT;
   auto ScalarSize = ResultVT.getVectorElementType().getSizeInBits() ;
   if (ScalarSize == 8) {
+    // PackVT is 
     PackVT = MVT::v2i8;
   }
   else  {
@@ -5958,6 +5968,8 @@ SDValue SITargetLowering::lowerBUILD_VECTOR(SDValue Op,
   SDLoc SL(Op);
   EVT VT = Op.getValueType();
 
+  errs() << "in lowerBuild_Vector with VT: " << VT.getEVTString() << "\n";
+
   if (VT == MVT::v4i16 || VT == MVT::v4f16 ||
       VT == MVT::v8i16 || VT == MVT::v8f16) {
     EVT HalfVT = MVT::getVectorVT(VT.getVectorElementType().getSimpleVT(),
@@ -6013,7 +6025,8 @@ SDValue SITargetLowering::lowerBUILD_VECTOR(SDValue Op,
   EVT BCVT = (SrcVT) == MVT::f16 ? MVT::i16 : SrcVT;
 
   unsigned VecSize = VT.getSizeInBits(); // 16, 32
-  EVT EltVT = SrcVT.getVectorElementType();
+  EVT EltVT = SrcVT.isVector() ? SrcVT.getVectorElementType() : SrcVT.getScalarType();
+
   unsigned EltSize = EltVT.getSizeInBits();
   
   SDValue ScaleFactor = DAG.getConstant(Log2_32(EltSize), SL, MVT::i32);
