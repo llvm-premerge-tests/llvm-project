@@ -45,6 +45,12 @@ def cvt_f32_ubyteN : GICombineRule<
          [{ return PostLegalizerHelper.matchCvtF32UByteN(*${cvt_f32_ubyteN}, ${matchinfo}); }]),
   (apply [{ PostLegalizerHelper.applyCvtF32UByteN(*${cvt_f32_ubyteN}, ${matchinfo}); }])>;
 
+def insert_vec_elt_to_shuffle : GICombineRule<
+  (defs root:$insertelt, unsigned_matchinfo:$matchinfo),
+  (match (wip_match_opcode G_INSERT_VECTOR_ELT):$insertelt,
+      [{ return PreLegalizerHelper.matchInsertVectorEltToShuffle(*${insertelt}, ${matchinfo}); }]),
+  (apply [{ PreLegalizerHelper.applyInsertVectorEltToShuffle(*${insertelt}, ${matchinfo}); }])>;
+
 def clamp_i64_to_i16_matchdata : GIDefMatchData<"AMDGPUPreLegalizerCombinerHelper::ClampI64ToI16MatchInfo">;
 
 def clamp_i64_to_i16 : GICombineRule<
@@ -109,7 +115,7 @@ def gfx6gfx7_combines : GICombineGroup<[fcmp_select_to_fmin_fmax_legacy]>;
 
 def AMDGPUPreLegalizerCombinerHelper: GICombinerHelper<
   "AMDGPUGenPreLegalizerCombinerHelper",
-  [all_combines, clamp_i64_to_i16, foldable_fneg]> {
+  [all_combines, clamp_i64_to_i16, foldable_fneg, insert_vec_elt_to_shuffle]> {
   let DisableRuleOption = "amdgpuprelegalizercombiner-disable-rule";
   let StateClass = "AMDGPUPreLegalizerCombinerHelperState";
   let AdditionalArguments = [];

@@ -55,6 +55,9 @@ public:
 
   void applyClampI64ToI16(MachineInstr &MI,
                           const ClampI64ToI16MatchInfo &MatchInfo);
+
+  bool matchInsertVectorEltToShuffle(MachineInstr &MI, unsigned &Idx);
+  void applyInsertVectorEltToShuffle(MachineInstr &MI, unsigned &Idx);
 };
 
 bool AMDGPUPreLegalizerCombinerHelper::matchClampI64ToI16(
@@ -152,6 +155,73 @@ void AMDGPUPreLegalizerCombinerHelper::applyClampI64ToI16(
   B.buildTrunc(MI.getOperand(0).getReg(), Med3);
 
   MI.eraseFromParent();
+}
+
+bool AMDGPUPreLegalizerCombinerHelper::matchInsertVectorEltToShuffle(
+    MachineInstr &MI, unsigned &Idx) {
+  // Transfroms a G_INSERT_VECTOR_ELT into an equivalent G_SHUFFLE_MASK if:
+  //    - Scalar Pack insts are present (for <32 bits element types)
+  //    - The vector has <= 4 elements.
+  // as this is a preferred canonical form of the operation.
+  //
+  // Note that both restrictions are arbitrary. Currently, it's mostly targeted
+  // towards 2x16 vectors. Restrictions could be relaxed or entirely removed in
+  // the future if codegen can handle it without causing regressions.
+
+  LLT VecTy = MRI.getType(MI.getOperand(0).getReg());
+  const unsigned EltSize = VecTy.getElementType().getSizeInBits();
+  if (EltSize < 32 &&
+      !MI.getMF()->getSubtarget<GCNSubtarget>().hasScalarPackInsts())
+    return false;
+
+  if (VecTy.isScalable() || VecTy.getNumElements() > 4)
+    return false;
+
+  Optional<ValueAndVReg> MaybeIdxVal =
+      getIConstantVRegValWithLookThrough(MI.getOperand(3).getReg(), MRI);
+  if (!MaybeIdxVal)
+    return false;
+
+  Idx = MaybeIdxVal->Value.getZExtValue();
+  return true;
+}
+
+void AMDGPUPreLegalizerCombinerHelper::applyInsertVectorEltToShuffle(
+    MachineInstr &MI, unsigned &Idx) {
+  B.setInstrAndDebugLoc(MI);
+
+  Register Ins = MI.getOperand(2).getReg();
+  Register Vec = MI.getOperand(1).getReg();
+  Register Dst = MI.getOperand(0).getReg();
+
+  LLT VecTy = MRI.getType(Dst);
+  LLT EltTy = VecTy.getElementType();
+  const unsigned NumElts = VecTy.getNumElements();
+
+  const auto Undef = MRI.createGenericVirtualRegister(EltTy);
+  B.buildUndef(Undef);
+
+  const auto OtherVec = MRI.createGenericVirtualRegister(VecTy);
+
+  SmallVector<Register, 4> Srcs;
+  Srcs.push_back(Ins);
+  for (unsigned K = 1; K < NumElts; ++K)
+    Srcs.push_back(Undef);
+
+  B.buildBuildVector(OtherVec, Srcs);
+
+  // NumElts == Ins in OtherVec
+  // 0...(NumElts-1) = Original elements
+  SmallVector<int, 4> ShuffleMask;
+  for (unsigned CurIdx = 0; CurIdx < NumElts; ++CurIdx) {
+    if (CurIdx == Idx)
+      ShuffleMask.push_back(NumElts);
+    else
+      ShuffleMask.push_back(CurIdx);
+  }
+
+  B.buildShuffleVector(Dst, Vec, OtherVec, ShuffleMask);
+  Helper.eraseInst(MI);
 }
 
 class AMDGPUPreLegalizerCombinerHelperState {
