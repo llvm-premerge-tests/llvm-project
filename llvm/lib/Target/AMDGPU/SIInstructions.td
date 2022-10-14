@@ -1308,6 +1308,7 @@ foreach Index = 0-31 in {
 // FIXME: Why do only some of these type combinations for SReg and
 // VReg?
 // 16-bit bitcast
+
 def : BitConvert <i16, f16, VGPR_32>;
 def : BitConvert <f16, i16, VGPR_32>;
 def : BitConvert <i16, f16, SReg_32>;
@@ -2788,13 +2789,58 @@ def : GCNPat <
   (S_PACK_LL_B32_B16 SReg_32:$src0, SReg_32:$src1)
 >;
 
-/*
 def : GCNPat <
-  (v4i8 (build_vector (i8:$src0), (i8:$src1), (i8:$src2), (i8:$src3))),
-  (v4i8 (i32 (V_OR_B32_e64 (i32 (S_LSHL_B32 SReg_32:$src3, (i32 24))), (i32 (V_OR_B32_e64 (i32 (S_LSHL_B32 SReg_32:$src2, (i32 16))), (i32 (V_OR_B32_e64 (i32 (S_LSHL_B32 SReg_32:$src1, (i32 8))), SReg_32:$src0)))))))
+  (v2i8 (DivergentBinFrag<build_vector> (i8 0), (i8 SReg_32:$src1))),
+  (v2i8 (V_LSHLREV_B32_e64 (i8 8), SReg_32:$src1))
 >;
 
+def : GCNPat <
+  (v4i8 (build_vector (i8 SReg_32:$src0), (i8 SReg_32:$src1), (i8 SReg_32:$src2), (i8 SReg_32:$src3))),
+  
 
+  (v4i8 
+
+  		(V_OR_B32_e64 
+
+  				(S_LSHL_B32 
+  					SReg_32:$src3, 
+  					(i32 24)
+	  			)
+  			, 
+ 
+  				(V_OR_B32_e64 
+
+  						(S_LSHL_B32 
+  							SReg_32:$src2, 
+	  						(i32 16)
+  						)
+  					, 
+
+  						(V_OR_B32_e64 
+  	
+  								(S_LSHL_B32 
+  									SReg_32:$src1, 
+  									(i32 8)
+	  							)
+  							, 
+  							SReg_32:$src0
+  						)
+
+				)
+
+		)
+
+	
+)
+>;
+
+/*
+def : GCNPat <
+  (v4i8 (build_vector (i8 SReg_32:$src0), (i8 SReg_32:$src1), (i8 SReg_32:$src2), (i8 SReg_32:$src3))),
+  (v4i8 (i32 (V_OR_B32_e64 (i32 (S_LSHL_B32 SReg_32:$src3, (i32 24))), (i32 (V_OR_B32_e64 (i32 (S_LSHL_B32 SReg_32:$src2, (i32 16))), (i32 (V_OR_B32_e64 (i32 (S_LSHL_B32 SReg_32:$src1, (i32 8))), SReg_32:$src0)))))))
+>;
+*/
+/*
 def : GCNPat <
   (v2i8 (build_vector (i8:$src0), (i8:$src1))),
   (v2i8 (i16 (V_OR_B32_e64 (i16 (S_LSHL_B32 SReg_32:$src1, (i32 8))), SReg_32:$src0)))
@@ -2808,9 +2854,10 @@ def : GCNPat <
 
 def : GCNPat <
   (v2i8 (DivergentBinFrag<build_vector> (i8 undef), (i8 SReg_32:$src1))),
-  (v2i8 (V_LSHLREV_B32_e64 (i32 16), SReg_32:$src1))
+  (V_LSHLREV_B32_e64 (i32 16), SReg_32:$src1)
 >;
 */
+
 
 foreach Ty = [i16, f16] in {
 
