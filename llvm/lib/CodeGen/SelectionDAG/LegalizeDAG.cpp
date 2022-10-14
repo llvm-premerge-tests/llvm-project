@@ -958,10 +958,6 @@ void SelectionDAGLegalize::LegalizeLoadOps(SDNode *Node) {
 
 /// Return a legal replacement for the given operation, with all legal operands.
 void SelectionDAGLegalize::LegalizeOp(SDNode *Node) {
-  errs() << "\n\n\nDAG BEFORE\n";
-  DAG.dump();
-  errs() << "\n";
-
   LLVM_DEBUG(dbgs() << "\nLegalizing: "; Node->dump(&DAG));
 
   // Allow illegal target nodes and illegal registers.
@@ -970,35 +966,14 @@ void SelectionDAGLegalize::LegalizeOp(SDNode *Node) {
     return;
 
 #ifndef NDEBUG
-/*
+
   for (unsigned i = 0, e = Node->getNumValues(); i != e; ++i) {
-    errs() << "Checking legality of: \n";
-    auto temp = Node->getOperand(i-1);
-    temp.dump();
-    errs() << "\n";
     assert(TLI.getTypeAction(*DAG.getContext(), Node->getValueType(i)) ==
              TargetLowering::TypeLegal &&
            "Unexpected illegal type!");
   }
-*/
-  errs() << "Quick Legal Check\n";
-  for (const SDValue &Op : Node->op_values()) {
-    Op.dump();
-    errs() << "\n";
-    assert(TLI.getTypeAction(*DAG.getContext(), Op.getValueType()) ==
-             TargetLowering::TypeLegal &&
-           "Unexpected illegal type!");
-  }
-
-  errs() << "Full Legal Check\n";
 
   for (const SDValue &Op : Node->op_values()) {
-    errs() << "Checking op: \n";
-    Op.dump();
-    errs() << "\n";
-    if (TLI.getTypeAction(*DAG.getContext(), Op.getValueType()) ==
-              TargetLowering::TypeLegal) errs() << "TargetLowering::TypeLegal\n";
-    if (Op.getOpcode() == ISD::Register) errs() << "Register\n";
     assert((TLI.getTypeAction(*DAG.getContext(), Op.getValueType()) ==
               TargetLowering::TypeLegal ||
             Op.getOpcode() == ISD::TargetConstant ||
@@ -1314,12 +1289,10 @@ void SelectionDAGLegalize::LegalizeOp(SDNode *Node) {
       LLVM_DEBUG(dbgs() << "Legal node: nothing to do\n");
       return;
     case TargetLowering::Custom:
-      errs() << "from legalizeDAG.cpp\n";
       LLVM_DEBUG(dbgs() << "Trying custom legalization\n");
       // FIXME: The handling for custom lowering with multiple results is
       // a complete mess.
       if (SDValue Res = TLI.LowerOperation(SDValue(Node, 0), DAG)) {
-        errs() << "TLI.LowerOperation returned\n";
         if (!(Res.getNode() != Node || Res.getResNo() != 0))
           return;
 
