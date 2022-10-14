@@ -974,6 +974,9 @@ void SelectionDAGLegalize::LegalizeOp(SDNode *Node) {
   }
 
   for (const SDValue &Op : Node->op_values()) {
+    errs() << "Checking op: ";
+    Op.dump();
+    errs() << "\n";
     assert((TLI.getTypeAction(*DAG.getContext(), Op.getValueType()) ==
               TargetLowering::TypeLegal ||
             Op.getOpcode() == ISD::TargetConstant ||

@@ -84,8 +84,9 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
   addRegisterClass(MVT::f32, &AMDGPU::VGPR_32RegClass);
 
   addRegisterClass(MVT::v4i8, &AMDGPU::SReg_32RegClass);
-  //addRegisterClass(MVT::v2i8, &AMDGPU::SReg_32RegClass);
+  addRegisterClass(MVT::v2i8, &AMDGPU::SReg_32RegClass);
   addRegisterClass(MVT::i8, &AMDGPU::SReg_32RegClass);
+  //addRegisterClass(MVT::i8, &AMDGPU::VReg_32RegClass);
 
   addRegisterClass(MVT::v2i32, &AMDGPU::SReg_64RegClass);
 
@@ -5719,9 +5720,14 @@ SDValue SITargetLowering::lowerINSERT_VECTOR_ELT(SDValue Op,
   unsigned EltSize = EltVT.getSizeInBits();
   SDLoc SL(Op);
 
+
   // Specially handle the case of v4i16 with static indexing.
   unsigned NumElts = VecVT.getVectorNumElements();
   auto KIdx = dyn_cast<ConstantSDNode>(Idx);
+
+  errs() << "legalizing insert_ve with num elts, eltsize " << NumElts << " " << EltSize << "\n";
+
+
   if (NumElts == 4 && EltSize == 16 && KIdx) {
     SDValue BCVec = DAG.getNode(ISD::BITCAST, SL, MVT::v2i32, Vec);
 
