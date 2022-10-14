@@ -84,7 +84,7 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
   addRegisterClass(MVT::f32, &AMDGPU::VGPR_32RegClass);
 
   addRegisterClass(MVT::v4i8, &AMDGPU::SReg_32RegClass);
-  addRegisterClass(MVT::v2i8, &AMDGPU::SReg_32RegClass);
+  //addRegisterClass(MVT::v2i8, &AMDGPU::SReg_32RegClass);
   addRegisterClass(MVT::i8, &AMDGPU::SReg_32RegClass);
 
   addRegisterClass(MVT::v2i32, &AMDGPU::SReg_64RegClass);
@@ -542,6 +542,13 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
     // v_perm_b32 can handle either of these.
     setOperationAction(ISD::BSWAP, {MVT::i16, MVT::v2i16}, Legal);
     setOperationAction(ISD::BSWAP, MVT::v4i16, Custom);
+
+/*
+    setOperationAction(ISD::STORE, MVT::v2i8, Promote);
+    AddPromotedToType(ISD::STORE, MVT::v2i8, MVT::i16);
+    setOperationAction(ISD::LOAD, MVT::v2i8, Promote);
+    AddPromotedToType(ISD::LOAD, MVT::v2i8, MVT::i16);
+*/
 
     // XXX - Do these do anything? Vector constants turn into build_vector.
     setOperationAction(ISD::Constant, {MVT::v2i16, MVT::v2f16}, Legal);

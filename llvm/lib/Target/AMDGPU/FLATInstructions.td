@@ -1106,14 +1106,21 @@ let OtherPredicates = [HasFlatAddressSpace] in {
 
 def : FlatLoadPat <FLAT_LOAD_UBYTE, atomic_load_8_flat, i32>;
 def : FlatLoadPat <FLAT_LOAD_UBYTE, atomic_load_8_flat, i16>;
+//def : FlatLoadPat <FLAT_LOAD_UBYTE, atomic_load_8_flat, i8>;
+def : FlatLoadPat <FLAT_LOAD_UBYTE, atomic_load_8_flat, v2i8>;
 def : FlatLoadPat <FLAT_LOAD_USHORT, atomic_load_16_flat, i32>;
 def : FlatLoadPat <FLAT_LOAD_USHORT, atomic_load_16_flat, i16>;
+def : FlatLoadPat <FLAT_LOAD_USHORT, atomic_load_16_flat, v2i8>;
 def : FlatLoadPat <FLAT_LOAD_UBYTE, extloadi8_flat, i32>;
 def : FlatLoadPat <FLAT_LOAD_UBYTE, zextloadi8_flat, i32>;
 def : FlatLoadPat <FLAT_LOAD_SBYTE, sextloadi8_flat, i32>;
 def : FlatLoadPat <FLAT_LOAD_UBYTE, extloadi8_flat, i16>;
 def : FlatLoadPat <FLAT_LOAD_UBYTE, zextloadi8_flat, i16>;
 def : FlatLoadPat <FLAT_LOAD_SBYTE, sextloadi8_flat, i16>;
+def : FlatLoadPat <FLAT_LOAD_UBYTE, extloadi8_flat, v2i8>;
+def : FlatLoadPat <FLAT_LOAD_UBYTE, zextloadi8_flat, v2i8>;
+def : FlatLoadPat <FLAT_LOAD_SBYTE, sextloadi8_flat, v2i8>;
+//def : FlatLoadPat <FLAT_LOAD_UBYTE, load_flat, i8>;
 def : FlatLoadPat <FLAT_LOAD_USHORT, extloadi16_flat, i32>;
 def : FlatLoadPat <FLAT_LOAD_USHORT, zextloadi16_flat, i32>;
 def : FlatLoadPat <FLAT_LOAD_USHORT, load_flat, i16>;
@@ -1125,6 +1132,9 @@ def : FlatLoadPat <FLAT_LOAD_DWORDX2, atomic_load_64_flat, i64>;
 
 def : FlatStorePat <FLAT_STORE_BYTE, truncstorei8_flat, i32>;
 def : FlatStorePat <FLAT_STORE_SHORT, truncstorei16_flat, i32>;
+def : FlatStorePat <FLAT_STORE_BYTE, truncstorei8_flat, v2i8>;
+//def : FlatStorePat <FLAT_STORE_BYTE, store_flat, i8>;
+def : FlatStorePat <FLAT_STORE_SHORT, store_flat, v2i8>;
 
 foreach vt = Reg32Types.types in {
 def : FlatLoadPat <FLAT_LOAD_DWORD, load_flat, vt>;
@@ -1149,6 +1159,10 @@ def : FlatStoreAtomicPat <FLAT_STORE_BYTE, atomic_store_8_flat, i32>;
 def : FlatStoreAtomicPat <FLAT_STORE_BYTE, atomic_store_8_flat, i16>;
 def : FlatStoreAtomicPat <FLAT_STORE_SHORT, atomic_store_16_flat, i32>;
 def : FlatStoreAtomicPat <FLAT_STORE_SHORT, atomic_store_16_flat, i16>;
+
+//def : FlatStoreAtomicPat <FLAT_STORE_BYTE, atomic_store_8_flat, i8>;
+def : FlatStoreAtomicPat <FLAT_STORE_BYTE, atomic_store_8_flat, v2i8>;
+def : FlatStoreAtomicPat <FLAT_STORE_SHORT, atomic_store_16_flat, v2i8>;
 
 foreach as = [ "flat", "global" ] in {
 defm : FlatAtomicPat <"FLAT_ATOMIC_ADD", "atomic_load_add_"#as, i32>;
@@ -1350,18 +1364,29 @@ let OtherPredicates = [HasFlatGlobalInsts] in {
 
 defm : GlobalFLATLoadPats <GLOBAL_LOAD_UBYTE, atomic_load_8_global, i32>;
 defm : GlobalFLATLoadPats <GLOBAL_LOAD_UBYTE, atomic_load_8_global, i16>;
+//defm : GlobalFLATLoadPats <GLOBAL_LOAD_UBYTE, atomic_load_8_global, i8>;
+defm : GlobalFLATLoadPats <GLOBAL_LOAD_UBYTE, atomic_load_8_global, v2i8>;
 defm : GlobalFLATLoadPats <GLOBAL_LOAD_USHORT, atomic_load_16_global, i32>;
 defm : GlobalFLATLoadPats <GLOBAL_LOAD_USHORT, atomic_load_16_global, i16>;
+defm : GlobalFLATLoadPats <GLOBAL_LOAD_USHORT, atomic_load_16_global, v2i8>;
 defm : GlobalFLATLoadPats <GLOBAL_LOAD_UBYTE, extloadi8_global, i32>;
 defm : GlobalFLATLoadPats <GLOBAL_LOAD_UBYTE, zextloadi8_global, i32>;
 defm : GlobalFLATLoadPats <GLOBAL_LOAD_SBYTE, sextloadi8_global, i32>;
 defm : GlobalFLATLoadPats <GLOBAL_LOAD_UBYTE, extloadi8_global, i16>;
 defm : GlobalFLATLoadPats <GLOBAL_LOAD_UBYTE, zextloadi8_global, i16>;
 defm : GlobalFLATLoadPats <GLOBAL_LOAD_SBYTE, sextloadi8_global, i16>;
+defm : GlobalFLATLoadPats <GLOBAL_LOAD_UBYTE, extloadi8_global, v2i8>;
+defm : GlobalFLATLoadPats <GLOBAL_LOAD_UBYTE, zextloadi8_global, v2i8>;
+defm : GlobalFLATLoadPats <GLOBAL_LOAD_SBYTE, sextloadi8_global, v2i8>;
+//defm : GlobalFLATLoadPats <GLOBAL_LOAD_UBYTE, load_global, i8>;
 defm : GlobalFLATLoadPats <GLOBAL_LOAD_USHORT, extloadi16_global, i32>;
 defm : GlobalFLATLoadPats <GLOBAL_LOAD_USHORT, zextloadi16_global, i32>;
 defm : GlobalFLATLoadPats <GLOBAL_LOAD_SSHORT, sextloadi16_global, i32>;
 defm : GlobalFLATLoadPats <GLOBAL_LOAD_USHORT, load_global, i16>;
+defm : GlobalFLATLoadPats <GLOBAL_LOAD_USHORT, load_global, v2i8>;
+
+
+
 
 foreach vt = Reg32Types.types in {
 defm : GlobalFLATLoadPats <GLOBAL_LOAD_DWORD, load_global, vt>;
@@ -1392,6 +1417,11 @@ defm : GlobalFLATStorePats <GLOBAL_STORE_SHORT, truncstorei16_global, i32>;
 defm : GlobalFLATStorePats <GLOBAL_STORE_SHORT, store_global, i16>;
 defm : GlobalFLATStorePats <GLOBAL_STORE_DWORDX3, store_global, v3i32>;
 
+//defm : GlobalFLATStorePats <GLOBAL_STORE_BYTE, store_global, i8>;
+defm : GlobalFLATStorePats <GLOBAL_STORE_BYTE, truncstorei8_global, v2i8>;
+defm : GlobalFLATStorePats <GLOBAL_STORE_SHORT, store_global, v2i8>;
+
+
 let OtherPredicates = [HasD16LoadStore] in {
 defm : GlobalFLATStorePats <GLOBAL_STORE_SHORT_D16_HI, truncstorei16_hi16_global, i32>;
 defm : GlobalFLATStorePats <GLOBAL_STORE_BYTE_D16_HI, truncstorei8_hi16_global, i32>;
@@ -1417,6 +1447,12 @@ defm : GlobalFLATAtomicStorePats <GLOBAL_STORE_BYTE, atomic_store_8_global, i32>
 defm : GlobalFLATAtomicStorePats <GLOBAL_STORE_BYTE, atomic_store_8_global, i16>;
 defm : GlobalFLATAtomicStorePats <GLOBAL_STORE_SHORT, atomic_store_16_global, i32>;
 defm : GlobalFLATAtomicStorePats <GLOBAL_STORE_SHORT, atomic_store_16_global, i16>;
+
+//defm : GlobalFLATAtomicStorePats <GLOBAL_STORE_BYTE, atomic_store_8_global, i8>;
+defm : GlobalFLATAtomicStorePats <GLOBAL_STORE_BYTE, atomic_store_8_global, v2i8>;
+defm : GlobalFLATAtomicStorePats <GLOBAL_STORE_SHORT, atomic_store_16_global, v2i8>;
+
+
 defm : GlobalFLATAtomicStorePats <GLOBAL_STORE_DWORD, atomic_store_32_global, i32>;
 defm : GlobalFLATAtomicStorePats <GLOBAL_STORE_DWORDX2, atomic_store_64_global, i64>;
 
@@ -1521,6 +1557,13 @@ defm : ScratchFLATLoadPats <SCRATCH_LOAD_USHORT, zextloadi16_private, i32>;
 defm : ScratchFLATLoadPats <SCRATCH_LOAD_SSHORT, sextloadi16_private, i32>;
 defm : ScratchFLATLoadPats <SCRATCH_LOAD_USHORT, load_private, i16>;
 
+defm : ScratchFLATLoadPats <SCRATCH_LOAD_UBYTE, extloadi8_private, v2i8>;
+defm : ScratchFLATLoadPats <SCRATCH_LOAD_UBYTE, zextloadi8_private, v2i8>;
+defm : ScratchFLATLoadPats <SCRATCH_LOAD_SBYTE, sextloadi8_private, v2i8>;
+defm : ScratchFLATLoadPats <SCRATCH_LOAD_USHORT, load_private, v2i8>;
+//defm : ScratchFLATLoadPats <SCRATCH_LOAD_UBYTE, load_private, i8>;
+
+
 foreach vt = Reg32Types.types in {
 defm : ScratchFLATLoadPats <SCRATCH_LOAD_DWORD, load_private, vt>;
 defm : ScratchFLATStorePats <SCRATCH_STORE_DWORD, store_private, vt>;
@@ -1543,6 +1586,10 @@ defm : ScratchFLATStorePats <SCRATCH_STORE_BYTE, truncstorei8_private, i16>;
 defm : ScratchFLATStorePats <SCRATCH_STORE_SHORT, truncstorei16_private, i32>;
 defm : ScratchFLATStorePats <SCRATCH_STORE_SHORT, store_private, i16>;
 defm : ScratchFLATStorePats <SCRATCH_STORE_DWORDX3, store_private, v3i32>;
+
+//defm : ScratchFLATStorePats <SCRATCH_STORE_BYTE, store_private, i8>;
+defm : ScratchFLATStorePats <SCRATCH_STORE_BYTE, truncstorei8_private, v2i8>;
+defm : ScratchFLATStorePats <SCRATCH_STORE_SHORT, store_private, v2i8>;
 
 let OtherPredicates = [HasD16LoadStore, HasFlatScratchInsts, EnableFlatScratch] in {
 defm : ScratchFLATStorePats <SCRATCH_STORE_SHORT_D16_HI, truncstorei16_hi16_private, i32>;
