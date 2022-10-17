@@ -577,6 +577,10 @@ void AMDGPUDAGToDAGISel::Select(SDNode *N) {
       break;
     }
 
+    if (VT.getScalarSizeInBits() == 8) {
+      break;
+    }
+
     assert(VT.getVectorElementType().bitsEq(MVT::i32));
     unsigned RegClassID =
         SIRegisterInfo::getSGPRClassForBitWidth(NumVectorElts * 32)->getID();

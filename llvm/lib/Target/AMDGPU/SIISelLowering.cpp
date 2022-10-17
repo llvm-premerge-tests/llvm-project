@@ -171,7 +171,8 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
                       MVT::v6i32, MVT::v7i32, MVT::v8i32, MVT::v16i32, MVT::i1,
                       MVT::v32i32},
                      Custom);
-
+                     
+  //setTruncStoreAction(MVT::i8, MVT::i32, Expand);
   setTruncStoreAction(MVT::v2i32, MVT::v2i16, Expand);
   setTruncStoreAction(MVT::v3i32, MVT::v3i16, Expand);
   setTruncStoreAction(MVT::v4i32, MVT::v4i16, Expand);
@@ -5729,6 +5730,12 @@ SDValue SITargetLowering::lowerINSERT_VECTOR_ELT(SDValue Op,
 
 
   if (NumElts == 4 && EltSize == 16 && KIdx) {
+    //errs() << "special case for v4i16\n";
+    //errs() << "VecVT, Op1VT, EltVT: ";
+    errs() << VecVT.getEVTString() << " " << InsVal.getValueType().getEVTString() << " ";
+    errs() << EltVT.getEVTString() << "\n";
+
+
     SDValue BCVec = DAG.getNode(ISD::BITCAST, SL, MVT::v2i32, Vec);
 
     SDValue LoHalf = DAG.getNode(ISD::EXTRACT_VECTOR_ELT, SL, MVT::i32, BCVec,
@@ -5754,6 +5761,46 @@ SDValue SITargetLowering::lowerINSERT_VECTOR_ELT(SDValue Op,
 
     return DAG.getNode(ISD::BITCAST, SL, VecVT, Concat);
   }
+
+  if (NumElts == 4 && EltSize == 8 && KIdx) {
+    errs() << "special case for v4i8\n";
+    errs() << "VecVT, Op1VT, EltVT: ";
+    errs() << VecVT.getEVTString() << " " << InsVal.getValueType().getEVTString() << " ";
+    errs() << EltVT.getEVTString() << "\n";
+
+
+    errs() << "First bitcast\n";
+    SDValue BCVec = DAG.getNode(ISD::BITCAST, SL, MVT::v2i16, Vec);
+
+    SDValue LoHalf = DAG.getNode(ISD::EXTRACT_VECTOR_ELT, SL, MVT::i16, BCVec,
+                                 DAG.getConstant(0, SL, MVT::i32));
+    SDValue HiHalf = DAG.getNode(ISD::EXTRACT_VECTOR_ELT, SL, MVT::i16, BCVec,
+                                 DAG.getConstant(1, SL, MVT::i32));
+
+    errs() << "Second bitcast\n";
+    SDValue LoVec = DAG.getNode(ISD::BITCAST, SL, MVT::v2i8, LoHalf);
+    errs() << "Third bitcast\n";
+    SDValue HiVec = DAG.getNode(ISD::BITCAST, SL, MVT::v2i8, HiHalf);
+
+    unsigned Idx = KIdx->getZExtValue();
+    bool InsertLo = Idx < 2;
+    SDValue InsHalf = DAG.getNode(ISD::INSERT_VECTOR_ELT, SL, MVT::v2i8,
+      InsertLo ? LoVec : HiVec,
+      DAG.getNode(ISD::BITCAST, SL, MVT::i8, InsVal),
+      DAG.getConstant(InsertLo ? Idx : (Idx - 2), SL, MVT::i32));
+
+    errs() << "Fourth bitcast\n";
+    InsHalf = DAG.getNode(ISD::BITCAST, SL, MVT::i16, InsHalf);
+
+    SDValue Concat = InsertLo ?
+      DAG.getBuildVector(MVT::v2i16, SL, { InsHalf, HiHalf }) :
+      DAG.getBuildVector(MVT::v2i16, SL, { LoHalf, InsHalf });
+
+    return DAG.getNode(ISD::BITCAST, SL, VecVT, Concat);
+  }
+
+
+
 
   // Static indexing does not lower to stack access, and hence there is no need
   // for special custom lowering to avoid stack access.
@@ -5885,11 +5932,12 @@ SDValue SITargetLowering::lowerEXTRACT_VECTOR_ELT(SDValue Op,
     return DAG.getNode(ISD::BITCAST, SL, ResultVT, Result);
   }
 
+/*
   if (ResultVT == MVT::i8) {
     SDValue Result = DAG.getNode(ISD::TRUNCATE, SL, MVT::i8, Elt);
     return DAG.getNode(ISD::BITCAST, SL, ResultVT, Result);
   }
-
+*/
   return DAG.getAnyExtOrTrunc(Elt, SL, ResultVT);
 }
 
