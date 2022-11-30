@@ -59,6 +59,7 @@
 ; GCN-O0-NEXT:        Lower SwitchInst's to branches
 ; GCN-O0-NEXT:        Lower invoke and unwind, for unwindless code generators
 ; GCN-O0-NEXT:        Remove unreachable blocks from the CFG
+; GCN-O0-NEXT:        AMDGPU Clear Incompatible Functions Bodies
 ; GCN-O0-NEXT:        Post-Dominator Tree Construction
 ; GCN-O0-NEXT:        Dominator Tree Construction
 ; GCN-O0-NEXT:        Natural Loop Information
@@ -238,6 +239,7 @@
 ; GCN-O1-NEXT:        Basic Alias Analysis (stateless AA impl)
 ; GCN-O1-NEXT:        Function Alias Analysis Results
 ; GCN-O1-NEXT:        Flatten the CFG
+; GCN-O1-NEXT:        AMDGPU Clear Incompatible Functions Bodies
 ; GCN-O1-NEXT:        Dominator Tree Construction
 ; GCN-O1-NEXT:        Post-Dominator Tree Construction
 ; GCN-O1-NEXT:        Natural Loop Information
@@ -525,6 +527,7 @@
 ; GCN-O1-OPTS-NEXT:        Basic Alias Analysis (stateless AA impl)
 ; GCN-O1-OPTS-NEXT:        Function Alias Analysis Results
 ; GCN-O1-OPTS-NEXT:        Flatten the CFG
+; GCN-O1-OPTS-NEXT:        AMDGPU Clear Incompatible Functions Bodies
 ; GCN-O1-OPTS-NEXT:        Dominator Tree Construction
 ; GCN-O1-OPTS-NEXT:        Post-Dominator Tree Construction
 ; GCN-O1-OPTS-NEXT:        Natural Loop Information
@@ -820,6 +823,7 @@
 ; GCN-O2-NEXT:        Basic Alias Analysis (stateless AA impl)
 ; GCN-O2-NEXT:        Function Alias Analysis Results
 ; GCN-O2-NEXT:        Flatten the CFG
+; GCN-O2-NEXT:        AMDGPU Clear Incompatible Functions Bodies
 ; GCN-O2-NEXT:        Dominator Tree Construction
 ; GCN-O2-NEXT:        Post-Dominator Tree Construction
 ; GCN-O2-NEXT:        Natural Loop Information
@@ -1130,6 +1134,7 @@
 ; GCN-O3-NEXT:        Basic Alias Analysis (stateless AA impl)
 ; GCN-O3-NEXT:        Function Alias Analysis Results
 ; GCN-O3-NEXT:        Flatten the CFG
+; GCN-O3-NEXT:        AMDGPU Clear Incompatible Functions Bodies
 ; GCN-O3-NEXT:        Dominator Tree Construction
 ; GCN-O3-NEXT:        Post-Dominator Tree Construction
 ; GCN-O3-NEXT:        Natural Loop Information

@@ -213,6 +213,13 @@ static cl::opt<bool> EarlyInlineAll(
   cl::init(false),
   cl::Hidden);
 
+static cl::opt<bool> ClearIncompatibleFunctionsBodies(
+    "amdgpu-incompatible-features-clear-fns",
+    cl::Hidden,
+    cl::desc("Enable deletion of function bodies when they"
+             "use features not supported by the target GPU"),
+    cl::init(true));
+
 static cl::opt<bool> EnableSDWAPeephole(
   "amdgpu-sdwa-peephole",
   cl::desc("Enable SDWA peepholer"),
@@ -376,6 +383,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeAMDGPUTarget() {
   initializeAMDGPULateCodeGenPreparePass(*PR);
   initializeAMDGPUPropagateAttributesEarlyPass(*PR);
   initializeAMDGPUPropagateAttributesLatePass(*PR);
+  initializeAMDGPUClearIncompatibleFunctionsPass(*PR);
   initializeAMDGPUReplaceLDSUseWithPointerPass(*PR);
   initializeAMDGPULowerModuleLDSPass(*PR);
   initializeAMDGPURewriteOutArgumentsPass(*PR);
@@ -1058,6 +1066,10 @@ void AMDGPUPassConfig::addCodeGenPrepare() {
 bool AMDGPUPassConfig::addPreISel() {
   if (TM->getOptLevel() > CodeGenOpt::None)
     addPass(createFlattenCFGPass());
+
+  if(ClearIncompatibleFunctionsBodies)
+    addPass(createAMDGPUClearIncompatibleFunctionsPass(&getAMDGPUTargetMachine()));
+
   return false;
 }
 

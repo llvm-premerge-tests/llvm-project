@@ -47,6 +47,7 @@ FunctionPass *createSIFormMemoryClausesPass();
 FunctionPass *createSIPostRABundlerPass();
 FunctionPass *createAMDGPUSimplifyLibCallsPass(const TargetMachine *);
 FunctionPass *createAMDGPUUseNativeCallsPass();
+FunctionPass *createAMDGPUClearIncompatibleFunctionsPass(const TargetMachine *);
 FunctionPass *createAMDGPUCodeGenPreparePass();
 FunctionPass *createAMDGPULateCodeGenPreparePass();
 FunctionPass *createAMDGPUMachineCFGStructurizerPass();
@@ -286,6 +287,9 @@ extern char &AMDGPUAnnotateUniformValuesPassID;
 
 void initializeAMDGPUCodeGenPreparePass(PassRegistry&);
 extern char &AMDGPUCodeGenPrepareID;
+
+void initializeAMDGPUClearIncompatibleFunctionsPass(PassRegistry &);
+extern char &AMDGPUClearIncompatibleFunctionsID;
 
 void initializeAMDGPULateCodeGenPreparePass(PassRegistry &);
 extern char &AMDGPULateCodeGenPrepareID;
