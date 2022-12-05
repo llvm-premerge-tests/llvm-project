@@ -103,7 +103,8 @@ double4 ceil(double4);
 
 // floor builtins
 #ifdef __HLSL_ENABLE_16_BIT
-__attribute__((clang_builtin_alias(__builtin_elementwise_floor))) half floor(half);
+__attribute__((clang_builtin_alias(__builtin_elementwise_floor)))
+half floor(half);
 __attribute__((clang_builtin_alias(__builtin_elementwise_floor)))
 half2 floor(half2);
 __attribute__((clang_builtin_alias(__builtin_elementwise_floor)))
