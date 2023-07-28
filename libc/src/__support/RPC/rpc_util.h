@@ -12,6 +12,7 @@
 #include "src/__support/CPP/type_traits.h"
 #include "src/__support/GPU/utils.h"
 #include "src/__support/macros/attributes.h"
+#include "src/__support/macros/config.h"
 #include "src/__support/macros/properties/architectures.h"
 
 namespace __llvm_libc {
@@ -27,8 +28,10 @@ LIBC_INLINE void sleep_briefly() {
 #elif defined(LIBC_TARGET_ARCH_IS_AMDGPU)
   __builtin_amdgcn_s_sleep(2);
 #else
-  // Simply do nothing if sleeping isn't supported on this platform.
+  if constexpr (LIBC_HAS_BUILTIN(__builtin_ia32_pause))
+    __builtin_ia32_pause();
 #endif
+  // Simply do nothing if sleeping isn't supported on this platform.
 }
 
 /// Get the first active thread inside the lane.
