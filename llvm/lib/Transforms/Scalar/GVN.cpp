@@ -1239,11 +1239,12 @@ GVNPass::AnalyzeLoadAvailability(LoadInst *Load, MemDepResult DepInfo,
   }
   assert(DepInfo.isDef() && "follows from above");
 
-  // Loading the alloca -> undef.
   // Loading immediately after lifetime begin -> undef.
-  if (isa<AllocaInst>(DepInst) || isLifetimeStart(DepInst))
+  if (isLifetimeStart(DepInst))
     return AvailableValue::get(UndefValue::get(Load->getType()));
 
+  // In addition to allocator function calls this includes loading the alloca ->
+  // undef.
   if (Constant *InitVal =
           getInitialValueOfAllocation(DepInst, TLI, Load->getType()))
     return AvailableValue::get(InitVal);

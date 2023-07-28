@@ -119,8 +119,8 @@ std::optional<APInt> getAllocSize(
     });
 
 /// If this is a call to an allocation function that initializes memory to a
-/// fixed value, return said value in the requested type.  Otherwise, return
-/// nullptr.
+/// fixed value, return said value in the requested type. If this is a call to
+/// alloca instruction the returned value is undef. Otherwise, return nullptr.
 Constant *getInitialValueOfAllocation(const Value *V,
                                       const TargetLibraryInfo *TLI,
                                       Type *Ty);

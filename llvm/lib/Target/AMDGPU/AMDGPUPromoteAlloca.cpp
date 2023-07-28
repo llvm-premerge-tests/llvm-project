@@ -32,6 +32,7 @@
 #include "llvm/Analysis/CaptureTracking.h"
 #include "llvm/Analysis/InstSimplifyFolder.h"
 #include "llvm/Analysis/InstructionSimplify.h"
+#include "llvm/Analysis/MemoryBuiltins.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/IRBuilder.h"
@@ -805,7 +806,9 @@ bool AMDGPUPromoteAllocaImpl::tryPromoteAllocaToVector(AllocaInst &Alloca) {
   // undef.
   SSAUpdater Updater;
   Updater.Initialize(VectorTy, "promotealloca");
-  Updater.AddAvailableValue(Alloca.getParent(), UndefValue::get(VectorTy));
+  Updater.AddAvailableValue(
+      Alloca.getParent(),
+      getInitialValueOfAllocation(&Alloca, nullptr, VectorTy));
 
   // First handle the initial worklist.
   SmallVector<LoadInst *, 4> DeferredLoads;

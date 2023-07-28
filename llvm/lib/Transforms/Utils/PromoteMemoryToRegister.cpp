@@ -24,6 +24,7 @@
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/InstructionSimplify.h"
 #include "llvm/Analysis/IteratedDominanceFrontier.h"
+#include "llvm/Analysis/MemoryBuiltins.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/CFG.h"
@@ -600,7 +601,7 @@ static bool promoteSingleBlockAlloca(
     if (I == StoresByIndex.begin()) {
       if (StoresByIndex.empty())
         // If there are no stores, the load takes the undef value.
-        ReplVal = UndefValue::get(LI->getType());
+        ReplVal = getInitialValueOfAllocation(AI, nullptr, LI->getType());
       else
         // There is no store before this load, bail out (load may be affected
         // by the following stores - see main comment).

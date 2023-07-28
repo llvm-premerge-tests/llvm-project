@@ -1496,21 +1496,18 @@ NewGVN::performSymbolicLoadCoercion(Type *LoadType, Value *LoadPtr,
   if (LoadPtr != lookupOperandLeader(DepInst) &&
       !AA->isMustAlias(LoadPtr, DepInst))
     return nullptr;
+  // If this load occurs either right after a lifetime begin,
+  // then the loaded value is undefined.
+  if (auto *II = dyn_cast<IntrinsicInst>(DepInst)) {
+    if (II->getIntrinsicID() == Intrinsic::lifetime_start)
+      return createConstantExpression(UndefValue::get(LoadType));
+  }
   // If this load really doesn't depend on anything, then we must be loading an
   // undef value.  This can happen when loading for a fresh allocation with no
   // intervening stores, for example.  Note that this is only true in the case
   // that the result of the allocation is pointer equal to the load ptr.
-  if (isa<AllocaInst>(DepInst)) {
-    return createConstantExpression(UndefValue::get(LoadType));
-  }
-  // If this load occurs either right after a lifetime begin,
-  // then the loaded value is undefined.
-  else if (auto *II = dyn_cast<IntrinsicInst>(DepInst)) {
-    if (II->getIntrinsicID() == Intrinsic::lifetime_start)
-      return createConstantExpression(UndefValue::get(LoadType));
-  } else if (auto *InitVal =
-                 getInitialValueOfAllocation(DepInst, TLI, LoadType))
-      return createConstantExpression(InitVal);
+  else if (auto *InitVal = getInitialValueOfAllocation(DepInst, TLI, LoadType))
+    return createConstantExpression(InitVal);
 
   return nullptr;
 }
