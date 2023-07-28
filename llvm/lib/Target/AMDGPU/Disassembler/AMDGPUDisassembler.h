@@ -234,6 +234,12 @@ public:
                         bool MandatoryLiteral = false,
                         unsigned ImmWidth = 0) const;
 
+  MCOperand decodeVGPR_16(unsigned Val) const;
+  MCOperand decodeVGPR_16_Lo128(unsigned Val) const;
+  MCOperand decodeNonVGPRSrcOp(const OpWidthTy Width, unsigned Val,
+                               bool MandatoryLiteral = false,
+                               unsigned ImmWidth = 0) const;
+
   MCOperand decodeVOPDDstYOp(MCInst &Inst, unsigned Val) const;
   MCOperand decodeSpecialReg32(unsigned Val) const;
   MCOperand decodeSpecialReg64(unsigned Val) const;

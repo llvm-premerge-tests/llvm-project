@@ -49,6 +49,14 @@ public:
                          SmallVectorImpl<MCFixup> &Fixups,
                          const MCSubtargetInfo &STI) const;
 
+  void getMachineOpValueT16(const MCInst &MI, unsigned OpNo, APInt &Op,
+                            SmallVectorImpl<MCFixup> &Fixups,
+                            const MCSubtargetInfo &STI) const;
+
+  void getMachineOpValueT16Lo128(const MCInst &MI, unsigned OpNo, APInt &Op,
+                                 SmallVectorImpl<MCFixup> &Fixups,
+                                 const MCSubtargetInfo &STI) const;
+
   /// Use a fixup to encode the simm16 field for SOPP branch
   ///        instructions.
   void getSOPPBrEncoding(const MCInst &MI, unsigned OpNo, APInt &Op,
@@ -544,6 +552,72 @@ void AMDGPUMCCodeEmitter::getMachineOpValue(const MCInst &MI,
     return;
   }
   unsigned OpNo = &MO - MI.begin();
+  getMachineOpValueCommon(MI, MO, OpNo, Op, Fixups, STI);
+}
+
+void AMDGPUMCCodeEmitter::getMachineOpValueT16(
+    const MCInst &MI, unsigned OpNo, APInt &Op,
+    SmallVectorImpl<MCFixup> &Fixups, const MCSubtargetInfo &STI) const {
+  const MCOperand &MO = MI.getOperand(OpNo);
+  if (MO.isReg()) {
+    Op = MRI.getEncodingValue(MO.getReg());
+    return;
+  }
+
+  getMachineOpValueCommon(MI, MO, OpNo, Op, Fixups, STI);
+
+  // VGPRs include the suffix/op_sel bit in the register encoding, but
+  // immediates and SGPRs include it in src_modifiers. Therefore, copy the
+  // op_sel bit from the src operands into src_modifier operands if Op is
+  // src_modifiers and the corresponding src is a VGPR.
+  unsigned OpSelBits = 0;
+  int SrcMOIdx = -1;
+  assert(OpNo < INT_MAX);
+  if ((int)OpNo == AMDGPU::getNamedOperandIdx(MI.getOpcode(),
+                                              AMDGPU::OpName::src0_modifiers)) {
+    SrcMOIdx = AMDGPU::getNamedOperandIdx(MI.getOpcode(), AMDGPU::OpName::src0);
+    int VDstMOIdx =
+        AMDGPU::getNamedOperandIdx(MI.getOpcode(), AMDGPU::OpName::vdst);
+    if (VDstMOIdx != -1) {
+      auto DstVal = MRI.getEncodingValue(MI.getOperand(VDstMOIdx).getReg());
+      if (AMDGPU::isHi(DstVal, MRI))
+        OpSelBits |= SISrcMods::DST_OP_SEL;
+    }
+  } else if ((int)OpNo == AMDGPU::getNamedOperandIdx(
+                              MI.getOpcode(), AMDGPU::OpName::src1_modifiers))
+    SrcMOIdx = AMDGPU::getNamedOperandIdx(MI.getOpcode(), AMDGPU::OpName::src1);
+  else if ((int)OpNo == AMDGPU::getNamedOperandIdx(
+                            MI.getOpcode(), AMDGPU::OpName::src2_modifiers))
+    SrcMOIdx = AMDGPU::getNamedOperandIdx(MI.getOpcode(), AMDGPU::OpName::src2);
+  if (SrcMOIdx == -1)
+    return;
+
+  const MCOperand &SrcMO = MI.getOperand(SrcMOIdx);
+  if (!SrcMO.isReg())
+    return;
+
+  auto SrcReg = SrcMO.getReg();
+  if (AMDGPU::isSGPR(SrcReg, &MRI))
+    return;
+
+  if (AMDGPU::isHi(SrcReg, MRI))
+    OpSelBits |= SISrcMods::OP_SEL_0;
+  Op |= OpSelBits;
+}
+
+void AMDGPUMCCodeEmitter::getMachineOpValueT16Lo128(
+    const MCInst &MI, unsigned OpNo, APInt &Op,
+    SmallVectorImpl<MCFixup> &Fixups, const MCSubtargetInfo &STI) const {
+  const MCOperand &MO = MI.getOperand(OpNo);
+  if (MO.isReg()) {
+    auto Encoding = MRI.getEncodingValue(MO.getReg());
+    if ((Encoding & (1 << 9))) { // isVGPR
+      assert((Encoding & (1 << 8)) == 0 && "Did not expect VGPR RegNo > 127");
+      Encoding = ((Encoding & 1) << 8) | Encoding;
+    }
+    Op = Encoding;
+    return;
+  }
   getMachineOpValueCommon(MI, MO, OpNo, Op, Fixups, STI);
 }
 

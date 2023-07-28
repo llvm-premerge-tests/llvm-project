@@ -260,6 +260,76 @@ DECODE_OPERAND_SRC_REG_OR_IMM_DEFERRED_9(VS_32_Lo128, OPW16, 16)
 DECODE_OPERAND_SRC_REG_OR_IMM_DEFERRED_9(VS_32, OPW16, 16)
 DECODE_OPERAND_SRC_REG_OR_IMM_DEFERRED_9(VS_32, OPW32, 32)
 
+inline MCOperand AMDGPUDisassembler::decodeVGPR_16(unsigned Val) const {
+  // Move the suffix bit from pos 9 to pos 0.
+  return createRegOperand(AMDGPU::VGPR_16RegClassID,
+                          ((Val & 255) << 1) | (Val >> 9));
+}
+
+static DecodeStatus DecodeVGPR_16RegisterClass(MCInst &Inst, unsigned Imm,
+                                               uint64_t /*Addr*/,
+                                               const MCDisassembler *Decoder) {
+  // Imm{0-7} is 8-bit VGPR number like for VGPR_32 and Imm{9} is
+  // opsel_lo for dst and acts like a True16 modifier (.h or .l).
+  // Imm{8} is not used.
+  assert(isUInt<10>(Imm) && "10-bit encoding expected");
+  assert((Imm & (1 << 8)) == 0 && "Imm{8} should not be used");
+
+  auto DAsm = static_cast<const AMDGPUDisassembler *>(Decoder);
+  return addOperand(Inst, DAsm->decodeVGPR_16(Imm));
+}
+
+inline MCOperand AMDGPUDisassembler::decodeVGPR_16_Lo128(unsigned Val) const {
+  // Move the suffix bit from pos 7 to pos 0.
+  assert(isUInt<8>(Val));
+  return createRegOperand(AMDGPU::VGPR_16_Lo128RegClassID,
+                          ((Val & 127) << 1) | (Val >> 7));
+}
+
+static DecodeStatus
+DecodeVGPR_16_Lo128RegisterClass(MCInst &Inst, unsigned Imm, uint64_t /*Addr*/,
+                                 const MCDisassembler *Decoder) {
+  // This uses 8-bit encoding but instead of being 8-bit VGPR number
+  // like for VGPR_32 this is 7-bit VGPR number and Imm{7} is
+  // True16 modifier (.h or .l). Used on instructions without opsel.
+  assert(isUInt<8>(Imm) && "8-bit encoding expected");
+
+  auto DAsm = static_cast<const AMDGPUDisassembler *>(Decoder);
+  return addOperand(Inst, DAsm->decodeVGPR_16_Lo128(Imm));
+}
+
+static DecodeStatus decodeOperand_VSrcT16_Lo128(MCInst &Inst, unsigned Imm,
+                                                uint64_t /*Addr*/,
+                                                const MCDisassembler *Decoder) {
+  const auto *DAsm = static_cast<const AMDGPUDisassembler *>(Decoder);
+  assert(isUInt<9>(Imm) && "9-bit encoding expected");
+
+  if (Imm & AMDGPU::EncValues::IS_VGPR) {
+    // When Imm{8} is set (IS_VGPR), Imm{0-7} corresponds to vgpr number.
+    // Here Imm{0-6} is vgpr number Imm{7} is True16 modifier (.h or .l).
+    // Note: instructions that use this don't have opsel.
+    return addOperand(Inst, DAsm->decodeVGPR_16_Lo128(Imm & 0xFF));
+  }
+  return addOperand(Inst, DAsm->decodeNonVGPRSrcOp(AMDGPUDisassembler::OPW16,
+                                                   Imm & 0xFF, false, 16));
+}
+
+static DecodeStatus decodeOperand_VSrcT16(MCInst &Inst, unsigned Imm,
+                                          uint64_t /*Addr*/,
+                                          const MCDisassembler *Decoder) {
+  const auto *DAsm = static_cast<const AMDGPUDisassembler *>(Decoder);
+  assert(isUInt<10>(Imm) && "10-bit encoding expected");
+
+  if (Imm & AMDGPU::EncValues::IS_VGPR) {
+    // Imm{0-8} is standard 9-bit encoding for Src operand. Imm{9} is opsel and
+    // act as True16 modifier (.h or .l). Set Imm{8} to 0 to use decodeVGPR_16
+    // helper function.
+    return addOperand(Inst, DAsm->decodeVGPR_16(Imm & 0x2FF));
+  }
+  return addOperand(Inst, DAsm->decodeNonVGPRSrcOp(AMDGPUDisassembler::OPW16,
+                                                   Imm & 0xFF, false, 16));
+}
+
 static DecodeStatus decodeOperand_KImmFP(MCInst &Inst, unsigned Imm,
                                          uint64_t Addr,
                                          const MCDisassembler *Decoder) {
@@ -1405,6 +1475,52 @@ MCOperand AMDGPUDisassembler::decodeSrcOp(const OpWidthTy Width, unsigned Val,
   if (TTmpIdx >= 0) {
     return createSRegOperand(getTtmpClassId(Width), TTmpIdx);
   }
+
+  if (INLINE_INTEGER_C_MIN <= Val && Val <= INLINE_INTEGER_C_MAX)
+    return decodeIntImmed(Val);
+
+  if (INLINE_FLOATING_C_MIN <= Val && Val <= INLINE_FLOATING_C_MAX)
+    return decodeFPImmed(ImmWidth, Val);
+
+  if (Val == LITERAL_CONST) {
+    if (MandatoryLiteral)
+      // Keep a sentinel value for deferred setting.
+      return MCOperand::createImm(LITERAL_CONST);
+    else
+      return decodeLiteralConstant();
+  }
+
+  switch (Width) {
+  case OPW32:
+  case OPW16:
+  case OPWV216:
+    return decodeSpecialReg32(Val);
+  case OPW64:
+  case OPWV232:
+    return decodeSpecialReg64(Val);
+  default:
+    llvm_unreachable("unexpected immediate type");
+  }
+}
+
+MCOperand AMDGPUDisassembler::decodeNonVGPRSrcOp(const OpWidthTy Width,
+                                                 unsigned Val,
+                                                 bool MandatoryLiteral,
+                                                 unsigned ImmWidth) const {
+  // Cases when Val{8} is 1 (vgpr, agpr or true 16 vgpr) should have been
+  // decoded earlier.
+  assert(Val < (1 << 8) && "9-bit Src encoding when Val{8} is 0");
+  using namespace AMDGPU::EncValues;
+
+  if (Val <= SGPR_MAX) {
+    // "SGPR_MIN <= Val" is always true and causes compilation warning.
+    static_assert(SGPR_MIN == 0);
+    return createSRegOperand(getSgprClassId(Width), Val - SGPR_MIN);
+  }
+
+  int TTmpIdx = getTTmpIdx(Val);
+  if (TTmpIdx >= 0)
+    return createSRegOperand(getTtmpClassId(Width), TTmpIdx);
 
   if (INLINE_INTEGER_C_MIN <= Val && Val <= INLINE_INTEGER_C_MAX)
     return decodeIntImmed(Val);
