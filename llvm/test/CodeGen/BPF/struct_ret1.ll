@@ -1,6 +1,6 @@
 ; RUN: not llc -march=bpf < %s 2> %t1
 ; RUN: FileCheck %s < %t1
-; CHECK: only integer returns
+; CHECK: error: <unknown>:0:0: in function bar { i64, i32 } (i32, i32, i32, i32, i32): aggregate returns are not supported
 
 %struct.S = type { i32, i32, i32 }
 
