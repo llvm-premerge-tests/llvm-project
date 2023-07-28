@@ -1656,6 +1656,10 @@ def HasTrue16BitInsts : Predicate<"Subtarget->hasTrue16BitInsts()">,
   AssemblerPredicate<(all_of FeatureTrue16BitInsts)>;
 def NotHasTrue16BitInsts : Predicate<"!Subtarget->hasTrue16BitInsts()">;
 
+def UseTrue16BitInsts : Predicate<"Subtarget->useTrue16BitInsts()">;
+def UseFake16BitInsts : Predicate<"Subtarget->hasTrue16BitInsts() && "
+                                  "!Subtarget->useTrue16BitInsts()">;
+
 def HasVOP3PInsts : Predicate<"Subtarget->hasVOP3PInsts()">,
   AssemblerPredicate<(all_of FeatureVOP3P)>;
 
