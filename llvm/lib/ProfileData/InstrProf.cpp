@@ -27,6 +27,7 @@
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/MDBuilder.h"
+#include "llvm/IR/Mangler.h"
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
@@ -264,6 +265,56 @@ static StringRef stripDirPrefix(StringRef PathNameStr, uint32_t NumPrefix) {
   return PathNameStr.substr(LastPos);
 }
 
+// The PGO name has the format [<filepath>;]<linkage-name> where <filepath>; is
+// provided if linkage and local and <linkage-name> is the mangled function
+// name. The filepath is used to discriminate possibly identical function names.
+// ; is used because it is unlikely to be found in either <filepath> or
+// <linkage-name>.
+//
+// Older compilers used getPGOFuncName() which has the format
+// [<filepath>:]<function-name>. <filepath> is used to discriminate between
+// possibly identical function names when linkage is local and <function-name>
+// simply comes from F.getName(). This caused trouble for Objective-C functions
+// which commonly have :'s in their names. Also, since <function-name> is not
+// mangled, they cannot be passed to the linker via -symbol-ordering-file or
+// -order_file. We still need to compute this name to lookup functions from
+// profiles built by older compilers.
+static std::string getIRPGOFuncName(const Function &F,
+                                    GlobalValue::LinkageTypes Linkage,
+                                    StringRef FileName) {
+  SmallString<64> Name;
+  if (llvm::GlobalValue::isLocalLinkage(Linkage)) {
+    Name.append(FileName.empty() ? "<unknown>" : FileName);
+    Name.append(";");
+  }
+  Mangler().getNameWithPrefix(Name, &F, /*CannotUsePrivateLabel=*/true);
+  return Name.str().str();
+}
+
+// See getPGOFuncName() for details
+std::string getIRPGOFuncName(const Function &F, bool InLTO) {
+  if (!InLTO) {
+    StringRef FileName(F.getParent()->getSourceFileName());
+    uint32_t StripLevel = StaticFuncFullModulePrefix ? 0 : (uint32_t)-1;
+    if (StripLevel < StaticFuncStripDirNamePrefix)
+      StripLevel = StaticFuncStripDirNamePrefix;
+    if (StripLevel)
+      FileName = stripDirPrefix(FileName, StripLevel);
+    return getIRPGOFuncName(F, F.getLinkage(), FileName);
+  }
+
+  // In LTO mode (when InLTO is true), first check if there is a meta data.
+  if (MDNode *MD = getPGOFuncNameMetadata(F)) {
+    StringRef S = cast<MDString>(MD->getOperand(0))->getString();
+    return S.str();
+  }
+
+  // If there is no meta data, the function must be a global before the value
+  // profile annotation pass. Its current linkage may be internal if it is
+  // internalized in LTO mode.
+  return getIRPGOFuncName(F, GlobalValue::ExternalLinkage, "");
+}
+
 // Return the PGOFuncName. This function has some special handling when called
 // in LTO optimization. The following only applies when calling in LTO passes
 // (when \c InLTO is true): LTO's internalization privatizes many global linkage
@@ -300,6 +351,15 @@ std::string getPGOFuncName(const Function &F, bool InLTO, uint64_t Version) {
   return getPGOFuncName(F.getName(), GlobalValue::ExternalLinkage, "");
 }
 
+// See getIRPGOFuncName() for a discription of the format
+std::pair<StringRef, StringRef>
+getParsedIRPGOFuncName(StringRef IRPGOFuncName) {
+  auto [Filename, FuncName] = IRPGOFuncName.split(';');
+  if (FuncName.empty())
+    std::swap(Filename, FuncName);
+  return std::make_pair(Filename, FuncName);
+}
+
 StringRef getFuncNameWithoutPrefix(StringRef PGOFuncName, StringRef FileName) {
   if (FileName.empty())
     return PGOFuncName;
@@ -320,7 +380,7 @@ std::string getPGOFuncNameVarName(StringRef FuncName,
     return VarName;
 
   // Now fix up illegal chars in local VarName that may upset the assembler.
-  const char *InvalidChars = "-:<>/\"'";
+  const char *InvalidChars = "-:;<>/\"'";
   size_t found = VarName.find_first_of(InvalidChars);
   while (found != std::string::npos) {
     VarName[found] = '_';
@@ -366,38 +426,46 @@ Error InstrProfSymtab::create(Module &M, bool InLTO) {
     // Ignore in this case.
     if (!F.hasName())
       continue;
-    const std::string &PGOFuncName = getPGOFuncName(F, InLTO);
-    if (Error E = addFuncName(PGOFuncName))
+    if (Error E = addFuncWithName(F, getIRPGOFuncName(F, InLTO)))
       return E;
-    MD5FuncMap.emplace_back(Function::getGUID(PGOFuncName), &F);
-    // In ThinLTO, local function may have been promoted to global and have
-    // suffix ".llvm." added to the function name. We need to add the
-    // stripped function name to the symbol table so that we can find a match
-    // from profile.
-    //
-    // We may have other suffixes similar as ".llvm." which are needed to
-    // be stripped before the matching, but ".__uniq." suffix which is used
-    // to differentiate internal linkage functions in different modules
-    // should be kept. Now this is the only suffix with the pattern ".xxx"
-    // which is kept before matching.
-    const std::string UniqSuffix = ".__uniq.";
-    auto pos = PGOFuncName.find(UniqSuffix);
-    // Search '.' after ".__uniq." if ".__uniq." exists, otherwise
-    // search '.' from the beginning.
-    if (pos != std::string::npos)
-      pos += UniqSuffix.length();
-    else
-      pos = 0;
-    pos = PGOFuncName.find('.', pos);
-    if (pos != std::string::npos && pos != 0) {
-      const std::string &OtherFuncName = PGOFuncName.substr(0, pos);
-      if (Error E = addFuncName(OtherFuncName))
-        return E;
-      MD5FuncMap.emplace_back(Function::getGUID(OtherFuncName), &F);
-    }
+    // Also use getPGOFuncName() so that we can find records from older profiles
+    if (Error E = addFuncWithName(F, getPGOFuncName(F, InLTO)))
+      return E;
   }
   Sorted = false;
   finalizeSymtab();
+  return Error::success();
+}
+
+Error InstrProfSymtab::addFuncWithName(Function &F, StringRef PGOFuncName) {
+  if (Error E = addFuncName(PGOFuncName))
+    return E;
+  MD5FuncMap.emplace_back(Function::getGUID(PGOFuncName), &F);
+  // In ThinLTO, local function may have been promoted to global and have
+  // suffix ".llvm." added to the function name. We need to add the
+  // stripped function name to the symbol table so that we can find a match
+  // from profile.
+  //
+  // We may have other suffixes similar as ".llvm." which are needed to
+  // be stripped before the matching, but ".__uniq." suffix which is used
+  // to differentiate internal linkage functions in different modules
+  // should be kept. Now this is the only suffix with the pattern ".xxx"
+  // which is kept before matching.
+  const std::string UniqSuffix = ".__uniq.";
+  auto pos = PGOFuncName.find(UniqSuffix);
+  // Search '.' after ".__uniq." if ".__uniq." exists, otherwise
+  // search '.' from the beginning.
+  if (pos != std::string::npos)
+    pos += UniqSuffix.length();
+  else
+    pos = 0;
+  pos = PGOFuncName.find('.', pos);
+  if (pos != std::string::npos && pos != 0) {
+    StringRef OtherFuncName = PGOFuncName.substr(0, pos);
+    if (Error E = addFuncName(OtherFuncName))
+      return E;
+    MD5FuncMap.emplace_back(Function::getGUID(OtherFuncName), &F);
+  }
   return Error::success();
 }
 
