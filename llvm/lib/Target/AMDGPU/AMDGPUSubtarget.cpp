@@ -166,6 +166,10 @@ GCNSubtarget::initializeSubtargetDependencies(const Triple &TT,
 
 AMDGPUSubtarget::AMDGPUSubtarget(const Triple &TT) : TargetTriple(TT) {}
 
+bool AMDGPUSubtarget::useTrue16BitInsts() const {
+  return hasTrue16BitInsts() && EnableTrue16Codegen;
+}
+
 GCNSubtarget::GCNSubtarget(const Triple &TT, StringRef GPU, StringRef FS,
                            const GCNTargetMachine &TM)
     : // clang-format off

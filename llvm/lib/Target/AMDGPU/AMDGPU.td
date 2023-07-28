@@ -375,6 +375,12 @@ def FeatureTrue16BitInsts : SubtargetFeature<"true16",
   "True 16-bit operand instructions"
 >;
 
+def FeatureTrue16Codegen : SubtargetFeature<"true16-codegen",
+  "EnableTrue16Codegen",
+  "true",
+  "Use true 16-bit registers"
+>;
+
 def FeatureVOP3P : SubtargetFeature<"vop3p",
   "HasVOP3PInsts",
   "true",

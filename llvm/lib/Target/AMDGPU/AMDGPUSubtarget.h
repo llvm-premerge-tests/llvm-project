@@ -49,6 +49,7 @@ protected:
   bool GCN3Encoding = false;
   bool Has16BitInsts = false;
   bool HasTrue16BitInsts = false;
+  bool EnableTrue16Codegen = false;
   bool HasMadMixInsts = false;
   bool HasMadMacF32Insts = false;
   bool HasDsSrc2Insts = false;
@@ -154,6 +155,10 @@ public:
   }
 
   bool hasTrue16BitInsts() const { return HasTrue16BitInsts; }
+
+  // TODO: Remove and use hasTrue16BitInsts() instead once True16 is
+  // fully supported.
+  bool useTrue16BitInsts() const;
 
   bool hasMadMixInsts() const {
     return HasMadMixInsts;
