@@ -345,10 +345,12 @@ void testNestedCallableDefinition(int * p) {
      );
 }
 
-int testVariableDecls(int * p) {
+int testVariableDecls(int * p) { // expected-note {{declared here}}
   // expected-warning@-1{{'p' is an unsafe pointer used for buffer access}}
   int * q = p++;      // expected-note{{used in pointer arithmetic here}}
-  int a[p[1]];        // expected-note{{used in buffer access here}}
+  int a[p[1]];        // expected-note{{used in buffer access here}} \
+                         expected-warning {{variable length arrays are a Clang extension}} \
+                         expected-note {{function parameter 'p' with unknown value cannot be used in a constant expression}}
   int b = p[1];       // expected-note{{used in buffer access here}}
   return p[1];        // expected-note{{used in buffer access here}}
 }

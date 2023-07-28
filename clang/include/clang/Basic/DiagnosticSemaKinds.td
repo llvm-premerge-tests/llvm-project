@@ -134,6 +134,8 @@ def err_half_const_requires_fp16 : Error<
 // C99 variable-length arrays
 def ext_vla : Extension<"variable length arrays are a C99 feature">,
   InGroup<VLAExtension>;
+def ext_vla_cxx : ExtWarn<
+  "variable length arrays are a Clang extension">, InGroup<VLAExtension>;
 def warn_vla_used : Warning<"variable length array used">,
   InGroup<VLA>, DefaultIgnore;
 def err_vla_in_sfinae : Error<

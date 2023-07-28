@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -fsyntax-only -verify -std=c++2a %s -fexceptions -fcxx-exceptions -Wno-unevaluated-expression
+// RUN: %clang_cc1 -fsyntax-only -verify=expected,current -std=c++2a %s -fexceptions -fcxx-exceptions -Wno-unevaluated-expression
 // RUN: %clang_cc1 -fsyntax-only -verify -std=c++2a %s -fexceptions -fcxx-exceptions -Wno-unevaluated-expression -fexperimental-new-constant-interpreter
 
 void f(); // expected-note {{possible target for call}}
@@ -66,15 +66,23 @@ void stmt_expr() {
   })));
 }
 
-void vla(bool b) {
+// FIXME: the current constexpr evaluator correctly emits the notes about why
+// something is a VLA, but the experimental interpreter is dropping those notes
+// for some reason.
+void vla(bool b) { // current-note 5{{declared here}}
   static_assert(noexcept(static_cast<int(*)[true ? 41 : 42]>(0)), "");
   // FIXME: This can't actually throw, but we conservatively assume any VLA
   // type can throw for now.
-  static_assert(!noexcept(static_cast<int(*)[b ? 41 : 42]>(0)), "");
-  static_assert(!noexcept(static_cast<int(*)[b ? throw : 42]>(0)), "");
-  static_assert(!noexcept(reinterpret_cast<int(*)[b ? throw : 42]>(0)), "");
-  static_assert(!noexcept((int(*)[b ? throw : 42])0), "");
-  static_assert(!noexcept((int(*)[b ? throw : 42]){0}), "");
+  static_assert(!noexcept(static_cast<int(*)[b ? 41 : 42]>(0)), "");         // expected-warning {{variable length arrays are a Clang extension}} \
+                                                                                current-note {{function parameter 'b' with unknown value cannot be used in a constant expression}}
+  static_assert(!noexcept(static_cast<int(*)[b ? throw : 42]>(0)), "");      // expected-warning {{variable length arrays are a Clang extension}} \
+                                                                                current-note {{function parameter 'b' with unknown value cannot be used in a constant expression}}
+  static_assert(!noexcept(reinterpret_cast<int(*)[b ? throw : 42]>(0)), ""); // expected-warning {{variable length arrays are a Clang extension}} \
+                                                                                current-note {{function parameter 'b' with unknown value cannot be used in a constant expression}}
+  static_assert(!noexcept((int(*)[b ? throw : 42])0), "");                   // expected-warning {{variable length arrays are a Clang extension}} \
+                                                                                current-note {{function parameter 'b' with unknown value cannot be used in a constant expression}}
+  static_assert(!noexcept((int(*)[b ? throw : 42]){0}), "");                 // expected-warning {{variable length arrays are a Clang extension}} \
+                                                                                current-note {{function parameter 'b' with unknown value cannot be used in a constant expression}}
 }
 
 struct pr_44514 {

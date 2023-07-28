@@ -115,8 +115,10 @@ long TestBadTemplateFunc(long x) {
 }
 
 void IntParam(int x);
-void TestVLA(int x) {
-  HasNonTrivialDestructor vla[x];         // expected-note {{jump exits scope of variable with non-trivial destructor}}
+void TestVLA(int x) {  // expected-note {{declared here}}
+  HasNonTrivialDestructor vla[x];         // expected-note {{jump exits scope of variable with non-trivial destructor}} \
+                                             expected-warning {{variable length arrays are a Clang extension}} \
+                                             expected-note {{function parameter 'x' with unknown value cannot be used in a constant expression}}
   [[clang::musttail]] return IntParam(x); // expected-error {{cannot perform a tail call from this return statement}}
 }
 

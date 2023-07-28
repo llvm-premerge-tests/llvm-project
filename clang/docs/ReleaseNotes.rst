@@ -95,6 +95,11 @@ Attribute Changes in Clang
 
 Improvements to Clang's diagnostics
 -----------------------------------
+- Clang now diagnoses use of variable-length arrays in C++ by default. This is
+  an extension supported by Clang and GCC, but is very easy to accidentally use
+  without realizing it's a nonportable construct that has different semantics
+  from a constant-sized array.
+  (`#62836 <https://github.com/llvm/llvm-project/issues/62836>`_)
 
 Bug Fixes in This Version
 -------------------------

@@ -12,11 +12,12 @@ void arrayParameterWithSize(int x[5]); // expected-warning {{array parameter is 
 // CHECK: fix-it:"{{.*}}nullability.h":{[[@LINE-3]]:35-[[@LINE-3]]:35}:"_Nullable "
 // CHECK: fix-it:"{{.*}}nullability.h":{[[@LINE-4]]:35-[[@LINE-4]]:35}:"_Nonnull "
 
-void arrayParameterWithStar(int x[*]); // expected-warning {{array parameter is missing a nullability type specifier}}
-// expected-note@-1 {{insert '_Nullable'}}
-// expected-note@-2 {{insert '_Nonnull'}}
-// CHECK: fix-it:"{{.*}}nullability.h":{[[@LINE-3]]:35-[[@LINE-3]]:35}:"_Nullable "
-// CHECK: fix-it:"{{.*}}nullability.h":{[[@LINE-4]]:35-[[@LINE-4]]:35}:"_Nonnull "
+void arrayParameterWithStar(int x[*]); // expected-warning {{array parameter is missing a nullability type specifier}} \
+                                          expected-warning {{variable length arrays are a Clang extension}}
+// expected-note@-2 {{insert '_Nullable'}}
+// expected-note@-3 {{insert '_Nonnull'}}
+// CHECK: fix-it:"{{.*}}nullability.h":{[[@LINE-4]]:35-[[@LINE-4]]:35}:"_Nullable "
+// CHECK: fix-it:"{{.*}}nullability.h":{[[@LINE-5]]:35-[[@LINE-5]]:35}:"_Nonnull "
 
 
 // No fix-its on either the macro definition or instantiation.

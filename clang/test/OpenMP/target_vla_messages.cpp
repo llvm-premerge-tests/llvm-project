@@ -7,21 +7,16 @@
 
 // Nvidia GPUs don't support VLAs.
 // RUN: %clang_cc1 -verify -fopenmp -x c++ -triple powerpc64le-unknown-unknown -fopenmp-targets=nvptx64-nvidia-cuda -emit-llvm-bc %s -o %t-ppc-host-nvptx.bc
-// RUN: %clang_cc1 -verify -DNO_VLA -fopenmp -x c++ -triple nvptx64-unknown-unknown -fopenmp-targets=nvptx64-nvidia-cuda -emit-llvm %s -fopenmp-is-target-device -fopenmp-host-ir-file-path %t-ppc-host-nvptx.bc -o %t-nvptx-device.ll
+// RUN: %clang_cc1 -verify=unsupported,expected -fopenmp -x c++ -triple nvptx64-unknown-unknown -fopenmp-targets=nvptx64-nvidia-cuda -emit-llvm %s -fopenmp-is-target-device -fopenmp-host-ir-file-path %t-ppc-host-nvptx.bc -o %t-nvptx-device.ll
 
 // RUN: %clang_cc1 -verify -fopenmp-simd -x c++ -triple powerpc64le-unknown-unknown -fopenmp-targets=nvptx64-nvidia-cuda -emit-llvm-bc %s -o %t-ppc-host-nvptx.bc
 
-#ifndef NO_VLA
-// expected-no-diagnostics
-#endif
-
 #pragma omp declare target
-void declare(int arg) {
+void declare(int arg) { // expected-note {{declared here}}
   int a[2];
-#ifdef NO_VLA
-  // expected-error@+2 {{variable length arrays are not supported for the current target}}
-#endif
-  int vla[arg];
+  int vla[arg]; // unsupported-error {{variable length arrays are not supported for the current target}} \
+                   expected-warning {{variable length arrays are a Clang extension}} \
+                   expected-note {{function parameter 'arg' with unknown value cannot be used in a constant expression}}
 }
 
 void declare_parallel_reduction(int arg) {
@@ -33,66 +28,57 @@ void declare_parallel_reduction(int arg) {
 #pragma omp parallel reduction(+: a[0:2])
   { }
 
-#ifdef NO_VLA
-  // expected-error@+3 {{cannot generate code for reduction on array section, which requires a variable length array}}
-  // expected-note@+2 {{variable length arrays are not supported for the current target}}
-#endif
-#pragma omp parallel reduction(+: a[0:arg])
+#pragma omp parallel reduction(+: a[0:arg]) // unsupported-error {{cannot generate code for reduction on array section, which requires a variable length array}} \
+                                               unsupported-note {{variable length arrays are not supported for the current target}}
+
   { }
 }
 #pragma omp end declare target
 
 template <typename T>
-void target_template(int arg) {
+void target_template(int arg) { // expected-note 2{{declared here}}
 #pragma omp target
   {
-#ifdef NO_VLA
-    // expected-error@+2 {{variable length arrays are not supported for the current target}}
-#endif
-    T vla[arg];
+    T vla[arg]; // unsupported-error {{variable length arrays are not supported for the current target}} \
+                   expected-warning 2{{variable length arrays are a Clang extension}} \
+                   expected-note 2{{function parameter 'arg' with unknown value cannot be used in a constant expression}}
   }
 }
 
-void target(int arg) {
+void target(int arg) { // expected-note 2{{declared here}}
 #pragma omp target
   {
-#ifdef NO_VLA
-    // expected-error@+2 {{variable length arrays are not supported for the current target}}
-#endif
-    int vla[arg];
+    int vla[arg]; // unsupported-error {{variable length arrays are not supported for the current target}} \
+                     expected-warning {{variable length arrays are a Clang extension}} \
+                     expected-note {{function parameter 'arg' with unknown value cannot be used in a constant expression}}
   }
 
 #pragma omp target
   {
 #pragma omp parallel
     {
-#ifdef NO_VLA
-    // expected-error@+2 {{variable length arrays are not supported for the current target}}
-#endif
-      int vla[arg];
+      int vla[arg]; // unsupported-error {{variable length arrays are not supported for the current target}} \
+                       expected-warning {{variable length arrays are a Clang extension}} \
+                       expected-note {{function parameter 'arg' with unknown value cannot be used in a constant expression}}
     }
   }
 
-#ifdef NO_VLA
-    // expected-note@+2 {{in instantiation of function template specialization 'target_template<long>' requested here}}
-#endif
-  target_template<long>(arg);
+  target_template<long>(arg); // expected-note {{in instantiation of function template specialization 'target_template<long>' requested here}}
 }
 
-void teams_reduction(int arg) {
+void teams_reduction(int arg) { // expected-note {{declared here}}
   int a[2];
-  int vla[arg];
+  int vla[arg];  // expected-warning {{variable length arrays are a Clang extension}} \
+                    expected-note {{function parameter 'arg' with unknown value cannot be used in a constant expression}}
 
 #pragma omp target map(a)
 #pragma omp teams reduction(+: a)
   { }
 
-#ifdef NO_VLA
-  // expected-error@+4 {{cannot generate code for reduction on variable length array}}
-  // expected-note@+3 {{variable length arrays are not supported for the current target}}
-#endif
 #pragma omp target map(vla)
-#pragma omp teams reduction(+: vla)
+#pragma omp teams reduction(+: vla) // unsupported-error {{cannot generate code for reduction on variable length array}} \
+                                       unsupported-note {{variable length arrays are not supported for the current target}}
+
   { }
 
 #pragma omp target map(a[0:2])
@@ -103,37 +89,32 @@ void teams_reduction(int arg) {
 #pragma omp teams reduction(+: vla[0:2])
   { }
 
-#ifdef NO_VLA
-  // expected-error@+4 {{cannot generate code for reduction on array section, which requires a variable length array}}
-  // expected-note@+3 {{variable length arrays are not supported for the current target}}
-#endif
 #pragma omp target map(a[0:arg])
-#pragma omp teams reduction(+: a[0:arg])
+#pragma omp teams reduction(+: a[0:arg]) // unsupported-error {{cannot generate code for reduction on array section, which requires a variable length array}} \
+                                            unsupported-note {{variable length arrays are not supported for the current target}}
+
   { }
 
-#ifdef NO_VLA
-  // expected-error@+4 {{cannot generate code for reduction on array section, which requires a variable length array}}
-  // expected-note@+3 {{variable length arrays are not supported for the current target}}
-#endif
 #pragma omp target map(vla[0:arg])
-#pragma omp teams reduction(+: vla[0:arg])
+#pragma omp teams reduction(+: vla[0:arg]) // unsupported-error {{cannot generate code for reduction on array section, which requires a variable length array}} \
+                                              unsupported-note {{variable length arrays are not supported for the current target}}
+
   { }
 }
 
-void parallel_reduction(int arg) {
+void parallel_reduction(int arg) { // expected-note {{declared here}}
   int a[2];
-  int vla[arg];
+  int vla[arg]; // expected-warning {{variable length arrays are a Clang extension}} \
+                   expected-note {{function parameter 'arg' with unknown value cannot be used in a constant expression}}
 
 #pragma omp target map(a)
 #pragma omp parallel reduction(+: a)
   { }
 
-#ifdef NO_VLA
-  // expected-error@+4 {{cannot generate code for reduction on variable length array}}
-  // expected-note@+3 {{variable length arrays are not supported for the current target}}
-#endif
 #pragma omp target map(vla)
-#pragma omp parallel reduction(+: vla)
+#pragma omp parallel reduction(+: vla) // unsupported-error {{cannot generate code for reduction on variable length array}} \
+                                          unsupported-note {{variable length arrays are not supported for the current target}}
+
   { }
 
 #pragma omp target map(a[0:2])
@@ -144,39 +125,34 @@ void parallel_reduction(int arg) {
 #pragma omp parallel reduction(+: vla[0:2])
   { }
 
-#ifdef NO_VLA
-  // expected-error@+4 {{cannot generate code for reduction on array section, which requires a variable length array}}
-  // expected-note@+3 {{variable length arrays are not supported for the current target}}
-#endif
 #pragma omp target map(a[0:arg])
-#pragma omp parallel reduction(+: a[0:arg])
+#pragma omp parallel reduction(+: a[0:arg]) // unsupported-error {{cannot generate code for reduction on array section, which requires a variable length array}} \
+                                               unsupported-note {{variable length arrays are not supported for the current target}}
+
   { }
 
-#ifdef NO_VLA
-  // expected-error@+4 {{cannot generate code for reduction on array section, which requires a variable length array}}
-  // expected-note@+3 {{variable length arrays are not supported for the current target}}
-#endif
 #pragma omp target map(vla[0:arg])
-#pragma omp parallel reduction(+: vla[0:arg])
+#pragma omp parallel reduction(+: vla[0:arg]) // unsupported-error {{cannot generate code for reduction on array section, which requires a variable length array}} \
+                                                 unsupported-note {{variable length arrays are not supported for the current target}}
+
   { }
 }
 
-void for_reduction(int arg) {
+void for_reduction(int arg) { // expected-note {{declared here}}
   int a[2];
-  int vla[arg];
+  int vla[arg]; // expected-warning {{variable length arrays are a Clang extension}} \
+                   expected-note {{function parameter 'arg' with unknown value cannot be used in a constant expression}}
 
 #pragma omp target map(a)
 #pragma omp parallel
 #pragma omp for reduction(+: a)
   for (int i = 0; i < arg; i++) ;
 
-#ifdef NO_VLA
-  // expected-error@+5 {{cannot generate code for reduction on variable length array}}
-  // expected-note@+4 {{variable length arrays are not supported for the current target}}
-#endif
 #pragma omp target map(vla)
 #pragma omp parallel
-#pragma omp for reduction(+: vla)
+#pragma omp for reduction(+: vla) // unsupported-error {{cannot generate code for reduction on variable length array}} \
+                                     unsupported-note {{variable length arrays are not supported for the current target}}
+
   for (int i = 0; i < arg; i++) ;
 
 #pragma omp target map(a[0:2])
@@ -189,27 +165,21 @@ void for_reduction(int arg) {
 #pragma omp for reduction(+: vla[0:2])
   for (int i = 0; i < arg; i++) ;
 
-#ifdef NO_VLA
-  // expected-error@+5 {{cannot generate code for reduction on array section, which requires a variable length array}}
-  // expected-note@+4 {{variable length arrays are not supported for the current target}}
-#endif
 #pragma omp target map(a[0:arg])
 #pragma omp parallel
-#pragma omp for reduction(+: a[0:arg])
+#pragma omp for reduction(+: a[0:arg]) // unsupported-error {{cannot generate code for reduction on array section, which requires a variable length array}} \
+                                          unsupported-note {{variable length arrays are not supported for the current target}}
+
   for (int i = 0; i < arg; i++) ;
 
-#ifdef NO_VLA
-  // expected-error@+5 {{cannot generate code for reduction on array section, which requires a variable length array}}
-  // expected-note@+4 {{variable length arrays are not supported for the current target}}
-#endif
 #pragma omp target map(vla[0:arg])
 #pragma omp parallel
-#pragma omp for reduction(+: vla[0:arg])
+#pragma omp for reduction(+: vla[0:arg]) // unsupported-error {{cannot generate code for reduction on array section, which requires a variable length array}} \
+                                            unsupported-note {{variable length arrays are not supported for the current target}}
+
   for (int i = 0; i < arg; i++) ;
-#ifdef NO_VLA
-  // expected-error@+3 {{cannot generate code for reduction on array section, which requires a variable length array}}
-  // expected-note@+2 {{variable length arrays are not supported for the current target}}
-#endif
-#pragma omp target reduction(+ : vla[0:arg])
+#pragma omp target reduction(+ : vla[0:arg]) // unsupported-error {{cannot generate code for reduction on array section, which requires a variable length array}} \
+                                                 unsupported-note {{variable length arrays are not supported for the current target}}
+
   for (int i = 0; i < arg; i++) ;
 }

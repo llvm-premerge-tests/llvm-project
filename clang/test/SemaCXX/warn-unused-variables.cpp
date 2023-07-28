@@ -170,10 +170,11 @@ struct Elidable {
   Elidable();
 };
 
-void foo(int size) {
+void foo(int size) { // expected-note {{declared here}}
   Elidable elidable; // no warning
   Elidable elidableArray[2]; // no warning
-  Elidable elidableDynArray[size]; // no warning
+  Elidable elidableDynArray[size]; // expected-warning {{variable length arrays are a Clang extension}} \
+                                      expected-note {{function parameter 'size' with unknown value cannot be used in a constant expression}}
   Elidable elidableNestedArray[1][2][3]; // no warning
 
   NonTriviallyDestructible scalar; // no warning

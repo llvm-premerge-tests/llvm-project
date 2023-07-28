@@ -5,8 +5,9 @@
 // RUN: %clang_cc1 -verify -fopenmp %s
 // RUN: %clang_cc1 -verify -fopenmp-simd %s
 
-void foo(int x, int n) {
-  double vec[n];
+void foo(int x, int n) { // expected-note {{declared here}}
+  double vec[n]; // expected-warning {{variable length arrays are a Clang extension}} \
+                    expected-note {{function parameter 'n' with unknown value cannot be used in a constant expression}}
   for (int iter = 0; iter < x; iter++) {
 #pragma omp target teams distribute parallel for map( \
     from                                              \

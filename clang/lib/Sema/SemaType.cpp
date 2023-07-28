@@ -2588,7 +2588,7 @@ QualType Sema::BuildArrayType(QualType T, ArrayType::ArraySizeModifier ASM,
     VLADiag = diag::err_openmp_vla_in_task_untied;
     VLAIsError = true;
   } else {
-    VLADiag = diag::ext_vla;
+    VLADiag = getLangOpts().CPlusPlus ? diag::ext_vla_cxx : diag::ext_vla;
     VLAIsError = false;
   }
 

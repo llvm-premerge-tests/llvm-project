@@ -12,7 +12,8 @@ void foo(int a) {
   foo_array = new Foo[arr[0].a];
 }
 
-void Test(int N) {
-  int arr[N];
+void Test(int N) {       // expected-note {{declared here}}
+  int arr[N];            // expected-warning {{variable length arrays are a Clang extension}} \\
+                            expected-note {{function parameter 'N' with unknown value cannot be used in a constant expression}}
   decltype([&arr]{}) *p; // expected-error {{lambda expression in an unevaluated operand}}
 }

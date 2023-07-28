@@ -189,11 +189,14 @@ void t8(int n, ...) {
   __builtin_va_end(list);
 }
 
-int t9(int n) {
+int t9(int n) { // #here
   // Make sure the error works in potentially-evaluated sizeof
-  return (int)sizeof(*(Helper(Foo()), (int (*)[n])0));
+  return (int)sizeof(*(Helper(Foo()), (int (*)[n])0)); // expected-warning 2 {{variable length arrays are a Clang extension}}
 #if __cplusplus <= 199711L
   // expected-warning@-2 {{cannot pass object of non-POD type 'Foo' through variadic function; call will abort at runtime}}
+#else
+  // expected-note@-4 2{{function parameter 'n' with unknown value cannot be used in a constant expression}}
+  // expected-note@#here 2{{declared here}}
 #endif
 }
 

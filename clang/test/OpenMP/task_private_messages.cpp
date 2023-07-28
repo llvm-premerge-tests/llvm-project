@@ -1,5 +1,4 @@
 // RUN: %clang_cc1 -verify -fopenmp -ferror-limit 100 %s -Wuninitialized
-
 // RUN: %clang_cc1 -verify -fopenmp-simd -ferror-limit 100 %s -Wuninitialized
 
 typedef void **omp_allocator_handle_t;
@@ -58,7 +57,9 @@ public:
 int threadvar;
 #pragma omp threadprivate(threadvar) // expected-note {{defined as threadprivate or thread local}}
 
-void bar(int n, int b[n]) {
+void bar(int n, int b[n]) { // expected-warning {{variable length arrays are a Clang extension}} \
+                               expected-note {{function parameter 'n' with unknown value cannot be used in a constant expression}} \
+                               expected-note {{declared here}}
 #pragma omp task private(b)
     foo();
 }

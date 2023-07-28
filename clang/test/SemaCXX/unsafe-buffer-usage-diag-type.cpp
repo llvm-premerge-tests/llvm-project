@@ -8,8 +8,10 @@ void testRefersPtrLocalVarDecl(int i) {
   ptr[i];       // expected-note{{used in buffer access here}}
 }
 
-void testRefersArrayLocalVarDecl(int i) {
-  int array[i];   // expected-warning{{'array' is an unsafe buffer that does not perform bounds}}
+void testRefersArrayLocalVarDecl(int i) { // expected-note{{declared here}}
+  int array[i];   // expected-warning{{'array' is an unsafe buffer that does not perform bounds}} \
+                     expected-warning{{variable length arrays are a Clang extension}} \
+                     expected-note{{function parameter 'i' with unknown value cannot be used in a constant expression}}
   array[i/2];     // expected-note{{used in buffer access here}}
 }
 }

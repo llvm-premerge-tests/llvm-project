@@ -713,7 +713,7 @@ void is_array()
   int t31[F(__is_array(cvoid*))];
 }
 
-void is_bounded_array(int n) {
+void is_bounded_array(int n) { // expected-note {{declared here}}
   static_assert(__is_bounded_array(IntAr), "");
   static_assert(!__is_bounded_array(IntArNB), "");
   static_assert(__is_bounded_array(UnionAr), "");
@@ -741,11 +741,12 @@ void is_bounded_array(int n) {
   static_assert(!__is_bounded_array(void *), "");
   static_assert(!__is_bounded_array(cvoid *), "");
 
-  int t32[n];
+  int t32[n]; // expected-warning {{variable length arrays are a Clang extension}} \
+                 expected-note {{function parameter 'n' with unknown value cannot be used in a constant expression}}
   (void)__is_bounded_array(decltype(t32)); // expected-error{{variable length arrays are not supported for '__is_bounded_array'}}
 }
 
-void is_unbounded_array(int n) {
+void is_unbounded_array(int n) { // expected-note {{declared here}}
   static_assert(!__is_unbounded_array(IntAr), "");
   static_assert(__is_unbounded_array(IntArNB), "");
   static_assert(!__is_unbounded_array(UnionAr), "");
@@ -773,7 +774,8 @@ void is_unbounded_array(int n) {
   static_assert(!__is_unbounded_array(void *), "");
   static_assert(!__is_unbounded_array(cvoid *), "");
 
-  int t32[n];
+  int t32[n]; // expected-warning {{variable length arrays are a Clang extension}} \
+                 expected-note {{function parameter 'n' with unknown value cannot be used in a constant expression}}
   (void)__is_unbounded_array(decltype(t32)); // expected-error{{variable length arrays are not supported for '__is_unbounded_array'}}
 }
 

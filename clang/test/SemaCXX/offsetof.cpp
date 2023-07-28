@@ -26,7 +26,7 @@ struct HasArray {
 // Constant and non-constant offsetof expressions
 void test_ice(int i) {
   int array0[__builtin_offsetof(HasArray, array[5])];
-  int array1[__builtin_offsetof(HasArray, array[i])];
+  int array1[__builtin_offsetof(HasArray, array[i])]; // expected-warning {{variable length arrays are a Clang extension}}
 }
 
 // Bitfields

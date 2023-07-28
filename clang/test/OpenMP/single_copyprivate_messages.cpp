@@ -109,7 +109,9 @@ T tmain(T argc, C **argv) {
   return T();
 }
 
-void bar(S4 a[2], int n, int b[n]) {
+void bar(S4 a[2], int n, int b[n]) { // expected-warning {{variable length arrays are a Clang extension}} \
+                                        expected-note {{function parameter 'n' with unknown value cannot be used in a constant expression}} \
+                                        expected-note {{declared here}}
 #pragma omp single copyprivate(a, b)
     foo();
 }

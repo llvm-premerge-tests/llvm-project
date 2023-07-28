@@ -100,8 +100,9 @@ void test() {}
 namespace test3 {
 
 void f() {
-  int n = 10;
-  int vla[n];
+  int n = 10; // expected-note {{declared here}}
+  int vla[n]; // expected-warning {{variable length arrays are a Clang extension}} \
+                 expected-note {{read of non-const variable 'n' is not allowed in a constant expression}}
 
   [[clang::annotate("vlas are awful", sizeof(vla))]] int i = 0; // reject, the sizeof is not unevaluated
   // expected-error@-1 {{'annotate' attribute requires parameter 1 to be a constant expression}}

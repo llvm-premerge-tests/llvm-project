@@ -115,11 +115,12 @@ struct D6 : virtual D5 {
 struct D7 : virtual D3 {
 };
 
-void test2(int n, A *a2) {
+void test2(int n, A *a2) { // expected-note {{declared here}}
   __attribute__((aligned(16))) char m[sizeof(A) * 2];
   char(&m_ref)[sizeof(A) * 2] = m;
   extern char(&m_ref_noinit)[sizeof(A) * 2];
-  __attribute__((aligned(16))) char vararray[10][n];
+  __attribute__((aligned(16))) char vararray[10][n]; // expected-warning 2 {{variable length arrays are a Clang extension}} \
+                                                        expected-note {{function parameter 'n' with unknown value cannot be used in a constant expression}}
   A t0;
   B0 t1;
   C t2 = {.m0 = t0, .m1 = t1};
