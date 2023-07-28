@@ -533,7 +533,7 @@ void *MapAllocator<Config>::allocate(const Options &Options, uptr Size,
   if (Alignment > PageSize)
     RoundedSize += Alignment - PageSize;
 
-  if (Alignment < PageSize && Cache.canCache(RoundedSize)) {
+  if (Alignment < PageSize && Cache.canCache(Size)) {
     LargeBlock::Header *H;
     bool Zeroed;
     if (Cache.retrieve(Options, Size, Alignment, &H, &Zeroed)) {
