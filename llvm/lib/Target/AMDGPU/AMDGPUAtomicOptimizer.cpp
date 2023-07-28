@@ -101,6 +101,8 @@ public:
 
   void visitAtomicRMWInst(AtomicRMWInst &I);
   void visitIntrinsicInst(IntrinsicInst &I);
+
+  bool isScanStrategyIterative();
 };
 
 } // namespace
@@ -131,6 +133,10 @@ bool AMDGPUAtomicOptimizer::runOnFunction(Function &F) {
 
   return AMDGPUAtomicOptimizerImpl(UA, DL, DTU, ST, IsPixelShader, ScanImpl)
       .run(F);
+}
+
+bool AMDGPUAtomicOptimizerImpl::isScanStrategyIterative() {
+  return ScanImpl == ScanOptions::Iterative;
 }
 
 PreservedAnalyses AMDGPUAtomicOptimizerPass::run(Function &F,
@@ -202,7 +208,17 @@ void AMDGPUAtomicOptimizerImpl::visitAtomicRMWInst(AtomicRMWInst &I) {
   case AtomicRMWInst::Min:
   case AtomicRMWInst::UMax:
   case AtomicRMWInst::UMin:
+  case AtomicRMWInst::FAdd:
+  case AtomicRMWInst::FSub:
     break;
+  }
+
+  // FP Atomics are supported for only Iterative Strategy.
+  if (AtomicRMWInst::isFPOperation(Op)) {
+    // TODO: Support for double type
+    if (!isScanStrategyIterative() || I.getType()->isDoubleTy()) {
+      return;
+    }
   }
 
   const unsigned PtrIdx = 0;
@@ -302,9 +318,24 @@ void AMDGPUAtomicOptimizerImpl::visitIntrinsicInst(IntrinsicInst &I) {
   case Intrinsic::amdgcn_raw_ptr_buffer_atomic_umax:
     Op = AtomicRMWInst::UMax;
     break;
+  case Intrinsic::amdgcn_global_atomic_fadd:
+    Op = AtomicRMWInst::FAdd;
+    break;
   }
 
-  const unsigned ValIdx = 0;
+  // FP Atomics are supported for only Iterative Strategy
+  if (AtomicRMWInst::isFPOperation(Op)) {
+    // TODO: Support for double type
+    if (!isScanStrategyIterative() || I.getType()->isDoubleTy()) {
+      return;
+    }
+  }
+  unsigned ValIdx = 0;
+
+  // TODO: Operand order is not consistent for atomic fadd intrinsics
+  if (Op == AtomicRMWInst::FAdd) {
+    ValIdx = 1;
+  }
 
   const bool ValDivergent = UA->isDivergentUse(I.getOperandUse(ValIdx));
 
@@ -344,8 +375,12 @@ static Value *buildNonAtomicBinOp(IRBuilder<> &B, AtomicRMWInst::BinOp Op,
     llvm_unreachable("Unhandled atomic op");
   case AtomicRMWInst::Add:
     return B.CreateBinOp(Instruction::Add, LHS, RHS);
+  case AtomicRMWInst::FAdd:
+    return B.CreateBinOp(Instruction::FAdd, LHS, RHS);
   case AtomicRMWInst::Sub:
     return B.CreateBinOp(Instruction::Sub, LHS, RHS);
+  case AtomicRMWInst::FSub:
+    return B.CreateBinOp(Instruction::FSub, LHS, RHS);
   case AtomicRMWInst::And:
     return B.CreateBinOp(Instruction::And, LHS, RHS);
   case AtomicRMWInst::Or:
@@ -554,18 +589,32 @@ std::pair<Value *, Value *> AMDGPUAtomicOptimizerImpl::buildScanIteratively(
   // Use llvm.cttz instrinsic to find the lowest remaining active lane.
   auto *FF1 =
       B.CreateIntrinsic(Intrinsic::cttz, WaveTy, {ActiveBits, B.getTrue()});
-  auto *LaneIdxInt = B.CreateTrunc(FF1, Ty);
+  auto *LaneIdxInt = B.CreateTrunc(FF1, B.getInt32Ty());
 
   // Get the value required for atomic operation
-  auto *LaneValue =
+  bool isAtomicFloatingPointTy = Ty->isFloatingPointTy();
+  if (isAtomicFloatingPointTy)
+    V = B.CreateBitCast(V, B.getInt32Ty());
+  Value *LaneValue =
       B.CreateIntrinsic(Intrinsic::amdgcn_readlane, {}, {V, LaneIdxInt});
+  if (isAtomicFloatingPointTy)
+    LaneValue = B.CreateBitCast(LaneValue, Ty);
 
   // Perform writelane if intermediate scan results are required later in the
   // kernel computations
   Value *OldValue = nullptr;
   if (NeedResult) {
-    OldValue = B.CreateIntrinsic(Intrinsic::amdgcn_writelane, {},
-                                 {Accumulator, LaneIdxInt, OldValuePhi});
+    Value *AccumulatorBitCasted = Accumulator;
+    Value *OldValuePhiBitCasted = OldValuePhi;
+    if (isAtomicFloatingPointTy) {
+      AccumulatorBitCasted = B.CreateBitCast(Accumulator, B.getInt32Ty());
+      OldValuePhiBitCasted = B.CreateBitCast(OldValuePhi, B.getInt32Ty());
+    }
+    OldValue = B.CreateIntrinsic(
+        Intrinsic::amdgcn_writelane, {},
+        {AccumulatorBitCasted, LaneIdxInt, OldValuePhiBitCasted});
+    if (isAtomicFloatingPointTy)
+      OldValue = B.CreateBitCast(OldValue, Ty);
     OldValuePhi->addIncoming(OldValue, ComputeLoop);
   }
 
@@ -588,6 +637,18 @@ std::pair<Value *, Value *> AMDGPUAtomicOptimizerImpl::buildScanIteratively(
   B.SetInsertPoint(ComputeEnd);
 
   return {OldValue, NewAccumulator};
+}
+
+static APFloat getIdentityValueForFAtomicOp(AtomicRMWInst::BinOp Op,
+                                            const fltSemantics &Semantics) {
+  switch (Op) {
+  default:
+    llvm_unreachable("Unhandled atomic op");
+  case AtomicRMWInst::FAdd:
+    return APFloat::getZero(Semantics, false);
+  case AtomicRMWInst::FSub:
+    return APFloat::getZero(Semantics, true);
+  }
 }
 
 static APInt getIdentityValueForAtomicOp(AtomicRMWInst::BinOp Op,
@@ -679,17 +740,25 @@ void AMDGPUAtomicOptimizerImpl::optimizeAtomic(Instruction &I,
     Mbcnt =
         B.CreateIntrinsic(Intrinsic::amdgcn_mbcnt_hi, {}, {ExtractHi, Mbcnt});
   }
-  Mbcnt = B.CreateIntCast(Mbcnt, Ty, false);
+  bool isAtomicFloatingPointTy = Ty->isFloatingPointTy();
+  if (!isAtomicFloatingPointTy)
+    Mbcnt = B.CreateIntCast(Mbcnt, Ty, false);
 
-  Value *const Identity = B.getInt(getIdentityValueForAtomicOp(Op, TyBitWidth));
+  Function *F = I.getFunction();
+  LLVMContext &C = F->getContext();
+  Value *Identity;
+  if (Ty->isIntegerTy()) {
+    Identity = B.getInt(getIdentityValueForAtomicOp(Op, TyBitWidth));
+  } else if (isAtomicFloatingPointTy) {
+    const fltSemantics &Semantics = Ty->getScalarType()->getFltSemantics();
+    Identity = ConstantFP::get(C, getIdentityValueForFAtomicOp(Op, Semantics));
+  }
 
   Value *ExclScan = nullptr;
   Value *NewV = nullptr;
 
   const bool NeedResult = !I.use_empty();
 
-  Function *F = I.getFunction();
-  LLVMContext &C = F->getContext();
   BasicBlock *ComputeLoop = nullptr;
   BasicBlock *ComputeEnd = nullptr;
   // If we have a divergent value in each lane, we need to combine the value
@@ -746,13 +815,23 @@ void AMDGPUAtomicOptimizerImpl::optimizeAtomic(Instruction &I,
       NewV = buildMul(B, V, Ctpop);
       break;
     }
-
+    case AtomicRMWInst::FAdd:
+    case AtomicRMWInst::FSub: {
+      Value *const Ctpop =
+          B.CreateIntCast(B.CreateUnaryIntrinsic(Intrinsic::ctpop, Ballot),
+                          B.getInt32Ty(), false);
+      Value *const CtpopFP = B.CreateUIToFP(Ctpop, Ty);
+      NewV = B.CreateFMul(V, CtpopFP);
+      break;
+    }
     case AtomicRMWInst::And:
     case AtomicRMWInst::Or:
     case AtomicRMWInst::Max:
     case AtomicRMWInst::Min:
     case AtomicRMWInst::UMax:
     case AtomicRMWInst::UMin:
+    case AtomicRMWInst::FMin:
+    case AtomicRMWInst::FMax:
       // These operations with a uniform value are idempotent: doing the atomic
       // operation multiple times has the same effect as doing it once.
       NewV = V;
@@ -830,7 +909,7 @@ void AMDGPUAtomicOptimizerImpl::optimizeAtomic(Instruction &I,
 
   if (NeedResult) {
     // Create a PHI node to get our new atomic result into the exit block.
-    PHINode *const PHI = B.CreatePHI(Ty, 2);
+    PHINode *PHI = B.CreatePHI(Ty, 2);
     PHI->addIncoming(PoisonValue::get(Ty), Predecessor);
     PHI->addIncoming(NewI, SingleLaneTerminator->getParent());
 
@@ -853,8 +932,13 @@ void AMDGPUAtomicOptimizerImpl::optimizeAtomic(Instruction &I,
           B.CreateInsertElement(PartialInsert, ReadFirstLaneHi, B.getInt32(1));
       BroadcastI = B.CreateBitCast(Insert, Ty);
     } else if (TyBitWidth == 32) {
-
-      BroadcastI = B.CreateIntrinsic(Intrinsic::amdgcn_readfirstlane, {}, PHI);
+      Value *CastedPhi = PHI;
+      if (isAtomicFloatingPointTy)
+        CastedPhi = B.CreateBitCast(PHI, B.getInt32Ty());
+      BroadcastI =
+          B.CreateIntrinsic(Intrinsic::amdgcn_readfirstlane, {}, CastedPhi);
+      if (isAtomicFloatingPointTy)
+        BroadcastI = B.CreateBitCast(BroadcastI, Ty);
     } else {
       llvm_unreachable("Unhandled atomic bit width");
     }
@@ -892,6 +976,12 @@ void AMDGPUAtomicOptimizerImpl::optimizeAtomic(Instruction &I,
       case AtomicRMWInst::Xor:
         LaneOffset = buildMul(B, V, B.CreateAnd(Mbcnt, 1));
         break;
+      case AtomicRMWInst::FAdd:
+      case AtomicRMWInst::FSub: {
+        Value *const MbcntFP = B.CreateUIToFP(Mbcnt, Ty);
+        LaneOffset = B.CreateFMul(V, MbcntFP);
+        break;
+      }
       }
     }
     Value *const Result = buildNonAtomicBinOp(B, Op, BroadcastI, LaneOffset);
