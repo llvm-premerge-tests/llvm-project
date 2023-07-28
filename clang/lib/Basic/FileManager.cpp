@@ -632,33 +632,40 @@ void FileManager::GetUniqueIDMapping(
 }
 
 StringRef FileManager::getCanonicalName(DirectoryEntryRef Dir) {
-  auto Known = CanonicalNames.find(Dir);
-  if (Known != CanonicalNames.end())
-    return Known->second;
-
-  StringRef CanonicalName(Dir.getName());
-
-  SmallString<4096> CanonicalNameBuf;
-  if (!FS->getRealPath(Dir.getName(), CanonicalNameBuf))
-    CanonicalName = CanonicalNameBuf.str().copy(CanonicalNameStorage);
-
-  CanonicalNames.insert({Dir, CanonicalName});
-  return CanonicalName;
+  return getCanonicalName(Dir, Dir.getName());
 }
 
 StringRef FileManager::getCanonicalName(const FileEntry *File) {
-  llvm::DenseMap<const void *, llvm::StringRef>::iterator Known
-    = CanonicalNames.find(File);
+  return getCanonicalName(File, File->getName());
+}
+
+StringRef FileManager::getCanonicalName(const void *Entry, StringRef Name) {
+  llvm::DenseMap<const void *, llvm::StringRef>::iterator Known =
+      CanonicalNames.find(Entry);
   if (Known != CanonicalNames.end())
     return Known->second;
 
-  StringRef CanonicalName(File->getName());
+  StringRef CanonicalName(Name);
 
-  SmallString<4096> CanonicalNameBuf;
-  if (!FS->getRealPath(File->getName(), CanonicalNameBuf))
-    CanonicalName = CanonicalNameBuf.str().copy(CanonicalNameStorage);
+  // Use the real path as the canonical name if it is under the same root,
+  // otherwise just convert to an absolute path.
+  // On Windows, this avoids resolving substitute drives,
+  // which lengthen paths and can run into MAX_PATH issues.
+  SmallString<256> AbsPathBuf = Name;
+  SmallString<256> RealPathBuf;
+  if (!FS->makeAbsolute(AbsPathBuf)) {
+    bool RealPathOnSameRoot = !FS->getRealPath(AbsPathBuf, RealPathBuf) &&
+                              llvm::sys::path::root_name(RealPathBuf) ==
+                                  llvm::sys::path::root_name(AbsPathBuf);
+    if (RealPathOnSameRoot) {
+      CanonicalName = RealPathBuf.str().copy(CanonicalNameStorage);
+    } else {
+      llvm::sys::path::remove_dots(AbsPathBuf, /*remove_dot_dot=*/true);
+      CanonicalName = AbsPathBuf.str().copy(CanonicalNameStorage);
+    }
+  }
 
-  CanonicalNames.insert({File, CanonicalName});
+  CanonicalNames.insert({Entry, CanonicalName});
   return CanonicalName;
 }
 
