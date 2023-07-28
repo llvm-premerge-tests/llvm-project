@@ -5927,6 +5927,8 @@ static TypeSourceInfo *GetFullTypeForDeclarator(TypeProcessingState &state,
                                          /*ExpectPackInType=*/false);
       }
       break;
+    case DeclaratorContext::Member:
+      // Expand for packed data members.
     case DeclaratorContext::TemplateParam:
       // C++0x [temp.param]p15:
       //   If a template-parameter is a [...] is a parameter-declaration that
@@ -5944,7 +5946,6 @@ static TypeSourceInfo *GetFullTypeForDeclarator(TypeProcessingState &state,
                  ? diag::warn_cxx98_compat_variadic_templates
                  : diag::ext_variadic_templates);
       break;
-
     case DeclaratorContext::File:
     case DeclaratorContext::KNRTypeList:
     case DeclaratorContext::ObjCParameter: // FIXME: special diagnostic here?
@@ -5954,7 +5955,6 @@ static TypeSourceInfo *GetFullTypeForDeclarator(TypeProcessingState &state,
     case DeclaratorContext::CXXNew:
     case DeclaratorContext::AliasDecl:
     case DeclaratorContext::AliasTemplate:
-    case DeclaratorContext::Member:
     case DeclaratorContext::Block:
     case DeclaratorContext::ForInit:
     case DeclaratorContext::SelectionInit:
