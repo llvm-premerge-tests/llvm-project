@@ -397,6 +397,17 @@ llvm::DIFile *CGDebugInfo::getOrCreateFile(SourceLocation Loc) {
     // createFile() below for canonicalization if the source file was specified
     // with an absolute path.
     FileName = TheCU->getFile()->getFilename();
+    for (auto It : DIFileCache) {
+      // StringRef operator== does a content comparison.
+      if (FileName == It.first) {
+        // Got a string match, use the existing DIFile if possible.
+        if (llvm::Metadata *V = It.second)
+          return cast<llvm::DIFile>(V);
+        // Fall through to create the DIFile but use the original string.
+        FileName = It.first;
+        break;
+      }
+    }
   } else {
     PresumedLoc PLoc = SM.getPresumedLoc(Loc);
     FileName = PLoc.getFilename();
