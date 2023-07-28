@@ -2520,18 +2520,34 @@ static Instruction *foldFNegIntoConstant(Instruction &I, const DataLayout &DL) {
   return nullptr;
 }
 
-static Instruction *hoistFNegAboveFMulFDiv(Instruction &I,
-                                           InstCombiner::BuilderTy &Builder) {
+Instruction *InstCombinerImpl::hoistFNegAboveFMulFDiv(Instruction &I) {
   Value *FNeg;
-  if (!match(&I, m_FNeg(m_Value(FNeg))))
+  if (!match(&I, m_FNeg(m_OneUse(m_Value(FNeg)))))
     return nullptr;
 
   Value *X, *Y;
-  if (match(FNeg, m_OneUse(m_FMul(m_Value(X), m_Value(Y)))))
+  if (match(FNeg, m_FMul(m_Value(X), m_Value(Y))))
     return BinaryOperator::CreateFMulFMF(Builder.CreateFNegFMF(X, &I), Y, &I);
 
-  if (match(FNeg, m_OneUse(m_FDiv(m_Value(X), m_Value(Y)))))
+  if (match(FNeg, m_FDiv(m_Value(X), m_Value(Y))))
     return BinaryOperator::CreateFDivFMF(Builder.CreateFNegFMF(X, &I), Y, &I);
+
+  if (IntrinsicInst *II = dyn_cast<IntrinsicInst>(FNeg)) {
+    // Make sure to preserve flags and metadata on the call.
+    if (II->getIntrinsicID() == Intrinsic::ldexp) {
+      FastMathFlags FMF = I.getFastMathFlags();
+      FMF |= II->getFastMathFlags();
+
+      IRBuilder<>::FastMathFlagGuard FMFGuard(Builder);
+      Builder.setFastMathFlags(FMF);
+
+      CallInst *New = Builder.CreateCall(
+          II->getCalledFunction(),
+          {Builder.CreateFNeg(II->getArgOperand(0)), II->getArgOperand(1)});
+      New->copyMetadata(*II);
+      return replaceInstUsesWith(I, New);
+    }
+  }
 
   return nullptr;
 }
@@ -2553,7 +2569,7 @@ Instruction *InstCombinerImpl::visitFNeg(UnaryOperator &I) {
       match(Op, m_OneUse(m_FSub(m_Value(X), m_Value(Y)))))
     return BinaryOperator::CreateFSubFMF(Y, X, &I);
 
-  if (Instruction *R = hoistFNegAboveFMulFDiv(I, Builder))
+  if (Instruction *R = hoistFNegAboveFMulFDiv(I))
     return R;
 
   Value *OneUse;
@@ -2638,7 +2654,7 @@ Instruction *InstCombinerImpl::visitFSub(BinaryOperator &I) {
   if (Instruction *X = foldFNegIntoConstant(I, DL))
     return X;
 
-  if (Instruction *R = hoistFNegAboveFMulFDiv(I, Builder))
+  if (Instruction *R = hoistFNegAboveFMulFDiv(I))
     return R;
 
   Value *X, *Y;
