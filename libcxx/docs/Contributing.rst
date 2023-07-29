@@ -34,6 +34,131 @@ This will ensure that you work in a direction that the project endorses and will
 contribution as directional questions can be raised early. Including a WIP patch is not mandatory, but
 it can be useful to ground the discussion in something concrete.
 
+Coding standards
+================
+
+In general libc++ follows the
+`LLVM Coding Standards <https://llvm.org/docs/CodingStandards.html>`_.
+There are some deviations from this standard.
+
+In libc++, like all standard libraries, we use ``__ugly_names``. These
+names are reserved for implementations, so users may not use them in
+their own applications. When using a name like ``T`` a user
+may have a macro that changes the meaning of ``T``. By using
+``__ugly_names`` we avoid that problem. Other standard libraries and
+compilers use these names too. To avoid clashes the test in
+``libcxx/test/libcxx/system_reserved_names.gen.py``
+contains the list of reserved names that can't be used.
+
+Function calls in the standard library are susceptible to
+`ADL <https://en.cppreference.com/w/cpp/language/adl>`_.
+This means calling ``move(UserType)`` might not call ``std::move``. Therefore
+function calls are using qualified names to avoid ADL. Some functions in the
+standard library `require ADL usage <http://eel.is/c++draft/contents>`_.  Names
+of classes, variables, concepts, and type aliases are not subjected to ADL.
+They don't need to be qualified.
+
+Function overloading also applies to operators. Using ``&user_object``
+may call a user defined ``operator&``. Use ``std::addressof``  instead.
+Similar for ``operator,``. When using the ``,`` make sure to cast the
+result to ``void``. For example:
+
+.. code-block:: cpp
+
+  template <class _InputIterator1, class _InputIterator2, class _BinaryPredicate>
+  _LIBCPP_NODISCARD inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX20 bool __equal_iter_impl(
+      _InputIterator1 __first1, _InputIterator1 __last1, _InputIterator2 __first2, _BinaryPredicate& __pred) {
+    for (; __first1 != __last1; ++__first1, (void)++__first2)
+      if (!__pred(*__first1, *__first2))
+        return false;
+    return true;
+  }
+
+In general try to follow the style of existing code. There are a few
+exceptions:
+
+- ``_VSTD::foo`` is no longer used in new code. Use ``std::foo`` instead.
+- ``_LIBCPP_INLINE_VISIBILITY`` is no longer used in new code. Use
+  ``_LIBCPP_HIDE_FROM_ABI`` instead.
+- Prefer ``using foo = int`` over ``typedef int foo``. In libc++ this is
+  supported in all versions of C++.
+
+Other tips are:
+
+- Keep the number of formatting changes in patches minimal.
+- Provide separate patches for style fixes and bug-fix or feature. Keep in
+  mind that large formatting patches may cause merge conflicts in other patches
+  under review. In general we do not want these patches.
+- Keep patches small and self-contained. Large patches are harder to review and
+  take a significant amount of time. It's fine to have multiple patches to
+  implement one feature.
+
+
+Resources
+=========
+
+Libc++ specific
+---------------
+
+- ``libcxx/include/__config`` this file contains the commonly used
+  macros in libc++. Libc++ supports all C++ language versions. Newer
+  versions of the Standard add new features. For example, making
+  functions ``constexpr`` in C++20. This means the function is
+  ``constexpr`` in C++20 and later. The Standard does not allow to make
+  this available in C++17 or earlier, so we use a macro to implement this
+  requirement.
+- ``libcxx/test/support/test_macros.h`` similar to the above, but for
+  the test suite.
+- The ``#libcxx`` channel on
+  `LLVM's Discord server <https://discord.gg/jzUbyP26tQ>`_.
+  This is the place where most discussion regarding libc++ happens and
+  the active contributors are available for questions.
+
+
+ISO C++ Standard
+----------------
+
+Libc++ implements the library part of the ISO C++ standard. The official
+publication must be bought from ISO or your national body. This is not
+needed to work on libc++, there are other free resources available.
+
+- The `LaTeX sources <https://github.com/cplusplus/draft>`_  used to
+  create the official C++ standard. This can be used to create your own
+  unofficial build of the standard.
+
+- A `html rendered version of the draft <https://eel.is/c++draft/>`_  is
+  available. This is the most commonly used place to look for the
+  wording of the standard.
+
+- An `alternative <https://github.com/timsong-cpp/cppwp>`_ is available.
+  This link has both recent and historic versions of the standard.
+
+- When implementing features there are
+  `general requirements <https://eel.is/c++draft/#library>`_.
+  Most papers use this
+  `jargon <http://eel.is/c++draft/structure#specifications>`_
+  to describe how library functions work.
+
+- The `WG21 redirect service <https://wg21.link/>`_ is a tool to quickly locate
+  papers, issues, and wording in the standard.
+
+- The `paper trail <https://github.com/cplusplus/papers/issues>`_ of
+  papers is publicly available, including the polls taken. It
+  contains links to the minutes of paper's discussion. Per ISO rules,
+  these minutes are only accessible by members of the C++ committee.
+
+- `Feature-Test Macros and Policies
+  <https://isocpp.org/std/standing-documents/sd-6-sg10-feature-test-recommendations>`_
+  contains information about feature-test macros in C++.
+  It contains a list with all feature-test macros, their versions, and the paper
+  that introduced them.
+
+- `cppreference <https://en.cppreference.com/w/>`_ is a good resource
+  for the usage of C++ library and language features. It's easier to
+  read than the C++ Standard, but it lacks details needed to properly implement
+  library features.
+
+
 Pre-commit check list
 =====================
 
