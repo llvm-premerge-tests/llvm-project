@@ -116,17 +116,10 @@ Improvements to clang-tidy
 New checks
 ^^^^^^^^^^
 
-- New :doc:`bugprone-multi-level-implicit-pointer-conversion
-  <clang-tidy/checks/bugprone/multi-level-implicit-pointer-conversion>` check.
+- New :doc:`modernize-use-constraints
+  <clang-tidy/checks/modernize/use-constraints>` check.
 
-  Detects implicit conversions between pointers of different levels of
-  indirection.
-
-- New :doc:`performance-enum-size
-  <clang-tidy/checks/performance/enum-size>` check.
-
-  Recommends the smallest possible underlying type for an ``enum`` or ``enum``
-  class based on the range of its enumerators.
+  Replace ``enable_if`` with C++20 requires clauses.
 
 New check aliases
 ^^^^^^^^^^^^^^^^^
