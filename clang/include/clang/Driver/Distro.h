@@ -43,6 +43,7 @@ public:
     RHEL5,
     RHEL6,
     RHEL7,
+    RHEL8,
     Fedora,
     Gentoo,
     OpenSUSE,
@@ -121,6 +122,8 @@ public:
   bool IsRedhat() const {
     return DistroVal == Fedora || (DistroVal >= RHEL5 && DistroVal <= RHEL7);
   }
+
+  bool IsRocky() const { return DistroVal == RHEL8; }
 
   bool IsOpenSUSE() const { return DistroVal == OpenSUSE; }
 

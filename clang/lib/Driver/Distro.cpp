@@ -121,8 +121,11 @@ static Distro::DistroType DetectDistro(llvm::vfs::FileSystem &VFS) {
     if (Data.startswith("Fedora release"))
       return Distro::Fedora;
     if (Data.startswith("Red Hat Enterprise Linux") ||
-        Data.startswith("CentOS") || Data.startswith("Scientific Linux")) {
-      if (Data.contains("release 7"))
+        Data.startswith("CentOS") || Data.startswith("Scientific Linux") ||
+        Data.startswith("Rocky Linux")) {
+      if (Data.contains("release 8"))
+        return Distro::RHEL8;
+      else if (Data.contains("release 7"))
         return Distro::RHEL7;
       else if (Data.contains("release 6"))
         return Distro::RHEL6;
