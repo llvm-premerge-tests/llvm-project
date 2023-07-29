@@ -2728,6 +2728,49 @@ static Instruction *foldIdentityPaddedShuffles(ShuffleVectorInst &Shuf) {
   return new ShuffleVectorInst(X, Y, NewMask);
 }
 
+// fold double reverse
+static Instruction *foldDoubleReverse(ShuffleVectorInst &SVI,
+                                      InstCombiner::BuilderTy &Builder) {
+  if (!SVI.isReverse())
+    return nullptr;
+
+  Instruction *Arith;
+  if (!match(SVI.getOperand(0), m_OneUse(m_Instruction(Arith))))
+    return nullptr;
+
+  if (CmpInst *CI = dyn_cast<CmpInst>(Arith)) {
+    Value *LHS = CI->getOperand(0), *RHS = CI->getOperand(1);
+
+    bool ReverseRHS;
+    ShuffleVectorInst *RevX; // (reverse x)
+    Value *Y;
+    if ((RevX = dyn_cast<ShuffleVectorInst>(LHS)) && RevX->hasOneUse() &&
+        RevX->isReverse()) {
+      // fold (reverse (cmp (reverse x), y)) -> (cmp x, (reverse y))
+      ReverseRHS = true;
+      Y = RHS;
+    } else if ((RevX = dyn_cast<ShuffleVectorInst>(RHS)) && RevX->hasOneUse() &&
+               RevX->isReverse()) {
+      // fold (reverse (cmp y, (reverse x))) -> (cmp (reverse y), x)
+      ReverseRHS = false;
+      Y = LHS;
+    } else {
+      return nullptr;
+    }
+
+    Value *X = RevX->getOperand(0);
+    Value *RevY = Builder.CreateVectorReverse(Y);
+
+    Value *V1 = ReverseRHS ? X : RevY;
+    Value *V2 = ReverseRHS ? RevY : X;
+
+    return CmpInst::Create(CI->getOpcode(), CI->getPredicate(), V1, V2);
+  }
+  // TODO: (reverse (unaryop (reverse x))) -> (unaryop x)
+  // TODO: (reverse (binop (reverse x), y)) -> (binop x, (reverse y))
+  return nullptr;
+}
+
 // Splatting the first element of the result of a BinOp, where any of the
 // BinOp's operands are the result of a first element splat can be simplified to
 // splatting the first element of the result of the BinOp
@@ -2853,6 +2896,9 @@ Instruction *InstCombinerImpl::visitShuffleVectorInst(ShuffleVectorInst &SVI) {
     return I;
 
   if (Instruction *I = foldCastShuffle(SVI, Builder))
+    return I;
+
+  if (Instruction *I = foldDoubleReverse(SVI, Builder))
     return I;
 
   APInt UndefElts(VWidth, 0);
