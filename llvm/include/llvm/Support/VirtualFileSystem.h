@@ -987,6 +987,11 @@ private:
 
   RedirectingFileSystem(IntrusiveRefCntPtr<FileSystem> ExternalFS);
 
+  /// Explicitly delete copy constructors.  The unique_ptrs in \c Roots can't
+  /// be copied.
+  RedirectingFileSystem(const RedirectingFileSystem &) = delete;
+  RedirectingFileSystem &operator=(const RedirectingFileSystem &) = delete;
+
   /// Looks up the path <tt>[Start, End)</tt> in \p From, possibly recursing
   /// into the contents of \p From if it is a directory. Returns a LookupResult
   /// giving the matched entry and, if that entry is a FileEntry or
