@@ -50,6 +50,7 @@ TEST(DistroTest, DetectUbuntu) {
   ASSERT_EQ(Distro(Distro::UbuntuTrusty), UbuntuTrusty);
   ASSERT_TRUE(UbuntuTrusty.IsUbuntu());
   ASSERT_FALSE(UbuntuTrusty.IsRedhat());
+  ASSERT_FALSE(UbuntuTrusty.IsRocky());
   ASSERT_FALSE(UbuntuTrusty.IsOpenSUSE());
   ASSERT_FALSE(UbuntuTrusty.IsDebian());
   ASSERT_FALSE(UbuntuTrusty.IsGentoo());
@@ -83,6 +84,7 @@ TEST(DistroTest, DetectUbuntu) {
   ASSERT_EQ(Distro(Distro::UbuntuYakkety), UbuntuYakkety);
   ASSERT_TRUE(UbuntuYakkety.IsUbuntu());
   ASSERT_FALSE(UbuntuYakkety.IsRedhat());
+  ASSERT_FALSE(UbuntuYakkety.IsRocky());
   ASSERT_FALSE(UbuntuYakkety.IsOpenSUSE());
   ASSERT_FALSE(UbuntuYakkety.IsDebian());
   ASSERT_FALSE(UbuntuYakkety.IsGentoo());
@@ -118,6 +120,7 @@ TEST(DistroTest, DetectRedhat) {
   ASSERT_EQ(Distro(Distro::Fedora), Fedora25);
   ASSERT_FALSE(Fedora25.IsUbuntu());
   ASSERT_TRUE(Fedora25.IsRedhat());
+  ASSERT_FALSE(Fedora25.IsRocky());
   ASSERT_FALSE(Fedora25.IsOpenSUSE());
   ASSERT_FALSE(Fedora25.IsDebian());
   ASSERT_FALSE(Fedora25.IsGentoo());
@@ -155,9 +158,55 @@ TEST(DistroTest, DetectRedhat) {
   ASSERT_EQ(Distro(Distro::RHEL7), CentOS7);
   ASSERT_FALSE(CentOS7.IsUbuntu());
   ASSERT_TRUE(CentOS7.IsRedhat());
+  ASSERT_FALSE(CentOS7.IsRocky());
   ASSERT_FALSE(CentOS7.IsOpenSUSE());
   ASSERT_FALSE(CentOS7.IsDebian());
   ASSERT_FALSE(CentOS7.IsGentoo());
+}
+
+TEST(DistroTest, DetectRocky) {
+  llvm::vfs::InMemoryFileSystem RockyFileSystem;
+  RockyFileSystem.addFile(
+      "/etc/system-release-cpe", 0,
+      llvm::MemoryBuffer::getMemBuffer("cpe:/o:rocky:rocky:8:GA\n"));
+  // Both files are symlinks to rocky-release.
+  RockyFileSystem.addFile("/etc/system-release", 0,
+                          llvm::MemoryBuffer::getMemBuffer(
+                              "Rocky Linux release 8.6 (Green Obsidian) \n"));
+  RockyFileSystem.addFile("/etc/redhat-release", 0,
+                          llvm::MemoryBuffer::getMemBuffer(
+                              "Rocky Linux release 8.6 (Green Obsidian) \n"));
+  RockyFileSystem.addFile("/etc/centos-release", 0,
+                          llvm::MemoryBuffer::getMemBuffer(
+                              "Rocky Linux release 8.6 (Green Obsidian) \n"));
+  RockyFileSystem.addFile(
+      "/etc/os-release", 0,
+      llvm::MemoryBuffer::getMemBuffer(
+          "NAME=\"Rocky Linux\"\n"
+          "VERSION=\"8.6 (Green Obsidian)\"\n"
+          "ID=\"rocky\"\n"
+          "ID_LIKE=\"rhel centos fedora\"\n"
+          "VERSION_ID=\"8.6\"\n"
+          "PLATFORM_ID=\"platform:el8\"\n"
+          "PRETTY_NAME=\"Rocky Linux 8.6 (Green Obsidian)\"\n"
+          "ANSI_COLOR=\"0;32\"\n"
+          "CPE_NAME=\"cpe:/o:rocky:rocky:8:GA\"\n"
+          "HOME_URL=\"https://rockylinux\.org\\"\n
+          "
+          "BUG_REPORT_URL=\"https://bugs.rockylinux.org/\"\n"
+          "ROCKY_SUPPORT_PRODUCT=\"Rocky Linux\"\n"
+          "ROCKY_SUPPORT_PRODUCT_VERSION=\"8\"\n"
+          "REDHAT_SUPPORT_PRODUCT=\"Rocky Linux\"\n"
+          "REDHAT_SUPPORT_PRODUCT_VERSION=\"8\"\n"));
+
+  Distro Rocky{RockyFileSystem, llvm::Triple("unknown-pc-linux")};
+  ASSERT_EQ(Distro(Distro::RHEL8), Rocky);
+  ASSERT_FALSE(Rocky.IsUbuntu());
+  ASSERT_FALSE(Rocky.IsRedhat());
+  ASSERT_TRUE(Rocky.IsRocky());
+  ASSERT_FALSE(Rocky.IsOpenSUSE());
+  ASSERT_FALSE(Rocky.IsDebian());
+  ASSERT_FALSE(Rocky.IsGentoo());
 }
 
 TEST(DistroTest, DetectOpenSUSE) {
@@ -183,6 +232,7 @@ TEST(DistroTest, DetectOpenSUSE) {
   ASSERT_EQ(Distro(Distro::OpenSUSE), OpenSUSELeap421);
   ASSERT_FALSE(OpenSUSELeap421.IsUbuntu());
   ASSERT_FALSE(OpenSUSELeap421.IsRedhat());
+  ASSERT_FALSE(OpenSUSELeap421.IsRocky());
   ASSERT_TRUE(OpenSUSELeap421.IsOpenSUSE());
   ASSERT_FALSE(OpenSUSELeap421.IsDebian());
   ASSERT_FALSE(OpenSUSELeap421.IsGentoo());
@@ -209,6 +259,7 @@ TEST(DistroTest, DetectOpenSUSE) {
   ASSERT_EQ(Distro(Distro::OpenSUSE), OpenSUSE132);
   ASSERT_FALSE(OpenSUSE132.IsUbuntu());
   ASSERT_FALSE(OpenSUSE132.IsRedhat());
+  ASSERT_FALSE(OpenSUSE132.IsRocky());
   ASSERT_TRUE(OpenSUSE132.IsOpenSUSE());
   ASSERT_FALSE(OpenSUSE132.IsDebian());
   ASSERT_FALSE(OpenSUSE132.IsGentoo());
@@ -226,6 +277,7 @@ TEST(DistroTest, DetectOpenSUSE) {
   ASSERT_EQ(Distro(Distro::UnknownDistro), SLES10);
   ASSERT_FALSE(SLES10.IsUbuntu());
   ASSERT_FALSE(SLES10.IsRedhat());
+  ASSERT_FALSE(SLES10.IsRocky());
   ASSERT_FALSE(SLES10.IsOpenSUSE());
   ASSERT_FALSE(SLES10.IsDebian());
   ASSERT_FALSE(SLES10.IsGentoo());
@@ -249,6 +301,7 @@ TEST(DistroTest, DetectDebian) {
   ASSERT_EQ(Distro(Distro::DebianJessie), DebianJessie);
   ASSERT_FALSE(DebianJessie.IsUbuntu());
   ASSERT_FALSE(DebianJessie.IsRedhat());
+  ASSERT_FALSE(DebianJessie.IsRocky());
   ASSERT_FALSE(DebianJessie.IsOpenSUSE());
   ASSERT_TRUE(DebianJessie.IsDebian());
   ASSERT_FALSE(DebianJessie.IsGentoo());
@@ -268,6 +321,7 @@ TEST(DistroTest, DetectDebian) {
   ASSERT_EQ(Distro(Distro::DebianStretch), DebianStretchSid);
   ASSERT_FALSE(DebianStretchSid.IsUbuntu());
   ASSERT_FALSE(DebianStretchSid.IsRedhat());
+  ASSERT_FALSE(DebianStretchSid.IsRocky());
   ASSERT_FALSE(DebianStretchSid.IsOpenSUSE());
   ASSERT_TRUE(DebianStretchSid.IsDebian());
   ASSERT_FALSE(DebianStretchSid.IsGentoo());
@@ -288,6 +342,7 @@ TEST(DistroTest, DetectExherbo) {
   ASSERT_EQ(Distro(Distro::Exherbo), Exherbo);
   ASSERT_FALSE(Exherbo.IsUbuntu());
   ASSERT_FALSE(Exherbo.IsRedhat());
+  ASSERT_FALSE(Exherbo.IsRocky());
   ASSERT_FALSE(Exherbo.IsOpenSUSE());
   ASSERT_FALSE(Exherbo.IsDebian());
   ASSERT_FALSE(Exherbo.IsGentoo());
@@ -310,6 +365,7 @@ TEST(DistroTest, DetectArchLinux) {
   ASSERT_EQ(Distro(Distro::ArchLinux), ArchLinux);
   ASSERT_FALSE(ArchLinux.IsUbuntu());
   ASSERT_FALSE(ArchLinux.IsRedhat());
+  ASSERT_FALSE(ArchLinux.IsRocky());
   ASSERT_FALSE(ArchLinux.IsOpenSUSE());
   ASSERT_FALSE(ArchLinux.IsDebian());
   ASSERT_FALSE(ArchLinux.IsGentoo());
@@ -335,6 +391,7 @@ TEST(DistroTest, DetectGentoo) {
   ASSERT_EQ(Distro(Distro::Gentoo), Gentoo);
   ASSERT_FALSE(Gentoo.IsUbuntu());
   ASSERT_FALSE(Gentoo.IsRedhat());
+  ASSERT_FALSE(Gentoo.IsRocky());
   ASSERT_FALSE(Gentoo.IsOpenSUSE());
   ASSERT_FALSE(Gentoo.IsDebian());
   ASSERT_TRUE(Gentoo.IsGentoo());
