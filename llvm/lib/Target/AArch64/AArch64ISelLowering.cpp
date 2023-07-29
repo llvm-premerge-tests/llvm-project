@@ -570,10 +570,20 @@ AArch64TargetLowering::AArch64TargetLowering(const TargetMachine &TM,
   // AArch64 lacks both left-rotate and popcount instructions.
   setOperationAction(ISD::ROTL, MVT::i32, Expand);
   setOperationAction(ISD::ROTL, MVT::i64, Expand);
+
+  // Vector rotations of both flavors are custom expanded with
+  // shift-insert instructions.
   for (MVT VT : MVT::fixedlen_vector_valuetypes()) {
     setOperationAction(ISD::ROTL, VT, Expand);
-    setOperationAction(ISD::ROTR, VT, Expand);
   }
+  setOperationAction(ISD::ROTR, MVT::v8i8, Custom);
+  setOperationAction(ISD::ROTR, MVT::v16i8, Custom);
+  setOperationAction(ISD::ROTR, MVT::v4i16, Custom);
+  setOperationAction(ISD::ROTR, MVT::v8i16, Custom);
+  setOperationAction(ISD::ROTR, MVT::v2i32, Custom);
+  setOperationAction(ISD::ROTR, MVT::v4i32, Custom);
+  setOperationAction(ISD::ROTR, MVT::v1i64, Custom);
+  setOperationAction(ISD::ROTR, MVT::v2i64, Custom);
 
   // AArch64 doesn't have i32 MULH{S|U}.
   setOperationAction(ISD::MULHU, MVT::i32, Expand);
@@ -6105,6 +6115,34 @@ SDValue AArch64TargetLowering::LowerOperation(SDValue Op,
                                  SysRegName, Pair.first, Pair.second);
 
     return Result;
+  }
+  case ISD::ROTR: {
+    SDLoc DL(Op);
+    EVT VT = Op.getValueType();
+    assert(VT.isFixedLengthVector());
+
+    SDValue Op0 = Op.getOperand(0);
+    SDValue Op1 = Op.getOperand(1);
+    APInt Splat;
+    if (!ISD::isConstantSplatVector(Op1.getNode(), Splat))
+      return SDValue();
+
+    APInt ShlAmt;
+    APInt SriAmt;
+    uint64_t LaneWidth = VT.getVectorElementType().getFixedSizeInBits();
+    if (Splat.isNegative()) {
+      ShlAmt = (-Splat).zextOrTrunc(32);
+      SriAmt = LaneWidth - ShlAmt;
+    } else {
+      ShlAmt = LaneWidth - Splat.zextOrTrunc(32);
+      SriAmt = Splat.zextOrTrunc(32);
+    }
+
+    SDValue Shl = DAG.getNode(AArch64ISD::VSHL, DL, VT, Op0,
+                              DAG.getConstant(ShlAmt, DL, MVT::i32));
+    SDValue Sri = DAG.getNode(AArch64ISD::VSRI, DL, VT, Shl, Op0,
+                              DAG.getConstant(SriAmt, DL, MVT::i32));
+    return Sri;
   }
   }
 }
