@@ -39,6 +39,7 @@ add_clang_library(clangTidyBugproneModule
   NoEscapeCheck.cpp
   NonZeroEnumToBoolConversionCheck.cpp
   NotNullTerminatedResultCheck.cpp
+  OptionalValueConversionCheck.cpp
   ParentVirtualCallCheck.cpp
   PosixReturnCheck.cpp
   RedundantBranchConditionCheck.cpp
