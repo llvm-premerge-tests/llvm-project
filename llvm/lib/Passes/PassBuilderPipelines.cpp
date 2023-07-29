@@ -747,8 +747,12 @@ void PassBuilder::addPGOInstrPasses(ModulePassManager &MPM,
     FunctionPassManager FPM;
     FPM.addPass(SROAPass(SROAOptions::ModifyCFG));
     FPM.addPass(EarlyCSEPass()); // Catch trivial redundancies.
-    FPM.addPass(SimplifyCFGPass(SimplifyCFGOptions().convertSwitchRangeToICmp(
-        true)));                    // Merge & remove basic blocks.
+    FPM.addPass(SimplifyCFGPass(
+        SimplifyCFGOptions()
+            .convertSwitchRangeToICmp(true) // Merge & remove basic blocks.
+            // Don't enable speculation before PGO annotation since later
+            // invocations will utilize the profile for speculation decisions.
+            .speculateBlocks(false)));
     FPM.addPass(InstCombinePass()); // Combine silly sequences.
     invokePeepholeEPCallbacks(FPM, Level);
 
@@ -985,6 +989,13 @@ PassBuilder::buildModuleSimplificationPipeline(OptimizationLevel Level,
       HasSampleProfile &&
       !(FlattenedProfileUsed && Phase == ThinOrFullLTOPhase::ThinLTOPostLink);
 
+  bool LoadFirstSampleProfile =
+      HasSampleProfile && Phase != ThinOrFullLTOPhase::ThinLTOPostLink;
+
+  bool DoPGOInstr = PGOOpt && Phase != ThinOrFullLTOPhase::ThinLTOPostLink &&
+                    (PGOOpt->Action == PGOOptions::IRInstr ||
+                     PGOOpt->Action == PGOOptions::IRUse);
+
   // During the ThinLTO backend phase we perform early indirect call promotion
   // here, before globalopt. Otherwise imported available_externally functions
   // look unreferenced and are removed. If we are going to load the sample
@@ -1016,7 +1027,10 @@ PassBuilder::buildModuleSimplificationPipeline(OptimizationLevel Level,
     // Compare/branch metadata may alter the behavior of passes like
     // SimplifyCFG.
     EarlyFPM.addPass(LowerExpectIntrinsicPass());
-    EarlyFPM.addPass(SimplifyCFGPass());
+    // Don't enable speculation before PGO annotation, since later invocations
+    // will utilize the profile for speculation decisions.
+    EarlyFPM.addPass(SimplifyCFGPass(SimplifyCFGOptions().speculateBlocks(
+        !DoPGOInstr && !LoadFirstSampleProfile)));
     EarlyFPM.addPass(SROAPass(SROAOptions::ModifyCFG));
     EarlyFPM.addPass(EarlyCSEPass());
     if (Level == OptimizationLevel::O3)
@@ -1083,8 +1097,12 @@ PassBuilder::buildModuleSimplificationPipeline(OptimizationLevel Level,
   GlobalCleanupPM.addPass(PromotePass());
   GlobalCleanupPM.addPass(InstCombinePass());
   invokePeepholeEPCallbacks(GlobalCleanupPM, Level);
-  GlobalCleanupPM.addPass(
-      SimplifyCFGPass(SimplifyCFGOptions().convertSwitchRangeToICmp(true)));
+  // Don't enable speculation before PGO annotation, since later invocations
+  // will utilize the profile for speculation decisions. At this point SamplePGO
+  // annotation is done, so we don't need to disable it in that case.
+  GlobalCleanupPM.addPass(SimplifyCFGPass(
+      SimplifyCFGOptions().convertSwitchRangeToICmp(true).speculateBlocks(
+          !DoPGOInstr)));
   MPM.addPass(createModuleToFunctionPassAdaptor(std::move(GlobalCleanupPM),
                                                 PTO.EagerlyInvalidateAnalyses));
 

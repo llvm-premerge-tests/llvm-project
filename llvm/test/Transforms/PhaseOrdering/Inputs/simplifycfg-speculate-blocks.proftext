@@ -1,0 +1,21 @@
+# IR level Instrumentation Flag
+:ir
+:entry_first
+fold_two_entry_phi
+# Func Hash:
+784007059655560962
+# Num Counters:
+2
+# Counter Values:
+5000
+0
+
+fold_branch_to_common_dest
+# Func Hash:
+238984484714566715
+# Num Counters:
+3
+# Counter Values:
+5000
+0
+0
