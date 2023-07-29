@@ -381,9 +381,9 @@ def NVGPU_DeviceAsyncCopyOp : NVGPU_Op<"device_async_copy", [
     ```
   }];
   let results = (outs NVGPU_DeviceAsyncToken:$asyncToken);
-  let arguments = (ins Arg<AnyMemRef, "", [MemWrite]>:$dst,
+  let arguments = (ins Arg<AnyMemRef, "", [MemWriteAt<"1">]>:$dst,
                        Variadic<Index>:$dstIndices,
-                       Arg<AnyMemRef, "", [MemRead]>:$src,
+                       Arg<AnyMemRef, "", [MemReadAt<"0">]>:$src,
                        Variadic<Index>:$srcIndices,
                        IndexAttr:$dstElements,
                        Optional<Index>:$srcElements,

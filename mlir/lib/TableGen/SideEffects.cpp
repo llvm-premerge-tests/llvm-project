@@ -36,6 +36,10 @@ StringRef SideEffect::getResource() const {
   return def->getValueAsString("resource");
 }
 
+StringRef SideEffect::getIndex() const {
+  return def->getValueAsString("index");
+}
+
 bool SideEffect::classof(const Operator::VariableDecorator *var) {
   return var->getDef().isSubClassOf("SideEffect");
 }
