@@ -35,6 +35,9 @@ public:
   // Return the name of the resource class.
   StringRef getResource() const;
 
+  // Return the index of the effect happen.
+  StringRef getIndex() const;
+
   static bool classof(const Operator::VariableDecorator *var);
 };
 

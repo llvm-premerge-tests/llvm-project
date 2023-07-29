@@ -34,8 +34,8 @@ def MemoryEffectsOpInterface
 }
 
 // The base class for defining specific memory effects.
-class MemoryEffect<string effectName, Resource resource>
-  : SideEffect<MemoryEffectsOpInterface, effectName, resource>;
+class MemoryEffect<string effectName, Resource resource, string index>
+  : SideEffect<MemoryEffectsOpInterface, effectName, resource, index>;
 
 // This class represents the trait for memory effects that may be placed on
 // operations.
@@ -49,29 +49,41 @@ class MemoryEffects<list<MemoryEffect> effects = []>
 // resource. An 'allocate' effect implies only allocation of the resource, and
 // not any visible mutation or dereference.
 class MemAlloc<Resource resource>
-  : MemoryEffect<"::mlir::MemoryEffects::Allocate", resource>;
+  : MemoryEffect<"::mlir::MemoryEffects::Allocate", resource, "0">;
 def MemAlloc : MemAlloc<DefaultResource>;
+
+class MemAllocAt<string index>
+  : MemoryEffect<"::mlir::MemoryEffects::Allocate", DefaultResource, index>;
 
 // The following effect indicates that the operation frees some resource that
 // has been allocated. A 'free' effect implies only de-allocation of the
 // resource, and not any visible allocation, mutation or dereference.
 class MemFree<Resource resource>
-  : MemoryEffect<"::mlir::MemoryEffects::Free", resource>;
+  : MemoryEffect<"::mlir::MemoryEffects::Free", resource, "0">;
 def MemFree : MemFree<DefaultResource>;
+
+class MemFreeAt<string index>
+  : MemoryEffect<"::mlir::MemoryEffects::Free", DefaultResource, index>;
 
 // The following effect indicates that the operation reads from some
 // resource. A 'read' effect implies only dereferencing of the resource, and
 // not any visible mutation.
 class MemRead<Resource resource>
-  : MemoryEffect<"::mlir::MemoryEffects::Read", resource>;
+  : MemoryEffect<"::mlir::MemoryEffects::Read", resource, "0">;
 def MemRead : MemRead<DefaultResource>;
+
+class MemReadAt<string index>
+  : MemoryEffect<"::mlir::MemoryEffects::Read", DefaultResource, index>;
 
 // The following effect indicates that the operation writes to some
 // resource. A 'write' effect implies only mutating a resource, and not any
 // visible dereference or read.
 class MemWrite<Resource resource>
-  : MemoryEffect<"::mlir::MemoryEffects::Write", resource>;
+  : MemoryEffect<"::mlir::MemoryEffects::Write", resource, "0">;
 def MemWrite : MemWrite<DefaultResource>;
+
+class MemWriteAt<string index>
+  : MemoryEffect<"::mlir::MemoryEffects::Write", DefaultResource, index>;
 
 //===----------------------------------------------------------------------===//
 // Effect Traits

@@ -177,6 +177,19 @@ public:
   /// Return the parameters of the effect, if any.
   Attribute getParameters() const { return parameters; }
 
+  /// Return the effect happen index.
+  unsigned getIndex() const {
+    auto dicAttr = llvm::dyn_cast_or_null<DictionaryAttr>(parameters);
+    if (!dicAttr)
+      return 0;
+
+    auto sideEffectOrder = dicAttr.template getAs<IntegerAttr>("SideEffectOrderAttr");
+    if (sideEffectOrder) {
+      return sideEffectOrder.getValue().getZExtValue();
+    }
+    return 0;
+  }
+
 private:
   /// The specific effect being applied.
   EffectT *effect;
