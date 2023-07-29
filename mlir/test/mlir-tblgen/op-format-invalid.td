@@ -492,7 +492,7 @@ def VariableInvalidP : TestFormat_Op<[{
 // Coverage Checks
 //===----------------------------------------------------------------------===//
 
-// CHECK: error: type of result #0, named 'result', is not buildable and a buildable type cannot be inferred
+// CHECK: error: type of result #0, named 'result', is not (default) buildable and a buildable type cannot be inferred
 // CHECK: note: suggest adding a type constraint to the operation or adding a 'type($result)' directive to the custom assembly format
 def ZCoverageInvalidA : TestFormat_Op<[{
   attr-dict
@@ -502,17 +502,17 @@ def ZCoverageInvalidA : TestFormat_Op<[{
 def ZCoverageInvalidB : TestFormat_Op<[{
   type($result) attr-dict
 }]>, Arguments<(ins AnyMemRef:$operand)>, Results<(outs AnyMemRef:$result)>;
-// CHECK: error: type of operand #0, named 'operand', is not buildable and a buildable type cannot be inferred
+// CHECK: error: type of operand #0, named 'operand', is not (default) buildable and a buildable type cannot be inferred
 // CHECK: note: suggest adding a type constraint to the operation or adding a 'type($operand)' directive to the custom assembly format
 def ZCoverageInvalidC : TestFormat_Op<[{
   $operand type($result) attr-dict
 }]>, Arguments<(ins AnyMemRef:$operand)>, Results<(outs AnyMemRef:$result)>;
-// CHECK: error: type of operand #0, named 'operand', is not buildable and a buildable type cannot be inferred
+// CHECK: error: type of operand #0, named 'operand', is not (default) buildable and a buildable type cannot be inferred
 // CHECK: note: suggest adding a type constraint to the operation or adding a 'type($operand)' directive to the custom assembly format
 def ZCoverageInvalidD : TestFormat_Op<[{
   operands attr-dict
 }]>, Arguments<(ins Variadic<I64>:$operand)>;
-// CHECK: error: type of result #0, named 'result', is not buildable and a buildable type cannot be inferred
+// CHECK: error: type of result #0, named 'result', is not (default) buildable and a buildable type cannot be inferred
 // CHECK: note: suggest adding a type constraint to the operation or adding a 'type($result)' directive to the custom assembly format
 def ZCoverageInvalidE : TestFormat_Op<[{
   attr-dict
@@ -524,12 +524,12 @@ def ZCoverageInvalidF : TestFormat_Op<[{
 }]> {
   let successors = (successor AnySuccessor:$successor);
 }
-// CHECK: error: type of operand #0, named 'operand', is not buildable and a buildable type cannot be inferred
+// CHECK: error: type of operand #0, named 'operand', is not (default) buildable and a buildable type cannot be inferred
 // CHECK: note: suggest adding a type constraint to the operation or adding a 'type($operand)' directive to the custom assembly format
 def ZCoverageInvalidG : TestFormat_Op<[{
   operands attr-dict
 }]>, Arguments<(ins Optional<I64>:$operand)>;
-// CHECK: error: type of result #0, named 'result', is not buildable and a buildable type cannot be inferred
+// CHECK: error: type of result #0, named 'result', is not (default) buildable and a buildable type cannot be inferred
 // CHECK: note: suggest adding a type constraint to the operation or adding a 'type($result)' directive to the custom assembly format
 def ZCoverageInvalidH : TestFormat_Op<[{
   attr-dict
