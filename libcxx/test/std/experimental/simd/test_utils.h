@@ -9,6 +9,8 @@
 #ifndef TEST_UTIL_H
 #define TEST_UTIL_H
 
+#include <array>
+#include <cassert>
 #include <utility>
 #include <experimental/simd>
 #include "type_algorithms.h"
@@ -48,6 +50,26 @@ constexpr size_t bit_ceil(size_t val) {
   while (pow < val)
     pow <<= 1;
   return pow;
+}
+
+template <typename From, typename To, typename = void>
+struct is_value_preserving_convertible : std::false_type {};
+
+template <typename From, typename To>
+struct is_value_preserving_convertible<From, To, decltype(static_cast<To>(std::declval<From>()))> : std::true_type {};
+
+template <std::size_t ArraySize, class SimdAbi, class T, class U = T>
+void assert_simd_value_correct(const ex::simd<T, SimdAbi>& origin_simd,
+                               const std::array<U, ArraySize>& expected_value) {
+  for (std::size_t i = 0; i < origin_simd.size(); ++i)
+    assert(origin_simd[i] == static_cast<T>(expected_value[i]));
+}
+
+template <std::size_t ArraySize, class T, class SimdAbi>
+void assert_simd_mask_value_correct(const ex::simd_mask<T, SimdAbi>& origin_mask,
+                                    const std::array<bool, ArraySize>& expected_value) {
+  for (std::size_t i = 0; i < origin_mask.size(); ++i)
+    assert(origin_mask[i] == expected_value[i]);
 }
 
 #endif // TEST_UTIL_H
