@@ -7,6 +7,7 @@ on:
       - 'libcxxabi/**'
       - 'libunwind/**'
       - 'runtimes/**'
+      - '.github/**'
 
 permissions:
   pull-requests: write
