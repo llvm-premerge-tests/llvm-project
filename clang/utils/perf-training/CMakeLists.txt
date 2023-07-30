@@ -78,9 +78,21 @@ if(CLANG_BOLT_INSTRUMENT AND NOT LLVM_BUILD_INSTRUMENTED)
     COMMAND "${Python3_EXECUTABLE}" ${CMAKE_CURRENT_SOURCE_DIR}/perf-helper.py clean ${CMAKE_CURRENT_BINARY_DIR} fdata
     COMMENT "Clearing old BOLT fdata")
 
-  # Merge profiles into one using merge-fdata
-  add_custom_target(clang-bolt-profile
-    COMMAND "${Python3_EXECUTABLE}" ${CMAKE_CURRENT_SOURCE_DIR}/perf-helper.py merge-fdata $<TARGET_FILE:merge-fdata> ${CMAKE_CURRENT_BINARY_DIR}/prof.fdata ${CMAKE_CURRENT_BINARY_DIR}
-    COMMENT "Merging BOLT fdata"
-    DEPENDS merge-fdata generate-bolt-fdata)
+  add_custom_target(clang-bolt-profile-deps)
+  if ("bolt" IN_LIST LLVM_ENABLE_PROJECTS)
+    add_dependencies(clang-bolt-profile-deps merge-fdata)
+    set(MERGE_FDATA $<TARGET_FILE:merge-fdata>)
+  elseif (NOT MERGE_FDATA)
+    find_program(MERGE_FDATA merge-fdata)
+  endif()
+
+  if (NOT MERGE_FDATA AND NOT "bolt" IN_LIST LLVM_ENABLE_PROJECTS)
+    message(STATUS "To enable optimizing Clang with BOLT enable bolt project or set MERGE_FDATA")
+  else()
+    # Merge profiles into one using merge-fdata
+    add_custom_target(clang-bolt-profile
+      COMMAND "${Python3_EXECUTABLE}" ${CMAKE_CURRENT_SOURCE_DIR}/perf-helper.py merge-fdata ${MERGE_FDATA} ${CMAKE_CURRENT_BINARY_DIR}/prof.fdata ${CMAKE_CURRENT_BINARY_DIR}
+      COMMENT "Merging BOLT fdata"
+      DEPENDS generate-bolt-fdata)
+  endif()
 endif()

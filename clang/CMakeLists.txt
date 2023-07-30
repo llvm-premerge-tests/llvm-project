@@ -711,6 +711,16 @@ if (CLANG_ENABLE_BOOTSTRAP)
     endif()
   endif()
 
+  if(BOOTSTRAP_LLVM_BOLT)
+    add_dependencies(clang-bootstrap-deps llvm-bolt merge-fdata)
+    set(LLVM_BOLT ${LLVM_RUNTIME_OUTPUT_INTDIR}/llvm-bolt)
+    set(MERGE_FDATA ${LLVM_RUNTIME_OUTPUT_INTDIR}/merge-fdata)
+    list(APPEND _BOOTSTRAP_DEFAULT_PASSTHROUGH
+      LLVM_BOLT
+      MERGE_FDATA
+    )
+  endif()
+
   if(BOOTSTRAP_LLVM_BUILD_INSTRUMENTED)
     add_dependencies(clang-bootstrap-deps llvm-profdata)
     set(PGO_OPT -DLLVM_PROFDATA=${LLVM_RUNTIME_OUTPUT_INTDIR}/llvm-profdata)
@@ -854,35 +864,47 @@ if (CLANG_BOLT_INSTRUMENT AND NOT LLVM_BUILD_INSTRUMENTED)
   set(CLANG_INSTRUMENTED ${CLANG_PATH}-bolt.inst)
   set(BOLT_FDATA ${CMAKE_CURRENT_BINARY_DIR}/utils/perf-training/prof.fdata)
 
-  # Instrument clang with BOLT
-  add_custom_target(clang-instrumented
-    DEPENDS ${CLANG_INSTRUMENTED}
-  )
-  add_custom_command(OUTPUT ${CLANG_INSTRUMENTED}
-    DEPENDS clang llvm-bolt
-    COMMAND llvm-bolt ${CLANG_PATH} -o ${CLANG_INSTRUMENTED}
-      -instrument --instrumentation-file-append-pid
-      --instrumentation-file=${BOLT_FDATA}
-    COMMENT "Instrumenting clang binary with BOLT"
-    VERBATIM
-  )
+  add_custom_target(bolt-clang-instrumented-deps)
+  if ("bolt" IN_LIST LLVM_ENABLE_PROJECTS)
+    add_dependencies(bolt-clang-instrumented-deps llvm-bolt)
+    set(LLVM_BOLT $<TARGET_FILE:llvm-bolt>)
+  elseif (NOT LLVM_BOLT)
+    find_program(LLVM_BOLT llvm-bolt)
+  endif()
 
-  # Optimize original (pre-bolt) Clang using the collected profile
-  set(CLANG_OPTIMIZED ${CMAKE_CURRENT_BINARY_DIR}/clang.bolt)
-  add_custom_target(clang-bolt
-    DEPENDS ${CLANG_OPTIMIZED}
-  )
-  add_custom_command(OUTPUT ${CLANG_OPTIMIZED}
-    DEPENDS clang-bolt-profile
-    COMMAND llvm-bolt ${CLANG_PATH}
-      -o ${CLANG_OPTIMIZED}
-      -data ${BOLT_FDATA}
-      -reorder-blocks=ext-tsp -reorder-functions=hfsort+ -split-functions
-      -split-all-cold -split-eh -dyno-stats -icf=1 -use-gnu-stack
-    COMMAND ${CMAKE_COMMAND} -E rename ${CLANG_OPTIMIZED} $<TARGET_FILE:clang>
-    COMMENT "Optimizing Clang with BOLT"
-    VERBATIM
-  )
+  if (NOT LLVM_BOLT AND NOT "bolt" IN_LIST LLVM_ENABLE_PROJECTS)
+    message(STATUS "To enable optimizing Clang with BOLT enable bolt project or set LLVM_BOLT")
+  else()
+    # Instrument clang with BOLT
+    add_custom_target(clang-instrumented
+      DEPENDS ${CLANG_INSTRUMENTED}
+    )
+    add_custom_command(OUTPUT ${CLANG_INSTRUMENTED}
+      DEPENDS bolt-clang-instrumented-deps clang
+      COMMAND ${LLVM_BOLT} ${CLANG_PATH} -o ${CLANG_INSTRUMENTED}
+        -instrument --instrumentation-file-append-pid
+        --instrumentation-file=${BOLT_FDATA}
+      COMMENT "Instrumenting clang binary with BOLT"
+      VERBATIM
+    )
+
+    # Optimize original (pre-bolt) Clang using the collected profile
+    set(CLANG_OPTIMIZED ${CMAKE_CURRENT_BINARY_DIR}/clang.bolt)
+    add_custom_target(clang-bolt
+      DEPENDS ${CLANG_OPTIMIZED}
+    )
+    add_custom_command(OUTPUT ${CLANG_OPTIMIZED}
+      DEPENDS clang-bolt-profile
+      COMMAND ${LLVM_BOLT} ${CLANG_PATH}
+        -o ${CLANG_OPTIMIZED}
+        -data ${BOLT_FDATA}
+        -reorder-blocks=ext-tsp -reorder-functions=hfsort+ -split-functions
+        -split-all-cold -split-eh -dyno-stats -icf=1 -use-gnu-stack
+      COMMAND ${CMAKE_COMMAND} -E rename ${CLANG_OPTIMIZED} $<TARGET_FILE:clang>
+      COMMENT "Optimizing Clang with BOLT"
+      VERBATIM
+    )
+  endif()
 endif()
 
 if (LLVM_ADD_NATIVE_VISUALIZERS_TO_SOLUTION)
