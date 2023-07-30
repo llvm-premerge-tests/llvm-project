@@ -50,7 +50,8 @@ void ProBoundsConstantArrayIndexCheck::registerMatchers(MatchFinder *Finder) {
           hasOverloadedOperatorName("[]"),
           hasArgument(
               0, hasType(hasUnqualifiedDesugaredType(recordType(hasDeclaration(
-                     cxxRecordDecl(hasName("::std::array")).bind("type")))))),
+                     cxxRecordDecl(isSameOrDerivedFrom(hasName("::std::array")))
+                         .bind("type")))))),
           hasArgument(1, expr().bind("index")))
           .bind("expr"),
       this);
