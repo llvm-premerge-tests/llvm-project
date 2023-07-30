@@ -2048,6 +2048,23 @@ static Value *simplifyLogicOfAddSub(Value *Op0, Value *Op1,
   return nullptr;
 }
 
+static Value *
+trySimplifyingAndLikeUsingOp(Value *Op, const SimplifyQuery &Q, Type *ResTy) {
+  // X & poison -> poison
+  if (isa<PoisonValue>(Op))
+    return PoisonValue::get(ResTy);
+
+  // X & undef -> 0
+  if (Q.isUndefValue(Op))
+    return Constant::getNullValue(ResTy);
+
+  // X & 0 = 0
+  if (match(Op, m_Zero()))
+    return Constant::getNullValue(ResTy);
+
+  return nullptr;
+}
+
 /// Given operands for an And, see if we can fold the result.
 /// If not, this returns null.
 static Value *simplifyAndInst(Value *Op0, Value *Op1, const SimplifyQuery &Q,
@@ -2055,21 +2072,12 @@ static Value *simplifyAndInst(Value *Op0, Value *Op1, const SimplifyQuery &Q,
   if (Constant *C = foldOrCommuteConstant(Instruction::And, Op0, Op1, Q))
     return C;
 
-  // X & poison -> poison
-  if (isa<PoisonValue>(Op1))
-    return Op1;
-
-  // X & undef -> 0
-  if (Q.isUndefValue(Op1))
-    return Constant::getNullValue(Op0->getType());
+  if (auto R = trySimplifyingAndLikeUsingOp(Op1, Q, Op0->getType()))
+    return R;
 
   // X & X = X
   if (Op0 == Op1)
     return Op0;
-
-  // X & 0 = 0
-  if (match(Op1, m_Zero()))
-    return Constant::getNullValue(Op0->getType());
 
   // X & -1 = X
   if (match(Op1, m_AllOnes()))
