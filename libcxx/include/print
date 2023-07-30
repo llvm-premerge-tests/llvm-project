@@ -198,7 +198,11 @@ inline constexpr bool __use_unicode = true;
 #  endif
 
 _LIBCPP_HIDE_FROM_ABI inline bool __is_terminal(FILE* __stream) {
-#  ifdef _WIN32
+  // The macro _LIBCPP_TESTING_PRINT_IS_TERMINAL is used to change
+  // the behavior in the test. This is not part of the public API.
+#  ifdef _LIBCPP_TESTING_PRINT_IS_TERMINAL
+  return _LIBCPP_TESTING_PRINT_IS_TERMINAL(__stream);
+#  elif defined(_WIN32)
   return std::__is_windows_terminal(__stream);
 #  elif __has_include(<unistd.h>)
   return isatty(fileno(__stream));
