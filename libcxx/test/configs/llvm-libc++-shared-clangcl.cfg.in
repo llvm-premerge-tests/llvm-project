@@ -13,7 +13,7 @@ else:
     crt_lib = 'libcmt'
     cxx_lib = 'libcpmt'
 
-if '@uppercase_CMAKE_BUILD_TYPE@' == 'DEBUG':
+if (runtime_library == '' and '@uppercase_CMAKE_BUILD_TYPE@' == 'DEBUG') or 'Debug' in runtime_library:
     dbg_include = ' -D_DEBUG -include set_windows_crt_report_mode.h'
     crt_lib += 'd'
     cxx_lib += 'd'
