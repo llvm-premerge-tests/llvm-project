@@ -1930,6 +1930,15 @@ Instruction *InstCombinerImpl::visitCallInst(CallInst &CI) {
     break;
   }
   case Intrinsic::ptrmask: {
+    Value *Op0 = II->getArgOperand(0);
+    Value *Op1 = II->getArgOperand(1);
+    // Fail loudly in case this is ever changed.
+    // TODO: If vector types are supported the merging of (ptrmask (ptrmask))
+    // need to ensure we don't merge a vectype with non-vec type.
+    assert(!Op0->getType()->isVectorTy() && !Op1->getType()->isVectorTy() &&
+           "These combines where written at a time when ptrmask did not "
+           "support vector types and may not work for vectors");
+
     Value *InnerPtr, *InnerMask;
     if (match(II->getArgOperand(0),
               m_OneUse(m_Intrinsic<Intrinsic::ptrmask>(m_Value(InnerPtr),
