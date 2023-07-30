@@ -41,6 +41,7 @@ set(LIBCXX_SOURCES
   new_handler.cpp
   new_helpers.cpp
   optional.cpp
+  ostream.cpp
   print.cpp
   random_shuffle.cpp
   ryu/d2fixed.cpp
