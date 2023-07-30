@@ -3192,11 +3192,22 @@ void OpEmitter::genSideEffectInterfaceMethods() {
     resolveDecorators(op.getResultDecorators(i), i, EffectKind::Result);
 
   // The code used to add an effect instance.
-  // {0}: The effect class.
-  // {1}: Optional value or symbol reference.
-  // {1}: The resource class.
+  // {0}: The effect happen stage.
+  // {1}: The effect class.
+  // {2}: Optional value or symbol reference.
+  // {3}: The resource class.
   const char *addEffectCode =
-      "  effects.emplace_back({0}::get(), {1}{2}::get());\n";
+      "  {\n"
+      "    mlir::StringAttr attrName = mlir::StringAttr::get(getContext(), "
+      "\"SideEffectOrderAttr\");\n"
+      "    mlir::IntegerAttr stageAttr = "
+      "mlir::IntegerAttr::get(mlir::IndexType::get(getContext()), {0});\n"
+      "    SmallVector<mlir::NamedAttribute, 1> attrs;\n"
+      "    attrs.push_back(mlir::NamedAttribute(attrName, stageAttr));\n"
+      "    mlir::DictionaryAttr paramAttr = "
+      "mlir::DictionaryAttr::get(getContext(), attrs);\n"
+      "    effects.emplace_back({1}::get(), {2}paramAttr, {3}::get());\n"
+      "  }\n";
 
   for (auto &it : interfaceEffects) {
     // Generate the 'getEffects' method.
@@ -3213,20 +3224,22 @@ void OpEmitter::genSideEffectInterfaceMethods() {
     for (auto &location : it.second) {
       StringRef effect = location.effect.getName();
       StringRef resource = location.effect.getResource();
+      int stage = location.effect.getStage();
       if (location.kind == EffectKind::Static) {
         // A static instance has no attached value.
-        body << llvm::formatv(addEffectCode, effect, "", resource).str();
+        body << llvm::formatv(addEffectCode, stage, effect, "", resource).str();
       } else if (location.kind == EffectKind::Symbol) {
         // A symbol reference requires adding the proper attribute.
         const auto *attr = op.getArg(location.index).get<NamedAttribute *>();
         std::string argName = op.getGetterName(attr->name);
         if (attr->attr.isOptional()) {
           body << "  if (auto symbolRef = " << argName << "Attr())\n  "
-               << llvm::formatv(addEffectCode, effect, "symbolRef, ", resource)
+               << llvm::formatv(addEffectCode, stage, effect, "symbolRef, ",
+                                resource)
                       .str();
         } else {
-          body << llvm::formatv(addEffectCode, effect, argName + "Attr(), ",
-                                resource)
+          body << llvm::formatv(addEffectCode, stage, effect,
+                                argName + "Attr(), ", resource)
                       .str();
         }
       } else {
@@ -3234,7 +3247,8 @@ void OpEmitter::genSideEffectInterfaceMethods() {
         body << "  for (::mlir::Value value : getODS"
              << (location.kind == EffectKind::Operand ? "Operands" : "Results")
              << "(" << location.index << "))\n  "
-             << llvm::formatv(addEffectCode, effect, "value, ", resource).str();
+             << llvm::formatv(addEffectCode, stage, effect, "value, ", resource)
+                    .str();
       }
     }
   }

@@ -76,6 +76,11 @@ When adding a new op, ask:
 
 1. Does it read from or write to the heap or stack? It should probably implement
    `MemoryEffectsOpInterface`.
+1. Does these side effects ordered? It may be necessary to add the stage of
+   side effects to make the analysis more accurate. We can use the `MemxxAt`
+   method to mark the stage of side effects in the TD file or add the
+   SideEffectStageAttr in the constructor of EffectInstance to specify the stage
+   of side effects.
 1. Does it have side effects that must be preserved, like a volatile store or a
    syscall? It should probably implement `MemoryEffectsOpInterface` and model
    the effect as a read from or write to an abstract `Resource`. Please start an

@@ -163,12 +163,15 @@ public:
 
   /// Return the value the effect is applied on, or nullptr if there isn't a
   /// known value being affected.
-  Value getValue() const { return value ? llvm::dyn_cast_if_present<Value>(value) : Value(); }
+  Value getValue() const {
+    return value ? llvm::dyn_cast_if_present<Value>(value) : Value();
+  }
 
   /// Return the symbol reference the effect is applied on, or nullptr if there
   /// isn't a known smbol being affected.
   SymbolRefAttr getSymbolRef() const {
-    return value ? llvm::dyn_cast_if_present<SymbolRefAttr>(value) : SymbolRefAttr();
+    return value ? llvm::dyn_cast_if_present<SymbolRefAttr>(value)
+                 : SymbolRefAttr();
   }
 
   /// Return the resource that the effect applies to.
@@ -176,6 +179,20 @@ public:
 
   /// Return the parameters of the effect, if any.
   Attribute getParameters() const { return parameters; }
+
+  /// Return the effect happen stage.
+  unsigned getStage() const {
+    auto dicAttr = llvm::dyn_cast_or_null<DictionaryAttr>(parameters);
+    if (!dicAttr)
+      return 0;
+
+    auto sideEffectOrder =
+        dicAttr.template getAs<IntegerAttr>("SideEffectStageAttr");
+    if (sideEffectOrder) {
+      return sideEffectOrder.getValue().getZExtValue();
+    }
+    return 0;
+  }
 
 private:
   /// The specific effect being applied.
