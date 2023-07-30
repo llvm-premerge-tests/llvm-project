@@ -65,3 +65,42 @@ define ptr @fold_2x_fail_type_mismatch2(ptr %p, i64 %m0, i32 %m1) {
   %p1 = call ptr @llvm.ptrmask.p0.i32(ptr %p0, i32 %m1)
   ret ptr %p1
 }
+
+
+define ptr @fold_2x_type_mismatch_const0(ptr %p, i32 %m1) {
+; CHECK-LABEL: define ptr @fold_2x_type_mismatch_const0
+; CHECK-SAME: (ptr [[P:%.*]], i32 [[M1:%.*]]) {
+; CHECK-NEXT:    [[P0:%.*]] = call ptr @llvm.ptrmask.p0.i64(ptr [[P]], i64 -128)
+; CHECK-NEXT:    [[P1:%.*]] = call ptr @llvm.ptrmask.p0.i32(ptr [[P0]], i32 [[M1]])
+; CHECK-NEXT:    ret ptr [[P1]]
+;
+  %p0 = call ptr @llvm.ptrmask.p0.i64(ptr %p, i64 -128)
+  %p1 = call ptr @llvm.ptrmask.p0.i32(ptr %p0, i32 %m1)
+  ret ptr %p1
+}
+
+define ptr @fold_2x_type_mismatch_const1(ptr %p, i64 %m0) {
+; CHECK-LABEL: define ptr @fold_2x_type_mismatch_const1
+; CHECK-SAME: (ptr [[P:%.*]], i64 [[M0:%.*]]) {
+; CHECK-NEXT:    [[P0:%.*]] = call ptr @llvm.ptrmask.p0.i64(ptr [[P]], i64 [[M0]])
+; CHECK-NEXT:    [[P1:%.*]] = call ptr @llvm.ptrmask.p0.i32(ptr [[P0]], i32 -2)
+; CHECK-NEXT:    ret ptr [[P1]]
+;
+  %p0 = call ptr @llvm.ptrmask.p0.i64(ptr %p, i64 %m0)
+  %p1 = call ptr @llvm.ptrmask.p0.i32(ptr %p0, i32 -2)
+  ret ptr %p1
+}
+
+
+define ptr @fold_2x_type_mismatch_const2(ptr %p) {
+; CHECK-LABEL: define ptr @fold_2x_type_mismatch_const2
+; CHECK-SAME: (ptr [[P:%.*]]) {
+; CHECK-NEXT:    [[P0:%.*]] = call ptr @llvm.ptrmask.p0.i32(ptr [[P]], i32 -4)
+; CHECK-NEXT:    [[P1:%.*]] = call ptr @llvm.ptrmask.p0.i64(ptr [[P0]], i64 -31)
+; CHECK-NEXT:    ret ptr [[P1]]
+;
+  %p0 = call ptr @llvm.ptrmask.p0.i32(ptr %p, i32 -4)
+  %p1 = call ptr @llvm.ptrmask.p0.i64(ptr %p0, i64 -31)
+  ret ptr %p1
+}
+
