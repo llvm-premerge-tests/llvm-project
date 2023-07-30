@@ -13,7 +13,7 @@
 #include <__algorithm/pstl_transform.h>
 #include <__config>
 #include <__functional/identity.h>
-#include <__iterator/iterator_traits.h>
+#include <__iterator/concepts.h>
 #include <__type_traits/enable_if.h>
 #include <__type_traits/is_constant_evaluated.h>
 #include <__type_traits/is_execution_policy.h>
@@ -46,7 +46,7 @@ template <class _ExecutionPolicy,
           enable_if_t<is_execution_policy_v<__remove_cvref_t<_ExecutionPolicy>>, int> = 0>
 _LIBCPP_HIDE_FROM_ABI _ForwardOutIterator
 copy_n(_ExecutionPolicy&& __policy, _ForwardIterator __first, _Size __n, _ForwardOutIterator __result) {
-  if constexpr (__has_random_access_iterator_category<_ForwardIterator>::value)
+  if constexpr (__has_random_access_iterator_category_or_concept<_ForwardIterator>::value)
     return std::copy(__policy, __first, __first + __n, __result);
   else
     return std::copy_n(__first, __n, __result);
