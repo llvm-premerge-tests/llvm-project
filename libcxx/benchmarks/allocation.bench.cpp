@@ -76,13 +76,12 @@ static void BM_DeallocateOnly(benchmark::State& st) {
     p = AllocWrapper::Allocate(alloc_size);
   }
 
-  void** Data      = Pointers.data();
-  void** const End = Pointers.data() + Pointers.size();
+  void** Data = Pointers.data();
   while (st.KeepRunning()) {
     AllocWrapper::Deallocate(*Data, alloc_size);
     Data += 1;
   }
-  assert(Data == End);
+  assert(Data == Pointers.data() + Pointers.size());
 }
 
 static int RegisterAllocBenchmarks() {
