@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 #include "mlir/Analysis/Presburger/PresburgerRelation.h"
 #include "Parser.h"
+#include "mlir/Analysis/Presburger/Simplex.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -188,4 +189,40 @@ TEST(PresburgerRelationTest, inverse) {
 
     EXPECT_TRUE(rel.isEqual(inverseRel));
   }
+}
+
+TEST(IntegerRelationTest, symbolicLexOpt) {
+  PresburgerRelation rel = parsePresburgerRelationFromPresburgerSet(
+      {"(x, y)[N, M] : (x >= 0, y >= 0, N - 1 >= 0, M >= 0, M - 2 * N - 1>= 0, "
+       "2 * N - x >= 0, 2 * N - y >= 0)",
+       "(x, y)[N, M] : (x >= 0, y >= 0, N - 1 >= 0, M >= 0, M - 2 * N - 1>= 0, "
+       "x - N >= 0, M - x >= 0, y - 2 * N >= 0, M - y >= 0)"},
+      1);
+
+  SymbolicLexOpt lexmin = rel.findSymbolicIntegerLexMin();
+
+  PWMAFunction expectedLexMin = parsePWMAF({
+      {"(x)[N, M] : (x >= 0, N - 1 >= 0, M >= 0, M - 2 * N - 1 >= 0, 2 * N - x "
+       ">= 0)",
+       "(x)[N, M] -> (0)"},
+      {"(x)[N, M] : (x >= 0, N - 1 >= 0, M >= 0, M - 2 * N - 1 >= 0, x - 2 * N "
+       "- 1 >= 0, M - x >= 0)",
+       "(x)[N, M] -> (2 * N)"},
+  });
+
+  SymbolicLexOpt lexmax = rel.findSymbolicIntegerLexMax();
+
+  PWMAFunction expectedLexMax = parsePWMAF({
+      {"(x)[N, M] : (x >= 0, N - 1 >= 0, M >= 0, M - 2 * N - 1 >= 0, N - 1 - x "
+       ">= 0)",
+       "(x)[N, M] -> (2 * N)"},
+      {"(x)[N, M] : (x >= 0, N - 1 >= 0, M >= 0, M - 2 * N - 1 >= 0, x - N >= "
+       "0, M - x >= 0)",
+       "(x)[N, M] -> (M)"},
+  });
+
+  EXPECT_TRUE(lexmin.unboundedDomain.isIntegerEmpty());
+  EXPECT_TRUE(lexmin.lexopt.isEqual(expectedLexMin));
+  EXPECT_TRUE(lexmax.unboundedDomain.isIntegerEmpty());
+  EXPECT_TRUE(lexmax.lexopt.isEqual(expectedLexMax));
 }

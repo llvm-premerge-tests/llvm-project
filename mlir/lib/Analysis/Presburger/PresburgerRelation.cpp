@@ -8,6 +8,7 @@
 
 #include "mlir/Analysis/Presburger/PresburgerRelation.h"
 #include "mlir/Analysis/Presburger/IntegerRelation.h"
+#include "mlir/Analysis/Presburger/PWMAFunction.h"
 #include "mlir/Analysis/Presburger/Simplex.h"
 #include "mlir/Analysis/Presburger/Utils.h"
 #include "llvm/ADT/STLExtras.h"
@@ -183,6 +184,38 @@ void PresburgerRelation::applyDomain(const PresburgerRelation &rel) {
 
 void PresburgerRelation::applyRange(const PresburgerRelation &rel) {
   compose(rel);
+}
+
+SymbolicLexOpt PresburgerRelation::findSymbolicIntegerLexMin() const {
+  PWMAFunction lexopt(PresburgerSpace::getRelationSpace(
+      getNumDomainVars(), getNumRangeVars(), getNumSymbolVars()));
+  PresburgerSet unboundedDomain = PresburgerSet::getUniverse(
+      PresburgerSpace::getSetSpace(getNumDomainVars(), getNumSymbolVars()));
+  for (const IntegerRelation &cs : disjuncts) {
+    SymbolicLexOpt s = cs.findSymbolicIntegerLexMin();
+    lexopt = lexopt.unionLexMin(s.lexopt);
+    unboundedDomain = unboundedDomain.intersect(s.unboundedDomain);
+  }
+  SymbolicLexOpt lexmin(space);
+  lexmin.lexopt = lexopt;
+  lexmin.unboundedDomain = unboundedDomain;
+  return lexmin;
+}
+
+SymbolicLexOpt PresburgerRelation::findSymbolicIntegerLexMax() const {
+  PWMAFunction lexopt(PresburgerSpace::getRelationSpace(
+      getNumDomainVars(), getNumRangeVars(), getNumSymbolVars()));
+  PresburgerSet unboundedDomain = PresburgerSet::getUniverse(
+      PresburgerSpace::getSetSpace(getNumDomainVars(), getNumSymbolVars()));
+  for (const IntegerRelation &cs : disjuncts) {
+    SymbolicLexOpt s = cs.findSymbolicIntegerLexMax();
+    lexopt = lexopt.unionLexMax(s.lexopt);
+    unboundedDomain = unboundedDomain.intersect(s.unboundedDomain);
+  }
+  SymbolicLexOpt lexmax(space);
+  lexmax.lexopt = lexopt;
+  lexmax.unboundedDomain = unboundedDomain;
+  return lexmax;
 }
 
 /// Return the coefficients of the ineq in `rel` specified by  `idx`.
