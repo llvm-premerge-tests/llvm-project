@@ -34,13 +34,11 @@ export namespace std {
 #  endif
   using std::operator<<;
 
-#  if 0
   // [ostream.formatted.print], print functions
   using std::print;
   using std::println;
 
   using std::vprint_nonunicode;
   using std::vprint_unicode;
-#  endif
 } // namespace std
 #endif // _LIBCPP_HAS_NO_LOCALIZATION
