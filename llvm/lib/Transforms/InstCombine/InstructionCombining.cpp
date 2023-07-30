@@ -1356,6 +1356,25 @@ Instruction *InstCombinerImpl::foldOpIntoPhi(Instruction &I, PHINode *PN) {
         Ops.push_back(Op->DoPHITranslation(PN->getParent(), InBB));
     }
 
+    // Check if incoming PHI value can be replaced with constant
+    // based on implied condition.
+    BranchInst *TerminatorBI = dyn_cast<BranchInst>(InBB->getTerminator());
+    const ICmpInst *ICmp = dyn_cast<ICmpInst>(&I);
+    if (TerminatorBI && TerminatorBI->isConditional() && ICmp) {
+      const Value *RHSOp0 = Ops[0];
+      const Value *RHSOp1 = Ops[1];
+      bool LHSIsTrue = TerminatorBI->getSuccessor(0) == PN->getParent();
+      std::optional<bool> ImpliedCond =
+          isImpliedCondition(TerminatorBI->getCondition(), ICmp->getPredicate(),
+                             RHSOp0, RHSOp1, DL, LHSIsTrue);
+      if (ImpliedCond) {
+        APInt Constant(I.getType()->getScalarSizeInBits(), ImpliedCond.value());
+        NewPhiValues.push_back(
+            ConstantVector::getIntegerValue(I.getType(), Constant));
+        continue;
+      }
+    }
+
     // Don't consider the simplification successful if we get back a constant
     // expression. That's just an instruction in hiding.
     // Also reject the case where we simplify back to the phi node. We wouldn't
