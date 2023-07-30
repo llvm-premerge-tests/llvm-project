@@ -115,6 +115,45 @@ return:
 
 }
 
+; The maximum value can be `-128`(`128`) when considering only indexed ones.
+
+define i32 @f_i8_128(i8 %c) {
+; CHECK-LABEL: @f_i8_128(
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[SWITCH_TABLEIDX:%.*]] = sub i8 [[C:%.*]], 122
+; CHECK-NEXT:    [[TMP0:%.*]] = icmp ult i8 [[SWITCH_TABLEIDX]], 7
+; CHECK-NEXT:    br i1 [[TMP0]], label [[SWITCH_LOOKUP:%.*]], label [[RETURN:%.*]]
+; CHECK:       switch.lookup:
+; CHECK-NEXT:    [[SWITCH_GEP:%.*]] = getelementptr inbounds [7 x i32], ptr @switch.table.f_i8_128, i32 0, i8 [[SWITCH_TABLEIDX]]
+; CHECK-NEXT:    [[SWITCH_LOAD:%.*]] = load i32, ptr [[SWITCH_GEP]], align 4
+; CHECK-NEXT:    br label [[RETURN]]
+; CHECK:       return:
+; CHECK-NEXT:    [[RETVAL_0:%.*]] = phi i32 [ [[SWITCH_LOAD]], [[SWITCH_LOOKUP]] ], [ 15, [[ENTRY:%.*]] ]
+; CHECK-NEXT:    ret i32 [[RETVAL_0]]
+;
+entry:
+  switch i8 %c, label %sw.default [
+  i8 122, label %return
+  i8 123, label %sw.bb1
+  i8 124, label %sw.bb2
+  i8 125, label %sw.bb3
+  i8 126, label %sw.bb4
+  i8 127, label %sw.bb5
+  i8 -128, label %sw.bb6
+  ]
+
+sw.bb1: br label %return
+sw.bb2: br label %return
+sw.bb3: br label %return
+sw.bb4: br label %return
+sw.bb5: br label %return
+sw.bb6: br label %return
+sw.default: br label %return
+return:
+  %retval.0 = phi i32 [ 15, %sw.default ], [ 1, %sw.bb6 ], [ 62, %sw.bb5 ], [ 27, %sw.bb4 ], [ -1, %sw.bb3 ], [ 0, %sw.bb2 ], [ 123, %sw.bb1 ], [ 55, %entry ]
+  ret i32 %retval.0
+}
+
 ; A switch used to initialize two variables, an i8 and a float.
 
 declare void @dummy(i8 signext, float)
@@ -1732,20 +1771,11 @@ define i32 @signed_overflow2(i8 %n) {
 ; CHECK-LABEL: @signed_overflow2(
 ; CHECK-NEXT:  start:
 ; CHECK-NEXT:    [[TRUNC:%.*]] = trunc i8 [[N:%.*]] to i2
-; CHECK-NEXT:    switch i2 [[TRUNC]], label [[BB1:%.*]] [
-; CHECK-NEXT:    i2 1, label [[BB6:%.*]]
-; CHECK-NEXT:    i2 -2, label [[BB4:%.*]]
-; CHECK-NEXT:    i2 -1, label [[BB5:%.*]]
-; CHECK-NEXT:    ]
-; CHECK:       bb1:
-; CHECK-NEXT:    unreachable
-; CHECK:       bb4:
-; CHECK-NEXT:    br label [[BB6]]
-; CHECK:       bb5:
-; CHECK-NEXT:    br label [[BB6]]
-; CHECK:       bb6:
-; CHECK-NEXT:    [[DOTSROA_0_0:%.*]] = phi i32 [ 4444, [[BB5]] ], [ 3333, [[BB4]] ], [ 2222, [[START:%.*]] ]
-; CHECK-NEXT:    ret i32 [[DOTSROA_0_0]]
+; CHECK-NEXT:    [[SWITCH_TABLEIDX:%.*]] = sub i2 [[TRUNC]], 1
+; CHECK-NEXT:    [[SWITCH_IDX_CAST:%.*]] = zext i2 [[SWITCH_TABLEIDX]] to i32
+; CHECK-NEXT:    [[SWITCH_IDX_MULT:%.*]] = mul nsw i32 [[SWITCH_IDX_CAST]], 1111
+; CHECK-NEXT:    [[SWITCH_OFFSET:%.*]] = add nsw i32 [[SWITCH_IDX_MULT]], 2222
+; CHECK-NEXT:    ret i32 [[SWITCH_OFFSET]]
 ;
 start:
   %trunc = trunc i8 %n to i2

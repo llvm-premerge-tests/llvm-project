@@ -6383,9 +6383,10 @@ static void reuseTableCompare(
 /// If the switch is only used to initialize one or more phi nodes in a common
 /// successor block with different constant values, replace the switch with
 /// lookup tables.
-static bool SwitchToLookupTable(SwitchInst *SI, IRBuilder<> &Builder,
+static bool switchToLookupTable(SwitchInst *SI, IRBuilder<> &Builder,
                                 DomTreeUpdater *DTU, const DataLayout &DL,
-                                const TargetTransformInfo &TTI) {
+                                const TargetTransformInfo &TTI,
+                                bool UnsignedComparison) {
   assert(SI->getNumCases() > 1 && "Degenerate switch?");
 
   BasicBlock *BB = SI->getParent();
@@ -6426,10 +6427,17 @@ static bool SwitchToLookupTable(SwitchInst *SI, IRBuilder<> &Builder,
 
   for (SwitchInst::CaseIt E = SI->case_end(); CI != E; ++CI) {
     ConstantInt *CaseVal = CI->getCaseValue();
-    if (CaseVal->getValue().slt(MinCaseVal->getValue()))
-      MinCaseVal = CaseVal;
-    if (CaseVal->getValue().sgt(MaxCaseVal->getValue()))
-      MaxCaseVal = CaseVal;
+    if (UnsignedComparison) {
+      if (CaseVal->getValue().ult(MinCaseVal->getValue()))
+        MinCaseVal = CaseVal;
+      if (CaseVal->getValue().ugt(MaxCaseVal->getValue()))
+        MaxCaseVal = CaseVal;
+    } else {
+      if (CaseVal->getValue().slt(MinCaseVal->getValue()))
+        MinCaseVal = CaseVal;
+      if (CaseVal->getValue().sgt(MaxCaseVal->getValue()))
+        MaxCaseVal = CaseVal;
+    }
 
     // Resulting value at phi nodes for this case value.
     using ResultsTy = SmallVector<std::pair<PHINode *, Constant *>, 4>;
@@ -6524,7 +6532,7 @@ static bool SwitchToLookupTable(SwitchInst *SI, IRBuilder<> &Builder,
     // If the default is unreachable, all case values are s>= MinCaseVal. Then
     // we can try to attach nsw.
     bool MayWrap = true;
-    if (!DefaultIsReachable) {
+    if (!DefaultIsReachable && !UnsignedComparison) {
       APInt Res = MaxCaseVal->getValue().ssub_ov(MinCaseVal->getValue(), MayWrap);
       (void)Res;
     }
@@ -6788,7 +6796,10 @@ bool SimplifyCFGOpt::simplifySwitch(SwitchInst *SI, IRBuilder<> &Builder) {
   // CVP. Therefore, only apply this transformation during late stages of the
   // optimisation pipeline.
   if (Options.ConvertSwitchToLookupTable &&
-      SwitchToLookupTable(SI, Builder, DTU, DL, TTI))
+      switchToLookupTable(SI, Builder, DTU, DL, TTI, false))
+    return requestResimplify();
+  if (Options.ConvertSwitchToLookupTable &&
+      switchToLookupTable(SI, Builder, DTU, DL, TTI, true))
     return requestResimplify();
 
   if (ReduceSwitchRange(SI, Builder, DL, TTI))
