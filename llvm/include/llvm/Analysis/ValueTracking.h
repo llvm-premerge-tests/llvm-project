@@ -813,7 +813,8 @@ bool isAssumeLikeIntrinsic(const Instruction *I);
 /// assume intrinsic, I, at the point in the control-flow identified by the
 /// context instruction, CxtI.
 bool isValidAssumeForContext(const Instruction *I, const Instruction *CxtI,
-                             const DominatorTree *DT = nullptr);
+                             const DominatorTree *DT = nullptr,
+                             bool AllowEphemeral = false);
 
 enum class OverflowResult {
   /// Always overflows in the direction of signed/unsigned min value.

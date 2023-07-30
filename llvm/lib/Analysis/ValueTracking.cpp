@@ -95,6 +95,15 @@ static unsigned getBitWidth(Type *Ty, const DataLayout &DL) {
   return DL.getPointerTypeSizeInBits(Ty);
 }
 
+static const Instruction *getArgCxtI(const Argument *A) {
+  if (!A)
+    return nullptr;
+
+  const BasicBlock &B = A->getParent()->getEntryBlock();
+  assert(!B.empty());
+  return &B.front();
+}
+
 // Given the provided Value and, potentially, a context instruction, return
 // the preferred context instruction (if any).
 static const Instruction *safeCxtI(const Value *V, const Instruction *CxtI) {
@@ -105,6 +114,10 @@ static const Instruction *safeCxtI(const Value *V, const Instruction *CxtI) {
 
   // If the value is really an already-inserted instruction, then use that.
   CxtI = dyn_cast<Instruction>(V);
+  if (CxtI && CxtI->getParent())
+    return CxtI;
+
+  CxtI = getArgCxtI(dyn_cast<Argument>(V));
   if (CxtI && CxtI->getParent())
     return CxtI;
 
@@ -123,6 +136,14 @@ static const Instruction *safeCxtI(const Value *V1, const Value *V2, const Instr
     return CxtI;
 
   CxtI = dyn_cast<Instruction>(V2);
+  if (CxtI && CxtI->getParent())
+    return CxtI;
+
+  CxtI = getArgCxtI(dyn_cast<Argument>(V1));
+  if (CxtI && CxtI->getParent())
+    return CxtI;
+
+  CxtI = getArgCxtI(dyn_cast<Argument>(V2));
   if (CxtI && CxtI->getParent())
     return CxtI;
 
@@ -518,7 +539,8 @@ bool llvm::isAssumeLikeIntrinsic(const Instruction *I) {
 
 bool llvm::isValidAssumeForContext(const Instruction *Inv,
                                    const Instruction *CxtI,
-                                   const DominatorTree *DT) {
+                                   const DominatorTree *DT,
+                                   bool AllowEphemeral) {
   // There are two restrictions on the use of an assume:
   //  1. The assume must dominate the context (or the control flow must
   //     reach the assume whenever it reaches the context).
@@ -549,7 +571,7 @@ bool llvm::isValidAssumeForContext(const Instruction *Inv,
     if (!isGuaranteedToTransferExecutionToSuccessor(Range, 15))
       return false;
 
-    return !isEphemeralValueOf(Inv, CxtI);
+    return AllowEphemeral || !isEphemeralValueOf(Inv, CxtI);
   }
 
   // Inv and CxtI are in different blocks.
@@ -8751,6 +8773,8 @@ ConstantRange llvm::computeConstantRange(const Value *V, bool ForSigned,
   if (match(V, m_APInt(C)))
     return ConstantRange(*C);
 
+  CtxI = safeCxtI(V, CtxI);
+
   InstrInfoQuery IIQ(UseInstrInfo);
   unsigned BitWidth = V->getType()->getScalarSizeInBits();
   ConstantRange CR = ConstantRange::getFull(BitWidth);
@@ -8791,7 +8815,7 @@ ConstantRange llvm::computeConstantRange(const Value *V, bool ForSigned,
       assert(I->getCalledFunction()->getIntrinsicID() == Intrinsic::assume &&
              "must be an assume intrinsic");
 
-      if (!isValidAssumeForContext(I, CtxI, DT))
+      if (!isValidAssumeForContext(I, CtxI, DT, isa<Argument>(V)))
         continue;
       Value *Arg = I->getArgOperand(0);
       ICmpInst *Cmp = dyn_cast<ICmpInst>(Arg);

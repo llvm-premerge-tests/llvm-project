@@ -1581,11 +1581,11 @@ TEST_F(ScalarEvolutionsTest, ApplyLoopGuards) {
   runWithSE(*M, "test", [](Function &F, LoopInfo &LI, ScalarEvolution &SE) {
     auto *TCScev = SE.getSCEV(getArgByName(F, "num"));
     auto *ApplyLoopGuardsTC = SE.applyLoopGuards(TCScev, *LI.begin());
-    // Assert that the new TC is (4 * ((4 umax %num) /u 4))
+    // Assert that the new TC is (4 * (%num /u 4)), We can deduce %num >= 4 with
+    // llvm.assume
     APInt Four(32, 4);
     auto *Constant4 = SE.getConstant(Four);
-    auto *Max = SE.getUMaxExpr(TCScev, Constant4);
-    auto *Mul = SE.getMulExpr(SE.getUDivExpr(Max, Constant4), Constant4);
+    auto *Mul = SE.getMulExpr(SE.getUDivExpr(TCScev, Constant4), Constant4);
     ASSERT_TRUE(Mul == ApplyLoopGuardsTC);
   });
 }

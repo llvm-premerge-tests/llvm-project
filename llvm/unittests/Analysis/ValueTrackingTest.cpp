@@ -2889,7 +2889,8 @@ TEST_F(ValueTrackingTest, ComputeConstantRange) {
     AssumptionCache AC(*F);
     Value *Stride = &*F->arg_begin();
     ConstantRange CR1 = computeConstantRange(Stride, false, true, &AC, nullptr);
-    EXPECT_TRUE(CR1.isFullSet());
+    EXPECT_EQ(5, CR1.getLower());
+    EXPECT_EQ(10, CR1.getUpper());
 
     Instruction *I = &findInstructionByName(F, "stride.plus.one");
     ConstantRange CR2 = computeConstantRange(Stride, false, true, &AC, I);
@@ -2961,7 +2962,7 @@ TEST_F(ValueTrackingTest, ComputeConstantRange) {
     Value *Stride = &*F->arg_begin();
     Instruction *GT2 = &findInstructionByName(F, "gt.2");
     ConstantRange CR = computeConstantRange(Stride, false, true, &AC, GT2);
-    EXPECT_EQ(5, CR.getLower());
+    EXPECT_EQ(50, CR.getLower());
     EXPECT_EQ(0, CR.getUpper());
 
     Instruction *I = &findInstructionByName(F, "stride.plus.one");

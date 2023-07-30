@@ -151,14 +151,14 @@ define void @test_trip_multiple_4_sgt_5(i32 %num) {
 ; CHECK-NEXT:    %u = urem i32 %num, 4
 ; CHECK-NEXT:    --> (zext i2 (trunc i32 %num to i2) to i32) U: [0,4) S: [0,4)
 ; CHECK-NEXT:    %i.010 = phi i32 [ 0, %entry ], [ %inc, %for.body ]
-; CHECK-NEXT:    --> {0,+,1}<nuw><nsw><%for.body> U: [0,2147483647) S: [0,2147483647) Exits: (-1 + %num) LoopDispositions: { %for.body: Computable }
+; CHECK-NEXT:    --> {0,+,1}<nuw><nsw><%for.body> U: [0,2147483647) S: [0,2147483647) Exits: (-1 + %num)<nsw> LoopDispositions: { %for.body: Computable }
 ; CHECK-NEXT:    %inc = add nuw nsw i32 %i.010, 1
 ; CHECK-NEXT:    --> {1,+,1}<nuw><nsw><%for.body> U: [1,-2147483648) S: [1,-2147483648) Exits: %num LoopDispositions: { %for.body: Computable }
 ; CHECK-NEXT:  Determining loop execution counts for: @test_trip_multiple_4_sgt_5
-; CHECK-NEXT:  Loop %for.body: backedge-taken count is (-1 + %num)
+; CHECK-NEXT:  Loop %for.body: backedge-taken count is (-1 + %num)<nsw>
 ; CHECK-NEXT:  Loop %for.body: constant max backedge-taken count is 2147483646
-; CHECK-NEXT:  Loop %for.body: symbolic max backedge-taken count is (-1 + %num)
-; CHECK-NEXT:  Loop %for.body: Predicated backedge-taken count is (-1 + %num)
+; CHECK-NEXT:  Loop %for.body: symbolic max backedge-taken count is (-1 + %num)<nsw>
+; CHECK-NEXT:  Loop %for.body: Predicated backedge-taken count is (-1 + %num)<nsw>
 ; CHECK-NEXT:   Predicates:
 ; CHECK:       Loop %for.body: Trip multiple is 4
 ;
@@ -187,14 +187,14 @@ define void @test_trip_multiple_4_sgt_5_order_swapped(i32 %num) {
 ; CHECK-NEXT:    %u = urem i32 %num, 4
 ; CHECK-NEXT:    --> (zext i2 (trunc i32 %num to i2) to i32) U: [0,4) S: [0,4)
 ; CHECK-NEXT:    %i.010 = phi i32 [ 0, %entry ], [ %inc, %for.body ]
-; CHECK-NEXT:    --> {0,+,1}<nuw><nsw><%for.body> U: [0,2147483647) S: [0,2147483647) Exits: (-1 + %num) LoopDispositions: { %for.body: Computable }
+; CHECK-NEXT:    --> {0,+,1}<nuw><nsw><%for.body> U: [0,2147483647) S: [0,2147483647) Exits: (-1 + %num)<nsw> LoopDispositions: { %for.body: Computable }
 ; CHECK-NEXT:    %inc = add nuw nsw i32 %i.010, 1
 ; CHECK-NEXT:    --> {1,+,1}<nuw><nsw><%for.body> U: [1,-2147483648) S: [1,-2147483648) Exits: %num LoopDispositions: { %for.body: Computable }
 ; CHECK-NEXT:  Determining loop execution counts for: @test_trip_multiple_4_sgt_5_order_swapped
-; CHECK-NEXT:  Loop %for.body: backedge-taken count is (-1 + %num)
+; CHECK-NEXT:  Loop %for.body: backedge-taken count is (-1 + %num)<nsw>
 ; CHECK-NEXT:  Loop %for.body: constant max backedge-taken count is 2147483646
-; CHECK-NEXT:  Loop %for.body: symbolic max backedge-taken count is (-1 + %num)
-; CHECK-NEXT:  Loop %for.body: Predicated backedge-taken count is (-1 + %num)
+; CHECK-NEXT:  Loop %for.body: symbolic max backedge-taken count is (-1 + %num)<nsw>
+; CHECK-NEXT:  Loop %for.body: Predicated backedge-taken count is (-1 + %num)<nsw>
 ; CHECK-NEXT:   Predicates:
 ; CHECK:       Loop %for.body: Trip multiple is 4
 ;
@@ -294,14 +294,14 @@ define void @test_trip_multiple_4_sge_5(i32 %num) {
 ; CHECK-NEXT:    %u = urem i32 %num, 4
 ; CHECK-NEXT:    --> (zext i2 (trunc i32 %num to i2) to i32) U: [0,4) S: [0,4)
 ; CHECK-NEXT:    %i.010 = phi i32 [ 0, %entry ], [ %inc, %for.body ]
-; CHECK-NEXT:    --> {0,+,1}<nuw><nsw><%for.body> U: [0,2147483647) S: [0,2147483647) Exits: (-1 + %num) LoopDispositions: { %for.body: Computable }
+; CHECK-NEXT:    --> {0,+,1}<nuw><nsw><%for.body> U: [0,2147483647) S: [0,2147483647) Exits: (-1 + %num)<nsw> LoopDispositions: { %for.body: Computable }
 ; CHECK-NEXT:    %inc = add nuw nsw i32 %i.010, 1
 ; CHECK-NEXT:    --> {1,+,1}<nuw><nsw><%for.body> U: [1,-2147483648) S: [1,-2147483648) Exits: %num LoopDispositions: { %for.body: Computable }
 ; CHECK-NEXT:  Determining loop execution counts for: @test_trip_multiple_4_sge_5
-; CHECK-NEXT:  Loop %for.body: backedge-taken count is (-1 + %num)
+; CHECK-NEXT:  Loop %for.body: backedge-taken count is (-1 + %num)<nsw>
 ; CHECK-NEXT:  Loop %for.body: constant max backedge-taken count is 2147483646
-; CHECK-NEXT:  Loop %for.body: symbolic max backedge-taken count is (-1 + %num)
-; CHECK-NEXT:  Loop %for.body: Predicated backedge-taken count is (-1 + %num)
+; CHECK-NEXT:  Loop %for.body: symbolic max backedge-taken count is (-1 + %num)<nsw>
+; CHECK-NEXT:  Loop %for.body: Predicated backedge-taken count is (-1 + %num)<nsw>
 ; CHECK-NEXT:   Predicates:
 ; CHECK:       Loop %for.body: Trip multiple is 4
 ;
@@ -329,14 +329,14 @@ define void @test_trip_multiple_4_sge_5_order_swapped(i32 %num) {
 ; CHECK-NEXT:    %u = urem i32 %num, 4
 ; CHECK-NEXT:    --> (zext i2 (trunc i32 %num to i2) to i32) U: [0,4) S: [0,4)
 ; CHECK-NEXT:    %i.010 = phi i32 [ 0, %entry ], [ %inc, %for.body ]
-; CHECK-NEXT:    --> {0,+,1}<nuw><nsw><%for.body> U: [0,2147483647) S: [0,2147483647) Exits: (-1 + %num) LoopDispositions: { %for.body: Computable }
+; CHECK-NEXT:    --> {0,+,1}<nuw><nsw><%for.body> U: [0,2147483647) S: [0,2147483647) Exits: (-1 + %num)<nsw> LoopDispositions: { %for.body: Computable }
 ; CHECK-NEXT:    %inc = add nuw nsw i32 %i.010, 1
 ; CHECK-NEXT:    --> {1,+,1}<nuw><nsw><%for.body> U: [1,-2147483648) S: [1,-2147483648) Exits: %num LoopDispositions: { %for.body: Computable }
 ; CHECK-NEXT:  Determining loop execution counts for: @test_trip_multiple_4_sge_5_order_swapped
-; CHECK-NEXT:  Loop %for.body: backedge-taken count is (-1 + %num)
+; CHECK-NEXT:  Loop %for.body: backedge-taken count is (-1 + %num)<nsw>
 ; CHECK-NEXT:  Loop %for.body: constant max backedge-taken count is 2147483646
-; CHECK-NEXT:  Loop %for.body: symbolic max backedge-taken count is (-1 + %num)
-; CHECK-NEXT:  Loop %for.body: Predicated backedge-taken count is (-1 + %num)
+; CHECK-NEXT:  Loop %for.body: symbolic max backedge-taken count is (-1 + %num)<nsw>
+; CHECK-NEXT:  Loop %for.body: Predicated backedge-taken count is (-1 + %num)<nsw>
 ; CHECK-NEXT:   Predicates:
 ; CHECK:       Loop %for.body: Trip multiple is 4
 ;
@@ -400,14 +400,14 @@ define void @test_trip_multiple_4_upper_lower_bounds(i32 %num) {
 ; CHECK-NEXT:    %u = urem i32 %num, 4
 ; CHECK-NEXT:    --> (zext i2 (trunc i32 %num to i2) to i32) U: [0,4) S: [0,4)
 ; CHECK-NEXT:    %i.010 = phi i32 [ 0, %entry ], [ %inc, %for.body ]
-; CHECK-NEXT:    --> {0,+,1}<nuw><nsw><%for.body> U: [0,-2147483648) S: [0,-2147483648) Exits: (-1 + %num) LoopDispositions: { %for.body: Computable }
+; CHECK-NEXT:    --> {0,+,1}<nuw><nsw><%for.body> U: [0,58999) S: [0,58999) Exits: (-1 + %num)<nsw> LoopDispositions: { %for.body: Computable }
 ; CHECK-NEXT:    %inc = add nuw nsw i32 %i.010, 1
-; CHECK-NEXT:    --> {1,+,1}<nuw><nsw><%for.body> U: [1,-2147483648) S: [1,-2147483648) Exits: %num LoopDispositions: { %for.body: Computable }
+; CHECK-NEXT:    --> {1,+,1}<nuw><nsw><%for.body> U: [1,59000) S: [1,59000) Exits: %num LoopDispositions: { %for.body: Computable }
 ; CHECK-NEXT:  Determining loop execution counts for: @test_trip_multiple_4_upper_lower_bounds
-; CHECK-NEXT:  Loop %for.body: backedge-taken count is (-1 + %num)
-; CHECK-NEXT:  Loop %for.body: constant max backedge-taken count is -2
-; CHECK-NEXT:  Loop %for.body: symbolic max backedge-taken count is (-1 + %num)
-; CHECK-NEXT:  Loop %for.body: Predicated backedge-taken count is (-1 + %num)
+; CHECK-NEXT:  Loop %for.body: backedge-taken count is (-1 + %num)<nsw>
+; CHECK-NEXT:  Loop %for.body: constant max backedge-taken count is 58998
+; CHECK-NEXT:  Loop %for.body: symbolic max backedge-taken count is (-1 + %num)<nsw>
+; CHECK-NEXT:  Loop %for.body: Predicated backedge-taken count is (-1 + %num)<nsw>
 ; CHECK-NEXT:   Predicates:
 ; CHECK:       Loop %for.body: Trip multiple is 4
 ;
@@ -437,14 +437,14 @@ define void @test_trip_multiple_4_upper_lower_bounds_swapped1(i32 %num) {
 ; CHECK-NEXT:    %u = urem i32 %num, 4
 ; CHECK-NEXT:    --> (zext i2 (trunc i32 %num to i2) to i32) U: [0,4) S: [0,4)
 ; CHECK-NEXT:    %i.010 = phi i32 [ 0, %entry ], [ %inc, %for.body ]
-; CHECK-NEXT:    --> {0,+,1}<nuw><nsw><%for.body> U: [0,-2147483648) S: [0,-2147483648) Exits: (-1 + %num) LoopDispositions: { %for.body: Computable }
+; CHECK-NEXT:    --> {0,+,1}<nuw><nsw><%for.body> U: [0,58999) S: [0,58999) Exits: (-1 + %num)<nsw> LoopDispositions: { %for.body: Computable }
 ; CHECK-NEXT:    %inc = add nuw nsw i32 %i.010, 1
-; CHECK-NEXT:    --> {1,+,1}<nuw><nsw><%for.body> U: [1,-2147483648) S: [1,-2147483648) Exits: %num LoopDispositions: { %for.body: Computable }
+; CHECK-NEXT:    --> {1,+,1}<nuw><nsw><%for.body> U: [1,59000) S: [1,59000) Exits: %num LoopDispositions: { %for.body: Computable }
 ; CHECK-NEXT:  Determining loop execution counts for: @test_trip_multiple_4_upper_lower_bounds_swapped1
-; CHECK-NEXT:  Loop %for.body: backedge-taken count is (-1 + %num)
-; CHECK-NEXT:  Loop %for.body: constant max backedge-taken count is -2
-; CHECK-NEXT:  Loop %for.body: symbolic max backedge-taken count is (-1 + %num)
-; CHECK-NEXT:  Loop %for.body: Predicated backedge-taken count is (-1 + %num)
+; CHECK-NEXT:  Loop %for.body: backedge-taken count is (-1 + %num)<nsw>
+; CHECK-NEXT:  Loop %for.body: constant max backedge-taken count is 58998
+; CHECK-NEXT:  Loop %for.body: symbolic max backedge-taken count is (-1 + %num)<nsw>
+; CHECK-NEXT:  Loop %for.body: Predicated backedge-taken count is (-1 + %num)<nsw>
 ; CHECK-NEXT:   Predicates:
 ; CHECK:       Loop %for.body: Trip multiple is 4
 ;
@@ -474,14 +474,14 @@ define void @test_trip_multiple_4_upper_lower_bounds_swapped2(i32 %num) {
 ; CHECK-NEXT:    %u = urem i32 %num, 4
 ; CHECK-NEXT:    --> (zext i2 (trunc i32 %num to i2) to i32) U: [0,4) S: [0,4)
 ; CHECK-NEXT:    %i.010 = phi i32 [ 0, %entry ], [ %inc, %for.body ]
-; CHECK-NEXT:    --> {0,+,1}<nuw><nsw><%for.body> U: [0,-2147483648) S: [0,-2147483648) Exits: (-1 + %num) LoopDispositions: { %for.body: Computable }
+; CHECK-NEXT:    --> {0,+,1}<nuw><nsw><%for.body> U: [0,58999) S: [0,58999) Exits: (-1 + %num)<nsw> LoopDispositions: { %for.body: Computable }
 ; CHECK-NEXT:    %inc = add nuw nsw i32 %i.010, 1
-; CHECK-NEXT:    --> {1,+,1}<nuw><nsw><%for.body> U: [1,-2147483648) S: [1,-2147483648) Exits: %num LoopDispositions: { %for.body: Computable }
+; CHECK-NEXT:    --> {1,+,1}<nuw><nsw><%for.body> U: [1,59000) S: [1,59000) Exits: %num LoopDispositions: { %for.body: Computable }
 ; CHECK-NEXT:  Determining loop execution counts for: @test_trip_multiple_4_upper_lower_bounds_swapped2
-; CHECK-NEXT:  Loop %for.body: backedge-taken count is (-1 + %num)
-; CHECK-NEXT:  Loop %for.body: constant max backedge-taken count is -2
-; CHECK-NEXT:  Loop %for.body: symbolic max backedge-taken count is (-1 + %num)
-; CHECK-NEXT:  Loop %for.body: Predicated backedge-taken count is (-1 + %num)
+; CHECK-NEXT:  Loop %for.body: backedge-taken count is (-1 + %num)<nsw>
+; CHECK-NEXT:  Loop %for.body: constant max backedge-taken count is 58998
+; CHECK-NEXT:  Loop %for.body: symbolic max backedge-taken count is (-1 + %num)<nsw>
+; CHECK-NEXT:  Loop %for.body: Predicated backedge-taken count is (-1 + %num)<nsw>
 ; CHECK-NEXT:   Predicates:
 ; CHECK:       Loop %for.body: Trip multiple is 4
 ;
