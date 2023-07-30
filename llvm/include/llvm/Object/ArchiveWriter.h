@@ -40,8 +40,15 @@ struct NewArchiveMember {
 
 Expected<std::string> computeArchiveRelativePath(StringRef From, StringRef To);
 
+enum SymtabWritingMode {
+  NoSymtab,     // Not write Symbol table.
+  NormalSymtab, // Write both 32-bit and 64-bit symbol table.
+  Bit32Only,    // Only write the 32-bit symbol table.
+  Bit64Only     // Only write the 64-bit symbol table.
+};
+
 Error writeArchive(StringRef ArcName, ArrayRef<NewArchiveMember> NewMembers,
-                   bool WriteSymtab, object::Archive::Kind Kind,
+                   SymtabWritingMode WriteSymtab, object::Archive::Kind Kind,
                    bool Deterministic, bool Thin,
                    std::unique_ptr<MemoryBuffer> OldArchiveBuf = nullptr,
                    bool IsEC = false);
@@ -49,8 +56,9 @@ Error writeArchive(StringRef ArcName, ArrayRef<NewArchiveMember> NewMembers,
 // writeArchiveToBuffer is similar to writeArchive but returns the Archive in a
 // buffer instead of writing it out to a file.
 Expected<std::unique_ptr<MemoryBuffer>>
-writeArchiveToBuffer(ArrayRef<NewArchiveMember> NewMembers, bool WriteSymtab,
-                     object::Archive::Kind Kind, bool Deterministic, bool Thin);
+writeArchiveToBuffer(ArrayRef<NewArchiveMember> NewMembers,
+                     SymtabWritingMode WriteSymtab, object::Archive::Kind Kind,
+                     bool Deterministic, bool Thin);
 }
 
 #endif
