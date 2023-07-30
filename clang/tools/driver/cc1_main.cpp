@@ -38,6 +38,7 @@
 #include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/Process.h"
+#include "llvm/Support/RISCVISAInfo.h"
 #include "llvm/Support/Signals.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/TimeProfiler.h"
@@ -182,6 +183,12 @@ static int PrintSupportedCPUs(std::string TargetStr) {
   return 0;
 }
 
+/// Print supported extensions of the RISCV target.
+static void printSupportedExtensions() {
+  llvm::riscvExtensionsHelp();
+}
+
+
 int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
   ensureSufficientStack();
 
@@ -220,6 +227,10 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
   // --print-supported-cpus takes priority over the actual compilation.
   if (Clang->getFrontendOpts().PrintSupportedCPUs)
     return PrintSupportedCPUs(Clang->getTargetOpts().Triple);
+
+  // --print-supported-extensions takes priority over the actual compilation.
+  if (Clang->getFrontendOpts().PrintSupportedExtensions)
+    return printSupportedExtensions(), 0;
 
   // Infer the builtin include path if unspecified.
   if (Clang->getHeaderSearchOpts().UseBuiltinIncludes &&
