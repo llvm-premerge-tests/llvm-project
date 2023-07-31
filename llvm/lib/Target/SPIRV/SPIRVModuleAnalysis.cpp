@@ -15,6 +15,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "SPIRVModuleAnalysis.h"
+#include "MCTargetDesc/SPIRVBaseInfo.h"
 #include "SPIRV.h"
 #include "SPIRVSubtarget.h"
 #include "SPIRVTargetMachine.h"
@@ -551,6 +552,10 @@ void RequirementHandler::initAvailableCapabilities(const SPIRVSubtarget &ST) {
                       Capability::RoundingModeRTZ});
   // TODO: verify if this needs some checks.
   addAvailableCaps({Capability::Float16, Capability::Float64});
+
+  // Add cap for SPV_INTEL_optnone
+  // FIXME: this should be added only if the target has the extension
+  addAvailableCaps({Capability::OptNoneINTEL});
 
   // TODO: add OpenCL extensions.
 }

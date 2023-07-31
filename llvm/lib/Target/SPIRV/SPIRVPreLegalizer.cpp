@@ -574,6 +574,28 @@ static void processSwitches(MachineFunction &MF, SPIRVGlobalRegistry *GR,
   }
 }
 
+// This function checks if the machine has optnone enabled and if so enables
+// the SPIRV optnone extension and capability.
+// FIXME: make this optional once we have a command line flag to explicitly
+// enable extensions.
+void runOptNoneAnalysis(MachineFunction &MF) {
+  // Possibly output Capability and Extension instructions if function is marked
+  // with optnone.
+  const Function &F = MF.getFunction();
+  const SPIRVSubtarget &ST = MF.getSubtarget<SPIRVSubtarget>();
+  MachineBasicBlock &EntryBB = MF.front();
+   MachineIRBuilder MIRBuilder(EntryBB, EntryBB.begin());
+
+  if (F.hasOptNone() && ST.canUseExtension(
+          SPIRV::Extension::SPV_INTEL_optnone)) {
+    // Output OpCapability OptNoneINTEL.
+    MIRBuilder.buildInstr(SPIRV::OpExtension)
+    .addImm(SPIRV::Extension::SPV_INTEL_optnone);
+    MIRBuilder.buildInstr(SPIRV::OpCapability)
+    .addImm(SPIRV::Capability::OptNoneINTEL);
+  }
+}
+
 bool SPIRVPreLegalizer::runOnMachineFunction(MachineFunction &MF) {
   // Initialize the type registry.
   const SPIRVSubtarget &ST = MF.getSubtarget<SPIRVSubtarget>();
@@ -586,6 +608,7 @@ bool SPIRVPreLegalizer::runOnMachineFunction(MachineFunction &MF) {
   generateAssignInstrs(MF, GR, MIB);
   processSwitches(MF, GR, MIB);
   processInstrsWithTypeFolding(MF, GR, MIB);
+  runOptNoneAnalysis(MF);
 
   return true;
 }
