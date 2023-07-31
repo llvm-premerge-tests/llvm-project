@@ -48,7 +48,7 @@ entry:
   %0 = load i32, ptr %p, align 4, !tbaa !8
   ret i32 %0
 }
-; CHECK:  w0 = *(u32 *)(r1 + 0)                   # encoding: [0x61,0x10,0x00,0x00,0x00,0x00,0x00,0x00]
+; CHECK:  r0 = *(u32 *)(r1 + 0)                   # encoding: [0x61,0x10,0x00,0x00,0x00,0x00,0x00,0x00]
 
 ; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(argmem: read)
 define dso_local i64 @f4(ptr nocapture noundef readonly %p) local_unnamed_addr #0 {

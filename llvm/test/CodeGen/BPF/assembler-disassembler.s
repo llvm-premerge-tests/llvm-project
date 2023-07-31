@@ -209,26 +209,18 @@ call +42
 // CHECK: 95 00 00 00 00 00 00 00	exit
 exit
 
-// Note: For the group below w1 is used as a destination for sizes u8, u16, u32.
-//       This is disassembler quirk, but is technically not wrong, as there are
-//       no different encodings for 'r1 = load' vs 'w1 = load'.
-//
-// CHECK: 71 21 2a 00 00 00 00 00	w1 = *(u8 *)(r2 + 0x2a)
-// CHECK: 69 21 2a 00 00 00 00 00	w1 = *(u16 *)(r2 + 0x2a)
-// CHECK: 61 21 2a 00 00 00 00 00	w1 = *(u32 *)(r2 + 0x2a)
+// CHECK: 71 21 2a 00 00 00 00 00	r1 = *(u8 *)(r2 + 0x2a)
+// CHECK: 69 21 2a 00 00 00 00 00	r1 = *(u16 *)(r2 + 0x2a)
+// CHECK: 61 21 2a 00 00 00 00 00	r1 = *(u32 *)(r2 + 0x2a)
 // CHECK: 79 21 2a 00 00 00 00 00	r1 = *(u64 *)(r2 + 0x2a)
 r1 = *(u8*)(r2 + 42)
 r1 = *(u16*)(r2 + 42)
 r1 = *(u32*)(r2 + 42)
 r1 = *(u64*)(r2 + 42)
 
-// Note: For the group below w1 is used as a source for sizes u8, u16, u32.
-//       This is disassembler quirk, but is technically not wrong, as there are
-//       no different encodings for 'store r1' vs 'store w1'.
-//
-// CHECK: 73 12 2a 00 00 00 00 00	*(u8 *)(r2 + 0x2a) = w1
-// CHECK: 6b 12 2a 00 00 00 00 00	*(u16 *)(r2 + 0x2a) = w1
-// CHECK: 63 12 2a 00 00 00 00 00	*(u32 *)(r2 + 0x2a) = w1
+// CHECK: 73 12 2a 00 00 00 00 00	*(u8 *)(r2 + 0x2a) = r1
+// CHECK: 6b 12 2a 00 00 00 00 00	*(u16 *)(r2 + 0x2a) = r1
+// CHECK: 63 12 2a 00 00 00 00 00	*(u32 *)(r2 + 0x2a) = r1
 // CHECK: 7b 12 2a 00 00 00 00 00	*(u64 *)(r2 + 0x2a) = r1
 *(u8*)(r2 + 42) = r1
 *(u16*)(r2 + 42) = r1

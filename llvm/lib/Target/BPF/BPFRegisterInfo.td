@@ -35,6 +35,14 @@ foreach I = 0-11 in {
   def R#I  : Ri<I,  "r"#I,  [!cast<Wi>("W"#I)]>,  DwarfRegNum<[I]>;
 }
 
+class RegPair<Wi w, Ri r> {
+  Wi R32 = w;
+  Ri R64 = r;
+}
+
+defvar AllRegs =
+  !foreach(I, !range(0, 11), RegPair<!cast<Wi>("W"#I), !cast<Ri>("R"#I)>);
+
 // Register classes.
 def GPR32 : RegisterClass<"BPF", [i32], 64, (add
   (sequence "W%u", 1, 9),

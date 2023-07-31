@@ -95,8 +95,7 @@ void BPFMISimplifyPatchable::initialize(MachineFunction &MFParm) {
 
 bool BPFMISimplifyPatchable::isLoadInst(unsigned Opcode) {
   return Opcode == BPF::LDD || Opcode == BPF::LDW || Opcode == BPF::LDH ||
-         Opcode == BPF::LDB || Opcode == BPF::LDW32 || Opcode == BPF::LDH32 ||
-         Opcode == BPF::LDB32 || Opcode == BPF::LDWSX || Opcode == BPF::LDHSX ||
+         Opcode == BPF::LDB || Opcode == BPF::LDWSX || Opcode == BPF::LDHSX ||
          Opcode == BPF::LDBSX;
 }
 
@@ -123,10 +122,6 @@ void BPFMISimplifyPatchable::checkADDrr(MachineRegisterInfo *MRI,
         Opcode == BPF::STW || Opcode == BPF::STD || Opcode == BPF::LDWSX ||
         Opcode == BPF::LDHSX || Opcode == BPF::LDBSX)
       COREOp = BPF::CORE_MEM;
-    else if (Opcode == BPF::LDB32 || Opcode == BPF::LDH32 ||
-             Opcode == BPF::LDW32 || Opcode == BPF::STB32 ||
-             Opcode == BPF::STH32 || Opcode == BPF::STW32)
-      COREOp = BPF::CORE_ALU32_MEM;
     else
       continue;
 
@@ -139,8 +134,7 @@ void BPFMISimplifyPatchable::checkADDrr(MachineRegisterInfo *MRI,
     //   %1 = ADD_rr %2, %3
     //   *(type *)(%2 + 0) = %1
     if (Opcode == BPF::STB || Opcode == BPF::STH || Opcode == BPF::STW ||
-        Opcode == BPF::STD || Opcode == BPF::STB32 || Opcode == BPF::STH32 ||
-        Opcode == BPF::STW32) {
+        Opcode == BPF::STD) {
       const MachineOperand &Opnd = DefInst->getOperand(0);
       if (Opnd.isReg() && Opnd.getReg() == MO.getReg())
         continue;
