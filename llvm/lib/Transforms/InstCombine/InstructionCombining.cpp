@@ -1991,9 +1991,6 @@ Instruction *InstCombinerImpl::visitGEPOfGEP(GetElementPtrInst &GEP,
                                Indices, "", IsInBounds));
   }
 
-  if (Src->getResultElementType() != GEP.getSourceElementType())
-    return nullptr;
-
   SmallVector<Value*, 8> Indices;
 
   // Find out whether the last index in the source GEP is a sequential idx.
@@ -2003,7 +2000,8 @@ Instruction *InstCombinerImpl::visitGEPOfGEP(GetElementPtrInst &GEP,
     EndsWithSequential = I.isSequential();
 
   // Can we combine the two pointer arithmetics offsets?
-  if (EndsWithSequential) {
+  if (Src->getResultElementType() == GEP.getSourceElementType() && 
+      EndsWithSequential) {
     // Replace: gep (gep %P, long B), long A, ...
     // With:    T = long A+B; gep %P, T, ...
     Value *SO1 = Src->getOperand(Src->getNumOperands()-1);
@@ -2033,12 +2031,31 @@ Instruction *InstCombinerImpl::visitGEPOfGEP(GetElementPtrInst &GEP,
     Indices.append(Src->op_begin()+1, Src->op_end()-1);
     Indices.push_back(Sum);
     Indices.append(GEP.op_begin()+2, GEP.op_end());
-  } else if (isa<Constant>(*GEP.idx_begin()) &&
+  } else if (Src->getResultElementType() == GEP.getSourceElementType() &&
+             isa<Constant>(*GEP.idx_begin()) &&
              cast<Constant>(*GEP.idx_begin())->isNullValue() &&
              Src->getNumOperands() != 1) {
     // Otherwise we can do the fold if the first index of the GEP is a zero
     Indices.append(Src->op_begin()+1, Src->op_end());
     Indices.append(GEP.idx_begin()+1, GEP.idx_end());
+  } else { 
+    Indices.append(Src->op_begin()+1, Src->op_end());
+
+    // The indices of GEP may have been folded; in such case try to get
+    // the types to match by appending zeros to the indices of Src
+    Type *SrcType = Src->getResultElementType();
+    while (SrcType && SrcType->isAggregateType() && 
+           SrcType != GEP.getSourceElementType()) {
+        Indices.push_back(Builder.getInt32(0));
+        SrcType = GetElementPtrInst::getIndexedType(
+          Src->getSourceElementType(), Indices);
+    }
+    if (SrcType == Src->getResultElementType() || 
+        SrcType != GEP.getSourceElementType())
+      return nullptr;
+
+    Indices.pop_back();
+    Indices.append(GEP.idx_begin(), GEP.idx_end());
   }
 
   if (!Indices.empty())
