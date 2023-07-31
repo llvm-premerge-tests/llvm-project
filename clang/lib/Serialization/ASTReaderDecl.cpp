@@ -2627,8 +2627,12 @@ void ASTDeclReader::VisitTemplateTypeParmDecl(TemplateTypeParmDecl *D) {
     if (Record.readBool())
         ArgsAsWritten = Record.readASTTemplateArgumentListInfo();
     Expr *ImmediatelyDeclaredConstraint = Record.readExpr();
-    D->setTypeConstraint(NNS, DN, /*FoundDecl=*/nullptr, NamedConcept,
-                         ArgsAsWritten, ImmediatelyDeclaredConstraint);
+    auto *CL = ConceptLoc::Create(
+        Reader.getContext(), NNS,
+        SourceLocation{}, // What is the correct value here?
+        DN, /*FoundDecl=*/nullptr, NamedConcept, ArgsAsWritten);
+
+    D->setTypeConstraint(CL, ImmediatelyDeclaredConstraint);
     if ((D->ExpandedParameterPack = Record.readInt()))
       D->NumExpanded = Record.readInt();
   }

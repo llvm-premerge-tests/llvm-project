@@ -473,16 +473,23 @@ void TypeLocWriter::VisitAutoTypeLoc(AutoTypeLoc TL) {
   addSourceLocation(TL.getNameLoc());
   Record.push_back(TL.isConstrained());
   if (TL.isConstrained()) {
-    Record.AddNestedNameSpecifierLoc(TL.getNestedNameSpecifierLoc());
-    addSourceLocation(TL.getTemplateKWLoc());
-    addSourceLocation(TL.getConceptNameLoc());
-    Record.AddDeclRef(TL.getFoundDecl());
     addSourceLocation(TL.getLAngleLoc());
     addSourceLocation(TL.getRAngleLoc());
-    for (unsigned I = 0; I < TL.getNumArgs(); ++I)
-      Record.AddTemplateArgumentLocInfo(
-          TL.getTypePtr()->getTypeConstraintArguments()[I].getKind(),
-          TL.getArgLocInfo(I));
+    Record.AddSourceLocation(TL.getDefaultLoc());
+
+    // FIXME: Move to VisitConceptLoc()
+    auto *CL = TL.getConceptLoc();
+    Record.push_back(CL != nullptr);
+    if (CL) {
+      Record.AddNestedNameSpecifierLoc(CL->getNestedNameSpecifierLoc());
+      Record.AddSourceLocation(CL->getTemplateKWLoc());
+      Record.AddDeclarationNameInfo(CL->getConceptNameInfo());
+      Record.AddDeclRef(CL->getFoundDecl());
+      Record.AddDeclRef(CL->getNamedConcept());
+      Record.push_back(CL->getTemplateArgsAsWritten() != nullptr);
+      if (CL->getTemplateArgsAsWritten())
+        Record.AddASTTemplateArgumentListInfo(CL->getTemplateArgsAsWritten());
+    }
   }
   Record.push_back(TL.isDecltypeAuto());
   if (TL.isDecltypeAuto())
