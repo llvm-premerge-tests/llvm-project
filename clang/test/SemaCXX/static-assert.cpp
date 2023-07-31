@@ -262,7 +262,19 @@ namespace Diagnostics {
     return 'c';
   }
   static_assert(getChar() == 'a', ""); // expected-error {{failed}} \
-                                       // expected-note {{evaluates to ''c' == 'a''}}
+                                       // expected-note {{evaluates to ''c' (99) == 'a' (97)'}}
+  static_assert((char)9 == '\x61', ""); // expected-error {{failed}} \
+                                        // expected-note {{evaluates to ''\t' (9) == 'a' (97)'}}
+  static_assert((char)10 == '\0', ""); // expected-error {{failed}} \
+                                       // expected-note {{n' (10) == '\u0000' (0)'}}
+  // The note above is intended to match "evaluates to '\n' (10) == '\u0000' (0)'", but if we write it as it is,
+  // the "\n" cannot be consumed by the diagnostic consumer.
+  static_assert((signed char)10 == (char)-123, ""); // expected-error {{failed}} \
+                                                    // expected-note {{evaluates to '10 == '\x85' (-123)'}}
+  static_assert((char)-4 == (unsigned char)-8, ""); // expected-error {{failed}} \
+                                                    // expected-note {{evaluates to ''\xfc' (-4) == 248'}}
+  static_assert((char)-128 == (char)-123, ""); // expected-error {{failed}} \
+                                               // expected-note {{evaluates to ''\x80' (-128) == '\x85' (-123)'}}
 
   /// Bools are printed as bools.
   constexpr bool invert(bool b) {

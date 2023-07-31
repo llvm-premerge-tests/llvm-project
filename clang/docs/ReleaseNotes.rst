@@ -97,6 +97,9 @@ Improvements to Clang's diagnostics
 -----------------------------------
 - Clang constexpr evaluator now prints template arguments when displaying
   template-specialization function calls.
+- When describing the failure of static assertion, clang prints the integer representation
+  of the value as well as its character representation when the user-provided expression
+  is of character type. Also, clang escapes the character representation if it is non-printable.
 
 Bug Fixes in This Version
 -------------------------

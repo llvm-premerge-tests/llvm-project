@@ -1841,6 +1841,10 @@ void ProcessWarningOptions(DiagnosticsEngine &Diags,
                            const DiagnosticOptions &Opts,
                            bool ReportDiags = true);
 
+/// pushEscapedString - Append Str to the diagnostic buffer,
+/// escaping non-printable characters and ill-formed code unit sequences.
+void pushEscapedString(StringRef Str, SmallVectorImpl<char> &OutStr,
+                       bool UseUCN = false);
 } // namespace clang
 
 #endif // LLVM_CLANG_BASIC_DIAGNOSTIC_H

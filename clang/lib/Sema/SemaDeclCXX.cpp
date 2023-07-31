@@ -16817,13 +16817,31 @@ static bool ConvertAPValueToString(const APValue &V, QualType T,
              "Bool type, but value is not 0 or 1");
       llvm::raw_svector_ostream OS(Str);
       OS << (BoolValue ? "true" : "false");
-    } else if (T->isCharType()) {
+    } else {
       // Same is true for chars.
-      Str.push_back('\'');
-      Str.push_back(V.getInt().getExtValue());
-      Str.push_back('\'');
-    } else
-      V.getInt().toString(Str);
+      // We want to print the character representation for `char` type
+      // and need to escape it if it is not printable.
+      const auto *BTy = T->getAs<BuiltinType>();
+      if (BTy && (BTy->getKind() == BuiltinType::Char_S ||
+                  BTy->getKind() == BuiltinType::Char_U ||
+                  BTy->getKind() == BuiltinType::Char8)) {
+        llvm::raw_svector_ostream OS(Str);
+        int64_t CharVal = V.getInt().getExtValue();
+        Str.push_back('\'');
+        StringRef Escaped = escapeCStyle<EscapeChar::Single>(CharVal);
+        if (!Escaped.empty()) {
+          OS << Escaped;
+        } else {
+          const char CharArr[] = {static_cast<char>(CharVal)};
+          pushEscapedString(StringRef(CharArr, sizeof(CharArr)), Str,
+                            /*UseUCN=*/true);
+        }
+        OS << "' (";
+        V.getInt().toString(Str);
+        OS << ")";
+      } else
+        V.getInt().toString(Str);
+    }
 
     break;
 

@@ -802,7 +802,8 @@ FormatDiagnostic(SmallVectorImpl<char> &OutStr) const {
 
 /// pushEscapedString - Append Str to the diagnostic buffer,
 /// escaping non-printable characters and ill-formed code unit sequences.
-static void pushEscapedString(StringRef Str, SmallVectorImpl<char> &OutStr) {
+void clang::pushEscapedString(StringRef Str, SmallVectorImpl<char> &OutStr,
+                              bool UseUCN) {
   OutStr.reserve(OutStr.size() + Str.size());
   auto *Begin = reinterpret_cast<const unsigned char *>(Str.data());
   llvm::raw_svector_ostream OutStream(OutStr);
@@ -834,12 +835,27 @@ static void pushEscapedString(StringRef Str, SmallVectorImpl<char> &OutStr) {
         continue;
       }
       // Unprintable code point.
-      OutStream << "<U+" << llvm::format_hex_no_prefix(CodepointValue, 4, true)
-                << ">";
+      if (UseUCN)
+        OutStream << "\\u"
+                  << llvm::format_hex_no_prefix(CodepointValue, /*Width=*/4,
+                                                /*Upper=*/false);
+      else
+        OutStream << "<U+"
+                  << llvm::format_hex_no_prefix(CodepointValue, /*Width=*/4,
+                                                /*Upper=*/true)
+                  << ">";
       continue;
     }
     // Invalid code unit.
-    OutStream << "<" << llvm::format_hex_no_prefix(*Begin, 2, true) << ">";
+    if (UseUCN)
+      OutStream << "\\x"
+                << llvm::format_hex_no_prefix(*Begin, /*Width=*/2,
+                                              /*Upper=*/false);
+    else
+      OutStream << "<"
+                << llvm::format_hex_no_prefix(*Begin, /*Width=*/2,
+                                              /*Upper=*/true)
+                << ">";
     ++Begin;
   }
 }
