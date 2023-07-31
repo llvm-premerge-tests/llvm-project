@@ -3267,42 +3267,74 @@ Sema::InstantiateClass(SourceLocation PointOfInstantiation,
       continue;
     }
 
-    Decl *NewMember = Instantiator.Visit(Member);
-    if (NewMember) {
-      if (FieldDecl *Field = dyn_cast<FieldDecl>(NewMember)) {
-        Fields.push_back(Field);
-      } else if (EnumDecl *Enum = dyn_cast<EnumDecl>(NewMember)) {
-        // C++11 [temp.inst]p1: The implicit instantiation of a class template
-        // specialization causes the implicit instantiation of the definitions
-        // of unscoped member enumerations.
-        // Record a point of instantiation for this implicit instantiation.
-        if (TSK == TSK_ImplicitInstantiation && !Enum->isScoped() &&
-            Enum->isCompleteDefinition()) {
-          MemberSpecializationInfo *MSInfo =Enum->getMemberSpecializationInfo();
-          assert(MSInfo && "no spec info for member enum specialization");
-          MSInfo->setTemplateSpecializationKind(TSK_ImplicitInstantiation);
-          MSInfo->setPointOfInstantiation(PointOfInstantiation);
+    // Instantiate packed data members.
+    if (FieldDecl *Field = dyn_cast<FieldDecl>(Member);
+        Field && isa<PackExpansionType>(Field->getType().getTypePtr())) {
+      QualType PatternType = Field->getType()
+                                 ->castAs<PackExpansionType>()
+                                 ->getPattern();
+      std::optional<unsigned> NumArgumentsInExpansion =
+          getNumArgumentsInExpansion(Field->getType(), TemplateArgs);
+      assert(NumArgumentsInExpansion && "should not see unknown template argument here");
+      for (unsigned Arg = 0; Arg < *NumArgumentsInExpansion; ++Arg) {
+        // Generate a new field from PackExpansion field.
+        if (Decl *NewMember = Instantiator.Visit(Member)) {
+          FieldDecl *PackedField = cast<FieldDecl>(NewMember);
+          Sema::ArgumentPackSubstitutionIndexRAII SubstIndex(*this, Arg);
+          QualType T =
+              SubstType(PatternType, TemplateArgs, PackedField->getLocation(),
+                        PackedField->getDeclName());
+          PackedField->setType(T);
+          Fields.push_back(PackedField);
+          if (NewMember->isInvalidDecl())
+            Instantiation->setInvalidDecl();
+        } else {
+          // FIXME: Eventually, a NULL return will mean that one of the
+          // instantiations was a semantic disaster, and we'll want to mark
+          // the declaration invalid. For now, we expect to skip some members
+          // that we can't yet handle.
         }
-      } else if (StaticAssertDecl *SA = dyn_cast<StaticAssertDecl>(NewMember)) {
-        if (SA->isFailed()) {
-          // A static_assert failed. Bail out; instantiating this
-          // class is probably not meaningful.
-          Instantiation->setInvalidDecl();
-          break;
-        }
-      } else if (CXXMethodDecl *MD = dyn_cast<CXXMethodDecl>(NewMember)) {
-        if (MD->isConstexpr() && !MD->getFriendObjectKind() &&
-            (MD->isVirtualAsWritten() || Instantiation->getNumBases()))
-          MightHaveConstexprVirtualFunctions = true;
       }
-
-      if (NewMember->isInvalidDecl())
-        Instantiation->setInvalidDecl();
     } else {
-      // FIXME: Eventually, a NULL return will mean that one of the
-      // instantiations was a semantic disaster, and we'll want to mark the
-      // declaration invalid.
-      // For now, we expect to skip some members that we can't yet handle.
+      Decl *NewMember = Instantiator.Visit(Member);
+      if (NewMember) {
+        if (FieldDecl *Field = dyn_cast<FieldDecl>(NewMember)) {
+          Fields.push_back(Field);
+        } else if (EnumDecl *Enum = dyn_cast<EnumDecl>(NewMember)) {
+          // C++11 [temp.inst]p1: The implicit instantiation of a class template
+          // specialization causes the implicit instantiation of the definitions
+          // of unscoped member enumerations.
+          // Record a point of instantiation for this implicit instantiation.
+          if (TSK == TSK_ImplicitInstantiation && !Enum->isScoped() &&
+              Enum->isCompleteDefinition()) {
+            MemberSpecializationInfo *MSInfo =
+                Enum->getMemberSpecializationInfo();
+            assert(MSInfo && "no spec info for member enum specialization");
+            MSInfo->setTemplateSpecializationKind(TSK_ImplicitInstantiation);
+            MSInfo->setPointOfInstantiation(PointOfInstantiation);
+          }
+        } else if (StaticAssertDecl *SA =
+                       dyn_cast<StaticAssertDecl>(NewMember)) {
+          if (SA->isFailed()) {
+            // A static_assert failed. Bail out; instantiating this
+            // class is probably not meaningful.
+            Instantiation->setInvalidDecl();
+            break;
+          }
+        } else if (CXXMethodDecl *MD = dyn_cast<CXXMethodDecl>(NewMember)) {
+          if (MD->isConstexpr() && !MD->getFriendObjectKind() &&
+              (MD->isVirtualAsWritten() || Instantiation->getNumBases()))
+            MightHaveConstexprVirtualFunctions = true;
+        }
+
+        if (NewMember->isInvalidDecl())
+          Instantiation->setInvalidDecl();
+      } else {
+        // FIXME: Eventually, a NULL return will mean that one of the
+        // instantiations was a semantic disaster, and we'll want to mark the
+        // declaration invalid.
+        // For now, we expect to skip some members that we can't yet handle.
+      }
     }
   }
 
