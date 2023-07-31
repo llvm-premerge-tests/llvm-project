@@ -96,7 +96,7 @@ define i64 @fun7(i8 zeroext %v) {
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    sarb $4, %dil
 ; CHECK-NEXT:    movzbl %dil, %eax
-; CHECK-NEXT:    shlq $4, %rax
+; CHECK-NEXT:    shll $4, %eax
 ; CHECK-NEXT:    retq
 entry:
   %shr = ashr i8 %v, 4
@@ -109,9 +109,7 @@ define i64 @fun8(i16 zeroext %v) {
 ; CHECK-LABEL: fun8:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    movswl %di, %eax
-; CHECK-NEXT:    shrl $4, %eax
-; CHECK-NEXT:    movzwl %ax, %eax
-; CHECK-NEXT:    shlq $4, %rax
+; CHECK-NEXT:    andl $1048560, %eax # imm = 0xFFFF0
 ; CHECK-NEXT:    retq
 entry:
   %shr = ashr i16 %v, 4
@@ -140,11 +138,12 @@ entry:
 define i64 @fun10(i8 zeroext %v) {
 ; CHECK-LABEL: fun10:
 ; CHECK:       # %bb.0: # %entry
-; CHECK-NEXT:    shrb $4, %dil
-; CHECK-NEXT:    movzbl %dil, %ecx
-; CHECK-NEXT:    movq %rcx, %rax
-; CHECK-NEXT:    shlq $4, %rax
-; CHECK-NEXT:    orq %rcx, %rax
+; CHECK-NEXT:    # kill: def $edi killed $edi def $rdi
+; CHECK-NEXT:    movl %edi, %eax
+; CHECK-NEXT:    shrb $4, %al
+; CHECK-NEXT:    movzbl %al, %eax
+; CHECK-NEXT:    andl $-16, %edi
+; CHECK-NEXT:    orq %rdi, %rax
 ; CHECK-NEXT:    retq
 entry:
   %shr = lshr i8 %v, 4
@@ -158,9 +157,9 @@ define i64 @fun11(i16 zeroext %v) {
 ; CHECK-LABEL: fun11:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    # kill: def $edi killed $edi def $rdi
-; CHECK-NEXT:    shrl $4, %edi
-; CHECK-NEXT:    movq %rdi, %rax
-; CHECK-NEXT:    shlq $4, %rax
+; CHECK-NEXT:    movl %edi, %eax
+; CHECK-NEXT:    shrl $4, %eax
+; CHECK-NEXT:    andl $-16, %edi
 ; CHECK-NEXT:    addq %rdi, %rax
 ; CHECK-NEXT:    retq
 entry:
@@ -175,9 +174,9 @@ define i64 @fun12(i32 zeroext %v) {
 ; CHECK-LABEL: fun12:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    # kill: def $edi killed $edi def $rdi
-; CHECK-NEXT:    shrl $4, %edi
-; CHECK-NEXT:    movq %rdi, %rax
-; CHECK-NEXT:    shlq $4, %rax
+; CHECK-NEXT:    movl %edi, %eax
+; CHECK-NEXT:    shrl $4, %eax
+; CHECK-NEXT:    andl $-16, %edi
 ; CHECK-NEXT:    addq %rdi, %rax
 ; CHECK-NEXT:    retq
 entry:

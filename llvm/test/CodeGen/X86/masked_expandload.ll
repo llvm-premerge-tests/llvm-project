@@ -1023,8 +1023,9 @@ define <16 x double> @expandload_v16f64_v16i32(ptr %base, <16 x double> %src0, <
 ; AVX512F-NEXT:    addl %eax, %ecx
 ; AVX512F-NEXT:    andl $252645135, %ecx ## imm = 0xF0F0F0F
 ; AVX512F-NEXT:    imull $16843009, %ecx, %eax ## imm = 0x1010101
-; AVX512F-NEXT:    shrl $24, %eax
-; AVX512F-NEXT:    vexpandpd (%rdi,%rax,8), %zmm1 {%k1}
+; AVX512F-NEXT:    shrl $21, %eax
+; AVX512F-NEXT:    andl $-8, %eax
+; AVX512F-NEXT:    vexpandpd (%rdi,%rax), %zmm1 {%k1}
 ; AVX512F-NEXT:    retq
 ;
 ; AVX512VLDQ-LABEL: expandload_v16f64_v16i32:
@@ -1047,8 +1048,9 @@ define <16 x double> @expandload_v16f64_v16i32(ptr %base, <16 x double> %src0, <
 ; AVX512VLDQ-NEXT:    addl %eax, %ecx
 ; AVX512VLDQ-NEXT:    andl $252645135, %ecx ## imm = 0xF0F0F0F
 ; AVX512VLDQ-NEXT:    imull $16843009, %ecx, %eax ## imm = 0x1010101
-; AVX512VLDQ-NEXT:    shrl $24, %eax
-; AVX512VLDQ-NEXT:    vexpandpd (%rdi,%rax,8), %zmm1 {%k1}
+; AVX512VLDQ-NEXT:    shrl $21, %eax
+; AVX512VLDQ-NEXT:    andl $-8, %eax
+; AVX512VLDQ-NEXT:    vexpandpd (%rdi,%rax), %zmm1 {%k1}
 ; AVX512VLDQ-NEXT:    vexpandpd (%rdi), %zmm0 {%k2}
 ; AVX512VLDQ-NEXT:    retq
 ;
@@ -1074,8 +1076,9 @@ define <16 x double> @expandload_v16f64_v16i32(ptr %base, <16 x double> %src0, <
 ; AVX512VLBW-NEXT:    addl %eax, %ecx
 ; AVX512VLBW-NEXT:    andl $252645135, %ecx ## imm = 0xF0F0F0F
 ; AVX512VLBW-NEXT:    imull $16843009, %ecx, %eax ## imm = 0x1010101
-; AVX512VLBW-NEXT:    shrl $24, %eax
-; AVX512VLBW-NEXT:    vexpandpd (%rdi,%rax,8), %zmm1 {%k1}
+; AVX512VLBW-NEXT:    shrl $21, %eax
+; AVX512VLBW-NEXT:    andl $-8, %eax
+; AVX512VLBW-NEXT:    vexpandpd (%rdi,%rax), %zmm1 {%k1}
 ; AVX512VLBW-NEXT:    retq
   %mask = icmp eq <16 x i32> %trigger, zeroinitializer
   %res = call <16 x double> @llvm.masked.expandload.v16f64(ptr %base, <16 x i1> %mask, <16 x double> %src0)
@@ -2652,8 +2655,9 @@ define <32 x float> @expandload_v32f32_v32i32(ptr %base, <32 x float> %src0, <32
 ; AVX512-NEXT:    addl %eax, %ecx
 ; AVX512-NEXT:    andl $252645135, %ecx ## imm = 0xF0F0F0F
 ; AVX512-NEXT:    imull $16843009, %ecx, %eax ## imm = 0x1010101
-; AVX512-NEXT:    shrl $24, %eax
-; AVX512-NEXT:    vexpandps (%rdi,%rax,4), %zmm1 {%k2}
+; AVX512-NEXT:    shrl $22, %eax
+; AVX512-NEXT:    andl $-4, %eax
+; AVX512-NEXT:    vexpandps (%rdi,%rax), %zmm1 {%k2}
 ; AVX512-NEXT:    vexpandps (%rdi), %zmm0 {%k1}
 ; AVX512-NEXT:    retq
   %mask = icmp eq <32 x i32> %trigger, zeroinitializer
