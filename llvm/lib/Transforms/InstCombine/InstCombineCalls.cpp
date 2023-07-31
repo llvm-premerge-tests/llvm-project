@@ -1530,8 +1530,19 @@ Instruction *InstCombinerImpl::visitCallInst(CallInst &CI) {
     if (match(IIOperand, m_Select(m_Value(), m_Neg(m_Value(X)), m_Deferred(X))))
       return replaceOperand(*II, 0, X);
 
+    // abs(x-y) --> y-x where x <= y
+    Value *Y;
+    if (match(IIOperand, m_NSWSub(m_Value(X), m_Value(Y)))) {
+      if (std::optional<bool> Known =
+              isImpliedByDomCondition(ICmpInst::ICMP_SLE, X, Y, II, DL)) {
+        if (!*Known)
+          return replaceInstUsesWith(*II, IIOperand);
+        return BinaryOperator::CreateNeg(IIOperand);
+      }
+    }
+
     if (std::optional<bool> Sign = getKnownSign(IIOperand, II, DL, &AC, &DT)) {
-      // abs(x) -> x if x >= 0
+      // abs(x) -> x if x >= 0 (include abs(x-y) --> x-y where x >= y)
       if (!*Sign)
         return replaceInstUsesWith(*II, IIOperand);
 
