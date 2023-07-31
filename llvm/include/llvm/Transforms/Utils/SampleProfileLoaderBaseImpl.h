@@ -87,12 +87,6 @@ template <> struct IRTraits<BasicBlock> {
 class PseudoProbeManager {
   DenseMap<uint64_t, PseudoProbeDescriptor> GUIDToProbeDescMap;
 
-  const PseudoProbeDescriptor *getDesc(const Function &F) const {
-    auto I = GUIDToProbeDescMap.find(
-        Function::getGUID(FunctionSamples::getCanonicalFnName(F)));
-    return I == GUIDToProbeDescMap.end() ? nullptr : &I->second;
-  }
-
 public:
   PseudoProbeManager(const Module &M) {
     if (NamedMDNode *FuncInfo =
@@ -108,8 +102,19 @@ public:
     }
   }
 
+  const PseudoProbeDescriptor *getDesc(const Function &F) const {
+    auto I = GUIDToProbeDescMap.find(
+        Function::getGUID(FunctionSamples::getCanonicalFnName(F)));
+    return I == GUIDToProbeDescMap.end() ? nullptr : &I->second;
+  }
+
   bool moduleIsProbed(const Module &M) const {
     return M.getNamedMetadata(PseudoProbeDescMetadataName);
+  }
+
+  bool profileIsHashMismatched(const PseudoProbeDescriptor &FuncDesc,
+                               const FunctionSamples &Samples) const {
+    return FuncDesc.getFunctionHash() != Samples.getFunctionHash();
   }
 
   bool profileIsValid(const Function &F, const FunctionSamples &Samples) const {
