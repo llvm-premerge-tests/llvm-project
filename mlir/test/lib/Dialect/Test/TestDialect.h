@@ -65,10 +65,10 @@ namespace test {
 
 struct TestDialectVersion : public mlir::DialectVersion {
   TestDialectVersion() = default;
-  TestDialectVersion(uint32_t _major, uint32_t _minor)
-      : major(_major), minor(_minor){};
-  uint32_t major = 2;
-  uint32_t minor = 0;
+  TestDialectVersion(uint32_t major_version, uint32_t minor_version)
+      : major_(major_version), minor_(minor_version){};
+  uint32_t major_ = 2;
+  uint32_t minor_ = 0;
 };
 
 // Define some classes to exercises the Properties feature.
