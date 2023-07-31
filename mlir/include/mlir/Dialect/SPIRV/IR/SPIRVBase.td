@@ -4126,7 +4126,12 @@ def SPIRV_Int32 : TypeAlias<I32, "Int32">;
 def SPIRV_Float32 : TypeAlias<F32, "Float32">;
 def SPIRV_Float : FloatOfWidths<[16, 32, 64]>;
 def SPIRV_Float16or32 : FloatOfWidths<[16, 32]>;
-def SPIRV_Vector : VectorOfLengthAndType<[2, 3, 4, 8, 16],
+// Remove the vector size restriction.
+// Although the vector size can be upto (2^64-1), uint64,
+// In tablegen, int is signed int, hence using the upper
+// limit of int64 (2^63-1) rather than uint64, it should serve the purpose
+// for all practical cases.
+def SPIRV_Vector : VectorOfLengthRangeAndType<[2, 0x7FFFFFFFFFFFFFFF],
                                        [SPIRV_Bool, SPIRV_Integer, SPIRV_Float]>;
 // Component type check is done in the type parser for the following SPIR-V
 // dialect-specific types so we use "Any" here.
@@ -4186,10 +4191,10 @@ class SPIRV_JointMatrixOfType<list<Type> allowedTypes> :
     "Joint Matrix">;
 
 class SPIRV_ScalarOrVectorOf<Type type> :
-    AnyTypeOf<[type, VectorOfLengthAndType<[2, 3, 4, 8, 16], [type]>]>;
+    AnyTypeOf<[type, VectorOfLengthRangeAndType<[2, 0x7FFFFFFFFFFFFFFF], [type]>]>;
 
 class SPIRV_ScalarOrVectorOrCoopMatrixOf<Type type> :
-    AnyTypeOf<[type, VectorOfLengthAndType<[2, 3, 4, 8, 16], [type]>,
+    AnyTypeOf<[type, VectorOfLengthRangeAndType<[2, 0x7FFFFFFFFFFFFFFF], [type]>,
                SPIRV_CoopMatrixOfType<[type]>, SPIRV_CoopMatrixNVOfType<[type]>]>;
 
 class SPIRV_MatrixOrCoopMatrixOf<Type type> :
