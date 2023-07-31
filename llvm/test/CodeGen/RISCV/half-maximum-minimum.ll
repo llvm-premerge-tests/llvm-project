@@ -99,3 +99,31 @@ define half @fmaximum_f16(half %a, half %b) nounwind {
   %1 = call half @llvm.maximum.f16(half %a, half %b)
   ret half %1
 }
+
+define half @fminimum_nnan_f16(half %a, half %b) nounwind {
+; CHECKIZFH-LABEL: fminimum_nnan_f16:
+; CHECKIZFH:       # %bb.0:
+; CHECKIZFH-NEXT:    fmin.h fa0, fa0, fa1
+; CHECKIZFH-NEXT:    ret
+;
+; CHECKIZHINX-LABEL: fminimum_nnan_f16:
+; CHECKIZHINX:       # %bb.0:
+; CHECKIZHINX-NEXT:    fmin.h a0, a0, a1
+; CHECKIZHINX-NEXT:    ret
+  %1 = call nnan half @llvm.minimum.f16(half %a, half %b)
+  ret half %1
+}
+
+define half @fmaximum_nnan_f16(half %a, half %b) nounwind {
+; CHECKIZFH-LABEL: fmaximum_nnan_f16:
+; CHECKIZFH:       # %bb.0:
+; CHECKIZFH-NEXT:    fmax.h fa0, fa0, fa1
+; CHECKIZFH-NEXT:    ret
+;
+; CHECKIZHINX-LABEL: fmaximum_nnan_f16:
+; CHECKIZHINX:       # %bb.0:
+; CHECKIZHINX-NEXT:    fmax.h a0, a0, a1
+; CHECKIZHINX-NEXT:    ret
+  %1 = call nnan half @llvm.maximum.f16(half %a, half %b)
+  ret half %1
+}
