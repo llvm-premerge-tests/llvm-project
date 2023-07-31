@@ -20,6 +20,13 @@ namespace gpu {
 /// The number of threads that execute in lock-step in a lane.
 constexpr const uint64_t LANE_SIZE = __AMDGCN_WAVEFRONT_SIZE;
 
+/// Type aliases to the address spaces used by the AMDGPU backend. We use
+/// 'Shared' instead of 'Local' to maintain consistency with NVPTX.
+template <typename T> using Private = [[clang::address_space(5)]] T;
+template <typename T> using Constant = [[clang::address_space(4)]] T;
+template <typename T> using Shared = [[clang::address_space(3)]] T;
+template <typename T> using Global = [[clang::address_space(1)]] T;
+
 /// Returns the number of workgroups in the 'x' dimension of the grid.
 LIBC_INLINE uint32_t get_num_blocks_x() {
   return __builtin_amdgcn_grid_size_x() / __builtin_amdgcn_workgroup_size_x();
