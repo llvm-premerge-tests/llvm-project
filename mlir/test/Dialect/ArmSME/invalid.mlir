@@ -71,3 +71,12 @@ func.func @arm_sme_get_tile_id__bad_type() -> i1 {
   %0 = arm_sme.get_tile_id : i1
   return %0 : i1
 }
+
+// -----
+
+func.func @arm_sme_load_tile_slice__tile_and_result_type_mismatch(%src : memref<?x?xi8>, %tile : vector<[16]x[16]xi8>, %tile_slice_index : index) {
+  %c0 = arith.constant 0 : index
+  // expected-error@+1 {{expected result type to match tile type}}
+  %tile_update = arm_sme.load_tile_slice %src[%c0], %tile, %tile_slice_index : memref<?x?xi8>, vector<[16]x[16]xi8>, vector<[4]x[4]xi32>
+  return
+}
