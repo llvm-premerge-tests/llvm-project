@@ -546,3 +546,97 @@ func.func @transfer_write_scalable(%arg0: memref<?xf32, strided<[?], offset: ?>>
 // CHECK:             } else {
 // CHECK:             }
 // CHECK:           }
+
+// -----
+
+func.func @vector_print_vector_0d(%arg0: vector<f32>) {
+  vector.print %arg0 : vector<f32>
+  return
+}
+// CHECK-LABEL:   func.func @vector_print_vector_0d(
+// CHECK-SAME:                                      %[[RANK_0_VEC:.*]]: vector<f32>) {
+// CHECK:           %[[C0:.*]] = arith.constant 0 : index
+// CHECK:           %[[C1:.*]] = arith.constant 1 : index
+// CHECK:           %[[RANK_1_VEC:.*]] = vector.shape_cast %[[RANK_0_VEC]] : vector<f32> to vector<1xf32>
+// CHECK:           vector.print <open>
+// CHECK:           scf.for %[[IDX:.*]] = %[[C0]] to %[[C1]] step %[[C1]] {
+// CHECK:             %[[EL:.*]] = vector.extractelement %[[RANK_1_VEC]]{{\[}}%[[IDX]] : index] : vector<1xf32>
+// CHECK:             vector.print %[[EL]] : f32 <no_punctuation>
+// CHECK:             %[[IS_NOT_LAST:.*]] = arith.cmpi ult, %[[IDX]], %[[C0]] : index
+// CHECK:             scf.if %[[IS_NOT_LAST]] {
+// CHECK:               vector.print <comma>
+// CHECK:             }
+// CHECK:           }
+// CHECK:           vector.print <close>
+// CHECK:           vector.print
+// CHECK:           return
+// CHECK:         }
+
+// -----
+
+func.func @vector_print_vector(%arg0: vector<2x2xf32>) {
+  vector.print %arg0 : vector<2x2xf32>
+  return
+}
+// CHECK-LABEL:   func.func @vector_print_vector(
+// CHECK-SAME:                                   %[[VEC_2D:.*]]: vector<2x2xf32>) {
+// CHECK:           %[[C0:.*]] = arith.constant 0 : index
+// CHECK:           %[[C2:.*]] = arith.constant 2 : index
+// CHECK:           %[[C1:.*]] = arith.constant 1 : index
+// CHECK:           %[[ALLOCA_VEC:.*]] = memref.alloca() : memref<vector<2x2xf32>>
+// CHECK:           %[[ALLOCA:.*]] = memref.alloca() : memref<2x2xf32>
+// CHECK:           memref.store %[[VEC_2D]], %[[ALLOCA_VEC]][] : memref<vector<2x2xf32>>
+// CHECK:           %[[ALLOCA_TYPECAST:.*]] = vector.type_cast %[[ALLOCA_VEC]] : memref<vector<2x2xf32>> to memref<2xvector<2xf32>>
+// CHECK:           scf.for %[[COPY_IDX:.*]] = %[[C0]] to %[[C2]] step %[[C1]] {
+// CHECK:             %[[VEC_SLICE:.*]] = memref.load %[[ALLOCA_TYPECAST]]{{\[}}%[[COPY_IDX]]] : memref<2xvector<2xf32>>
+// CHECK:             vector.transfer_write %[[VEC_SLICE]], %[[ALLOCA]]{{\[}}%[[COPY_IDX]], %[[C0]]] {in_bounds = [true]} : vector<2xf32>, memref<2x2xf32>
+// CHECK:           }
+// CHECK:           vector.print <open>
+// CHECK:           scf.for %[[I:.*]] = %[[C0]] to %[[C2]] step %[[C1]] {
+// CHECK:             vector.print <open>
+// CHECK:             scf.for %[[J:.*]] = %[[C0]] to %[[C2]] step %[[C1]] {
+// CHECK:               %[[EL:.*]] = memref.load %[[ALLOCA]]{{\[}}%[[I]], %[[J]]] : memref<2x2xf32>
+// CHECK:               vector.print %[[EL]] : f32 <no_punctuation>
+// CHECK:               %[[IS_NOT_LAST_INNER:.*]] = arith.cmpi ult, %[[J]], %[[C1]] : index
+// CHECK:               scf.if %[[IS_NOT_LAST_INNER]] {
+// CHECK:                 vector.print <comma>
+// CHECK:               }
+// CHECK:             }
+// CHECK:             vector.print <close>
+// CHECK:             %[[IS_NOT_LAST_OUTER:.*]] = arith.cmpi ult, %[[I]], %[[C1]] : index
+// CHECK:             scf.if %[[IS_NOT_LAST_OUTER]] {
+// CHECK:               vector.print <comma>
+// CHECK:             }
+// CHECK:           }
+// CHECK:           vector.print <close>
+// CHECK:           vector.print
+// CHECK:           return
+// CHECK:         }
+
+// -----
+
+func.func @vector_print_scalable_vector(%arg0: vector<[4]xi32>) {
+  vector.print %arg0 : vector<[4]xi32>
+  return
+}
+// CHECK-LABEL:   func.func @vector_print_scalable_vector(
+// CHECK-SAME:                                            %[[SCALABLE_VEC:.*]]: vector<[4]xi32>) {
+// CHECK:           %[[C0:.*]] = arith.constant 0 : index
+// CHECK:           %[[C4:.*]] = arith.constant 4 : index
+// CHECK:           %[[C1:.*]] = arith.constant 1 : index
+// CHECK:           %[[VSCALE:.*]] = vector.vscale
+// CHECK:           %[[UPPER_BOUND:.*]] = arith.muli %[[VSCALE]], %[[C4]] : index
+// CHECK:           %[[LAST_IDX:.*]] = arith.subi %[[UPPER_BOUND]], %[[C1]] : index
+// CHECK:           vector.print <open>
+// CHECK:           scf.for %[[IDX:.*]] = %[[C0]] to %[[UPPER_BOUND]] step %[[C1]] {
+// CHECK:             %[[EL:.*]] = vector.extractelement %[[SCALABLE_VEC]]{{\[}}%[[IDX]] : index] : vector<[4]xi32>
+// CHECK:             vector.print %[[EL]] : i32 <no_punctuation>
+// CHECK:             %[[IS_NOT_LAST:.*]] = arith.cmpi ult, %[[IDX]], %[[LAST_IDX]] : index
+// CHECK:             scf.if %[[IS_NOT_LAST]] {
+// CHECK:               vector.print <comma>
+// CHECK:             }
+// CHECK:           }
+// CHECK:           vector.print <close>
+// CHECK:           vector.print
+// CHECK:           return
+// CHECK:         }

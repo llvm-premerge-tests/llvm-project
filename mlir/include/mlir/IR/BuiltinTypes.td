@@ -373,6 +373,10 @@ def Builtin_Integer : Builtin_Type<"Integer"> {
     /// Return null if the scaled element type cannot be represented.
     IntegerType scaleElementBitwidth(unsigned scale);
 
+    /// Get or create a new IntegerType with the same bitwidth as `this` with
+    /// signless semantics.
+    IntegerType getSignless() const;
+
     /// Integer representation maximal bitwidth.
     /// Note: This is aligned with the maximum width of llvm::IntegerType.
     static constexpr unsigned kMaxWidth = (1 << 24) - 1;

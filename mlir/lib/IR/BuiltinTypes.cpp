@@ -83,6 +83,10 @@ IntegerType IntegerType::scaleElementBitwidth(unsigned scale) {
   return IntegerType::get(getContext(), scale * getWidth(), getSignedness());
 }
 
+IntegerType IntegerType::getSignless() const {
+  return IntegerType::get(getContext(), getWidth(), Signless);
+}
+
 //===----------------------------------------------------------------------===//
 // Float Type
 //===----------------------------------------------------------------------===//

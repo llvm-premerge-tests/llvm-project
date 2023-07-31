@@ -2462,12 +2462,30 @@ def Vector_TransposeOp :
   let hasVerifier = 1;
 }
 
+def PrintPunctuation : I32EnumAttr<"PrintPunctuation",
+                                  "Punctuation for separating vectors or vector elements", [
+  I32EnumAttrCase<"NoPunctuation", 0, "no_punctuation">,
+  I32EnumAttrCase<"NewLine", 1, "newline">,
+  I32EnumAttrCase<"Comma", 2, "comma">,
+  I32EnumAttrCase<"Open", 3, "open">,
+  I32EnumAttrCase<"Close", 4, "close">
+]> {
+  let cppNamespace = "::mlir::vector";
+  let genSpecializedAttr = 0;
+}
+
+def Vector_PrintPunctuation : EnumAttr<Vector_Dialect, PrintPunctuation, "punctuation"> {
+  let assemblyFormat = "`<` $value `>`";
+}
+
 def Vector_PrintOp :
   Vector_Op<"print", []>,
-  Arguments<(ins Type<Or<[
+  Arguments<(ins Optional<Type<Or<[
     AnyVectorOfAnyRank.predicate,
     AnyInteger.predicate, Index.predicate, AnyFloat.predicate
-  ]>>:$source)> {
+  ]>>>:$source, DefaultValuedAttr<Vector_PrintPunctuation,
+                      "::mlir::vector::PrintPunctuation::NewLine">:$punctuation)
+  > {
   let summary = "print operation (for testing and debugging)";
   let description = [{
     Prints the source vector (or scalar) to stdout in human readable
@@ -2480,7 +2498,7 @@ def Vector_PrintOp :
     %1 = vector.broadcast %0 : f32 to vector<4xf32>
     vector.print %1 : vector<4xf32>
 
-    when lowered to LLVM, the vector print is unrolled into
+    when lowered to LLVM, the vector print is broken into
     elementary printing method calls that at runtime will yield
 
     ( 0.0, 0.0, 0.0, 0.0 )
@@ -2496,7 +2514,13 @@ def Vector_PrintOp :
       return getSource().getType();
     }
   }];
-  let assemblyFormat = "$source attr-dict `:` type($source)";
+  let builders = [
+    OpBuilder<(ins "PrintPunctuation":$punctuation), [{
+      build($_builder, $_state, {}, punctuation);
+    }]>,
+  ];
+
+  let assemblyFormat = "($source^ `:` type($source))? ($punctuation^)? attr-dict";
 }
 
 //===----------------------------------------------------------------------===//
