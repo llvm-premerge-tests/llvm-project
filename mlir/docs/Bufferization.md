@@ -224,12 +224,13 @@ dialect conversion-based bufferization.
 
 ## Buffer Deallocation
 
-One-Shot Bufferize deallocates all buffers that it allocates. This is in
-contrast to the dialect conversion-based bufferization that delegates this job
-to the
+One-Shot Bufferize does not deallocate any buffers that it allocates. This is
+consistent with the dialect conversion-based bufferization that delegates this
+job to the
 [`-buffer-deallocation`](https://mlir.llvm.org/docs/Passes/#-buffer-deallocation-adds-all-required-dealloc-operations-for-all-allocations-in-the-input-program)
-pass. By default, One-Shot Bufferize rejects IR where a newly allocated buffer
-is returned from a block. Such IR will fail bufferization.
+pass. One-Shot Bufferize does not reject IR where a newly allocated buffer is
+returned from a function. It is the responsibility of the caller to deallocate
+the returned memrefs.
 
 A new buffer allocation is returned from a block when the result of an op that
 is not in destination-passing style is returned. E.g.:
@@ -242,9 +243,6 @@ is not in destination-passing style is returned. E.g.:
   scf.yield %another_tensor : tensor<?xf32>
 }
 ```
-
-The `scf.yield` in the "else" branch is OK, but the `scf.yield` in the "then"
-branch will be rejected.
 
 Another case in which a buffer allocation may be returned is when a buffer copy
 must be inserted due to a RaW conflict. E.g.:
@@ -264,15 +262,12 @@ In the above example, a buffer copy of buffer(`%another_tensor`) (with `%cst`
 inserted) is yielded from the "then" branch.
 
 In both examples, a buffer is allocated inside of a block and then yielded from
-the block. Deallocation of such buffers is tricky and not currently implemented
-in an efficient way. For this reason, One-Shot Bufferize must be explicitly
-configured with `allow-return-allocs` to support such IR.
+the block. Deallocation of such buffers is tricky and currently implemented by
+passing along a boolean value indicating ownership of the memref.
 
-When running with `allow-return-allocs`, One-Shot Bufferize may introduce
-allocations that cannot be deallocated by One-Shot Bufferize yet. For that
-reason, `-buffer-deallocation` must be run after One-Shot Bufferize. This buffer
-deallocation pass resolves yields of newly allocated buffers with copies. E.g.,
-the `scf.if` example above would bufferize to IR similar to the following:
+The `-buffer-deallocation` pass must be run after One-Shot Bufferize. This
+buffer deallocation pass resolves yields of newly allocated buffers with copies.
+E.g., the `scf.if` example above would bufferize to IR similar to the following:
 
 ```mlir
 %0 = scf.if %c -> (memref<?xf32>) {
@@ -296,9 +291,9 @@ not even with `-buffer-deallocation`. It is the caller's responsibility to
 deallocate the buffer. In the future, this could be automated with allocation
 hoisting (across function boundaries) or reference counting.
 
-One-Shot Bufferize can be configured to leak all memory and not generate any
-buffer deallocations with `create-deallocs=0`. This can be useful for
-compatibility with legacy code that has its own method of deallocating buffers.
+One-Shot Bufferize leaks all memory and does not generate any buffer
+deallocations. The `-buffer-deallocation` is supposed to be run afterwards to
+insert all the necessary deallocations.
 
 ## Memory Layouts
 

@@ -124,27 +124,11 @@ Operation *bufferization::getOwnerOfValue(Value value) {
   return llvm::cast<BlockArgument>(value).getOwner()->getParentOp();
 }
 
-bool bufferization::allocationDoesNotEscape(OpResult opResult) {
-#ifndef NDEBUG
-  auto bufferizableOp = opResult.getDefiningOp<BufferizableOpInterface>();
-  assert(bufferizableOp && bufferizableOp.bufferizesToAllocation(opResult) &&
-         "expected op that bufferizes to an allocation");
-#endif // NDEBUG
-
-  Operation *op = opResult.getDefiningOp();
-  // If there is no 'escape' attribute, we cannot say for sure.
-  if (!op->hasAttr(BufferizationDialect::kEscapeAttrName))
-    return false;
-  auto attr =
-      op->getAttrOfType<ArrayAttr>(BufferizationDialect::kEscapeAttrName);
-  return !llvm::cast<BoolAttr>(attr[opResult.getResultNumber()]).getValue();
-}
-
 /// Create an AllocTensorOp for the given shaped value. If `copy` is set, the
 /// shaped value is copied. Otherwise, a tensor with undefined contents is
 /// allocated.
 FailureOr<Value> bufferization::allocateTensorForShapedValue(
-    OpBuilder &b, Location loc, Value shapedValue, bool escape,
+    OpBuilder &b, Location loc, Value shapedValue,
     const BufferizationOptions &options, bool copy) {
   Value tensor;
   if (llvm::isa<RankedTensorType>(shapedValue.getType())) {
@@ -186,8 +170,6 @@ FailureOr<Value> bufferization::allocateTensorForShapedValue(
   // Create AllocTensorOp.
   auto allocTensorOp = b.create<AllocTensorOp>(loc, tensorType, dynamicSizes,
                                                copy ? tensor : Value());
-  allocTensorOp->setAttr(BufferizationDialect::kEscapeAttrName,
-                         b.getBoolArrayAttr({escape}));
 
   // Add 'memory_space' attribute. Not needed if 'copy' operand is specified.
   if (copy)
@@ -208,10 +190,8 @@ LogicalResult BufferizableOpInterface::resolveTensorOpOperandConflicts(
   Operation *op = getOperation();
   SmallVector<OpOperand *> outOfPlaceOpOperands;
   DenseSet<OpOperand *> copiedOpOperands;
-  DenseSet<OpOperand *> escapingOpOperandCopies;
   SmallVector<OpResult> outOfPlaceOpResults;
   DenseSet<OpResult> copiedOpResults;
-  DenseSet<OpResult> escapingOpResultCopies;
 
   // Find all out-of-place OpOperands.
   for (OpOperand &opOperand : op->getOpOperands()) {
@@ -228,11 +208,6 @@ LogicalResult BufferizableOpInterface::resolveTensorOpOperandConflicts(
     // Is the result yielded from a block? Or are deallocations turned off
     // entirely? In either case, mark the allocation as "escaping", so that it
     // will not be deallocated.
-    bool escape = !state.getOptions().createDeallocs ||
-                  llvm::any_of(aliasingOpResults, [&](AliasingOpResult a) {
-                    return state.isTensorYielded(a.opResult);
-                  });
-
     if (aliasingOpResults.getNumAliases() == 1 &&
         !state.bufferizesToMemoryWrite(opOperand) &&
         state.getAliasingOpOperands(aliasingOpResults.getAliases()[0].opResult)
@@ -249,15 +224,11 @@ LogicalResult BufferizableOpInterface::resolveTensorOpOperandConflicts(
       outOfPlaceOpResults.push_back(opResult);
       if (!state.canOmitTensorCopy(opOperand))
         copiedOpResults.insert(opResult);
-      if (escape)
-        escapingOpResultCopies.insert(opResult);
     } else {
       // In all other cases, make a copy of the OpOperand.
       outOfPlaceOpOperands.push_back(&opOperand);
       if (!state.canOmitTensorCopy(opOperand))
         copiedOpOperands.insert(&opOperand);
-      if (escape)
-        escapingOpOperandCopies.insert(&opOperand);
     }
   }
 
@@ -265,8 +236,7 @@ LogicalResult BufferizableOpInterface::resolveTensorOpOperandConflicts(
   rewriter.setInsertionPoint(op);
   for (OpOperand *opOperand : outOfPlaceOpOperands) {
     FailureOr<Value> copy = allocateTensorForShapedValue(
-        rewriter, op->getLoc(), opOperand->get(),
-        escapingOpOperandCopies.contains(opOperand), state.getOptions(),
+        rewriter, op->getLoc(), opOperand->get(), state.getOptions(),
         copiedOpOperands.contains(opOperand));
     if (failed(copy))
       return failure();
@@ -277,8 +247,7 @@ LogicalResult BufferizableOpInterface::resolveTensorOpOperandConflicts(
   rewriter.setInsertionPointAfter(op);
   for (OpResult opResult : outOfPlaceOpResults) {
     FailureOr<Value> copy = allocateTensorForShapedValue(
-        rewriter, op->getLoc(), opResult,
-        escapingOpResultCopies.contains(opResult), state.getOptions(),
+        rewriter, op->getLoc(), opResult, state.getOptions(),
         copiedOpResults.count(opResult));
     if (failed(copy))
       return failure();
@@ -297,29 +266,6 @@ LogicalResult BufferizableOpInterface::resolveTensorOpOperandConflicts(
   }
 
   return success();
-}
-
-bool bufferization::shouldDeallocateOpResult(
-    OpResult opResult, const BufferizationOptions &options) {
-  Operation *op = opResult.getOwner();
-  assert(options.dynCastBufferizableOp(op).bufferizesToAllocation(opResult) &&
-         "expected that op allocates");
-
-  AnalysisState analysisState(options);
-  if (op->hasAttr(BufferizationDialect::kEscapeAttrName)) {
-    // AllocTensorOp has one result.
-    ArrayAttr escapeAttr = llvm::cast<ArrayAttr>(
-        op->getAttr(BufferizationDialect::kEscapeAttrName));
-    return !llvm::cast<BoolAttr>(escapeAttr[0]).getValue();
-  }
-
-  // No "escape" annotation found.
-  if (options.createDeallocs) {
-    // Perform an ad-hoc analysis.
-    return !analysisState.isTensorYielded(opResult);
-  }
-
-  return false;
 }
 
 //===----------------------------------------------------------------------===//
