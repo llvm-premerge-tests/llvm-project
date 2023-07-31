@@ -11,11 +11,13 @@
 //===----------------------------------------------------------------------===//
 
 #include "MCTargetDesc/AArch64AddressingModes.h"
+#include "MCTargetDesc/AArch64FixupKinds.h"
 #include "MCTargetDesc/AArch64MCExpr.h"
 #include "MCTargetDesc/AArch64MCTargetDesc.h"
 #include "Utils/AArch64BaseInfo.h"
 #include "bolt/Core/MCPlusBuilder.h"
 #include "llvm/BinaryFormat/ELF.h"
+#include "llvm/MC/MCFixupKindInfo.h"
 #include "llvm/MC/MCInstrInfo.h"
 #include "llvm/MC/MCRegisterInfo.h"
 #include "llvm/Support/Debug.h"
@@ -1159,6 +1161,89 @@ public:
     setOperandToSymbolRef(Insts[1], /* OpNum */ 2, Target, Addend, Ctx,
                           ELF::R_AARCH64_ADD_ABS_LO12_NC);
     return Insts;
+  }
+
+  std::optional<Relocation>
+  createRelocation(const MCFixup &Fixup,
+                   const MCAsmBackend &MAB) const override {
+    const MCFixupKindInfo &FKI = MAB.getFixupKindInfo(Fixup.getKind());
+
+    assert(FKI.TargetOffset == 0 && "0-bit relocation offset expected");
+    const uint64_t RelOffset = Fixup.getOffset();
+
+    uint64_t RelType;
+    if (Fixup.getKind() == AArch64::fixup_aarch64_pcrel_call26)
+      RelType = ELF::R_AARCH64_CALL26;
+    else if (FKI.Flags & MCFixupKindInfo::FKF_IsPCRel) {
+      switch (FKI.TargetSize) {
+      default:
+        return std::nullopt;
+      case 16:
+        RelType = ELF::R_AARCH64_PREL16;
+        break;
+      case 32:
+        RelType = ELF::R_AARCH64_PREL32;
+        break;
+      case 64:
+        RelType = ELF::R_AARCH64_PREL64;
+        break;
+      }
+    } else {
+      switch (FKI.TargetSize) {
+      default:
+        return std::nullopt;
+      case 16:
+        RelType = ELF::R_AARCH64_ABS16;
+        break;
+      case 32:
+        RelType = ELF::R_AARCH64_ABS32;
+        break;
+      case 64:
+        RelType = ELF::R_AARCH64_ABS64;
+        break;
+      }
+    }
+
+    // Extract a symbol and an addend out of the fixup value expression.
+    //
+    // Only the following limited expression types are supported:
+    //   Symbol + Addend
+    //   Symbol + Constant + Addend
+    //   Const + Addend
+    //   Symbol
+    uint64_t Addend = 0;
+    MCSymbol *Symbol = nullptr;
+    const MCExpr *ValueExpr = Fixup.getValue();
+    if (ValueExpr->getKind() == MCExpr::Binary) {
+      const auto *BinaryExpr = cast<MCBinaryExpr>(ValueExpr);
+      assert(BinaryExpr->getOpcode() == MCBinaryExpr::Add &&
+             "unexpected binary expression");
+      const MCExpr *LHS = BinaryExpr->getLHS();
+      if (LHS->getKind() == MCExpr::Constant) {
+        Addend = cast<MCConstantExpr>(LHS)->getValue();
+      } else if (LHS->getKind() == MCExpr::Binary) {
+        const auto *LHSBinaryExpr = cast<MCBinaryExpr>(LHS);
+        assert(LHSBinaryExpr->getOpcode() == MCBinaryExpr::Add &&
+               "unexpected binary expression");
+        const MCExpr *LLHS = LHSBinaryExpr->getLHS();
+        assert(LLHS->getKind() == MCExpr::SymbolRef && "unexpected LLHS");
+        Symbol = const_cast<MCSymbol *>(this->getTargetSymbol(LLHS));
+        const MCExpr *RLHS = LHSBinaryExpr->getRHS();
+        assert(RLHS->getKind() == MCExpr::Constant && "unexpected RLHS");
+        Addend = cast<MCConstantExpr>(RLHS)->getValue();
+      } else {
+        assert(LHS->getKind() == MCExpr::SymbolRef && "unexpected LHS");
+        Symbol = const_cast<MCSymbol *>(this->getTargetSymbol(LHS));
+      }
+      const MCExpr *RHS = BinaryExpr->getRHS();
+      assert(RHS->getKind() == MCExpr::Constant && "unexpected RHS");
+      Addend += cast<MCConstantExpr>(RHS)->getValue();
+    } else {
+      assert(ValueExpr->getKind() == MCExpr::SymbolRef && "unexpected value");
+      Symbol = const_cast<MCSymbol *>(this->getTargetSymbol(ValueExpr));
+    }
+
+    return Relocation({RelOffset, Symbol, RelType, Addend, 0});
   }
 };
 
