@@ -580,7 +580,7 @@ void LoopEmitter::categorizeLoopCondition(
 void LoopEmitter::enterNewLoopSeq(OpBuilder &builder, Location loc,
                                   ArrayRef<TensorLevel> tidLvls) {
   // TODO: sort
-  assert(loopSeqStack.size() == loopStack.size());
+  assert(loopSeqStack.size() == getCurrentDepth());
   // Prepares for all the tensors used in the current loop sequence.
   std::vector<std::tuple<TensorId, Level, bool>> slicedTids;
 
@@ -598,7 +598,7 @@ void LoopEmitter::enterNewLoopSeq(OpBuilder &builder, Location loc,
 }
 
 void LoopEmitter::exitCurrentLoopSeq(OpBuilder &builder, Location loc) {
-  assert(loopSeqStack.size() == loopStack.size() + 1);
+  assert(loopSeqStack.size() == getCurrentDepth() + 1);
 
   const auto &slicedTids = loopSeqStack.back().second;
 
@@ -623,7 +623,7 @@ Value LoopEmitter::genAffine(OpBuilder &builder, Location loc, AffineExpr a) {
     // should be indexed by `LoopId`...
     const auto loopId = a.cast<AffineDimExpr>().getPosition();
     assert(loopId < loopIdToOrd.size());
-    return loopStack[loopIdToOrd[loopId]].iv;
+    return getLoopIV(loopIdToOrd[loopId]);
   }
   case AffineExprKind::Add: {
     auto binOp = a.cast<AffineBinaryOpExpr>();
@@ -1244,6 +1244,64 @@ void LoopEmitter::genDenseAffineAddress(OpBuilder &builder, Location loc,
   posits[tid][lvl] = genAddress(builder, loc, tid, lvl, lvlCrd);
 }
 
+void LoopEmitter::genIdxLocate(OpBuilder &builder, Location loc,
+                               TensorLevel tidLvl, AffineConstantExpr crd,
+                               MutableArrayRef<Value> reduc) {
+  auto [tid, lvl] = unpackTensorLevel(tidLvl);
+  assert(isValidLevel(tid, lvl));
+
+  // Dense level support random access.
+  if (isDenseDLT(lvlTypes[tid][lvl]))
+    return genDenseAffineAddress(builder, loc, tidLvl, crd);
+
+  prepareLoopOverTensorAtLvl(builder, loc, tid, lvl);
+
+  const Value pLo = posits[tid][lvl];
+  const Value pHi = highs[tid][lvl];
+  // The index to locate.
+  auto index = genAffine(builder, loc, crd);
+  auto rtp = tensors[tid].getType().cast<RankedTensorType>();
+  auto dimSize = rtp.getShape()[toOrigDim(rtp, lvl)];
+  if (dimSize == 1) {
+    // A simple optimization: if the dimension size for the current level is
+    // one, there is no need to locate it (because all the coordinates must be 0
+    // if specified).
+    coords[tid][lvl] = index;
+
+    // TODO: we can canonicalize non-unqiue level (with dimSize == 1) into a
+    // unique level.
+    if (!isUniqueDLT(lvlTypes[tid][lvl]))
+      segHi[tid][lvl] = highs[tid][lvl];
+    return;
+  }
+
+  const Value crdBuf = coordinatesBuffers[tid][lvl];
+  // builder.create<
+  auto whileOp = builder.create<scf::WhileOp>(
+      loc, builder.getIndexType(), pLo,
+      /*beforeBuilder=*/
+      [crdBuf, index, pHi](OpBuilder &builder, Location loc, ValueRange args) {
+        auto inBound = CMPI(ult, args.front(), pHi);
+        auto crd = genIndexLoad(builder, loc, crdBuf, args.front());
+        auto neq = CMPI(ne, crd, index);
+        builder.create<scf::ConditionOp>(loc, ANDI(inBound, neq), args);
+      },
+      /*afterBuilder=*/
+      [](OpBuilder &builder, Location loc, ValueRange args) {
+        // Generates pos ++
+        YIELD(ADDI(args.front(), C_IDX(1)).getResult());
+      });
+
+  Value locatedPos = whileOp.getResult(0);
+  posits[tid][lvl] = locatedPos;
+  coords[tid][lvl] = index;
+
+  if (!isUniqueDLT(lvlTypes[tid][lvl])) {
+    segHi[tid][lvl] = genSegmentHigh(builder, loc, tid, lvl, posits[tid][lvl],
+                                     highs[tid][lvl]);
+  }
+}
+
 void LoopEmitter::prepareLoopOverTensorAtLvl(OpBuilder &builder, Location loc,
                                              TensorId tid, Level dstLvl) {
   assert(isValidLevel(tid, dstLvl));
@@ -1613,7 +1671,6 @@ void LoopEmitter::exitCurrentLoop(RewriterBase &rewriter, Location loc,
   // Clean up the values, it would help use to discover potential bug at a
   // earlier stage (instead of silently using a wrong value).
   const LoopInfo &loopInfo = loopStack.back();
-
   // Sets the insertion point to the right position.
   rewriter.setInsertionPointToEnd(loopInfo.userCodeBlock);
   if (!loopInfo.userCodeBlock->empty() &&
@@ -1629,8 +1686,7 @@ void LoopEmitter::exitCurrentLoop(RewriterBase &rewriter, Location loc,
   } else {
     exitForLoop(rewriter, loc, reduc);
   }
-
-  assert(loopStack.size() == loopSeqStack.size());
+  assert(loopSeqStack.size() == getCurrentDepth());
   loopStack.pop_back();
 }
 

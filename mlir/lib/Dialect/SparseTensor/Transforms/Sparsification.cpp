@@ -226,23 +226,28 @@ static AffineMap permute(CodegenEnv &env, AffineMap m) {
 /// filterIdx stores the current filter loop idx should be used for the next
 /// compound affine sparse level, and it will be incremented by one when
 /// used.
+// DEPRECATED: filter-loop based affine index expression codegen is inefficient,
+// will be removed after index-reduction based algorithm is feature complete.
 static bool findAffine(Merger &merger, TensorId tid, Level lvl, AffineExpr a,
                        DimLevelType dlt, LoopId &filterLdx,
-                       bool setLvlFormat = true) {
+                       bool isRootExp = true) {
   switch (a.getKind()) {
   case AffineExprKind::DimId: {
     const LoopId idx = merger.makeLoopId(a.cast<AffineDimExpr>().getPosition());
     if (!isUndefDLT(merger.getLvlType(tid, idx)))
       return false; // used more than once
 
-    if (setLvlFormat)
+    if (isRootExp)
       merger.setLevelAndType(tid, idx, lvl, dlt);
     return true;
   }
+
+  case AffineExprKind::Constant:
+    // We don't create a filter loop for pure constant affine index expression.
+    return true;
   case AffineExprKind::Add:
-  case AffineExprKind::Mul:
-  case AffineExprKind::Constant: {
-    if (!isDenseDLT(dlt) && setLvlFormat) {
+  case AffineExprKind::Mul: {
+    if (!isDenseDLT(dlt) && isRootExp) {
       assert(isUndefDLT(merger.getLvlType(tid, filterLdx)));
       // Use a filter loop for sparse affine expression.
       merger.setLevelAndType(tid, filterLdx, lvl, dlt);
@@ -317,6 +322,9 @@ static bool findDepIdxSet(Merger &merger, TensorId tensor, Level lvl,
     return true;
   }
   case AffineExprKind::Constant:
+    // TODO: Currently we only support a single constant express, not compound
+    // expression like `d0 + c`.
+    return !isSubExp;
   case AffineExprKind::Mul:
     // TODO: Support Mul and Constant AffineExp for slice-based codegen
     return false;
@@ -374,7 +382,8 @@ static unsigned getNumNonTrivialIdxExpOnSparseLvls(AffineMap map,
   for (Level l = 0; l < lvlRank; l++) {
     // FIXME: `toOrigDim` is deprecated.
     const Dimension d = toOrigDim(stt.getEncoding(), l);
-    if (!exprs[d].isa<AffineDimExpr>() && !stt.isDenseLvl(l))
+    if (!exprs[d].isa<AffineDimExpr>() && !exprs[d].isa<AffineConstantExpr>() &&
+        !stt.isDenseLvl(l))
       num++;
   }
   return num;
@@ -626,6 +635,10 @@ static void addFilterLoopBasedConstraints(CodegenEnv &env, OpOperand &t,
   for (Level lvl = 0; lvl < lvlRank; lvl++) {
     // FIXME: `toOrigDim` is deprecated.
     AffineExpr ta = map.getResult(toOrigDim(enc, lvl));
+    // Skips pure constant index expression.
+    if (ta.isa<AffineConstantExpr>())
+      continue;
+
     std::optional<LoopId> tldx = env.merger().getLoopId(tid, lvl);
     // Filter loops should be constructed after all the dependent loops,
     // i.e., d0 + d1 < filter_loop(d0 + d1)
@@ -645,9 +658,22 @@ static void addFilterLoopBasedConstraints(CodegenEnv &env, OpOperand &t,
       continue;
 
     if (lvl > 0) {
-      // FIXME: `toOrigDim` is deprecated.
-      AffineExpr fa = map.getResult(toOrigDim(enc, lvl - 1));
-      std::optional<LoopId> fldx = env.merger().getLoopId(tid, lvl - 1);
+      int prevLvl = lvl - 1;
+      AffineExpr fa = map.getResult(toOrigDim(enc, prevLvl));
+      // Finds the closest level with non-constant affine index reduction. We do
+      // not need to guarantees the visiting order of the level accessed with
+      // constant index because constant index will be located as soon as
+      // possible (i.e,. right after entering its previous level).
+      while (prevLvl >= 0 && fa.isa<AffineConstantExpr>()) {
+        prevLvl--;
+        if (prevLvl >= 0)
+          fa = map.getResult(toOrigDim(enc, prevLvl));
+      }
+
+      if (prevLvl < 0)
+        continue;
+
+      std::optional<LoopId> fldx = env.merger().getLoopId(tid, prevLvl);
 
       // Applying order constraints on every pair of dimExpr between two
       // compound affine expressions can sometime too strict:
@@ -977,17 +1003,10 @@ static void genInsertionStore(CodegenEnv &env, OpBuilder &builder, OpOperand *t,
   // Direct insertion in lexicographic coordinate order.
   if (!env.isExpand()) {
     const LoopOrd numLoops = op.getRank(t);
-    // TODO: rewrite this to use `env.emitter().getLoopIVs(ivs)`
-    // instead.  We just need to either assert that `numLoops ==
-    // env.emitter().getCurrentDepth()`, or else update the `getLoopIVs`
-    // method to take an optional parameter to restrict to a smaller depth.
-    SmallVector<Value> ivs;
-    ivs.reserve(numLoops);
-    for (LoopOrd n = 0; n < numLoops; n++) {
-      const auto iv = env.emitter().getLoopIV(n);
-      assert(iv);
-      ivs.push_back(iv);
-    }
+    auto ivs = llvm::to_vector(
+        llvm::drop_end(env.emitter().getLoopIVsRange(),
+                       env.emitter().getCurrentDepth() - numLoops));
+
     Value chain = env.getInsertionChain();
     if (!env.getValidLexInsert()) {
       env.updateInsertionChain(builder.create<InsertOp>(loc, rhs, chain, ivs));
@@ -1602,9 +1621,8 @@ static bool startLoopSeq(CodegenEnv &env, OpBuilder &builder, ExprId exp,
   return false;
 }
 
-static void genConstantDenseAddressFromLevel(CodegenEnv &env,
-                                             OpBuilder &builder, TensorId tid,
-                                             Level startLvl) {
+static void genConstantAddressFromLevel(CodegenEnv &env, OpBuilder &builder,
+                                        TensorId tid, Level startLvl) {
   // TODO: Handle affine expression on output tensor.
   linalg::GenericOp op = env.op();
   assert(tid < op.getNumDpsInputs());
@@ -1620,23 +1638,28 @@ static void genConstantDenseAddressFromLevel(CodegenEnv &env,
     for (Level l = startLvl; l < lvlRank; l++) {
       // FIXME: `toOrigDim` is deprecated.
       AffineExpr lvlExpr = lvlExprs[toOrigDim(enc, l)];
-      if (enc.isDenseLvl(l) && lvlExpr.isa<AffineConstantExpr>())
-        env.emitter().genDenseAffineAddress(
-            builder, loc, env.makeTensorLevel(tid, l), lvlExpr);
-      else
+      if (auto locateCrd = lvlExpr.dyn_cast<AffineConstantExpr>()) {
+        env.genLoopBoundary([&env, &builder, loc, tid, l,
+                             locateCrd](MutableArrayRef<Value> reduc) {
+          env.emitter().genIdxLocate(builder, loc, env.makeTensorLevel(tid, l),
+                                     locateCrd, reduc);
+          return std::nullopt;
+        });
+      } else {
         return; // break on first non-dense non-constant level
+      }
     }
   }
 }
 
-static void genInitConstantDenseAddress(CodegenEnv &env,
-                                        RewriterBase &rewriter) {
+static void genInitConstantAddressLocate(CodegenEnv &env,
+                                         RewriterBase &rewriter) {
   // We can generate address for constant affine expression before any loops
   // starting from the first level as they do not depend on any thing.
   // E.g., [Dense, Dense, Sparse] -> (1, 2, d0), the addresses for the first two
   // levels can be determined before loops.
   for (TensorId tid = 0, e = env.op().getNumDpsInputs(); tid < e; tid++)
-    genConstantDenseAddressFromLevel(env, rewriter, tid, 0);
+    genConstantAddressFromLevel(env, rewriter, tid, 0);
 }
 
 /// Return true if the lattices bit can be iterated by a for loop.
@@ -1782,7 +1805,7 @@ static std::pair<Operation *, bool> startLoop(CodegenEnv &env,
   for (auto [tid, lvl] : env.unpackTensorLevelRange(allTidLvls)) {
     if (tid != env.merger().getOutTensorID() &&
         tid != env.merger().getSynTensorID())
-      genConstantDenseAddressFromLevel(env, builder, tid, lvl + 1);
+      genConstantAddressFromLevel(env, builder, tid, lvl + 1);
   }
 
   return std::make_pair(loop, isSingleCond);
@@ -2030,7 +2053,7 @@ public:
     // TODO: Constant affine expression should be handled differently when using
     // slice-based codegen, it does not matter now becasue we already reject the
     // constant expression at a earlier stage.
-    genInitConstantDenseAddress(env, rewriter);
+    genInitConstantAddressLocate(env, rewriter);
     genStmt(env, rewriter, env.getExprId(), 0);
     genResult(env, rewriter);
     return success();
