@@ -36,7 +36,6 @@ getBufferizationOptions(bool analysisOnly) {
   options.bufferizeFunctionBoundaries = true;
   // TODO(springerm): To spot memory leaks more easily, returning dense allocs
   // should be disallowed.
-  options.allowReturnAllocs = true;
   options.setFunctionBoundaryTypeConversion(LayoutMapOption::IdentityLayoutMap);
   options.unknownTypeConverterFn = [](Value value, Attribute memorySpace,
                                       const BufferizationOptions &options) {

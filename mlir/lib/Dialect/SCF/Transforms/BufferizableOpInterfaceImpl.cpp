@@ -498,9 +498,8 @@ struct ForOpInterface
         yieldValues.push_back(value);
         continue;
       }
-      FailureOr<Value> alloc =
-          allocateTensorForShapedValue(rewriter, yieldOp.getLoc(), value,
-                                       /*escape=*/true, state.getOptions());
+      FailureOr<Value> alloc = allocateTensorForShapedValue(
+          rewriter, yieldOp.getLoc(), value, state.getOptions());
       if (failed(alloc))
         return failure();
       yieldValues.push_back(*alloc);
@@ -589,38 +588,6 @@ struct ForOpInterface
 
     // Replace loop results.
     replaceOpWithBufferizedValues(rewriter, op, newForOp->getResults());
-
-    return success();
-  }
-
-  /// Assert that yielded values of an scf.for op are equivalent to their
-  /// corresponding bbArgs. In that case, the buffer relations of the
-  /// corresponding OpResults are "Equivalent".
-  ///
-  /// If this is not the case, an allocs+copies are inserted and yielded from
-  /// the loop. This could be a performance problem, so it must be explicitly
-  /// activated with `alloc-return-allocs`.
-  LogicalResult verifyAnalysis(Operation *op,
-                               const AnalysisState &state) const {
-    const auto &options =
-        static_cast<const OneShotBufferizationOptions &>(state.getOptions());
-    if (options.allowReturnAllocs)
-      return success();
-
-    auto forOp = cast<scf::ForOp>(op);
-    auto yieldOp =
-        cast<scf::YieldOp>(forOp.getLoopBody().front().getTerminator());
-    for (OpResult opResult : op->getOpResults()) {
-      if (!isa<TensorType>(opResult.getType()))
-        continue;
-
-      // Note: This is overly strict. We should check for aliasing bufferized
-      // values. But we don't have a "must-alias" analysis yet.
-      if (bufferRelation(op, opResult, state) != BufferRelation::Equivalent)
-        return yieldOp->emitError()
-               << "Yield operand #" << opResult.getResultNumber()
-               << " is not equivalent to the corresponding iter bbArg";
-    }
 
     return success();
   }
@@ -742,9 +709,8 @@ struct WhileOpInterface
         beforeYieldValues.push_back(value);
         continue;
       }
-      FailureOr<Value> alloc =
-          allocateTensorForShapedValue(rewriter, conditionOp.getLoc(), value,
-                                       /*escape=*/true, state.getOptions());
+      FailureOr<Value> alloc = allocateTensorForShapedValue(
+          rewriter, conditionOp.getLoc(), value, state.getOptions());
       if (failed(alloc))
         return failure();
       beforeYieldValues.push_back(*alloc);
@@ -880,53 +846,6 @@ struct WhileOpInterface
     }
     return bufferization::getBufferType(conditionYieldedVal, options,
                                         fixedTypes);
-  }
-
-  /// Assert that yielded values of an scf.while op are equivalent to their
-  /// corresponding bbArgs. In that case, the buffer relations of the
-  /// corresponding OpResults are "Equivalent".
-  ///
-  /// If this is not the case, allocs+copies are inserted and yielded from
-  /// the loop. This could be a performance problem, so it must be explicitly
-  /// activated with `allow-return-allocs`.
-  ///
-  /// Not: In contrast to scf::ForOp, scf::WhileOp has two regions and the
-  /// equivalence condition must be checked for both.
-  LogicalResult verifyAnalysis(Operation *op,
-                               const AnalysisState &state) const {
-    auto whileOp = cast<scf::WhileOp>(op);
-    const auto &options =
-        static_cast<const OneShotBufferizationOptions &>(state.getOptions());
-    if (options.allowReturnAllocs)
-      return success();
-
-    auto conditionOp = whileOp.getConditionOp();
-    for (const auto &it : llvm::enumerate(conditionOp.getArgs())) {
-      Block *block = conditionOp->getBlock();
-      if (!isa<TensorType>(it.value().getType()))
-        continue;
-      if (it.index() >= block->getNumArguments() ||
-          !state.areEquivalentBufferizedValues(it.value(),
-                                               block->getArgument(it.index())))
-        return conditionOp->emitError()
-               << "Condition arg #" << it.index()
-               << " is not equivalent to the corresponding iter bbArg";
-    }
-
-    auto yieldOp = whileOp.getYieldOp();
-    for (const auto &it : llvm::enumerate(yieldOp.getResults())) {
-      Block *block = yieldOp->getBlock();
-      if (!isa<TensorType>(it.value().getType()))
-        continue;
-      if (it.index() >= block->getNumArguments() ||
-          !state.areEquivalentBufferizedValues(it.value(),
-                                               block->getArgument(it.index())))
-        return yieldOp->emitError()
-               << "Yield operand #" << it.index()
-               << " is not equivalent to the corresponding iter bbArg";
-    }
-
-    return success();
   }
 };
 

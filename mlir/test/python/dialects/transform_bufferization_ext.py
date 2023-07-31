@@ -85,10 +85,8 @@ def testOneShotBufferizeOpAttributes():
     with InsertionPoint(sequence.body):
         bufferization.OneShotBufferizeOp(
             sequence.bodyTarget,
-            allow_return_allocs=True,
             allow_unknown_ops=True,
             bufferize_function_boundaries=True,
-            create_deallocs=True,
             test_analysis_only=True,
             print_conflicts=True,
             memcpy_op="memref.copy",
@@ -96,7 +94,6 @@ def testOneShotBufferizeOpAttributes():
         transform.YieldOp()
     # CHECK-LABEL: TEST: testOneShotBufferizeOpAttributes
     # CHECK: = transform.bufferization.one_shot_bufferize
-    # CHECK-SAME: allow_return_allocs = true
     # CHECK-SAME: allow_unknown_ops = true
     # CHECK-SAME: bufferize_function_boundaries = true
     # CHECK-SAME: print_conflicts = true

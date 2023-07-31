@@ -265,7 +265,6 @@ struct EmptyTensorElimination
 void EmptyTensorElimination::runOnOperation() {
   Operation *op = getOperation();
   OneShotBufferizationOptions options;
-  options.allowReturnAllocs = true;
   OneShotAnalysisState state(op, options);
   if (failed(analyzeOp(op, state))) {
     signalPassFailure();
