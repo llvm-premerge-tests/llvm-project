@@ -164,6 +164,8 @@ AST Matchers
 
 clang-format
 ------------
+- Fix a bug that erroneously placed function arguments on a new line despite
+all arguments being able to fit on the same line.
 
 libclang
 --------
