@@ -14,6 +14,7 @@
 #include "clang/AST/ASTImporterLookupTable.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/RecursiveASTVisitor.h"
+#include "clang/AST/ParentMapContext.h"
 #include "llvm/Support/FormatVariadic.h"
 
 namespace clang {
@@ -38,6 +39,10 @@ struct Builder : RecursiveASTVisitor<Builder> {
   }
 
   bool VisitNamedDecl(NamedDecl *D) {
+    auto Parents = D->getASTContext().getParents(*D);
+    if (!Parents.empty() && nullptr != Parents.begin()->get<FriendDecl>()) {
+      return true;
+    }
     LT.add(D);
     return true;
   }
