@@ -140,6 +140,17 @@ TEST_F(TestGetControlFlowKindx86, TestX86_64Instruction) {
       ExecutionContext exe_ctx (nullptr, nullptr, nullptr);
       InstructionControlFlowKind kind = inst_sp->GetControlFlowKind(&exe_ctx);
       EXPECT_EQ(kind, result[i]);
+
+      // Also, test the DisassemblerLLVMC::MCDisasmInstance methods.
+      if (kind == eInstructionControlFlowKindReturn)
+        EXPECT_FALSE(inst_sp->IsCall());
+      if (kind == eInstructionControlFlowKindCall)
+        EXPECT_TRUE(inst_sp->IsCall());
+      if (kind == eInstructionControlFlowKindCall ||
+          kind == eInstructionControlFlowKindJump ||
+          kind == eInstructionControlFlowKindCondJump ||
+          kind == eInstructionControlFlowKindReturn)
+        EXPECT_TRUE(inst_sp->DoesBranch());
     }
   }
 }
