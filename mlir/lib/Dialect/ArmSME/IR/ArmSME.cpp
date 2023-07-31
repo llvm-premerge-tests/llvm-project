@@ -54,3 +54,9 @@ LogicalResult CastTileToVector::canonicalize(CastTileToVector op,
   }
   return failure();
 }
+
+LogicalResult LoadTileSliceOp::verify() {
+  if (getTile().getType() != getVectorType())
+    return emitOpError() << "expected result type to match tile type";
+  return success();
+}
