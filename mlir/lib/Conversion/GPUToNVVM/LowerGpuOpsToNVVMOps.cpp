@@ -202,6 +202,13 @@ struct GPULaneIdOpToNVVM : ConvertOpToLLVMPattern<gpu::LaneIdOp> {
 /// Import the GPU Ops to NVVM Patterns.
 #include "GPUToNVVM.cpp.inc"
 
+static IntegerType getIndexTypeForMemRef(MemRefType type) {
+  if (type.getMemorySpaceAsInt() == 3)
+    // nvgpu::NVGPUDialect::kSharedMemoryAddressSpace)
+    return IntegerType::get(type.getContext(), 32);
+  return IntegerType::get(type.getContext(), 64);
+}
+
 /// A pass that replaces all occurrences of GPU device operations with their
 /// corresponding NVVM equivalent.
 ///
@@ -232,6 +239,7 @@ struct LowerGpuOpsToNVVMOpsPass
       options.overrideIndexBitwidth(indexBitwidth);
     options.useOpaquePointers = useOpaquePointers;
     options.useBarePtrCallConv = useBarePtrCallConv;
+    options.memrefIndexTypeConverter = getIndexTypeForMemRef;
 
     // Apply in-dialect lowering. In-dialect lowering will replace
     // ops which need to be lowered further, which is not supported by a

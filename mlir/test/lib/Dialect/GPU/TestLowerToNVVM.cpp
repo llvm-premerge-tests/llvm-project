@@ -20,6 +20,7 @@
 #include "mlir/Conversion/MathToLLVM/MathToLLVM.h"
 #include "mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h"
 #include "mlir/Conversion/NVGPUToNVVM/NVGPUToNVVM.h"
+#include "mlir/Conversion/NVVMToLLVM/NVVMToLLVM.h"
 #include "mlir/Conversion/ReconcileUnrealizedCasts/ReconcileUnrealizedCasts.h"
 #include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"
 #include "mlir/Conversion/VectorToLLVM/ConvertVectorToLLVM.h"
@@ -70,6 +71,9 @@ struct TestLowerToNVVMOptions
       *this, "cubin-features",
       llvm::cl::desc("Features to use to serialize to cubin."),
       llvm::cl::init("+ptx76")};
+  PassOptions::Option<bool> dumpPtx{
+      *this, "dump-ptx", llvm::cl::desc("Whether to dump the produced ptx)"),
+      llvm::cl::init(false)};
 };
 
 //===----------------------------------------------------------------------===//
@@ -125,6 +129,14 @@ void buildGpuPassPipeline(OpPassManager &pm,
       createConvertIndexToLLVMPass(convertIndexToLLVMPassOpt));
 
   // TODO: C++20 designated initializers.
+  ConvertNVGPUToNVVMPassOptions convertNVGPUToNVVMPassOptions;
+  convertNVGPUToNVVMPassOptions.useOpaquePointers = true;
+  pm.addNestedPass<gpu::GPUModuleOp>(
+      createConvertNVGPUToNVVMPass(convertNVGPUToNVVMPassOptions));
+
+  pm.addNestedPass<gpu::GPUModuleOp>(createConvertSCFToCFPass());
+
+  // TODO: C++20 designated initializers.
   // The following pass is inconsistent.
   // ConvertGpuOpsToNVVMOpsOptions convertGpuOpsToNVVMOpsOptions;
   // convertGpuOpsToNVVMOpsOptions.indexBitwidth =
@@ -133,13 +145,6 @@ void buildGpuPassPipeline(OpPassManager &pm,
       // TODO: fix inconsistence.
       createLowerGpuOpsToNVVMOpsPass(/*indexBitWidth=*/
                                      options.kernelIndexBitWidth));
-
-  // TODO: C++20 designated initializers.
-  ConvertNVGPUToNVVMPassOptions convertNVGPUToNVVMPassOptions;
-  convertNVGPUToNVVMPassOptions.useOpaquePointers = true;
-  pm.addNestedPass<gpu::GPUModuleOp>(
-      createConvertNVGPUToNVVMPass(convertNVGPUToNVVMPassOptions));
-  pm.addNestedPass<gpu::GPUModuleOp>(createConvertSCFToCFPass());
 
   // TODO: C++20 designated initializers.
   GpuToLLVMConversionPassOptions gpuToLLVMConversionOptions;
@@ -164,6 +169,8 @@ void buildGpuPassPipeline(OpPassManager &pm,
   pm.addNestedPass<gpu::GPUModuleOp>(
       createConvertVectorToLLVMPass(convertVectorToLLVMPassOptions));
 
+  pm.addNestedPass<gpu::GPUModuleOp>(createConvertNVVMToLLVMPass());
+
   // Sprinkle some cleanups.
   pm.addPass(createCanonicalizerPass());
   pm.addPass(createCSEPass());
@@ -173,7 +180,8 @@ void buildGpuPassPipeline(OpPassManager &pm,
 
 #if MLIR_GPU_TO_CUBIN_PASS_ENABLE
   pm.addNestedPass<gpu::GPUModuleOp>(createGpuSerializeToCubinPass(
-      options.cubinTriple, options.cubinChip, options.cubinFeatures));
+      options.cubinTriple, options.cubinChip, options.cubinFeatures,
+      /*optLevel=*/2, /*dumpPtx=*/options.dumpPtx));
 #endif // MLIR_GPU_TO_CUBIN_PASS_ENABLE
 }
 
@@ -182,8 +190,6 @@ void buildLowerToNVVMPassPipeline(OpPassManager &pm,
   //===----------------------------------------------------------------------===//
   // Host-specific stuff.
   //===----------------------------------------------------------------------===//
-  // Important, must be run at the top-level.
-  pm.addPass(createGpuKernelOutliningPass());
 
   // Important, all host passes must be run at the func level so that host
   // conversions can remain with 64 bit indices without polluting the GPU
@@ -228,17 +234,6 @@ void buildLowerToNVVMPassPipeline(OpPassManager &pm,
   pm.addNestedPass<func::FuncOp>(
       createConvertFuncToLLVMPass(convertFuncToLLVMPassOptions));
 
-  // TODO: C++20 designated initializers.
-  ConvertIndexToLLVMPassOptions convertIndexToLLVMPassOpt;
-  // Must be 64b on the host, things don't compose properly around
-  // gpu::LaunchOp and gpu::HostRegisterOp.
-  // TODO: fix GPU layering.
-  convertIndexToLLVMPassOpt.indexBitwidth = options.hostIndexBitWidth;
-  pm.addNestedPass<func::FuncOp>(
-      createConvertIndexToLLVMPass(convertIndexToLLVMPassOpt));
-
-  pm.addNestedPass<func::FuncOp>(createArithToLLVMConversionPass());
-
   // Sprinkle some cleanups.
   pm.addNestedPass<func::FuncOp>(createCanonicalizerPass());
   pm.addNestedPass<func::FuncOp>(createCSEPass());
@@ -246,6 +241,20 @@ void buildLowerToNVVMPassPipeline(OpPassManager &pm,
   //===----------------------------------------------------------------------===//
   // GPUModule-specific stuff.
   //===----------------------------------------------------------------------===//
+
+  // Due to gpu::LaunchOp and gpu::LaunchFuncOp layering and conversions, there
+  // is currently a need to call convertNVGPUToNVVM at the top-level to get
+  // proper types at the function boundary for the TMADescriptors.
+  // TODO: Fix this broken layering: conversion of TMA descriptor should be
+  // separated from introducing LLVM types.
+  // TODO: C++20 designated initializers.
+  ConvertNVGPUToNVVMPassOptions convertNVGPUToNVVMPassOptions;
+  convertNVGPUToNVVMPassOptions.useOpaquePointers = true;
+  pm.addPass(createConvertNVGPUToNVVMPass(convertNVGPUToNVVMPassOptions));
+
+  // Important, must be run at the top-level.
+  pm.addPass(createGpuKernelOutliningPass());
+
   buildGpuPassPipeline(pm, options);
 
   //===----------------------------------------------------------------------===//
@@ -258,12 +267,16 @@ void buildLowerToNVVMPassPipeline(OpPassManager &pm,
   pm.addNestedPass<func::FuncOp>(
       createConvertVectorToLLVMPass(convertVectorToLLVMPassOptions));
 
+  pm.addPass(createConvertNVVMToLLVMPass());
+
   ConvertIndexToLLVMPassOptions convertIndexToLLVMPassOpt3;
   // Must be 64b on the host, things don't compose properly around
   // gpu::LaunchOp and gpu::HostRegisterOp.
   // TODO: fix GPU layering.
   convertIndexToLLVMPassOpt3.indexBitwidth = options.hostIndexBitWidth;
   pm.addPass(createConvertIndexToLLVMPass(convertIndexToLLVMPassOpt3));
+
+  pm.addNestedPass<func::FuncOp>(createArithToLLVMConversionPass());
 
   // This must happen after cubin translation otherwise gpu.launch_func is
   // illegal if no cubin annotation is present.

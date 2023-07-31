@@ -339,7 +339,9 @@ LLVMTypeConverter::getMemRefDescriptorFields(MemRefType type,
   }
   auto ptrTy = getPointerType(elementType, *addressSpace);
 
-  auto indexTy = getIndexType();
+  auto indexTy = options.memrefIndexTypeConverter
+                     ? options.memrefIndexTypeConverter(type)
+                     : getIndexType();
 
   SmallVector<Type, 5> results = {ptrTy, ptrTy, indexTy};
   auto rank = type.getRank();

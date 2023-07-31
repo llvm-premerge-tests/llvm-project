@@ -653,10 +653,18 @@ private:
 
 } // namespace
 
+static IntegerType getIndexTypeForMemRef(MemRefType type) {
+  if (type.getMemorySpaceAsInt() == 3)
+    // nvgpu::NVGPUDialect::kSharedMemoryAddressSpace)
+    return IntegerType::get(type.getContext(), 32);
+  return IntegerType::get(type.getContext(), 64);
+}
+
 void GpuToLLVMConversionPass::runOnOperation() {
   LowerToLLVMOptions options(&getContext());
   options.useOpaquePointers = useOpaquePointers;
   options.useBarePtrCallConv = hostBarePtrCallConv;
+  options.memrefIndexTypeConverter = getIndexTypeForMemRef;
 
   LLVMTypeConverter converter(&getContext(), options);
   RewritePatternSet patterns(&getContext());
