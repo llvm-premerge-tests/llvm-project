@@ -4,7 +4,6 @@
 ; see pr42770
 ; REQUIRES: asserts
 ; RUN: opt < %s -loop-reduce -S | FileCheck %s
-
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128-ni:1"
 
 define void @foo() {
@@ -12,7 +11,9 @@ define void @foo() {
 ; CHECK-NEXT:  bb:
 ; CHECK-NEXT:    br label [[BB4:%.*]]
 ; CHECK:       bb1:
-; CHECK-NEXT:    [[T3:%.*]] = ashr i64 [[LSR_IV_NEXT:%.*]], 32
+; CHECK-NEXT:    [[T:%.*]] = shl i64 [[T14:%.*]], 32
+; CHECK-NEXT:    [[T2:%.*]] = add i64 [[T]], 1
+; CHECK-NEXT:    [[T3:%.*]] = ashr i64 [[T2]], 32
 ; CHECK-NEXT:    ret void
 ; CHECK:       bb4:
 ; CHECK-NEXT:    [[LSR_IV1:%.*]] = phi i16 [ [[LSR_IV_NEXT2:%.*]], [[BB13:%.*]] ], [ 6, [[BB:%.*]] ]
@@ -28,7 +29,7 @@ define void @foo() {
 ; CHECK-NEXT:    [[T10:%.*]] = icmp eq i16 [[T9]], 1
 ; CHECK-NEXT:    br i1 [[T10]], label [[BB11:%.*]], label [[BB13]]
 ; CHECK:       bb11:
-; CHECK-NEXT:    [[T12:%.*]] = udiv i16 1, [[LSR_IV1]]
+; CHECK-NEXT:    [[T12:%.*]] = udiv i16 1, [[LSR_IV]]
 ; CHECK-NEXT:    unreachable
 ; CHECK:       bb13:
 ; CHECK-NEXT:    br i1 true, label [[BB1:%.*]], label [[BB4]]

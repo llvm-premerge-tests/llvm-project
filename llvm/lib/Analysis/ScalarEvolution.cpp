@@ -7866,19 +7866,51 @@ const SCEV *ScalarEvolution::createSCEV(Value *V) {
       Type *TruncTy = IntegerType::get(getContext(), BitWidth - AShrAmt);
 
       Operator *L = dyn_cast<Operator>(BO->LHS);
-      if (L && L->getOpcode() == Instruction::Shl) {
+      const SCEV *AddTruncateExpr = nullptr;
+      ConstantInt *ShlAmtCI = nullptr;
+
+      if (L && L->getOpcode() == Instruction::Add) {
+        // X = Shl A, n
+        // Y = Add X, c
+        // Z = AShr Y, m
+        // n, c and m are constants.
+
+        Operator *LShift = dyn_cast<Operator>(L->getOperand(0));
+        ConstantInt *AddOperandCI = dyn_cast<ConstantInt>(L->getOperand(1));
+        if (LShift && LShift->getOpcode() == Instruction::Shl) {
+          if (AddOperandCI) {
+            ShlAmtCI = dyn_cast<ConstantInt>(LShift->getOperand(1));
+            const SCEV *ShlOp0SCEV = getSCEV(LShift->getOperand(0));
+            // since we truncate to TruncTy, the AddConstant should be of the
+            // same type, so create a new Constant with type same as TruncTy.
+            // Also, the Add constant should be shifted right by Shl amount.
+            APInt AddOperand =
+                AddOperandCI->getValue().ashr(ShlAmtCI->getZExtValue());
+            const SCEV *AddConstant = getConstant(AddOperand);
+
+            // we model the expression as sext(add(trunc(A), c << n)), since the
+            // sext(trunc) part is already handled below, we create a
+            // AddExpr(TruncExp) which will be used later.
+            AddTruncateExpr =
+                getTruncateExpr(getAddExpr(ShlOp0SCEV, AddConstant), TruncTy);
+          }
+        }
+      } else if (L && L->getOpcode() == Instruction::Shl) {
         // X = Shl A, n
         // Y = AShr X, m
         // Both n and m are constant.
 
+        ShlAmtCI = dyn_cast<ConstantInt>(L->getOperand(1));
         const SCEV *ShlOp0SCEV = getSCEV(L->getOperand(0));
-        if (L->getOperand(1) == BO->RHS)
+        AddTruncateExpr = getTruncateExpr(ShlOp0SCEV, TruncTy);
+      }
+
+      if (AddTruncateExpr && ShlAmtCI) {
+        if (ShlAmtCI == CI)
           // For a two-shift sext-inreg, i.e. n = m,
           // use sext(trunc(x)) as the SCEV expression.
-          return getSignExtendExpr(
-              getTruncateExpr(ShlOp0SCEV, TruncTy), OuterTy);
+          return getSignExtendExpr(AddTruncateExpr, OuterTy);
 
-        ConstantInt *ShlAmtCI = dyn_cast<ConstantInt>(L->getOperand(1));
         if (ShlAmtCI && ShlAmtCI->getValue().ult(BitWidth)) {
           uint64_t ShlAmt = ShlAmtCI->getZExtValue();
           if (ShlAmt > AShrAmt) {
@@ -7889,8 +7921,7 @@ const SCEV *ScalarEvolution::createSCEV(Value *V) {
             APInt Mul = APInt::getOneBitSet(BitWidth - AShrAmt,
                                             ShlAmt - AShrAmt);
             return getSignExtendExpr(
-                getMulExpr(getTruncateExpr(ShlOp0SCEV, TruncTy),
-                getConstant(Mul)), OuterTy);
+                getMulExpr(AddTruncateExpr, getConstant(Mul)), OuterTy);
           }
         }
       }
