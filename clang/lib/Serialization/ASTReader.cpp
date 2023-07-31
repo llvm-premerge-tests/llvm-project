@@ -6806,19 +6806,28 @@ void TypeLocReader::VisitUnaryTransformTypeLoc(UnaryTransformTypeLoc TL) {
   TL.setUnderlyingTInfo(GetTypeSourceInfo());
 }
 
+ConceptLoc *ASTRecordReader::readConceptLoc() {
+  if (!readBool()) {
+    return nullptr;
+  }
+  auto NNS = readNestedNameSpecifierLoc();
+  auto TemplateKWLoc = readSourceLocation();
+  auto ConceptNameLoc = readDeclarationNameInfo();
+  auto FoundDecl = readDeclAs<NamedDecl>();
+  auto NamedConcept = readDeclAs<ConceptDecl>();
+  auto *CL = ConceptLoc::Create(
+      getContext(), NNS, TemplateKWLoc, ConceptNameLoc, FoundDecl, NamedConcept,
+      (readBool() ? readASTTemplateArgumentListInfo() : nullptr));
+  return CL;
+}
+
 void TypeLocReader::VisitAutoTypeLoc(AutoTypeLoc TL) {
   TL.setNameLoc(readSourceLocation());
   if (Reader.readBool()) {
-    TL.setNestedNameSpecifierLoc(ReadNestedNameSpecifierLoc());
-    TL.setTemplateKWLoc(readSourceLocation());
-    TL.setConceptNameLoc(readSourceLocation());
-    TL.setFoundDecl(Reader.readDeclAs<NamedDecl>());
     TL.setLAngleLoc(readSourceLocation());
     TL.setRAngleLoc(readSourceLocation());
-    for (unsigned i = 0, e = TL.getNumArgs(); i != e; ++i)
-      TL.setArgLocInfo(
-          i, Reader.readTemplateArgumentLocInfo(
-                 TL.getTypePtr()->getTypeConstraintArguments()[i].getKind()));
+    TL.setDefaultLoc(readSourceLocation());
+    TL.setConceptLoc(Reader.readConceptLoc());
   }
   if (Reader.readBool())
     TL.setRParenLoc(readSourceLocation());
