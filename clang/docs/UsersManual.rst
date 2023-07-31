@@ -1724,7 +1724,7 @@ floating point semantic models: precise (the default), strict, and fast.
    and ``fast``.
    Details:
 
-   * ``precise`` Disables optimizations that are not value-safe on floating-point data, although FP contraction (FMA) is enabled (``-ffp-contract=on``).  This is the default behavior.
+   * ``precise`` Disables optimizations that are not value-safe on floating-point data, although FP contraction (FMA) is enabled (``-ffp-contract=on``).  This is the default behavior. This value resets ``-fmath-errno`` to its target-dependent default.
    * ``strict`` Enables ``-frounding-math`` and ``-ffp-exception-behavior=strict``, and disables contractions (FMA).  All of the ``-ffast-math`` enablements are disabled. Enables ``STDC FENV_ACCESS``: by default ``FENV_ACCESS`` is disabled. This option setting behaves as though ``#pragma STDC FENV_ACCESS ON`` appeared at the top of the source file.
    * ``fast`` Behaves identically to specifying both ``-ffast-math`` and ``ffp-contract=fast``
 
