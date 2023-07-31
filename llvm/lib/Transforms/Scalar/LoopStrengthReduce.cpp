@@ -2013,6 +2013,7 @@ class LSRInstance {
   SmallVector<llvm::WeakVH, 2> ScalarEvolutionIVs;
 
   void OptimizeShadowIV();
+  void optimizeDiv();
   bool FindIVUserForCond(ICmpInst *Cond, IVStrideUse *&CondUse);
   ICmpInst *OptimizeMax(ICmpInst *Cond, IVStrideUse* &CondUse);
   void OptimizeLoopTermCond();
@@ -2240,6 +2241,137 @@ void LSRInstance::OptimizeShadowIV() {
     ShadowUse->eraseFromParent();
     Changed = true;
     break;
+  }
+}
+
+/// Transform divide instruction to add instruction.
+/// for (int k = 0; k < m; ++k) {
+///   int i = k / KW;
+/// }
+/// -->
+/// for (int k = 0, i = 0, div = 0; k < m; ++k, ++i) {
+///   if (i == KW) {
+///     ++div;
+///     i = 0;
+///   }
+/// }
+void LSRInstance::optimizeDiv() {
+  const SCEV *BackedgeTakenCount = SE.getBackedgeTakenCount(L);
+  if (isa<SCEVCouldNotCompute>(BackedgeTakenCount))
+    return;
+
+  for (IVUsers::const_iterator UI = IU.begin(), E = IU.end(); UI != E;
+       /* empty */) {
+    IVUsers::const_iterator CandidateUI = UI;
+    ++UI;
+    Instruction *Div = CandidateUI->getUser();
+    bool IsSigned = false;
+
+    if (Div->getOpcode() == Instruction::UDiv)
+      IsSigned = false;
+    else if (Div->getOpcode() == Instruction::SDiv)
+      IsSigned = true;
+    else
+      continue;
+
+    PHINode *PH = dyn_cast<PHINode>(Div->getOperand(0));
+    if (!PH)
+      continue;
+    if (PH->getNumIncomingValues() != 2)
+      continue;
+
+    const SCEVAddRecExpr *AR = dyn_cast<SCEVAddRecExpr>(SE.getSCEV(PH));
+    if (!AR)
+      continue;
+    // TODO, support negative and non-one positive step
+    const SCEV *One = SE.getConstant(BackedgeTakenCount->getType(), 1);
+    if (AR->getStepRecurrence(SE) != One)
+      continue;
+    // Drop the transform if there is overflow.
+    if (IsSigned && !AR->hasNoSignedWrap())
+      continue;
+    if (!IsSigned && !AR->hasNoUnsignedWrap())
+      continue;
+
+    const SCEV *Divisor = SE.getSCEV(Div->getOperand(1));
+    if (!SE.isLoopInvariant(Divisor, L))
+      continue;
+
+    unsigned Entry, Latch;
+    if (PH->getIncomingBlock(0) == L->getLoopPreheader()) {
+      Entry = 0;
+      Latch = 1;
+    } else {
+      Entry = 1;
+      Latch = 0;
+    }
+
+    ConstantInt *Init = dyn_cast<ConstantInt>(PH->getIncomingValue(Entry));
+    if (!Init)
+      continue;
+    // TODO: suppport any constant initial value.
+    if (!Init->isZero() && !Init->isOne())
+      continue;
+
+    // 7:
+    // %8 = phi i32 [ %12, %7 ], [ 0, %3 ]
+    // %div = sdiv i32 %8, %1
+    // latch
+    // %12 = add nuw nsw i32 %8, 1
+    // %13 = icmp eq i32 %12, %4
+    // br i1 %13, label %6, label %7
+    // -->
+    // 6:
+    // %divph = phi i32 [ %div, %6 ], [ 0, %3 ]
+    // %cntph = phi i32 [ %cnt, %6 ], [ 0, %3 ]
+    // %k = phi i32 [ %15, %6 ], [ 0, %3 ]
+    // %10 = icmp eq i32 %cntph, %1
+    // %11 = zext i1 %10 to i32                   # step 1
+    // %div = add nuw nsw i32 %divph, %11         # div++
+    // %15 = add nuw nsw i32 %k, 1
+    // %16 = add nsw i32 %cntph, 1
+    // %cnt = select i1 %10, i32 1, i32 %16
+    // latch
+    // %18 = icmp eq i32 %15, %0
+    // br i1 %18, label %5, label %6
+    Type *Ty = Div->getType();
+    // %7 = phi i32 [ %div, %6 ], [ 0, %3 ]
+    PHINode *DivPH = PHINode::Create(Ty, 2, "div", PH);
+    DivPH->addIncoming(Init, PH->getIncomingBlock(Entry));
+
+    // %cntph = phi i32 [ %cnt, %6 ], [ 0, %3 ]
+    PHINode *CountPH = PHINode::Create(Ty, 2, "cnt", PH);
+    CountPH->addIncoming(Init, PH->getIncomingBlock(Entry));
+
+    // %10 = icmp eq i32 %cnt, %1
+    ICmpInst *Cond = new ICmpInst(Div, ICmpInst::ICMP_EQ, CountPH,
+                                  Div->getOperand(1), "icmp");
+    // %11 = zext i1 %10 to i32
+    Instruction *ZExt =
+        CastInst::Create(Instruction::ZExt, Cond, Ty, "zext", Div);
+    // %div = add nuw nsw i32 %divph, %11
+    Instruction *DivRes =
+        BinaryOperator::Create(Instruction::Add, DivPH, ZExt, "add1", Div);
+    DivPH->addIncoming(DivRes, PH->getIncomingBlock(Latch));
+    // %15 = add nuw nsw i32 %k, 1
+    Instruction *CntAdd = BinaryOperator::Create(
+        Instruction::Add, CountPH, ConstantInt::get(Ty, 1), "add2", Div);
+    if (IsSigned) {
+      DivRes->setHasNoSignedWrap();
+      CntAdd->setHasNoSignedWrap();
+    } else {
+      DivRes->setHasNoUnsignedWrap();
+      CntAdd->setHasNoUnsignedWrap();
+    }
+    // %cnt = select i1 %10, i32 1, i32 %16
+    SelectInst *Sel =
+        SelectInst::Create(Cond, ConstantInt::get(Ty, 1), CntAdd, "sel", Div);
+    CountPH->addIncoming(Sel, PH->getIncomingBlock(Latch));
+
+    Div->replaceAllUsesWith(DivRes);
+    Div->eraseFromParent();
+
+    Changed = true;
   }
 }
 
@@ -5911,6 +6043,7 @@ LSRInstance::LSRInstance(Loop *L, IVUsers &IU, ScalarEvolution &SE,
 
   // First, perform some low-level loop optimizations.
   OptimizeShadowIV();
+  optimizeDiv();
   OptimizeLoopTermCond();
 
   // If loop preparation eliminates all interesting IV users, bail.
