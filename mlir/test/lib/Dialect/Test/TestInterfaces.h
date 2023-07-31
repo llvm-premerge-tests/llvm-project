@@ -17,6 +17,10 @@
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 
 namespace mlir {
+namespace detail {
+LogicalResult verifyTestExternalOpInterface(Operation *op);
+} // namespace detail
+
 namespace TestEffects {
 struct Effect : public SideEffects::Effect {
   using SideEffects::Effect::Effect;

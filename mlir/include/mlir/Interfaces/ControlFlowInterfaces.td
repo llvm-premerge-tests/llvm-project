@@ -101,7 +101,7 @@ def BranchOpInterface : OpInterface<"BranchOpInterface"> {
   ];
 
   let verify = [{
-    auto concreteOp = ::mlir::cast<ConcreteOp>($_op);
+    auto concreteOp = ::mlir::cast<::mlir::BranchOpInterface>($_op);
     for (unsigned i = 0, e = $_op->getNumSuccessors(); i != e; ++i) {
       ::mlir::SuccessorOperands operands = concreteOp.getSuccessorOperands(i);
       if (::mlir::failed(::mlir::detail::verifyBranchSuccessorOperands($_op, i, operands)))
@@ -201,8 +201,9 @@ def RegionBranchOpInterface : OpInterface<"RegionBranchOpInterface"> {
   ];
 
   let verify = [{
-    static_assert(!ConcreteOp::template hasTrait<OpTrait::ZeroRegions>(),
-                  "expected operation to have non-zero regions");
+    if ($_op->hasTrait<OpTrait::ZeroRegions>())
+      return $_op->emitError("RegionBranchOpInterface expects operation to "
+                             "have non-zero regions");
     return detail::verifyTypesAlongControlFlowEdges($_op);
   }];
   let verifyWithRegions = 1;
@@ -257,12 +258,17 @@ def RegionBranchTerminatorOpInterface :
   ];
 
   let verify = [{
-    static_assert(ConcreteOp::template hasTrait<OpTrait::IsTerminator>(),
-                  "expected operation to be a terminator");
-    static_assert(ConcreteOp::template hasTrait<OpTrait::ZeroResults>(),
-                  "expected operation to have zero results");
-    static_assert(ConcreteOp::template hasTrait<OpTrait::ZeroSuccessors>(),
-                  "expected operation to have zero successors");
+    if (!$_op->hasTrait<OpTrait::IsTerminator>())
+      return $_op->emitError("RegionBranchTerminatorOpInterface expects "
+                             "operation to be a terminator");
+    
+    if (!$_op->hasTrait<OpTrait::ZeroResults>())
+      return $_op->emitError("RegionBranchTerminatorOpInterface expects "
+                             "operation to have zero results");
+    
+    if (!$_op->hasTrait<OpTrait::ZeroSuccessors>())
+      return $_op->emitError("RegionBranchTerminatorOpInterface expects "
+                             "operation to have zero successors");
     return success();
   }];
 }

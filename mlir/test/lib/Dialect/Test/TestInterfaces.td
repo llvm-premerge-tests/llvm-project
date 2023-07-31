@@ -120,6 +120,13 @@ def TestExternalOpInterface : OpInterface<"TestExternalOpInterface"> {
   ];
 }
 
+def TestVerifierExternalOpInterface : OpInterface<"TestVerifierExternalOpInterface"> {
+  let cppNamespace = "::mlir";
+  let verify = [{
+    return ::mlir::detail::verifyTestExternalOpInterface($_op);
+  }];
+}
+
 def TestEffectOpInterface
     : EffectOpInterfaceBase<"TestEffectOpInterface",
                             "::mlir::TestEffects::Effect"> {

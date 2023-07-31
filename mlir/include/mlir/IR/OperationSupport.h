@@ -540,9 +540,25 @@ public:
       ConcreteOp::getPrintAssemblyFn()(op, printer, name);
     }
     LogicalResult verifyInvariants(Operation *op) final {
+      for (const auto &pair : getInterfaceMap().getVerifiers()) {
+        if (!pair.getPointer() ||
+            pair.getInt() != detail::InterfaceMap::kRegularVerifier) {
+          continue;
+        }
+        if (failed(pair.getPointer()(op)))
+          return failure();
+      }
       return ConcreteOp::getVerifyInvariantsFn()(op);
     }
     LogicalResult verifyRegionInvariants(Operation *op) final {
+      for (const auto &pair : getInterfaceMap().getVerifiers()) {
+        if (!pair.getPointer() ||
+            pair.getInt() != detail::InterfaceMap::kRegionVerifier) {
+          continue;
+        }
+        if (failed(pair.getPointer()(op)))
+          return failure();
+      }
       return ConcreteOp::getVerifyRegionInvariantsFn()(op);
     }
 

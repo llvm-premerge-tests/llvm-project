@@ -173,11 +173,30 @@ static void emitInterfaceMethodDoc(const InterfaceMethod &method,
   if (std::optional<StringRef> description = method.getDescription())
     tblgen::emitDescriptionComment(*description, os, prefix);
 }
+
+static void abortOnInvalidMethodName(const InterfaceMethod &method,
+                                     ArrayRef<StringRef> forbiddenNames,
+                                     StringRef interfaceName) {
+  for (StringRef name : forbiddenNames) {
+    if (method.getName() == name) {
+      PrintFatalError(
+          formatv("'{0}' method cannot be specified as interface "
+                  "method for '{1}'; use the 'verify' field instead",
+                  name, interfaceName));
+    }
+  }
+}
+
 static void emitInterfaceDefMethods(StringRef interfaceQualName,
                                     const Interface &interface,
                                     StringRef valueType, const Twine &implValue,
                                     raw_ostream &os, bool isOpInterface) {
   for (auto &method : interface.getMethods()) {
+    abortOnInvalidMethodName(
+        method,
+        {"verifyInterfaceInvariants", "verifyInterfaceRegionInvariants"},
+        interface.getCppNamespace());
+
     emitInterfaceMethodDoc(method, os);
     emitCPPType(method.getReturnType(), os);
     os << interfaceQualName << "::";
@@ -214,6 +233,20 @@ static void emitInterfaceDef(const Interface &interface, StringRef valueType,
     emitInterfaceDefMethods(interfaceQualName, base, valueType,
                             "getImpl()->impl" + base.getName(), os,
                             isOpInterface);
+  }
+
+  if (std::optional<StringRef> verifier = interface.getVerify()) {
+    // TODO: this can be relaxed.
+    assert(isa<OpInterface>(interface) && "only OpInterface supports 'verify'");
+
+    tblgen::FmtContext verifyCtx;
+    verifyCtx.addSubst("_op", "op");
+    os << llvm::formatv(
+              "::mlir::LogicalResult {0}::{1}(::mlir::Operation *op) ",
+              interfaceQualName,
+              (interface.verifyWithRegions() ? "verifyInterfaceRegionInvariants"
+                                             : "verifyInterfaceInvariants"))
+       << "{\n  " << tblgen::tgfmt(verifier->trim(), &verifyCtx) << "\n}\n";
   }
 }
 
@@ -456,11 +489,11 @@ void InterfaceGenerator::emitTraitDecl(const Interface &interface,
   bool isOpInterface = isa<OpInterface>(interface);
   for (auto &method : interface.getMethods()) {
     // Flag interface methods named verifyTrait.
-    if (method.getName() == "verifyTrait")
-      PrintFatalError(
-          formatv("'verifyTrait' method cannot be specified as interface "
-                  "method for '{0}'; use the 'verify' field instead",
-                  interfaceName));
+    // if (method.getName() == "verifyTrait")
+    //   PrintFatalError(
+    //       formatv("'verifyTrait' method cannot be specified as interface "
+    //               "method for '{0}'; use the 'verify' field instead",
+    //               interfaceName));
     auto defaultImpl = method.getDefaultImplementation();
     if (!defaultImpl)
       continue;
@@ -474,18 +507,19 @@ void InterfaceGenerator::emitTraitDecl(const Interface &interface,
        << "\n    }\n";
   }
 
-  if (auto verify = interface.getVerify()) {
-    assert(isa<OpInterface>(interface) && "only OpInterface supports 'verify'");
+  // if (auto verify = interface.getVerify()) {
+  //   assert(isa<OpInterface>(interface) && "only OpInterface supports
+  //   'verify'");
 
-    tblgen::FmtContext verifyCtx;
-    verifyCtx.addSubst("_op", "op");
-    os << llvm::formatv(
-              "    static ::mlir::LogicalResult {0}(::mlir::Operation *op) ",
-              (interface.verifyWithRegions() ? "verifyRegionTrait"
-                                             : "verifyTrait"))
-       << "{\n      " << tblgen::tgfmt(verify->trim(), &verifyCtx)
-       << "\n    }\n";
-  }
+  //   tblgen::FmtContext verifyCtx;
+  //   verifyCtx.addSubst("_op", "op");
+  //   os << llvm::formatv(
+  //             "    static ::mlir::LogicalResult {0}(::mlir::Operation *op) ",
+  //             (interface.verifyWithRegions() ? "verifyRegionTrait"
+  //                                            : "verifyTrait"))
+  //      << "{\n      " << tblgen::tgfmt(verify->trim(), &verifyCtx)
+  //      << "\n    }\n";
+  // }
   if (auto extraTraitDecls = interface.getExtraTraitClassDeclaration())
     os << tblgen::tgfmt(*extraTraitDecls, &traitMethodFmt) << "\n";
   if (auto extraTraitDecls = interface.getExtraSharedClassDeclaration())
@@ -577,6 +611,16 @@ void InterfaceGenerator::emitInterfaceDecl(const Interface &interface) {
 
     // Inherit the base interface's methods.
     emitInterfaceDeclMethods(base, os, valueType, isOpInterface, extraDeclsFmt);
+  }
+
+  if (std::optional<StringRef> verifier = interface.getVerify()) {
+    assert(isa<OpInterface>(interface) && "only OpInterface supports 'verify'");
+
+    os << "  /// Invariant verifier.\n";
+    os << llvm::formatv(
+        "  static ::mlir::LogicalResult {0}(::mlir::Operation *op);\n",
+        (interface.verifyWithRegions() ? "verifyInterfaceRegionInvariants"
+                                       : "verifyInterfaceInvariants"));
   }
 
   // Emit classof code if necessary.

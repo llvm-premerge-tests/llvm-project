@@ -185,6 +185,13 @@ getDynamicCustomParserPrinterOp(TestDialect *dialect) {
 // TestDialect
 //===----------------------------------------------------------------------===//
 
+namespace {
+template <typename OpTy>
+class TestVerifierExternalOpInterfaceModel
+    : public TestVerifierExternalOpInterface::ExternalModel<
+          TestVerifierExternalOpInterfaceModel<OpTy>, OpTy> {};
+} // namespace
+
 static void testSideEffectOpGetEffect(
     Operation *op,
     SmallVectorImpl<SideEffects::EffectInstance<TestEffects::Effect>> &effects);
@@ -221,6 +228,12 @@ void TestDialect::initialize() {
   registerDynamicOp(getDynamicOneOperandTwoResultsOp(this));
   registerDynamicOp(getDynamicCustomParserPrinterOp(this));
   registerInterfaces();
+  test::TestTriggerInterfaceVerificationFailure::attachInterface<
+      TestVerifierExternalOpInterfaceModel<
+          TestTriggerInterfaceVerificationFailure>>(*getContext());
+  test::TestSucceedInterfaceVerification::attachInterface<
+      TestVerifierExternalOpInterfaceModel<TestSucceedInterfaceVerification>>(
+      *getContext());
   allowUnknownOperations();
 
   // Instantiate our fallback op interface that we'll use on specific

@@ -161,7 +161,9 @@ def Symbol : OpInterface<"SymbolOpInterface"> {
 
   let verify = [{
     // If this is an optional symbol, bail out early if possible.
-    auto concreteOp = cast<ConcreteOp>($_op);
+    auto concreteOp = dyn_cast<::mlir::SymbolOpInterface>($_op);
+    if (!concreteOp)
+      return success(); // TODO: this is a workaround around some PDLL weirdness
     if (concreteOp.isOptionalSymbol()) {
       if(!concreteOp->getAttr(::mlir::SymbolTable::getSymbolAttrName()))
         return success();

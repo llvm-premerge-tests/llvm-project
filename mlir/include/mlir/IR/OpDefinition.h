@@ -1876,8 +1876,9 @@ private:
                   "attaching an interface to the wrong op kind");
   }
 
-  /// Returns an interface map containing the interfaces registered to this
-  /// operation.
+  /// Returns an interface map containing the interfaces *statically* registered
+  /// to this operation, i.e. through traits. Interfaces attached dynamically to
+  /// this operation will can be queried through the OperationName.
   static detail::InterfaceMap getInterfaceMap() {
     return detail::InterfaceMap::template get<Traits<ConcreteType>...>();
   }
@@ -2042,6 +2043,8 @@ private:
   static LogicalResult verifyInvariants(Operation *op) {
     static_assert(hasNoDataMembers(),
                   "Op class shouldn't define new data members");
+    assert(op->getName().isRegistered() && "expected op to be registered");
+    // TODO: call verifier.
     return failure(
         failed(op_definition_impl::verifyTraits<Traits<ConcreteType>...>(op)) ||
         failed(cast<ConcreteType>(op).verify()));

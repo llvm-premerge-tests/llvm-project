@@ -161,83 +161,8 @@ Attribute removeResultAttr(ConcreteType op, unsigned index, StringAttr name) {
   return removedAttr;
 }
 
-/// This function defines the internal implementation of the `verifyTrait`
-/// method on FunctionOpInterface::Trait.
-template <typename ConcreteOp>
-LogicalResult verifyTrait(ConcreteOp op) {
-  if (failed(op.verifyType()))
-    return failure();
-
-  if (ArrayAttr allArgAttrs = op.getAllArgAttrs()) {
-    unsigned numArgs = op.getNumArguments();
-    if (allArgAttrs.size() != numArgs) {
-      return op.emitOpError()
-             << "expects argument attribute array to have the same number of "
-                "elements as the number of function arguments, got "
-             << allArgAttrs.size() << ", but expected " << numArgs;
-    }
-    for (unsigned i = 0; i != numArgs; ++i) {
-      DictionaryAttr argAttrs =
-          llvm::dyn_cast_or_null<DictionaryAttr>(allArgAttrs[i]);
-      if (!argAttrs) {
-        return op.emitOpError() << "expects argument attribute dictionary "
-                                   "to be a DictionaryAttr, but got `"
-                                << allArgAttrs[i] << "`";
-      }
-
-      // Verify that all of the argument attributes are dialect attributes, i.e.
-      // that they contain a dialect prefix in their name.  Call the dialect, if
-      // registered, to verify the attributes themselves.
-      for (auto attr : argAttrs) {
-        if (!attr.getName().strref().contains('.'))
-          return op.emitOpError("arguments may only have dialect attributes");
-        if (Dialect *dialect = attr.getNameDialect()) {
-          if (failed(dialect->verifyRegionArgAttribute(op, /*regionIndex=*/0,
-                                                       /*argIndex=*/i, attr)))
-            return failure();
-        }
-      }
-    }
-  }
-  if (ArrayAttr allResultAttrs = op.getAllResultAttrs()) {
-    unsigned numResults = op.getNumResults();
-    if (allResultAttrs.size() != numResults) {
-      return op.emitOpError()
-             << "expects result attribute array to have the same number of "
-                "elements as the number of function results, got "
-             << allResultAttrs.size() << ", but expected " << numResults;
-    }
-    for (unsigned i = 0; i != numResults; ++i) {
-      DictionaryAttr resultAttrs =
-          llvm::dyn_cast_or_null<DictionaryAttr>(allResultAttrs[i]);
-      if (!resultAttrs) {
-        return op.emitOpError() << "expects result attribute dictionary "
-                                   "to be a DictionaryAttr, but got `"
-                                << allResultAttrs[i] << "`";
-      }
-
-      // Verify that all of the result attributes are dialect attributes, i.e.
-      // that they contain a dialect prefix in their name.  Call the dialect, if
-      // registered, to verify the attributes themselves.
-      for (auto attr : resultAttrs) {
-        if (!attr.getName().strref().contains('.'))
-          return op.emitOpError("results may only have dialect attributes");
-        if (Dialect *dialect = attr.getNameDialect()) {
-          if (failed(dialect->verifyRegionResultAttribute(op, /*regionIndex=*/0,
-                                                          /*resultIndex=*/i,
-                                                          attr)))
-            return failure();
-        }
-      }
-    }
-  }
-
-  // Check that the op has exactly one region for the body.
-  if (op->getNumRegions() != 1)
-    return op.emitOpError("expects one region");
-
-  return op.verifyBody();
-}
+/// Verify the invariants of the function op interface.
+LogicalResult verifyInterfaceInvariants(FunctionOpInterface op);
 } // namespace function_interface_impl
 } // namespace mlir
 

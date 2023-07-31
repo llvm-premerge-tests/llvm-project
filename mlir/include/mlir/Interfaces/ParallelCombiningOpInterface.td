@@ -52,7 +52,7 @@ def ParallelCombiningOpInterface : OpInterface<"ParallelCombiningOpInterface"> {
   ];
   // TODO: Single region single block interface on interfaces ?
   let verify = [{
-    return verifyParallelCombiningOpInterface($_op);
+    return ::mlir::detail::verifyParallelCombiningOpInterface($_op);
   }];
 }
 

@@ -13,13 +13,32 @@
 #ifndef MLIR_SUPPORT_INTERFACESUPPORT_H
 #define MLIR_SUPPORT_INTERFACESUPPORT_H
 
+#include "mlir/Support/LogicalResult.h"
 #include "mlir/Support/TypeID.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/PointerIntPair.h"
 #include "llvm/Support/TypeName.h"
 
 namespace mlir {
 namespace detail {
+
+template <typename T, typename Arg>
+using has_verify_interface_invariants =
+    decltype(T::verifyInterfaceInvariants(std::declval<Arg>()));
+template <typename T>
+using detect_verify_interface_invariants =
+    llvm::is_detected<has_verify_interface_invariants, T,
+                      typename T::ValueType>;
+
+template <typename T, typename Arg>
+using has_verify_interface_region_invariants =
+    decltype(T::verifyInterfaceRegionInvariants(std::declval<Arg>()));
+template <typename T>
+using detect_verify_interface_region_invariants =
+    llvm::is_detected<has_verify_interface_region_invariants, T,
+                      typename T::ValueType>;
+
 //===----------------------------------------------------------------------===//
 // Interface
 //===----------------------------------------------------------------------===//
@@ -126,6 +145,37 @@ public:
   /// Define an accessor for the ID of this interface.
   static TypeID getInterfaceID() { return TypeID::get<ConcreteType>(); }
 
+  static LogicalResult verifyInvariants(void *value) {
+    if constexpr (!detect_verify_interface_invariants<ConcreteType>::value)
+      return success();
+
+    if constexpr (std::is_pointer_v<ValueT>) {
+      return ConcreteType::verifyInterfaceInvariants(
+          reinterpret_cast<ValueT>(value));
+    } else {
+      return ConcreteType::verifyInterfaceInvariants(
+          reinterpret_cast<typename ValueT::ImplType *>(value));
+    }
+  }
+
+  static LogicalResult verifyRegionInvariants(void *value) {
+    if constexpr (!detect_verify_interface_region_invariants<
+                      ConcreteType>::value)
+      return success();
+
+    if constexpr (std::is_pointer_v<ValueT>) {
+      return ConcreteType::verifyInterfaceRegionInvariants(
+          reinterpret_cast<ValueT>(value));
+    } else {
+      return ConcreteType::verifyInterfaceRegionInvariants(
+          reinterpret_cast<typename ValueT::ImplType *>(value));
+    }
+  }
+
+  // static LogicalResult verifyInterfaceInvariants(ValueT value) {
+  //   return success();
+  // }
+
 protected:
   /// Get the raw concept in the correct derived concept type.
   const Concept *getImpl() const { return conceptImpl; }
@@ -172,17 +222,26 @@ class InterfaceMap {
   using detect_initialize_method = llvm::is_detected<has_initialize_method, T>;
 
 public:
+  using InterfaceVerifierFn = LogicalResult (*)(void *);
+  constexpr static const int kRegularVerifier = 0;
+  constexpr static const int kRegionVerifier = 1;
+  struct Entry {
+    TypeID typeID;
+    void *interfaceConcept;
+    llvm::PointerIntPair<InterfaceVerifierFn, 1> interfaceVerifier;
+  };
+
   InterfaceMap() = default;
   InterfaceMap(InterfaceMap &&) = default;
   InterfaceMap &operator=(InterfaceMap &&rhs) {
-    for (auto &it : interfaces)
-      free(it.second);
+    for (Entry &it : interfaces)
+      free(it.interfaceConcept);
     interfaces = std::move(rhs.interfaces);
     return *this;
   }
   ~InterfaceMap() {
-    for (auto &it : interfaces)
-      free(it.second);
+    for (Entry &it : interfaces)
+      free(it.interfaceConcept);
   }
 
   /// Construct an InterfaceMap with the given set of template types. For
@@ -216,6 +275,13 @@ public:
     (insertModel<IfaceModels>(), ...);
   }
 
+  auto getVerifiers() {
+    // TODO: store verifiers separately so there is no non-determinism in their
+    // order based on TypeID.
+    return llvm::map_range(
+        interfaces, [](const Entry &entry) { return entry.interfaceVerifier; });
+  }
+
 private:
   /// Insert the given interface type into the map, ignoring it if it doesn't
   /// actually represent an interface.
@@ -239,11 +305,29 @@ private:
     if constexpr (detect_initialize_method<InterfaceModel>::value)
       model->initializeInterfaceConcept(*this);
 
-    insert(InterfaceModel::Interface::getInterfaceID(), model);
+    llvm::PointerIntPair<InterfaceVerifierFn, 1> verifier;
+    constexpr bool hasRegionVerifier =
+        detect_verify_interface_region_invariants<
+            typename InterfaceModel::Interface>::value;
+    if constexpr (detect_verify_interface_invariants<
+                      typename InterfaceModel::Interface>::value) {
+      static_assert(!hasRegionVerifier,
+                    "interface cannot have both verifyInterfaceInvariants and "
+                    "verifyInterfaceRegionInvariants");
+      verifier.setPointerAndInt(&InterfaceModel::Interface::verifyInvariants,
+                                kRegularVerifier);
+    }
+    if constexpr (hasRegionVerifier) {
+      verifier.setPointerAndInt(
+          &InterfaceModel::Interface::verifyRegionInvariants, kRegionVerifier);
+    }
+
+    insert(InterfaceModel::Interface::getInterfaceID(), model, verifier);
   }
   /// Insert the given set of interface id and concept implementation into the
   /// interface map.
-  void insert(TypeID interfaceId, void *conceptImpl);
+  void insert(TypeID interfaceId, void *conceptImpl,
+              llvm::PointerIntPair<InterfaceVerifierFn, 1> verifier);
 
   /// Compare two TypeID instances by comparing the underlying pointer.
   static bool compare(TypeID lhs, TypeID rhs) {
@@ -255,13 +339,14 @@ private:
   void *lookup(TypeID id) const {
     const auto *it =
         llvm::lower_bound(interfaces, id, [](const auto &it, TypeID id) {
-          return compare(it.first, id);
+          return compare(it.typeID, id);
         });
-    return (it != interfaces.end() && it->first == id) ? it->second : nullptr;
+    return (it != interfaces.end() && it->typeID == id) ? it->interfaceConcept
+                                                        : nullptr;
   }
 
   /// A list of interface instances, sorted by TypeID.
-  SmallVector<std::pair<TypeID, void *>> interfaces;
+  SmallVector<Entry> interfaces;
 };
 
 template <typename ConcreteType, typename ValueT, typename Traits,

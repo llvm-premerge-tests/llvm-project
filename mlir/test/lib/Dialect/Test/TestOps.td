@@ -2828,4 +2828,12 @@ def TestStoreWithARegionTerminator : TEST_Op<"store_with_a_region_terminator",
   let assemblyFormat = "attr-dict";
 }
 
+def TestTriggerInterfaceVerificationFailure : TEST_Op<"trigger_interface_verification_failure"> {
+  let assemblyFormat = "attr-dict";
+}
+
+def TestSucceedInterfaceVerification : TEST_Op<"succeed_interface_verification"> {
+  let assemblyFormat = "attr-dict";
+}
+
 #endif // TEST_OPS

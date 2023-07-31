@@ -18,16 +18,18 @@
 
 using namespace mlir;
 
-void detail::InterfaceMap::insert(TypeID interfaceId, void *conceptImpl) {
+void detail::InterfaceMap::insert(
+    TypeID interfaceId, void *conceptImpl,
+    llvm::PointerIntPair<InterfaceVerifierFn, 1> verifier) {
   // Insert directly into the right position to keep the interfaces sorted.
   auto *it =
       llvm::lower_bound(interfaces, interfaceId, [](const auto &it, TypeID id) {
-        return compare(it.first, id);
+        return compare(it.typeID, id);
       });
-  if (it != interfaces.end() && it->first == interfaceId) {
+  if (it != interfaces.end() && it->typeID == interfaceId) {
     LLVM_DEBUG(llvm::dbgs() << "Ignoring repeated interface registration\n");
     free(conceptImpl);
     return;
   }
-  interfaces.insert(it, {interfaceId, conceptImpl});
+  interfaces.insert(it, {interfaceId, conceptImpl, verifier});
 }

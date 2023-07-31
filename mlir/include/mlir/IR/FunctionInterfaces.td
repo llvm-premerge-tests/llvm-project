@@ -601,7 +601,10 @@ def FunctionOpInterface : OpInterface<"FunctionOpInterface", [Symbol]> {
     }
   }];
 
-  let verify = "return function_interface_impl::verifyTrait(cast<ConcreteOp>($_op));";
+  let verify = [{
+    return function_interface_impl::verifyInterfaceInvariants(
+        cast<::mlir::FunctionOpInterface>($_op));
+  }];
 }
 
 #endif // MLIR_IR_FUNCTIONINTERFACES_TD_

@@ -49,7 +49,7 @@ def ShapedDimOpInterface : OpInterface<"ShapedDimOpInterface"> {
   ];
 
   let verify = [{
-    return verifyShapedDimOpInterface($_op);
+    return ::mlir::detail::verifyShapedDimOpInterface($_op);
   }];
 }
 
