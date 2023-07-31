@@ -2003,8 +2003,10 @@ std::string HeaderSearch::suggestPathToFileForDiagnostics(
     } else if (DL.isFramework()) {
       StringRef Dir = DL.getFrameworkDirRef()->getName();
       if (CheckDir(Dir)) {
+        // Framework includes by convention use <> so mark these as system
+        // so the caller know to use <> instead of "" as well.
         if (IsSystem)
-          *IsSystem = BestPrefixLength && isSystem(DL.getDirCharacteristic());
+          *IsSystem = BestPrefixLength;
         BestPrefixIsFramework = true;
       }
     }

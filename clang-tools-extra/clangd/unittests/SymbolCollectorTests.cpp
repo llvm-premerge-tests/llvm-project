@@ -702,9 +702,9 @@ TEST_F(SymbolCollectorTest, ObjCFrameworkIncludeHeader) {
   EXPECT_THAT(
       Symbols,
       UnorderedElementsAre(
-          AllOf(qName("NSObject"), includeHeader("\"Foundation/NSObject.h\"")),
+          AllOf(qName("NSObject"), includeHeader("<Foundation/NSObject.h>")),
           AllOf(qName("PrivateClass"),
-                includeHeader("\"Foundation/NSObject+Private.h\"")),
+                includeHeader("<Foundation/NSObject+Private.h>")),
           AllOf(qName("Container"))));
 
   // After adding the umbrella headers, we should use that spelling instead.
@@ -725,9 +725,9 @@ TEST_F(SymbolCollectorTest, ObjCFrameworkIncludeHeader) {
   EXPECT_THAT(Symbols,
               UnorderedElementsAre(
                   AllOf(qName("NSObject"),
-                        includeHeader("\"Foundation/Foundation.h\"")),
+                        includeHeader("<Foundation/Foundation.h>")),
                   AllOf(qName("PrivateClass"),
-                        includeHeader("\"Foundation/Foundation_Private.h\"")),
+                        includeHeader("<Foundation/Foundation_Private.h>")),
                   AllOf(qName("Container"))));
 
   runSymbolCollector(Header, Main,
