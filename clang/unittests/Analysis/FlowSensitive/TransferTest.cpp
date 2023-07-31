@@ -3836,6 +3836,58 @@ TEST(TransferTest, LoopWithStructReferenceAssignmentConverges) {
       });
 }
 
+TEST(TransferTest, LoopDereferencingChangingPointerConverges) {
+  std::string Code = R"cc(
+    bool some_condition();
+
+    void target(int i1, int i2) {
+      int *p = &i1;
+      while (true) {
+        (void)*p;
+        if (some_condition())
+          p = &i1;
+        else
+          p = &i2;
+      }
+    }
+  )cc";
+  // The key property that we are verifying is implicit in `runDataflow` --
+  // namely, that the analysis succeeds, rather than hitting the maximum number
+  // of iterations.
+  runDataflow(
+      Code,
+      [](const llvm::StringMap<DataflowAnalysisState<NoopLattice>> &Results,
+         ASTContext &ASTCtx) {});
+}
+
+TEST(TransferTest, LoopDereferencingChangingRecordPointerConverges) {
+  std::string Code = R"cc(
+    struct Lookup {
+      int x;
+    };
+
+    bool some_condition();
+
+    void target(Lookup l1, Lookup l2) {
+      Lookup *l = &l1;
+      while (true) {
+        (void)l->x;
+        if (some_condition())
+          l = &l1;
+        else
+          l = &l2;
+      }
+    }
+  )cc";
+  // The key property that we are verifying is implicit in `runDataflow` --
+  // namely, that the analysis succeeds, rather than hitting the maximum number
+  // of iterations.
+  runDataflow(
+      Code,
+      [](const llvm::StringMap<DataflowAnalysisState<NoopLattice>> &Results,
+         ASTContext &ASTCtx) {});
+}
+
 TEST(TransferTest, DoesNotCrashOnUnionThisExpr) {
   std::string Code = R"(
     union Union {

@@ -208,18 +208,31 @@ public:
   void popCall(const CallExpr *Call, const Environment &CalleeEnv);
   void popCall(const CXXConstructExpr *Call, const Environment &CalleeEnv);
 
-  /// Returns true if and only if the environment is equivalent to `Other`, i.e
-  /// the two environments:
+  /// Returns true if and only if the environment for a particular CFG block is
+  /// equivalent to `Other`, i.e the two environments:
   ///  - have the same mappings from declarations to storage locations,
-  ///  - have the same mappings from expressions to storage locations,
+  ///  - have the same mappings from expressions accessed outside the block to
+  //     storage locations,
   ///  - have the same or equivalent (according to `Model`) values assigned to
   ///    the same storage locations.
   ///
+  /// Note that the expressions accessed outside the block are exactly the
+  /// children of the block terminator. `Terminator` should be this block
+  /// terminator, or null if the block does not have a terminator.
+  ///
+  /// The storage locations for all other expressions are only accessed while
+  /// processing the block. They can still affect the results of the block, but
+  /// only indirectly, in one of two ways:
+  /// - If they are indirect descendants of the terminator and therefore affect
+  ///   the values of the terminator's direct children.
+  /// - If they affect the entries in one of the other mappings.
+  ///
   /// Requirements:
   ///
-  ///  `Other` and `this` must use the same `DataflowAnalysisContext`.
-  bool equivalentTo(const Environment &Other,
-                    Environment::ValueModel &Model) const;
+  ///  `Other` and `this` must be environments for the same block and must use
+  ///  the same `DataflowAnalysisContext`.
+  bool equivalentTo(const Environment &Other, Environment::ValueModel &Model,
+                    const Stmt *Terminator) const;
 
   /// Joins two environments by taking the intersection of storage locations and
   /// values that are stored in them. Distinct values that are assigned to the
