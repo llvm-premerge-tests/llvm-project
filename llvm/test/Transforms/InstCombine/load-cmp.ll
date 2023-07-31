@@ -334,3 +334,120 @@ define i1 @test10_struct_arr_noinbounds_i64(i64 %x) {
   %r = icmp eq i32 %q, 9
   ret i1 %r
 }
+
+@CG = constant [4 x i32] [i32 1, i32 2, i32 3, i32 4]
+
+define i1 @cmp_load_constant_array0(i64 %x){
+; CHECK-LABEL: @cmp_load_constant_array0(
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[COND:%.*]] = icmp ult i64 [[X:%.*]], 2
+; CHECK-NEXT:    br i1 [[COND]], label [[CASE1:%.*]], label [[CASE2:%.*]]
+; CHECK:       case2:
+; CHECK-NEXT:    ret i1 false
+; CHECK:       case1:
+; CHECK-NEXT:    [[TMP0:%.*]] = trunc i64 [[X]] to i32
+; CHECK-NEXT:    [[ISOK_PTR:%.*]] = getelementptr inbounds i32, ptr @CG, i32 [[TMP0]]
+; CHECK-NEXT:    [[ISOK:%.*]] = load i32, ptr [[ISOK_PTR]], align 4
+; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp ult i32 [[ISOK]], 3
+; CHECK-NEXT:    ret i1 [[COND_INFERRED]]
+;
+entry:
+  %cond = icmp ult i64 %x, 2
+  br i1 %cond, label %case1, label %case2
+
+case2:
+  ret i1 0
+
+case1:
+  %isOK_ptr = getelementptr inbounds i32, ptr @CG, i64 %x
+  %isOK = load i32, ptr %isOK_ptr
+  %cond_inferred = icmp ult i32 %isOK, 3
+  ret i1 %cond_inferred
+}
+
+define i1 @cmp_load_constant_array1(i64 %x){
+; CHECK-LABEL: @cmp_load_constant_array1(
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[COND:%.*]] = icmp ult i64 [[X:%.*]], 2
+; CHECK-NEXT:    br i1 [[COND]], label [[CASE1:%.*]], label [[CASE2:%.*]]
+; CHECK:       case2:
+; CHECK-NEXT:    ret i1 false
+; CHECK:       case1:
+; CHECK-NEXT:    [[TMP0:%.*]] = trunc i64 [[X]] to i32
+; CHECK-NEXT:    [[ISOK_PTR:%.*]] = getelementptr inbounds i32, ptr @CG, i32 [[TMP0]]
+; CHECK-NEXT:    [[ISOK:%.*]] = load i32, ptr [[ISOK_PTR]], align 4
+; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp ugt i32 [[ISOK]], 10
+; CHECK-NEXT:    ret i1 [[COND_INFERRED]]
+;
+entry:
+  %cond = icmp ult i64 %x, 2
+  br i1 %cond, label %case1, label %case2
+
+case2:
+  ret i1 0
+
+case1:
+  %isOK_ptr = getelementptr inbounds i32, ptr @CG, i64 %x
+  %isOK = load i32, ptr %isOK_ptr
+  %cond_inferred = icmp ugt i32 %isOK, 10
+  ret i1 %cond_inferred
+}
+
+define i1 @cmp_load_constant_array_fail0(i64 %x) {
+; CHECK-LABEL: @cmp_load_constant_array_fail0(
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[COND:%.*]] = icmp ult i64 [[X:%.*]], 6
+; CHECK-NEXT:    br i1 [[COND]], label [[CASE1:%.*]], label [[CASE2:%.*]]
+; CHECK:       case2:
+; CHECK-NEXT:    ret i1 false
+; CHECK:       case1:
+; CHECK-NEXT:    [[TMP0:%.*]] = trunc i64 [[X]] to i32
+; CHECK-NEXT:    [[ISOK_PTR:%.*]] = getelementptr inbounds i32, ptr @CG, i32 [[TMP0]]
+; CHECK-NEXT:    [[ISOK:%.*]] = load i32, ptr [[ISOK_PTR]], align 4
+; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp ult i32 [[ISOK]], 5
+; CHECK-NEXT:    ret i1 [[COND_INFERRED]]
+;
+entry:
+  %cond = icmp ult i64 %x, 6
+  br i1 %cond, label %case1, label %case2
+
+case2:
+  ret i1 0
+
+case1:
+  %isOK_ptr = getelementptr inbounds i32, ptr @CG, i64 %x
+  %isOK = load i32, ptr %isOK_ptr
+  %cond_inferred = icmp ult i32 %isOK, 5
+  ret i1 %cond_inferred
+}
+
+define i1 @cmp_load_constant_array_fail1(i64 %x){
+; CHECK-LABEL: @cmp_load_constant_array_fail1(
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[TMP0:%.*]] = add i64 [[X:%.*]], -1
+; CHECK-NEXT:    [[COND3:%.*]] = icmp ult i64 [[TMP0]], 2
+; CHECK-NEXT:    br i1 [[COND3]], label [[CASE1:%.*]], label [[CASE2:%.*]]
+; CHECK:       case2:
+; CHECK-NEXT:    ret i1 false
+; CHECK:       case1:
+; CHECK-NEXT:    [[TMP1:%.*]] = trunc i64 [[X]] to i32
+; CHECK-NEXT:    [[ISOK_PTR:%.*]] = getelementptr inbounds i32, ptr @CG, i32 [[TMP1]]
+; CHECK-NEXT:    [[ISOK:%.*]] = load i32, ptr [[ISOK_PTR]], align 4
+; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp ugt i32 [[ISOK]], 1
+; CHECK-NEXT:    ret i1 [[COND_INFERRED]]
+;
+entry:
+  %cond1 = icmp ult i64 %x, 3
+  %cond2 = icmp ugt i64 %x, 0
+  %cond3 = and i1 %cond1,%cond2
+  br i1 %cond3, label %case1, label %case2
+
+case2:
+  ret i1 0
+
+case1:
+  %isOK_ptr = getelementptr inbounds i32, ptr @CG, i64 %x
+  %isOK = load i32, ptr %isOK_ptr
+  %cond_inferred = icmp ugt i32 %isOK, 1
+  ret i1 %cond_inferred
+}
