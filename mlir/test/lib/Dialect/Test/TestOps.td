@@ -694,6 +694,12 @@ def OperandZeroAndResultHaveSameRank :
   let results = (outs AnyShaped:$res);
 }
 
+def OperandsAndResultsHaveSameRankIfKnown :
+    TEST_Op<"operands_and_result_have_same_rank_if_known", [AllRanksMatchIfKnown]> {
+  let arguments = (ins AnyShaped:$x, AnyShaped:$y);
+  let results = (outs AnyShaped:$res);
+}
+
 def OperandZeroAndResultHaveSameShape :
     TEST_Op<"operand0_and_result_have_same_shape",
             [AllShapesMatch<["x", "res"]>]> {

@@ -369,4 +369,7 @@ def ReifyRankedShapedTypeOpInterface :
 // TODO: Change from hard coded to utilizing type inference trait.
 def SameOperandsAndResultType : NativeOpTrait<"SameOperandsAndResultType">;
 
+// Op has the same ranks for all operands and results types, if known.
+def AllRanksMatchIfKnown : NativeOpTrait<"AllRanksMatchIfKnown">;
+
 #endif // MLIR_INFERTYPEOPINTERFACE
