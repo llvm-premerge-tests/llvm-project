@@ -1202,6 +1202,15 @@ def : GCNPat <
                  (as_i1timm $bound_ctrl))
 >;
 
+def : GCNPat <
+  (f32 (int_amdgcn_update_dpp f32:$old, f32:$src, timm:$dpp_ctrl,
+                              timm:$row_mask, timm:$bank_mask,
+                              timm:$bound_ctrl)),
+  (V_MOV_B32_dpp VGPR_32:$old, VGPR_32:$src, (as_i32timm $dpp_ctrl),
+                 (as_i32timm $row_mask), (as_i32timm $bank_mask),
+                 (as_i1timm $bound_ctrl))
+>;
+
 } // End OtherPredicates = [isGFX8Plus]
 
 let OtherPredicates = [isGFX8Plus] in {
