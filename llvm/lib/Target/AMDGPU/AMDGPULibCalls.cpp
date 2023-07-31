@@ -72,9 +72,6 @@ private:
   // rootn
   bool fold_rootn(CallInst *CI, IRBuilder<> &B, const FuncInfo &FInfo);
 
-  // fma/mad
-  bool fold_fma_mad(CallInst *CI, IRBuilder<> &B, const FuncInfo &FInfo);
-
   // -fuse-native for sincos
   bool sincosUseNative(CallInst *aCI, const FuncInfo &FInfo);
 
@@ -632,12 +629,6 @@ bool AMDGPULibCalls::fold(CallInst *CI, AliasAnalysis *AA) {
     // skip vector function
     return (getVecSize(FInfo) != 1) ? false : fold_rootn(CI, B, FInfo);
 
-  case AMDGPULibFunc::EI_FMA:
-  case AMDGPULibFunc::EI_MAD:
-  case AMDGPULibFunc::EI_NFMA:
-    // skip vector function
-    return (getVecSize(FInfo) != 1) ? false : fold_fma_mad(CI, B, FInfo);
-
   case AMDGPULibFunc::EI_SQRT:
     return isUnsafeMath(CI) && fold_sqrt(CI, B, FInfo);
   case AMDGPULibFunc::EI_COS:
@@ -1070,50 +1061,6 @@ bool AMDGPULibCalls::fold_rootn(CallInst *CI, IRBuilder<> &B,
       return true;
     }
   }
-  return false;
-}
-
-bool AMDGPULibCalls::fold_fma_mad(CallInst *CI, IRBuilder<> &B,
-                                  const FuncInfo &FInfo) {
-  Value *opr0 = CI->getArgOperand(0);
-  Value *opr1 = CI->getArgOperand(1);
-  Value *opr2 = CI->getArgOperand(2);
-
-  ConstantFP *CF0 = dyn_cast<ConstantFP>(opr0);
-  ConstantFP *CF1 = dyn_cast<ConstantFP>(opr1);
-  if ((CF0 && CF0->isZero()) || (CF1 && CF1->isZero())) {
-    // fma/mad(a, b, c) = c if a=0 || b=0
-    LLVM_DEBUG(errs() << "AMDIC: " << *CI << " ---> " << *opr2 << "\n");
-    replaceCall(opr2);
-    return true;
-  }
-  if (CF0 && CF0->isExactlyValue(1.0f)) {
-    // fma/mad(a, b, c) = b+c if a=1
-    LLVM_DEBUG(errs() << "AMDIC: " << *CI << " ---> " << *opr1 << " + " << *opr2
-                      << "\n");
-    Value *nval = B.CreateFAdd(opr1, opr2, "fmaadd");
-    replaceCall(nval);
-    return true;
-  }
-  if (CF1 && CF1->isExactlyValue(1.0f)) {
-    // fma/mad(a, b, c) = a+c if b=1
-    LLVM_DEBUG(errs() << "AMDIC: " << *CI << " ---> " << *opr0 << " + " << *opr2
-                      << "\n");
-    Value *nval = B.CreateFAdd(opr0, opr2, "fmaadd");
-    replaceCall(nval);
-    return true;
-  }
-  if (ConstantFP *CF = dyn_cast<ConstantFP>(opr2)) {
-    if (CF->isZero()) {
-      // fma/mad(a, b, c) = a*b if c=0
-      LLVM_DEBUG(errs() << "AMDIC: " << *CI << " ---> " << *opr0 << " * "
-                        << *opr1 << "\n");
-      Value *nval = B.CreateFMul(opr0, opr1, "fmamul");
-      replaceCall(nval);
-      return true;
-    }
-  }
-
   return false;
 }
 
