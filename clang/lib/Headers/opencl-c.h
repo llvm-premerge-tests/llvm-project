@@ -8498,13 +8498,35 @@ half16 __ovld __cnfn sinpi(half16);
 
 /**
  * Compute square root.
+ *
+ * Provide inline implementations using the builtin so that we get appropriate
+ * !fpmath based on -cl-fp32-correctly-rounded-divide-sqrt. The implementation
+ * should still provide an external definition.
  */
-float __ovld __cnfn sqrt(float);
-float2 __ovld __cnfn sqrt(float2);
-float3 __ovld __cnfn sqrt(float3);
-float4 __ovld __cnfn sqrt(float4);
-float8 __ovld __cnfn sqrt(float8);
-float16 __ovld __cnfn sqrt(float16);
+inline float __ovld __cnfn sqrt(float __x) {
+  return __builtin_elementwise_sqrt(__x);
+}
+
+inline float2 __ovld __cnfn sqrt(float2 __x) {
+  return __builtin_elementwise_sqrt(__x);
+}
+
+inline float3 __ovld __cnfn sqrt(float3 __x) {
+  return __builtin_elementwise_sqrt(__x);
+}
+
+inline float4 __ovld __cnfn sqrt(float4 __x) {
+  return __builtin_elementwise_sqrt(__x);
+}
+
+inline float8 __ovld __cnfn sqrt(float8 __x) {
+  return __builtin_elementwise_sqrt(__x);
+}
+
+inline float16 __ovld __cnfn sqrt(float16 __x) {
+  return __builtin_elementwise_sqrt(__x);
+}
+
 #ifdef cl_khr_fp64
 double __ovld __cnfn sqrt(double);
 double2 __ovld __cnfn sqrt(double2);
