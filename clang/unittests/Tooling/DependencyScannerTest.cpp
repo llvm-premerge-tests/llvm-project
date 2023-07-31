@@ -240,6 +240,36 @@ TEST(DependencyScanner, ScanDepsWithFS) {
             "test.cpp.o: /root/test.cpp /root/header.h\n");
 }
 
+TEST(DependencyScanner, ScanDepsWithCC1) {
+  std::vector<std::string> CommandLine = {
+      "clang",    "-cc1", "-triple",   "x86_64-apple-macosx10.7", "-x", "c++",
+      "test.cpp", "-o",   "test.cpp.o"};
+  StringRef CWD = "/root";
+
+  auto VFS = new llvm::vfs::InMemoryFileSystem();
+  VFS->setCurrentWorkingDirectory(CWD);
+  auto Sept = llvm::sys::path::get_separator();
+  std::string HeaderPath =
+      std::string(llvm::formatv("{0}root{0}header.h", Sept));
+  std::string TestPath = std::string(llvm::formatv("{0}root{0}test.cpp", Sept));
+
+  VFS->addFile(HeaderPath, 0, llvm::MemoryBuffer::getMemBuffer("\n"));
+  VFS->addFile(TestPath, 0,
+               llvm::MemoryBuffer::getMemBuffer("#include \"header.h\"\n"));
+
+  DependencyScanningService Service(ScanningMode::DependencyDirectivesScan,
+                                    ScanningOutputFormat::Make);
+  DependencyScanningTool ScanTool(Service, VFS);
+
+  std::string DepFile;
+  ASSERT_THAT_ERROR(
+      ScanTool.getDependencyFile(CommandLine, CWD).moveInto(DepFile),
+      llvm::Succeeded());
+  using llvm::sys::path::convert_to_slash;
+  EXPECT_EQ(convert_to_slash(DepFile),
+            "test.cpp.o: /root/test.cpp /root/header.h\n");
+}
+
 TEST(DependencyScanner, ScanDepsWithModuleLookup) {
   std::vector<std::string> CommandLine = {
       "clang",
