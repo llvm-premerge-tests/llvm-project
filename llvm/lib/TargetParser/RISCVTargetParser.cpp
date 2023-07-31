@@ -20,9 +20,11 @@ namespace llvm {
 namespace RISCV {
 
 enum CPUKind : unsigned {
+#ifdef RISCV_AUTOGEN_TARGETPARSER
 #define PROC(ENUM, NAME, DEFAULT_MARCH) CK_##ENUM,
 #define TUNE_PROC(ENUM, NAME) CK_##ENUM,
 #include "llvm/TargetParser/RISCVTargetParserDef.inc"
+#endif
 };
 
 struct CPUInfo {
@@ -32,9 +34,13 @@ struct CPUInfo {
 };
 
 constexpr CPUInfo RISCVCPUInfo[] = {
+#ifdef RISCV_AUTOGEN_TARGETPARSER
 #define PROC(ENUM, NAME, DEFAULT_MARCH)                              \
   {NAME, DEFAULT_MARCH},
 #include "llvm/TargetParser/RISCVTargetParserDef.inc"
+#else
+    {"invalid", "invalid"}
+#endif
 };
 
 static const CPUInfo *getCPUInfoByName(StringRef CPU) {
@@ -53,6 +59,7 @@ bool parseCPU(StringRef CPU, bool IsRV64) {
 }
 
 bool parseTuneCPU(StringRef TuneCPU, bool IsRV64) {
+#ifdef RISCV_AUTOGEN_TARGETPARSER
   std::optional<CPUKind> Kind =
       llvm::StringSwitch<std::optional<CPUKind>>(TuneCPU)
 #define TUNE_PROC(ENUM, NAME) .Case(NAME, CK_##ENUM)
@@ -61,7 +68,9 @@ bool parseTuneCPU(StringRef TuneCPU, bool IsRV64) {
 
   if (Kind.has_value())
     return true;
-
+#else
+  return false;
+#endif
   // Fallback to parsing as a CPU.
   return parseCPU(TuneCPU, IsRV64);
 }
@@ -85,8 +94,10 @@ void fillValidTuneCPUArchList(SmallVectorImpl<StringRef> &Values, bool IsRV64) {
     if (IsRV64 == C.is64Bit())
       Values.emplace_back(C.Name);
   }
+#ifdef RISCV_AUTOGEN_TARGETPARSER
 #define TUNE_PROC(ENUM, NAME) Values.emplace_back(StringRef(NAME));
 #include "llvm/TargetParser/RISCVTargetParserDef.inc"
+#endif
 }
 
 } // namespace RISCV

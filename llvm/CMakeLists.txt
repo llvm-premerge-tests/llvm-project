@@ -1146,6 +1146,14 @@ add_subdirectory(lib/TableGen)
 
 add_subdirectory(utils/TableGen)
 
+# Some of the RISCV-specific bits in LLVMTargetParser are generated
+# via TableGen. Do not bother in autogenerating the enums needed by
+# RISCV if we are not building a compiler that targets RISCV.
+set(RISCV_AUTOGEN_TARGETPARSER OFF)
+if("RISCV" IN_LIST LLVM_TARGETS_TO_BUILD)
+  set (RISCV_AUTOGEN_TARGETPARSER ON)
+endif()
+
 add_subdirectory(include)
 
 add_subdirectory(lib)
