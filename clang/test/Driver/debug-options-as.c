@@ -56,7 +56,7 @@
 // RUN:   | FileCheck -check-prefix=GDWARF64_VER %s
 // RUN: %clang -### -c -gdwarf64 -gdwarf-4 --target=i386-linux-gnu %s 2>&1 \
 // RUN:   | FileCheck -check-prefix=GDWARF64_32ARCH %s
-// RUN: %clang -### -c -gdwarf64 -gdwarf-4 -target x86_64-apple-darwin %s 2>&1 \
+// RUN: not %clang -### -c -gdwarf64 -gdwarf-4 -target x86_64-apple-darwin %s 2>&1 \
 // RUN:   | FileCheck -check-prefix=GDWARF64_ELF %s
 //
 // GDWARF64_VER:  error: invalid argument '-gdwarf64' only allowed with 'DWARFv3 or greater'

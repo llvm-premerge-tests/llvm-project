@@ -152,10 +152,10 @@
 // CHECK-BOGUS3: error: unsupported argument 'bogus' to option '-march='
 
 // ================== Check that a bogus CPU gives an error
-// RUN: %clang -target arm -mcpu=bogus -### -c %s 2>&1 | FileCheck -check-prefix=CHECK-BOGUS-CPU %s
-// RUN: %clang -target armv8-apple-darwin -arch arm64 -mcpu=bogus -### -c %s 2>&1 | FileCheck -check-prefix=CHECK-BOGUS-CPU %s
+// RUN: not %clang -target arm -mcpu=bogus -### -c %s 2>&1 | FileCheck -check-prefix=CHECK-BOGUS-CPU %s
+// RUN: not %clang -target armv8-apple-darwin -arch arm64 -mcpu=bogus -### -c %s 2>&1 | FileCheck -check-prefix=CHECK-BOGUS-CPU %s
 // CHECK-BOGUS-CPU: error: unsupported argument 'bogus' to option '-mcpu='
-// RUN: %clang -target armv8-apple-darwin -arch arm64 -mtune=bogus -### -c %s 2>&1 | FileCheck -check-prefix=CHECK-BOGUS-TUNE %s
+// RUN: not %clang -target armv8-apple-darwin -arch arm64 -mtune=bogus -### -c %s 2>&1 | FileCheck -check-prefix=CHECK-BOGUS-TUNE %s
 // CHECK-BOGUS-TUNE: error: unsupported argument 'bogus' to option '-mtune='
 
 // ================== Check default Architecture on each ARM11 CPU

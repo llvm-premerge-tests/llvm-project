@@ -33,7 +33,7 @@
 // RUN:   | FileCheck %s -check-prefix=CHECK-FREEBSD-GOLD
 // CHECK-FREEBSD-GOLD: Inputs/basic_freebsd_tree/usr/bin{{/|\\+}}ld.gold
 
-// RUN: %clang %s -### -fuse-ld=plib \
+// RUN: not %clang %s -### -fuse-ld=plib \
 // RUN:     --sysroot=%S/Inputs/basic_freebsd_tree \
 // RUN:     -target x86_64-unknown-freebsd \
 // RUN:     -B%S/Inputs/basic_freebsd_tree/usr/bin 2>&1 \

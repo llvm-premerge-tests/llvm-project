@@ -102,7 +102,7 @@
 // and --rocm-device-lib-path can be used to specify them.
 
 // RUN: cp -r %T/rocm-spack/hip-* %T/rocm-spack/hip-4.0.0-abcd
-// RUN: %T/rocm-spack/llvm-amdgpu-4.0.0-ieagcs7inf7runpyfvepqkurasoglq4z/bin/clang -### -v \
+// RUN: not %T/rocm-spack/llvm-amdgpu-4.0.0-ieagcs7inf7runpyfvepqkurasoglq4z/bin/clang -### -v \
 // RUN:   -target x86_64-linux-gnu --cuda-gpu-arch=gfx900 %s 2>&1 \
 // RUN:   | FileCheck -check-prefixes=SPACK-MULT %s
 // RUN: %T/rocm-spack/llvm-amdgpu-4.0.0-ieagcs7inf7runpyfvepqkurasoglq4z/bin/clang -### -v \
@@ -115,7 +115,7 @@
 
 // RUN: rm -rf %T/rocm-spack/hip-*
 // RUN: rm -rf %T/rocm-spack/llvm-amdgpu-4.0.0-ieagcs7inf7runpyfvepqkurasoglq4z/amdgcn
-// RUN: %T/rocm-spack/llvm-amdgpu-4.0.0-ieagcs7inf7runpyfvepqkurasoglq4z/bin/clang -### -v \
+// RUN: not %T/rocm-spack/llvm-amdgpu-4.0.0-ieagcs7inf7runpyfvepqkurasoglq4z/bin/clang -### -v \
 // RUN:   -target x86_64-linux-gnu --cuda-gpu-arch=gfx900 %s 2>&1 \
 // RUN:   | FileCheck -check-prefixes=SPACK-MISS %s
 // RUN: %T/rocm-spack/llvm-amdgpu-4.0.0-ieagcs7inf7runpyfvepqkurasoglq4z/bin/clang --version 2>&1 \

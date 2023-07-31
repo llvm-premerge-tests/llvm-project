@@ -3,7 +3,7 @@
 // REQUIRES: nvptx-registered-target
 // REQUIRES: amdgpu-registered-target
 
-// RUN: %clang -### --target=x86_64-linux-gnu --cuda-gpu-arch=compute_20 -c --cuda-path=%S/Inputs/CUDA_80/usr/local/cuda %s 2>&1 \
+// RUN: not %clang -### --target=x86_64-linux-gnu --cuda-gpu-arch=compute_20 -c --cuda-path=%S/Inputs/CUDA_80/usr/local/cuda %s 2>&1 \
 // RUN: | FileCheck -check-prefix BAD %s
 // RUN: %clang -### --target=x86_64-linux-gnu --cuda-gpu-arch=sm20 -c %s 2>&1 \
 // RUN: | FileCheck -check-prefix BAD %s
@@ -14,7 +14,7 @@
 
 // BAD: error: unsupported CUDA gpu architecture
 
-// RUN: %clang -### -v --target=x86_64-linux-gnu --cuda-gpu-arch=sm_21 \
+// RUN: not %clang -### -v --target=x86_64-linux-gnu --cuda-gpu-arch=sm_21 \
 // RUN:   --cuda-path=%S/Inputs/CUDA_90/usr/local/cuda %s 2>&1 \
 // RUN: | FileCheck -check-prefix BAD_CUDA9 %s
 
