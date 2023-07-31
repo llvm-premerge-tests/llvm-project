@@ -338,6 +338,7 @@ define i1 @test10_struct_arr_noinbounds_i64(i64 %x) {
 
 @CG = constant [4 x i32] [i32 1, i32 2, i32 3, i32 4]
 
+; TODO: Fold it globally.
 define i1 @cmp_load_constant_array0(i64 %x){
 ; CHECK-LABEL: @cmp_load_constant_array0(
 ; CHECK-NEXT:  entry:
@@ -346,10 +347,8 @@ define i1 @cmp_load_constant_array0(i64 %x){
 ; CHECK:       case2:
 ; CHECK-NEXT:    ret i1 false
 ; CHECK:       case1:
-; CHECK-NEXT:    [[TMP0:%.*]] = trunc i64 [[X]] to i32
-; CHECK-NEXT:    [[ISOK_PTR:%.*]] = getelementptr inbounds i32, ptr @CG, i32 [[TMP0]]
-; CHECK-NEXT:    [[ISOK:%.*]] = load i32, ptr [[ISOK_PTR]], align 4
-; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp ult i32 [[ISOK]], 3
+; CHECK-NEXT:    [[TMP0:%.*]] = and i64 [[X]], 4294967294
+; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp eq i64 [[TMP0]], 0
 ; CHECK-NEXT:    ret i1 [[COND_INFERRED]]
 ;
 entry:
@@ -374,11 +373,7 @@ define i1 @cmp_load_constant_array1(i64 %x){
 ; CHECK:       case2:
 ; CHECK-NEXT:    ret i1 false
 ; CHECK:       case1:
-; CHECK-NEXT:    [[TMP0:%.*]] = trunc i64 [[X]] to i32
-; CHECK-NEXT:    [[ISOK_PTR:%.*]] = getelementptr inbounds i32, ptr @CG, i32 [[TMP0]]
-; CHECK-NEXT:    [[ISOK:%.*]] = load i32, ptr [[ISOK_PTR]], align 4
-; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp ugt i32 [[ISOK]], 10
-; CHECK-NEXT:    ret i1 [[COND_INFERRED]]
+; CHECK-NEXT:    ret i1 false
 ;
 entry:
   %cond = icmp ult i64 %x, 2
@@ -405,9 +400,10 @@ define i1 @cmp_load_constant_array_messy(i64 %x){
 ; CHECK-NEXT:    ret i1 false
 ; CHECK:       case1:
 ; CHECK-NEXT:    [[TMP0:%.*]] = trunc i64 [[X]] to i32
-; CHECK-NEXT:    [[ISOK_PTR:%.*]] = getelementptr i32, ptr @CG_MESSY, i32 [[TMP0]]
-; CHECK-NEXT:    [[ISOK:%.*]] = load i32, ptr [[ISOK_PTR]], align 4
-; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp slt i32 [[ISOK]], 5
+; CHECK-NEXT:    [[TMP1:%.*]] = and i32 [[TMP0]], 1073741823
+; CHECK-NEXT:    [[TMP2:%.*]] = lshr i32 373, [[TMP1]]
+; CHECK-NEXT:    [[TMP3:%.*]] = and i32 [[TMP2]], 1
+; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp ne i32 [[TMP3]], 0
 ; CHECK-NEXT:    ret i1 [[COND_INFERRED]]
 ;
 entry:
@@ -451,4 +447,3 @@ case1:
   %cond_inferred = icmp ult i32 %isOK, %y
   ret i1 %cond_inferred
 }
-
