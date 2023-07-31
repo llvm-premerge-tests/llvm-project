@@ -1086,6 +1086,18 @@ void SIFrameLowering::emitPrologue(MachineFunction &MF,
   // to determine the end of the prologue.
   DebugLoc DL;
 
+  if (FuncInfo->isChainFunction()) {
+    // Functions with the amdgpu_cs_chain[_preserve] CC don't receive a SP, but
+    // are free to set one up if they need it.
+    bool UseSP = MFI.hasCalls() || MFI.hasStackObjects();
+    if (UseSP) {
+      assert(StackPtrReg != AMDGPU::SP_REG);
+
+      BuildMI(MBB, MBBI, DL, TII->get(AMDGPU::S_MOV_B32), StackPtrReg)
+          .addImm(0);
+    }
+  }
+
   bool HasFP = false;
   bool HasBP = false;
   uint32_t NumBytes = MFI.getStackSize();
