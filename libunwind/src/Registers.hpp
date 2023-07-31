@@ -4101,11 +4101,13 @@ inline reg_t Registers_riscv::getRegister(int regNum) const {
     return 0;
   if ((regNum > 0) && (regNum < 32))
     return _registers[regNum];
+#if defined(__riscv_zicsr)
   if (regNum == UNW_RISCV_VLENB) {
     reg_t vlenb;
     __asm__("csrr %0, 0xC22" : "=r"(vlenb));
     return vlenb;
   }
+#endif
   _LIBUNWIND_ABORT("unsupported riscv register");
 }
 
