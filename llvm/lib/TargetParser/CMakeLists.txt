@@ -27,7 +27,9 @@ add_llvm_component_library(LLVMTargetParser
 
   LINK_COMPONENTS
   Support
-
-  DEPENDS
-  RISCVTargetParserTableGen
   )
+
+if (RISCV_AUTOGEN_TARGETPARSER)
+  add_dependencies(LLVMTargetParser RISCVTargetParserTableGen)
+  target_compile_options(LLVMTargetParser PRIVATE -DRISCV_AUTOGEN_TARGETPARSER)
+endif()
