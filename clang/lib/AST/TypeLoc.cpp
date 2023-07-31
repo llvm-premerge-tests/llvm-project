@@ -621,24 +621,16 @@ void TemplateSpecializationTypeLoc::initializeArgLocs(
   }
 }
 
-DeclarationNameInfo AutoTypeLoc::getConceptNameInfo() const {
-  return DeclarationNameInfo(getNamedConcept()->getDeclName(),
-                             getLocalData()->ConceptNameLoc);
-}
-
 void AutoTypeLoc::initializeLocal(ASTContext &Context, SourceLocation Loc) {
-  setNestedNameSpecifierLoc(NestedNameSpecifierLoc());
-  setTemplateKWLoc(Loc);
-  setConceptNameLoc(Loc);
-  setFoundDecl(nullptr);
   setRAngleLoc(Loc);
   setLAngleLoc(Loc);
   setRParenLoc(Loc);
   TemplateSpecializationTypeLoc::initializeArgLocs(
       Context, getTypePtr()->getTypeConstraintArguments(), getArgInfos(), Loc);
   setNameLoc(Loc);
+  setConceptLoc(nullptr);
+  setDefaultLoc(Loc);
 }
-
 
 namespace {
 

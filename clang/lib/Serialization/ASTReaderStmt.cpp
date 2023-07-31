@@ -795,13 +795,16 @@ readConstraintSatisfaction(ASTRecordReader &Record) {
 void ASTStmtReader::VisitConceptSpecializationExpr(
         ConceptSpecializationExpr *E) {
   VisitExpr(E);
-  E->NestedNameSpec = Record.readNestedNameSpecifierLoc();
-  E->TemplateKWLoc = Record.readSourceLocation();
-  E->ConceptName = Record.readDeclarationNameInfo();
-  E->NamedConcept = readDeclAs<ConceptDecl>();
-  E->FoundDecl = Record.readDeclAs<NamedDecl>();
+  auto NestedNameSpec = Record.readNestedNameSpecifierLoc();
+  auto TemplateKWLoc = Record.readSourceLocation();
+  auto ConceptName = Record.readDeclarationNameInfo();
+  auto NamedConcept = readDeclAs<ConceptDecl>();
+  auto FoundDecl = Record.readDeclAs<NamedDecl>();
   E->SpecDecl = Record.readDeclAs<ImplicitConceptSpecializationDecl>();
-  E->ArgsAsWritten = Record.readASTTemplateArgumentListInfo();
+  auto ArgsAsWritten = Record.readASTTemplateArgumentListInfo();
+  E->Loc =
+      ConceptLoc::Create(Record.getContext(), NestedNameSpec, TemplateKWLoc,
+                         ConceptName, FoundDecl, NamedConcept, ArgsAsWritten);
   E->Satisfaction = E->isValueDependent() ? nullptr :
       ASTConstraintSatisfaction::Create(Record.getContext(),
                                         readConstraintSatisfaction(Record));
