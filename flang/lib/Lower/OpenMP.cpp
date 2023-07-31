@@ -2286,9 +2286,134 @@ createCombinedParallelOp(Fortran::lower::AbstractConverter &converter,
                                         /*isCombined=*/true);
 }
 
+/* When target is used in a combined construct, then use this function to
+ * create the target operation. It handles the target specific clauses
+ * and leaves the rest for handling at the inner operations.
+ */
+template <typename Directive>
+static void createCombinedTargetOp(Fortran::lower::AbstractConverter &converter,
+                                   Fortran::lower::pft::Evaluation &eval,
+                                   const Directive &directive) {
+  fir::FirOpBuilder &firOpBuilder = converter.getFirOpBuilder();
+  mlir::Location currentLocation = converter.getCurrentLocation();
+  Fortran::lower::StatementContext stmtCtx;
+  mlir::Value ifClauseOperand, deviceOperand, threadLimitOperand;
+  llvm::SmallVector<mlir::Value> mapOperands;
+  llvm::SmallVector<mlir::IntegerAttr> mapTypes;
+  mlir::UnitAttr nowaitAttr;
+  const auto &opClauseList =
+      std::get<Fortran::parser::OmpClauseList>(directive.t);
+
+  // Note: rest of the clauses are handled when the inner operation is created
+  ClauseProcessor cp(converter, opClauseList);
+  cp.processIf(stmtCtx,
+               Fortran::parser::OmpIfClause::DirectiveNameModifier::Target,
+               ifClauseOperand);
+  cp.processDevice(stmtCtx, deviceOperand);
+  cp.processThreadLimit(stmtCtx, threadLimitOperand);
+  cp.processNowait(nowaitAttr);
+  cp.processMap(mapOperands, mapTypes);
+
+  llvm::SmallVector<mlir::Attribute> mapTypesAttr(mapTypes.begin(),
+                                                  mapTypes.end());
+  mlir::ArrayAttr mapTypesArrayAttr =
+      mlir::ArrayAttr::get(firOpBuilder.getContext(), mapTypesAttr);
+
+  // Create and insert the operation.
+  auto targetOp = firOpBuilder.create<mlir::omp::TargetOp>(
+      currentLocation, ifClauseOperand, deviceOperand, threadLimitOperand,
+      nowaitAttr, mapOperands, mapTypesArrayAttr);
+
+  createBodyOfOp<mlir::omp::TargetOp>(targetOp, converter, currentLocation,
+                                      eval, &opClauseList,
+                                      /*iv=*/{}, /*isCombined=*/true);
+}
+
 static void genOMP(Fortran::lower::AbstractConverter &converter,
                    Fortran::lower::pft::Evaluation &eval,
                    const Fortran::parser::OpenMPLoopConstruct &loopConstruct) {
+  using llvm::omp::Directive;
+  using OmpDirectiveSet =
+      Fortran::common::EnumSet<Directive, llvm::omp::Directive_enumSize>;
+
+  OmpDirectiveSet targetSet{
+      Directive::OMPD_target_parallel_do_simd,
+      Directive::OMPD_target_parallel_do,
+      Directive::OMPD_target_simd,
+      Directive::OMPD_target_teams_distribute_parallel_do_simd,
+      Directive::OMPD_target_teams_distribute_parallel_do,
+      Directive::OMPD_target_teams_distribute_simd,
+      Directive::OMPD_target_teams_distribute,
+  };
+
+  OmpDirectiveSet teamsSet{
+      Directive::OMPD_target_teams_distribute_parallel_do_simd,
+      Directive::OMPD_target_teams_distribute_parallel_do,
+      Directive::OMPD_target_teams_distribute_simd,
+      Directive::OMPD_target_teams_distribute,
+      Directive::OMPD_teams_distribute_parallel_do_simd,
+      Directive::OMPD_teams_distribute_parallel_do,
+      Directive::OMPD_teams_distribute_simd,
+      Directive::OMPD_teams_distribute,
+  };
+
+  OmpDirectiveSet distributeSet{
+      Directive::OMPD_distribute_parallel_do_simd,
+      Directive::OMPD_distribute_parallel_do,
+      Directive::OMPD_distribute_simd,
+      Directive::OMPD_distribute,
+      Directive::OMPD_target_teams_distribute_parallel_do_simd,
+      Directive::OMPD_target_teams_distribute_parallel_do,
+      Directive::OMPD_target_teams_distribute_simd,
+      Directive::OMPD_target_teams_distribute,
+      Directive::OMPD_teams_distribute_parallel_do_simd,
+      Directive::OMPD_teams_distribute_parallel_do,
+      Directive::OMPD_teams_distribute_simd,
+      Directive::OMPD_teams_distribute,
+  };
+
+  OmpDirectiveSet parallelSet{
+      Directive::OMPD_distribute_parallel_do_simd,
+      Directive::OMPD_distribute_parallel_do,
+      Directive::OMPD_parallel_do_simd,
+      Directive::OMPD_parallel_do,
+      Directive::OMPD_target_parallel_do_simd,
+      Directive::OMPD_target_parallel_do,
+      Directive::OMPD_target_teams_distribute_parallel_do_simd,
+      Directive::OMPD_target_teams_distribute_parallel_do,
+      Directive::OMPD_teams_distribute_parallel_do_simd,
+      Directive::OMPD_teams_distribute_parallel_do,
+  };
+
+  OmpDirectiveSet doSet{
+      Directive::OMPD_distribute_parallel_do,
+      Directive::OMPD_distribute_parallel_do_simd,
+      Directive::OMPD_do,
+      Directive::OMPD_do_simd,
+      Directive::OMPD_parallel_do,
+      Directive::OMPD_parallel_do_simd,
+      Directive::OMPD_target_parallel_do,
+      Directive::OMPD_target_parallel_do_simd,
+      Directive::OMPD_target_teams_distribute_parallel_do,
+      Directive::OMPD_target_teams_distribute_parallel_do_simd,
+      Directive::OMPD_teams_distribute_parallel_do,
+      Directive::OMPD_teams_distribute_parallel_do_simd,
+  };
+
+  OmpDirectiveSet simdSet{
+      Directive::OMPD_distribute_parallel_do_simd,
+      Directive::OMPD_distribute_simd,
+      Directive::OMPD_do_simd,
+      Directive::OMPD_parallel_do_simd,
+      Directive::OMPD_target_parallel_do_simd,
+      Directive::OMPD_target_simd,
+      Directive::OMPD_target_teams_distribute_parallel_do_simd,
+      Directive::OMPD_target_teams_distribute_simd,
+      Directive::OMPD_simd,
+      Directive::OMPD_teams_distribute_parallel_do_simd,
+      Directive::OMPD_teams_distribute_simd,
+  };
+
   fir::FirOpBuilder &firOpBuilder = converter.getFirOpBuilder();
   llvm::SmallVector<mlir::Value> lowerBound, upperBound, step, linearVars,
       linearStepVars, reductionVars, alignedVars, nontemporalVars;
@@ -2313,12 +2438,30 @@ static void genOMP(Fortran::lower::AbstractConverter &converter,
   const auto ompDirective =
       std::get<Fortran::parser::OmpLoopDirective>(beginLoopDirective.t).v;
 
-  if (llvm::omp::OMPD_parallel_do == ompDirective) {
+  // Create omp.{target, teams, distribute, parallel} nested operations
+  bool validDirective = false;
+  if (targetSet.test(ompDirective)) {
+    validDirective = true;
+    createCombinedTargetOp<Fortran::parser::OmpBeginLoopDirective>(
+        converter, eval, beginLoopDirective);
+  }
+  if (teamsSet.test(ompDirective)) {
+    validDirective = true;
+    TODO(currentLocation, "Teams construct");
+  }
+  if (distributeSet.test(ompDirective)) {
+    validDirective = true;
+    TODO(currentLocation, "Distribute construct");
+  }
+  if (parallelSet.test(ompDirective)) {
+    validDirective = true;
     createCombinedParallelOp<Fortran::parser::OmpBeginLoopDirective>(
-        converter, eval,
-        std::get<Fortran::parser::OmpBeginLoopDirective>(loopConstruct.t));
-  } else if (llvm::omp::OMPD_do != ompDirective &&
-             llvm::omp::OMPD_simd != ompDirective) {
+        converter, eval, beginLoopDirective);
+  }
+  if (doSet.test(ompDirective) || simdSet.test(ompDirective))
+    validDirective = true;
+
+  if (!validDirective) {
     TODO(currentLocation, "Construct enclosing do loop");
   }
 
@@ -2350,7 +2493,7 @@ static void genOMP(Fortran::lower::AbstractConverter &converter,
 
   // 2.9.3.1 SIMD construct
   // TODO: Support all the clauses
-  if (llvm::omp::OMPD_simd == ompDirective) {
+  if (simdSet.test(ompDirective)) {
     mlir::TypeRange resultType;
     auto simdLoopOp = firOpBuilder.create<mlir::omp::SimdLoopOp>(
         currentLocation, resultType, lowerBound, upperBound, step, alignedVars,
