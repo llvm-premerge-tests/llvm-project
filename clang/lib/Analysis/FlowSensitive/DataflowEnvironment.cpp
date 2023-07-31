@@ -414,8 +414,33 @@ void Environment::popCall(const CXXConstructExpr *Call,
   }
 }
 
+static bool exprToLocEquivalent(const Environment &Env1,
+                                const Environment &Env2,
+                                const Stmt *Terminator) {
+  if (Terminator == nullptr)
+    return true;
+
+  for (const Stmt *Child : Terminator->children()) {
+    auto *E = dyn_cast<Expr>(Child);
+    if (E == nullptr)
+      continue;
+
+    if (E->isGLValue()) {
+      if (Env1.getStorageLocationStrict(*E) !=
+          Env2.getStorageLocationStrict(*E))
+        return false;
+    } else {
+      if (Env1.getValue(*E) != Env2.getValue(*E))
+        return false;
+    }
+  }
+
+  return true;
+}
+
 bool Environment::equivalentTo(const Environment &Other,
-                               Environment::ValueModel &Model) const {
+                               Environment::ValueModel &Model,
+                               const Stmt *Terminator) const {
   assert(DACtx == Other.DACtx);
 
   if (ReturnVal != Other.ReturnVal)
@@ -430,7 +455,7 @@ bool Environment::equivalentTo(const Environment &Other,
   if (DeclToLoc != Other.DeclToLoc)
     return false;
 
-  if (ExprToLoc != Other.ExprToLoc)
+  if (!exprToLocEquivalent(*this, Other, Terminator))
     return false;
 
   // Compare the contents for the intersection of their domains.

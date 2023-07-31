@@ -574,7 +574,8 @@ runTypeErasedDataflowAnalysis(
         }
       } else if (Analysis.isEqualTypeErased(OldBlockState->Lattice,
                                             NewBlockState.Lattice) &&
-                 OldBlockState->Env.equivalentTo(NewBlockState.Env, Analysis)) {
+                 OldBlockState->Env.equivalentTo(NewBlockState.Env, Analysis,
+                                                 Block->getTerminatorStmt())) {
         // The state of `Block` didn't change after transfer so there's no need
         // to revisit its successors.
         AC.Log.blockConverged();
