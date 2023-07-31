@@ -1,4 +1,5 @@
 add_mlir_unittest(MLIRTargetLLVMTests
+  SerializeNVVMTarget.cpp
   SerializeToLLVMBitcode.cpp
 )
 
