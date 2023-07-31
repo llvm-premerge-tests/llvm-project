@@ -281,6 +281,15 @@ class OMPExecutableDirective : public Stmt {
     return Data->getClauses();
   }
 
+  /// Was this directive mapped from an another directive?
+  /// e.g. 1) omp loop bind(parallel) is mapped to OMPD_for
+  ///      2) omp loop bind(teams) is mapped to OMPD_distribute
+  ///      3) omp loop bind(thread) is mapped to OMPD_simd
+  /// It was necessary to note it down in the Directive because of
+  /// clang::TreeTransform::TransformOMPExecutableDirective() pass in
+  /// the frontend.
+  OpenMPDirectiveKind PrevMappedDirective = llvm::omp::OMPD_unknown;
+
 protected:
   /// Data, associated with the directive.
   OMPChildren *Data = nullptr;
@@ -598,6 +607,12 @@ public:
            "Expected directive with the associated statement.");
     return Data->getRawStmt();
   }
+
+  void setMappedDirective(OpenMPDirectiveKind MappedDirective) {
+    PrevMappedDirective = MappedDirective;
+  }
+
+  OpenMPDirectiveKind getMappedDirective() const { return PrevMappedDirective; }
 };
 
 /// This represents '#pragma omp parallel' directive.
