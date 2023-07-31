@@ -10,19 +10,26 @@ define void @test(i64 %p0, i64 %p1, i64 %p2, i64 %p3) {
 ; CHECK-NEXT:    [[TMP3:%.*]] = insertelement <4 x i64> [[TMP2]], i64 [[P3:%.*]], i32 3
 ; CHECK-NEXT:    [[TMP4:%.*]] = add <4 x i64> [[TMP3]], [[TMP3]]
 ; CHECK-NEXT:    [[TMP5:%.*]] = mul <4 x i64> [[TMP3]], [[TMP3]]
-; CHECK-NEXT:    [[TMP6:%.*]] = sdiv <4 x i64> [[TMP3]], [[TMP3]]
-; CHECK-NEXT:    [[TMP7:%.*]] = sub <4 x i64> [[TMP5]], [[TMP6]]
-; CHECK-NEXT:    [[TMP8:%.*]] = shl <4 x i64> [[TMP4]], [[TMP7]]
-; CHECK-NEXT:    [[TMP9:%.*]] = shufflevector <4 x i64> [[TMP4]], <4 x i64> [[TMP5]], <4 x i32> <i32 0, i32 4, i32 poison, i32 4>
-; CHECK-NEXT:    [[TMP10:%.*]] = shufflevector <4 x i64> [[TMP9]], <4 x i64> [[TMP6]], <4 x i32> <i32 0, i32 1, i32 4, i32 3>
-; CHECK-NEXT:    [[TMP11:%.*]] = shufflevector <4 x i64> [[TMP4]], <4 x i64> [[TMP5]], <4 x i32> <i32 1, i32 5, i32 poison, i32 5>
-; CHECK-NEXT:    [[TMP12:%.*]] = shufflevector <4 x i64> [[TMP11]], <4 x i64> [[TMP6]], <4 x i32> <i32 0, i32 1, i32 5, i32 3>
-; CHECK-NEXT:    [[TMP13:%.*]] = or <4 x i64> [[TMP10]], [[TMP12]]
-; CHECK-NEXT:    [[TMP14:%.*]] = trunc <4 x i64> [[TMP13]] to <4 x i32>
+; CHECK-NEXT:    [[D0:%.*]] = sdiv i64 [[P0]], [[P0]]
+; CHECK-NEXT:    [[D1:%.*]] = sdiv i64 [[P1]], [[P1]]
+; CHECK-NEXT:    [[D2:%.*]] = sdiv i64 [[P2]], [[P2]]
+; CHECK-NEXT:    [[D3:%.*]] = sdiv i64 [[P3]], [[P3]]
+; CHECK-NEXT:    [[TMP6:%.*]] = insertelement <4 x i64> poison, i64 [[D0]], i32 0
+; CHECK-NEXT:    [[TMP7:%.*]] = insertelement <4 x i64> [[TMP6]], i64 [[D1]], i32 1
+; CHECK-NEXT:    [[TMP8:%.*]] = insertelement <4 x i64> [[TMP7]], i64 [[D2]], i32 2
+; CHECK-NEXT:    [[TMP9:%.*]] = insertelement <4 x i64> [[TMP8]], i64 [[D3]], i32 3
+; CHECK-NEXT:    [[TMP10:%.*]] = sub <4 x i64> [[TMP5]], [[TMP9]]
+; CHECK-NEXT:    [[TMP11:%.*]] = shl <4 x i64> [[TMP4]], [[TMP10]]
+; CHECK-NEXT:    [[TMP12:%.*]] = shufflevector <4 x i64> [[TMP4]], <4 x i64> [[TMP5]], <4 x i32> <i32 0, i32 4, i32 poison, i32 4>
+; CHECK-NEXT:    [[TMP13:%.*]] = insertelement <4 x i64> [[TMP12]], i64 [[D0]], i32 2
+; CHECK-NEXT:    [[TMP14:%.*]] = shufflevector <4 x i64> [[TMP4]], <4 x i64> [[TMP5]], <4 x i32> <i32 1, i32 5, i32 poison, i32 5>
+; CHECK-NEXT:    [[TMP15:%.*]] = insertelement <4 x i64> [[TMP14]], i64 [[D1]], i32 2
+; CHECK-NEXT:    [[TMP16:%.*]] = or <4 x i64> [[TMP13]], [[TMP15]]
+; CHECK-NEXT:    [[TMP17:%.*]] = trunc <4 x i64> [[TMP16]] to <4 x i32>
 ; CHECK-NEXT:    br label [[BB:%.*]]
 ; CHECK:       bb:
-; CHECK-NEXT:    [[TMP15:%.*]] = phi <4 x i32> [ [[TMP16:%.*]], [[BB]] ], [ [[TMP14]], [[ENTRY:%.*]] ]
-; CHECK-NEXT:    [[TMP16]] = trunc <4 x i64> [[TMP8]] to <4 x i32>
+; CHECK-NEXT:    [[TMP18:%.*]] = phi <4 x i32> [ [[TMP19:%.*]], [[BB]] ], [ [[TMP17]], [[ENTRY:%.*]] ]
+; CHECK-NEXT:    [[TMP19]] = trunc <4 x i64> [[TMP11]] to <4 x i32>
 ; CHECK-NEXT:    br label [[BB]]
 ;
 entry:
