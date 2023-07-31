@@ -458,6 +458,35 @@ TEST(InstructionsTest, CastCAPI) {
                                                  wrap(V2Int32PtrAS1Ty), true));
 }
 
+TEST(InstructionsTest, StripPointerCasts) {
+  LLVMContext C;
+  Type *I64PtrTy = Type::getInt64PtrTy(C);
+  Type *I32PtrTy = Type::getInt32PtrTy(C);
+
+  Module M("M", C);
+  FunctionType *FTy =
+      FunctionType::get(I64PtrTy, {I64PtrTy}, false);
+  auto *F = Function::Create(FTy, Function::ExternalLinkage, "", M);
+  auto *BB = BasicBlock::Create(C, "bb", F);
+  IRBuilder<> Builder(C);
+  Builder.SetInsertPoint(BB);
+
+  Value *A0 = F->getArg(0);
+  Function *SSACopy = Intrinsic::getDeclaration(&M, Intrinsic::ssa_copy, {A0->getType()});
+  CallInst *Call = Builder.CreateCall(SSACopy, {A0});
+  Value *Cast = Builder.CreateBitCast(Call, I32PtrTy);
+
+  // When stripping for alias analysis, it is okay to look through returned
+  // argument functions, since the pointer is unchanged.
+  EXPECT_EQ(Cast->stripPointerCastsForAliasAnalysis(), A0);
+
+  // Otherwise, this is not okay.
+  EXPECT_EQ(Cast->stripPointerCasts(), Call);
+  EXPECT_EQ(Cast->stripPointerCastsAndAliases(), Call);
+  EXPECT_EQ(Cast->stripPointerCastsSameRepresentation(), Call);
+  EXPECT_EQ(Cast->stripInBoundsConstantOffsets(), Call);
+}
+
 TEST(InstructionsTest, VectorGep) {
   LLVMContext C;
 
