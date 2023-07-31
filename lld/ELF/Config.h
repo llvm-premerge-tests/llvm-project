@@ -242,6 +242,8 @@ struct Config {
   bool ltoDebugPassManager;
   bool ltoEmitAsm;
   bool ltoUniqueBasicBlockSectionNames;
+  bool ltoValidateAllVtablesHaveTypeInfos;
+  bool ltoAllVtablesHaveTypeInfos;
   bool ltoWholeProgramVisibility;
   bool mergeArmExidx;
   bool mipsN32Abi = false;
