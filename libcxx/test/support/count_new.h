@@ -478,7 +478,7 @@ private:
 struct ConstexprDisableAllocationGuard {
     TEST_CONSTEXPR_CXX14 explicit ConstexprDisableAllocationGuard(bool disable = true) : m_disabled(disable)
     {
-        if (!TEST_IS_CONSTANT_EVALUATED) {
+        if (!TEST_IS_CONSTANT_EVALUATED_CXX14) {
             // Don't re-disable if already disabled.
             if (globalMemCounter.disable_allocations == true) m_disabled = false;
             if (m_disabled) globalMemCounter.disableAllocations();
@@ -488,7 +488,7 @@ struct ConstexprDisableAllocationGuard {
     }
 
     TEST_CONSTEXPR_CXX14 void release() {
-        if (!TEST_IS_CONSTANT_EVALUATED) {
+        if (!TEST_IS_CONSTANT_EVALUATED_CXX14) {
             if (m_disabled) globalMemCounter.enableAllocations();
             m_disabled = false;
         }

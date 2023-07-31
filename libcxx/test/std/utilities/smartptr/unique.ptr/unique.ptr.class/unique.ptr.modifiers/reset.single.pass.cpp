@@ -21,37 +21,37 @@
 TEST_CONSTEXPR_CXX23 bool test() {
   {
     std::unique_ptr<A> p(new A);
-    if (!TEST_IS_CONSTANT_EVALUATED) {
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
       assert(A::count == 1);
       assert(B::count == 0);
     }
     A* i = p.get();
     assert(i != nullptr);
     p.reset(new B);
-    if (!TEST_IS_CONSTANT_EVALUATED) {
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
       assert(A::count == 1);
       assert(B::count == 1);
     }
   }
-  if (!TEST_IS_CONSTANT_EVALUATED) {
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
     assert(A::count == 0);
     assert(B::count == 0);
   }
   {
     std::unique_ptr<A> p(new B);
-    if (!TEST_IS_CONSTANT_EVALUATED) {
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
       assert(A::count == 1);
       assert(B::count == 1);
     }
     A* i = p.get();
     assert(i != nullptr);
     p.reset(new B);
-    if (!TEST_IS_CONSTANT_EVALUATED) {
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
       assert(A::count == 1);
       assert(B::count == 1);
     }
   }
-  if (!TEST_IS_CONSTANT_EVALUATED) {
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
     assert(A::count == 0);
     assert(B::count == 0);
   }

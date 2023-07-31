@@ -139,7 +139,7 @@ private:
     {
         char* last;
         long long r;
-        if (TEST_IS_CONSTANT_EVALUATED)
+        if (TEST_IS_CONSTANT_EVALUATED_CXX23)
           last = const_cast<char*>(std::from_chars(p, ep, r, base).ptr);
         else
           r = strtoll(p, &last, base);
@@ -152,7 +152,7 @@ private:
     {
         char* last;
         unsigned long long r;
-        if (TEST_IS_CONSTANT_EVALUATED)
+        if (TEST_IS_CONSTANT_EVALUATED_CXX23)
           last = const_cast<char*>(std::from_chars(p, ep, r, base).ptr);
         else
           r = strtoull(p, &last, base);
@@ -163,7 +163,7 @@ private:
 #ifndef TEST_HAS_NO_INT128
     static TEST_CONSTEXPR_CXX23 __int128_t fromchars128_impl(char const* p, char const* ep, int base, true_type)
     {
-        if (!TEST_IS_CONSTANT_EVALUATED) {
+        if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
             char* last;
             __int128_t r = strtoll(p, &last, base);
             if(errno != ERANGE) {
@@ -185,7 +185,7 @@ private:
 
     static TEST_CONSTEXPR_CXX23 __uint128_t fromchars128_impl(char const* p, char const* ep, int base, false_type)
     {
-        if (!TEST_IS_CONSTANT_EVALUATED) {
+        if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
             char* last;
             __uint128_t r = strtoull(p, &last, base);
             if(errno != ERANGE) {

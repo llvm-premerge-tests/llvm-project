@@ -15,7 +15,7 @@
 #include <memory>
 #include <cassert>
 
-// TODO: Move TEST_IS_CONSTANT_EVALUATED into it's own header
+// TODO: Move TEST_IS_CONSTANT_EVALUATED_CXX23 into it's own header
 #include <type_traits>
 
 #include "test_macros.h"
@@ -26,7 +26,7 @@ class A {
 
 public:
   TEST_CONSTEXPR_CXX23 A() : state_(0) {
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       state_ = ++next_;
   }
 
@@ -44,7 +44,7 @@ int A::next_ = 0;
 
 TEST_CONSTEXPR_CXX23 bool test() {
   std::unique_ptr<A[]> p(new A[3]);
-  if (!TEST_IS_CONSTANT_EVALUATED) {
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
     assert(p[0] == 1);
     assert(p[1] == 2);
     assert(p[2] == 3);

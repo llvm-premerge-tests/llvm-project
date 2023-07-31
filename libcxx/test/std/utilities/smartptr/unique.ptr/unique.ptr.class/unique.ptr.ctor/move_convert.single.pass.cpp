@@ -50,14 +50,14 @@ template <class LHS, class RHS>
 TEST_CONSTEXPR_CXX23 void checkCtor(LHS& lhs, RHS& rhs, A* RHSVal) {
   assert(lhs.get() == RHSVal);
   assert(rhs.get() == nullptr);
-  if (!TEST_IS_CONSTANT_EVALUATED) {
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
     assert(A::count == 1);
     assert(B::count == 1);
   }
 }
 
 TEST_CONSTEXPR_CXX23 void checkNoneAlive() {
-  if (!TEST_IS_CONSTANT_EVALUATED) {
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
     assert(A::count == 0);
     assert(B::count == 0);
   }

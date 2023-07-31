@@ -25,12 +25,12 @@
 template <class APtr, class BPtr>
 TEST_CONSTEXPR_CXX23 void testAssign(APtr& aptr, BPtr& bptr) {
   A* p = bptr.get();
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(A::count == 2);
   aptr = std::move(bptr);
   assert(aptr.get() == p);
   assert(bptr.get() == 0);
-  if (!TEST_IS_CONSTANT_EVALUATED) {
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
     assert(A::count == 1);
     assert(B::count == 1);
   }
@@ -124,7 +124,7 @@ TEST_CONSTEXPR_CXX23 bool test() {
     std::unique_ptr<A> aptr(new A);
     testAssign(aptr, bptr);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED) {
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
     assert(A::count == 0);
     assert(B::count == 0);
   }
@@ -135,7 +135,7 @@ TEST_CONSTEXPR_CXX23 bool test() {
     testAssign(aptr, bptr);
     checkDeleter(aptr, bptr, 42, 0);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED) {
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
     assert(A::count == 0);
     assert(B::count == 0);
   }
@@ -147,7 +147,7 @@ TEST_CONSTEXPR_CXX23 bool test() {
     testAssign(aptr, bptr);
     checkDeleter(aptr, bptr, 42, 42);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED) {
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
     assert(A::count == 0);
     assert(B::count == 0);
   }

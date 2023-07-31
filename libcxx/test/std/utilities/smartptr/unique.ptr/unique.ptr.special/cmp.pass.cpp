@@ -64,7 +64,7 @@ TEST_CONSTEXPR_CXX23 bool test() {
 
     assert(!(p1 == p2));
     assert(p1 != p2);
-    if (!TEST_IS_CONSTANT_EVALUATED) {
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
       assert((p1 < p2) == (ptr1 < ptr2));
       assert((p1 <= p2) == (ptr1 <= ptr2));
       assert((p1 > p2) == (ptr1 > ptr2));
@@ -83,7 +83,7 @@ TEST_CONSTEXPR_CXX23 bool test() {
     const std::unique_ptr<B, Deleter<B> > p2(ptr2);
     assert(!(p1 == p2));
     assert(p1 != p2);
-    if (!TEST_IS_CONSTANT_EVALUATED) {
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
       assert((p1 < p2) == (ptr1 < ptr2));
       assert((p1 <= p2) == (ptr1 <= ptr2));
       assert((p1 > p2) == (ptr1 > ptr2));
@@ -102,7 +102,7 @@ TEST_CONSTEXPR_CXX23 bool test() {
     const std::unique_ptr<A[], Deleter<A[]> > p2(ptr2);
     assert(!(p1 == p2));
     assert(p1 != p2);
-    if (!TEST_IS_CONSTANT_EVALUATED) {
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
       assert((p1 < p2) == (ptr1 < ptr2));
       assert((p1 <= p2) == (ptr1 <= ptr2));
       assert((p1 > p2) == (ptr1 > ptr2));
@@ -121,7 +121,7 @@ TEST_CONSTEXPR_CXX23 bool test() {
     const std::unique_ptr<B[], Deleter<B[]> > p2(ptr2);
     assert(!(p1 == p2));
     assert(p1 != p2);
-    if (!TEST_IS_CONSTANT_EVALUATED) {
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
       assert((p1 < p2) == (ptr1 < ptr2));
       assert((p1 <= p2) == (ptr1 <= ptr2));
       assert((p1 > p2) == (ptr1 > ptr2));
@@ -138,7 +138,7 @@ TEST_CONSTEXPR_CXX23 bool test() {
     const std::unique_ptr<A, Deleter<A> > p2;
     assert(p1 == p2);
 #if TEST_STD_VER > 17
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert((p1 <=> p2) == std::strong_ordering::equal);
 #endif
   }
@@ -148,7 +148,7 @@ TEST_CONSTEXPR_CXX23 bool test() {
     const std::unique_ptr<B, Deleter<B> > p2;
     assert(p1 == p2);
 #if TEST_STD_VER > 17
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert((p1 <=> p2) == std::strong_ordering::equal);
 #endif
   }

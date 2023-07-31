@@ -37,7 +37,7 @@ TEST_CONSTEXPR_CXX20 bool tests() {
         assert(is_contiguous_container_asan_correct(v));
     }
 #ifndef TEST_HAS_NO_EXCEPTIONS
-    if (!TEST_IS_CONSTANT_EVALUATED) {
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX20) {
         std::vector<int, limited_allocator<int, 400> > v(100);
         v.push_back(1);
         assert(is_contiguous_container_asan_correct(v));

@@ -22,14 +22,14 @@ TEST_CONSTEXPR_CXX23 bool test() {
   std::default_delete<B> d2;
   std::default_delete<A> d1 = d2;
   A* p                      = new B;
-  if (!TEST_IS_CONSTANT_EVALUATED) {
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
     assert(A::count == 1);
     assert(B::count == 1);
   }
 
   d1(p);
 
-  if (!TEST_IS_CONSTANT_EVALUATED) {
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
     assert(A::count == 0);
     assert(B::count == 0);
   }

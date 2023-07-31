@@ -39,7 +39,7 @@ test(const S& s,   typename S::size_type pos1, typename S::size_type n1,
     if (pos1 <= s.size() && pos2 <= str.size())
         assert(sign(s.compare(pos1, n1, str, pos2, n2)) == sign(x));
 #ifndef TEST_HAS_NO_EXCEPTIONS
-    else if (!TEST_IS_CONSTANT_EVALUATED)
+    else if (!TEST_IS_CONSTANT_EVALUATED_CXX20)
     {
         try
         {
@@ -62,7 +62,7 @@ test_npos(const S& s,   typename S::size_type pos1, typename S::size_type n1,
     if (pos1 <= s.size() && pos2 <= str.size())
         assert(sign(s.compare(pos1, n1, str, pos2)) == sign(x));
 #ifndef TEST_HAS_NO_EXCEPTIONS
-    else if (!TEST_IS_CONSTANT_EVALUATED)
+    else if (!TEST_IS_CONSTANT_EVALUATED_CXX20)
     {
         try
         {

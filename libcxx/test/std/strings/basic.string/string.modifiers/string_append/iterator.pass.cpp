@@ -118,7 +118,7 @@ TEST_CONSTEXPR_CXX20 bool test() {
 #endif
 
 #ifndef TEST_HAS_NO_EXCEPTIONS
-  if (!TEST_IS_CONSTANT_EVALUATED) { // test iterator operations that throw
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX20) { // test iterator operations that throw
     typedef std::string S;
     typedef ThrowingIterator<char> TIter;
     typedef cpp17_input_iterator<TIter> IIter;
@@ -175,7 +175,7 @@ TEST_CONSTEXPR_CXX20 bool test() {
     s_sneaky.reserve(12);
     test(s_sneaky, s_sneaky.data(), s_sneaky.data() + 6, std::string("hellohello\0", 11));
 
-     if (!TEST_IS_CONSTANT_EVALUATED) {
+     if (!TEST_IS_CONSTANT_EVALUATED_CXX20) {
        const unsigned char *first = reinterpret_cast<const unsigned char*>(s_othertype.data());
        test(s_othertype, first + 2, first + 5, std::string("hellollo"));
      }

@@ -995,7 +995,7 @@ TEST_CONSTEXPR_CXX20 bool test8()
 template <class S>
 TEST_CONSTEXPR_CXX20 bool test9() {
 #ifndef TEST_HAS_NO_EXCEPTIONS
-  if (!TEST_IS_CONSTANT_EVALUATED) { // test iterator operations that throw
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX20) { // test iterator operations that throw
     typedef ThrowingIterator<char> TIter;
     typedef cpp17_input_iterator<TIter> IIter;
     const char* s = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";

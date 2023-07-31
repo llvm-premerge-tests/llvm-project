@@ -25,14 +25,14 @@ TEST_CONSTEXPR_CXX23 void test_basic() {
   const int expect_alive = IsArray ? 5 : 1;
   {
     std::unique_ptr<VT> s2(newValue<VT>(expect_alive));
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == expect_alive);
     s2 = NULL;
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == 0);
     assert(s2.get() == 0);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(A::count == 0);
 }
 

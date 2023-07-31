@@ -31,11 +31,11 @@ TEST_CONSTEXPR_CXX23 void test_basic() {
 #endif
   {
     std::unique_ptr<VT> p(newValue<VT>(expect_alive));
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == expect_alive);
     A* ap = p.get();
     A* a = p.release();
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == expect_alive);
     assert(p.get() == nullptr);
     assert(ap == a);
@@ -46,10 +46,10 @@ TEST_CONSTEXPR_CXX23 void test_basic() {
     else
       delete a;
 
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == 0);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(A::count == 0);
 }
 

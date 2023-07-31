@@ -22,15 +22,15 @@ struct TT {
   int state_;
   static int count;
   TEST_CONSTEXPR_CXX23 TT() : state_(-1) {
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       ++count;
   }
   TEST_CONSTEXPR_CXX23 explicit TT(int i) : state_(i) {
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       ++count;
   }
   TEST_CONSTEXPR_CXX23 TT(const TT& a) : state_(a.state_) {
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       ++count;
   }
   TEST_CONSTEXPR_CXX23 TT& operator=(const TT& a) {
@@ -38,7 +38,7 @@ struct TT {
     return *this;
   }
   TEST_CONSTEXPR_CXX23 ~TT() {
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       --count;
   }
 
@@ -85,10 +85,10 @@ TEST_CONSTEXPR_CXX23 void test_basic() {
     assert(s2.get() == p1);
     assert(*s2.get() == TT(1));
     assert(s2.get_deleter().state() == 1);
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(TT::count == (expect_alive * 2));
   }
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(TT::count == 0);
 }
 

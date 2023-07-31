@@ -71,7 +71,7 @@ struct Test {
       assert(base(iter) == arr + 10);
     }
 
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX20)
       comparable_data.clear();
   }
 };

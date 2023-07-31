@@ -47,7 +47,7 @@
 #include "test_comparisons.h"
 
 TEST_CONSTEXPR_CXX23 bool test() {
-  if (!TEST_IS_CONSTANT_EVALUATED) {
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
     AssertEqualityAreNoexcept<std::unique_ptr<int>, nullptr_t>();
     AssertEqualityAreNoexcept<nullptr_t, std::unique_ptr<int> >();
     AssertComparisonsReturnBool<std::unique_ptr<int>, nullptr_t>();
@@ -62,7 +62,7 @@ TEST_CONSTEXPR_CXX23 bool test() {
   assert(!(p1 == nullptr));
   assert(!(nullptr == p1));
   // A pointer to allocated storage and a nullptr can't be compared at compile-time
-  if (!TEST_IS_CONSTANT_EVALUATED) {
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
     assert(!(p1 < nullptr));
     assert((nullptr < p1));
     assert(!(p1 <= nullptr));

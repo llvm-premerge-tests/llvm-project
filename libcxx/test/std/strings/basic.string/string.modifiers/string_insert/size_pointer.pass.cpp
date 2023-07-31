@@ -31,7 +31,7 @@ test(S s, typename S::size_type pos, const typename S::value_type* str, S expect
         assert(s == expected);
     }
 #ifndef TEST_HAS_NO_EXCEPTIONS
-    else if (!TEST_IS_CONSTANT_EVALUATED)
+    else if (!TEST_IS_CONSTANT_EVALUATED_CXX20)
     {
         try
         {

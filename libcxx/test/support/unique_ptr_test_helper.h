@@ -18,15 +18,15 @@
 struct A {
   static int count;
   TEST_CONSTEXPR_CXX23 A() {
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       ++count;
   }
   TEST_CONSTEXPR_CXX23 A(const A&) {
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       ++count;
   }
   TEST_CONSTEXPR_CXX23 virtual ~A() {
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       --count;
   }
 };
@@ -36,15 +36,15 @@ int A::count = 0;
 struct B : public A {
   static int count;
   TEST_CONSTEXPR_CXX23 B() {
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       ++count;
   }
   TEST_CONSTEXPR_CXX23 B(const B& other) : A(other) {
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       ++count;
   }
   TEST_CONSTEXPR_CXX23 virtual ~B() {
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       --count;
   }
 };

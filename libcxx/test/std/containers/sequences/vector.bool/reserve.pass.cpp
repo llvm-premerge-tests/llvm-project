@@ -59,7 +59,7 @@ TEST_CONSTEXPR_CXX20 bool tests()
     }
 #endif
 #ifndef TEST_HAS_NO_EXCEPTIONS
-    if (!TEST_IS_CONSTANT_EVALUATED) {
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX20) {
         std::vector<bool, limited_allocator<bool, 10> > v;
         v.reserve(5);
         try {

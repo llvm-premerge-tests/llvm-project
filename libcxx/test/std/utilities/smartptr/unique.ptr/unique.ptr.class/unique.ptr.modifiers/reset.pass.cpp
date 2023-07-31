@@ -32,35 +32,35 @@ TEST_CONSTEXPR_CXX23 void test_reset_pointer() {
 #endif
   {
     std::unique_ptr<VT> p(newValue<VT>(expect_alive));
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == expect_alive);
     A* i = p.get();
     assert(i != nullptr);
     A* new_value = newValue<VT>(expect_alive);
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == (expect_alive * 2));
     p.reset(new_value);
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == expect_alive);
     assert(p.get() == new_value);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(A::count == 0);
   {
     std::unique_ptr<const VT> p(newValue<const VT>(expect_alive));
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == expect_alive);
     const A* i = p.get();
     assert(i != nullptr);
     A* new_value = newValue<VT>(expect_alive);
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == (expect_alive * 2));
     p.reset(new_value);
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == expect_alive);
     assert(p.get() == new_value);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(A::count == 0);
 }
 
@@ -78,16 +78,16 @@ TEST_CONSTEXPR_CXX23 void test_reset_nullptr() {
 #endif
   {
     std::unique_ptr<VT> p(newValue<VT>(expect_alive));
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == expect_alive);
     A* i = p.get();
     assert(i != nullptr);
     p.reset(nullptr);
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == 0);
     assert(p.get() == nullptr);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(A::count == 0);
 }
 
@@ -105,16 +105,16 @@ TEST_CONSTEXPR_CXX23 void test_reset_no_arg() {
 #endif
   {
     std::unique_ptr<VT> p(newValue<VT>(expect_alive));
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == expect_alive);
     A* i = p.get();
     assert(i != nullptr);
     p.reset();
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == 0);
     assert(p.get() == nullptr);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(A::count == 0);
 }
 

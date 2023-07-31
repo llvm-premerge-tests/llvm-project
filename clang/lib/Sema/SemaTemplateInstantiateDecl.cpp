@@ -5372,8 +5372,11 @@ void Sema::InstantiateVariableInitializer(
     Var->setImplicitlyInline();
 
   if (OldVar->getInit()) {
-    EnterExpressionEvaluationContext Evaluated(
-        *this, Sema::ExpressionEvaluationContext::PotentiallyEvaluated, Var);
+    Sema::ExpressionEvaluationContext InitEvalContext =
+        Var->isConstexpr()
+            ? Sema::ExpressionEvaluationContext::ConstantEvaluated
+            : Sema::ExpressionEvaluationContext::PotentiallyEvaluated;
+    EnterExpressionEvaluationContext Evaluated(*this, InitEvalContext, Var);
 
     // Instantiate the initializer.
     ExprResult Init;

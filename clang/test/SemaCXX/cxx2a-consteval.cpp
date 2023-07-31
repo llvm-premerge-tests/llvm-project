@@ -713,7 +713,7 @@ constexpr derp d;
 struct test {
   consteval int operator[](int i) const { return {}; }
   consteval const derp * operator->() const { return &d; }
-  consteval int f() const { return 12; } // expected-note 2{{declared here}}
+  consteval int f() const { return 12; } // expected-note {{declared here}}
 };
 
 constexpr test a;
@@ -726,8 +726,7 @@ constexpr int s = a.operator[](1);
 constexpr int t = a[1];
 constexpr int u = a.operator->()->b;
 constexpr int v = a->b;
-// FIXME: I believe this case should work, but we currently reject.
-constexpr int w = (a.*&test::f)(); // expected-error {{cannot take address of consteval function 'f' outside of an immediate invocation}}
+constexpr int w = (a.*&test::f)();
 constexpr int x = a.f();
 
 // Show that we reject when not in an immediate context.
@@ -1073,18 +1072,17 @@ struct tester {
 consteval const char* make_name(const char* name) { return name;}
 consteval const char* pad(int P) { return "thestring"; }
 
-int bad = 10; // expected-note 6{{declared here}}
+int bad = 10; // expected-note 5{{declared here}}
 
 tester glob1(make_name("glob1"));
 tester glob2(make_name("glob2"));
 constexpr tester cglob(make_name("cglob"));
-tester paddedglob(make_name(pad(bad))); // expected-error {{call to consteval function 'GH58207::make_name' is not a constant expression}} \
+tester paddedglob(make_name(pad(bad))); // expected-error {{call to consteval function 'GH58207::tester::tester' is not a constant expression}} \
                                         // expected-note {{read of non-const variable 'bad' is not allowed in a constant expression}}
 
 constexpr tester glob3 = { make_name("glob3") };
-constexpr tester glob4 = { make_name(pad(bad)) }; // expected-error {{call to consteval function 'GH58207::make_name' is not a constant expression}} \
-                                                  // expected-error {{constexpr variable 'glob4' must be initialized by a constant expression}} \
-                                                  // expected-note 2{{read of non-const variable 'bad' is not allowed in a constant expression}}
+constexpr tester glob4 = { make_name(pad(bad)) }; // expected-error {{constexpr variable 'glob4' must be initialized by a constant expression}} \
+                                                  // expected-note {{read of non-const variable 'bad' is not allowed in a constant expression}}
 
 auto V = make_name(pad(3));
 auto V1 = make_name(pad(bad)); // expected-error {{call to consteval function 'GH58207::make_name' is not a constant expression}} \
@@ -1094,12 +1092,12 @@ auto V1 = make_name(pad(bad)); // expected-error {{call to consteval function 'G
 void foo() {
   static tester loc1(make_name("loc1"));
   static constexpr tester loc2(make_name("loc2"));
-  static tester paddedloc(make_name(pad(bad))); // expected-error {{call to consteval function 'GH58207::make_name' is not a constant expression}} \
+  static tester paddedloc(make_name(pad(bad))); // expected-error {{call to consteval function 'GH58207::tester::tester' is not a constant expression}} \
                                                 // expected-note {{read of non-const variable 'bad' is not allowed in a constant expression}}
 }
 
 void bar() {
-  static tester paddedloc(make_name(pad(bad))); // expected-error {{call to consteval function 'GH58207::make_name' is not a constant expression}} \
+  static tester paddedloc(make_name(pad(bad))); // expected-error {{call to consteval function 'GH58207::tester::tester' is not a constant expression}} \
                                                 // expected-note {{read of non-const variable 'bad' is not allowed in a constant expression}}
 }
 }

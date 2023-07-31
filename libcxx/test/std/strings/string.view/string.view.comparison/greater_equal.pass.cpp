@@ -54,7 +54,7 @@ TEST_CONSTEXPR_CXX14 bool test()
             assert((ConvertibleTo<SV>(v[i]) >= v[j]) == expected);
             assert((v[i] >= ConvertibleTo<SV>(v[j])) == expected);
 
-            if (!TEST_IS_CONSTANT_EVALUATED || TEST_STD_VER >= 20) {
+            if (!TEST_IS_CONSTANT_EVALUATED_CXX14 || TEST_STD_VER >= 20) {
                 assert((std::basic_string<CharT, Traits>(v[i]) >= v[j]) == expected);
                 assert((v[i] >= std::basic_string<CharT, Traits>(v[j])) == expected);
             }
@@ -75,7 +75,7 @@ TEST_CONSTEXPR_CXX14 bool test()
     assert((abc.data() >= abc0def) == false);
     assert((abc0def >= abc.data()) == true);
 
-    if (!TEST_IS_CONSTANT_EVALUATED || TEST_STD_VER >= 20) {
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX14 || TEST_STD_VER >= 20) {
         assert((std::basic_string<CharT, Traits>(abc) >= abc0def) == false);
         assert((abc0def >= std::basic_string<CharT, Traits>(abc)) == true);
     }

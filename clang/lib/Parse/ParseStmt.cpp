@@ -1510,6 +1510,11 @@ StmtResult Parser::ParseIfStatement(SourceLocation *TrailingElseLoc) {
   SourceLocation RParen;
   std::optional<bool> ConstexprCondition;
   if (!IsConsteval) {
+    EnterExpressionEvaluationContext Consteval(
+        Actions, Sema::ExpressionEvaluationContext::ConstantEvaluated,
+        /*LambdaContextDecl=*/nullptr,
+        Sema::ExpressionEvaluationContextRecord::EK_Other,
+        /*ShouldEnter=*/IsConstexpr);
 
     if (ParseParenExprOrCondition(&InitStmt, Cond, IfLoc,
                                   IsConstexpr ? Sema::ConditionKind::ConstexprIf
@@ -1557,11 +1562,16 @@ StmtResult Parser::ParseIfStatement(SourceLocation *TrailingElseLoc) {
     if (NotLocation.isInvalid() && IsConsteval) {
       Context = Sema::ExpressionEvaluationContext::ImmediateFunctionContext;
       ShouldEnter = true;
+    } else if (NotLocation.isValid() && IsConsteval) {
+      Context = Actions.ExprEvalContexts.back().Context;
+      ShouldEnter = true;
     }
 
     EnterExpressionEvaluationContext PotentiallyDiscarded(
         Actions, Context, nullptr,
         Sema::ExpressionEvaluationContextRecord::EK_Other, ShouldEnter);
+    if (NotLocation.isValid() && IsConsteval)
+      Actions.ExprEvalContexts.back().IsRuntimeEvaluated = true;
     ThenStmt = ParseStatement(&InnerStatementTrailingElseLoc);
   }
 
@@ -1602,11 +1612,16 @@ StmtResult Parser::ParseIfStatement(SourceLocation *TrailingElseLoc) {
     if (NotLocation.isValid() && IsConsteval) {
       Context = Sema::ExpressionEvaluationContext::ImmediateFunctionContext;
       ShouldEnter = true;
+    } else if (NotLocation.isInvalid() && IsConsteval) {
+      Context = Actions.ExprEvalContexts.back().Context;
+      ShouldEnter = true;
     }
 
     EnterExpressionEvaluationContext PotentiallyDiscarded(
         Actions, Context, nullptr,
         Sema::ExpressionEvaluationContextRecord::EK_Other, ShouldEnter);
+    if (NotLocation.isInvalid() && IsConsteval)
+      Actions.ExprEvalContexts.back().IsRuntimeEvaluated = true;
     ElseStmt = ParseStatement();
 
     if (ElseStmt.isUsable())

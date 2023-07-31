@@ -140,7 +140,7 @@ TEST_CONSTEXPR_CXX20 bool all_the_algorithms()
 #endif
     (void)std::is_sorted(first, last, Less<T>(&copies)); assert(copies == 0);
     (void)std::is_sorted_until(first, last, Less<T>(&copies)); assert(copies == 0);
-    if (!TEST_IS_CONSTANT_EVALUATED) { (void)std::inplace_merge(first, mid, last, Less<T>(&copies)); assert(copies == 0); }
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX20) { (void)std::inplace_merge(first, mid, last, Less<T>(&copies)); assert(copies == 0); }
     (void)std::lexicographical_compare(first, last, first2, last2, Less<T>(&copies)); assert(copies == 0);
 #if TEST_STD_VER > 17
     (void)std::lexicographical_compare_three_way(first, last, first2, last2, ThreeWay<T>(&copies)); assert(copies == 0);
@@ -195,8 +195,8 @@ TEST_CONSTEXPR_CXX20 bool all_the_algorithms()
     (void)std::sort(first, first+5, Less<T>(&copies)); assert(copies == 0);
     (void)std::sort(first, last, Less<T>(&copies)); assert(copies == 0);
     (void)std::sort_heap(first, last, Less<T>(&copies)); assert(copies == 0);
-    if (!TEST_IS_CONSTANT_EVALUATED) { (void)std::stable_partition(first, last, UnaryTrue<T>(&copies)); assert(copies == 0); }
-    if (!TEST_IS_CONSTANT_EVALUATED) { (void)std::stable_sort(first, last, Less<T>(&copies)); assert(copies == 0); }
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX20) { (void)std::stable_partition(first, last, UnaryTrue<T>(&copies)); assert(copies == 0); }
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX20) { (void)std::stable_sort(first, last, Less<T>(&copies)); assert(copies == 0); }
     (void)std::transform(first, last, first2, UnaryTransform<T>(&copies)); assert(copies == 0);
     (void)std::transform(first, mid, mid, first2, BinaryTransform<T>(&copies)); assert(copies == 0);
     (void)std::unique(first, last, Equal<T>(&copies)); assert(copies == 0);

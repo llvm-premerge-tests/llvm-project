@@ -145,7 +145,7 @@
 
 #if defined(__cpp_lib_is_constant_evaluated) && __cpp_lib_is_constant_evaluated >= 201811L
 # define TEST_IS_CONSTANT_EVALUATED std::is_constant_evaluated()
-#elif TEST_HAS_BUILTIN(__builtin_is_constant_evaluated)
+#elif TEST_HAS_BUILTIN(__builtin_is_constant_evaluated) && TEST_STD_VER >= 11
 # define TEST_IS_CONSTANT_EVALUATED __builtin_is_constant_evaluated()
 #else
 # define TEST_IS_CONSTANT_EVALUATED false
@@ -153,26 +153,34 @@
 
 #if TEST_STD_VER >= 14
 # define TEST_CONSTEXPR_CXX14 constexpr
+# define TEST_IS_CONSTANT_EVALUATED_CXX14 TEST_IS_CONSTANT_EVALUATED
 #else
 # define TEST_CONSTEXPR_CXX14
+# define TEST_IS_CONSTANT_EVALUATED_CXX14 false
 #endif
 
 #if TEST_STD_VER >= 17
 # define TEST_CONSTEXPR_CXX17 constexpr
+# define TEST_IS_CONSTANT_EVALUATED_CXX17 TEST_IS_CONSTANT_EVALUATED
 #else
 # define TEST_CONSTEXPR_CXX17
+# define TEST_IS_CONSTANT_EVALUATED_CXX17 false
 #endif
 
 #if TEST_STD_VER >= 20
 # define TEST_CONSTEXPR_CXX20 constexpr
+# define TEST_IS_CONSTANT_EVALUATED_CXX20 TEST_IS_CONSTANT_EVALUATED
 #else
 # define TEST_CONSTEXPR_CXX20
+# define TEST_IS_CONSTANT_EVALUATED_CXX20 false
 #endif
 
 #if TEST_STD_VER >= 23
 #  define TEST_CONSTEXPR_CXX23 constexpr
+# define TEST_IS_CONSTANT_EVALUATED_CXX23 TEST_IS_CONSTANT_EVALUATED
 #else
 #  define TEST_CONSTEXPR_CXX23
+# define TEST_IS_CONSTANT_EVALUATED_CXX23 false
 #endif
 
 #define TEST_ALIGNAS_TYPE(...) TEST_ALIGNAS(TEST_ALIGNOF(__VA_ARGS__))

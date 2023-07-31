@@ -21,12 +21,12 @@
 TEST_CONSTEXPR_CXX23 bool test() {
   std::default_delete<A[]> d;
   A* p = new A[3];
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(A::count == 3);
 
   d(p);
 
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(A::count == 0);
 
   return true;

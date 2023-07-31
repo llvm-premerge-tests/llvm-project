@@ -33,7 +33,7 @@ test(S str, typename S::value_type* s, typename S::size_type n,
             assert(S::traits_type::eq(cs[pos+r], s[r]));
     }
 #ifndef TEST_HAS_NO_EXCEPTIONS
-    else if (!TEST_IS_CONSTANT_EVALUATED)
+    else if (!TEST_IS_CONSTANT_EVALUATED_CXX20)
     {
         try
         {

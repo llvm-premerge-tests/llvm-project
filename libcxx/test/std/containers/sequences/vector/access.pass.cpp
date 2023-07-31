@@ -45,7 +45,7 @@ TEST_CONSTEXPR_CXX20 void test_get_basic(Vector& c, int start_value) {
         assert(c.at(i) == start_value + i);
 
 #ifndef TEST_HAS_NO_EXCEPTIONS
-    if (!TEST_IS_CONSTANT_EVALUATED) {
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX20) {
         try {
             TEST_IGNORE_NODISCARD c.at(n);
             assert(false);

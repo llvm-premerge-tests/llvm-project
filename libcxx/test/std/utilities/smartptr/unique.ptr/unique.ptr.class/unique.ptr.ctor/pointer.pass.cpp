@@ -56,55 +56,55 @@ TEST_CONSTEXPR_CXX23 void test_pointer() {
 #endif
   {
     A* p = newValue<ValueT>(expect_alive);
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == expect_alive);
 
     std::unique_ptr<ValueT> s(p);
     assert(s.get() == p);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(A::count == 0);
   {
     A* p = newValue<ValueT>(expect_alive);
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == expect_alive);
 
     std::unique_ptr<ValueT, NCDeleter<ValueT> > s(p);
     assert(s.get() == p);
     assert(s.get_deleter().state() == 0);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(A::count == 0);
   {
     A* p = newValue<ValueT>(expect_alive);
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == expect_alive);
 
     std::unique_ptr<ValueT, DefaultCtorDeleter<ValueT> > s(p);
     assert(s.get() == p);
     assert(s.get_deleter().state() == 0);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(A::count == 0);
 }
 
 TEST_CONSTEXPR_CXX23 void test_derived() {
   {
     B* p = new B;
-    if (!TEST_IS_CONSTANT_EVALUATED) {
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
       assert(A::count == 1);
       assert(B::count == 1);
     }
     std::unique_ptr<A> s(p);
     assert(s.get() == p);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED) {
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
     assert(A::count == 0);
     assert(B::count == 0);
   }
   {
     B* p = new B;
-    if (!TEST_IS_CONSTANT_EVALUATED) {
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
       assert(A::count == 1);
       assert(B::count == 1);
     }
@@ -112,7 +112,7 @@ TEST_CONSTEXPR_CXX23 void test_derived() {
     assert(s.get() == p);
     assert(s.get_deleter().state() == 0);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED) {
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
     assert(A::count == 0);
     assert(B::count == 0);
   }

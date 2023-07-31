@@ -34,7 +34,7 @@ test(S s, typename S::size_type pos1, S str, typename S::size_type pos2,
         assert(s == expected);
     }
 #ifndef TEST_HAS_NO_EXCEPTIONS
-    else if (!TEST_IS_CONSTANT_EVALUATED)
+    else if (!TEST_IS_CONSTANT_EVALUATED_CXX20)
     {
         try
         {
@@ -63,7 +63,7 @@ test_npos(S s, typename S::size_type pos1, S str, typename S::size_type pos2, S 
         assert(s == expected);
     }
 #ifndef TEST_HAS_NO_EXCEPTIONS
-    else if (!TEST_IS_CONSTANT_EVALUATED)
+    else if (!TEST_IS_CONSTANT_EVALUATED_CXX20)
     {
         try
         {

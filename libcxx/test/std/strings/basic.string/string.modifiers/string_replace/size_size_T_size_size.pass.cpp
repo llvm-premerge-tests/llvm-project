@@ -49,7 +49,7 @@ test(S s, typename S::size_type pos1, typename S::size_type n1,
         assert(s.size() == old_size - xlen + rlen);
     }
 #ifndef TEST_HAS_NO_EXCEPTIONS
-    else if (!TEST_IS_CONSTANT_EVALUATED)
+    else if (!TEST_IS_CONSTANT_EVALUATED_CXX20)
     {
         try
         {
@@ -85,7 +85,7 @@ test_npos(S s, typename S::size_type pos1, typename S::size_type n1,
         assert(s.size() == old_size - xlen + rlen);
     }
 #ifndef TEST_HAS_NO_EXCEPTIONS
-    else if (!TEST_IS_CONSTANT_EVALUATED)
+    else if (!TEST_IS_CONSTANT_EVALUATED_CXX20)
     {
         try
         {

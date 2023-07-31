@@ -35,7 +35,7 @@ test(const S& s, typename S::size_type pos, typename S::size_type n1,
     if (pos <= s.size())
         assert(sign(s.compare(pos, n1, str, n2)) == sign(x));
 #ifndef TEST_HAS_NO_EXCEPTIONS
-    else if (!TEST_IS_CONSTANT_EVALUATED)
+    else if (!TEST_IS_CONSTANT_EVALUATED_CXX20)
     {
         try
         {

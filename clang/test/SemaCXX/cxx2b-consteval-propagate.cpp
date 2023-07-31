@@ -209,7 +209,7 @@ struct SS {
 SS::SS(){} // expected-note {{in the default initializer of 'x'}}
 
 consteval int f2(int x) {
-    if (!__builtin_is_constant_evaluated()) side_effect();
+    if (!__builtin_is_constant_evaluated()) side_effect(); // expected-warning {{'__builtin_is_constant_evaluated' will always evaluate to true}}
     return x;
 }
 struct S2 {

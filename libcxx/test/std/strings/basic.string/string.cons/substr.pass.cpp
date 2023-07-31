@@ -45,7 +45,7 @@ test(S str, unsigned pos)
         assert(s2.capacity() >= s2.size());
     }
 #ifndef TEST_HAS_NO_EXCEPTIONS
-    else if (!TEST_IS_CONSTANT_EVALUATED)
+    else if (!TEST_IS_CONSTANT_EVALUATED_CXX20)
     {
         try
         {
@@ -77,7 +77,7 @@ test(S str, unsigned pos, unsigned n)
         assert(s2.capacity() >= s2.size());
     }
 #ifndef TEST_HAS_NO_EXCEPTIONS
-    else if (!TEST_IS_CONSTANT_EVALUATED)
+    else if (!TEST_IS_CONSTANT_EVALUATED_CXX20)
     {
         try
         {
@@ -109,7 +109,7 @@ test(S str, unsigned pos, unsigned n, const typename S::allocator_type& a)
         assert(s2.capacity() >= s2.size());
     }
 #ifndef TEST_HAS_NO_EXCEPTIONS
-    else if (!TEST_IS_CONSTANT_EVALUATED)
+    else if (!TEST_IS_CONSTANT_EVALUATED_CXX20)
     {
         try
         {

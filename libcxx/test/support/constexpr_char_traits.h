@@ -121,7 +121,7 @@ template <class CharT>
 TEST_CONSTEXPR_CXX14 CharT*
 constexpr_char_traits<CharT>::copy(char_type* s1, const char_type* s2, std::size_t n)
 {
-    if (!TEST_IS_CONSTANT_EVALUATED) // fails in constexpr because we might be comparing unrelated pointers
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX14) // fails in constexpr because we might be comparing unrelated pointers
         assert(s2 < s1 || s2 >= s1+n);
     char_type* r = s1;
     for (; n; --n, ++s1, ++s2)

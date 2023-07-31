@@ -34,7 +34,7 @@ test(const S& s, typename S::size_type pos, typename S::size_type n)
         assert(S::traits_type::compare(s.data()+pos, str.data(), rlen) == 0);
     }
 #ifndef TEST_HAS_NO_EXCEPTIONS
-    else if (!TEST_IS_CONSTANT_EVALUATED)
+    else if (!TEST_IS_CONSTANT_EVALUATED_CXX20)
     {
         try
         {

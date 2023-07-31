@@ -209,17 +209,17 @@ TEST_CONSTEXPR_CXX23 void test_basic() {
   const int expect_alive = IsArray ? 5 : 1;
   { // MoveConstructible deleter (C-1)
     A* p = newValue<VT>(expect_alive);
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == expect_alive);
     std::unique_ptr<VT, Deleter<VT> > s(p, Deleter<VT>(5));
     assert(s.get() == p);
     assert(s.get_deleter().state() == 5);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(A::count == 0);
   { // CopyConstructible deleter (C-2)
     A* p = newValue<VT>(expect_alive);
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == expect_alive);
     CopyDeleter<VT> d(5);
     std::unique_ptr<VT, CopyDeleter<VT> > s(p, d);
@@ -228,11 +228,11 @@ TEST_CONSTEXPR_CXX23 void test_basic() {
     d.set_state(6);
     assert(s.get_deleter().state() == 5);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(A::count == 0);
   { // Reference deleter (C-3)
     A* p = newValue<VT>(expect_alive);
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == expect_alive);
     NCDeleter<VT> d(5);
     std::unique_ptr<VT, NCDeleter<VT>&> s(p, d);
@@ -242,11 +242,11 @@ TEST_CONSTEXPR_CXX23 void test_basic() {
     d.set_state(6);
     assert(s.get_deleter().state() == 6);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(A::count == 0);
   { // Const Reference deleter (C-4)
     A* p = newValue<VT>(expect_alive);
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == expect_alive);
     NCConstDeleter<VT> d(5);
     std::unique_ptr<VT, NCConstDeleter<VT> const&> s(p, d);
@@ -254,7 +254,7 @@ TEST_CONSTEXPR_CXX23 void test_basic() {
     assert(s.get_deleter().state() == 5);
     assert(&s.get_deleter() == &d);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED) {
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
     assert(A::count == 0);
     { // Void and function pointers (C-6,7)
       typedef typename std::conditional<IsArray, int[], int>::type VT2;
@@ -272,13 +272,13 @@ TEST_CONSTEXPR_CXX23 void test_basic() {
 }
 
 TEST_CONSTEXPR_CXX23 void test_basic_single() {
-  if (!TEST_IS_CONSTANT_EVALUATED) {
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
     assert(A::count == 0);
     assert(B::count == 0);
   }
   { // Derived pointers (C-5)
     B* p = new B;
-    if (!TEST_IS_CONSTANT_EVALUATED) {
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
       assert(A::count == 1);
       assert(B::count == 1);
     }
@@ -286,7 +286,7 @@ TEST_CONSTEXPR_CXX23 void test_basic_single() {
     assert(s.get() == p);
     assert(s.get_deleter().state() == 5);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED) {
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
     assert(A::count == 0);
     assert(B::count == 0);
 

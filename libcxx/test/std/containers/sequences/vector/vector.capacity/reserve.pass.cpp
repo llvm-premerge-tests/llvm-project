@@ -49,7 +49,7 @@ TEST_CONSTEXPR_CXX20 bool tests() {
         assert(is_contiguous_container_asan_correct(v));
     }
 #ifndef TEST_HAS_NO_EXCEPTIONS
-    if (!TEST_IS_CONSTANT_EVALUATED) {
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX20) {
         std::vector<int> v;
         std::size_t sz = v.max_size() + 1;
 
@@ -61,7 +61,7 @@ TEST_CONSTEXPR_CXX20 bool tests() {
             assert(v.capacity() == 0);
         }
     }
-    if (!TEST_IS_CONSTANT_EVALUATED) {
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX20) {
         std::vector<int> v(10, 42);
         int* previous_data = v.data();
         std::size_t previous_capacity = v.capacity();
@@ -118,7 +118,7 @@ TEST_CONSTEXPR_CXX20 bool tests() {
     }
 #endif
 #ifndef TEST_HAS_NO_EXCEPTIONS
-    if (!TEST_IS_CONSTANT_EVALUATED) {
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX20) {
         std::vector<int, limited_allocator<int, 100> > v;
         v.reserve(50);
         assert(v.capacity() == 50);

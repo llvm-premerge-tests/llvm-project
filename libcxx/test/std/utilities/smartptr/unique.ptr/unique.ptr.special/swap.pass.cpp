@@ -23,15 +23,15 @@ struct A
     int state_;
     static int count;
     TEST_CONSTEXPR_CXX23 A() : state_(0) {
-      if (!TEST_IS_CONSTANT_EVALUATED)
+      if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
         ++count;
     }
     TEST_CONSTEXPR_CXX23 explicit A(int i) : state_(i) {
-      if (!TEST_IS_CONSTANT_EVALUATED)
+      if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
         ++count;
     }
     TEST_CONSTEXPR_CXX23 A(const A& a) : state_(a.state_) {
-      if (!TEST_IS_CONSTANT_EVALUATED)
+      if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
         ++count;
     }
     TEST_CONSTEXPR_CXX23 A& operator=(const A& a) {
@@ -39,7 +39,7 @@ struct A
       return *this;
     }
     TEST_CONSTEXPR_CXX23 ~A() {
-      if (!TEST_IS_CONSTANT_EVALUATED)
+      if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
         --count;
     }
 
@@ -78,10 +78,10 @@ TEST_CONSTEXPR_CXX23 bool test() {
     assert(s2.get() == p1);
     assert(*s2 == A(1));
     assert(s2.get_deleter().state() == 1);
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == 2);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(A::count == 0);
   {
     A* p1 = new A[3];
@@ -97,10 +97,10 @@ TEST_CONSTEXPR_CXX23 bool test() {
     assert(s1.get_deleter().state() == 2);
     assert(s2.get() == p1);
     assert(s2.get_deleter().state() == 1);
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == 6);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(A::count == 0);
 #if TEST_STD_VER >= 11
     {

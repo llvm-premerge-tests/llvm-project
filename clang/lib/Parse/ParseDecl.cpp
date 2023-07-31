@@ -2384,6 +2384,15 @@ Decl *Parser::ParseDeclarationAfterDeclarator(
   return ParseDeclarationAfterDeclaratorAndAttributes(D, TemplateInfo);
 }
 
+/// Determine whether the given declaration is a global variable or
+/// static data member.
+static bool isNonlocalVariable(const Decl *D) {
+  if (const VarDecl *Var = dyn_cast_or_null<VarDecl>(D))
+    return Var->hasGlobalStorage();
+
+  return false;
+}
+
 Decl *Parser::ParseDeclarationAfterDeclaratorAndAttributes(
     Declarator &D, const ParsedTemplateInfo &TemplateInfo, ForRangeInit *FRI) {
   // RAII type used to track whether we're inside an initializer.
@@ -2414,6 +2423,36 @@ Decl *Parser::ParseDeclarationAfterDeclaratorAndAttributes(
           P.ExitScope();
       }
       ThisDecl = nullptr;
+    }
+  };
+  struct EnterInitializerExpressionEvaluationContext {
+    Sema &S;
+    bool Entered;
+
+    EnterInitializerExpressionEvaluationContext(Sema &S, Declarator &D,
+                                                Decl *ThisDecl)
+        : S(S), Entered(false) {
+      if (ThisDecl && S.getLangOpts().CPlusPlus && !ThisDecl->isInvalidDecl()) {
+        Entered = true;
+        bool RuntimeEvaluated = S.ExprEvalContexts.back().IsRuntimeEvaluated;
+        Sema::ExpressionEvaluationContext NewEEC =
+            S.ExprEvalContexts.back().Context;
+        if ((D.getDeclSpec().getTypeQualifiers() == DeclSpec::TQ_const ||
+             isNonlocalVariable(ThisDecl)) &&
+            S.ExprEvalContexts.back().IsRuntimeEvaluated) {
+          RuntimeEvaluated = false;
+        }
+        if (D.getDeclSpec().hasConstexprSpecifier()) {
+          NewEEC = Sema::ExpressionEvaluationContext::ConstantEvaluated;
+          RuntimeEvaluated = false;
+        }
+        S.PushExpressionEvaluationContext(NewEEC, ThisDecl);
+        S.ExprEvalContexts.back().IsRuntimeEvaluated = RuntimeEvaluated;
+      }
+    }
+    ~EnterInitializerExpressionEvaluationContext() {
+      if (Entered)
+        S.PopExpressionEvaluationContext();
     }
   };
 
@@ -2514,6 +2553,7 @@ Decl *Parser::ParseDeclarationAfterDeclaratorAndAttributes(
             << getLangOpts().CPlusPlus20;
     } else {
       InitializerScopeRAII InitScope(*this, D, ThisDecl);
+      EnterInitializerExpressionEvaluationContext InitEC(Actions, D, ThisDecl);
 
       if (Tok.is(tok::code_completion)) {
         cutOffParsing();
@@ -2561,6 +2601,7 @@ Decl *Parser::ParseDeclarationAfterDeclaratorAndAttributes(
     ExprVector Exprs;
 
     InitializerScopeRAII InitScope(*this, D, ThisDecl);
+    EnterInitializerExpressionEvaluationContext InitEC(Actions, D, ThisDecl);
 
     auto ThisVarDecl = dyn_cast_or_null<VarDecl>(ThisDecl);
     auto RunSignatureHelp = [&]() {
@@ -2611,6 +2652,7 @@ Decl *Parser::ParseDeclarationAfterDeclaratorAndAttributes(
     Diag(Tok, diag::warn_cxx98_compat_generalized_initializer_lists);
 
     InitializerScopeRAII InitScope(*this, D, ThisDecl);
+    EnterInitializerExpressionEvaluationContext InitEC(Actions, D, ThisDecl);
 
     PreferredType.enterVariableInit(Tok.getLocation(), ThisDecl);
     ExprResult Init(ParseBraceInitializer());

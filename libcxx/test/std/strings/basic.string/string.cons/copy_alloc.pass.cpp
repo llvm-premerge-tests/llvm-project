@@ -106,7 +106,7 @@ TEST_CONSTEXPR_CXX20 bool test() {
   }
 
 #ifndef TEST_HAS_NO_EXCEPTIONS
-  if (!TEST_IS_CONSTANT_EVALUATED) {
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX20) {
     typedef poca_alloc<char> A;
     typedef std::basic_string<char, std::char_traits<char>, A> S;
     const char * p1 = "This is my first string";

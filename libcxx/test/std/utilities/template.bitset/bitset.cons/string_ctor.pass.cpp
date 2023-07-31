@@ -20,7 +20,7 @@
 template <std::size_t N>
 TEST_CONSTEXPR_CXX23 void test_string_ctor() {
 #ifndef TEST_HAS_NO_EXCEPTIONS
-  if (!TEST_IS_CONSTANT_EVALUATED) {
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
     try {
         std::string s("xxx1010101010xxxx");
         std::bitset<N> v(s, s.size()+1, 10);

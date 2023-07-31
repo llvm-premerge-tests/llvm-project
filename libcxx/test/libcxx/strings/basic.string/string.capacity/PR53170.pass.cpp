@@ -34,7 +34,7 @@
 template <class S>
 TEST_CONSTEXPR_CXX20 bool test() {
     // Test that a call to reserve() does shrink the string.
-    if (!TEST_IS_CONSTANT_EVALUATED) {
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX20) {
         S s(1000, 'a');
         typename S::size_type old_cap = s.capacity();
         s.resize(20);

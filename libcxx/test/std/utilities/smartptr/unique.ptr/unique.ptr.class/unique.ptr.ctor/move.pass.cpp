@@ -91,10 +91,10 @@ TEST_CONSTEXPR_CXX23 void test_basic() {
     APtr s2 = std::move(s);
     assert(s2.get() == p);
     assert(s.get() == 0);
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == expect_alive);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(A::count == 0);
   {
     typedef Deleter<VT> MoveDel;
@@ -107,12 +107,12 @@ TEST_CONSTEXPR_CXX23 void test_basic() {
     APtr s2 = std::move(s);
     assert(s2.get() == p);
     assert(s.get() == 0);
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == expect_alive);
     assert(s2.get_deleter().state() == 5);
     assert(s.get_deleter().state() == 0);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(A::count == 0);
   {
     typedef NCDeleter<VT> NonCopyDel;
@@ -124,23 +124,23 @@ TEST_CONSTEXPR_CXX23 void test_basic() {
     APtr s2 = std::move(s);
     assert(s2.get() == p);
     assert(s.get() == 0);
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == expect_alive);
     d.set_state(6);
     assert(s2.get_deleter().state() == d.state());
     assert(s.get_deleter().state() == d.state());
   }
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(A::count == 0);
   {
     sink1<VT>(source1<VT>());
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == 0);
     sink2<VT>(source2<VT>());
-    if (!TEST_IS_CONSTANT_EVALUATED)
+    if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
       assert(A::count == 0);
   }
-  if (!TEST_IS_CONSTANT_EVALUATED)
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23)
     assert(A::count == 0);
 }
 

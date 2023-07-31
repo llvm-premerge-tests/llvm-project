@@ -24,7 +24,7 @@ template <std::size_t N>
 TEST_CONSTEXPR_CXX23 void test_char_pointer_ctor()
 {
 #ifndef TEST_HAS_NO_EXCEPTIONS
-  if (!TEST_IS_CONSTANT_EVALUATED) {
+  if (!TEST_IS_CONSTANT_EVALUATED_CXX23) {
     try {
       std::bitset<N> v("xxx1010101010xxxx");
       assert(false);
