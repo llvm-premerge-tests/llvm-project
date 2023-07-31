@@ -1678,7 +1678,7 @@ bool MemoryDepChecker::couldPreventStoreLoadForward(uint64_t Distance,
   const uint64_t NumItersForStoreLoadThroughMemory = 8 * TypeByteSize;
   // Maximum vector factor.
   uint64_t MaxVFWithoutSLForwardIssues = std::min(
-      VectorizerParams::MaxVectorWidth * TypeByteSize, MaxSafeDepDistBytes);
+      VectorizerParams::MaxVectorWidth * TypeByteSize, MinDepDistBytes);
 
   // Compute the smallest VF at which the store and load would be misaligned.
   for (uint64_t VF = 2 * TypeByteSize; VF <= MaxVFWithoutSLForwardIssues;
@@ -1698,10 +1698,10 @@ bool MemoryDepChecker::couldPreventStoreLoadForward(uint64_t Distance,
     return true;
   }
 
-  if (MaxVFWithoutSLForwardIssues < MaxSafeDepDistBytes &&
+  if (MaxVFWithoutSLForwardIssues < MinDepDistBytes &&
       MaxVFWithoutSLForwardIssues !=
           VectorizerParams::MaxVectorWidth * TypeByteSize)
-    MaxSafeDepDistBytes = MaxVFWithoutSLForwardIssues;
+    MinDepDistBytes = MaxVFWithoutSLForwardIssues;
   return false;
 }
 
@@ -1969,8 +1969,9 @@ MemoryDepChecker::isDependent(const MemAccessInfo &A, unsigned AIdx,
     return Dependence::Backward;
   }
 
-  // Unsafe if the minimum distance needed is greater than max safe distance.
-  if (MinDistanceNeeded > MaxSafeDepDistBytes) {
+  // Unsafe if the minimum distance needed is greater than smallest dependence
+  // distance distance.
+  if (MinDistanceNeeded > MinDepDistBytes) {
     LLVM_DEBUG(dbgs() << "LAA: Failure because it needs at least "
                       << MinDistanceNeeded << " size in bytes\n");
     return Dependence::Backward;
@@ -1992,15 +1993,15 @@ MemoryDepChecker::isDependent(const MemAccessInfo &A, unsigned AIdx,
   // is 2. Then we analyze the accesses on array A, the minimum distance needed
   // is 8, which is less than 2 and forbidden vectorization, But actually
   // both A and B could be vectorized by 2 iterations.
-  MaxSafeDepDistBytes =
-      std::min(static_cast<uint64_t>(Distance), MaxSafeDepDistBytes);
+  MinDepDistBytes =
+      std::min(static_cast<uint64_t>(Distance), MinDepDistBytes);
 
   bool IsTrueDataDependence = (!AIsWrite && BIsWrite);
   if (IsTrueDataDependence && EnableForwardingConflictDetection &&
       couldPreventStoreLoadForward(Distance, TypeByteSize))
     return Dependence::BackwardVectorizableButPreventsForwarding;
 
-  uint64_t MaxVF = MaxSafeDepDistBytes / (TypeByteSize * Stride);
+  uint64_t MaxVF = MinDepDistBytes / (TypeByteSize * Stride);
   LLVM_DEBUG(dbgs() << "LAA: Positive distance " << Val.getSExtValue()
                     << " with max VF = " << MaxVF << '\n');
   uint64_t MaxVFInBits = MaxVF * TypeByteSize * 8;
@@ -2012,7 +2013,7 @@ bool MemoryDepChecker::areDepsSafe(DepCandidates &AccessSets,
                                    MemAccessInfoList &CheckDeps,
                                    const DenseMap<Value *, const SCEV *> &Strides) {
 
-  MaxSafeDepDistBytes = -1;
+  MinDepDistBytes = -1;
   SmallPtrSet<MemAccessInfo, 8> Visited;
   for (MemAccessInfo CurAccess : CheckDeps) {
     if (Visited.count(CurAccess))
@@ -2401,7 +2402,7 @@ void LoopAccessInfo::analyzeLoop(AAResults *AA, LoopInfo *LI,
     LLVM_DEBUG(dbgs() << "LAA: Checking memory dependencies\n");
     CanVecMem = DepChecker->areDepsSafe(
         DependentAccesses, Accesses.getDependenciesToCheck(), SymbolicStrides);
-    MaxSafeDepDistBytes = DepChecker->getMaxSafeDepDistBytes();
+    MinDepDistBytes = DepChecker->getMinDepDistBytes();
 
     if (!CanVecMem && DepChecker->shouldRetryWithRuntimeCheck()) {
       LLVM_DEBUG(dbgs() << "LAA: Retrying with memory checks\n");
@@ -2766,9 +2767,10 @@ LoopAccessInfo::LoopAccessInfo(Loop *L, ScalarEvolution *SE,
 void LoopAccessInfo::print(raw_ostream &OS, unsigned Depth) const {
   if (CanVecMem) {
     OS.indent(Depth) << "Memory dependences are safe";
-    if (MaxSafeDepDistBytes != -1ULL)
-      OS << " with a maximum dependence distance of " << MaxSafeDepDistBytes
-         << " bytes";
+    const MemoryDepChecker &DC = getDepChecker();
+    if (!DC.isSafeForAnyVectorWidth())
+      OS << " with a maximum safe vector width of "
+         << DC.getMaxSafeVectorWidthInBits() << " bits";
     if (PtrRtChecking->Need)
       OS << " with run-time checks";
     OS << "\n";
