@@ -4770,10 +4770,17 @@ cc_library(
     ],
 )
 
+py_library(
+    name = "lit_lib",
+    testonly = True,
+    srcs = glob(["utils/lit/lit/**/*.py"]),
+)
+
 py_binary(
     name = "lit",
     testonly = True,
-    srcs = ["utils/lit/lit.py"] + glob(["utils/lit/lit/**/*.py"]),
+    srcs = ["utils/lit/lit.py"],
+    deps = [":lit_lib"],
 )
 
 cc_library(
