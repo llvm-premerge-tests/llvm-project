@@ -32,312 +32,117 @@
 //          sched policy on a running task.
 //
 //       Linux specific test could also include:
-//          SCHED_BATCH, SCHED_ISO, SCHED_IDLE, SCHED_DEADLINE
+//          SCHED_ISO, SCHED_DEADLINE
 
-TEST(LlvmLibcSchedParamAndSchedulerTest, SchedOtherTest) {
+TEST(LlvmLibcSchedParamAndSchedulerTest, SchedTest) {
   libc_errno = 0;
 
-  int policy = SCHED_OTHER;
-  bool can_set = true;
-
-  int init_policy = __llvm_libc::sched_getscheduler(0);
-  ASSERT_GE(init_policy, 0);
-  ASSERT_EQ(libc_errno, 0);
-
-  int max_priority = __llvm_libc::sched_get_priority_max(policy);
-  ASSERT_GE(max_priority, 0);
-  ASSERT_EQ(libc_errno, 0);
-  int min_priority = __llvm_libc::sched_get_priority_min(policy);
-  ASSERT_GE(min_priority, 0);
-  ASSERT_EQ(libc_errno, 0);
-
-  struct sched_param param = {min_priority};
-
-  // Negative pid
-  ASSERT_EQ(__llvm_libc::sched_setscheduler(-1, policy, &param), -1);
-  ASSERT_EQ(libc_errno, EINVAL);
-  libc_errno = 0;
-
-  ASSERT_EQ(__llvm_libc::sched_getscheduler(-1), -1);
-  ASSERT_EQ(libc_errno, EINVAL);
-  libc_errno = 0;
-
-  // Invalid Policy
-  ASSERT_EQ(__llvm_libc::sched_setscheduler(0, policy | 128, &param), -1);
-  ASSERT_EQ(libc_errno, EINVAL);
-  libc_errno = 0;
-
-  // Out of bounds priority
-  param.sched_priority = min_priority - 1;
-  ASSERT_EQ(__llvm_libc::sched_setscheduler(0, policy, &param), -1);
-  ASSERT_EQ(libc_errno, EINVAL);
-  libc_errno = 0;
-
-  param.sched_priority = max_priority + 1;
-  ASSERT_EQ(__llvm_libc::sched_setscheduler(0, policy, &param), -1);
-  // A bit hard to test as depending if we are root or not we can run into
-  // different issues.
-  ASSERT_TRUE(libc_errno == EINVAL || libc_errno == EPERM);
-  libc_errno = 0;
-
-  // Some sched policies require permissions, so skip
-  param.sched_priority = min_priority;
-  // Success / missing permissions.
-  ASSERT_EQ(__llvm_libc::sched_setscheduler(0, policy, &param),
-            can_set ? 0 : -1);
-  ASSERT_TRUE(can_set ? (libc_errno == 0)
-                      : (libc_errno == EINVAL || libc_errno == EPERM));
-  libc_errno = 0;
-
-  ASSERT_EQ(__llvm_libc::sched_getscheduler(0), can_set ? policy : init_policy);
-  ASSERT_EQ(libc_errno, 0);
-
-  // Out of bounds priority
-  param.sched_priority = -1;
-  ASSERT_EQ(__llvm_libc::sched_setparam(0, &param), -1);
-  ASSERT_EQ(libc_errno, EINVAL);
-  libc_errno = 0;
-
-  param.sched_priority = max_priority + 1;
-  ASSERT_EQ(__llvm_libc::sched_setparam(0, &param), -1);
-  ASSERT_EQ(libc_errno, EINVAL);
-  libc_errno = 0;
-
-  for (int priority = min_priority; priority <= max_priority; ++priority) {
-    ASSERT_EQ(__llvm_libc::sched_getparam(0, &param), 0);
+  auto testSched = [&](int policy, bool can_set) -> void {
+    int init_policy = __llvm_libc::sched_getscheduler(0);
+    ASSERT_GE(init_policy, 0);
     ASSERT_EQ(libc_errno, 0);
-    int init_priority = param.sched_priority;
 
-    param.sched_priority = priority;
+    int max_priority = __llvm_libc::sched_get_priority_max(policy);
+    ASSERT_GE(max_priority, 0);
+    ASSERT_EQ(libc_errno, 0);
+    int min_priority = __llvm_libc::sched_get_priority_min(policy);
+    ASSERT_GE(min_priority, 0);
+    ASSERT_EQ(libc_errno, 0);
+
+    struct sched_param param = {min_priority};
 
     // Negative pid
-    ASSERT_EQ(__llvm_libc::sched_setparam(-1, &param), -1);
+    ASSERT_EQ(__llvm_libc::sched_setscheduler(-1, policy, &param), -1);
     ASSERT_EQ(libc_errno, EINVAL);
     libc_errno = 0;
 
-    ASSERT_EQ(__llvm_libc::sched_getparam(-1, &param), -1);
+    ASSERT_EQ(__llvm_libc::sched_getscheduler(-1), -1);
     ASSERT_EQ(libc_errno, EINVAL);
     libc_errno = 0;
 
-    // Success / missing permissions
-    ASSERT_EQ(__llvm_libc::sched_setparam(0, &param), can_set ? 0 : -1);
+    // Invalid Policy
+    ASSERT_EQ(__llvm_libc::sched_setscheduler(0, policy | 128, &param), -1);
+    ASSERT_EQ(libc_errno, EINVAL);
+    libc_errno = 0;
+
+    // Out of bounds priority
+    param.sched_priority = min_priority - 1;
+    ASSERT_EQ(__llvm_libc::sched_setscheduler(0, policy, &param), -1);
+    ASSERT_EQ(libc_errno, EINVAL);
+    libc_errno = 0;
+
+    param.sched_priority = max_priority + 1;
+    ASSERT_EQ(__llvm_libc::sched_setscheduler(0, policy, &param), -1);
+    // A bit hard to test as depending if we are root or not we can run into
+    // different issues.
+    ASSERT_TRUE(libc_errno == EINVAL || libc_errno == EPERM);
+    libc_errno = 0;
+
+    // Some sched policies require permissions, so skip
+    param.sched_priority = min_priority;
+    // Success / missing permissions.
+    ASSERT_EQ(__llvm_libc::sched_setscheduler(0, policy, &param),
+              can_set ? 0 : -1);
     ASSERT_TRUE(can_set ? (libc_errno == 0)
                         : (libc_errno == EINVAL || libc_errno == EPERM));
     libc_errno = 0;
 
-    ASSERT_EQ(__llvm_libc::sched_getparam(0, &param), 0);
+    ASSERT_EQ(__llvm_libc::sched_getscheduler(0),
+              can_set ? policy : init_policy);
     ASSERT_EQ(libc_errno, 0);
 
-    ASSERT_EQ(param.sched_priority, can_set ? priority : init_priority);
-  }
-  // Null test
-  ASSERT_EQ(__llvm_libc::sched_setscheduler(0, policy, nullptr), -1);
-  ASSERT_EQ(libc_errno, EINVAL);
-  libc_errno = 0;
-}
-
-TEST(LlvmLibcSchedParamAndSchedulerTest, SchedFIFOTest) {
-  libc_errno = 0;
-
-  int policy = SCHED_FIFO;
-  bool can_set = __llvm_libc::getuid() == 0;
-
-  int init_policy = __llvm_libc::sched_getscheduler(0);
-  ASSERT_GE(init_policy, 0);
-  ASSERT_EQ(libc_errno, 0);
-
-  int max_priority = __llvm_libc::sched_get_priority_max(policy);
-  ASSERT_GE(max_priority, 0);
-  ASSERT_EQ(libc_errno, 0);
-  int min_priority = __llvm_libc::sched_get_priority_min(policy);
-  ASSERT_GE(min_priority, 0);
-  ASSERT_EQ(libc_errno, 0);
-
-  struct sched_param param = {min_priority};
-
-  // Negative pid
-  ASSERT_EQ(__llvm_libc::sched_setscheduler(-1, policy, &param), -1);
-  ASSERT_EQ(libc_errno, EINVAL);
-  libc_errno = 0;
-
-  ASSERT_EQ(__llvm_libc::sched_getscheduler(-1), -1);
-  ASSERT_EQ(libc_errno, EINVAL);
-  libc_errno = 0;
-
-  // Invalid Policy
-  ASSERT_EQ(__llvm_libc::sched_setscheduler(0, policy | 128, &param), -1);
-  ASSERT_EQ(libc_errno, EINVAL);
-  libc_errno = 0;
-
-  // Out of bounds priority
-  param.sched_priority = min_priority - 1;
-  ASSERT_EQ(__llvm_libc::sched_setscheduler(0, policy, &param), -1);
-  ASSERT_EQ(libc_errno, EINVAL);
-  libc_errno = 0;
-
-  param.sched_priority = max_priority + 1;
-  ASSERT_EQ(__llvm_libc::sched_setscheduler(0, policy, &param), -1);
-  // A bit hard to test as depending if we are root or not we can run into
-  // different issues.
-  ASSERT_TRUE(libc_errno == EINVAL || libc_errno == EPERM);
-  libc_errno = 0;
-
-  // Some sched policies require permissions, so skip
-  param.sched_priority = min_priority;
-  // Success / missing permissions.
-  ASSERT_EQ(__llvm_libc::sched_setscheduler(0, policy, &param),
-            can_set ? 0 : -1);
-  ASSERT_TRUE(can_set ? (libc_errno == 0)
-                      : (libc_errno == EINVAL || libc_errno == EPERM));
-  libc_errno = 0;
-
-  ASSERT_EQ(__llvm_libc::sched_getscheduler(0), can_set ? policy : init_policy);
-  ASSERT_EQ(libc_errno, 0);
-
-  // Out of bounds priority
-  param.sched_priority = -1;
-  ASSERT_EQ(__llvm_libc::sched_setparam(0, &param), -1);
-  ASSERT_EQ(libc_errno, EINVAL);
-  libc_errno = 0;
-
-  param.sched_priority = max_priority + 1;
-  ASSERT_EQ(__llvm_libc::sched_setparam(0, &param), -1);
-  ASSERT_EQ(libc_errno, EINVAL);
-  libc_errno = 0;
-
-  for (int priority = min_priority; priority <= max_priority; ++priority) {
-    ASSERT_EQ(__llvm_libc::sched_getparam(0, &param), 0);
-    ASSERT_EQ(libc_errno, 0);
-    int init_priority = param.sched_priority;
-
-    param.sched_priority = priority;
-
-    // Negative pid
-    ASSERT_EQ(__llvm_libc::sched_setparam(-1, &param), -1);
+    // Out of bounds priority
+    param.sched_priority = -1;
+    ASSERT_EQ(__llvm_libc::sched_setparam(0, &param), -1);
     ASSERT_EQ(libc_errno, EINVAL);
     libc_errno = 0;
 
-    ASSERT_EQ(__llvm_libc::sched_getparam(-1, &param), -1);
+    param.sched_priority = max_priority + 1;
+    ASSERT_EQ(__llvm_libc::sched_setparam(0, &param), -1);
     ASSERT_EQ(libc_errno, EINVAL);
     libc_errno = 0;
 
-    // Success / missing permissions
-    ASSERT_EQ(__llvm_libc::sched_setparam(0, &param), can_set ? 0 : -1);
-    ASSERT_TRUE(can_set ? (libc_errno == 0)
-                        : (libc_errno == EINVAL || libc_errno == EPERM));
-    libc_errno = 0;
+    for (int priority = min_priority; priority <= max_priority; ++priority) {
+      ASSERT_EQ(__llvm_libc::sched_getparam(0, &param), 0);
+      ASSERT_EQ(libc_errno, 0);
+      int init_priority = param.sched_priority;
 
-    ASSERT_EQ(__llvm_libc::sched_getparam(0, &param), 0);
-    ASSERT_EQ(libc_errno, 0);
+      param.sched_priority = priority;
 
-    ASSERT_EQ(param.sched_priority, can_set ? priority : init_priority);
-  }
-  // Null test
-  ASSERT_EQ(__llvm_libc::sched_setscheduler(0, policy, nullptr), -1);
-  ASSERT_EQ(libc_errno, EINVAL);
-  libc_errno = 0;
-}
+      // Negative pid
+      ASSERT_EQ(__llvm_libc::sched_setparam(-1, &param), -1);
+      ASSERT_EQ(libc_errno, EINVAL);
+      libc_errno = 0;
 
-TEST(LlvmLibcSchedParamAndSchedulerTest, SchedRRTest) {
-  libc_errno = 0;
+      ASSERT_EQ(__llvm_libc::sched_getparam(-1, &param), -1);
+      ASSERT_EQ(libc_errno, EINVAL);
+      libc_errno = 0;
 
-  int policy = SCHED_RR;
-  bool can_set = __llvm_libc::getuid() == 0;
+      // Success / missing permissions
+      ASSERT_EQ(__llvm_libc::sched_setparam(0, &param), can_set ? 0 : -1);
+      ASSERT_TRUE(can_set ? (libc_errno == 0)
+                          : (libc_errno == EINVAL || libc_errno == EPERM));
+      libc_errno = 0;
 
-  int init_policy = __llvm_libc::sched_getscheduler(0);
-  ASSERT_GE(init_policy, 0);
-  ASSERT_EQ(libc_errno, 0);
+      ASSERT_EQ(__llvm_libc::sched_getparam(0, &param), 0);
+      ASSERT_EQ(libc_errno, 0);
 
-  int max_priority = __llvm_libc::sched_get_priority_max(policy);
-  ASSERT_GE(max_priority, 0);
-  ASSERT_EQ(libc_errno, 0);
-  int min_priority = __llvm_libc::sched_get_priority_min(policy);
-  ASSERT_GE(min_priority, 0);
-  ASSERT_EQ(libc_errno, 0);
-
-  struct sched_param param = {min_priority};
-
-  // Negative pid
-  ASSERT_EQ(__llvm_libc::sched_setscheduler(-1, policy, &param), -1);
-  ASSERT_EQ(libc_errno, EINVAL);
-  libc_errno = 0;
-
-  ASSERT_EQ(__llvm_libc::sched_getscheduler(-1), -1);
-  ASSERT_EQ(libc_errno, EINVAL);
-  libc_errno = 0;
-
-  // Invalid Policy
-  ASSERT_EQ(__llvm_libc::sched_setscheduler(0, policy | 128, &param), -1);
-  ASSERT_EQ(libc_errno, EINVAL);
-  libc_errno = 0;
-
-  // Out of bounds priority
-  param.sched_priority = min_priority - 1;
-  ASSERT_EQ(__llvm_libc::sched_setscheduler(0, policy, &param), -1);
-  ASSERT_EQ(libc_errno, EINVAL);
-  libc_errno = 0;
-
-  param.sched_priority = max_priority + 1;
-  ASSERT_EQ(__llvm_libc::sched_setscheduler(0, policy, &param), -1);
-  // A bit hard to test as depending if we are root or not we can run into
-  // different issues.
-  ASSERT_TRUE(libc_errno == EINVAL || libc_errno == EPERM);
-  libc_errno = 0;
-
-  // Some sched policies require permissions, so skip
-  param.sched_priority = min_priority;
-  // Success / missing permissions.
-  ASSERT_EQ(__llvm_libc::sched_setscheduler(0, policy, &param),
-            can_set ? 0 : -1);
-  ASSERT_TRUE(can_set ? (libc_errno == 0)
-                      : (libc_errno == EINVAL || libc_errno == EPERM));
-  libc_errno = 0;
-
-  ASSERT_EQ(__llvm_libc::sched_getscheduler(0), can_set ? policy : init_policy);
-  ASSERT_EQ(libc_errno, 0);
-
-  // Out of bounds priority
-  param.sched_priority = -1;
-  ASSERT_EQ(__llvm_libc::sched_setparam(0, &param), -1);
-  ASSERT_EQ(libc_errno, EINVAL);
-  libc_errno = 0;
-
-  param.sched_priority = max_priority + 1;
-  ASSERT_EQ(__llvm_libc::sched_setparam(0, &param), -1);
-  ASSERT_EQ(libc_errno, EINVAL);
-  libc_errno = 0;
-
-  for (int priority = min_priority; priority <= max_priority; ++priority) {
-    ASSERT_EQ(__llvm_libc::sched_getparam(0, &param), 0);
-    ASSERT_EQ(libc_errno, 0);
-    int init_priority = param.sched_priority;
-
-    param.sched_priority = priority;
-
-    // Negative pid
-    ASSERT_EQ(__llvm_libc::sched_setparam(-1, &param), -1);
+      ASSERT_EQ(param.sched_priority, can_set ? priority : init_priority);
+    }
+    // Null test
+    ASSERT_EQ(__llvm_libc::sched_setscheduler(0, policy, nullptr), -1);
     ASSERT_EQ(libc_errno, EINVAL);
     libc_errno = 0;
+  };
 
-    ASSERT_EQ(__llvm_libc::sched_getparam(-1, &param), -1);
-    ASSERT_EQ(libc_errno, EINVAL);
-    libc_errno = 0;
+  constexpr int policiesRootRequired[] = {SCHED_FIFO, SCHED_RR};
+  for (auto policy : policiesRootRequired)
+    testSched(policy, /*can_set=*/__llvm_libc::getuid() == 0);
 
-    // Success / missing permissions
-    ASSERT_EQ(__llvm_libc::sched_setparam(0, &param), can_set ? 0 : -1);
-    ASSERT_TRUE(can_set ? (libc_errno == 0)
-                        : (libc_errno == EINVAL || libc_errno == EPERM));
-    libc_errno = 0;
-
-    ASSERT_EQ(__llvm_libc::sched_getparam(0, &param), 0);
-    ASSERT_EQ(libc_errno, 0);
-
-    ASSERT_EQ(param.sched_priority, can_set ? priority : init_priority);
-  }
-  // Null test
-  ASSERT_EQ(__llvm_libc::sched_setscheduler(0, policy, nullptr), -1);
-  ASSERT_EQ(libc_errno, EINVAL);
-  libc_errno = 0;
+  constexpr int policiesNoRootRequired[] = {SCHED_OTHER, SCHED_BATCH,
+                                            SCHED_IDLE};
+  for (auto policy : policiesNoRootRequired)
+    testSched(policy, /*can_set=*/true);
 }
 
 TEST(LlvmLibcSchedParamAndSchedulerTest, NullParamTest) {
