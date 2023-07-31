@@ -1851,8 +1851,11 @@ bool RISCVTargetLowering::shouldScalarizeBinop(SDValue VecOp) const {
 
   // If the vector op is supported, but the scalar op is not, the transform may
   // not be worthwhile.
+  // i32 isn't a legal type on RV64. But it can be customized lowered to W
+  // instructions.
   EVT ScalarVT = VecVT.getScalarType();
-  return isOperationLegalOrCustomOrPromote(Opc, ScalarVT);
+  return isOperationLegalOrCustomOrPromote(Opc, ScalarVT) ||
+         isOperationCustom(Opc, ScalarVT);
 }
 
 bool RISCVTargetLowering::isOffsetFoldingLegal(
