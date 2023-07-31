@@ -111,9 +111,10 @@ func.func @broadcast_tensor_tensor_tensor(tensor<4x3x2xi32>, tensor<?xi32>) -> t
 
 // -----
 
-// Error for inferred dynamic dimension but existing static dimensions
+// Error for inferred dynamic dimension but existing static dimensions, this
+// has moved to runtime UB if not matching.
 func.func @broadcast_tensor_tensor_tensor(%arg0: tensor<?xi32>, %arg1: tensor<?xi32>) -> tensor<2xi32> {
-  // expected-error @+1 {{op result type '2' not broadcast compatible with broadcasted operands's shapes '?'}}
+  // not-error @+1 {{op result type '2' not broadcast compatible with broadcasted operands's shapes '?'}}
   %0 = "test.broadcastable"(%arg0, %arg1) : (tensor<?xi32>, tensor<?xi32>) -> tensor<2xi32>
   return %0 : tensor<2xi32>
 }

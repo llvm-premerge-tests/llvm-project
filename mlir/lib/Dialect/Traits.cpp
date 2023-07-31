@@ -202,10 +202,16 @@ static bool isCompatibleInferredReturnShape(ArrayRef<int64_t> inferred,
     // inferredDim  existingDim  Behavior
     // -----------  -----------  --------
     // dynamic      dynamic      OK
-    // dynamic      static       Error
+    // dynamic      static       OK^1
     // static       dynamic      OK
     // static       static       OK if equal
-    return ShapedType::isDynamic(existingDim) || inferredDim == existingDim;
+    //
+    // [1] This allows for implicit dynamic-to-static cast with undefined
+    // behavior if the resulting runtime dimension size does not match the given
+    // static size. This is meant to only flag known invalid cases while the
+    // expectation is that these should be equal dynamically.
+    return ShapedType::isDynamic(existingDim) ||
+           ShapedType::isDynamic(inferredDim) || inferredDim == existingDim;
   };
   if (inferred.size() != existing.size())
     return false;
