@@ -345,10 +345,8 @@ define i1 @cmp_load_constant_array0(i64 %x){
 ; CHECK:       case2:
 ; CHECK-NEXT:    ret i1 false
 ; CHECK:       case1:
-; CHECK-NEXT:    [[TMP0:%.*]] = trunc i64 [[X]] to i32
-; CHECK-NEXT:    [[ISOK_PTR:%.*]] = getelementptr inbounds i32, ptr @CG, i32 [[TMP0]]
-; CHECK-NEXT:    [[ISOK:%.*]] = load i32, ptr [[ISOK_PTR]], align 4
-; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp ult i32 [[ISOK]], 3
+; CHECK-NEXT:    [[TMP0:%.*]] = and i64 [[X]], 4294967294
+; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp eq i64 [[TMP0]], 0
 ; CHECK-NEXT:    ret i1 [[COND_INFERRED]]
 ;
 entry:
@@ -373,11 +371,7 @@ define i1 @cmp_load_constant_array1(i64 %x){
 ; CHECK:       case2:
 ; CHECK-NEXT:    ret i1 false
 ; CHECK:       case1:
-; CHECK-NEXT:    [[TMP0:%.*]] = trunc i64 [[X]] to i32
-; CHECK-NEXT:    [[ISOK_PTR:%.*]] = getelementptr inbounds i32, ptr @CG, i32 [[TMP0]]
-; CHECK-NEXT:    [[ISOK:%.*]] = load i32, ptr [[ISOK_PTR]], align 4
-; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp ugt i32 [[ISOK]], 10
-; CHECK-NEXT:    ret i1 [[COND_INFERRED]]
+; CHECK-NEXT:    ret i1 false
 ;
 entry:
   %cond = icmp ult i64 %x, 2
@@ -401,11 +395,7 @@ define i1 @cmp_load_constant_array_fail0(i64 %x) {
 ; CHECK:       case2:
 ; CHECK-NEXT:    ret i1 false
 ; CHECK:       case1:
-; CHECK-NEXT:    [[TMP0:%.*]] = trunc i64 [[X]] to i32
-; CHECK-NEXT:    [[ISOK_PTR:%.*]] = getelementptr inbounds i32, ptr @CG, i32 [[TMP0]]
-; CHECK-NEXT:    [[ISOK:%.*]] = load i32, ptr [[ISOK_PTR]], align 4
-; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp ult i32 [[ISOK]], 5
-; CHECK-NEXT:    ret i1 [[COND_INFERRED]]
+; CHECK-NEXT:    ret i1 true
 ;
 entry:
   %cond = icmp ult i64 %x, 6
@@ -430,10 +420,8 @@ define i1 @cmp_load_constant_array_fail1(i64 %x){
 ; CHECK:       case2:
 ; CHECK-NEXT:    ret i1 false
 ; CHECK:       case1:
-; CHECK-NEXT:    [[TMP1:%.*]] = trunc i64 [[X]] to i32
-; CHECK-NEXT:    [[ISOK_PTR:%.*]] = getelementptr inbounds i32, ptr @CG, i32 [[TMP1]]
-; CHECK-NEXT:    [[ISOK:%.*]] = load i32, ptr [[ISOK_PTR]], align 4
-; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp ugt i32 [[ISOK]], 1
+; CHECK-NEXT:    [[TMP1:%.*]] = and i64 [[X]], 4294967295
+; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp ne i64 [[TMP1]], 0
 ; CHECK-NEXT:    ret i1 [[COND_INFERRED]]
 ;
 entry:
