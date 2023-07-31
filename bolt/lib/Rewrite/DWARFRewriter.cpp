@@ -839,7 +839,7 @@ void DWARFRewriter::updateUnitDebugInfo(
     case dwarf::DW_TAG_inlined_subroutine:
     case dwarf::DW_TAG_try_block:
     case dwarf::DW_TAG_catch_block: {
-      uint64_t RangesSectionOffset = RangesSectionWriter.getEmptyRangesOffset();
+      uint64_t RangesSectionOffset = 0;
       Expected<DWARFAddressRangesVector> RangesOrError =
           getDIEAddressRanges(*Die, Unit);
       const BinaryFunction *Function =
@@ -865,6 +865,11 @@ void DWARFRewriter::updateUnitDebugInfo(
         }
       } else if (!RangesOrError) {
         consumeError(RangesOrError.takeError());
+      } else if (OutputRanges.empty()) {
+        if (RangesOrError.get().front().LowPC)
+          errs() << "BOLT-WARNING: [internal-dwarf-error]: Could not map "
+                    "DW_AT_low_pc to address in output binary\n";
+        OutputRanges.push_back({0, RangesOrError.get().front().HighPC});
       }
       DIEValue LowPCVal = Die->findAttribute(dwarf::DW_AT_low_pc);
       DIEValue HighPCVal = Die->findAttribute(dwarf::DW_AT_high_pc);
