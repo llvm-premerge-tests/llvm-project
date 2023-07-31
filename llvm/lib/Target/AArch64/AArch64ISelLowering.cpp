@@ -25711,7 +25711,73 @@ SDValue AArch64TargetLowering::LowerFixedLengthVECTOR_SHUFFLEToSVE(
     }
   }
 
-  return SDValue();
+  // Avoid producing TBL and TBL2 instructions if we don't know
+  // SVE register size or minimal is unequal to maximum size.
+  if (!MaxSVESize || MinSVESize != MaxSVESize)
+    return SDValue();
+
+  unsigned BitsPerElt = VT.getVectorElementType().getSizeInBits();
+  unsigned IndexLen = MinSVESize / BitsPerElt;
+  unsigned NumElts = VT.getVectorNumElements();
+  // In case if the hardware is not able to represent vector type in
+  // scalable register.
+  if (NumElts > IndexLen)
+    return SDValue();
+
+  bool Swap = false;
+  if (Op1.isUndef() || isZerosVector(Op1.getNode())) {
+    // Swapped shuffle operands, but we have to recalculate indexes afterwards.
+    std::swap(Op1, Op2);
+    Swap = true;
+  }
+  bool IsUndefOrZero = Op2.isUndef() || isZerosVector(Op2.getNode());
+  unsigned FillElements = IndexLen - NumElts;
+
+  EVT MaskEltType = EVT::getIntegerVT(*DAG.getContext(), BitsPerElt);
+  EVT MaskType = EVT::getVectorVT(*DAG.getContext(), MaskEltType, IndexLen);
+
+  SmallVector<SDValue, 8> TBLMask;
+  assert(NumElts == ShuffleMask.size() && "Incorrect mask");
+  for (int Val : ShuffleMask) {
+    unsigned Offset = Val;
+    if (Swap)
+      Offset = Offset < NumElts ? Offset + NumElts : Offset - NumElts;
+    // Filling up the remaining positions of the mask with 255 because for one
+    // byte per element and maximum possible 2048-bits register size this is the
+    // last range value.
+    else if (IsUndefOrZero && Offset >= NumElts)
+      Offset = 255;
+    TBLMask.push_back(DAG.getConstant(Offset, DL, MVT::i64));
+  }
+  // It is still better to fill TBL mask to the actual hardware supported
+  // size with out of index elements.
+  for (unsigned i = 0; i < FillElements; ++i)
+    TBLMask.push_back(DAG.getConstant(255, DL, MVT::i64));
+
+  EVT MaskContainerVT = getContainerForFixedLengthVector(DAG, MaskType);
+  SDValue VecMask =
+      DAG.getBuildVector(MaskType, DL, ArrayRef(TBLMask.data(), IndexLen));
+  SDValue SVEMask = convertToScalableVector(DAG, MaskContainerVT, VecMask);
+
+  SDValue Shuffle;
+  if (IsUndefOrZero || Swap) {
+    Shuffle = convertFromScalableVector(
+        DAG, VT,
+        DAG.getNode(ISD::INTRINSIC_WO_CHAIN, DL, ContainerVT,
+                    DAG.getConstant(Intrinsic::aarch64_sve_tbl, DL, MVT::i32),
+                    Op1, SVEMask));
+  } else {
+    if (Subtarget->hasSVE2())
+      Shuffle = convertFromScalableVector(
+          DAG, VT,
+          DAG.getNode(
+              ISD::INTRINSIC_WO_CHAIN, DL, ContainerVT,
+              DAG.getConstant(Intrinsic::aarch64_sve_tbl2, DL, MVT::i32), Op1,
+              Op2, SVEMask));
+    else
+      return SDValue();
+  }
+  return DAG.getNode(ISD::BITCAST, DL, Op.getValueType(), Shuffle);
 }
 
 SDValue AArch64TargetLowering::getSVESafeBitCast(EVT VT, SDValue Op,

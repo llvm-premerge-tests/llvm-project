@@ -379,3 +379,125 @@ define void @shuffle_ext_invalid(ptr %a, ptr %b) {
   store <4 x double> %ret, ptr %a
   ret void
 }
+
+; CHECK: .LCPI23_0:
+; CHECK-NEXT:	.hword	6
+; CHECK-NEXT:	.hword	1
+; CHECK-NEXT:	.hword	3
+; CHECK-NEXT:	.hword	4
+; CHECK-NEXT:	.hword	255
+; CHECK-NEXT:	.hword	255
+; CHECK-NEXT:	.hword	255
+; CHECK-NEXT:	.hword	255
+define <4 x i16> @sve2_shuffle_v4i16_tbl2(ptr %a, ptr %b) #1 {
+; CHECK-LABEL: sve2_shuffle_v4i16_tbl2:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    adrp x8, .LCPI23_0
+; CHECK-NEXT:    ldr d0, [x0]
+; CHECK-NEXT:    ldr d1, [x1]
+; CHECK-NEXT:    ldr q2, [x8, :lo12:.LCPI23_0]
+; CHECK-NEXT:    tbl z0.h, { z0.h, z1.h }, z2.h
+; CHECK-NEXT:    // kill: def $d0 killed $d0 killed $z0
+; CHECK-NEXT:    ret
+  %op1 = load <4 x i16>, ptr %a
+  %op2 = load <4 x i16>, ptr %b
+  %1 = shufflevector <4 x i16> %op1, <4 x i16> %op2, <4 x i32> <i32 6, i32 1, i32 3, i32 4>
+  ret <4 x i16> %1
+}
+
+; CHECK: .LCPI24_0:
+; CHECK-NEXT:	.hword	0
+; CHECK-NEXT:	.hword	3
+; CHECK-NEXT:	.hword	7
+; CHECK-NEXT:	.hword	7
+; CHECK-NEXT:	.hword	15
+; CHECK-NEXT:	.hword	0
+; CHECK-NEXT:	.hword	0
+; CHECK-NEXT:	.hword	1
+define <8 x i16> @sve2_shuffle_v8i16_tbl2(ptr %a, ptr %b) #1 {
+; CHECK-LABEL: sve2_shuffle_v8i16_tbl2:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    adrp x8, .LCPI24_0
+; CHECK-NEXT:    ldr q0, [x0]
+; CHECK-NEXT:    ldr q1, [x1]
+; CHECK-NEXT:    ldr q2, [x8, :lo12:.LCPI24_0]
+; CHECK-NEXT:    tbl z0.h, { z0.h, z1.h }, z2.h
+; CHECK-NEXT:    // kill: def $q0 killed $q0 killed $z0
+; CHECK-NEXT:    ret
+  %op1 = load <8 x i16>, ptr %a
+  %op2 = load <8 x i16>, ptr %b
+  %1 = shufflevector <8 x i16> %op1, <8 x i16> %op2, <8 x i32> <i32 0, i32 3, i32 7, i32 7, i32 15, i32 0, i32 0, i32 1>
+  ret <8 x i16> %1
+}
+
+; CHECK: .LCPI25_0:
+; CHECK-NEXT:	.hword	0
+; CHECK-NEXT:	.hword	3
+; CHECK-NEXT:	.hword	7
+; CHECK-NEXT:	.hword	7
+; CHECK-NEXT:	.hword	1
+; CHECK-NEXT:	.hword	0
+; CHECK-NEXT:	.hword	0
+; CHECK-NEXT:	.hword	1
+define <8 x i16> @sve2_shuffle_v8i16_tbl_op1(ptr %a, ptr %b) #1 {
+; CHECK-LABEL: sve2_shuffle_v8i16_tbl_op1:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    adrp x8, .LCPI25_0
+; CHECK-NEXT:    ldr q0, [x0]
+; CHECK-NEXT:    ldr q1, [x8, :lo12:.LCPI25_0]
+; CHECK-NEXT:    tbl z0.h, { z0.h }, z1.h
+; CHECK-NEXT:    // kill: def $q0 killed $q0 killed $z0
+; CHECK-NEXT:    ret
+  %op1 = load <8 x i16>, ptr %a
+  %op2 = load <8 x i16>, ptr %b
+  %1 = shufflevector <8 x i16> %op1, <8 x i16> %op2, <8 x i32> <i32 0, i32 3, i32 7, i32 7, i32 1, i32 0, i32 0, i32 1>
+  ret <8 x i16> %1
+}
+
+; CHECK: .LCPI26_0:
+; CHECK-NEXT:	.hword	2
+; CHECK-NEXT:	.hword	5
+; CHECK-NEXT:	.hword	2
+; CHECK-NEXT:	.hword	3
+; CHECK-NEXT:	.hword	7
+; CHECK-NEXT:	.hword	3
+; CHECK-NEXT:	.hword	3
+; CHECK-NEXT:	.hword	2
+define <8 x i16> @sve2_shuffle_v8i16_tbl_op2(ptr %a, ptr %b) #1 {
+; CHECK-LABEL: sve2_shuffle_v8i16_tbl_op2:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    adrp x8, .LCPI26_0
+; CHECK-NEXT:    ldr q0, [x1]
+; CHECK-NEXT:    ldr q1, [x8, :lo12:.LCPI26_0]
+; CHECK-NEXT:    tbl z0.h, { z0.h }, z1.h
+; CHECK-NEXT:    // kill: def $q0 killed $q0 killed $z0
+; CHECK-NEXT:    ret
+  %op1 = load <8 x i16>, ptr %a
+  %op2 = load <8 x i16>, ptr %b
+  %1 = shufflevector <8 x i16> %op1, <8 x i16> %op2, <8 x i32> <i32 10, i32 13, i32 10, i32 11, i32 15, i32 11, i32 11, i32 10>
+  ret <8 x i16> %1
+}
+
+; CHECK: .LCPI27_0:
+; CHECK-NEXT:	.word	0
+; CHECK-NEXT:	.word	3
+; CHECK-NEXT:	.word	5
+; CHECK-NEXT:	.word	1
+define <4 x float> @sve2_shuffle_v4f32_tbl_op2(ptr %a, ptr %b) #1 {
+; CHECK-LABEL: sve2_shuffle_v4f32_tbl_op2:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    adrp x8, .LCPI27_0
+; CHECK-NEXT:    ldr q0, [x0]
+; CHECK-NEXT:    ldr q1, [x1]
+; CHECK-NEXT:    ldr q2, [x8, :lo12:.LCPI27_0]
+; CHECK-NEXT:    tbl z0.s, { z0.s, z1.s }, z2.s
+; CHECK-NEXT:    // kill: def $q0 killed $q0 killed $z0
+; CHECK-NEXT:    ret
+  %op1 = load <4 x float>, ptr %a
+  %op2 = load <4 x float>, ptr %b
+  %1 = shufflevector <4 x float> %op1, <4 x float> %op2, <4 x i32> <i32 0, i32 3, i32 5, i32 1>
+  ret <4 x float> %1
+}
+
+attributes #0 = { "target-features"="+sve" }
+attributes #1 = { "target-features"="+sve2" vscale_range(1,1) }

@@ -937,4 +937,69 @@ define void @shuffle_ext_invalid(ptr %a, ptr %b) vscale_range(2,0) #0 {
   ret void
 }
 
+define void @shuffle_v4f64_tbl_op1(ptr %a, ptr %b) #1 {
+; CHECK:.LCPI42_0:
+; CHECK-NEXT:        .xword  1
+; CHECK-NEXT:        .xword  3
+; CHECK-NEXT:        .xword  2
+; CHECK-NEXT:        .xword  0
+; CHECK-LABEL: shuffle_v4f64_tbl_op1:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    adrp x8, .LCPI42_0
+; CHECK-NEXT:    add x8, x8, :lo12:.LCPI42_0
+; CHECK-NEXT:    ptrue p0.d
+; CHECK-NEXT:    ld1d { z0.d }, p0/z, [x0]
+; CHECK-NEXT:    ld1d { z1.d }, p0/z, [x8]
+; CHECK-NEXT:    tbl z0.d, { z0.d }, z1.d
+; CHECK-NEXT:    st1d { z0.d }, p0, [x0]
+; CHECK-NEXT:    ret
+  %op1 = load <4 x double>, ptr %a
+  %op2 = load <4 x double>, ptr %b
+  %ret = shufflevector <4 x double> %op1, <4 x double> %op2, <4 x i32> <i32 1, i32 3, i32 2, i32 0>
+  store <4 x double> %ret, ptr %a
+  ret void
+}
+
+define void @shuffle_v4f64_tbl_op2(ptr %a, ptr %b) #1 {
+; CHECK:.LCPI43_0:
+; CHECK-NEXT:        .xword  1
+; CHECK-NEXT:        .xword  3
+; CHECK-NEXT:        .xword  2
+; CHECK-NEXT:        .xword  0
+; CHECK-LABEL: shuffle_v4f64_tbl_op2:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    adrp x8, .LCPI43_0
+; CHECK-NEXT:    add x8, x8, :lo12:.LCPI43_0
+; CHECK-NEXT:    ptrue p0.d
+; CHECK-NEXT:    ld1d { z0.d }, p0/z, [x1]
+; CHECK-NEXT:    ld1d { z1.d }, p0/z, [x8]
+; CHECK-NEXT:    tbl z0.d, { z0.d }, z1.d
+; CHECK-NEXT:    st1d { z0.d }, p0, [x0]
+; CHECK-NEXT:    ret
+  %op1 = load <4 x double>, ptr %a
+  %op2 = load <4 x double>, ptr %b
+  %ret = shufflevector <4 x double> %op1, <4 x double> %op2, <4 x i32> <i32 5, i32 7, i32 6, i32 4>
+  store <4 x double> %ret, ptr %a
+  ret void
+}
+
+define void @shuffle_v4f64_tbl2(ptr %a, ptr %b) #2 {
+; CHECK-LABEL: shuffle_v4f64_tbl2:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    ptrue p0.d
+; CHECK-NEXT:    index z2.d, #2, #1
+; CHECK-NEXT:    ld1d { z0.d }, p0/z, [x0]
+; CHECK-NEXT:    ld1d { z1.d }, p0/z, [x1]
+; CHECK-NEXT:    tbl z0.d, { z0.d, z1.d }, z2.d
+; CHECK-NEXT:    st1d { z0.d }, p0, [x0]
+; CHECK-NEXT:    ret
+  %op1 = load <4 x double>, ptr %a
+  %op2 = load <4 x double>, ptr %b
+  %ret = shufflevector <4 x double> %op1, <4 x double> %op2, <4 x i32> <i32 2, i32 3, i32 4, i32 5>
+  store <4 x double> %ret, ptr %a
+  ret void
+}
+
 attributes #0 = { "target-features"="+sve" }
+attributes #1 = { "target-features"="+sve" vscale_range(2,2) }
+attributes #2 = { "target-features"="+sve2" vscale_range(2,2) }

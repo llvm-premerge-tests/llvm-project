@@ -194,28 +194,13 @@ define void @test_revhv32i16(ptr %a) #0 {
 define void @test_rev_elts_fail(ptr %a) #1 {
 ; CHECK-LABEL: test_rev_elts_fail:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    stp x29, x30, [sp, #-16]! // 16-byte Folded Spill
-; CHECK-NEXT:    sub x9, sp, #48
-; CHECK-NEXT:    mov x29, sp
-; CHECK-NEXT:    and sp, x9, #0xffffffffffffffe0
-; CHECK-NEXT:    .cfi_def_cfa w29, 16
-; CHECK-NEXT:    .cfi_offset w30, -8
-; CHECK-NEXT:    .cfi_offset w29, -16
+; CHECK-NEXT:    adrp x8, .LCPI11_0
+; CHECK-NEXT:    add x8, x8, :lo12:.LCPI11_0
 ; CHECK-NEXT:    ptrue p0.d
 ; CHECK-NEXT:    ld1d { z0.d }, p0/z, [x0]
-; CHECK-NEXT:    mov z1.d, z0.d[2]
-; CHECK-NEXT:    fmov x11, d0
-; CHECK-NEXT:    fmov x8, d1
-; CHECK-NEXT:    mov z1.d, z0.d[3]
-; CHECK-NEXT:    fmov x9, d1
-; CHECK-NEXT:    mov x10, v0.d[1]
-; CHECK-NEXT:    stp x9, x8, [sp, #16]
-; CHECK-NEXT:    mov x8, sp
-; CHECK-NEXT:    stp x10, x11, [sp]
-; CHECK-NEXT:    ld1d { z0.d }, p0/z, [x8]
+; CHECK-NEXT:    ld1d { z1.d }, p0/z, [x8]
+; CHECK-NEXT:    tbl z0.d, { z0.d }, z1.d
 ; CHECK-NEXT:    st1d { z0.d }, p0, [x0]
-; CHECK-NEXT:    mov sp, x29
-; CHECK-NEXT:    ldp x29, x30, [sp], #16 // 16-byte Folded Reload
 ; CHECK-NEXT:    ret
   %tmp1 = load <4 x i64>, ptr %a
   %tmp2 = shufflevector <4 x i64> %tmp1, <4 x i64> undef, <4 x i32> <i32 1, i32 0, i32 3, i32 2>
@@ -379,60 +364,13 @@ define void @test_revv8i32v8i32(ptr %a, ptr %b) #1 {
 define void @test_rev_fail(ptr %a) #1 {
 ; CHECK-LABEL: test_rev_fail:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    stp x29, x30, [sp, #-16]! // 16-byte Folded Spill
-; CHECK-NEXT:    sub x9, sp, #48
-; CHECK-NEXT:    mov x29, sp
-; CHECK-NEXT:    and sp, x9, #0xffffffffffffffe0
-; CHECK-NEXT:    .cfi_def_cfa w29, 16
-; CHECK-NEXT:    .cfi_offset w30, -8
-; CHECK-NEXT:    .cfi_offset w29, -16
+; CHECK-NEXT:    adrp x8, .LCPI20_0
+; CHECK-NEXT:    add x8, x8, :lo12:.LCPI20_0
 ; CHECK-NEXT:    ptrue p0.h
 ; CHECK-NEXT:    ld1h { z0.h }, p0/z, [x0]
-; CHECK-NEXT:    mov z1.h, z0.h[8]
-; CHECK-NEXT:    fmov w8, s0
-; CHECK-NEXT:    fmov w9, s1
-; CHECK-NEXT:    mov z4.h, z0.h[11]
-; CHECK-NEXT:    mov z5.h, z0.h[12]
-; CHECK-NEXT:    mov z2.h, z0.h[9]
-; CHECK-NEXT:    strh w8, [sp, #14]
-; CHECK-NEXT:    fmov w8, s4
-; CHECK-NEXT:    mov z3.h, z0.h[10]
-; CHECK-NEXT:    strh w9, [sp, #30]
-; CHECK-NEXT:    fmov w9, s5
-; CHECK-NEXT:    mov z16.h, z0.h[15]
-; CHECK-NEXT:    fmov w11, s2
-; CHECK-NEXT:    fmov w12, s3
-; CHECK-NEXT:    strh w8, [sp, #24]
-; CHECK-NEXT:    fmov w8, s16
-; CHECK-NEXT:    mov z6.h, z0.h[13]
-; CHECK-NEXT:    mov z7.h, z0.h[14]
-; CHECK-NEXT:    umov w10, v0.h[1]
-; CHECK-NEXT:    strh w9, [sp, #22]
-; CHECK-NEXT:    umov w9, v0.h[2]
-; CHECK-NEXT:    strh w11, [sp, #28]
-; CHECK-NEXT:    fmov w11, s6
-; CHECK-NEXT:    strh w12, [sp, #26]
-; CHECK-NEXT:    fmov w12, s7
-; CHECK-NEXT:    strh w8, [sp, #16]
-; CHECK-NEXT:    umov w8, v0.h[5]
-; CHECK-NEXT:    strh w10, [sp, #12]
-; CHECK-NEXT:    strh w11, [sp, #20]
-; CHECK-NEXT:    umov w11, v0.h[3]
-; CHECK-NEXT:    strh w12, [sp, #18]
-; CHECK-NEXT:    umov w12, v0.h[4]
-; CHECK-NEXT:    umov w10, v0.h[6]
-; CHECK-NEXT:    strh w9, [sp, #10]
-; CHECK-NEXT:    umov w9, v0.h[7]
-; CHECK-NEXT:    strh w8, [sp, #4]
-; CHECK-NEXT:    mov x8, sp
-; CHECK-NEXT:    strh w11, [sp, #8]
-; CHECK-NEXT:    strh w12, [sp, #6]
-; CHECK-NEXT:    strh w10, [sp, #2]
-; CHECK-NEXT:    strh w9, [sp]
-; CHECK-NEXT:    ld1h { z0.h }, p0/z, [x8]
+; CHECK-NEXT:    ld1h { z1.h }, p0/z, [x8]
+; CHECK-NEXT:    tbl z0.h, { z0.h }, z1.h
 ; CHECK-NEXT:    st1h { z0.h }, p0, [x0]
-; CHECK-NEXT:    mov sp, x29
-; CHECK-NEXT:    ldp x29, x30, [sp], #16 // 16-byte Folded Reload
 ; CHECK-NEXT:    ret
   %tmp1 = load <16 x i16>, ptr %a
   %tmp2 = shufflevector <16 x i16> %tmp1, <16 x i16> undef, <16 x i32> <i32 7, i32 6, i32 5, i32 4, i32 3, i32 2, i32 1, i32 0, i32 15, i32 14, i32 13, i32 12, i32 11, i32 10, i32 9, i32 8>
