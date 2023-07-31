@@ -360,6 +360,11 @@ SYMBOL(index_sequence_for, std::, <utility>)
 SYMBOL(make_index_sequence, std::, <utility>)
 SYMBOL(make_integer_sequence, std::, <utility>)
 
+// generated symbol map is missing these symbols.
+// Remove them when the cause(s) are identified.
+SYMBOL(div, std::, <cstdlib>)
+SYMBOL(abort, std::, <cstdlib>)
+
 // The std::placeholder symbols (_1, ..., _N) are listed in the cppreference
 // placeholder.html, but the index only contains a single entry with "_1, _2, ..., _N"
 // text, which are not handled by the script.
