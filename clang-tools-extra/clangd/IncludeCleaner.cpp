@@ -75,7 +75,8 @@ bool mayConsiderUnused(
   // System headers are likely to be standard library headers.
   // Until we have good support for umbrella headers, don't warn about them.
   if (Inc.Written.front() == '<')
-    return tooling::stdlib::Header::named(Inc.Written).has_value();
+    return tooling::stdlib::Header::named(Inc.Written).has_value() &&
+           !(PI && PI->shouldKeep(Inc.HashLine + 1));
   assert(Inc.HeaderID);
   auto HID = static_cast<IncludeStructure::HeaderID>(*Inc.HeaderID);
   auto FE = AST.getSourceManager().getFileManager().getFileRef(
