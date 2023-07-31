@@ -817,6 +817,14 @@ public:
   /// Determine whether this type is const-qualified.
   bool isConstQualified() const;
 
+  /// Determine whether instances of this type can be placed in immutable
+  /// storage.
+  /// If ExcludeCtor is true, the duration when the object's constructor runs
+  /// will not be considered. The caller will need to verify that the object is
+  /// not written to during its construction. ExcludeDtor works similarly.
+  bool isConstantStorage(const ASTContext &Ctx, bool ExcludeCtor,
+                         bool ExcludeDtor);
+
   /// Determine whether this particular QualType instance has the
   /// "restrict" qualifier set, without looking through typedefs that may have
   /// added "restrict" at a different level.

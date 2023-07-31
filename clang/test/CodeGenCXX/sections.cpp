@@ -74,6 +74,14 @@ __declspec(allocate("long_section")) long long_var = 42;
 #pragma section("short_section", short)
 // Pragma section ignores "short".
 __declspec(allocate("short_section")) short short_var = 42;
+
+struct t1 { mutable int i; };
+extern const t1 mutable_var;
+__declspec(allocate("mutable_section")) const t1 mutable_var;
+
+struct t2 { t2(); };
+extern const t2 non_trivial_ctor;
+__declspec(allocate("non_trivial_ctor_section")) const t2 non_trivial_ctor_var;
 }
 
 //CHECK: @D = dso_local global i32 1
@@ -96,6 +104,8 @@ __declspec(allocate("short_section")) short short_var = 42;
 //CHECK: @implicitly_read_write = dso_local global i32 42, section "no_section_attributes"
 //CHECK: @long_var = dso_local global i32 42, section "long_section"
 //CHECK: @short_var = dso_local global i16 42, section "short_section"
+//CHECK: @mutable_var = dso_local global %struct.t1 zeroinitializer, section "mutable_section"
+//CHECK: @non_trivial_ctor_var = internal global %struct.t2 zeroinitializer, section "non_trivial_ctor_section"
 //CHECK: define dso_local void @g()
 //CHECK: define dso_local void @h() {{.*}} section ".my_code"
 //CHECK: define dso_local void @h2() {{.*}} section ".my_code"
