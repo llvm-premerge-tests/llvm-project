@@ -23,8 +23,7 @@ float fun_default FUN(1)
 //CHECK-DEBSTRICT: llvm.experimental.constrained.fmul{{.*}}tonearest{{.*}}strict
 #endif
 #if FAST
-//CHECK-FAST: fmul fast float
-//CHECK-FAST: fadd fast float
+//CHECK-FAST: call fast float @llvm.fmuladd.f32
 #endif
 
 #pragma float_control(push)
@@ -49,8 +48,7 @@ float fun_default FUN(1)
 #endif
 #if FAST
 //Not possible to enable float_control(except) in FAST mode.
-//CHECK-FAST: fmul fast float
-//CHECK-FAST: fadd fast float
+//CHECK-FAST: call fast float @llvm.fmuladd.f32
 #endif
 
 #pragma float_control(pop)
@@ -70,8 +68,7 @@ float fun_default FUN(1)
 //CHECK-NOHONOR: call nnan ninf float @llvm.fmuladd{{.*}}
 #endif
 #if FAST
-//CHECK-FAST: fmul fast float
-//CHECK-FAST: fadd fast float
+//CHECK-FAST: call fast float @llvm.fmuladd.f32
 #endif
 
 #pragma float_control(except, off)
@@ -87,8 +84,7 @@ float fun_default FUN(1)
 //CHECK-NOHONOR: call nnan ninf float @llvm.fmuladd{{.*}}
 #endif
 #if FAST
-//CHECK-FAST: fmul fast float
-//CHECK-FAST: fadd fast float
+//CHECK-FAST: call fast float @llvm.fmuladd.f32
 #endif
 
 #pragma float_control(precise, on, push)
@@ -121,8 +117,7 @@ float fun_default FUN(1)
 //CHECK-NOHONOR: call nnan ninf float @llvm.fmuladd{{.*}}
 #endif
 #if FAST
-//CHECK-FAST: fmul fast float
-//CHECK-FAST: fadd fast float
+//CHECK-FAST: call fast float @llvm.fmuladd.f32
 #endif
 #pragma float_control(precise, off)
                     float precise_off FUN(4)
@@ -131,21 +126,17 @@ float fun_default FUN(1)
 // Note: precise_off enables fp_contract=fast and the instructions
 // generated do not include the contract flag, although it was enabled
 // in IRBuilder.
-//CHECK-DDEFAULT: fmul fast float
-//CHECK-DDEFAULT: fadd fast float
+//CHECK-DDEFAULT: call fast float @llvm.fmuladd.f32
 #endif
 #if EBSTRICT
-//CHECK-DEBSTRICT: fmul fast float
-//CHECK-DEBSTRICT: fadd fast float
+//CHECK-DEBSTRICT: call fast float @llvm.fmuladd.f32
 #endif
 #if NOHONOR
 // fast math should be enabled, and contract should be fast
-//CHECK-NOHONOR: fmul fast float
-//CHECK-NOHONOR: fadd fast float
+//CHECK-NOHONOR: call fast float @llvm.fmuladd.f32
 #endif
 #if FAST
-//CHECK-FAST: fmul fast float
-//CHECK-FAST: fadd fast float
+//CHECK-FAST: call fast float @llvm.fmuladd.f32
 #endif
 
 #pragma float_control(precise, on)
@@ -185,21 +176,17 @@ float fun_default FUN(1)
                                 float precise_off2 FUN(4)
 //CHECK-LABEL: define {{.*}} @_Z12precise_off2f{{.*}}
 #if DEFAULT
-//CHECK-DDEFAULT: fmul fast float
-//CHECK-DDEFAULT: fadd fast float
+//CHECK-DDEFAULT: call fast float @llvm.fmuladd.f32
 #endif
 #if EBSTRICT
-//CHECK-DEBSTRICT: fmul fast float
-//CHECK-DEBSTRICT: fadd fast float
+//CHECK-DEBSTRICT: call fast float @llvm.fmuladd.f32
 #endif
 #if NOHONOR
 // fast math settings since precise is off
-//CHECK-NOHONOR: fmul fast float
-//CHECK-NOHONOR: fadd fast float
+//CHECK-NOHONOR: call fast float @llvm.fmuladd.f32
 #endif
 #if FAST
-//CHECK-FAST: fmul fast float
-//CHECK-FAST: fadd fast float
+//CHECK-FAST: call fast float @llvm.fmuladd.f32
 #endif
 
 #pragma float_control(pop)

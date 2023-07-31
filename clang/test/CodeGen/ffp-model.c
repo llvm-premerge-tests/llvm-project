@@ -19,9 +19,8 @@ float mymuladd(float x, float y, float z) {
   // CHECK: define{{.*}} float @mymuladd
   return x * y + z;
 
-  // CHECK-FAST: fmul fast float
   // CHECK-FAST: load float, ptr
-  // CHECK-FAST: fadd fast float
+  // CHECK-FAST: call fast float @llvm.fmuladd.f32
 
   // CHECK-PRECISE: load float, ptr
   // CHECK-PRECISE: load float, ptr
@@ -36,13 +35,11 @@ float mymuladd(float x, float y, float z) {
 
   // CHECK-STRICT-FAST: load float, ptr
   // CHECK-STRICT-FAST: load float, ptr
-  // CHECK-STRICT-FAST: fmul fast float {{.*}}, {{.*}}
   // CHECK-STRICT-FAST: load float, ptr
-  // CHECK-STRICT-FAST: fadd fast float {{.*}}, {{.*}}
+  // CHECK-STRICT-FAST: call fast float @llvm.fmuladd.f32
 
   // CHECK-FAST1: load float, ptr
   // CHECK-FAST1: load float, ptr
-  // CHECK-FAST1: fmul fast float {{.*}}, {{.*}}
   // CHECK-FAST1: load float, ptr {{.*}}
-  // CHECK-FAST1: fadd fast float {{.*}}, {{.*}}
+  // CHECK-FAST1: call fast float @llvm.fmuladd.f32
 }

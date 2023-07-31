@@ -3782,7 +3782,8 @@ static Value* tryEmitFMulAdd(const BinOpInfo &op,
          "Only fadd/fsub can be the root of an fmuladd.");
 
   // Check whether this op is marked as fusable.
-  if (!op.FPFeatures.allowFPContractWithinStatement())
+  if (!op.FPFeatures.allowFPContractWithinStatement() &&
+      !op.FPFeatures.allowFPContractAcrossStatement())
     return nullptr;
 
   Value *LHS = op.LHS;

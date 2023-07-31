@@ -73,9 +73,8 @@ float mymuladd(float x, float y, float z) {
 
   // CHECK-CONTRACTFAST: load float, ptr
   // CHECK-CONTRACTFAST: load float, ptr
-  // CHECK-CONTRACTFAST: fmul contract float
   // CHECK-CONTRACTFAST: load float, ptr
-  // CHECK-CONTRACTFAST: fadd contract float
+  // CHECK-CONTRACTFAST: call contract float @llvm.fmuladd.f32
 
   // CHECK-CONTRACTOFF: load float, ptr
   // CHECK-CONTRACTOFF: load float, ptr
@@ -90,9 +89,8 @@ float mymuladd(float x, float y, float z) {
 
   // CHECK-FASTFAST: load float, ptr
   // CHECK-FASTFAST: load float, ptr
-  // CHECK-FASTFAST: fmul fast float
   // CHECK-FASTFAST: load float, ptr
-  // CHECK-FASTFAST: fadd fast float {{.*}}, {{.*}}
+  // CHECK-FASTFAST: call fast float @llvm.fmuladd.f32
 
   // CHECK-NOFAST: load float, ptr
   // CHECK-NOFAST: load float, ptr
