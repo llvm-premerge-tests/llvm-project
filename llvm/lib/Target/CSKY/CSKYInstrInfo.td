@@ -1202,6 +1202,13 @@ multiclass BTF32Pat0<PatFrag cond0, PatFrag cond1, ImmLeaf imm_ty, Instruction i
 defm : BTF32Pat0<setne, seteq, uimm16, CMPNEI32>;
 defm : BTF32Pat0<setuge, setult, oimm16, CMPHSI32>;
 defm : BTF32Pat0<setlt, setge, oimm16, CMPLTI32>;
+
+def : Pat<(brcond (i32 (setne (and GPR:$rs, imm32_1_pop_bit:$im), 0)), bb:$imm16),
+          (BT32 (BTSTI32 GPR:$rs, (imm32_1_pop_bit_XFORM imm32_1_pop_bit:$im)),
+                bb:$imm16)>;
+def : Pat<(brcond (i32 (seteq (and GPR:$rs, imm32_1_pop_bit:$im), 0)), bb:$imm16),
+          (BF32 (BTSTI32 GPR:$rs, (imm32_1_pop_bit_XFORM imm32_1_pop_bit:$im)),
+                bb:$imm16)>;
 }
 
 let Predicates = [iHas2E3] in {
@@ -1366,8 +1373,16 @@ def : Pat<(select CARRY:$ca, GPR:$rx, GPR:$false),
           (ISEL32 CARRY:$ca, GPR:$rx, GPR:$false)>;
 def : Pat<(select (and CARRY:$ca, 1), GPR:$rx, GPR:$false),
           (ISEL32 CARRY:$ca, GPR:$rx, GPR:$false)>;
-}
 
+def : Pat<(select (i32 (setne (and GPR:$rs, imm32_1_pop_bit:$im), 0)),
+                  GPR:$true, GPR:$false),
+          (MOVT32 (BTSTI32 GPR:$rs, (imm32_1_pop_bit_XFORM imm32_1_pop_bit:$im)),
+                  GPR:$true, GPR:$false)>;
+def : Pat<(select (i32 (seteq (and GPR:$rs, imm32_1_pop_bit:$im), 0)),
+                  GPR:$true, GPR:$false),
+          (MOVF32 (BTSTI32 GPR:$rs, (imm32_1_pop_bit_XFORM imm32_1_pop_bit:$im)),
+                  GPR:$true, GPR:$false)>;
+}
 
 let Predicates = [iHas2E3] in {
 def : Pat<(select (i32 (setne GPR:$rs1, GPR:$rs2)), (add GPR:$rx, uimm5:$imm), GPR:$false),
