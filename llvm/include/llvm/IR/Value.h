@@ -656,7 +656,7 @@ public:
   }
 
   /// Strip off pointer casts, all-zero GEPs, single-argument phi nodes and
-  /// invariant group info.
+  /// invariant group info. Looks through returned arg functions.
   ///
   /// Returns the original uncasted value.  If this is called on a non-pointer
   /// value, it returns 'this'. This function should be used only in

@@ -662,7 +662,8 @@ static const Value *stripPointerCastsAndOffsets(
       V = cast<PHINode>(V)->getIncomingValue(0);
     } else {
       if (const auto *Call = dyn_cast<CallBase>(V)) {
-        if (const Value *RV = Call->getReturnedArgOperand()) {
+        if (const Value *RV = Call->getReturnedArgOperand();
+            RV && StripKind == PSK_ForAliasAnalysis) {
           V = RV;
           continue;
         }
