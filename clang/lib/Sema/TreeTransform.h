@@ -6846,15 +6846,28 @@ QualType TreeTransform<Derived>::TransformAutoType(TypeLocBuilder &TLB,
 
   AutoTypeLoc NewTL = TLB.push<AutoTypeLoc>(Result);
   NewTL.setNameLoc(TL.getNameLoc());
-  NewTL.setNestedNameSpecifierLoc(NewNestedNameSpec);
-  NewTL.setTemplateKWLoc(TL.getTemplateKWLoc());
-  NewTL.setConceptNameLoc(TL.getConceptNameLoc());
-  NewTL.setFoundDecl(TL.getFoundDecl());
   NewTL.setLAngleLoc(TL.getLAngleLoc());
   NewTL.setRAngleLoc(TL.getRAngleLoc());
   NewTL.setRParenLoc(TL.getRParenLoc());
-  for (unsigned I = 0; I < NewTL.getNumArgs(); ++I)
-    NewTL.setArgLocInfo(I, NewTemplateArgs.arguments()[I].getLocInfo());
+
+  if (T->isConstrained()) {
+    // FIXME: move to TransformConceptLoc
+    DeclarationNameInfo DNI = DeclarationNameInfo();
+    DNI.setLoc(TL.getConceptNameLoc());
+    if (T->isConstrained()) {
+      DNI.setName(TL.getTypePtr()->getTypeConstraintConcept()->getDeclName());
+      DNI.setInfo(TL.getTypePtr()->getTypeConstraintConcept()->getDeclName());
+    }
+    auto *CL = ConceptLoc::Create(
+        SemaRef.Context, NewNestedNameSpec, TL.getTemplateKWLoc(), DNI,
+        TL.getFoundDecl(),
+        (T->isConstrained() ? TL.getTypePtr()->getTypeConstraintConcept()
+                            : nullptr),
+        (NewTemplateArgs.size() > 0 ? ASTTemplateArgumentListInfo::Create(
+                                          SemaRef.Context, NewTemplateArgs)
+                                    : nullptr));
+    NewTL.setConceptLoc(CL);
+  }
 
   return Result;
 }
