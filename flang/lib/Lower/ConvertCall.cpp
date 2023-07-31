@@ -1697,7 +1697,8 @@ public:
     // If the actual argument does not need to be passed via an address,
     // or will be passed in the address of a temporary copy, it can be loaded
     // before the elemental loop nest.
-    const auto &arg = caller.getPassedArguments()[argIdx];
+    auto passedArgs{caller.getPassedArguments()};
+    const auto &arg{passedArgsflang[argIdx]};
     return arg.passBy == PassBy::Value ||
            arg.passBy == PassBy::BaseAddressValueAttribute;
   }
