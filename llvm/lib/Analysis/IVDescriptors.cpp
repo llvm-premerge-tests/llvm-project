@@ -52,8 +52,8 @@ bool RecurrenceDescriptor::isIntegerRecurrenceKind(RecurKind Kind) {
   case RecurKind::SMin:
   case RecurKind::UMax:
   case RecurKind::UMin:
-  case RecurKind::SelectICmp:
-  case RecurKind::SelectFCmp:
+  case RecurKind::IAnyOf:
+  case RecurKind::FAnyOf:
     return true;
   }
   return false;
@@ -419,10 +419,10 @@ bool RecurrenceDescriptor::AddReductionVar(
     if (IsAPhi && Cur != Phi && !areAllUsesIn(Cur, VisitedInsts))
       return false;
 
-    if ((isIntMinMaxRecurrenceKind(Kind) || Kind == RecurKind::SelectICmp) &&
+    if ((isIntMinMaxRecurrenceKind(Kind) || Kind == RecurKind::IAnyOf) &&
         (isa<ICmpInst>(Cur) || isa<SelectInst>(Cur)))
       ++NumCmpSelectPatternInst;
-    if ((isFPMinMaxRecurrenceKind(Kind) || Kind == RecurKind::SelectFCmp) &&
+    if ((isFPMinMaxRecurrenceKind(Kind) || Kind == RecurKind::FAnyOf) &&
         (isa<FCmpInst>(Cur) || isa<SelectInst>(Cur)))
       ++NumCmpSelectPatternInst;
 
@@ -659,8 +659,8 @@ RecurrenceDescriptor::isSelectCmpPattern(Loop *Loop, PHINode *OrigPhi,
   if (!Loop->isLoopInvariant(NonPhi))
     return InstDesc(false, I);
 
-  return InstDesc(I, isa<ICmpInst>(I->getOperand(0)) ? RecurKind::SelectICmp
-                                                     : RecurKind::SelectFCmp);
+  return InstDesc(I, isa<ICmpInst>(I->getOperand(0)) ? RecurKind::IAnyOf
+                                                     : RecurKind::FAnyOf);
 }
 
 RecurrenceDescriptor::InstDesc
@@ -897,8 +897,8 @@ bool RecurrenceDescriptor::isReductionPHI(PHINode *Phi, Loop *TheLoop,
     LLVM_DEBUG(dbgs() << "Found a UMIN reduction PHI." << *Phi << "\n");
     return true;
   }
-  if (AddReductionVar(Phi, RecurKind::SelectICmp, TheLoop, FMF, RedDes, DB, AC,
-                      DT, SE)) {
+  if (AddReductionVar(Phi, RecurKind::IAnyOf, TheLoop, FMF, RedDes, DB, AC, DT,
+                      SE)) {
     LLVM_DEBUG(dbgs() << "Found an integer conditional select reduction PHI."
                       << *Phi << "\n");
     return true;
@@ -923,8 +923,8 @@ bool RecurrenceDescriptor::isReductionPHI(PHINode *Phi, Loop *TheLoop,
     LLVM_DEBUG(dbgs() << "Found a float MIN reduction PHI." << *Phi << "\n");
     return true;
   }
-  if (AddReductionVar(Phi, RecurKind::SelectFCmp, TheLoop, FMF, RedDes, DB, AC,
-                      DT, SE)) {
+  if (AddReductionVar(Phi, RecurKind::FAnyOf, TheLoop, FMF, RedDes, DB, AC, DT,
+                      SE)) {
     LLVM_DEBUG(dbgs() << "Found a float conditional select reduction PHI."
                       << " PHI." << *Phi << "\n");
     return true;
@@ -1088,8 +1088,8 @@ Value *RecurrenceDescriptor::getRecurrenceIdentity(RecurKind K, Type *Tp,
     return ConstantFP::getInfinity(Tp, false /*Negative*/);
   case RecurKind::FMaximum:
     return ConstantFP::getInfinity(Tp, true /*Negative*/);
-  case RecurKind::SelectICmp:
-  case RecurKind::SelectFCmp:
+  case RecurKind::IAnyOf:
+  case RecurKind::FAnyOf:
     return getRecurrenceStartValue();
     break;
   default:
@@ -1118,13 +1118,13 @@ unsigned RecurrenceDescriptor::getOpcode(RecurKind Kind) {
   case RecurKind::SMin:
   case RecurKind::UMax:
   case RecurKind::UMin:
-  case RecurKind::SelectICmp:
+  case RecurKind::IAnyOf:
     return Instruction::ICmp;
   case RecurKind::FMax:
   case RecurKind::FMin:
   case RecurKind::FMaximum:
   case RecurKind::FMinimum:
-  case RecurKind::SelectFCmp:
+  case RecurKind::FAnyOf:
     return Instruction::FCmp;
   default:
     llvm_unreachable("Unknown recurrence operation");
