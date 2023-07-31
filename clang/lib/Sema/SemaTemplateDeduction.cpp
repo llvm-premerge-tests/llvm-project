@@ -3879,8 +3879,11 @@ static bool AdjustFunctionParmAndArgTypesForDeduction(
   // C++0x [temp.deduct.call]p3:
   //   If P is a cv-qualified type, the top level cv-qualifiers of P's type
   //   are ignored for type deduction.
-  if (ParamType.hasQualifiers())
+  // Ignore top level nullability qualifiers too.
+  if (ParamType.hasQualifiers()) {
     ParamType = ParamType.getUnqualifiedType();
+    (void)AttributedType::stripOuterNullability(ParamType);
+  }
 
   //   [...] If P is a reference type, the type referred to by P is
   //   used for type deduction.
@@ -3927,7 +3930,9 @@ static bool AdjustFunctionParmAndArgTypesForDeduction(
     else {
       // - If A is a cv-qualified type, the top level cv-qualifiers of A's
       //   type are ignored for type deduction.
+      // Ignore top level nullability qualifiers too.
       ArgType = ArgType.getUnqualifiedType();
+      (void)AttributedType::stripOuterNullability(ArgType);
     }
   }
 

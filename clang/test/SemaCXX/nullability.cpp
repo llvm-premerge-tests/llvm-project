@@ -137,6 +137,21 @@ void testNullabilityCompletenessWithTemplate() {
   Template<int*> tip;
 }
 
+namespace test_auto {
+
+template <class T>
+void foo(T t) {
+  int * _Nonnull x = t; // OK.
+}
+
+void test(int * _Nullable ptr) {
+  auto b = ptr; // _Nullable on ptr is ignored when b's type is deduced.
+  int * _Nonnull c = b; // OK.
+  foo(ptr); // _Nullable on ptr is ignored when T's type is deduced.
+}
+
+}
+
 namespace GH60344 {
 class a;
 template <typename b> using c = b _Nullable; // expected-error {{'_Nullable' cannot be applied to non-pointer type 'GH60344::a'}}

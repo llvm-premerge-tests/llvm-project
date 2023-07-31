@@ -125,9 +125,11 @@ void nullable_to_nonnull(_Nullable int *ptr) {
   int *a = ptr; // okay
   _Nonnull int *b = ptr; // expected-warning{{implicit conversion from nullable pointer 'int * _Nullable' to non-nullable pointer type 'int * _Nonnull'}}
   b = ptr; // expected-warning{{implicit conversion from nullable pointer 'int * _Nullable' to non-nullable pointer type 'int * _Nonnull'}}
-  __auto_type _Nonnull c = ptr; // expected-warning{{implicit conversion from nullable pointer 'int * _Nullable' to non-nullable pointer type 'int * _Nullable _Nonnull'}}
+  __auto_type _Nonnull c = ptr; // expected-warning{{implicit conversion from nullable pointer 'int * _Nullable' to non-nullable pointer type 'int * _Nonnull'}}
 
   accepts_nonnull_1(ptr); // expected-warning{{implicit conversion from nullable pointer 'int * _Nullable' to non-nullable pointer type 'int * _Nonnull'}}
+  __auto_type d = ptr; // _Nullable on ptr is ignored when d's type is deduced.
+  b = d; // OK.
 }
 
 // Check nullability of conditional expressions.
