@@ -8,7 +8,17 @@ module m
     real, pointer, contiguous :: f(:)
     f => hosted
   end function
-  subroutine test(arr1, arr2, arr3, mat, alloc)
+  subroutine test(arr1, arr2, arr3, mat, alloc, n)
+    integer, parameter :: cst(2,2) = reshape([1, 2, 3, 4], [2, 2])
+    integer, parameter :: cst3d(2,1,2) = reshape([1, 2, 3, 4], [2, 1, 2])
+    integer, parameter :: empty_cst(2,0) = reshape([1], [2, 0])
+    integer :: n
+    logical, parameter :: test_param1 = is_contiguous(cst(:,1))
+    logical, parameter :: test_param2 = is_contiguous(cst(1,:))
+    logical, parameter :: test_param3 = is_contiguous(cst(:,n))
+    logical, parameter :: test_param4 = .not. is_contiguous(cst(n,:))
+    logical, parameter :: test_param5 = is_contiguous(empty_cst(n,-1:n:2))
+
     real, intent(in) :: arr1(:), arr2(10), mat(10, 10)
     real, intent(in), contiguous :: arr3(:)
     real, allocatable :: alloc(:)
