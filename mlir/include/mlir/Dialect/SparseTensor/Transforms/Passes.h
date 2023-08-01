@@ -41,7 +41,6 @@ enum class SparseParallelizationStrategy {
   kAnyStorageOuterLoop,
   kDenseAnyLoop,
   kAnyStorageAnyLoop
-  // TODO: support reduction parallelization too?
 };
 
 #define GEN_PASS_DECL
