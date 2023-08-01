@@ -83,12 +83,15 @@ getCheckOptions(const ClangTidyOptions &Options,
 /// \param StoreCheckProfile If provided, and EnableCheckProfile is true,
 /// the profile will not be output to stderr, but will instead be stored
 /// as a JSON file in the specified directory.
+/// \param WillExportFixes If true, add line and column information to messages
+/// for fixes later being exported to yaml.
 std::vector<ClangTidyError>
 runClangTidy(clang::tidy::ClangTidyContext &Context,
              const tooling::CompilationDatabase &Compilations,
              ArrayRef<std::string> InputFiles,
              llvm::IntrusiveRefCntPtr<llvm::vfs::OverlayFileSystem> BaseFS,
              bool ApplyAnyFix, bool EnableCheckProfile = false,
+             bool WillExportFixes = false,
              llvm::StringRef StoreCheckProfile = StringRef());
 
 /// Controls what kind of fixes clang-tidy is allowed to apply.
