@@ -1976,11 +1976,13 @@ static void createBodyOfOp(
     for (const Fortran::semantics::Symbol *arg : args) {
       mlir::Value val =
           fir::getBase(op.getRegion().front().getArgument(argIndex));
+      mlir::Type tempTy = converter.genType(*arg);
       mlir::Value temp = firOpBuilder.createTemporary(
-          loc, loopVarType,
+          loc, tempTy,
           llvm::ArrayRef<mlir::NamedAttribute>{
               Fortran::lower::getAdaptToByRefAttr(firOpBuilder)});
-      storeOp = firOpBuilder.create<fir::StoreOp>(loc, val, temp);
+      mlir::Value cvtVal = firOpBuilder.createConvert(loc, tempTy, val);
+      storeOp = firOpBuilder.create<fir::StoreOp>(loc, cvtVal, temp);
       converter.bindSymbol(*arg, temp);
       argIndex++;
     }
