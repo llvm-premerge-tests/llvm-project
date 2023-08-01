@@ -18,22 +18,24 @@ define void @test() {
 ; CHECK-NEXT:    [[A5:%.*]] = load double, ptr getelementptr inbounds ([8 x double], ptr @src, i32 0, i64 5), align 8
 ; CHECK-NEXT:    [[A6:%.*]] = load double, ptr getelementptr inbounds ([8 x double], ptr @src, i32 0, i64 6), align 8
 ; CHECK-NEXT:    [[A7:%.*]] = load double, ptr getelementptr inbounds ([8 x double], ptr @src, i32 0, i64 7), align 8
-; CHECK-NEXT:    [[TMP1:%.*]] = insertelement <2 x double> poison, double [[A2]], i32 0
-; CHECK-NEXT:    [[TMP2:%.*]] = insertelement <2 x double> [[TMP1]], double [[A6]], i32 1
-; CHECK-NEXT:    [[TMP3:%.*]] = call fast <2 x double> @llvm.sin.v2f64(<2 x double> [[TMP2]])
-; CHECK-NEXT:    [[TMP4:%.*]] = insertelement <2 x double> poison, double [[A3]], i32 0
-; CHECK-NEXT:    [[TMP5:%.*]] = insertelement <2 x double> [[TMP4]], double [[A7]], i32 1
-; CHECK-NEXT:    [[TMP6:%.*]] = call fast <2 x double> @llvm.sin.v2f64(<2 x double> [[TMP5]])
-; CHECK-NEXT:    [[TMP7:%.*]] = insertelement <2 x double> poison, double [[A0]], i32 0
-; CHECK-NEXT:    [[TMP8:%.*]] = insertelement <2 x double> [[TMP7]], double [[A4]], i32 1
-; CHECK-NEXT:    [[TMP9:%.*]] = call fast <2 x double> @llvm.sqrt.v2f64(<2 x double> [[TMP8]])
-; CHECK-NEXT:    [[TMP10:%.*]] = insertelement <2 x double> poison, double [[A1]], i32 0
-; CHECK-NEXT:    [[TMP11:%.*]] = insertelement <2 x double> [[TMP10]], double [[A5]], i32 1
-; CHECK-NEXT:    [[TMP12:%.*]] = call fast <2 x double> @llvm.sqrt.v2f64(<2 x double> [[TMP11]])
-; CHECK-NEXT:    [[TMP13:%.*]] = fadd fast <2 x double> [[TMP9]], [[TMP6]]
-; CHECK-NEXT:    [[TMP14:%.*]] = fadd fast <2 x double> [[TMP3]], [[TMP12]]
-; CHECK-NEXT:    [[TMP15:%.*]] = fadd fast <2 x double> [[TMP13]], [[TMP14]]
-; CHECK-NEXT:    store <2 x double> [[TMP15]], ptr @dst, align 8
+; CHECK-NEXT:    [[SIN0:%.*]] = call fast double @llvm.sin.f64(double [[A2]])
+; CHECK-NEXT:    [[SIN1:%.*]] = call fast double @llvm.sin.f64(double [[A3]])
+; CHECK-NEXT:    [[SIN2:%.*]] = call fast double @llvm.sin.f64(double [[A6]])
+; CHECK-NEXT:    [[SIN3:%.*]] = call fast double @llvm.sin.f64(double [[A7]])
+; CHECK-NEXT:    [[TMP1:%.*]] = insertelement <2 x double> poison, double [[A0]], i32 0
+; CHECK-NEXT:    [[TMP2:%.*]] = insertelement <2 x double> [[TMP1]], double [[A4]], i32 1
+; CHECK-NEXT:    [[TMP3:%.*]] = call fast <2 x double> @llvm.sqrt.v2f64(<2 x double> [[TMP2]])
+; CHECK-NEXT:    [[TMP4:%.*]] = insertelement <2 x double> poison, double [[A1]], i32 0
+; CHECK-NEXT:    [[TMP5:%.*]] = insertelement <2 x double> [[TMP4]], double [[A5]], i32 1
+; CHECK-NEXT:    [[TMP6:%.*]] = call fast <2 x double> @llvm.sqrt.v2f64(<2 x double> [[TMP5]])
+; CHECK-NEXT:    [[TMP7:%.*]] = insertelement <2 x double> poison, double [[SIN1]], i32 0
+; CHECK-NEXT:    [[TMP8:%.*]] = insertelement <2 x double> [[TMP7]], double [[SIN3]], i32 1
+; CHECK-NEXT:    [[TMP9:%.*]] = fadd fast <2 x double> [[TMP3]], [[TMP8]]
+; CHECK-NEXT:    [[TMP10:%.*]] = insertelement <2 x double> poison, double [[SIN0]], i32 0
+; CHECK-NEXT:    [[TMP11:%.*]] = insertelement <2 x double> [[TMP10]], double [[SIN2]], i32 1
+; CHECK-NEXT:    [[TMP12:%.*]] = fadd fast <2 x double> [[TMP11]], [[TMP6]]
+; CHECK-NEXT:    [[TMP13:%.*]] = fadd fast <2 x double> [[TMP9]], [[TMP12]]
+; CHECK-NEXT:    store <2 x double> [[TMP13]], ptr @dst, align 8
 ; CHECK-NEXT:    ret void
 ;
 ; VECLIB-LABEL: @test(
