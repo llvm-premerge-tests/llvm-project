@@ -44,19 +44,15 @@ define signext i32 @and_select_all_ones_i32(i1 zeroext %c, i32 signext %x, i32 s
 ;
 ; VTCONDOPS64-LABEL: and_select_all_ones_i32:
 ; VTCONDOPS64:       # %bb.0:
-; VTCONDOPS64-NEXT:    li a3, -1
-; VTCONDOPS64-NEXT:    vt.maskcn a3, a3, a0
-; VTCONDOPS64-NEXT:    vt.maskc a0, a1, a0
-; VTCONDOPS64-NEXT:    or a0, a0, a3
+; VTCONDOPS64-NEXT:    addi a0, a0, -1
+; VTCONDOPS64-NEXT:    or a0, a0, a1
 ; VTCONDOPS64-NEXT:    and a0, a0, a2
 ; VTCONDOPS64-NEXT:    ret
 ;
 ; ZICOND-LABEL: and_select_all_ones_i32:
 ; ZICOND:       # %bb.0:
-; ZICOND-NEXT:    li a3, -1
-; ZICOND-NEXT:    czero.nez a3, a3, a0
-; ZICOND-NEXT:    czero.eqz a0, a1, a0
-; ZICOND-NEXT:    or a0, a0, a3
+; ZICOND-NEXT:    addi a0, a0, -1
+; ZICOND-NEXT:    or a0, a0, a1
 ; ZICOND-NEXT:    and a0, a0, a2
 ; ZICOND-NEXT:    ret
   %a = select i1 %c, i32 %x, i32 -1
@@ -92,30 +88,23 @@ define i64 @and_select_all_ones_i64(i1 zeroext %c, i64 %x, i64 %y) {
 ;
 ; VTCONDOPS64-LABEL: and_select_all_ones_i64:
 ; VTCONDOPS64:       # %bb.0:
-; VTCONDOPS64-NEXT:    vt.maskcn a1, a1, a0
-; VTCONDOPS64-NEXT:    li a3, -1
-; VTCONDOPS64-NEXT:    vt.maskc a0, a3, a0
+; VTCONDOPS64-NEXT:    neg a0, a0
 ; VTCONDOPS64-NEXT:    or a0, a0, a1
 ; VTCONDOPS64-NEXT:    and a0, a2, a0
 ; VTCONDOPS64-NEXT:    ret
 ;
 ; ZICOND32-LABEL: and_select_all_ones_i64:
 ; ZICOND32:       # %bb.0:
-; ZICOND32-NEXT:    czero.nez a2, a2, a0
-; ZICOND32-NEXT:    li a5, -1
-; ZICOND32-NEXT:    czero.eqz a5, a5, a0
-; ZICOND32-NEXT:    or a2, a5, a2
-; ZICOND32-NEXT:    czero.nez a0, a1, a0
-; ZICOND32-NEXT:    or a0, a5, a0
+; ZICOND32-NEXT:    neg a0, a0
+; ZICOND32-NEXT:    or a2, a0, a2
+; ZICOND32-NEXT:    or a0, a0, a1
 ; ZICOND32-NEXT:    and a0, a3, a0
 ; ZICOND32-NEXT:    and a1, a4, a2
 ; ZICOND32-NEXT:    ret
 ;
 ; ZICOND64-LABEL: and_select_all_ones_i64:
 ; ZICOND64:       # %bb.0:
-; ZICOND64-NEXT:    czero.nez a1, a1, a0
-; ZICOND64-NEXT:    li a3, -1
-; ZICOND64-NEXT:    czero.eqz a0, a3, a0
+; ZICOND64-NEXT:    neg a0, a0
 ; ZICOND64-NEXT:    or a0, a0, a1
 ; ZICOND64-NEXT:    and a0, a2, a0
 ; ZICOND64-NEXT:    ret
