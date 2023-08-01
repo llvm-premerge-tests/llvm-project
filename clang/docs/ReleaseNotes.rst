@@ -158,6 +158,9 @@ LoongArch Support
 
 RISC-V Support
 ^^^^^^^^^^^^^^
+- An ABI mismatch between GCC and Clang related to the handling of empty
+  structs in C++ parameter passing under the hard floating point calling
+  conventions was fixed.
 
 CUDA/HIP Language Changes
 ^^^^^^^^^^^^^^^^^^^^^^^^^
