@@ -1222,8 +1222,8 @@ def GPU_MemcpyOp : GPU_Op<"memcpy", [GPU_AsyncOpInterface]> {
   }];
 
   let arguments = (ins Variadic<GPU_AsyncToken>:$asyncDependencies,
-                   Arg<AnyMemRef, "", [MemWrite]>:$dst,
-                   Arg<AnyMemRef, "", [MemRead]>:$src);
+                   Arg<AnyMemRef, "", [MemWriteAt<1>]>:$dst,
+                   Arg<AnyMemRef, "", [MemReadAt<0>]>:$src);
   let results = (outs Optional<GPU_AsyncToken>:$asyncToken);
 
   let assemblyFormat = [{
