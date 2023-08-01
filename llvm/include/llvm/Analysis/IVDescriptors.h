@@ -33,27 +33,29 @@ class StoreInst;
 
 /// These are the kinds of recurrences that we support.
 enum class RecurKind {
-  None,       ///< Not a recurrence.
-  Add,        ///< Sum of integers.
-  Mul,        ///< Product of integers.
-  Or,         ///< Bitwise or logical OR of integers.
-  And,        ///< Bitwise or logical AND of integers.
-  Xor,        ///< Bitwise or logical XOR of integers.
-  SMin,       ///< Signed integer min implemented in terms of select(cmp()).
-  SMax,       ///< Signed integer max implemented in terms of select(cmp()).
-  UMin,       ///< Unsigned integer min implemented in terms of select(cmp()).
-  UMax,       ///< Unsigned integer max implemented in terms of select(cmp()).
-  FAdd,       ///< Sum of floats.
-  FMul,       ///< Product of floats.
-  FMin,       ///< FP min implemented in terms of select(cmp()).
-  FMax,       ///< FP max implemented in terms of select(cmp()).
-  FMinimum,   ///< FP min with llvm.minimum semantics
-  FMaximum,   ///< FP max with llvm.maximum semantics
-  FMulAdd,    ///< Sum of float products with llvm.fmuladd(a * b + sum).
-  SelectICmp, ///< Integer select(icmp(),x,y) where one of (x,y) is loop
-              ///< invariant
-  SelectFCmp  ///< Integer select(fcmp(),x,y) where one of (x,y) is loop
-              ///< invariant
+  None,     ///< Not a recurrence.
+  Add,      ///< Sum of integers.
+  Mul,      ///< Product of integers.
+  Or,       ///< Bitwise or logical OR of integers.
+  And,      ///< Bitwise or logical AND of integers.
+  Xor,      ///< Bitwise or logical XOR of integers.
+  SMin,     ///< Signed integer min implemented in terms of select(cmp()).
+  SMax,     ///< Signed integer max implemented in terms of select(cmp()).
+  UMin,     ///< Unsigned integer min implemented in terms of select(cmp()).
+  UMax,     ///< Unsigned integer max implemented in terms of select(cmp()).
+  FAdd,     ///< Sum of floats.
+  FMul,     ///< Product of floats.
+  FMin,     ///< FP min implemented in terms of select(cmp()).
+  FMax,     ///< FP max implemented in terms of select(cmp()).
+  FMinimum, ///< FP min with llvm.minimum semantics
+  FMaximum, ///< FP max with llvm.maximum semantics
+  FMulAdd,  ///< Sum of float products with llvm.fmuladd(a * b + sum).
+  IAnyOf, ///< Any_of reduction with select(icmp(),x,y) where one of (x,y) is an
+          ///< loop invariant, and both x and y are integer type.
+  FAnyOf  ///< Any_of reduction with select(fcmp(),x,y) where one of (x,y) is an
+          ///< loop invariant, and both x and y are integer type.
+  // TODO: Any_of reduction can be applied not only to integer types, but also
+  // to float types. In other words, x and y can also be of float type.
 };
 
 /// The RecurrenceDescriptor is used to identify recurrences variables in a
@@ -236,8 +238,14 @@ public:
 
   /// Returns true if the recurrence kind is of the form
   ///   select(cmp(),x,y) where one of (x,y) is loop invariant.
+  static bool isAnyOfRecurrenceKind(RecurKind Kind) {
+    return Kind == RecurKind::IAnyOf || Kind == RecurKind::FAnyOf;
+  }
+
+  /// Returns true if the recurrence kind is of the form
+  ///   select(cmp(),x,y).
   static bool isSelectCmpRecurrenceKind(RecurKind Kind) {
-    return Kind == RecurKind::SelectICmp || Kind == RecurKind::SelectFCmp;
+    return isAnyOfRecurrenceKind(Kind);
   }
 
   /// Returns the type of the recurrence. This type can be narrower than the

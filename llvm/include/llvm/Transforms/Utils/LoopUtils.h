@@ -397,9 +397,9 @@ Value *createSimpleTargetReduction(IRBuilderBase &B,
                                    RecurKind RdxKind);
 
 /// Create a target reduction of the given vector \p Src for a reduction of the
-/// kind RecurKind::SelectICmp or RecurKind::SelectFCmp. The reduction operation
-/// is described by \p Desc.
-Value *createSelectCmpTargetReduction(IRBuilderBase &B,
+/// kind RecurKind::IAnyOf or RecurKind::FAnyOf. The reduction operation is
+/// described by \p Desc.
+Value *createAnyOfTargetReduction(IRBuilderBase &B,
                                       const TargetTransformInfo *TTI,
                                       Value *Src,
                                       const RecurrenceDescriptor &Desc,
