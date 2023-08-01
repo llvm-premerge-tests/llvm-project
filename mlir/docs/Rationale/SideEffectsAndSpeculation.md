@@ -47,7 +47,10 @@ Operations with implicit behaviors can be broadly categorized as follows:
    `longjmp`, operations that throw exceptions.
 
 Finally, a given operation may have a combination of the above implicit
-behaviors.
+behaviors. The combination of implicit behaviors during the execution of the
+operation may be ordered. We use 'stage' to label the order of implicit
+behaviors during the execution of 'op'. Implicit behaviors with a lower stage
+number happen earlier than those with a higher stage number.
 
 ## Modeling
 
@@ -76,6 +79,11 @@ When adding a new op, ask:
 
 1. Does it read from or write to the heap or stack? It should probably implement
    `MemoryEffectsOpInterface`.
+1. Does these side effects ordered? It should probably add the stage of
+   side effects to make the analysis more accurate. We can use the `MemxxAt`
+   method to mark the stage of side effects in the TD file or build
+   SideEffectInterfaces by constructor with stage to specify the stage
+   of side effects.
 1. Does it have side effects that must be preserved, like a volatile store or a
    syscall? It should probably implement `MemoryEffectsOpInterface` and model
    the effect as a read from or write to an abstract `Resource`. Please start an

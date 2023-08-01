@@ -140,35 +140,59 @@ class EffectInstance {
 public:
   EffectInstance(EffectT *effect, Resource *resource = DefaultResource::get())
       : effect(effect), resource(resource) {}
+  EffectInstance(EffectT *effect, int stage,
+                 Resource *resource = DefaultResource::get())
+      : effect(effect), resource(resource), stage(stage) {}
   EffectInstance(EffectT *effect, Value value,
                  Resource *resource = DefaultResource::get())
       : effect(effect), resource(resource), value(value) {}
+  EffectInstance(EffectT *effect, Value value, int stage,
+                 Resource *resource = DefaultResource::get())
+      : effect(effect), resource(resource), value(value), stage(stage) {}
   EffectInstance(EffectT *effect, SymbolRefAttr symbol,
                  Resource *resource = DefaultResource::get())
       : effect(effect), resource(resource), value(symbol) {}
+  EffectInstance(EffectT *effect, SymbolRefAttr symbol, int stage,
+                 Resource *resource = DefaultResource::get())
+      : effect(effect), resource(resource), value(symbol), stage(stage) {}
   EffectInstance(EffectT *effect, Attribute parameters,
                  Resource *resource = DefaultResource::get())
       : effect(effect), resource(resource), parameters(parameters) {}
+  EffectInstance(EffectT *effect, Attribute parameters, int stage,
+                 Resource *resource = DefaultResource::get())
+      : effect(effect), resource(resource), parameters(parameters),
+        stage(stage) {}
   EffectInstance(EffectT *effect, Value value, Attribute parameters,
                  Resource *resource = DefaultResource::get())
       : effect(effect), resource(resource), value(value),
         parameters(parameters) {}
+  EffectInstance(EffectT *effect, Value value, Attribute parameters, int stage,
+                 Resource *resource = DefaultResource::get())
+      : effect(effect), resource(resource), value(value),
+        parameters(parameters), stage(stage) {}
   EffectInstance(EffectT *effect, SymbolRefAttr symbol, Attribute parameters,
                  Resource *resource = DefaultResource::get())
       : effect(effect), resource(resource), value(symbol),
         parameters(parameters) {}
+  EffectInstance(EffectT *effect, SymbolRefAttr symbol, Attribute parameters,
+                 int stage, Resource *resource = DefaultResource::get())
+      : effect(effect), resource(resource), value(symbol),
+        parameters(parameters), stage(stage) {}
 
   /// Return the effect being applied.
   EffectT *getEffect() const { return effect; }
 
   /// Return the value the effect is applied on, or nullptr if there isn't a
   /// known value being affected.
-  Value getValue() const { return value ? llvm::dyn_cast_if_present<Value>(value) : Value(); }
+  Value getValue() const {
+    return value ? llvm::dyn_cast_if_present<Value>(value) : Value();
+  }
 
   /// Return the symbol reference the effect is applied on, or nullptr if there
   /// isn't a known smbol being affected.
   SymbolRefAttr getSymbolRef() const {
-    return value ? llvm::dyn_cast_if_present<SymbolRefAttr>(value) : SymbolRefAttr();
+    return value ? llvm::dyn_cast_if_present<SymbolRefAttr>(value)
+                 : SymbolRefAttr();
   }
 
   /// Return the resource that the effect applies to.
@@ -176,6 +200,9 @@ public:
 
   /// Return the parameters of the effect, if any.
   Attribute getParameters() const { return parameters; }
+
+  /// Return the effect happen stage.
+  std::optional<int> getStage() const { return stage; }
 
 private:
   /// The specific effect being applied.
@@ -191,6 +218,10 @@ private:
   /// type-safe structured storage and context-based uniquing. Concrete effects
   /// can use this at their convenience. This is optionally null.
   Attribute parameters;
+
+  // The stage side effect happen. Side effect with a lower stage
+  // number happen earlier than those with a higher stage number
+  std::optional<int> stage;
 };
 } // namespace SideEffects
 

@@ -36,6 +36,8 @@ StringRef SideEffect::getResource() const {
   return def->getValueAsString("resource");
 }
 
+int64_t SideEffect::getStage() const { return def->getValueAsInt("stage"); }
+
 bool SideEffect::classof(const Operator::VariableDecorator *var) {
   return var->getDef().isSubClassOf("SideEffect");
 }
