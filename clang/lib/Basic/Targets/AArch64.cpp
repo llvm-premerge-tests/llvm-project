@@ -909,6 +909,8 @@ bool AArch64TargetInfo::handleTargetFeatures(std::vector<std::string> &Features,
       HasTME = true;
     if (Feature == "+pauth")
       HasPAuth = true;
+    if (Feature == "+fpac")
+      HasFPAC = true;
     if (Feature == "+i8mm")
       HasMatMul = true;
     if (Feature == "+bf16")
