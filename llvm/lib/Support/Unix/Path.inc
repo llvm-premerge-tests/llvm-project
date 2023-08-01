@@ -14,7 +14,7 @@
 //=== WARNING: Implementation here must contain only generic UNIX code that
 //===          is guaranteed to work on *all* UNIX variants.
 //===----------------------------------------------------------------------===//
-
+#include <iostream> 
 #include "Unix.h"
 #include <limits.h>
 #include <stdio.h>
@@ -1011,9 +1011,18 @@ std::error_code openFile(const Twine &Name, int &ResultFD,
                          CreationDisposition Disp, FileAccess Access,
                          OpenFlags Flags, unsigned Mode) {
   int OpenFlags = nativeOpenFlags(Disp, Flags, Access);
-
+  
   SmallString<128> Storage;
   StringRef P = Name.toNullTerminatedStringRef(Storage);
+  
+  if (Access == FA_Read) {
+    struct stat Status;
+    if (stat(P.begin(), &Status) == -1) 
+      return std::error_code(errno, std::generic_category());
+    if (S_ISDIR(Status.st_mode))
+      return make_error_code(errc::is_a_directory);
+  }
+
   // Call ::open in a lambda to avoid overload resolution in RetryAfterSignal
   // when open is overloaded, such as in Bionic.
   auto Open = [&]() { return ::open(P.begin(), OpenFlags, Mode); };
