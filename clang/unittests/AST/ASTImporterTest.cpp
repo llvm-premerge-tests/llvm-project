@@ -3968,8 +3968,31 @@ TEST_P(ImportClasses, ImportNestedPrototypeThenDefinition) {
   EXPECT_EQ(ToDef->getPreviousDecl(), ToProto);
 }
 
+struct ImportFriendClasses : ASTImporterOptionSpecificTestBase {
+  void testRecursiveFriendClassTemplate(Decl *FromTu) {
+    auto *FromD = FirstDeclMatcher<ClassTemplateDecl>().match(
+        FromTu, classTemplateDecl());
+    auto *ToD = Import(FromD, Lang_CXX03);
 
-struct ImportFriendClasses : ASTImporterOptionSpecificTestBase {};
+    auto Pattern = classTemplateDecl(
+        has(cxxRecordDecl(has(friendDecl(has(classTemplateDecl()))))));
+    ASSERT_TRUE(MatchVerifier<Decl>{}.match(FromD, Pattern));
+    EXPECT_TRUE(MatchVerifier<Decl>{}.match(ToD, Pattern));
+
+    auto *FromFriend =
+        FirstDeclMatcher<FriendDecl>().match(FromD, friendDecl());
+    auto *FromClass =
+        FirstDeclMatcher<ClassTemplateDecl>().match(FromD, classTemplateDecl());
+    EXPECT_NE(FromFriend->getFriendDecl(), FromClass);
+    EXPECT_TRUE(FromFriend->getFriendDecl()->getPreviousDecl() == nullptr);
+
+    auto *Class =
+        FirstDeclMatcher<ClassTemplateDecl>().match(ToD, classTemplateDecl());
+    auto *Friend = FirstDeclMatcher<FriendDecl>().match(ToD, friendDecl());
+    EXPECT_NE(Friend->getFriendDecl(), Class);
+    EXPECT_TRUE(Friend->getFriendDecl()->getPreviousDecl() == nullptr);
+  }
+};
 
 TEST_P(ImportFriendClasses, ImportOfFriendRecordDoesNotMergeDefinition) {
   Decl *FromTU = getTuDecl(
@@ -4074,20 +4097,19 @@ TEST_P(ImportFriendClasses, ImportOfRecursiveFriendClassTemplate) {
       )",
       Lang_CXX03, "input.cc");
 
-  auto *FromD =
-      FirstDeclMatcher<ClassTemplateDecl>().match(FromTu, classTemplateDecl());
-  auto *ToD = Import(FromD, Lang_CXX03);
+  testRecursiveFriendClassTemplate(FromTu);
+}
 
-  auto Pattern = classTemplateDecl(
-      has(cxxRecordDecl(has(friendDecl(has(classTemplateDecl()))))));
-  ASSERT_TRUE(MatchVerifier<Decl>{}.match(FromD, Pattern));
-  EXPECT_TRUE(MatchVerifier<Decl>{}.match(ToD, Pattern));
-
-  auto *Class =
-      FirstDeclMatcher<ClassTemplateDecl>().match(ToD, classTemplateDecl());
-  auto *Friend = FirstDeclMatcher<FriendDecl>().match(ToD, friendDecl());
-  EXPECT_NE(Friend->getFriendDecl(), Class);
-  EXPECT_EQ(Friend->getFriendDecl()->getPreviousDecl(), Class);
+TEST_P(ImportFriendClasses,
+       ImportOfRecursiveFriendClassTemplateWithNonTypeParm) {
+  Decl *FromTu = getTuDecl(
+      R"(
+      template<class A1, A1 A> class declToImport {
+        template<class B1, B1> friend class declToImport;
+      };
+      )",
+      Lang_CXX03, "input.cc");
+  testRecursiveFriendClassTemplate(FromTu);
 }
 
 TEST_P(ImportFriendClasses, ProperPrevDeclForClassTemplateDecls) {
