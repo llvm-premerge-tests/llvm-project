@@ -16727,6 +16727,18 @@ getIntrinsicForMaskedAtomicRMWBinOp(unsigned XLen, AtomicRMWInst::BinOp BinOp) {
 Value *RISCVTargetLowering::emitMaskedAtomicRMWIntrinsic(
     IRBuilderBase &Builder, AtomicRMWInst *AI, Value *AlignedAddr, Value *Incr,
     Value *Mask, Value *ShiftAmt, AtomicOrdering Ord) const {
+  // In the case of an atomicrmw xchg with a constant 0 operand, replace the
+  // atomic instruction with an AtomicRMWInst::And with appropriate mask, as
+  // this produces better code than the LR/SC loop emitted by
+  // int_riscv_masked_atomicrmw_xchg.
+  if (AI->getOperation() == AtomicRMWInst::Xchg && isa<ConstantInt>(Incr) &&
+      static_cast<ConstantInt *>(Incr)->isZero()) {
+    Value *InvMask = Builder.CreateNot(Mask, "Inv_Mask");
+    AtomicRMWInst *NewAI = Builder.CreateAtomicRMW(
+        AtomicRMWInst::And, AlignedAddr, InvMask, AI->getAlign(), Ord);
+    return NewAI;
+  }
+
   unsigned XLen = Subtarget.getXLen();
   Value *Ordering =
       Builder.getIntN(XLen, static_cast<uint64_t>(AI->getOrdering()));
