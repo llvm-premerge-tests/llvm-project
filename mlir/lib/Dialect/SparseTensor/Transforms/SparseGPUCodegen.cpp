@@ -461,13 +461,17 @@ static Operation *genSpMat(OpBuilder &builder, Location loc, Type handleTp,
 }
 
 /// Match and rewrite SpMV kernel.
-static LogicalResult rewriteSpMV(PatternRewriter &rewriter,
-                                 linalg::GenericOp op, bool enableRT) {
+static LogicalResult
+rewriteSpMV(PatternRewriter &rewriter, linalg::GenericOp op, bool enableRT,
+            SparseDataTransferStrategy dataTransferStrategy) {
   Location loc = op.getLoc();
   Value a = op.getOperand(0);
   Value x = op.getOperand(1);
   Value y = op.getOperand(2); // we have y = Ax
   SmallVector<Value> tokens;
+
+  bool isZeroCopy =
+      dataTransferStrategy == SparseDataTransferStrategy::kZeroCopy;
 
   // Only admissible sparse matrix format and dense vectors.
   bool isCOO = false;
@@ -487,12 +491,27 @@ static LogicalResult rewriteSpMV(PatternRewriter &rewriter,
   Value memR = genFirstPosOrCrds(rewriter, loc, a, isCOO, enableRT);
   Value memC = genSecondCrds(rewriter, loc, a, isCOO, enableRT);
   Value memV = genToValues(rewriter, loc, a);
+  Value memX, memY;
+  Value castR, castC, castV, castX, castY;
+  if (dataTransferStrategy != SparseDataTransferStrategy::kRegularDMA) {
+    memX = genTensorToMemref(rewriter, loc, x);
+    memY = genTensorToMemref(rewriter, loc, y);
+    castR = genHostRegisterMemref(rewriter, loc, memR);
+    if (memC)
+      castC = genHostRegisterMemref(rewriter, loc, memC);
+    castV = genHostRegisterMemref(rewriter, loc, memV);
+    castX = genHostRegisterMemref(rewriter, loc, memX);
+    castY = genHostRegisterMemref(rewriter, loc, memY);
+  }
+
   Value rowA = genAllocCopy(rewriter, loc, memR, tokens);
   Value colA = memC ? genAllocCopy(rewriter, loc, memC, tokens) : Value();
   Value valA = genAllocCopy(rewriter, loc, memV, tokens);
-  Value memX = genTensorToMemref(rewriter, loc, x);
-  Value vecX = genAllocCopy(rewriter, loc, memX, tokens);
-  Value memY = genTensorToMemref(rewriter, loc, y);
+  if (dataTransferStrategy == SparseDataTransferStrategy::kRegularDMA)
+    memX = genTensorToMemref(rewriter, loc, x);
+  Value vecX = isZeroCopy ? memX : genAllocCopy(rewriter, loc, memX, tokens);
+  if (dataTransferStrategy == SparseDataTransferStrategy::kRegularDMA)
+    memY = genTensorToMemref(rewriter, loc, y);
   Value vecY = genAllocCopy(rewriter, loc, memY, tokens);
   genBlockingWait(rewriter, loc, tokens);
   tokens.clear();
@@ -546,11 +565,20 @@ static LogicalResult rewriteSpMV(PatternRewriter &rewriter,
     token = genDeallocMemRef(rewriter, loc, colA, token);
   token = genDeallocMemRef(rewriter, loc, valA, token);
   token = genDeallocMemRef(rewriter, loc, buffer, token);
-  token = genDeallocMemRef(rewriter, loc, vecX, token);
+  if (!isZeroCopy)
+    token = genDeallocMemRef(rewriter, loc, vecX, token);
   token = genCopyMemRef(rewriter, loc, memY, vecY, token);
   token = genDeallocMemRef(rewriter, loc, vecY, token);
   tokens.push_back(token);
   genBlockingWait(rewriter, loc, tokens);
+  if (dataTransferStrategy != SparseDataTransferStrategy::kRegularDMA) {
+    genHostUnregisterMemref(rewriter, loc, castR);
+    if (memC)
+      genHostUnregisterMemref(rewriter, loc, castC);
+    genHostUnregisterMemref(rewriter, loc, castV);
+    genHostUnregisterMemref(rewriter, loc, castX);
+    genHostUnregisterMemref(rewriter, loc, castY);
+  }
   tokens.clear();
 
   // Done.
@@ -559,13 +587,17 @@ static LogicalResult rewriteSpMV(PatternRewriter &rewriter,
 }
 
 /// Match and rewrite SpMM kernel.
-static LogicalResult rewriteSpMM(PatternRewriter &rewriter,
-                                 linalg::GenericOp op, bool enableRT) {
+static LogicalResult
+rewriteSpMM(PatternRewriter &rewriter, linalg::GenericOp op, bool enableRT,
+            SparseDataTransferStrategy dataTransferStrategy) {
   Location loc = op.getLoc();
   Value a = op.getOperand(0);
   Value b = op.getOperand(1);
   Value c = op.getOperand(2); // we have C = AB
   SmallVector<Value> tokens;
+
+  bool isZeroCopy =
+      dataTransferStrategy == SparseDataTransferStrategy::kZeroCopy;
 
   // Only admissible sparse matrix format and dense matrices.
   bool isCOO = false;
@@ -586,12 +618,27 @@ static LogicalResult rewriteSpMM(PatternRewriter &rewriter,
   Value memR = genFirstPosOrCrds(rewriter, loc, a, isCOO, enableRT);
   Value memC = genSecondCrds(rewriter, loc, a, isCOO, enableRT);
   Value memV = genToValues(rewriter, loc, a);
+  Value bufB, bufC;
+  Value castR, castC, castV, castB, castBufC;
+  if (dataTransferStrategy != SparseDataTransferStrategy::kRegularDMA) {
+    bufB = genTensorToMemref(rewriter, loc, b);
+    bufC = genTensorToMemref(rewriter, loc, c);
+    castR = genHostRegisterMemref(rewriter, loc, memR);
+    if (memC)
+      castC = genHostRegisterMemref(rewriter, loc, memC);
+    castV = genHostRegisterMemref(rewriter, loc, memV);
+    castB = genHostRegisterMemref(rewriter, loc, bufB);
+    castBufC = genHostRegisterMemref(rewriter, loc, bufC);
+  }
+
   Value rowA = genAllocCopy(rewriter, loc, memR, tokens);
   Value colA = memC ? genAllocCopy(rewriter, loc, memC, tokens) : Value();
   Value valA = genAllocCopy(rewriter, loc, memV, tokens);
-  Value bufB = genTensorToMemref(rewriter, loc, b);
-  Value matB = genAllocCopy(rewriter, loc, bufB, tokens);
-  Value bufC = genTensorToMemref(rewriter, loc, c);
+  if (dataTransferStrategy == SparseDataTransferStrategy::kRegularDMA)
+    bufB = genTensorToMemref(rewriter, loc, b);
+  Value matB = isZeroCopy ? bufB : genAllocCopy(rewriter, loc, bufB, tokens);
+  if (dataTransferStrategy == SparseDataTransferStrategy::kRegularDMA)
+    bufC = genTensorToMemref(rewriter, loc, c);
   Value matC = genAllocCopy(rewriter, loc, bufC, tokens);
   genBlockingWait(rewriter, loc, tokens);
   tokens.clear();
@@ -649,11 +696,20 @@ static LogicalResult rewriteSpMM(PatternRewriter &rewriter,
     token = genDeallocMemRef(rewriter, loc, colA, token);
   token = genDeallocMemRef(rewriter, loc, valA, token);
   token = genDeallocMemRef(rewriter, loc, buffer, token);
-  token = genDeallocMemRef(rewriter, loc, matB, token);
+  if (!isZeroCopy)
+    token = genDeallocMemRef(rewriter, loc, matB, token);
   token = genCopyMemRef(rewriter, loc, bufC, matC, token);
   token = genDeallocMemRef(rewriter, loc, matC, token);
   tokens.push_back(token);
   genBlockingWait(rewriter, loc, tokens);
+  if (dataTransferStrategy != SparseDataTransferStrategy::kRegularDMA) {
+    genHostUnregisterMemref(rewriter, loc, castR);
+    if (memC)
+      genHostUnregisterMemref(rewriter, loc, castC);
+    genHostUnregisterMemref(rewriter, loc, castV);
+    genHostUnregisterMemref(rewriter, loc, castB);
+    genHostUnregisterMemref(rewriter, loc, castC);
+  }
   tokens.clear();
 
   // Done.
@@ -662,23 +718,41 @@ static LogicalResult rewriteSpMM(PatternRewriter &rewriter,
 }
 
 // Match and rewrite 2:4 SpMM kernels.
-static LogicalResult rewrite2To4SpMM(PatternRewriter &rewriter,
-                                     linalg::GenericOp op) {
+static LogicalResult
+rewrite2To4SpMM(PatternRewriter &rewriter, linalg::GenericOp op,
+                SparseDataTransferStrategy dataTransferStrategy) {
   Location loc = op.getLoc();
   Value A = op.getOperand(0);
   Value B = op.getOperand(1);
   Value C = op.getOperand(2); // we have C = AB
   SmallVector<Value> tokens;
 
+  bool isZeroCopy =
+      dataTransferStrategy == SparseDataTransferStrategy::kZeroCopy;
+
   // All input should be dense tensors.
   if (!isDenseTensor(A) || !isDenseTensor(B) || !isDenseTensor(C))
     return failure();
 
+  Value matA, matB;
   Value bufA = genTensorToMemref(rewriter, loc, A);
-  Value matA = genAllocCopy(rewriter, loc, bufA, tokens);
+  if (!isZeroCopy)
+    matA = genAllocCopy(rewriter, loc, bufA, tokens);
   Value bufB = genTensorToMemref(rewriter, loc, B);
-  Value matB = genAllocCopy(rewriter, loc, bufB, tokens);
+  if (!isZeroCopy)
+    matB = genAllocCopy(rewriter, loc, bufB, tokens);
   Value bufC = genTensorToMemref(rewriter, loc, C);
+  Value castA, castB, castC;
+  if (dataTransferStrategy != SparseDataTransferStrategy::kRegularDMA) {
+    castA = genHostRegisterMemref(rewriter, loc, bufA);
+    castB = genHostRegisterMemref(rewriter, loc, bufB);
+    castC = genHostRegisterMemref(rewriter, loc, bufC);
+  }
+
+  if (isZeroCopy) {
+    matA = bufA;
+    matB = bufB;
+  }
   Value matC = genAllocCopy(rewriter, loc, bufC, tokens);
   genBlockingWait(rewriter, loc, tokens);
   tokens.clear();
@@ -753,25 +827,37 @@ static LogicalResult rewrite2To4SpMM(PatternRewriter &rewriter,
   token = genDeallocMemRef(rewriter, loc, buffer, token);
   token = genDeallocMemRef(rewriter, loc, buffer2, token);
   token = genDeallocMemRef(rewriter, loc, buffer3, token);
-  token = genDeallocMemRef(rewriter, loc, matA, token);
-  token = genDeallocMemRef(rewriter, loc, matB, token);
+
+  if (!isZeroCopy)
+    token = genDeallocMemRef(rewriter, loc, matA, token);
+  if (!isZeroCopy)
+    token = genDeallocMemRef(rewriter, loc, matB, token);
   token = genCopyMemRef(rewriter, loc, bufC, matC, token);
   token = genDeallocMemRef(rewriter, loc, matC, token);
   tokens.push_back(token);
   genBlockingWait(rewriter, loc, tokens);
+  if (dataTransferStrategy != SparseDataTransferStrategy::kRegularDMA) {
+    genHostUnregisterMemref(rewriter, loc, castA);
+    genHostUnregisterMemref(rewriter, loc, castB);
+    genHostUnregisterMemref(rewriter, loc, castC);
+  }
   tokens.clear();
   rewriter.replaceOpWithNewOp<bufferization::ToTensorOp>(op, bufC);
   return success();
 }
 
 /// Match and rewrite SDDMM kernel.
-static LogicalResult rewriteSDDMM(PatternRewriter &rewriter,
-                                  linalg::GenericOp op, bool enableRT) {
+static LogicalResult
+rewriteSDDMM(PatternRewriter &rewriter, linalg::GenericOp op, bool enableRT,
+             SparseDataTransferStrategy dataTransferStrategy) {
   Location loc = op.getLoc();
   Value a = op.getOperand(0);
   Value b = op.getOperand(1);
   Value c = op.getOperand(2);
   SmallVector<Value> tokens;
+
+  bool isZeroCopy =
+      dataTransferStrategy == SparseDataTransferStrategy::kZeroCopy;
 
   // Only admissible sparse matrix format and dense matrices, no COO.
   bool isCOO = false;
@@ -792,13 +878,31 @@ static LogicalResult rewriteSDDMM(PatternRewriter &rewriter,
   Value szm = linalg::createOrFoldDimOp(rewriter, loc, a, 0);
   Value szk = linalg::createOrFoldDimOp(rewriter, loc, a, 1);
   Value szn = linalg::createOrFoldDimOp(rewriter, loc, b, 1);
+  Value matA, matB;
   Value bufA = genTensorToMemref(rewriter, loc, a);
-  Value matA = genAllocCopy(rewriter, loc, bufA, tokens);
+  if (!isZeroCopy)
+    matA = genAllocCopy(rewriter, loc, bufA, tokens);
   Value bufB = genTensorToMemref(rewriter, loc, b);
-  Value matB = genAllocCopy(rewriter, loc, bufB, tokens);
+  if (!isZeroCopy)
+    matB = isZeroCopy ? bufB : genAllocCopy(rewriter, loc, bufB, tokens);
   Value memR = genFirstPosOrCrds(rewriter, loc, c, isCOO, enableRT);
   Value memC = genSecondCrds(rewriter, loc, c, isCOO, enableRT);
   Value memV = genToValues(rewriter, loc, c);
+
+  Value castB, castA, castR, castC, castV;
+  if (dataTransferStrategy != SparseDataTransferStrategy::kRegularDMA) {
+    castB = genHostRegisterMemref(rewriter, loc, bufB);
+    castA = genHostRegisterMemref(rewriter, loc, bufA);
+    castR = genHostRegisterMemref(rewriter, loc, memR);
+    if (memC)
+      castC = genHostRegisterMemref(rewriter, loc, memC);
+    castV = genHostRegisterMemref(rewriter, loc, memV);
+  }
+
+  if (isZeroCopy) {
+    matA = bufA;
+    matB = bufB;
+  }
   Value rowC = genAllocCopy(rewriter, loc, memR, tokens);
   Value colC = memC ? genAllocCopy(rewriter, loc, memC, tokens) : Value();
   Value valC = genAllocCopy(rewriter, loc, memV, tokens);
@@ -849,8 +953,10 @@ static LogicalResult rewriteSDDMM(PatternRewriter &rewriter,
   token = rewriter.create<gpu::DestroySpMatOp>(loc, tokenTp, token, spMatC)
               .getAsyncToken();
   token = genDeallocMemRef(rewriter, loc, buffer, token);
-  token = genDeallocMemRef(rewriter, loc, matA, token);
-  token = genDeallocMemRef(rewriter, loc, matB, token);
+  if (!isZeroCopy) {
+    token = genDeallocMemRef(rewriter, loc, matA, token);
+    token = genDeallocMemRef(rewriter, loc, matB, token);
+  }
   token = genDeallocMemRef(rewriter, loc, rowC, token);
   if (colC)
     token = genDeallocMemRef(rewriter, loc, colC, token);
@@ -858,6 +964,14 @@ static LogicalResult rewriteSDDMM(PatternRewriter &rewriter,
   token = genDeallocMemRef(rewriter, loc, valC, token);
   tokens.push_back(token);
   genBlockingWait(rewriter, loc, tokens);
+  if (dataTransferStrategy != SparseDataTransferStrategy::kRegularDMA) {
+    genHostUnregisterMemref(rewriter, loc, castB);
+    genHostUnregisterMemref(rewriter, loc, castA);
+    genHostUnregisterMemref(rewriter, loc, castR);
+    if (memC)
+      genHostUnregisterMemref(rewriter, loc, castC);
+    genHostUnregisterMemref(rewriter, loc, castV);
+  }
   tokens.clear();
 
   // Done.
@@ -976,8 +1090,8 @@ private:
 struct LinalgOpRewriter : public OpRewritePattern<linalg::GenericOp> {
   using OpRewritePattern<linalg::GenericOp>::OpRewritePattern;
 
-  LinalgOpRewriter(MLIRContext *context, bool rt)
-      : OpRewritePattern(context), enableRT(rt) {}
+  LinalgOpRewriter(MLIRContext *context, bool rt, SparseDataTransferStrategy t)
+      : OpRewritePattern(context), enableRT(rt), dataTransferStrategy(t) {}
 
   LogicalResult matchAndRewrite(linalg::GenericOp op,
                                 PatternRewriter &rewriter) const override {
@@ -1003,7 +1117,7 @@ struct LinalgOpRewriter : public OpRewritePattern<linalg::GenericOp> {
         linalg::isReductionIterator(iteratorTypes[1]) &&
         // TODO: add transposed {i, j}
         maps == infer({{i, j}, {j}, {i}}) && matchSumOfMultOfArgs(op)) {
-      return rewriteSpMV(rewriter, op, enableRT);
+      return rewriteSpMV(rewriter, op, enableRT, dataTransferStrategy);
     }
 
     // Recognize a SpMM kernel.
@@ -1015,9 +1129,9 @@ struct LinalgOpRewriter : public OpRewritePattern<linalg::GenericOp> {
         // TODO: maybe add transposed {i, j} in future
         maps == infer({{i, k}, {k, j}, {i, j}}) && matchSumOfMultOfArgs(op)) {
       if (op->getAttr("DENSE24"))
-        return rewrite2To4SpMM(rewriter, op);
+        return rewrite2To4SpMM(rewriter, op, dataTransferStrategy);
 
-      return rewriteSpMM(rewriter, op, enableRT);
+      return rewriteSpMM(rewriter, op, enableRT, dataTransferStrategy);
     }
 
     // Recognize a SDDMM kernel.
@@ -1029,7 +1143,7 @@ struct LinalgOpRewriter : public OpRewritePattern<linalg::GenericOp> {
         // TODO: maybe add transposed {i, j} in future
         maps == infer({{i, k}, {k, j}, {i, j}}) &&
         matchSumReductionOfMulUnary(op)) {
-      return rewriteSDDMM(rewriter, op, enableRT);
+      return rewriteSDDMM(rewriter, op, enableRT, dataTransferStrategy);
     }
 
     return failure();
@@ -1037,6 +1151,7 @@ struct LinalgOpRewriter : public OpRewritePattern<linalg::GenericOp> {
 
 private:
   bool enableRT;
+  SparseDataTransferStrategy dataTransferStrategy;
 };
 
 } // namespace
@@ -1056,7 +1171,9 @@ void mlir::populateSparseGPUCodegenPatterns(RewritePatternSet &patterns,
   patterns.add<ForallRewriter>(patterns.getContext(), numThreads);
 }
 
-void mlir::populateSparseGPULibgenPatterns(RewritePatternSet &patterns,
-                                           bool enableRT) {
-  patterns.add<LinalgOpRewriter>(patterns.getContext(), enableRT);
+void mlir::populateSparseGPULibgenPatterns(
+    RewritePatternSet &patterns, bool enableRT,
+    SparseDataTransferStrategy gpuDataTransfer) {
+  patterns.add<LinalgOpRewriter>(patterns.getContext(), enableRT,
+                                 gpuDataTransfer);
 }
