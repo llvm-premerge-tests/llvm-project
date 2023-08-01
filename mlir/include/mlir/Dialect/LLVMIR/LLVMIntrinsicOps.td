@@ -212,8 +212,8 @@ class LLVM_MemcpyIntrOpBase<string name> :
      DeclareOpInterfaceMethods<DestructurableAccessorOpInterface>,
      DeclareOpInterfaceMethods<SafeMemorySlotAccessOpInterface>],
     /*requiresAccessGroup=*/1, /*requiresAliasAnalysis=*/1> {
-  dag args = (ins Arg<LLVM_AnyPointer,"",[MemWrite]>:$dst,
-                  Arg<LLVM_AnyPointer,"",[MemRead]>:$src,
+  dag args = (ins Arg<LLVM_AnyPointer,"",[MemWriteAt<1>]>:$dst,
+                  Arg<LLVM_AnyPointer,"",[MemReadAt<0>]>:$src,
                   AnySignlessInteger:$len, I1Attr:$isVolatile);
   // Append the alias attributes defined by LLVM_IntrOpBase.
   let arguments = !con(args, aliasAttrs);
@@ -253,8 +253,8 @@ def LLVM_MemcpyInlineOp :
      DeclareOpInterfaceMethods<DestructurableAccessorOpInterface>,
      DeclareOpInterfaceMethods<SafeMemorySlotAccessOpInterface>],
     /*requiresAccessGroup=*/1, /*requiresAliasAnalysis=*/1> {
-  dag args = (ins Arg<LLVM_AnyPointer,"",[MemWrite]>:$dst,
-                  Arg<LLVM_AnyPointer,"",[MemRead]>:$src,
+  dag args = (ins Arg<LLVM_AnyPointer,"",[MemWriteAt<1>]>:$dst,
+                  Arg<LLVM_AnyPointer,"",[MemReadAt<0>]>:$src,
                   APIntAttr:$len, I1Attr:$isVolatile);
   // Append the alias attributes defined by LLVM_IntrOpBase.
   let arguments = !con(args, aliasAttrs);

@@ -186,7 +186,7 @@ def LLVM_AllocaOp : LLVM_Op<"alloca",
                    OptionalAttr<TypeAttr>:$elem_type,
                    UnitAttr:$inalloca);
   let results = (outs Res<LLVM_AnyPointer, "",
-                          [MemAlloc<AutomaticAllocationScopeResource>]>:$res);
+                          [MemAlloc<AutomaticAllocationScopeResource, 0>]>:$res);
   string llvmInstName = "Alloca";
   string llvmBuilder = [{
     auto addrSpace = $_resultType->getPointerAddressSpace();

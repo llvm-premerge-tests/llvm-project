@@ -152,7 +152,8 @@ class EffectOpInterfaceBase<string name, string baseEffect>
 // This class is the general base side effect class. This is used by derived
 // effect interfaces to define their effects.
 class SideEffect<EffectOpInterfaceBase interface, string effectName,
-                 Resource resourceReference> : OpVariableDecorator {
+                 Resource resourceReference, int effectStage>
+    : OpVariableDecorator {
   /// The name of the base effects class.
   string baseEffectName = interface.baseEffectName;
 
@@ -167,6 +168,9 @@ class SideEffect<EffectOpInterfaceBase interface, string effectName,
 
   /// The resource that the effect is being applied to.
   string resource = resourceReference.name;
+
+  /// The effect happen stage.
+  int stage = effectStage;
 }
 
 // This class is the base used for specifying effects applied to an operation.
