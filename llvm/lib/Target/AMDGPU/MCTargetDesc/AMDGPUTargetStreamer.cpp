@@ -418,8 +418,6 @@ void AMDGPUTargetAsmStreamer::EmitAmdhsaKernelDescriptor(
   switch (CodeObjectVersion) {
   default:
     break;
-  case AMDGPU::AMDHSA_COV2:
-    break;
   case AMDGPU::AMDHSA_COV3:
   case AMDGPU::AMDHSA_COV4:
   case AMDGPU::AMDHSA_COV5:
@@ -602,7 +600,6 @@ unsigned AMDGPUTargetELFStreamer::getEFlagsAMDHSA() {
 
   if (std::optional<uint8_t> HsaAbiVer = getHsaAbiVersion(&STI)) {
     switch (*HsaAbiVer) {
-    case ELF::ELFABIVERSION_AMDGPU_HSA_V2:
     case ELF::ELFABIVERSION_AMDGPU_HSA_V3:
       return getEFlagsV3();
     case ELF::ELFABIVERSION_AMDGPU_HSA_V4:

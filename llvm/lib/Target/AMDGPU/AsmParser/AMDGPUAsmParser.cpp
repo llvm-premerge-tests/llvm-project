@@ -1344,7 +1344,7 @@ public:
       // AsmParser::parseDirectiveSet() cannot be specialized for specific target.
       AMDGPU::IsaVersion ISA = AMDGPU::getIsaVersion(getSTI().getCPU());
       MCContext &Ctx = getContext();
-      if (ISA.Major >= 6 && isHsaAbiVersion3AndAbove(&getSTI())) {
+      if (ISA.Major >= 6) {
         MCSymbol *Sym =
             Ctx.getOrCreateSymbol(Twine(".amdgcn.gfx_generation_number"));
         Sym->setVariableValue(MCConstantExpr::create(ISA.Major, Ctx));
@@ -1361,7 +1361,7 @@ public:
         Sym = Ctx.getOrCreateSymbol(Twine(".option.machine_version_stepping"));
         Sym->setVariableValue(MCConstantExpr::create(ISA.Stepping, Ctx));
       }
-      if (ISA.Major >= 6 && isHsaAbiVersion3AndAbove(&getSTI())) {
+      if (ISA.Major >= 6) {
         initializeGprCountSymbol(IS_VGPR);
         initializeGprCountSymbol(IS_SGPR);
       } else
@@ -2852,14 +2852,10 @@ AMDGPUAsmParser::parseRegister(bool RestoreOnFailure) {
   RegisterKind RegKind;
   unsigned Reg, RegNum, RegWidth;
 
-  if (!ParseAMDGPURegister(RegKind, Reg, RegNum, RegWidth)) {
+  if (!ParseAMDGPURegister(RegKind, Reg, RegNum, RegWidth))
     return nullptr;
-  }
-  if (isHsaAbiVersion3AndAbove(&getSTI())) {
-    if (!updateGprCountSymbols(RegKind, RegNum, RegWidth))
-      return nullptr;
-  } else
-    KernelScope.usesRegister(RegKind, RegNum, RegWidth);
+  if (!updateGprCountSymbols(RegKind, RegNum, RegWidth))
+    return nullptr;
   return AMDGPUOperand::CreateReg(this, Reg, StartLoc, EndLoc);
 }
 
@@ -5419,14 +5415,8 @@ bool AMDGPUAsmParser::ParseDirectiveISAVersion() {
 }
 
 bool AMDGPUAsmParser::ParseDirectiveHSAMetadata() {
-  const char *AssemblerDirectiveBegin;
-  const char *AssemblerDirectiveEnd;
-  std::tie(AssemblerDirectiveBegin, AssemblerDirectiveEnd) =
-      isHsaAbiVersion3AndAbove(&getSTI())
-          ? std::pair(HSAMD::V3::AssemblerDirectiveBegin,
-                      HSAMD::V3::AssemblerDirectiveEnd)
-          : std::pair(HSAMD::AssemblerDirectiveBegin,
-                      HSAMD::AssemblerDirectiveEnd);
+  const char *AssemblerDirectiveBegin = HSAMD::V3::AssemblerDirectiveBegin;
+  const char *AssemblerDirectiveEnd = HSAMD::V3::AssemblerDirectiveEnd;
 
   if (getSTI().getTargetTriple().getOS() != Triple::AMDHSA) {
     return Error(getLoc(),
@@ -5439,13 +5429,8 @@ bool AMDGPUAsmParser::ParseDirectiveHSAMetadata() {
                           HSAMetadataString))
     return true;
 
-  if (isHsaAbiVersion3AndAbove(&getSTI())) {
-    if (!getTargetStreamer().EmitHSAMetadataV3(HSAMetadataString))
-      return Error(getLoc(), "invalid HSA metadata");
-  } else {
-    if (!getTargetStreamer().EmitHSAMetadataV2(HSAMetadataString))
-      return Error(getLoc(), "invalid HSA metadata");
-  }
+  if (!getTargetStreamer().EmitHSAMetadataV3(HSAMetadataString))
+    return Error(getLoc(), "invalid HSA metadata");
 
   return false;
 }
@@ -5588,31 +5573,19 @@ bool AMDGPUAsmParser::ParseDirectiveAMDGPULDS() {
 bool AMDGPUAsmParser::ParseDirective(AsmToken DirectiveID) {
   StringRef IDVal = DirectiveID.getString();
 
-  if (isHsaAbiVersion3AndAbove(&getSTI())) {
-    if (IDVal == ".amdhsa_kernel")
-     return ParseDirectiveAMDHSAKernel();
+  if (IDVal == ".amdhsa_kernel")
+    return ParseDirectiveAMDHSAKernel();
 
-    // TODO: Restructure/combine with PAL metadata directive.
-    if (IDVal == AMDGPU::HSAMD::V3::AssemblerDirectiveBegin)
-      return ParseDirectiveHSAMetadata();
-  } else {
-    if (IDVal == ".hsa_code_object_version")
-      return ParseDirectiveHSACodeObjectVersion();
+  // TODO: Restructure/combine with PAL metadata directive.
+  if (IDVal == AMDGPU::HSAMD::V3::AssemblerDirectiveBegin)
+    return ParseDirectiveHSAMetadata();
 
-    if (IDVal == ".hsa_code_object_isa")
-      return ParseDirectiveHSACodeObjectISA();
-
-    if (IDVal == ".amd_kernel_code_t")
-      return ParseDirectiveAMDKernelCodeT();
-
-    if (IDVal == ".amdgpu_hsa_kernel")
-      return ParseDirectiveAMDGPUHsaKernel();
-
+  // FIXME: Shouldn't be needed anymore? Should we remove this directive
+  // entirely? See `amdpal-elf.ll` - the output ASM contains both amdgcn_target
+  // & this.
+  if (getSTI().getTargetTriple().getOS() != Triple::AMDHSA) {
     if (IDVal == ".amd_amdgpu_isa")
       return ParseDirectiveISAVersion();
-
-    if (IDVal == AMDGPU::HSAMD::AssemblerDirectiveBegin)
-      return ParseDirectiveHSAMetadata();
   }
 
   if (IDVal == ".amdgcn_target")
@@ -7704,8 +7677,7 @@ void AMDGPUAsmParser::onBeginOfFile() {
         // TODO: Should try to check code object version from directive???
         AMDGPU::getAmdhsaCodeObjectVersion());
 
-  if (isHsaAbiVersion3AndAbove(&getSTI()))
-    getTargetStreamer().EmitDirectiveAMDGCNTarget();
+  getTargetStreamer().EmitDirectiveAMDGCNTarget();
 }
 
 ParseStatus AMDGPUAsmParser::parseOModSI(OperandVector &Operands) {
