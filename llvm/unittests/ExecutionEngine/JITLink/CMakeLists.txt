@@ -11,6 +11,7 @@ add_llvm_unittest(JITLinkTests
     AArch32Tests.cpp
     EHFrameSupportTests.cpp
     LinkGraphTests.cpp
+    StubsTests.cpp
   )
 
 target_link_libraries(JITLinkTests PRIVATE LLVMTestingSupport)
