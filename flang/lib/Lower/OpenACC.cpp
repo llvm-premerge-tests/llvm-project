@@ -2465,6 +2465,14 @@ genDeclareInFunction(Fortran::lower::AbstractConverter &converter,
           devicePtrClause->v, converter, semanticsContext, stmtCtx,
           dataClauseOperands, mlir::acc::DataClause::acc_deviceptr,
           /*structured=*/true);
+    } else if (const auto *deviceResidentClause =
+                   std::get_if<Fortran::parser::AccClause::DeviceResident>(
+                       &clause.u)) {
+      genDataOperandOperations<mlir::acc::DeclareDeviceResidentOp>(
+          deviceResidentClause->v, converter, semanticsContext, stmtCtx,
+          dataClauseOperands,
+          mlir::acc::DataClause::acc_declare_device_resident,
+          /*structured=*/true);
     } else {
       mlir::Location clauseLocation = converter.genLocation(clause.source);
       TODO(clauseLocation, "clause on declare directive");
