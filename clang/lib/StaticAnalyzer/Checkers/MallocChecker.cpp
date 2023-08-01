@@ -1776,6 +1776,8 @@ ProgramStateRef MallocChecker::FreeMemAttr(CheckerContext &C,
   if (!State)
     return nullptr;
 
+  // TODO: Check the attribute docs in AttrDocs.td, it states that only malloc
+  // is accepted. Please adjust if we start supporting "new".
   if (Att->getModule()->getName() != "malloc")
     return nullptr;
 

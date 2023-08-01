@@ -148,6 +148,12 @@ int * af5(void) {
   return p; // no-warning
 }
 
+void af6(void) {
+  int *p = my_malloc(12);
+  my_hold(p);
+  *p = 4;
+}
+
 
 
 // This case tests that storing malloc'ed memory to a static variable which is
