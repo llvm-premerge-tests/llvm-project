@@ -1254,6 +1254,12 @@ public:
                               llvm::AttributeList &Attrs, unsigned &CallingConv,
                               bool AttrOnCallSite, bool IsThunk);
 
+  /// Adjust Memory attribute to ensure that the BE gets the right attribute
+  // in order to generate the library call or the intrinsic for the function
+  // name 'Name'.
+  void AdjustMemoryAttribute(StringRef Name, CGCalleeInfo CalleeInfo,
+                             llvm::AttributeList &Attrs);
+
   /// Adds attributes to F according to our CodeGenOptions and LangOptions, as
   /// though we had emitted it ourselves.  We remove any attributes on F that
   /// conflict with the attributes we add here.
