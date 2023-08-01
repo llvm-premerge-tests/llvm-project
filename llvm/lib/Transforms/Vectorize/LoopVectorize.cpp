@@ -1270,7 +1270,7 @@ public:
   void collectElementTypesForWidening();
 
   /// Split reductions into those that happen in the loop, and those that happen
-  /// outside. In loop reductions are collected into InLoopReductionChains.
+  /// outside. In loop reductions are collected into InLoopReductions.
   void collectInLoopReductions();
 
   /// Returns true if we should use strict in-order reductions for the given
@@ -1606,20 +1606,9 @@ public:
     return foldTailByMasking() || Legal->blockNeedsPredication(BB);
   }
 
-  /// A SmallMapVector to store the InLoop reduction op chains, mapping phi
-  /// nodes to the chain of instructions representing the reductions. Uses a
-  /// MapVector to ensure deterministic iteration order.
-  using ReductionChainMap =
-      SmallMapVector<PHINode *, SmallVector<Instruction *, 4>, 4>;
-
-  /// Return the chain of instructions representing an inloop reduction.
-  const ReductionChainMap &getInLoopReductionChains() const {
-    return InLoopReductionChains;
-  }
-
   /// Returns true if the Phi is part of an inloop reduction.
   bool isInLoopReduction(PHINode *Phi) const {
-    return InLoopReductionChains.count(Phi);
+    return InLoopReductions.contains(Phi);
   }
 
   /// Estimate cost of an intrinsic call instruction CI if it were vectorized
@@ -1783,15 +1772,12 @@ private:
   /// scalarized.
   DenseMap<ElementCount, SmallPtrSet<Instruction *, 4>> ForcedScalars;
 
-  /// PHINodes of the reductions that should be expanded in-loop along with
-  /// their associated chains of reduction operations, in program order from top
-  /// (PHI) to bottom
-  ReductionChainMap InLoopReductionChains;
+  /// PHINodes of the reductions that should be expanded in-loop.
+  SmallPtrSet<PHINode *, 4> InLoopReductions;
 
   /// A Map of inloop reduction operations and their immediate chain operand.
   /// FIXME: This can be removed once reductions can be costed correctly in
-  /// vplan. This was added to allow quick lookup to the inloop operations,
-  /// without having to loop through InLoopReductionChains.
+  /// VPlan. This was added to allow quick lookup of the inloop operations.
   DenseMap<Instruction *, Instruction *> InLoopReductionImmediateChains;
 
   /// Returns the expected difference in cost from scalarizing the expression
@@ -6642,7 +6628,7 @@ LoopVectorizationCostModel::getReductionPatternCost(
     Instruction *I, ElementCount VF, Type *Ty, TTI::TargetCostKind CostKind) {
   using namespace llvm::PatternMatch;
   // Early exit for no inloop reductions
-  if (InLoopReductionChains.empty() || VF.isScalar() || !isa<VectorType>(Ty))
+  if (InLoopReductions.empty() || VF.isScalar() || !isa<VectorType>(Ty))
     return std::nullopt;
   auto *VectorTy = cast<VectorType>(Ty);
 
@@ -7492,8 +7478,9 @@ void LoopVectorizationCostModel::collectInLoopReductions() {
     SmallVector<Instruction *, 4> ReductionOperations =
         RdxDesc.getReductionOpChain(Phi, TheLoop);
     bool InLoop = !ReductionOperations.empty();
+
     if (InLoop) {
-      InLoopReductionChains[Phi] = ReductionOperations;
+      InLoopReductions.insert(Phi);
       // Add the elements to InLoopReductionImmediateChains for cost modelling.
       Instruction *LastChain = Phi;
       for (auto *I : ReductionOperations) {
@@ -8885,24 +8872,6 @@ std::optional<VPlanPtr> LoopVectorizationPlanner::tryToBuildVPlanWithVPRecipes(
   // process after constructing the initial VPlan.
   // ---------------------------------------------------------------------------
 
-  for (const auto &Reduction : CM.getInLoopReductionChains()) {
-    PHINode *Phi = Reduction.first;
-    RecurKind Kind =
-        Legal->getReductionVars().find(Phi)->second.getRecurrenceKind();
-    const SmallVector<Instruction *, 4> &ReductionOperations = Reduction.second;
-
-    RecipeBuilder.recordRecipeOf(Phi);
-    for (const auto &R : ReductionOperations) {
-      RecipeBuilder.recordRecipeOf(R);
-      // For min/max reductions, where we have a pair of icmp/select, we also
-      // need to record the ICmp recipe, so it can be removed later.
-      assert(!RecurrenceDescriptor::isSelectCmpRecurrenceKind(Kind) &&
-             "Only min/max recurrences allowed for inloop reductions");
-      if (RecurrenceDescriptor::isMinMaxRecurrenceKind(Kind))
-        RecipeBuilder.recordRecipeOf(cast<Instruction>(R->getOperand(0)));
-    }
-  }
-
   // For each interleave group which is relevant for this (possibly trimmed)
   // Range, add it to the set of groups to be later applied to the VPlan and add
   // placeholders for its members' Recipes which we'll be replacing with a
@@ -9182,86 +9151,117 @@ VPlanPtr LoopVectorizationPlanner::buildVPlan(VFRange &Range) {
 void LoopVectorizationPlanner::adjustRecipesForReductions(
     VPBasicBlock *LatchVPBB, VPlanPtr &Plan, VPRecipeBuilder &RecipeBuilder,
     ElementCount MinVF) {
-  for (const auto &Reduction : CM.getInLoopReductionChains()) {
-    PHINode *Phi = Reduction.first;
-    const RecurrenceDescriptor &RdxDesc =
-        Legal->getReductionVars().find(Phi)->second;
-    const SmallVector<Instruction *, 4> &ReductionOperations = Reduction.second;
-
-    if (MinVF.isScalar() && !CM.useOrderedReductions(RdxDesc))
+  SmallVector<VPReductionPHIRecipe *> InLoopReductionPhis;
+  for (VPRecipeBase &R :
+       Plan->getVectorLoopRegion()->getEntryBasicBlock()->phis()) {
+    auto *PhiR = dyn_cast<VPReductionPHIRecipe>(&R);
+    if (!PhiR || !PhiR->isInLoop() || (MinVF.isScalar() && !PhiR->isOrdered()))
       continue;
+    InLoopReductionPhis.push_back(PhiR);
+  }
 
-    // ReductionOperations are orders top-down from the phi's use to the
-    // LoopExitValue. We keep a track of the previous item (the Chain) to tell
-    // which of the two operands will remain scalar and which will be reduced.
-    // For minmax the chain will be the select instructions.
-    Instruction *Chain = Phi;
-    for (Instruction *R : ReductionOperations) {
-      VPRecipeBase *WidenRecipe = RecipeBuilder.getRecipe(R);
-      RecurKind Kind = RdxDesc.getRecurrenceKind();
+  for (VPReductionPHIRecipe *PhiR : InLoopReductionPhis) {
+    const RecurrenceDescriptor &RdxDesc = PhiR->getRecurrenceDescriptor();
+    SetVector<VPRecipeBase *> Worklist;
+    Worklist.insert(PhiR);
 
-      VPValue *ChainOp = Plan->getVPValue(Chain);
-      unsigned FirstOpId;
-      assert(!RecurrenceDescriptor::isSelectCmpRecurrenceKind(Kind) &&
-             "Only min/max recurrences allowed for inloop reductions");
+    RecurKind Kind = RdxDesc.getRecurrenceKind();
+    assert(!RecurrenceDescriptor::isSelectCmpRecurrenceKind(Kind) &&
+           "select/cmp reductions are not allowed for in-loop reductions");
+
+    // Collect the chain of "link" recipes for the reduction starting at PhiR.
+    for (unsigned I = 0; I != Worklist.size(); ++I) {
+      VPRecipeBase *Cur = Worklist[I];
+      for (VPUser *U : Cur->getVPSingleValue()->users()) {
+        auto *UserRecipe = dyn_cast<VPRecipeBase>(U);
+        if (!UserRecipe)
+          continue;
+        assert(UserRecipe->getNumDefinedValues() == 1 &&
+               "recipes must define exactly one result value");
+        ;
+        Worklist.insert(UserRecipe);
+      }
+    }
+
+    // Visit operation "Links" along the reduction chain top-down starting from
+    // the phi until LoopExitValue. We keep a track of the previous item
+    // (PreviousLink) to tell which of the two operands of a Link will remain
+    // scalar and which will be reduced. For minmax, Link will be the select
+    // instructions.
+    VPRecipeBase *PreviousLink = PhiR; // Aka Worklist[0].
+    for (VPRecipeBase *CurrentLink : Worklist.getArrayRef().drop_front()) {
+      VPValue *PreviousLinkV = PreviousLink->getVPSingleValue();
+
+      Instruction *CurrentLinkI = CurrentLink->getUnderlyingInstr();
+
+      // Index of the first operand which holds a non-mask vector operand.
+      unsigned IndexOfFirstOperand;
       // Recognize a call to the llvm.fmuladd intrinsic.
       bool IsFMulAdd = (Kind == RecurKind::FMulAdd);
-      assert((!IsFMulAdd || RecurrenceDescriptor::isFMulAddIntrinsic(R)) &&
+      assert((!IsFMulAdd ||
+              RecurrenceDescriptor::isFMulAddIntrinsic(CurrentLinkI)) &&
              "Expected instruction to be a call to the llvm.fmuladd intrinsic");
-      if (RecurrenceDescriptor::isMinMaxRecurrenceKind(Kind)) {
-        assert(isa<VPWidenSelectRecipe>(WidenRecipe) &&
-               "Expected to replace a VPWidenSelectSC");
-        FirstOpId = 1;
-      } else {
-        assert((MinVF.isScalar() || isa<VPWidenRecipe>(WidenRecipe) ||
-                (IsFMulAdd && isa<VPWidenCallRecipe>(WidenRecipe))) &&
-               "Expected to replace a VPWidenSC");
-        FirstOpId = 0;
-      }
-      unsigned VecOpId =
-          R->getOperand(FirstOpId) == Chain ? FirstOpId + 1 : FirstOpId;
-      VPValue *VecOp = Plan->getVPValue(R->getOperand(VecOpId));
-
-      VPValue *CondOp = nullptr;
-      if (CM.blockNeedsPredicationForAnyReason(R->getParent())) {
-        VPBuilder::InsertPointGuard Guard(Builder);
-        Builder.setInsertPoint(WidenRecipe->getParent(),
-                               WidenRecipe->getIterator());
-        CondOp = RecipeBuilder.createBlockInMask(R->getParent(), *Plan);
-      }
-
+      VPValue *VecOp;
+      VPBasicBlock *LinkVPBB = CurrentLink->getParent();
       if (IsFMulAdd) {
+        assert((MinVF.isScalar() || isa<VPWidenCallRecipe>(CurrentLink)) &&
+               CurrentLink->getOperand(2) == PreviousLinkV &&
+               "expected a call where the previous link is the added operand");
+
         // If the instruction is a call to the llvm.fmuladd intrinsic then we
         // need to create an fmul recipe to use as the vector operand for the
         // fadd reduction.
-        VPInstruction *FMulRecipe = new VPInstruction(
-            Instruction::FMul, {VecOp, Plan->getVPValue(R->getOperand(1))});
-        FMulRecipe->setFastMathFlags(R->getFastMathFlags());
-        WidenRecipe->getParent()->insert(FMulRecipe,
-                                         WidenRecipe->getIterator());
+        VPInstruction *FMulRecipe =
+            new VPInstruction(Instruction::FMul, {CurrentLink->getOperand(0),
+                                                  CurrentLink->getOperand(1)});
+        FMulRecipe->setFastMathFlags(CurrentLinkI->getFastMathFlags());
+        LinkVPBB->insert(FMulRecipe, CurrentLink->getIterator());
         VecOp = FMulRecipe;
+      } else {
+        if (RecurrenceDescriptor::isMinMaxRecurrenceKind(Kind)) {
+          if (auto *Cmp = dyn_cast<VPWidenRecipe>(CurrentLink)) {
+            assert(isa<CmpInst>(CurrentLinkI) &&
+                   "need to have the compare of the select");
+            continue;
+          }
+          assert(isa<VPWidenSelectRecipe>(CurrentLink) &&
+                 "must be a select recipe");
+          IndexOfFirstOperand = 1;
+        } else {
+          assert((MinVF.isScalar() || isa<VPWidenRecipe>(CurrentLink)) &&
+                 "Expected to replace a VPWidenSC");
+          IndexOfFirstOperand = 0;
+        }
+        // Note that for non-commutable operands (cmp-selects), the semantics of
+        // the cmp-select are captured in the recurrence kind.
+        unsigned VecOpId =
+            CurrentLink->getOperand(IndexOfFirstOperand) == PreviousLinkV
+                ? IndexOfFirstOperand + 1
+                : IndexOfFirstOperand;
+        VecOp = CurrentLink->getOperand(VecOpId);
+        assert(VecOp != PreviousLinkV &&
+               CurrentLink->getOperand(CurrentLink->getNumOperands() - 1 -
+                                       (VecOpId - IndexOfFirstOperand)) ==
+                   PreviousLinkV &&
+               "PreviousLinkV must be the other operand than VecOp");
       }
-      VPReductionRecipe *RedRecipe =
-          new VPReductionRecipe(&RdxDesc, R, ChainOp, VecOp, CondOp, &TTI);
-      WidenRecipe->getVPSingleValue()->replaceAllUsesWith(RedRecipe);
-      Plan->removeVPValueFor(R);
-      Plan->addVPValue(R, RedRecipe);
+
+      BasicBlock *BB = CurrentLinkI->getParent();
+      VPValue *CondOp = nullptr;
+      if (CM.blockNeedsPredicationForAnyReason(BB)) {
+        VPBuilder::InsertPointGuard Guard(Builder);
+        Builder.setInsertPoint(LinkVPBB, CurrentLink->getIterator());
+        CondOp = RecipeBuilder.createBlockInMask(BB, *Plan);
+      }
+
+      VPReductionRecipe *RedRecipe = new VPReductionRecipe(
+          &RdxDesc, CurrentLinkI, PreviousLinkV, VecOp, CondOp, &TTI);
       // Append the recipe to the end of the VPBasicBlock because we need to
       // ensure that it comes after all of it's inputs, including CondOp.
-      WidenRecipe->getParent()->appendRecipe(RedRecipe);
-      WidenRecipe->getVPSingleValue()->replaceAllUsesWith(RedRecipe);
-      WidenRecipe->eraseFromParent();
-
-      if (RecurrenceDescriptor::isMinMaxRecurrenceKind(Kind)) {
-        VPRecipeBase *CompareRecipe =
-            RecipeBuilder.getRecipe(cast<Instruction>(R->getOperand(0)));
-        assert(isa<VPWidenRecipe>(CompareRecipe) &&
-               "Expected to replace a VPWidenSC");
-        assert(cast<VPWidenRecipe>(CompareRecipe)->getNumUsers() == 0 &&
-               "Expected no remaining users");
-        CompareRecipe->eraseFromParent();
-      }
-      Chain = R;
+      LinkVPBB->appendRecipe(RedRecipe);
+      CurrentLink->getVPSingleValue()->replaceAllUsesWith(RedRecipe);
+      CurrentLink->eraseFromParent();
+      PreviousLink = RedRecipe;
     }
   }
 
