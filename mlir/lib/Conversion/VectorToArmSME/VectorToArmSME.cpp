@@ -56,8 +56,6 @@ struct TransferWriteToArmSMELowering
     if (vType.getScalableDims().size() != 2)
       return failure();
 
-    auto loc = writeOp.getLoc();
-
     if (!llvm::isa<MemRefType>(writeOp.getSource().getType()))
       return failure();
 
@@ -69,10 +67,9 @@ struct TransferWriteToArmSMELowering
     if (!denseAttr || !isSplatZero(vType.getElementType(), denseAttr))
       return failure();
 
-    auto zero = rewriter.create<arm_sme::ZeroOp>(loc, vType);
-
     rewriter.replaceOpWithNewOp<arm_sme::TileStoreOp>(
-        writeOp, zero, writeOp.getSource(), writeOp.getIndices());
+        writeOp, writeOp.getVector(), writeOp.getSource(),
+        writeOp.getIndices());
     return success();
   }
 };
@@ -109,10 +106,38 @@ struct VectorStoreToArmSMELowering : public OpRewritePattern<vector::StoreOp> {
   }
 };
 
+/// Conversion pattern for dense arith.constant.
+struct ConstantOpToArmSMELowering : public OpRewritePattern<arith::ConstantOp> {
+  using OpRewritePattern<arith::ConstantOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(arith::ConstantOp constantOp,
+                                PatternRewriter &rewriter) const final {
+    auto vType = dyn_cast<VectorType>(constantOp.getType());
+    if (!vType)
+      return failure();
+    if (vType.getRank() != 2)
+      return failure();
+    if (vType.getShape() != ArrayRef<int64_t>({kMinNumElts, kMinNumElts}))
+      return failure();
+    if (vType.getElementType() != rewriter.getI8Type())
+      return failure();
+    if (vType.getScalableDims().size() != 2)
+      return failure();
+
+    auto denseAttr = dyn_cast<DenseElementsAttr>(constantOp.getValueAttr());
+    if (!denseAttr || !isSplatZero(vType.getElementType(), denseAttr))
+      return failure();
+
+    rewriter.replaceOpWithNewOp<arm_sme::ZeroOp>(constantOp, vType);
+
+    return success();
+  }
+};
+
 } // namespace
 
 void mlir::populateVectorToArmSMEPatterns(RewritePatternSet &patterns,
                                           MLIRContext &ctx) {
   patterns.add<TransferWriteToArmSMELowering, VectorLoadToArmSMELowering,
-               VectorStoreToArmSMELowering>(&ctx);
+               VectorStoreToArmSMELowering, ConstantOpToArmSMELowering>(&ctx);
 }
