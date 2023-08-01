@@ -21,7 +21,7 @@ namespace dwarflinker_parallel {
 
 /// StringEntry keeps data of the string: the length, external offset
 /// and a string body which is placed right after StringEntry.
-using StringEntry = StringMapEntry<DwarfStringPoolEntry *>;
+using StringEntry = StringMapEntry<std::nullopt_t>;
 
 class StringPoolEntryInfo {
 public:
