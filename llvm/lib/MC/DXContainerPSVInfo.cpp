@@ -14,6 +14,14 @@ using namespace llvm;
 using namespace llvm::mcdxbc;
 using namespace llvm::dxbc::PSV;
 
+template <typename T>
+std::enable_if_t<std::is_integral<T>::value, void>
+swappingWrite(raw_ostream &OS, T Val) {
+  if (sys::IsBigEndianHost)
+    sys::swapByteOrder(Val);
+  OS.write(reinterpret_cast<const char *>(&Val), sizeof(T));
+}
+
 void PSVRuntimeInfo::write(raw_ostream &OS, uint32_t Version) const {
   uint32_t InfoSize;
   uint32_t BindingSize;
@@ -31,24 +39,15 @@ void PSVRuntimeInfo::write(raw_ostream &OS, uint32_t Version) const {
     InfoSize = sizeof(dxbc::PSV::v2::RuntimeInfo);
     BindingSize = sizeof(dxbc::PSV::v2::ResourceBindInfo);
   }
-  uint32_t InfoSizeSwapped = InfoSize;
-  if (sys::IsBigEndianHost)
-    sys::swapByteOrder(InfoSizeSwapped);
   // Write the size of the info.
-  OS.write(reinterpret_cast<const char *>(&InfoSizeSwapped), sizeof(uint32_t));
+  swappingWrite(OS, InfoSize);
   // Write the info itself.
   OS.write(reinterpret_cast<const char *>(&BaseData), InfoSize);
 
   uint32_t ResourceCount = static_cast<uint32_t>(Resources.size());
-  uint32_t BindingSizeSwapped = BindingSize;
-  if (sys::IsBigEndianHost) {
-    sys::swapByteOrder(ResourceCount);
-    sys::swapByteOrder(BindingSizeSwapped);
-  }
 
-  OS.write(reinterpret_cast<const char *>(&ResourceCount), sizeof(uint32_t));
-  OS.write(reinterpret_cast<const char *>(&BindingSizeSwapped),
-           sizeof(uint32_t));
+  swappingWrite(OS, ResourceCount);
+  swappingWrite(OS, BindingSize);
 
   for (const auto &Res : Resources)
     OS.write(reinterpret_cast<const char *>(&Res), BindingSize);
