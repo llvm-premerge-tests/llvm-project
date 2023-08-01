@@ -1207,7 +1207,7 @@ def LoadOp : MemRef_Op<"load",
   }];
 
   let arguments = (ins Arg<AnyMemRef, "the reference to load from",
-                           [MemRead]>:$memref,
+                           [MemReadAt<0, false>]>:$memref,
                        Variadic<Index>:$indices,
                        DefaultValuedOptionalAttr<BoolAttr, "false">:$nontemporal);
   let results = (outs AnyType:$result);
@@ -1791,7 +1791,7 @@ def MemRef_StoreOp : MemRef_Op<"store",
 
   let arguments = (ins AnyType:$value,
                        Arg<AnyMemRef, "the reference to store to",
-                           [MemWrite]>:$memref,
+                           [MemWriteAt<0, false>]>:$memref,
                        Variadic<Index>:$indices,
                        DefaultValuedOptionalAttr<BoolAttr, "false">:$nontemporal);
 
