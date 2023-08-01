@@ -492,8 +492,12 @@ static bool isFPIntrinsic(const MachineRegisterInfo &MRI,
     return false;
   case Intrinsic::aarch64_neon_uaddlv:
   case Intrinsic::aarch64_neon_uaddv:
+  case Intrinsic::aarch64_neon_saddv:
   case Intrinsic::aarch64_neon_umaxv:
+  case Intrinsic::aarch64_neon_smaxv:
   case Intrinsic::aarch64_neon_uminv:
+  case Intrinsic::aarch64_neon_sminv:
+  case Intrinsic::aarch64_neon_faddv:
   case Intrinsic::aarch64_neon_fmaxv:
   case Intrinsic::aarch64_neon_fminv:
   case Intrinsic::aarch64_neon_fmaxnmv:
@@ -503,13 +507,6 @@ static bool isFPIntrinsic(const MachineRegisterInfo &MRI,
     const LLT SrcTy = MRI.getType(MI.getOperand(2).getReg());
     return SrcTy.getElementType().getSizeInBits() >= 16 &&
            SrcTy.getElementCount().getFixedValue() >= 4;
-  }
-  case Intrinsic::aarch64_neon_saddv:
-  case Intrinsic::aarch64_neon_smaxv:
-  case Intrinsic::aarch64_neon_sminv: {
-    const LLT SrcTy = MRI.getType(MI.getOperand(2).getReg());
-    return SrcTy.getElementType().getSizeInBits() >= 32 &&
-           SrcTy.getElementCount().getFixedValue() >= 2;
   }
   }
 }
@@ -737,6 +734,22 @@ AArch64RegisterBankInfo::getInstrMapping(const MachineInstr &MI) const {
     LLT SrcTy = MRI.getType(MI.getOperand(1).getReg());
     if (!SrcTy.isVector() && SrcTy.getSizeInBits() == 128)
       OpRegBankIdx = {PMI_FirstFPR, PMI_FirstFPR};
+    break;
+  }
+  case TargetOpcode::G_ZEXT:
+  case TargetOpcode::G_SEXT: {
+    // Allow G_SEXT/G_ZEXT from small FPR scalars to select across lane
+    // intrinsics.
+    LLT DstTy = MRI.getType(MI.getOperand(0).getReg());
+    LLT SrcTy = MRI.getType(MI.getOperand(1).getReg());
+    if (getRegBank(MI.getOperand(1).getReg(), MRI, TRI) ==
+        &AArch64::FPRRegBank) {
+      if ((DstTy.getSizeInBits() == 32 || DstTy.getSizeInBits() == 64) &&
+          (SrcTy.getSizeInBits() == 8 || SrcTy.getSizeInBits() == 16) &&
+          SrcTy.getSizeInBits() < DstTy.getSizeInBits()) {
+        OpRegBankIdx[1] = PMI_FirstFPR;
+      }
+    }
     break;
   }
   case TargetOpcode::G_SITOFP:

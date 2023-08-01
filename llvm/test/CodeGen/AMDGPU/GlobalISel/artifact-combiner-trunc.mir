@@ -145,3 +145,18 @@ body: |
     %2:_(s32) = G_TRUNC %1
     $vgpr0 = COPY %2
 ...
+
+---
+name: trunc_sext
+
+body: |
+  bb.0:
+    ; Test that trunc(sext) is replaced with sext source.
+    ; CHECK-LABEL: name: trunc_sext
+    ; CHECK: [[DEF:%[0-9]+]]:_(s32) = G_IMPLICIT_DEF
+    ; CHECK-NEXT: $vgpr0 = COPY [[DEF]](s32)
+    %0:_(s32) = G_IMPLICIT_DEF
+    %1:_(s64) = G_SEXT %0
+    %2:_(s32) = G_TRUNC %1
+    $vgpr0 = COPY %2
+...

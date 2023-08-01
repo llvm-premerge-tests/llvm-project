@@ -304,27 +304,37 @@ def : Pat<(int_aarch64_stxp GPR64:$lo, GPR64:$hi, GPR64:$addr),
           (STXPX GPR64:$lo, GPR64:$hi, GPR64:$addr)>;
 
 multiclass SIMDAcrossLanesSignedIntrinsicBHS<string baseOpc, Intrinsic intOp> {
-  def : Pat<(i32 (intOp (v8i8 V64:$Rn))),
+  def : Pat<(i32 (sext (i8 (intOp (v8i8 V64:$Rn))))),
         (i32 (SMOVvi8to32
           (INSERT_SUBREG (v16i8 (IMPLICIT_DEF)),
-            (!cast<Instruction>(!strconcat(baseOpc, "v8i8v")) V64:$Rn), bsub),
+           (!cast<Instruction>(!strconcat(baseOpc, "v8i8v")) V64:$Rn), bsub),
           (i64 0)))>;
-  def : Pat<(i32 (intOp (v16i8 V128:$Rn))),
+  def : Pat<(i8 (intOp (v8i8 V64:$Rn))),
+        (!cast<Instruction>(!strconcat(baseOpc, "v8i8v")) V64:$Rn)>;
+
+  def : Pat<(i32 (sext (i8 (intOp (v16i8 V128:$Rn))))),
         (i32 (SMOVvi8to32
           (INSERT_SUBREG (v16i8 (IMPLICIT_DEF)),
            (!cast<Instruction>(!strconcat(baseOpc, "v16i8v")) V128:$Rn), bsub),
           (i64 0)))>;
+  def : Pat<(i8 (intOp (v16i8 V128:$Rn))),
+        (!cast<Instruction>(!strconcat(baseOpc, "v16i8v")) V128:$Rn)>;
 
-  def : Pat<(i32 (intOp (v4i16 V64:$Rn))),
+  def : Pat<(i32 (sext (i16 (intOp (v4i16 V64:$Rn))))),
         (i32 (SMOVvi16to32
           (INSERT_SUBREG (v16i8 (IMPLICIT_DEF)),
            (!cast<Instruction>(!strconcat(baseOpc, "v4i16v")) V64:$Rn), hsub),
           (i64 0)))>;
-  def : Pat<(i32 (intOp (v8i16 V128:$Rn))),
+  def : Pat<(i16 (intOp (v4i16 V64:$Rn))),
+        (!cast<Instruction>(!strconcat(baseOpc, "v4i16v")) V64:$Rn)>;
+
+  def : Pat<(i32 (sext (i16 (intOp (v8i16 V128:$Rn))))),
         (i32 (SMOVvi16to32
           (INSERT_SUBREG (v16i8 (IMPLICIT_DEF)),
            (!cast<Instruction>(!strconcat(baseOpc, "v8i16v")) V128:$Rn), hsub),
           (i64 0)))>;
+  def : Pat<(i16 (intOp (v8i16 V128:$Rn))),
+        (!cast<Instruction>(!strconcat(baseOpc, "v8i16v")) V128:$Rn)>;
 
   def : Pat<(i32 (intOp (v4i32 V128:$Rn))),
         (i32 (EXTRACT_SUBREG
@@ -335,27 +345,46 @@ multiclass SIMDAcrossLanesSignedIntrinsicBHS<string baseOpc, Intrinsic intOp> {
 
 multiclass SIMDAcrossLanesUnsignedIntrinsicBHS<string baseOpc,
                                                 Intrinsic intOp> {
-  def : Pat<(i32 (intOp (v8i8 V64:$Rn))),
-        (i32 (EXTRACT_SUBREG
-          (INSERT_SUBREG (v16i8 (IMPLICIT_DEF)),
-            (!cast<Instruction>(!strconcat(baseOpc, "v8i8v")) V64:$Rn), bsub),
-          ssub))>;
-  def : Pat<(i32 (intOp (v16i8 V128:$Rn))),
-        (i32 (EXTRACT_SUBREG
-          (INSERT_SUBREG (v16i8 (IMPLICIT_DEF)),
-            (!cast<Instruction>(!strconcat(baseOpc, "v16i8v")) V128:$Rn), bsub),
-          ssub))>;
+  def : Pat<(i32 (zext (i8 (intOp (v8i8 V64:$Rn))))),
+        (COPY_TO_REGCLASS
+          (i32 (EXTRACT_SUBREG
+            (INSERT_SUBREG (v16i8 (IMPLICIT_DEF)),
+              (!cast<Instruction>(!strconcat(baseOpc, "v8i8v")) V64:$Rn), bsub),
+            ssub)),
+          GPR32)>;
+  def : Pat<(i8 (intOp (v8i8 V64:$Rn))),
+        (!cast<Instruction>(!strconcat(baseOpc, "v8i8v")) V64:$Rn)>;
 
-  def : Pat<(i32 (intOp (v4i16 V64:$Rn))),
+  def : Pat<(i32 (zext (i8 (intOp (v16i8 V128:$Rn))))),
+        (COPY_TO_REGCLASS
+          (i32 (EXTRACT_SUBREG
+            (INSERT_SUBREG (v16i8 (IMPLICIT_DEF)),
+              (!cast<Instruction>(!strconcat(baseOpc, "v16i8v")) V128:$Rn), bsub),
+            ssub)),
+        GPR32)>;
+  def : Pat<(i8 (intOp (v16i8 V128:$Rn))),
+        (!cast<Instruction>(!strconcat(baseOpc, "v16i8v")) V128:$Rn)>;
+
+
+  def : Pat<(i32 (zext (i16 (intOp (v4i16 V64:$Rn))))),
+        (COPY_TO_REGCLASS
           (i32 (EXTRACT_SUBREG
             (INSERT_SUBREG (v16i8 (IMPLICIT_DEF)),
               (!cast<Instruction>(!strconcat(baseOpc, "v4i16v")) V64:$Rn), hsub),
-            ssub))>;
-  def : Pat<(i32 (intOp (v8i16 V128:$Rn))),
-        (i32 (EXTRACT_SUBREG
-          (INSERT_SUBREG (v16i8 (IMPLICIT_DEF)),
-            (!cast<Instruction>(!strconcat(baseOpc, "v8i16v")) V128:$Rn), hsub),
-          ssub))>;
+            ssub)),
+          GPR32)>;
+  def : Pat<(i16 (intOp (v4i16 V64:$Rn))),
+        (!cast<Instruction>(!strconcat(baseOpc, "v4i16v")) V64:$Rn)>;
+
+  def : Pat<(i32 (zext (i16 (intOp (v8i16 V128:$Rn))))),
+        (COPY_TO_REGCLASS
+          (i32 (EXTRACT_SUBREG
+            (INSERT_SUBREG (v16i8 (IMPLICIT_DEF)),
+              (!cast<Instruction>(!strconcat(baseOpc, "v8i16v")) V128:$Rn), hsub),
+            ssub)),
+        GPR32)>;
+  def : Pat<(i16 (intOp (v8i16 V128:$Rn))),
+        (!cast<Instruction>(!strconcat(baseOpc, "v8i16v")) V128:$Rn)>;
 
   def : Pat<(i32 (intOp (v4i32 V128:$Rn))),
         (i32 (EXTRACT_SUBREG
@@ -363,7 +392,6 @@ multiclass SIMDAcrossLanesUnsignedIntrinsicBHS<string baseOpc,
             (!cast<Instruction>(!strconcat(baseOpc, "v4i32v")) V128:$Rn), ssub),
           ssub))>;
 }
-
 
 defm : SIMDAcrossLanesSignedIntrinsicBHS<"ADDV", int_aarch64_neon_saddv>;
 // vaddv_[su]32 is special; -> ADDP Vd.2S,Vn.2S,Vm.2S; return Vd.s[0];Vn==Vm
@@ -373,12 +401,23 @@ def : Pat<(i32 (int_aarch64_neon_saddv (v2i32 V64:$Rn))),
               (ADDPv2i32 V64:$Rn, V64:$Rn), dsub),
             ssub))>;
 
+def : Pat<(i64 (int_aarch64_neon_saddv (v2i64 V128:$Rn))),
+          (i64 (EXTRACT_SUBREG
+          (INSERT_SUBREG (v2i64 (IMPLICIT_DEF)),
+              (ADDPv2i64p V128:$Rn), dsub),
+            dsub))>;
+
 defm : SIMDAcrossLanesUnsignedIntrinsicBHS<"ADDV", int_aarch64_neon_uaddv>;
 def : Pat<(i32 (int_aarch64_neon_uaddv (v2i32 V64:$Rn))),
           (i32 (EXTRACT_SUBREG
             (INSERT_SUBREG (v16i8 (IMPLICIT_DEF)),
               (ADDPv2i32 V64:$Rn, V64:$Rn), dsub),
             ssub))>;
+def : Pat<(i64 (int_aarch64_neon_uaddv (v2i64 V128:$Rn))),
+          (i64 (EXTRACT_SUBREG
+          (INSERT_SUBREG (v2i64 (IMPLICIT_DEF)),
+              (ADDPv2i64p V128:$Rn), dsub),
+            dsub))>;
 
 defm : SIMDAcrossLanesSignedIntrinsicBHS<"SMAXV", int_aarch64_neon_smaxv>;
 def : Pat<(i32 (int_aarch64_neon_smaxv (v2i32 V64:$Rn))),

@@ -325,6 +325,21 @@ public:
       return true;
     }
 
+    // trunc(sext x) -> x
+    Register SextSrc;
+    if (mi_match(SrcReg, MRI, m_GSExt(m_Reg(SextSrc)))) {
+      LLT DstTy = MRI.getType(DstReg);
+      LLT SextSrcTy = MRI.getType(SextSrc);
+      if (DstTy == SextSrcTy) {
+        LLVM_DEBUG(dbgs() << ".. Combine MI: " << MI;);
+
+        replaceRegOrBuildCopy(DstReg, SextSrc, MRI, Builder, UpdatedDefs, Observer);
+        UpdatedDefs.push_back(DstReg);
+        markInstAndDefDead(MI, *MRI.getVRegDef(SrcReg), DeadInsts);
+        return true;
+      }
+    }
+
     return false;
   }
 
