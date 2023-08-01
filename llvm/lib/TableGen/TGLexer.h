@@ -56,33 +56,38 @@ enum TokKind {
 
   // Reserved keywords. ('ElseKW' is named to distinguish it from the
   // existing 'Else' that means the preprocessor #else.)
-  Assert,
+
   Bit,
   Bits,
-  Class,
   Code,
   Dag,
-  Def,
-  Defm,
-  Defset,
-  Defvar,
   ElseKW,
   FalseKW,
   Field,
-  Foreach,
-  If,
   In,
   Include,
   Int,
-  Let,
   List,
-  MultiClass,
   String,
   Then,
   TrueKW,
 
+  OBJECT_START_FIRST,
+  Assert = OBJECT_START_FIRST,
+  Class,
+  Def,
+  Defm,
+  Defset,
+  Defvar,
+  Foreach,
+  If,
+  Let,
+  MultiClass,
+  OBJECT_START_LAST = MultiClass,
+
   // Bang operators.
-  XConcat,
+  BANG_OPERATOR_FIRST,
+  XConcat = BANG_OPERATOR_FIRST,
   XADD,
   XSUB,
   XMUL,
@@ -131,6 +136,7 @@ enum TokKind {
   XGetDagName,
   XSetDagArg,
   XSetDagName,
+  BANG_OPERATOR_LAST = XSetDagName,
 
   // Boolean literals.
   TrueVal,
@@ -144,10 +150,12 @@ enum TokKind {
   BinaryIntVal,
 
   // String valued tokens.
-  Id,
+  STRING_VALUE_FIRST,
+  Id = STRING_VALUE_FIRST,
   StrVal,
   VarName,
   CodeFragment,
+  STRING_VALUE_LAST = CodeFragment,
 
   // Preprocessing tokens for internal usage by the lexer.
   // They are never returned as a result of Lex().
@@ -157,7 +165,22 @@ enum TokKind {
   Endif,
   Define
 };
+
+/// isBangOperator - Return true if this is a bang operator.
+static inline bool isBangOperator(tgtok::TokKind Kind) {
+  return tgtok::BANG_OPERATOR_FIRST <= Kind && Kind <= BANG_OPERATOR_LAST;
 }
+
+/// isObjectStart - Return true if this is a valid first token for a statement.
+static inline bool isObjectStart(tgtok::TokKind Kind) {
+  return tgtok::OBJECT_START_FIRST <= Kind && Kind <= OBJECT_START_LAST;
+}
+
+/// isStringValue - Return true if this is a string value.
+static inline bool isStringValue(tgtok::TokKind Kind) {
+  return tgtok::STRING_VALUE_FIRST <= Kind && Kind <= STRING_VALUE_LAST;
+}
+} // namespace tgtok
 
 /// TGLexer - TableGen Lexer class.
 class TGLexer {
@@ -197,8 +220,7 @@ public:
   tgtok::TokKind getCode() const { return CurCode; }
 
   const std::string &getCurStrVal() const {
-    assert((CurCode == tgtok::Id || CurCode == tgtok::StrVal ||
-            CurCode == tgtok::VarName || CurCode == tgtok::CodeFragment) &&
+    assert(tgtok::isStringValue(CurCode) &&
            "This token doesn't have a string value");
     return CurStrVal;
   }
