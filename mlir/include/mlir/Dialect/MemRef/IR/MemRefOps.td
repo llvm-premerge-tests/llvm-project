@@ -72,7 +72,7 @@ class AllocLikeOp<string mnemonic,
                        Variadic<Index>:$symbolOperands,
                        ConfinedAttr<OptionalAttr<I64Attr>,
                                 [IntMinValue<0>]>:$alignment);
-  let results = (outs Res<AnyMemRef, "", [MemAlloc<resource>]>:$memref);
+  let results = (outs Res<AnyMemRef, "", [MemAlloc<resource, 0>]>:$memref);
 
   let builders = [
     OpBuilder<(ins "MemRefType":$memrefType,
@@ -276,12 +276,12 @@ def MemRef_ReallocOp : MemRef_Op<"realloc"> {
   // memref and allocating the outcoming memref, even though this may not
   // physically happen on each execution.
 
-  let arguments = (ins Arg<MemRefRankOf<[AnyType], [1]>, "", [MemFree]>:$source,
+  let arguments = (ins Arg<MemRefRankOf<[AnyType], [1]>, "", [MemFreeAt<0>]>:$source,
                    Optional<Index>:$dynamicResultSize,
                    ConfinedAttr<OptionalAttr<I64Attr>,
                                 [IntMinValue<0>]>:$alignment);
 
-  let results = (outs Res<MemRefRankOf<[AnyType], [1]>, "", [MemAlloc<DefaultResource>]>);
+  let results = (outs Res<MemRefRankOf<[AnyType], [1]>, "", [MemAlloc<DefaultResource, 1>]>);
 
   let builders = [
     OpBuilder<(ins "MemRefType":$resultType,
@@ -532,9 +532,9 @@ def CopyOp : MemRef_Op<"copy", [CopyOpInterface, SameOperandsElementType,
   }];
 
   let arguments = (ins Arg<AnyRankedOrUnrankedMemRef, "the memref to copy from",
-                           [MemRead]>:$source,
+                           [MemReadAt<0>]>:$source,
                        Arg<AnyRankedOrUnrankedMemRef, "the memref to copy to",
-                           [MemWrite]>:$target);
+                           [MemWriteAt<1>]>:$target);
 
   let assemblyFormat = [{
     $source `,` $target attr-dict `:` type($source) `to` type($target)
@@ -1207,7 +1207,7 @@ def LoadOp : MemRef_Op<"load",
   }];
 
   let arguments = (ins Arg<AnyMemRef, "the reference to load from",
-                           [MemRead]>:$memref,
+                           [MemReadAt<0, false>]>:$memref,
                        Variadic<Index>:$indices,
                        DefaultValuedOptionalAttr<BoolAttr, "false">:$nontemporal);
   let results = (outs AnyType:$result);
@@ -1791,7 +1791,7 @@ def MemRef_StoreOp : MemRef_Op<"store",
 
   let arguments = (ins AnyType:$value,
                        Arg<AnyMemRef, "the reference to store to",
-                           [MemWrite]>:$memref,
+                           [MemWriteAt<0, false>]>:$memref,
                        Variadic<Index>:$indices,
                        DefaultValuedOptionalAttr<BoolAttr, "false">:$nontemporal);
 

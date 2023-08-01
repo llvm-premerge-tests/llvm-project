@@ -47,7 +47,10 @@ Operations with implicit behaviors can be broadly categorized as follows:
    `longjmp`, operations that throw exceptions.
 
 Finally, a given operation may have a combination of the above implicit
-behaviors.
+behaviors. The combination of implicit behaviors during the execution of the
+operation may be ordered. We use 'stage' to label the order of implicit
+behaviors during the execution of 'op'. Implicit behaviors with a lower stage
+number happen earlier than those with a higher stage number.
 
 ## Modeling
 
@@ -76,6 +79,10 @@ When adding a new op, ask:
 
 1. Does it read from or write to the heap or stack? It should probably implement
    `MemoryEffectsOpInterface`.
+1. Does these side effects ordered? It should probably set the stage of
+   side effects to make analysis more accurate.
+1. Does These side effects act on every single value of resource? If not, it
+   should set the effectOnFullRegion field with false.
 1. Does it have side effects that must be preserved, like a volatile store or a
    syscall? It should probably implement `MemoryEffectsOpInterface` and model
    the effect as a read from or write to an abstract `Resource`. Please start an
@@ -91,3 +98,77 @@ When adding a new op, ask:
 1. Is your operation free of side effects and can be freely hoisted, introduced
    and eliminated? It should probably be marked `Pure`. (TODO: revisit this name
    since it has overloaded meanings in C++.)
+
+## Examples
+
+This section describes a few very simple examples that help understand how to
+add side effect correctly.
+
+### Copy like operation
+
+Memref.copy is a typical copy like operation:
+```mlir
+  func.func @foo(%source : memref<10xf32>, %target : memref<10xf32>) {
+    memref.copy(%source, %target) : memref<10xf32> to memref<10xf32>
+    return
+  }
+```
+
+The copy like operation reads every single value from the source resource and
+then writes these values to every single value in the target resource.
+Therefore, we need to specify a read side effect for the source and a write side
+effect for the target. The read side effect occurs before the write side effect,
+so we need to mark the read stage as earlier than the write stage. Additionally,
+we need to mark these side effects as acting on every single value in the
+resource.
+
+A typical approach is as follows:
+``` mlir
+  def CopyOp : MemRef_Op<"copy", [...] {
+    ...
+
+    let arguments = (ins Arg<AnyRankedOrUnrankedMemRef, "the memref to copy from",
+                             [MemReadAt<0>]>:$source,
+                         Arg<AnyRankedOrUnrankedMemRef, "the memref to copy to",
+                             [MemWriteAt<1>]>:$target);
+
+    ...
+  }
+```
+
+In the above example, we added the side effect [MemReadAt<0>] to the source,
+indicating copy operation reads every single value from source in stage 0.
+[MemReadAt<0>] is a shorthand notation for [MemReadAt<0, true>]. We added the
+side effect [MemWriteAt<0>] to the target, indicating copy operation writes on
+every single value inside the target on stage 1(after read from source).
+
+### Load like operation
+
+Memref.load is a typical load like operation:
+```mlir
+  func.func @foo(%input : memref<10xf32>, %index : index) -> f32 {
+    %result = memref.load  %input[index] : memref<10xf32>
+    return %result : f32
+  }
+```
+
+The load like operation read one value from input memref and return it.
+Therefore, we needs to specify a read side effect for input memref, and mark
+not every single value is used.
+
+A typical approach is as follows:
+``` mlir
+  def LoadOp : MemRef_Op<"load", [...] {
+    ...
+
+    let arguments = (ins Arg<AnyMemRef, "the reference to load from",
+                             [MemReadAt<0, false>]>:$memref,
+                         Variadic<Index>:$indices,
+                         DefaultValuedOptionalAttr<BoolAttr, "false">:$nontemporal);
+
+    ...
+  }
+```
+
+In the above example, we added the side effect [MemReadAt<0, false>] to the
+source, indicating load operation read parts of value from memref at stage 0.

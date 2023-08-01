@@ -128,7 +128,7 @@ class EffectOpInterfaceBase<string name, string baseEffect>
               ::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<
               }] # baseEffect # [{>> & effects) {
       getEffects(effects);
-      ::llvm::erase_if(effects, [&](auto &it) {
+      ::llvm::erase_if(effects,[&](auto &it) {
         return it.getSymbolRef() != value;
       });
     }
@@ -152,7 +152,8 @@ class EffectOpInterfaceBase<string name, string baseEffect>
 // This class is the general base side effect class. This is used by derived
 // effect interfaces to define their effects.
 class SideEffect<EffectOpInterfaceBase interface, string effectName,
-                 Resource resourceReference> : OpVariableDecorator {
+                 Resource resourceReference, int effectStage, bit fullRegion>
+    : OpVariableDecorator {
   /// The name of the base effects class.
   string baseEffectName = interface.baseEffectName;
 
@@ -167,6 +168,13 @@ class SideEffect<EffectOpInterfaceBase interface, string effectName,
 
   /// The resource that the effect is being applied to.
   string resource = resourceReference.name;
+
+  /// The stage of side effects, we use it to describe the sequence in which
+  /// effects occur.
+  int stage = effectStage;
+
+  // Does this side effect act on every single value of resource.
+  bit effectOnFullRegion = fullRegion;
 }
 
 // This class is the base used for specifying effects applied to an operation.
