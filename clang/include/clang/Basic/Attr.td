@@ -1344,13 +1344,13 @@ def OpenCLAccess : Attr {
 
 def OpenCLPrivateAddressSpace : TypeAttr {
   let Spellings = [CustomKeyword<"__private">, CustomKeyword<"private">,
-                   Clang<"opencl_private">];
+                   Clang<"opencl_private">, Clang<"addrspace_private">];
   let Documentation = [OpenCLAddressSpacePrivateDocs];
 }
 
 def OpenCLGlobalAddressSpace : TypeAttr {
   let Spellings = [CustomKeyword<"__global">, CustomKeyword<"global">,
-                   Clang<"opencl_global">];
+                   Clang<"opencl_global">, Clang<"addrspace_global">];
   let Documentation = [OpenCLAddressSpaceGlobalDocs];
 }
 
@@ -1366,19 +1366,19 @@ def OpenCLGlobalHostAddressSpace : TypeAttr {
 
 def OpenCLLocalAddressSpace : TypeAttr {
   let Spellings = [CustomKeyword<"__local">, CustomKeyword<"local">,
-                   Clang<"opencl_local">];
+                   Clang<"opencl_local", Clang<"addrspace_local">>];
   let Documentation = [OpenCLAddressSpaceLocalDocs];
 }
 
 def OpenCLConstantAddressSpace : TypeAttr {
   let Spellings = [CustomKeyword<"__constant">, CustomKeyword<"constant">,
-                   Clang<"opencl_constant">];
+                   Clang<"opencl_constant", Clang<"addrspace_constant">>];
   let Documentation = [OpenCLAddressSpaceConstantDocs];
 }
 
 def OpenCLGenericAddressSpace : TypeAttr {
   let Spellings = [CustomKeyword<"__generic">, CustomKeyword<"generic">,
-                   Clang<"opencl_generic">];
+                   Clang<"opencl_generic", Clang<"addrspace_generic">>];
   let Documentation = [OpenCLAddressSpaceGenericDocs];
 }
 
