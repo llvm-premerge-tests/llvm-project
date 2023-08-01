@@ -1373,11 +1373,7 @@ public:
          nullptr;
   }
 
-  void setTypeConstraint(NestedNameSpecifierLoc NNS,
-                         DeclarationNameInfo NameInfo, NamedDecl *FoundDecl,
-                         ConceptDecl *CD,
-                         const ASTTemplateArgumentListInfo *ArgsAsWritten,
-                         Expr *ImmediatelyDeclaredConstraint);
+  void setTypeConstraint(ConceptLoc *Loc, Expr *ImmediatelyDeclaredConstraint);
 
   /// Determine whether this template parameter has a type-constraint.
   bool hasTypeConstraint() const {

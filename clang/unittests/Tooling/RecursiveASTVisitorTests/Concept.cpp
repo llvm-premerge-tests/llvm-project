@@ -29,12 +29,22 @@ struct ConceptVisitor : ExpectedLocationVisitor<ConceptVisitor> {
     ++ConceptRequirementsTraversed;
     return ExpectedLocationVisitor::TraverseConceptRequirement(R);
   }
+  bool TraverseConceptLoc(const ConceptLoc *CL) {
+    ++ConceptLocsTraversed;
+    return ExpectedLocationVisitor::TraverseConceptLoc(CL);
+  }
+  bool VisitConceptLoc(const ConceptLoc *CL) {
+    ++ConceptLocsVisited;
+    return true;
+  }
 
   bool shouldVisitImplicitCode() { return ShouldVisitImplicitCode; }
 
   int ConceptSpecializationExprsVisited = 0;
   int TypeConstraintsTraversed = 0;
   int ConceptRequirementsTraversed = 0;
+  int ConceptLocsTraversed = 0;
+  int ConceptLocsVisited = 0;
   bool ShouldVisitImplicitCode = false;
 };
 
@@ -50,6 +60,8 @@ TEST(RecursiveASTVisitor, Concepts) {
   EXPECT_EQ(1, Visitor.ConceptSpecializationExprsVisited);
   // Also check we traversed the TypeConstraint that produced the expr.
   EXPECT_EQ(1, Visitor.TypeConstraintsTraversed);
+  EXPECT_EQ(1, Visitor.ConceptLocsTraversed);
+  EXPECT_EQ(1, Visitor.ConceptLocsVisited);
 
   Visitor = {}; // Don't visit implicit code now.
   EXPECT_TRUE(Visitor.runOver("template <typename T> concept Fooable = true;\n"
@@ -59,6 +71,8 @@ TEST(RecursiveASTVisitor, Concepts) {
   // generated immediately declared expression.
   EXPECT_EQ(0, Visitor.ConceptSpecializationExprsVisited);
   EXPECT_EQ(1, Visitor.TypeConstraintsTraversed);
+  EXPECT_EQ(1, Visitor.ConceptLocsTraversed);
+  EXPECT_EQ(1, Visitor.ConceptLocsVisited);
 
   Visitor = {};
   EXPECT_TRUE(Visitor.runOver("template <class T> concept A = true;\n"
@@ -70,6 +84,8 @@ TEST(RecursiveASTVisitor, Concepts) {
                               "};",
                               ConceptVisitor::Lang_CXX2a));
   EXPECT_EQ(3, Visitor.ConceptRequirementsTraversed);
+  EXPECT_EQ(1, Visitor.ConceptLocsTraversed);
+  EXPECT_EQ(1, Visitor.ConceptLocsVisited);
 }
 
 struct VisitDeclOnlyOnce : ExpectedLocationVisitor<VisitDeclOnlyOnce> {
@@ -86,6 +102,10 @@ struct VisitDeclOnlyOnce : ExpectedLocationVisitor<VisitDeclOnlyOnce> {
     ++AutoTypeLocVisited;
     return true;
   }
+  bool VisitConceptLoc(const ConceptLoc *) {
+    ++ConceptLocsVisited;
+    return true;
+  }
 
   bool TraverseVarDecl(VarDecl *V) {
     // The base traversal visits only the `TypeLoc`.
@@ -99,6 +119,7 @@ struct VisitDeclOnlyOnce : ExpectedLocationVisitor<VisitDeclOnlyOnce> {
   int ConceptDeclsVisited = 0;
   int AutoTypeVisited = 0;
   int AutoTypeLocVisited = 0;
+  int ConceptLocsVisited = 0;
 };
 
 TEST(RecursiveASTVisitor, ConceptDeclInAutoType) {
@@ -111,6 +132,7 @@ TEST(RecursiveASTVisitor, ConceptDeclInAutoType) {
   EXPECT_EQ(1, Visitor.AutoTypeVisited);
   EXPECT_EQ(1, Visitor.AutoTypeLocVisited);
   EXPECT_EQ(1, Visitor.ConceptDeclsVisited);
+  EXPECT_EQ(1, Visitor.ConceptLocsVisited);
 }
 
 } // end anonymous namespace
