@@ -2584,6 +2584,43 @@ static Instruction *foldSelectToPhi(SelectInst &Sel, const DominatorTree &DT,
   return nullptr;
 }
 
+/// Tries to reduce a pattern that arises when calculating the remainder of the
+/// Euclidean division. When the divisor is a power of two and is guaranteed not
+/// to be negative, a signed remainder can be folded with a bitwise and.
+///
+/// (x % n) < 0 ? (x % n) + n : (x % n)
+///    -> x & (n - 1)
+static Instruction *foldSelectWithSRem(SelectInst &SI, InstCombinerImpl &IC,
+                                       IRBuilderBase &Builder) {
+  Value *CondVal = SI.getCondition();
+  Value *TrueVal = SI.getTrueValue();
+  Value *FalseVal = SI.getFalseValue();
+
+  ICmpInst::Predicate Pred;
+  Value *Op, *RemRes, *Remainder;
+
+  // Signed comparisons have been canonicalized into a ICMP_SLT at this point,
+  // we can safely check this type of comparison.
+  if (!(match(CondVal, m_ICmp(Pred, m_Value(RemRes), m_Zero())) &&
+        Pred == ICmpInst::ICMP_SLT))
+    return nullptr;
+
+  // We are matching a quite specific pattern here:
+  // %rem = srem i32 %x, %n
+  // %cnd = icmp slt i32 %rem, 0
+  // %add = add i32 %rem, %n
+  // %sel = select i1 %cnd, i32 %add, i32 %rem
+  if (!(match(TrueVal, m_Add(m_Value(RemRes), m_Value(Remainder))) &&
+        match(RemRes, m_SRem(m_Value(Op), m_Specific(Remainder))) &&
+        FalseVal == RemRes &&
+        IC.isKnownToBeAPowerOfTwo(Remainder, /*OrZero*/ true)))
+    return nullptr;
+
+  Value *Add = Builder.CreateAdd(Remainder,
+                                 Constant::getAllOnesValue(RemRes->getType()));
+  return BinaryOperator::CreateAnd(Op, Add);
+}
+
 static Value *foldSelectWithFrozenICmp(SelectInst &Sel, InstCombiner::BuilderTy &Builder) {
   FreezeInst *FI = dyn_cast<FreezeInst>(Sel.getCondition());
   if (!FI)
@@ -3654,6 +3691,9 @@ Instruction *InstCombinerImpl::visitSelectInst(SelectInst &SI) {
 
   if (Value *V = foldRoundUpIntegerWithPow2Alignment(SI, Builder))
     return replaceInstUsesWith(SI, V);
+
+  if (Instruction *I = foldSelectWithSRem(SI, *this, Builder))
+    return I;
 
   // select(mask, mload(,,mask,0), 0) -> mload(,,mask,0)
   // Load inst is intentionally not checked for hasOneUse()
