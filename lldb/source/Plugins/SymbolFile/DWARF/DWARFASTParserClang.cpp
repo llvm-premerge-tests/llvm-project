@@ -3036,6 +3036,17 @@ bool DWARFASTParserClang::ParseChildMembers(
                        module_sp, base_classes, layout_info);
       break;
 
+    case DW_TAG_enumeration_type:
+    {
+      SymbolContextScope *scope;
+      scope = parent_die.GetDWARF()->GetObjectFile()->GetModule().get();
+      assert(scope);
+      SymbolContext sc(scope);
+      ParsedDWARFTypeAttributes attrs{die};
+      ParseEnum(sc, die, attrs);
+    }
+    break;
+
     default:
       break;
     }
