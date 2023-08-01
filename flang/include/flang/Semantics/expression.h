@@ -73,9 +73,11 @@ struct SetExprHelper {
   explicit SetExprHelper(GenericExprWrapper &&expr) : expr_{std::move(expr)} {}
   void Set(parser::TypedExpr &x) {
     x.Reset(new GenericExprWrapper{std::move(expr_)},
-        evaluate::GenericExprWrapper::Deleter);
+        evaluate::GenericExprWrapper::Deleter,
+        evaluate::GenericExprWrapper::Copier);
   }
-  template <typename T> void Set(const common::Indirection<T> &x) {
+  template <typename T, bool COPY>
+  void Set(const common::Indirection<T, COPY> &x) {
     Set(x.value());
   }
   template <typename T> void Set(const T &x) {
@@ -159,7 +161,7 @@ public:
   MaybeExpr Analyze(const parser::AllocateObject &);
   MaybeExpr Analyze(const parser::PointerObject &);
 
-  template <typename A> MaybeExpr Analyze(const common::Indirection<A> &x) {
+  template <typename A> MaybeExpr Analyze(const parser::Indirection<A> &x) {
     return Analyze(x.value());
   }
   template <typename A> MaybeExpr Analyze(const std::optional<A> &x) {

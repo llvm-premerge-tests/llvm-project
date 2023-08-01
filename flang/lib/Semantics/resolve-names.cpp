@@ -16,7 +16,6 @@
 #include "rewrite-parse-tree.h"
 #include "flang/Common/Fortran.h"
 #include "flang/Common/default-kinds.h"
-#include "flang/Common/indirection.h"
 #include "flang/Common/restorer.h"
 #include "flang/Common/visit.h"
 #include "flang/Evaluate/characteristics.h"
@@ -47,7 +46,7 @@ namespace Fortran::semantics {
 
 using namespace parser::literals;
 
-template <typename T> using Indirection = common::Indirection<T>;
+template <typename T> using Indirection = parser::Indirection<T>;
 using Message = parser::Message;
 using Messages = parser::Messages;
 using MessageFixedText = parser::MessageFixedText;
@@ -7901,7 +7900,7 @@ void ResolveNamesVisitor::FinishSpecificationPart(
   currScope().InstantiateDerivedTypes();
   for (const auto &decl : decls) {
     if (const auto *statement{std::get_if<
-            parser::Statement<common::Indirection<parser::StmtFunctionStmt>>>(
+            parser::Statement<parser::Indirection<parser::StmtFunctionStmt>>>(
             &decl.u)}) {
       AnalyzeStmtFunctionStmt(statement->statement.value());
     }
@@ -8191,7 +8190,7 @@ void ResolveNamesVisitor::Post(const parser::CompilerDirective &x) {
 }
 
 bool ResolveNamesVisitor::Pre(const parser::ProgramUnit &x) {
-  if (std::holds_alternative<common::Indirection<parser::CompilerDirective>>(
+  if (std::holds_alternative<parser::Indirection<parser::CompilerDirective>>(
           x.u)) {
     // TODO: global directives
     return true;
@@ -8211,7 +8210,7 @@ template <typename A> std::set<SourceName> GetUses(const A &x) {
   if constexpr (!std::is_same_v<A, parser::CompilerDirective>) {
     const auto &spec{std::get<parser::SpecificationPart>(x.t)};
     const auto &unitUses{std::get<
-        std::list<parser::Statement<common::Indirection<parser::UseStmt>>>>(
+        std::list<parser::Statement<parser::Indirection<parser::UseStmt>>>>(
         spec.t)};
     for (const auto &u : unitUses) {
       uses.insert(u.statement.value().moduleName.source);
@@ -8226,7 +8225,7 @@ bool ResolveNamesVisitor::Pre(const parser::Program &x) {
   bool disordered{false};
   for (const auto &progUnit : x.v) {
     if (const auto *indMod{
-            std::get_if<common::Indirection<parser::Module>>(&progUnit.u)}) {
+            std::get_if<parser::Indirection<parser::Module>>(&progUnit.u)}) {
       const parser::Module &mod{indMod->value()};
       const auto &moduleStmt{
           std::get<parser::Statement<parser::ModuleStmt>>(mod.t)};
@@ -8262,7 +8261,7 @@ bool ResolveNamesVisitor::Pre(const parser::Program &x) {
       const SourceName &name{pair.first};
       const parser::ProgramUnit &progUnit{*pair.second};
       const parser::Module &m{
-          std::get<common::Indirection<parser::Module>>(progUnit.u).value()};
+          std::get<parser::Indirection<parser::Module>>(progUnit.u).value()};
       ok = true;
       for (const SourceName &use : GetUses(m)) {
         if (modules.find(use) != modules.end()) {
@@ -8295,7 +8294,7 @@ bool ResolveNamesVisitor::Pre(const parser::Program &x) {
     Walk(*progUnit);
   }
   for (const auto &progUnit : x.v) {
-    if (!std::get_if<common::Indirection<parser::Module>>(&progUnit.u)) {
+    if (!std::get_if<parser::Indirection<parser::Module>>(&progUnit.u)) {
       Walk(progUnit);
     }
   }

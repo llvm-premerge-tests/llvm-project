@@ -12,13 +12,10 @@
 #include "flang/Common/default-kinds.h"
 #include "flang/Common/interval.h"
 #include "flang/Evaluate/initial-image.h"
+#include "flang/Parser/parse-tree.h"
 #include <list>
 #include <map>
 
-namespace Fortran::parser {
-struct DataStmtSet;
-struct DataStmtValue;
-} // namespace Fortran::parser
 namespace Fortran::evaluate {
 class ExpressionAnalyzer;
 }
@@ -44,7 +41,7 @@ void AccumulateDataInitializations(DataInitializations &,
 // For legacy DATA-style initialization extension: integer n(2)/1,2/
 void AccumulateDataInitializations(DataInitializations &,
     evaluate::ExpressionAnalyzer &, const Symbol &,
-    const std::list<common::Indirection<parser::DataStmtValue>> &);
+    const std::list<parser::Indirection<parser::DataStmtValue>> &);
 
 void ConvertToInitializers(
     DataInitializations &, evaluate::ExpressionAnalyzer &);

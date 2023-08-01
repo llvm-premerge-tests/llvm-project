@@ -2072,7 +2072,7 @@ private:
   void genFIR(const Fortran::parser::ForallStmt &stmt) {
     const auto &concurrentHeader =
         std::get<
-            Fortran::common::Indirection<Fortran::parser::ConcurrentHeader>>(
+            Fortran::parser::Indirection<Fortran::parser::ConcurrentHeader>>(
             stmt.t)
             .value();
     if (lowerToHighLevelFIR()) {
@@ -2110,7 +2110,7 @@ private:
       std::visit(
           Fortran::common::visitors{
               [&](const Fortran::parser::WhereConstruct &b) { genFIR(b); },
-              [&](const Fortran::common::Indirection<
+              [&](const Fortran::parser::Indirection<
                   Fortran::parser::ForallConstruct> &b) { genFIR(b.value()); },
               [&](const auto &b) { genNestedStatement(b); }},
           s.u);
@@ -2128,7 +2128,7 @@ private:
   void genFIR(const Fortran::parser::ForallConstructStmt &stmt) {
     const auto &concurrentHeader =
         std::get<
-            Fortran::common::Indirection<Fortran::parser::ConcurrentHeader>>(
+            Fortran::parser::Indirection<Fortran::parser::ConcurrentHeader>>(
             stmt.t)
             .value();
     if (lowerToHighLevelFIR())
@@ -3694,7 +3694,7 @@ private:
             },
             [&](const Fortran::parser::Statement<Fortran::parser::WhereStmt>
                     &stmt) { genNestedStatement(stmt); },
-            [&](const Fortran::common::Indirection<
+            [&](const Fortran::parser::Indirection<
                 Fortran::parser::WhereConstruct> &c) { genFIR(c.value()); },
         },
         body.u);
@@ -4506,7 +4506,7 @@ private:
   }
   void analyzeExplicitSpace(const Fortran::parser::WhereBodyConstruct &body) {
     std::visit(Fortran::common::visitors{
-                   [&](const Fortran::common::Indirection<
+                   [&](const Fortran::parser::Indirection<
                        Fortran::parser::WhereConstruct> &wc) {
                      analyzeExplicitSpace(wc.value());
                    },
@@ -4538,7 +4538,7 @@ private:
   void analyzeExplicitSpace(const Fortran::parser::ForallStmt &forall) {
     analyzeExplicitSpace(
         std::get<
-            Fortran::common::Indirection<Fortran::parser::ConcurrentHeader>>(
+            Fortran::parser::Indirection<Fortran::parser::ConcurrentHeader>>(
             forall.t)
             .value());
     analyzeExplicitSpace(std::get<Fortran::parser::UnlabeledStatement<
@@ -4550,7 +4550,7 @@ private:
   analyzeExplicitSpace(const Fortran::parser::ForallConstructStmt &forall) {
     analyzeExplicitSpace(
         std::get<
-            Fortran::common::Indirection<Fortran::parser::ConcurrentHeader>>(
+            Fortran::parser::Indirection<Fortran::parser::ConcurrentHeader>>(
             forall.t)
             .value());
   }
@@ -4563,7 +4563,7 @@ private:
     for (const Fortran::parser::ForallBodyConstruct &s :
          std::get<std::list<Fortran::parser::ForallBodyConstruct>>(forall.t)) {
       std::visit(Fortran::common::visitors{
-                     [&](const Fortran::common::Indirection<
+                     [&](const Fortran::parser::Indirection<
                          Fortran::parser::ForallConstruct> &b) {
                        analyzeExplicitSpace(b.value());
                      },

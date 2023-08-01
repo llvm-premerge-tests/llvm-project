@@ -28,7 +28,8 @@
 namespace Fortran::common {
 
 // The default case does not support (deep) copy construction or assignment.
-template <typename A, bool COPY = false> class Indirection {
+template <typename A, bool COPY = false>
+class Indirection : public std::in_place_t {
 public:
   using element_type = A;
   Indirection() = delete;
@@ -69,7 +70,7 @@ private:
 };
 
 // Variant with copy construction and assignment
-template <typename A> class Indirection<A, true> {
+template <typename A> class Indirection<A, true> : public std::in_place_t {
 public:
   using element_type = A;
 
@@ -122,20 +123,28 @@ private:
 
 template <typename A> using CopyableIndirection = Indirection<A, true>;
 
-// A variation of std::unique_ptr<> with a reified deletion routine.
+// A variation of std::unique_ptr<> with reified deletion and
+// copying routines.
 // Used to avoid dependence cycles between shared libraries.
 template <typename A> class ForwardOwningPointer {
 public:
   ForwardOwningPointer() {}
-  ForwardOwningPointer(A *p, void (*del)(A *)) : p_{p}, deleter_{del} {}
+  ForwardOwningPointer(A *p, void (*del)(A *), A *(*copy)(const A *))
+      : p_{p}, deleter_{del}, copier_{copy} {}
   ForwardOwningPointer(ForwardOwningPointer &&that)
-      : p_{that.p_}, deleter_{that.deleter_} {
+      : p_{that.p_}, deleter_{that.deleter_}, copier_{that.copier_} {
     that.p_ = nullptr;
   }
   ForwardOwningPointer &operator=(ForwardOwningPointer &&that) {
-    p_ = that.p_;
+    Reset(that.p_, that.deleter_, that.copier_);
     that.p_ = nullptr;
-    deleter_ = that.deleter_;
+    return *this;
+  }
+  ForwardOwningPointer(const ForwardOwningPointer &that)
+      : p_{that.copier_(that.p_)}, deleter_{that.deleter_},
+        copier_{that.copier_} {}
+  ForwardOwningPointer &operator=(const ForwardOwningPointer &that) {
+    Reset(that.copier_(that.p_), that.deleter_, that.copier_);
     return *this;
   }
   ~ForwardOwningPointer() {
@@ -161,14 +170,16 @@ public:
     }
     p_ = p;
   }
-  void Reset(A *p, void (*del)(A *)) {
+  void Reset(A *p, void (*del)(A *), A *(*copy)(A *)) {
     Reset(p);
     deleter_ = del;
+    copier_ = copy;
   }
 
 private:
   A *p_{nullptr};
   void (*deleter_)(A *){nullptr};
+  A *(*copier_)(A *){nullptr};
 };
 } // namespace Fortran::common
 #endif // FORTRAN_COMMON_INDIRECTION_H_

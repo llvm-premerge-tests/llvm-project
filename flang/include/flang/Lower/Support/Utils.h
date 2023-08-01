@@ -41,7 +41,11 @@ const A &removeIndirection(const A &a) {
   return a;
 }
 template <typename A>
-const A &removeIndirection(const Fortran::common::Indirection<A> &a) {
+const A &removeIndirection(const Fortran::common::Indirection<A, false> &a) {
+  return a.value();
+}
+template <typename A>
+const A &removeIndirection(const Fortran::common::Indirection<A, true> &a) {
   return a.value();
 }
 

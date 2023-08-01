@@ -508,7 +508,7 @@ bool Semantics::Perform() {
   // (e.g., __builtin_team_type) are available to semantics, esp. for
   // intrinsic checking.
   if (!program_.v.empty()) {
-    const auto *frontModule{std::get_if<common::Indirection<parser::Module>>(
+    const auto *frontModule{std::get_if<parser::Indirection<parser::Module>>(
         &program_.v.front().u)};
     if (frontModule &&
         (std::get<parser::Statement<parser::ModuleStmt>>(frontModule->value().t)

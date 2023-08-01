@@ -8,7 +8,6 @@
 
 #include "flang/Parser/parse-tree.h"
 #include "flang/Common/idioms.h"
-#include "flang/Common/indirection.h"
 #include "flang/Parser/tools.h"
 #include "flang/Parser/user-state.h"
 #include "llvm/Support/raw_ostream.h"
@@ -36,8 +35,7 @@ bool Designator::EndsInBareName() const {
       common::visitors{
           [](const DataRef &dr) {
             return std::holds_alternative<Name>(dr.u) ||
-                std::holds_alternative<common::Indirection<StructureComponent>>(
-                    dr.u);
+                std::holds_alternative<Indirection<StructureComponent>>(dr.u);
           },
           [](const Substring &) { return false; },
       },
@@ -49,25 +47,24 @@ DataRef::DataRef(std::list<PartRef> &&prl) : u{std::move(prl.front().name)} {
   for (bool first{true}; !prl.empty(); first = false, prl.pop_front()) {
     PartRef &pr{prl.front()};
     if (!first) {
-      u = common::Indirection<StructureComponent>::Make(
+      u = Indirection<StructureComponent>::Make(
           std::move(*this), std::move(pr.name));
     }
     if (!pr.subscripts.empty()) {
-      u = common::Indirection<ArrayElement>::Make(
+      u = Indirection<ArrayElement>::Make(
           std::move(*this), std::move(pr.subscripts));
     }
     if (pr.imageSelector) {
-      u = common::Indirection<CoindexedNamedObject>::Make(
+      u = Indirection<CoindexedNamedObject>::Make(
           std::move(*this), std::move(*pr.imageSelector));
     }
   }
 }
 
 // R1001 - R1022 expression
-Expr::Expr(Designator &&x)
-    : u{common::Indirection<Designator>::Make(std::move(x))} {}
+Expr::Expr(Designator &&x) : u{Indirection<Designator>::Make(std::move(x))} {}
 Expr::Expr(FunctionReference &&x)
-    : u{common::Indirection<FunctionReference>::Make(std::move(x))} {}
+    : u{Indirection<FunctionReference>::Make(std::move(x))} {}
 
 const std::optional<LoopControl> &DoConstruct::GetLoopControl() const {
   const NonLabelDoStmt &doStmt{
@@ -97,20 +94,23 @@ static Designator MakeArrayElementRef(
   ArrayElement arrayElement{DataRef{Name{name}}, std::list<SectionSubscript>{}};
   for (Expr &expr : subscripts) {
     arrayElement.subscripts.push_back(
-        SectionSubscript{Integer{common::Indirection{std::move(expr)}}});
+        SectionSubscript{Integer{Indirection<Expr>{std::move(expr)}}});
   }
-  return Designator{DataRef{common::Indirection{std::move(arrayElement)}}};
+  return Designator{
+      DataRef{Indirection<ArrayElement>{std::move(arrayElement)}}};
 }
 
 static Designator MakeArrayElementRef(
     StructureComponent &&sc, std::list<Expr> &&subscripts) {
-  ArrayElement arrayElement{DataRef{common::Indirection{std::move(sc)}},
+  ArrayElement arrayElement{
+      DataRef{Indirection<StructureComponent>{std::move(sc)}},
       std::list<SectionSubscript>{}};
   for (Expr &expr : subscripts) {
     arrayElement.subscripts.push_back(
-        SectionSubscript{Integer{common::Indirection{std::move(expr)}}});
+        SectionSubscript{Integer{Indirection<Expr>{std::move(expr)}}});
   }
-  return Designator{DataRef{common::Indirection{std::move(arrayElement)}}};
+  return Designator{
+      DataRef{Indirection<ArrayElement>{std::move(arrayElement)}}};
 }
 
 // Set source in any type of node that has it.
@@ -122,19 +122,18 @@ template <typename T> T WithSource(CharBlock source, T &&x) {
 static Expr ActualArgToExpr(ActualArgSpec &arg) {
   return common::visit(
       common::visitors{
-          [&](common::Indirection<Expr> &y) { return std::move(y.value()); },
-          [&](common::Indirection<Variable> &y) {
-            return common::visit(
-                common::visitors{
-                    [&](common::Indirection<Designator> &z) {
-                      return WithSource(
-                          z.value().source, Expr{std::move(z.value())});
-                    },
-                    [&](common::Indirection<FunctionReference> &z) {
-                      return WithSource(
-                          z.value().source, Expr{std::move(z.value())});
-                    },
-                },
+          [&](Indirection<Expr> &y) { return std::move(y.value()); },
+          [&](Indirection<Variable> &y) {
+            return common::visit(common::visitors{
+                                     [&](Indirection<Designator> &z) {
+                                       return WithSource(z.value().source,
+                                           Expr{std::move(z.value())});
+                                     },
+                                     [&](Indirection<FunctionReference> &z) {
+                                       return WithSource(z.value().source,
+                                           Expr{std::move(z.value())});
+                                     },
+                                 },
                 y.value().u);
           },
           [&](auto &) -> Expr { common::die("unexpected type"); },
@@ -163,7 +162,7 @@ Designator FunctionReference::ConvertToArrayElementRef() {
 
 StructureConstructor FunctionReference::ConvertToStructureConstructor(
     const semantics::DerivedTypeSpec &derived) {
-  Name name{std::get<parser::Name>(std::get<ProcedureDesignator>(v.t).u)};
+  Name name{std::get<Name>(std::get<ProcedureDesignator>(v.t).u)};
   std::list<ComponentSpec> components;
   for (auto &arg : std::get<std::list<ActualArgSpec>>(v.t)) {
     std::optional<Keyword> keyword;
@@ -180,7 +179,7 @@ StructureConstructor FunctionReference::ConvertToStructureConstructor(
 
 StructureConstructor ArrayElement::ConvertToStructureConstructor(
     const semantics::DerivedTypeSpec &derived) {
-  Name name{std::get<parser::Name>(base.u)};
+  Name name{std::get<Name>(base.u)};
   std::list<ComponentSpec> components;
   for (auto &subscript : subscripts) {
     components.emplace_back(std::optional<Keyword>{},
@@ -230,22 +229,21 @@ Statement<ActionStmt> StmtFunctionStmt::ConvertToAssignment() {
       Call{ProcedureDesignator{Name{funcName.source, funcName.symbol}},
           std::move(actuals)}};
   funcRef.source = source;
-  auto variable{Variable{common::Indirection{std::move(funcRef)}}};
+  auto variable{Variable{Indirection<FunctionReference>{std::move(funcRef)}}};
   return Statement{std::nullopt,
-      ActionStmt{common::Indirection{
+      ActionStmt{Indirection<AssignmentStmt>{
           AssignmentStmt{std::move(variable), std::move(funcExpr)}}}};
 }
 
 CharBlock Variable::GetSource() const {
-  return common::visit(
-      common::visitors{
-          [&](const common::Indirection<Designator> &des) {
-            return des.value().source;
-          },
-          [&](const common::Indirection<parser::FunctionReference> &call) {
-            return call.value().source;
-          },
-      },
+  return common::visit(common::visitors{
+                           [&](const Indirection<Designator> &des) {
+                             return des.value().source;
+                           },
+                           [&](const Indirection<FunctionReference> &call) {
+                             return call.value().source;
+                           },
+                       },
       u);
 }
 

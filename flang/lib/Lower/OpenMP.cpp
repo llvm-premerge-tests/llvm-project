@@ -2644,8 +2644,8 @@ static bool checkForSingleVariableOnRHS(
   // Check if the assignment statement has a single variable on the RHS
   const Fortran::parser::Expr &expr{
       std::get<Fortran::parser::Expr>(assignmentStmt.t)};
-  const Fortran::common::Indirection<Fortran::parser::Designator> *designator =
-      std::get_if<Fortran::common::Indirection<Fortran::parser::Designator>>(
+  const Fortran::parser::Indirection<Fortran::parser::Designator> *designator =
+      std::get_if<Fortran::parser::Indirection<Fortran::parser::Designator>>(
           &expr.u);
   const Fortran::parser::Name *name =
       designator

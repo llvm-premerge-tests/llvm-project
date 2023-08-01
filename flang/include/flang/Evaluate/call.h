@@ -220,6 +220,7 @@ public:
         hasAlternateReturns_{hasAlternateReturns} {}
   ~ProcedureRef();
   static void Deleter(ProcedureRef *);
+  static ProcedureRef *Copier(ProcedureRef *);
 
   ProcedureDesignator &proc() { return proc_; }
   const ProcedureDesignator &proc() const { return proc_; }

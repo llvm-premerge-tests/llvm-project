@@ -237,11 +237,10 @@ std::enable_if_t<ConstraintTrait<A>> Walk(A &x, M &mutator) {
 }
 
 template <typename T, typename V>
-void Walk(const common::Indirection<T> &x, V &visitor) {
+void Walk(const Indirection<T> &x, V &visitor) {
   Walk(x.value(), visitor);
 }
-template <typename T, typename M>
-void Walk(common::Indirection<T> &x, M &mutator) {
+template <typename T, typename M> void Walk(Indirection<T> &x, M &mutator) {
   Walk(x.value(), mutator);
 }
 

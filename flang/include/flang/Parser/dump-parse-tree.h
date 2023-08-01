@@ -792,10 +792,8 @@ public:
   template <typename T> bool Pre(const UnlabeledStatement<T> &) { return true; }
   template <typename T> void Post(const UnlabeledStatement<T> &) {}
 
-  template <typename T> bool Pre(const common::Indirection<T> &) {
-    return true;
-  }
-  template <typename T> void Post(const common::Indirection<T> &) {}
+  template <typename T> bool Pre(const Indirection<T> &) { return true; }
+  template <typename T> void Post(const Indirection<T> &) {}
 
   template <typename A> bool Pre(const Scalar<A> &) {
     Prefix("Scalar");

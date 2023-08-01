@@ -136,7 +136,7 @@ bool DataInitializationCompiler<DSV>::Scan(
     const parser::DataStmtObject &object) {
   return common::visit(
       common::visitors{
-          [&](const common::Indirection<parser::Variable> &var) {
+          [&](const parser::Indirection<parser::Variable> &var) {
             return Scan(var.value());
           },
           [&](const parser::DataImpliedDo &ido) { return Scan(ido); },
@@ -241,9 +241,9 @@ bool DataInitializationCompiler<DSV>::Scan(
     const parser::DataIDoObject &object) {
   return common::visit(
       common::visitors{
-          [&](const parser::Scalar<common::Indirection<parser::Designator>>
+          [&](const parser::Scalar<parser::Indirection<parser::Designator>>
                   &var) { return Scan(var.thing.value()); },
-          [&](const common::Indirection<parser::DataImpliedDo> &ido) {
+          [&](const parser::Indirection<parser::DataImpliedDo> &ido) {
             return Scan(ido.value());
           },
       },
@@ -488,8 +488,8 @@ void AccumulateDataInitializations(DataInitializations &inits,
 
 void AccumulateDataInitializations(DataInitializations &inits,
     evaluate::ExpressionAnalyzer &exprAnalyzer, const Symbol &symbol,
-    const std::list<common::Indirection<parser::DataStmtValue>> &list) {
-  DataInitializationCompiler<common::Indirection<parser::DataStmtValue>>
+    const std::list<parser::Indirection<parser::DataStmtValue>> &list) {
+  DataInitializationCompiler<parser::Indirection<parser::DataStmtValue>>
       scanner{inits, exprAnalyzer, list};
   if (scanner.Scan(symbol) && scanner.HasSurplusValues()) {
     exprAnalyzer.context().Say(

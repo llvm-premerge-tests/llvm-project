@@ -121,8 +121,8 @@ template <bool CUF_KERNEL> struct ActionStmtChecker {
           "Statement may not appear in device code"_err_en_US};
     }
   }
-  template <typename A>
-  static MaybeMsg WhyNotOk(const common::Indirection<A> &x) {
+  template <typename A, bool COPY>
+  static MaybeMsg WhyNotOk(const common::Indirection<A, COPY> &x) {
     return WhyNotOk(x.value());
   }
   template <typename... As>
@@ -232,17 +232,17 @@ private:
     common::visit(
         common::visitors{
             [&](const parser::ExecutableConstruct &x) { Check(x); },
-            [&](const parser::Statement<common::Indirection<parser::EntryStmt>>
+            [&](const parser::Statement<parser::Indirection<parser::EntryStmt>>
                     &x) {
               context_.Say(x.source,
                   "Device code may not contain an ENTRY statement"_err_en_US);
             },
-            [](const parser::Statement<common::Indirection<parser::FormatStmt>>
+            [](const parser::Statement<parser::Indirection<parser::FormatStmt>>
                     &) {},
-            [](const parser::Statement<common::Indirection<parser::DataStmt>>
+            [](const parser::Statement<parser::Indirection<parser::DataStmt>>
                     &) {},
             [](const parser::Statement<
-                common::Indirection<parser::NamelistStmt>> &) {},
+                parser::Indirection<parser::NamelistStmt>> &) {},
             [](const parser::ErrorRecovery &) {},
         },
         epc.u);
@@ -253,17 +253,17 @@ private:
             [&](const parser::Statement<parser::ActionStmt> &stmt) {
               Check(stmt.statement, stmt.source);
             },
-            [&](const common::Indirection<parser::DoConstruct> &x) {
+            [&](const parser::Indirection<parser::DoConstruct> &x) {
               if (const std::optional<parser::LoopControl> &control{
                       x.value().GetLoopControl()}) {
                 common::visit([&](const auto &y) { Check(y); }, control->u);
               }
               Check(std::get<parser::Block>(x.value().t));
             },
-            [&](const common::Indirection<parser::BlockConstruct> &x) {
+            [&](const parser::Indirection<parser::BlockConstruct> &x) {
               Check(std::get<parser::Block>(x.value().t));
             },
-            [&](const common::Indirection<parser::IfConstruct> &x) {
+            [&](const parser::Indirection<parser::IfConstruct> &x) {
               Check(x.value());
             },
             [&](const auto &x) {
@@ -376,7 +376,7 @@ static int DoConstructTightNesting(
     if (const auto *execConstruct{
             std::get_if<parser::ExecutableConstruct>(&innerBlock->front().u)}) {
       if (const auto *next{
-              std::get_if<common::Indirection<parser::DoConstruct>>(
+              std::get_if<parser::Indirection<parser::DoConstruct>>(
                   &execConstruct->u)}) {
         return 1 + DoConstructTightNesting(&next->value(), innerBlock);
       }

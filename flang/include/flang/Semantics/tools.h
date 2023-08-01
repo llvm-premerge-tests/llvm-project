@@ -293,7 +293,8 @@ public:
   const SomeExpr *Get(const parser::AllocateObject &);
   const SomeExpr *Get(const parser::PointerObject &);
 
-  template <typename T> const SomeExpr *Get(const common::Indirection<T> &x) {
+  template <typename T, bool COPY>
+  const SomeExpr *Get(const common::Indirection<T, COPY> &x) {
     return Get(x.value());
   }
   template <typename T> const SomeExpr *Get(const std::optional<T> &x) {
@@ -593,8 +594,8 @@ public:
   LabelEnforce(SemanticsContext &context, std::set<parser::Label> &&labels,
       parser::CharBlock constructSourcePosition, const char *construct)
       : context_{context}, labels_{labels},
-        constructSourcePosition_{constructSourcePosition}, construct_{
-                                                               construct} {}
+        constructSourcePosition_{constructSourcePosition},
+        construct_{construct} {}
   template <typename T> bool Pre(const T &) { return true; }
   template <typename T> bool Pre(const parser::Statement<T> &statement) {
     currentStatementSourcePosition_ = statement.source;

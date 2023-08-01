@@ -53,7 +53,7 @@ public:
 private:
   template <typename T> T *GetConstructIf(parser::ExecutionPartConstruct &x) {
     if (auto *y{std::get_if<parser::ExecutableConstruct>(&x.u)}) {
-      if (auto *z{std::get_if<common::Indirection<T>>(&y->u)}) {
+      if (auto *z{std::get_if<parser::Indirection<T>>(&y->u)}) {
         return &z->value();
       }
     }

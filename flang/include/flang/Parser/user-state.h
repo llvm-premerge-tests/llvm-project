@@ -112,12 +112,12 @@ struct StartNewSubprogram {
 };
 
 struct CapturedLabelDoStmt {
-  using resultType = Statement<common::Indirection<LabelDoStmt>>;
+  using resultType = Statement<Indirection<LabelDoStmt>>;
   static std::optional<resultType> Parse(ParseState &);
 };
 
 struct EndDoStmtForCapturedLabelDoStmt {
-  using resultType = Statement<common::Indirection<EndDoStmt>>;
+  using resultType = Statement<Indirection<EndDoStmt>>;
   static std::optional<resultType> Parse(ParseState &);
 };
 

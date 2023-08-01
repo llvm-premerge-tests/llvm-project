@@ -17,6 +17,17 @@
 // run-time I/O support library have been isolated into a distinct header file
 // (viz., format-specification.h).
 
+// Parse tree node class types do not, by default, have copy constructors
+// or copy assignment operators.  They are explicitly declared "= delete;
+// to make this clear, although a C++ compiler shouldn't default them anyway
+// due to the presence of explicitly defaulted move constructors and move
+// assignments.  This default behavior ensures that the parser is always
+// correctly using fast move semantics and can't be mysteriously slowed
+// down by an unintentional deep copy.
+
+// Include this header with ENABLE_PARSE_TREE_COPYING defined in order
+// to enable copy constructors and copy assignment operators.
+
 #include "char-block.h"
 #include "characters.h"
 #include "format-specification.h"
@@ -42,11 +53,6 @@
 // prevents the introduction of what would be a viral requirement to include
 // std::monostate among most std::variant<> discriminated union members.
 
-// Parse tree node class types do not have copy constructors or copy assignment
-// operators.  They are explicitly declared "= delete;" to make this clear,
-// although a C++ compiler wouldn't default them anyway due to the presence
-// of explicitly defaulted move constructors and move assignments.
-
 CLASS_TRAIT(EmptyTrait)
 CLASS_TRAIT(WrapperTrait)
 CLASS_TRAIT(UnionTrait)
@@ -70,14 +76,26 @@ struct GenericAssignmentWrapper; // forward definition, represent assignment
 class ProcedureRef; // forward definition, represents a CALL or function ref
 } // namespace Fortran::evaluate
 
+namespace Fortran::parser {
+
 // Most non-template classes in this file use these default definitions
 // for their move constructor and move assignment operator=, and disable
 // their copy constructor and copy assignment operator=.
+#ifdef ENABLE_PARSE_TREE_COPYING
+static constexpr bool isCopyingEnabled{true};
 #define COPY_AND_ASSIGN_BOILERPLATE(classname) \
   classname(classname &&) = default; \
+  classname(const classname &) = default; \
   classname &operator=(classname &&) = default; \
+  classname &operator=(const classname &) = default
+#else
+static constexpr bool isCopyingEnabled{false};
+#define COPY_AND_ASSIGN_BOILERPLATE(classname) \
+  classname(classname &&) = default; \
   classname(const classname &) = delete; \
+  classname &operator=(classname &&) = default; \
   classname &operator=(const classname &) = delete
+#endif
 
 // Almost all classes in this file have no default constructor.
 #define BOILERPLATE(classname) \
@@ -124,8 +142,6 @@ class ProcedureRef; // forward definition, represents a CALL or function ref
   struct classname { \
     WRAPPER_CLASS_BOILERPLATE(classname, type); \
   }
-
-namespace Fortran::parser {
 
 // These are the unavoidable recursively-defined productions of Fortran.
 // Some references to the representations of their parses require
@@ -270,6 +286,9 @@ struct CUFKernelDoConstruct;
 // Cooked character stream locations
 using Location = const char *;
 
+template <typename A>
+using Indirection = common::Indirection<A, isCopyingEnabled>;
+
 // A parse tree node with provenance only
 struct Verbatim {
   // Allow a no-arg constructor for Verbatim so parsers can return `RESULT{}`.
@@ -286,48 +305,43 @@ struct Verbatim {
 // scalar-xyz, constant-xzy, int-xzy, default-char-xyz, & logical-xyz.
 template <typename A> struct Scalar {
   using ConstraintTrait = std::true_type;
-  Scalar(Scalar &&that) = default;
   Scalar(A &&that) : thing(std::move(that)) {}
-  Scalar &operator=(Scalar &&) = default;
+  BOILERPLATE(Scalar);
   A thing;
 };
 
 template <typename A> struct Constant {
   using ConstraintTrait = std::true_type;
-  Constant(Constant &&that) = default;
   Constant(A &&that) : thing(std::move(that)) {}
-  Constant &operator=(Constant &&) = default;
+  BOILERPLATE(Constant);
   A thing;
 };
 
 template <typename A> struct Integer {
   using ConstraintTrait = std::true_type;
-  Integer(Integer &&that) = default;
   Integer(A &&that) : thing(std::move(that)) {}
-  Integer &operator=(Integer &&) = default;
+  BOILERPLATE(Integer);
   A thing;
 };
 
 template <typename A> struct Logical {
   using ConstraintTrait = std::true_type;
-  Logical(Logical &&that) = default;
   Logical(A &&that) : thing(std::move(that)) {}
-  Logical &operator=(Logical &&) = default;
+  BOILERPLATE(Logical);
   A thing;
 };
 
 template <typename A> struct DefaultChar {
   using ConstraintTrait = std::true_type;
-  DefaultChar(DefaultChar &&that) = default;
   DefaultChar(A &&that) : thing(std::move(that)) {}
-  DefaultChar &operator=(DefaultChar &&) = default;
+  BOILERPLATE(DefaultChar);
   A thing;
 };
 
-using LogicalExpr = Logical<common::Indirection<Expr>>; // R1024
-using DefaultCharExpr = DefaultChar<common::Indirection<Expr>>; // R1025
-using IntExpr = Integer<common::Indirection<Expr>>; // R1026
-using ConstantExpr = Constant<common::Indirection<Expr>>; // R1029
+using LogicalExpr = Logical<Indirection<Expr>>; // R1024
+using DefaultCharExpr = DefaultChar<Indirection<Expr>>; // R1025
+using IntExpr = Integer<Indirection<Expr>>; // R1026
+using ConstantExpr = Constant<Indirection<Expr>>; // R1029
 using IntConstantExpr = Integer<ConstantExpr>; // R1031
 using ScalarLogicalExpr = Scalar<LogicalExpr>;
 using ScalarIntExpr = Scalar<IntExpr>;
@@ -343,13 +357,15 @@ using Label = common::Label; // validated later, must be in [1..99999]
 // A wrapper for xzy-stmt productions that are statements, so that
 // source provenances and labels have a uniform representation.
 template <typename A> struct UnlabeledStatement {
-  explicit UnlabeledStatement(A &&s) : statement(std::move(s)) {}
+  UnlabeledStatement(A &&s) : statement(std::move(s)) {}
+  COPY_AND_ASSIGN_BOILERPLATE(UnlabeledStatement);
   CharBlock source;
   A statement;
 };
 template <typename A> struct Statement : public UnlabeledStatement<A> {
   Statement(std::optional<long> &&lab, A &&s)
       : UnlabeledStatement<A>{std::move(s)}, label(std::move(lab)) {}
+  COPY_AND_ASSIGN_BOILERPLATE(Statement);
   std::optional<Label> label;
 };
 
@@ -366,19 +382,17 @@ EMPTY_CLASS(ErrorRecovery);
 // Extension: CUDA data attribute statement
 struct OtherSpecificationStmt {
   UNION_CLASS_BOILERPLATE(OtherSpecificationStmt);
-  std::variant<common::Indirection<AccessStmt>,
-      common::Indirection<AllocatableStmt>,
-      common::Indirection<AsynchronousStmt>, common::Indirection<BindStmt>,
-      common::Indirection<CodimensionStmt>, common::Indirection<ContiguousStmt>,
-      common::Indirection<DimensionStmt>, common::Indirection<ExternalStmt>,
-      common::Indirection<IntentStmt>, common::Indirection<IntrinsicStmt>,
-      common::Indirection<NamelistStmt>, common::Indirection<OptionalStmt>,
-      common::Indirection<PointerStmt>, common::Indirection<ProtectedStmt>,
-      common::Indirection<SaveStmt>, common::Indirection<TargetStmt>,
-      common::Indirection<ValueStmt>, common::Indirection<VolatileStmt>,
-      common::Indirection<CommonStmt>, common::Indirection<EquivalenceStmt>,
-      common::Indirection<BasedPointerStmt>,
-      common::Indirection<CUDAAttributesStmt>>
+  std::variant<Indirection<AccessStmt>, Indirection<AllocatableStmt>,
+      Indirection<AsynchronousStmt>, Indirection<BindStmt>,
+      Indirection<CodimensionStmt>, Indirection<ContiguousStmt>,
+      Indirection<DimensionStmt>, Indirection<ExternalStmt>,
+      Indirection<IntentStmt>, Indirection<IntrinsicStmt>,
+      Indirection<NamelistStmt>, Indirection<OptionalStmt>,
+      Indirection<PointerStmt>, Indirection<ProtectedStmt>,
+      Indirection<SaveStmt>, Indirection<TargetStmt>, Indirection<ValueStmt>,
+      Indirection<VolatileStmt>, Indirection<CommonStmt>,
+      Indirection<EquivalenceStmt>, Indirection<BasedPointerStmt>,
+      Indirection<CUDAAttributesStmt>>
       u;
 };
 
@@ -388,18 +402,15 @@ struct OtherSpecificationStmt {
 //        other-specification-stmt | type-declaration-stmt
 struct SpecificationConstruct {
   UNION_CLASS_BOILERPLATE(SpecificationConstruct);
-  std::variant<common::Indirection<DerivedTypeDef>,
-      common::Indirection<EnumDef>, Statement<common::Indirection<GenericStmt>>,
-      common::Indirection<InterfaceBlock>,
-      Statement<common::Indirection<ParameterStmt>>,
-      Statement<common::Indirection<OldParameterStmt>>,
-      Statement<common::Indirection<ProcedureDeclarationStmt>>,
+  std::variant<Indirection<DerivedTypeDef>, Indirection<EnumDef>,
+      Statement<Indirection<GenericStmt>>, Indirection<InterfaceBlock>,
+      Statement<Indirection<ParameterStmt>>,
+      Statement<Indirection<OldParameterStmt>>,
+      Statement<Indirection<ProcedureDeclarationStmt>>,
       Statement<OtherSpecificationStmt>,
-      Statement<common::Indirection<TypeDeclarationStmt>>,
-      common::Indirection<StructureDef>,
-      common::Indirection<OpenACCDeclarativeConstruct>,
-      common::Indirection<OpenMPDeclarativeConstruct>,
-      common::Indirection<CompilerDirective>>
+      Statement<Indirection<TypeDeclarationStmt>>, Indirection<StructureDef>,
+      Indirection<OpenACCDeclarativeConstruct>,
+      Indirection<OpenMPDeclarativeConstruct>, Indirection<CompilerDirective>>
       u;
 };
 
@@ -407,12 +418,11 @@ struct SpecificationConstruct {
 //         implicit-stmt | parameter-stmt | format-stmt | entry-stmt
 struct ImplicitPartStmt {
   UNION_CLASS_BOILERPLATE(ImplicitPartStmt);
-  std::variant<Statement<common::Indirection<ImplicitStmt>>,
-      Statement<common::Indirection<ParameterStmt>>,
-      Statement<common::Indirection<OldParameterStmt>>,
-      Statement<common::Indirection<FormatStmt>>,
-      Statement<common::Indirection<EntryStmt>>,
-      common::Indirection<CompilerDirective>>
+  std::variant<Statement<Indirection<ImplicitStmt>>,
+      Statement<Indirection<ParameterStmt>>,
+      Statement<Indirection<OldParameterStmt>>,
+      Statement<Indirection<FormatStmt>>, Statement<Indirection<EntryStmt>>,
+      Indirection<CompilerDirective>>
       u;
 };
 
@@ -424,10 +434,9 @@ WRAPPER_CLASS(ImplicitPart, std::list<ImplicitPartStmt>);
 //        entry-stmt | stmt-function-stmt
 struct DeclarationConstruct {
   UNION_CLASS_BOILERPLATE(DeclarationConstruct);
-  std::variant<SpecificationConstruct, Statement<common::Indirection<DataStmt>>,
-      Statement<common::Indirection<FormatStmt>>,
-      Statement<common::Indirection<EntryStmt>>,
-      Statement<common::Indirection<StmtFunctionStmt>>, ErrorRecovery>
+  std::variant<SpecificationConstruct, Statement<Indirection<DataStmt>>,
+      Statement<Indirection<FormatStmt>>, Statement<Indirection<EntryStmt>>,
+      Statement<Indirection<StmtFunctionStmt>>, ErrorRecovery>
       u;
 };
 
@@ -440,9 +449,9 @@ struct SpecificationPart {
   TUPLE_CLASS_BOILERPLATE(SpecificationPart);
   std::tuple<std::list<OpenACCDeclarativeConstruct>,
       std::list<OpenMPDeclarativeConstruct>,
-      std::list<common::Indirection<CompilerDirective>>,
-      std::list<Statement<common::Indirection<UseStmt>>>,
-      std::list<Statement<common::Indirection<ImportStmt>>>, ImplicitPart,
+      std::list<Indirection<CompilerDirective>>,
+      std::list<Statement<Indirection<UseStmt>>>,
+      std::list<Statement<Indirection<ImportStmt>>>, ImplicitPart,
       std::list<DeclarationConstruct>>
       t;
 };
@@ -450,8 +459,8 @@ struct SpecificationPart {
 // R512 internal-subprogram -> function-subprogram | subroutine-subprogram
 struct InternalSubprogram {
   UNION_CLASS_BOILERPLATE(InternalSubprogram);
-  std::variant<common::Indirection<FunctionSubprogram>,
-      common::Indirection<SubroutineSubprogram>>
+  std::variant<Indirection<FunctionSubprogram>,
+      Indirection<SubroutineSubprogram>>
       u;
 };
 
@@ -482,28 +491,23 @@ EMPTY_CLASS(FailImageStmt);
 //        wait-stmt | where-stmt | write-stmt | computed-goto-stmt | forall-stmt
 struct ActionStmt {
   UNION_CLASS_BOILERPLATE(ActionStmt);
-  std::variant<common::Indirection<AllocateStmt>,
-      common::Indirection<AssignmentStmt>, common::Indirection<BackspaceStmt>,
-      common::Indirection<CallStmt>, common::Indirection<CloseStmt>,
-      ContinueStmt, common::Indirection<CycleStmt>,
-      common::Indirection<DeallocateStmt>, common::Indirection<EndfileStmt>,
-      common::Indirection<EventPostStmt>, common::Indirection<EventWaitStmt>,
-      common::Indirection<ExitStmt>, FailImageStmt,
-      common::Indirection<FlushStmt>, common::Indirection<FormTeamStmt>,
-      common::Indirection<GotoStmt>, common::Indirection<IfStmt>,
-      common::Indirection<InquireStmt>, common::Indirection<LockStmt>,
-      common::Indirection<NullifyStmt>, common::Indirection<OpenStmt>,
-      common::Indirection<PointerAssignmentStmt>,
-      common::Indirection<PrintStmt>, common::Indirection<ReadStmt>,
-      common::Indirection<ReturnStmt>, common::Indirection<RewindStmt>,
-      common::Indirection<StopStmt>, common::Indirection<SyncAllStmt>,
-      common::Indirection<SyncImagesStmt>, common::Indirection<SyncMemoryStmt>,
-      common::Indirection<SyncTeamStmt>, common::Indirection<UnlockStmt>,
-      common::Indirection<WaitStmt>, common::Indirection<WhereStmt>,
-      common::Indirection<WriteStmt>, common::Indirection<ComputedGotoStmt>,
-      common::Indirection<ForallStmt>, common::Indirection<ArithmeticIfStmt>,
-      common::Indirection<AssignStmt>, common::Indirection<AssignedGotoStmt>,
-      common::Indirection<PauseStmt>>
+  std::variant<Indirection<AllocateStmt>, Indirection<AssignmentStmt>,
+      Indirection<BackspaceStmt>, Indirection<CallStmt>, Indirection<CloseStmt>,
+      ContinueStmt, Indirection<CycleStmt>, Indirection<DeallocateStmt>,
+      Indirection<EndfileStmt>, Indirection<EventPostStmt>,
+      Indirection<EventWaitStmt>, Indirection<ExitStmt>, FailImageStmt,
+      Indirection<FlushStmt>, Indirection<FormTeamStmt>, Indirection<GotoStmt>,
+      Indirection<IfStmt>, Indirection<InquireStmt>, Indirection<LockStmt>,
+      Indirection<NullifyStmt>, Indirection<OpenStmt>,
+      Indirection<PointerAssignmentStmt>, Indirection<PrintStmt>,
+      Indirection<ReadStmt>, Indirection<ReturnStmt>, Indirection<RewindStmt>,
+      Indirection<StopStmt>, Indirection<SyncAllStmt>,
+      Indirection<SyncImagesStmt>, Indirection<SyncMemoryStmt>,
+      Indirection<SyncTeamStmt>, Indirection<UnlockStmt>, Indirection<WaitStmt>,
+      Indirection<WhereStmt>, Indirection<WriteStmt>,
+      Indirection<ComputedGotoStmt>, Indirection<ForallStmt>,
+      Indirection<ArithmeticIfStmt>, Indirection<AssignStmt>,
+      Indirection<AssignedGotoStmt>, Indirection<PauseStmt>>
       u;
 };
 
@@ -515,22 +519,16 @@ struct ActionStmt {
 // (CUDA) CUF-kernel-do-construct
 struct ExecutableConstruct {
   UNION_CLASS_BOILERPLATE(ExecutableConstruct);
-  std::variant<Statement<ActionStmt>, common::Indirection<AssociateConstruct>,
-      common::Indirection<BlockConstruct>, common::Indirection<CaseConstruct>,
-      common::Indirection<ChangeTeamConstruct>,
-      common::Indirection<CriticalConstruct>,
-      Statement<common::Indirection<LabelDoStmt>>,
-      Statement<common::Indirection<EndDoStmt>>,
-      common::Indirection<DoConstruct>, common::Indirection<IfConstruct>,
-      common::Indirection<SelectRankConstruct>,
-      common::Indirection<SelectTypeConstruct>,
-      common::Indirection<WhereConstruct>, common::Indirection<ForallConstruct>,
-      common::Indirection<CompilerDirective>,
-      common::Indirection<OpenACCConstruct>,
-      common::Indirection<AccEndCombinedDirective>,
-      common::Indirection<OpenMPConstruct>,
-      common::Indirection<OmpEndLoopDirective>,
-      common::Indirection<CUFKernelDoConstruct>>
+  std::variant<Statement<ActionStmt>, Indirection<AssociateConstruct>,
+      Indirection<BlockConstruct>, Indirection<CaseConstruct>,
+      Indirection<ChangeTeamConstruct>, Indirection<CriticalConstruct>,
+      Statement<Indirection<LabelDoStmt>>, Statement<Indirection<EndDoStmt>>,
+      Indirection<DoConstruct>, Indirection<IfConstruct>,
+      Indirection<SelectRankConstruct>, Indirection<SelectTypeConstruct>,
+      Indirection<WhereConstruct>, Indirection<ForallConstruct>,
+      Indirection<CompilerDirective>, Indirection<OpenACCConstruct>,
+      Indirection<AccEndCombinedDirective>, Indirection<OpenMPConstruct>,
+      Indirection<OmpEndLoopDirective>, Indirection<CUFKernelDoConstruct>>
       u;
 };
 
@@ -539,10 +537,9 @@ struct ExecutableConstruct {
 // Extension (PGI/Intel): also accept NAMELIST in execution part
 struct ExecutionPartConstruct {
   UNION_CLASS_BOILERPLATE(ExecutionPartConstruct);
-  std::variant<ExecutableConstruct, Statement<common::Indirection<FormatStmt>>,
-      Statement<common::Indirection<EntryStmt>>,
-      Statement<common::Indirection<DataStmt>>,
-      Statement<common::Indirection<NamelistStmt>>, ErrorRecovery>
+  std::variant<ExecutableConstruct, Statement<Indirection<FormatStmt>>,
+      Statement<Indirection<EntryStmt>>, Statement<Indirection<DataStmt>>,
+      Statement<Indirection<NamelistStmt>>, ErrorRecovery>
       u;
 };
 
@@ -554,11 +551,10 @@ WRAPPER_CLASS(ExecutionPart, std::list<ExecutionPartConstruct>);
 // R503 external-subprogram -> function-subprogram | subroutine-subprogram
 struct ProgramUnit {
   UNION_CLASS_BOILERPLATE(ProgramUnit);
-  std::variant<common::Indirection<MainProgram>,
-      common::Indirection<FunctionSubprogram>,
-      common::Indirection<SubroutineSubprogram>, common::Indirection<Module>,
-      common::Indirection<Submodule>, common::Indirection<BlockData>,
-      common::Indirection<CompilerDirective>>
+  std::variant<Indirection<MainProgram>, Indirection<FunctionSubprogram>,
+      Indirection<SubroutineSubprogram>, Indirection<Module>,
+      Indirection<Submodule>, Indirection<BlockData>,
+      Indirection<CompilerDirective>>
       u;
 };
 
@@ -996,10 +992,10 @@ struct ComponentAttrSpec {
 };
 
 // R806 null-init -> function-reference   ... which must be NULL()
-WRAPPER_CLASS(NullInit, common::Indirection<Expr>);
+WRAPPER_CLASS(NullInit, Indirection<Expr>);
 
 // R744 initial-data-target -> designator
-using InitialDataTarget = common::Indirection<Designator>;
+using InitialDataTarget = Indirection<Designator>;
 
 // R743 component-initialization ->
 //        = constant-expr | => null-init | => initial-data-target
@@ -1009,7 +1005,7 @@ using InitialDataTarget = common::Indirection<Designator>;
 struct Initialization {
   UNION_CLASS_BOILERPLATE(Initialization);
   std::variant<ConstantExpr, NullInit, InitialDataTarget,
-      std::list<common::Indirection<DataStmtValue>>>
+      std::list<Indirection<DataStmtValue>>>
       u;
 };
 
@@ -1142,7 +1138,7 @@ struct TypeBoundProcedureStmt {
 //        GENERIC [, access-spec] :: generic-spec => binding-name-list
 struct TypeBoundGenericStmt {
   TUPLE_CLASS_BOILERPLATE(TypeBoundGenericStmt);
-  std::tuple<std::optional<AccessSpec>, common::Indirection<GenericSpec>,
+  std::tuple<std::optional<AccessSpec>, Indirection<GenericSpec>,
       std::list<Name>>
       t;
 };
@@ -1188,7 +1184,7 @@ struct DerivedTypeDef {
 // R758 component-data-source -> expr | data-target | proc-target
 // R1037 data-target -> expr
 // R1040 proc-target -> expr | procedure-name | proc-component-ref
-WRAPPER_CLASS(ComponentDataSource, common::Indirection<Expr>);
+WRAPPER_CLASS(ComponentDataSource, Indirection<Expr>);
 
 // R757 component-spec -> [keyword =] component-data-source
 struct ComponentSpec {
@@ -1234,9 +1230,7 @@ struct AcValue {
     std::tuple<ScalarIntExpr, ScalarIntExpr, std::optional<ScalarIntExpr>> t;
   };
   UNION_CLASS_BOILERPLATE(AcValue);
-  std::variant<Triplet, common::Indirection<Expr>,
-      common::Indirection<AcImpliedDo>>
-      u;
+  std::variant<Triplet, Indirection<Expr>, Indirection<AcImpliedDo>> u;
 };
 
 // R770 ac-spec -> type-spec :: | [type-spec ::] ac-value-list
@@ -1256,19 +1250,18 @@ WRAPPER_CLASS(ArrayConstructor, AcSpec);
 using DoVariable = Scalar<Integer<Name>>;
 
 template <typename VAR, typename BOUND> struct LoopBounds {
-  LoopBounds(LoopBounds &&that) = default;
   LoopBounds(
       VAR &&name, BOUND &&lower, BOUND &&upper, std::optional<BOUND> &&step)
       : name{std::move(name)}, lower{std::move(lower)}, upper{std::move(upper)},
         step{std::move(step)} {}
-  LoopBounds &operator=(LoopBounds &&) = default;
+  BOILERPLATE(LoopBounds);
   VAR name;
   BOUND lower, upper;
   std::optional<BOUND> step;
 };
 
 using ScalarName = Scalar<Name>;
-using ScalarExpr = Scalar<common::Indirection<Expr>>;
+using ScalarExpr = Scalar<Indirection<Expr>>;
 
 // R775 ac-implied-do-control ->
 //        [integer-type-spec ::] ac-do-variable = scalar-int-expr ,
@@ -1385,7 +1378,7 @@ struct TypeDeclarationStmt {
 
 // R828 access-id -> access-name | generic-spec
 // "access-name" is ambiguous with "generic-spec", so that's what's parsed
-WRAPPER_CLASS(AccessId, common::Indirection<GenericSpec>);
+WRAPPER_CLASS(AccessId, Indirection<GenericSpec>);
 
 // R827 access-stmt -> access-spec [[::] access-id-list]
 struct AccessStmt {
@@ -1436,7 +1429,7 @@ WRAPPER_CLASS(ContiguousStmt, std::list<ObjectName>);
 
 // R847 constant-subobject -> designator
 // R846 int-constant-subobject -> constant-subobject
-using ConstantSubobject = Constant<common::Indirection<Designator>>;
+using ConstantSubobject = Constant<Indirection<Designator>>;
 
 // Represents an analyzed expression
 using TypedExpr = common::ForwardOwningPointer<evaluate::GenericExprWrapper>;
@@ -1454,7 +1447,7 @@ struct DataStmtConstant {
   mutable TypedExpr typedExpr;
   std::variant<LiteralConstant, SignedIntLiteralConstant,
       SignedRealLiteralConstant, SignedComplexLiteralConstant, NullInit,
-      common::Indirection<Designator>, StructureConstructor>
+      Indirection<Designator>, StructureConstructor>
       u;
 };
 
@@ -1478,9 +1471,7 @@ struct DataStmtValue {
 //        array-element | scalar-structure-component | data-implied-do
 struct DataIDoObject {
   UNION_CLASS_BOILERPLATE(DataIDoObject);
-  std::variant<Scalar<common::Indirection<Designator>>,
-      common::Indirection<DataImpliedDo>>
-      u;
+  std::variant<Scalar<Indirection<Designator>>, Indirection<DataImpliedDo>> u;
 };
 
 // R840 data-implied-do ->
@@ -1498,7 +1489,7 @@ struct DataImpliedDo {
 // R839 data-stmt-object -> variable | data-implied-do
 struct DataStmtObject {
   UNION_CLASS_BOILERPLATE(DataStmtObject);
-  std::variant<common::Indirection<Variable>, DataImpliedDo> u;
+  std::variant<Indirection<Variable>, DataImpliedDo> u;
 };
 
 // R838 data-stmt-set -> data-stmt-object-list / data-stmt-value-list /
@@ -1606,7 +1597,7 @@ struct CommonStmt {
 };
 
 // R872 equivalence-object -> variable-name | array-element | substring
-WRAPPER_CLASS(EquivalenceObject, common::Indirection<Designator>);
+WRAPPER_CLASS(EquivalenceObject, Indirection<Designator>);
 
 // R870 equivalence-stmt -> EQUIVALENCE equivalence-set-list
 // R871 equivalence-set -> ( equivalence-object , equivalence-object-list )
@@ -1640,13 +1631,13 @@ struct SectionSubscript {
 using Cosubscript = ScalarIntExpr;
 
 // R1115 team-value -> scalar-expr
-WRAPPER_CLASS(TeamValue, Scalar<common::Indirection<Expr>>);
+WRAPPER_CLASS(TeamValue, Scalar<Indirection<Expr>>);
 
 // R926 image-selector-spec ->
 //        STAT = stat-variable | TEAM = team-value |
 //        TEAM_NUMBER = scalar-int-expr
 struct ImageSelectorSpec {
-  WRAPPER_CLASS(Stat, Scalar<Integer<common::Indirection<Variable>>>);
+  WRAPPER_CLASS(Stat, Scalar<Integer<Indirection<Variable>>>);
   WRAPPER_CLASS(Team_Number, ScalarIntExpr);
   UNION_CLASS_BOILERPLATE(ImageSelectorSpec);
   std::variant<Stat, TeamValue, Team_Number> u;
@@ -1663,7 +1654,7 @@ struct ImageSelector {
 struct Expr {
   UNION_CLASS_BOILERPLATE(Expr);
 
-  WRAPPER_CLASS(IntrinsicUnary, common::Indirection<Expr>);
+  WRAPPER_CLASS(IntrinsicUnary, Indirection<Expr>);
   struct Parentheses : public IntrinsicUnary {
     using IntrinsicUnary::IntrinsicUnary;
   };
@@ -1677,16 +1668,16 @@ struct Expr {
     using IntrinsicUnary::IntrinsicUnary;
   };
 
-  WRAPPER_CLASS(PercentLoc, common::Indirection<Variable>); // %LOC(v) extension
+  WRAPPER_CLASS(PercentLoc, Indirection<Variable>); // %LOC(v) extension
 
   struct DefinedUnary {
     TUPLE_CLASS_BOILERPLATE(DefinedUnary);
-    std::tuple<DefinedOpName, common::Indirection<Expr>> t;
+    std::tuple<DefinedOpName, Indirection<Expr>> t;
   };
 
   struct IntrinsicBinary {
     TUPLE_CLASS_BOILERPLATE(IntrinsicBinary);
-    std::tuple<common::Indirection<Expr>, common::Indirection<Expr>> t;
+    std::tuple<Indirection<Expr>, Indirection<Expr>> t;
   };
   struct Power : public IntrinsicBinary {
     using IntrinsicBinary::IntrinsicBinary;
@@ -1744,9 +1735,7 @@ struct Expr {
 
   struct DefinedBinary {
     TUPLE_CLASS_BOILERPLATE(DefinedBinary);
-    std::tuple<DefinedOpName, common::Indirection<Expr>,
-        common::Indirection<Expr>>
-        t;
+    std::tuple<DefinedOpName, Indirection<Expr>, Indirection<Expr>> t;
   };
 
   explicit Expr(Designator &&);
@@ -1756,12 +1745,12 @@ struct Expr {
 
   CharBlock source;
 
-  std::variant<common::Indirection<CharLiteralConstantSubstring>,
-      LiteralConstant, common::Indirection<Designator>, ArrayConstructor,
-      StructureConstructor, common::Indirection<FunctionReference>, Parentheses,
-      UnaryPlus, Negate, NOT, PercentLoc, DefinedUnary, Power, Multiply, Divide,
-      Add, Subtract, Concat, LT, LE, EQ, NE, GE, GT, AND, OR, EQV, NEQV,
-      DefinedBinary, ComplexConstructor, common::Indirection<SubstringInquiry>>
+  std::variant<Indirection<CharLiteralConstantSubstring>, LiteralConstant,
+      Indirection<Designator>, ArrayConstructor, StructureConstructor,
+      Indirection<FunctionReference>, Parentheses, UnaryPlus, Negate, NOT,
+      PercentLoc, DefinedUnary, Power, Multiply, Divide, Add, Subtract, Concat,
+      LT, LE, EQ, NE, GE, GT, AND, OR, EQV, NEQV, DefinedBinary,
+      ComplexConstructor, Indirection<SubstringInquiry>>
       u;
 };
 
@@ -1770,8 +1759,8 @@ struct PartRef {
   BOILERPLATE(PartRef);
   PartRef(Name &&n, std::list<SectionSubscript> &&ss,
       std::optional<ImageSelector> &&is)
-      : name{std::move(n)},
-        subscripts(std::move(ss)), imageSelector{std::move(is)} {}
+      : name{std::move(n)}, subscripts(std::move(ss)),
+        imageSelector{std::move(is)} {}
   Name name;
   std::list<SectionSubscript> subscripts;
   std::optional<ImageSelector> imageSelector;
@@ -1781,9 +1770,8 @@ struct PartRef {
 struct DataRef {
   UNION_CLASS_BOILERPLATE(DataRef);
   explicit DataRef(std::list<PartRef> &&);
-  std::variant<Name, common::Indirection<StructureComponent>,
-      common::Indirection<ArrayElement>,
-      common::Indirection<CoindexedNamedObject>>
+  std::variant<Name, Indirection<StructureComponent>, Indirection<ArrayElement>,
+      Indirection<CoindexedNamedObject>>
       u;
 };
 
@@ -1829,9 +1817,7 @@ struct Variable {
   UNION_CLASS_BOILERPLATE(Variable);
   mutable TypedExpr typedExpr;
   CharBlock GetSource() const;
-  std::variant<common::Indirection<Designator>,
-      common::Indirection<FunctionReference>>
-      u;
+  std::variant<Indirection<Designator>, Indirection<FunctionReference>> u;
 };
 
 // R904 logical-variable -> variable
@@ -1941,10 +1927,10 @@ struct StatOrErrmsg {
 // R931 source-expr -> expr
 struct AllocOpt {
   UNION_CLASS_BOILERPLATE(AllocOpt);
-  WRAPPER_CLASS(Mold, common::Indirection<Expr>);
-  WRAPPER_CLASS(Source, common::Indirection<Expr>);
-  WRAPPER_CLASS(Stream, common::Indirection<ScalarIntExpr>);
-  WRAPPER_CLASS(Pinned, common::Indirection<ScalarLogicalVariable>);
+  WRAPPER_CLASS(Mold, Indirection<Expr>);
+  WRAPPER_CLASS(Source, Indirection<Expr>);
+  WRAPPER_CLASS(Stream, Indirection<ScalarIntExpr>);
+  WRAPPER_CLASS(Pinned, Indirection<ScalarLogicalVariable>);
   std::variant<Mold, Source, StatOrErrmsg, Stream, Pinned> u;
 };
 
@@ -2029,7 +2015,7 @@ struct WhereConstructStmt {
 struct WhereBodyConstruct {
   UNION_CLASS_BOILERPLATE(WhereBodyConstruct);
   std::variant<Statement<AssignmentStmt>, Statement<WhereStmt>,
-      common::Indirection<WhereConstruct>>
+      Indirection<WhereConstruct>>
       u;
 };
 
@@ -2070,7 +2056,7 @@ struct WhereConstruct {
 //         [forall-construct-name :] FORALL concurrent-header
 struct ForallConstructStmt {
   TUPLE_CLASS_BOILERPLATE(ForallConstructStmt);
-  std::tuple<std::optional<Name>, common::Indirection<ConcurrentHeader>> t;
+  std::tuple<std::optional<Name>, Indirection<ConcurrentHeader>> t;
 };
 
 // R1053 forall-assignment-stmt -> assignment-stmt | pointer-assignment-stmt
@@ -2082,7 +2068,7 @@ struct ForallAssignmentStmt {
 // R1055 forall-stmt -> FORALL concurrent-header forall-assignment-stmt
 struct ForallStmt {
   TUPLE_CLASS_BOILERPLATE(ForallStmt);
-  std::tuple<common::Indirection<ConcurrentHeader>,
+  std::tuple<Indirection<ConcurrentHeader>,
       UnlabeledStatement<ForallAssignmentStmt>>
       t;
 };
@@ -2093,8 +2079,7 @@ struct ForallStmt {
 struct ForallBodyConstruct {
   UNION_CLASS_BOILERPLATE(ForallBodyConstruct);
   std::variant<Statement<ForallAssignmentStmt>, Statement<WhereStmt>,
-      WhereConstruct, common::Indirection<ForallConstruct>,
-      Statement<ForallStmt>>
+      WhereConstruct, Indirection<ForallConstruct>, Statement<ForallStmt>>
       u;
 };
 
@@ -2682,7 +2667,7 @@ struct IoControlSpec {
 // R1216 input-item -> variable | io-implied-do
 struct InputItem {
   UNION_CLASS_BOILERPLATE(InputItem);
-  std::variant<Variable, common::Indirection<InputImpliedDo>> u;
+  std::variant<Variable, Indirection<InputImpliedDo>> u;
 };
 
 // R1210 read-stmt ->
@@ -2706,7 +2691,7 @@ struct ReadStmt {
 // R1217 output-item -> expr | io-implied-do
 struct OutputItem {
   UNION_CLASS_BOILERPLATE(OutputItem);
-  std::variant<Expr, common::Indirection<OutputImpliedDo>> u;
+  std::variant<Expr, Indirection<OutputImpliedDo>> u;
 };
 
 // R1211 write-stmt -> WRITE ( io-control-spec-list ) [output-item-list]
@@ -2886,9 +2871,8 @@ WRAPPER_CLASS(ModuleStmt, Name);
 //         separate-module-subprogram
 struct ModuleSubprogram {
   UNION_CLASS_BOILERPLATE(ModuleSubprogram);
-  std::variant<common::Indirection<FunctionSubprogram>,
-      common::Indirection<SubroutineSubprogram>,
-      common::Indirection<SeparateModuleSubprogram>>
+  std::variant<Indirection<FunctionSubprogram>,
+      Indirection<SubroutineSubprogram>, Indirection<SeparateModuleSubprogram>>
       u;
 };
 
@@ -3006,7 +2990,7 @@ struct InterfaceStmt {
 // R1413 only-use-name -> use-name
 struct Only {
   UNION_CLASS_BOILERPLATE(Only);
-  std::variant<common::Indirection<GenericSpec>, Name, Rename> u;
+  std::variant<Indirection<GenericSpec>, Name, Rename> u;
 };
 
 // R1409 use-stmt ->
@@ -3118,14 +3102,14 @@ struct InterfaceBody {
   UNION_CLASS_BOILERPLATE(InterfaceBody);
   struct Function {
     TUPLE_CLASS_BOILERPLATE(Function);
-    std::tuple<Statement<FunctionStmt>, common::Indirection<SpecificationPart>,
+    std::tuple<Statement<FunctionStmt>, Indirection<SpecificationPart>,
         Statement<EndFunctionStmt>>
         t;
   };
   struct Subroutine {
     TUPLE_CLASS_BOILERPLATE(Subroutine);
-    std::tuple<Statement<SubroutineStmt>,
-        common::Indirection<SpecificationPart>, Statement<EndSubroutineStmt>>
+    std::tuple<Statement<SubroutineStmt>, Indirection<SpecificationPart>,
+        Statement<EndSubroutineStmt>>
         t;
   };
   std::variant<Function, Subroutine> u;
@@ -3179,9 +3163,8 @@ struct ActualArg {
   WRAPPER_CLASS(PercentRef, Variable); // %REF(v) extension
   WRAPPER_CLASS(PercentVal, Expr); // %VAL(x) extension
   UNION_CLASS_BOILERPLATE(ActualArg);
-  ActualArg(Expr &&x) : u{common::Indirection<Expr>(std::move(x))} {}
-  std::variant<common::Indirection<Expr>, AltReturnSpec, PercentRef, PercentVal>
-      u;
+  ActualArg(Expr &&x) : u{Indirection<Expr>(std::move(x))} {}
+  std::variant<Indirection<Expr>, AltReturnSpec, PercentRef, PercentVal> u;
 };
 
 // R1523 actual-arg-spec -> [keyword =] actual-arg
@@ -3319,8 +3302,8 @@ struct StructureDef;
 
 struct StructureField {
   UNION_CLASS_BOILERPLATE(StructureField);
-  std::variant<Statement<DataComponentDefStmt>,
-      common::Indirection<StructureDef>, common::Indirection<Union>>
+  std::variant<Statement<DataComponentDefStmt>, Indirection<StructureDef>,
+      Indirection<Union>>
       u;
 };
 

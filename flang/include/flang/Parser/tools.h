@@ -55,8 +55,8 @@ struct UnwrapperHelper {
     }
   }
 
-  template <typename A, typename B, bool COPY>
-  static const A *Unwrap(const common::Indirection<B, COPY> &x) {
+  template <typename A, typename B>
+  static const A *Unwrap(const Indirection<B> &x) {
     return Unwrap<A>(x.value());
   }
 
@@ -147,10 +147,6 @@ template <bool GET_FIRST> struct GetSourceHelper {
     } else {
       return std::nullopt;
     }
-  }
-  template <typename A>
-  static Result GetSource(const common::Indirection<A> &x) {
-    return GetSource(x.value());
   }
 
   template <typename A, bool COPY>

@@ -64,7 +64,7 @@ public:
 
 private:
   using stmtFuncType =
-      parser::Statement<common::Indirection<parser::StmtFunctionStmt>>;
+      parser::Statement<parser::Indirection<parser::StmtFunctionStmt>>;
   bool errorOnUnresolvedName_{true};
   parser::Messages &messages_;
   std::list<stmtFuncType> stmtFuncsToConvert_;

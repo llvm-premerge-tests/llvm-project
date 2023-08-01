@@ -58,7 +58,7 @@ bool HasScope(ProxyForScope scope) { return scope != ProxyForScope{0u}; }
 // F18:R1131
 template <typename A>
 constexpr Legality IsLegalDoTerm(const parser::Statement<A> &) {
-  if (std::is_same_v<A, common::Indirection<parser::EndDoStmt>> ||
+  if (std::is_same_v<A, parser::Indirection<parser::EndDoStmt>> ||
       std::is_same_v<A, parser::EndDoStmt>) {
     return Legality::always;
   } else if (std::is_same_v<A, parser::EndForallStmt> ||
@@ -78,18 +78,18 @@ constexpr Legality IsLegalDoTerm(
     // See F08:C816
     return Legality::always;
   } else if (!(std::holds_alternative<
-                   common::Indirection<parser::ArithmeticIfStmt>>(
+                   parser::Indirection<parser::ArithmeticIfStmt>>(
                    actionStmt.statement.u) ||
-                 std::holds_alternative<common::Indirection<parser::CycleStmt>>(
+                 std::holds_alternative<parser::Indirection<parser::CycleStmt>>(
                      actionStmt.statement.u) ||
-                 std::holds_alternative<common::Indirection<parser::ExitStmt>>(
+                 std::holds_alternative<parser::Indirection<parser::ExitStmt>>(
                      actionStmt.statement.u) ||
-                 std::holds_alternative<common::Indirection<parser::StopStmt>>(
+                 std::holds_alternative<parser::Indirection<parser::StopStmt>>(
                      actionStmt.statement.u) ||
-                 std::holds_alternative<common::Indirection<parser::GotoStmt>>(
+                 std::holds_alternative<parser::Indirection<parser::GotoStmt>>(
                      actionStmt.statement.u) ||
                  std::holds_alternative<
-                     common::Indirection<parser::ReturnStmt>>(
+                     parser::Indirection<parser::ReturnStmt>>(
                      actionStmt.statement.u))) {
     return Legality::formerly;
   } else {
@@ -98,7 +98,7 @@ constexpr Legality IsLegalDoTerm(
 }
 
 template <typename A> constexpr bool IsFormat(const parser::Statement<A> &) {
-  return std::is_same_v<A, common::Indirection<parser::FormatStmt>>;
+  return std::is_same_v<A, parser::Indirection<parser::FormatStmt>>;
 }
 
 template <typename A>
@@ -112,10 +112,10 @@ constexpr Legality IsLegalBranchTarget(const parser::Statement<A> &) {
       std::is_same_v<A, parser::EndSelectStmt> ||
       std::is_same_v<A, parser::SelectRankStmt> ||
       std::is_same_v<A, parser::SelectTypeStmt> ||
-      std::is_same_v<A, common::Indirection<parser::LabelDoStmt>> ||
+      std::is_same_v<A, parser::Indirection<parser::LabelDoStmt>> ||
       std::is_same_v<A, parser::NonLabelDoStmt> ||
       std::is_same_v<A, parser::EndDoStmt> ||
-      std::is_same_v<A, common::Indirection<parser::EndDoStmt>> ||
+      std::is_same_v<A, parser::Indirection<parser::EndDoStmt>> ||
       std::is_same_v<A, parser::BlockStmt> ||
       std::is_same_v<A, parser::EndBlockStmt> ||
       std::is_same_v<A, parser::CriticalStmt> ||

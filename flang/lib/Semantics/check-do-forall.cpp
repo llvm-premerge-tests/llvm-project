@@ -48,13 +48,13 @@ static const parser::ConcurrentHeader &GetConcurrentHeader(
     const parser::ForallConstruct &construct) {
   const auto &stmt{
       std::get<parser::Statement<parser::ForallConstructStmt>>(construct.t)};
-  return std::get<common::Indirection<parser::ConcurrentHeader>>(
+  return std::get<parser::Indirection<parser::ConcurrentHeader>>(
       stmt.statement.t)
       .value();
 }
 static const parser::ConcurrentHeader &GetConcurrentHeader(
     const parser::ForallStmt &stmt) {
-  return std::get<common::Indirection<parser::ConcurrentHeader>>(stmt.t)
+  return std::get<parser::Indirection<parser::ConcurrentHeader>>(stmt.t)
       .value();
 }
 template <typename T>
@@ -88,8 +88,8 @@ class DoConcurrentBodyEnforce {
 public:
   DoConcurrentBodyEnforce(
       SemanticsContext &context, parser::CharBlock doConcurrentSourcePosition)
-      : context_{context}, doConcurrentSourcePosition_{
-                               doConcurrentSourcePosition} {}
+      : context_{context},
+        doConcurrentSourcePosition_{doConcurrentSourcePosition} {}
   std::set<parser::Label> labels() { return labels_; }
   template <typename T> bool Pre(const T &x) {
     if (const auto *expr{GetExpr(context_, x)}) {
@@ -987,7 +987,7 @@ void DoForallChecker::Leave(const parser::CallStmt &callStmt) {
       if (checkedOptionalArg) {
         const evaluate::ActualArgument &checkedArg{*checkedOptionalArg};
         if (const auto *parsedExpr{
-                std::get_if<common::Indirection<parser::Expr>>(&parsedArg.u)}) {
+                std::get_if<parser::Indirection<parser::Expr>>(&parsedArg.u)}) {
           CheckIfArgIsDoVar(checkedArg, parsedExpr->value().source, context_);
         }
       }

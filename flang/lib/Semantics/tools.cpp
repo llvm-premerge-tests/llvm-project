@@ -457,9 +457,7 @@ const Symbol *FindInterface(const Symbol &symbol) {
   return common::visit(
       common::visitors{
           [](const ProcEntityDetails &details) {
-            const Symbol *interface {
-              details.procInterface()
-            };
+            const Symbol *interface{details.procInterface()};
             return interface ? FindInterface(*interface) : nullptr;
           },
           [](const ProcBindingDetails &details) {
@@ -904,7 +902,8 @@ public:
   template <typename T> bool operator()(const T &) {
     return common::HasMember<T, ImageControlStmts>;
   }
-  template <typename T> bool operator()(const common::Indirection<T> &x) {
+  template <typename T, bool COPY>
+  bool operator()(const common::Indirection<T, COPY> &x) {
     return (*this)(x.value());
   }
   template <typename A> bool operator()(const parser::Statement<A> &x) {
@@ -943,7 +942,7 @@ public:
           const parser::ActualArg &actualArg{
               std::get<parser::ActualArg>(args.front().t)};
           if (const auto *argExpr{
-                  std::get_if<common::Indirection<parser::Expr>>(
+                  std::get_if<parser::Indirection<parser::Expr>>(
                       &actualArg.u)}) {
             return HasCoarray(argExpr->value());
           }
@@ -983,17 +982,17 @@ std::optional<parser::MessageFixedText> GetImageControlStmtCoarrayMsg(
           std::get_if<parser::Statement<parser::ActionStmt>>(&construct.u)}) {
     return common::visit(
         common::visitors{
-            [](const common::Indirection<parser::AllocateStmt> &)
+            [](const parser::Indirection<parser::AllocateStmt> &)
                 -> std::optional<parser::MessageFixedText> {
               return "ALLOCATE of a coarray is an image control"
                      " statement"_en_US;
             },
-            [](const common::Indirection<parser::DeallocateStmt> &)
+            [](const parser::Indirection<parser::DeallocateStmt> &)
                 -> std::optional<parser::MessageFixedText> {
               return "DEALLOCATE of a coarray is an image control"
                      " statement"_en_US;
             },
-            [](const common::Indirection<parser::CallStmt> &)
+            [](const parser::Indirection<parser::CallStmt> &)
                 -> std::optional<parser::MessageFixedText> {
               return "MOVE_ALLOC of a coarray is an image control"
                      " statement "_en_US;
@@ -1011,13 +1010,13 @@ parser::CharBlock GetImageControlStmtLocation(
     const parser::ExecutableConstruct &executableConstruct) {
   return common::visit(
       common::visitors{
-          [](const common::Indirection<parser::ChangeTeamConstruct>
+          [](const parser::Indirection<parser::ChangeTeamConstruct>
                   &construct) {
             return std::get<parser::Statement<parser::ChangeTeamStmt>>(
                 construct.value().t)
                 .source;
           },
-          [](const common::Indirection<parser::CriticalConstruct> &construct) {
+          [](const parser::Indirection<parser::CriticalConstruct> &construct) {
             return std::get<parser::Statement<parser::CriticalStmt>>(
                 construct.value().t)
                 .source;

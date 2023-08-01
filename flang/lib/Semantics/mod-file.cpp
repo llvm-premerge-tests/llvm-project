@@ -1150,7 +1150,7 @@ static std::optional<SourceName> GetSubmoduleParent(
     const parser::Program &program) {
   CHECK(program.v.size() == 1);
   auto &unit{program.v.front()};
-  auto &submod{std::get<common::Indirection<parser::Submodule>>(unit.u)};
+  auto &submod{std::get<parser::Indirection<parser::Submodule>>(unit.u)};
   auto &stmt{
       std::get<parser::Statement<parser::SubmoduleStmt>>(submod.value().t)};
   auto &parentId{std::get<parser::ParentIdentifier>(stmt.statement.t)};
@@ -1185,7 +1185,7 @@ void SubprogramSymbolCollector::Collect() {
         needed = needed || (spec && useSet_.count(*spec) > 0) ||
             (dt && useSet_.count(*dt) > 0);
       } else if (const auto *subp{ultimate.detailsIf<SubprogramDetails>()}) {
-        const Symbol *interface { subp->moduleInterface() };
+        const Symbol *interface{subp->moduleInterface()};
         needed = needed || (interface && useSet_.count(*interface) > 0);
       }
       if (needed) {
@@ -1327,7 +1327,7 @@ bool SubprogramSymbolCollector::NeedImport(
     return false;
   } else if (symbol.owner().Contains(scope_)) {
     return true;
-  } else if (const Symbol *found{scope_.FindSymbol(name)}) {
+  } else if (const Symbol * found{scope_.FindSymbol(name)}) {
     // detect import from ancestor of use-associated symbol
     return found->has<UseDetails>() && found->owner() != scope_;
   } else {

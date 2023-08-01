@@ -36,7 +36,7 @@ public:
   void Enter(const parser::WriteStmt &) { Init(IoStmtKind::Write); }
 
   void Enter(
-      const parser::Statement<common::Indirection<parser::FormatStmt>> &);
+      const parser::Statement<parser::Indirection<parser::FormatStmt>> &);
 
   void Enter(const parser::ConnectSpec &);
   void Enter(const parser::ConnectSpec::CharExpr &);

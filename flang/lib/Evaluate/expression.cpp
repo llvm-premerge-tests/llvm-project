@@ -314,11 +314,18 @@ StructureConstructor &StructureConstructor::Add(
 GenericExprWrapper::~GenericExprWrapper() {}
 
 void GenericExprWrapper::Deleter(GenericExprWrapper *p) { delete p; }
+GenericExprWrapper *GenericExprWrapper::Copier(GenericExprWrapper *p) {
+  return p ? new GenericExprWrapper(*p) : nullptr;
+}
 
 GenericAssignmentWrapper::~GenericAssignmentWrapper() {}
 
 void GenericAssignmentWrapper::Deleter(GenericAssignmentWrapper *p) {
   delete p;
+}
+GenericAssignmentWrapper *GenericAssignmentWrapper::Copier(
+    GenericAssignmentWrapper *p) {
+  return p ? new GenericAssignmentWrapper{*p} : nullptr;
 }
 
 template <TypeCategory CAT> int Expr<SomeKind<CAT>>::GetKind() const {

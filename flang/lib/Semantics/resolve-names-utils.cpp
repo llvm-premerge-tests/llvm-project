@@ -533,13 +533,13 @@ bool EquivalenceSets::CheckDataRef(
   return common::visit(
       common::visitors{
           [&](const parser::Name &name) { return CheckObject(name); },
-          [&](const common::Indirection<parser::StructureComponent> &) {
+          [&](const parser::Indirection<parser::StructureComponent> &) {
             context_.Say(source, // C8107
                 "Derived type component '%s' is not allowed in an equivalence set"_err_en_US,
                 source);
             return false;
           },
-          [&](const common::Indirection<parser::ArrayElement> &elem) {
+          [&](const parser::Indirection<parser::ArrayElement> &elem) {
             bool ok{CheckDataRef(source, elem.value().base)};
             for (const auto &subscript : elem.value().subscripts) {
               ok &= common::visit(
@@ -558,7 +558,7 @@ bool EquivalenceSets::CheckDataRef(
             }
             return ok;
           },
-          [&](const common::Indirection<parser::CoindexedNamedObject> &) {
+          [&](const parser::Indirection<parser::CoindexedNamedObject> &) {
             context_.Say(source, // C924 (R872)
                 "Coindexed object '%s' is not allowed in an equivalence set"_err_en_US,
                 source);
@@ -767,7 +767,7 @@ public:
       : Base{*this}, scope_{scope}, map_{map} {}
   using Base::operator();
   bool operator()(const SymbolRef &ref) const {
-    if (const Symbol *mapped{MapSymbol(*ref)}) {
+    if (const Symbol * mapped{MapSymbol(*ref)}) {
       const_cast<SymbolRef &>(ref) = *mapped;
     }
     return false;
@@ -799,8 +799,8 @@ private:
 
 void SymbolMapper::MapSymbolExprs(Symbol &symbol) {
   if (auto *object{symbol.detailsIf<ObjectEntityDetails>()}) {
-    if (const DeclTypeSpec *type{object->type()}) {
-      if (const DeclTypeSpec *newType{MapType(*type)}) {
+    if (const DeclTypeSpec * type{object->type()}) {
+      if (const DeclTypeSpec * newType{MapType(*type)}) {
         object->ReplaceType(*newType);
       }
     }
@@ -860,7 +860,7 @@ const DeclTypeSpec *SymbolMapper::MapType(const DeclTypeSpec &type) {
       newType = &scope_.MakeCharacterType(
           std::move(newLen), KindExpr{charType.kind()});
     }
-  } else if (const DerivedTypeSpec *derived{type.AsDerived()}) {
+  } else if (const DerivedTypeSpec * derived{type.AsDerived()}) {
     if (!derived->parameters().empty()) {
       DerivedTypeSpec newDerived{derived->name(), derived->typeSymbol()};
       newDerived.CookParameters(scope_.context().foldingContext());
@@ -884,7 +884,7 @@ const DeclTypeSpec *SymbolMapper::MapType(const DeclTypeSpec *type) {
 }
 
 const Symbol *SymbolMapper::MapInterface(const Symbol *interface) {
-  if (const Symbol *mapped{MapSymbol(interface)}) {
+  if (const Symbol * mapped{MapSymbol(interface)}) {
     return mapped;
   }
   if (interface) {
@@ -892,7 +892,7 @@ const Symbol *SymbolMapper::MapInterface(const Symbol *interface) {
       return interface;
     } else if (const auto *subp{interface->detailsIf<SubprogramDetails>()};
                subp && subp->isInterface()) {
-      if (Symbol *newSymbol{scope_.CopySymbol(*interface)}) {
+      if (Symbol * newSymbol{scope_.CopySymbol(*interface)}) {
         newSymbol->get<SubprogramDetails>().set_isInterface(true);
         map_.symbolMap[interface] = newSymbol;
         Scope &newScope{scope_.MakeScope(Scope::Kind::Subprogram, newSymbol)};
@@ -916,14 +916,14 @@ void MapSubprogramToNewSymbols(const Symbol &oldSymbol, Symbol &newSymbol,
   for (const Symbol *dummyArg : oldDetails.dummyArgs()) {
     if (!dummyArg) {
       newDetails.add_alternateReturn();
-    } else if (Symbol *copy{newScope.CopySymbol(*dummyArg)}) {
+    } else if (Symbol * copy{newScope.CopySymbol(*dummyArg)}) {
       newDetails.add_dummyArg(*copy);
       mappings->symbolMap[dummyArg] = copy;
     }
   }
   if (oldDetails.isFunction()) {
     newScope.erase(newSymbol.name());
-    if (Symbol *copy{newScope.CopySymbol(oldDetails.result())}) {
+    if (Symbol * copy{newScope.CopySymbol(oldDetails.result())}) {
       newDetails.set_result(*copy);
       mappings->symbolMap[&oldDetails.result()] = copy;
     }

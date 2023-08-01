@@ -187,7 +187,7 @@ static bool IsValidDataObject(const SomeExpr &expr) { // C878, C879
 
 void DataChecker::Leave(const parser::DataIDoObject &object) {
   if (const auto *designator{
-          std::get_if<parser::Scalar<common::Indirection<parser::Designator>>>(
+          std::get_if<parser::Scalar<parser::Indirection<parser::Designator>>>(
               &object.u)}) {
     if (MaybeExpr expr{exprAnalyzer_.Analyze(*designator)}) {
       auto source{designator->thing.value().source};
@@ -243,7 +243,7 @@ template <typename A> void DataChecker::LegacyDataInit(const A &decl) {
           std::get<std::optional<parser::Initialization>>(decl.t)}) {
     const Symbol *name{std::get<parser::Name>(decl.t).symbol};
     const auto *list{
-        std::get_if<std::list<common::Indirection<parser::DataStmtValue>>>(
+        std::get_if<std::list<parser::Indirection<parser::DataStmtValue>>>(
             &init->u)};
     if (name && list) {
       AccumulateDataInitializations(inits_, exprAnalyzer_, *name, *list);

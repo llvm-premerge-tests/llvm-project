@@ -286,8 +286,8 @@ public:
                             const auto &init{
                                 std::get<std::optional<Initialization>>(d.t)};
                             return init &&
-                                std::holds_alternative<std::list<
-                                    common::Indirection<DataStmtValue>>>(
+                                std::holds_alternative<
+                                    std::list<Indirection<DataStmtValue>>>(
                                     init->u);
                           },
                           [](const FillDecl &) { return false; },
@@ -350,15 +350,14 @@ public:
   }
   void Unparse(const Pass &x) { Word("PASS"), Walk("(", x.v, ")"); }
   void Unparse(const Initialization &x) { // R743 & R805
-    common::visit(
-        common::visitors{
-            [&](const ConstantExpr &y) { Put(" = "), Walk(y); },
-            [&](const NullInit &y) { Put(" => "), Walk(y); },
-            [&](const InitialDataTarget &y) { Put(" => "), Walk(y); },
-            [&](const std::list<common::Indirection<DataStmtValue>> &y) {
-              Walk("/", y, ", ", "/");
-            },
-        },
+    common::visit(common::visitors{
+                      [&](const ConstantExpr &y) { Put(" = "), Walk(y); },
+                      [&](const NullInit &y) { Put(" => "), Walk(y); },
+                      [&](const InitialDataTarget &y) { Put(" => "), Walk(y); },
+                      [&](const std::list<Indirection<DataStmtValue>> &y) {
+                        Walk("/", y, ", ", "/");
+                      },
+                  },
         x.u);
   }
   void Unparse(const PrivateStmt &) { // R745
@@ -379,7 +378,7 @@ public:
   }
   void Unparse(const TypeBoundGenericStmt &x) { // R751
     Word("GENERIC"), Walk(", ", std::get<std::optional<AccessSpec>>(x.t));
-    Put(" :: "), Walk(std::get<common::Indirection<GenericSpec>>(x.t));
+    Put(" :: "), Walk(std::get<Indirection<GenericSpec>>(x.t));
     Put(" => "), Walk(std::get<std::list<Name>>(x.t), ", ");
   }
   void Post(const BindAttr::Deferred &) { Word("DEFERRED"); } // R752
@@ -449,8 +448,7 @@ public:
     Walk(dts), Walk(", ", attrs, ", ");
 
     static const auto isInitializerOldStyle{[](const Initialization &i) {
-      return std::holds_alternative<
-          std::list<common::Indirection<DataStmtValue>>>(i.u);
+      return std::holds_alternative<std::list<Indirection<DataStmtValue>>>(i.u);
     }};
     static const auto hasAssignmentInitializer{[](const EntityDecl &d) {
       // Does a declaration have a new-style =x initializer?
@@ -945,7 +943,7 @@ public:
   }
   void Unparse(const ForallConstructStmt &x) { // R1051
     Walk(std::get<std::optional<Name>>(x.t), ": ");
-    Word("FORALL"), Walk(std::get<common::Indirection<ConcurrentHeader>>(x.t));
+    Word("FORALL"), Walk(std::get<Indirection<ConcurrentHeader>>(x.t));
     Indent();
   }
   void Unparse(const EndForallStmt &x) { // R1054

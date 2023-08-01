@@ -20,13 +20,15 @@ const Name &GetLastName(const DataRef &x) {
   return common::visit(
       common::visitors{
           [](const Name &name) -> const Name & { return name; },
-          [](const common::Indirection<StructureComponent> &sc)
-              -> const Name & { return GetLastName(sc.value()); },
-          [](const common::Indirection<ArrayElement> &sc) -> const Name & {
+          [](const Indirection<StructureComponent> &sc) -> const Name & {
+            return GetLastName(sc.value());
+          },
+          [](const Indirection<ArrayElement> &sc) -> const Name & {
             return GetLastName(sc.value().base);
           },
-          [](const common::Indirection<CoindexedNamedObject> &ci)
-              -> const Name & { return GetLastName(ci.value().base); },
+          [](const Indirection<CoindexedNamedObject> &ci) -> const Name & {
+            return GetLastName(ci.value().base);
+          },
       },
       x.u);
 }
@@ -78,13 +80,15 @@ const Name &GetFirstName(const DataRef &x) {
   return common::visit(
       common::visitors{
           [](const Name &name) -> const Name & { return name; },
-          [](const common::Indirection<StructureComponent> &sc)
-              -> const Name & { return GetFirstName(sc.value()); },
-          [](const common::Indirection<ArrayElement> &sc) -> const Name & {
+          [](const Indirection<StructureComponent> &sc) -> const Name & {
+            return GetFirstName(sc.value());
+          },
+          [](const Indirection<ArrayElement> &sc) -> const Name & {
             return GetFirstName(sc.value().base);
           },
-          [](const common::Indirection<CoindexedNamedObject> &ci)
-              -> const Name & { return GetFirstName(ci.value().base); },
+          [](const Indirection<CoindexedNamedObject> &ci) -> const Name & {
+            return GetFirstName(ci.value().base);
+          },
       },
       x.u);
 }
@@ -127,7 +131,7 @@ const CoindexedNamedObject *GetCoindexedNamedObject(const DataRef &base) {
   return common::visit(
       common::visitors{
           [](const Name &) -> const CoindexedNamedObject * { return nullptr; },
-          [](const common::Indirection<CoindexedNamedObject> &x)
+          [](const Indirection<CoindexedNamedObject> &x)
               -> const CoindexedNamedObject * { return &x.value(); },
           [](const auto &x) -> const CoindexedNamedObject * {
             return GetCoindexedNamedObject(x.value().base);
@@ -151,7 +155,7 @@ const CoindexedNamedObject *GetCoindexedNamedObject(
 const CoindexedNamedObject *GetCoindexedNamedObject(const Variable &variable) {
   return common::visit(
       common::visitors{
-          [](const common::Indirection<Designator> &designator)
+          [](const Indirection<Designator> &designator)
               -> const CoindexedNamedObject * {
             return GetCoindexedNamedObject(designator.value());
           },

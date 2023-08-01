@@ -770,7 +770,7 @@ inline constexpr auto construct(PARSER... p) {
 // For a parser p, indirect(p) returns a parser that builds an indirect
 // reference to p's return type.
 template <typename PA> inline constexpr auto indirect(PA p) {
-  return construct<common::Indirection<typename PA::resultType>>(p);
+  return construct<Indirection<typename PA::resultType>>(p);
 }
 
 // If a and b are parsers, then nonemptySeparated(a, b) returns a parser

@@ -67,8 +67,8 @@ void ActualArgument::Parenthesize() {
 
 SpecificIntrinsic::SpecificIntrinsic(
     IntrinsicProcedure n, characteristics::Procedure &&chars)
-    : name{n}, characteristics{
-                   new characteristics::Procedure{std::move(chars)}} {}
+    : name{n},
+      characteristics{new characteristics::Procedure{std::move(chars)}} {}
 
 DEFINE_DEFAULT_CONSTRUCTORS_AND_ASSIGNMENTS(SpecificIntrinsic)
 
@@ -247,5 +247,8 @@ int ProcedureRef::Rank() const {
 ProcedureRef::~ProcedureRef() {}
 
 void ProcedureRef::Deleter(ProcedureRef *p) { delete p; }
+ProcedureRef *ProcedureRef::Copier(ProcedureRef *p) {
+  return p ? new ProcedureRef{*p} : nullptr;
+}
 
 } // namespace Fortran::evaluate

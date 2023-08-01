@@ -18,7 +18,7 @@ static void GetEntryStmts(
   const auto &implicitPart{std::get<parser::ImplicitPart>(spec.t)};
   for (const parser::ImplicitPartStmt &stmt : implicitPart.v) {
     if (const auto *entryStmt{std::get_if<
-            parser::Statement<common::Indirection<parser::EntryStmt>>>(
+            parser::Statement<parser::Indirection<parser::EntryStmt>>>(
             &stmt.u)}) {
       node.AddEntry(entryStmt->statement.value());
     }
@@ -26,7 +26,7 @@ static void GetEntryStmts(
   for (const auto &decl :
       std::get<std::list<parser::DeclarationConstruct>>(spec.t)) {
     if (const auto *entryStmt{std::get_if<
-            parser::Statement<common::Indirection<parser::EntryStmt>>>(
+            parser::Statement<parser::Indirection<parser::EntryStmt>>>(
             &decl.u)}) {
       node.AddEntry(entryStmt->statement.value());
     }
@@ -37,7 +37,7 @@ static void GetEntryStmts(
     ProgramTree &node, const parser::ExecutionPart &exec) {
   for (const auto &epConstruct : exec.v) {
     if (const auto *entryStmt{std::get_if<
-            parser::Statement<common::Indirection<parser::EntryStmt>>>(
+            parser::Statement<parser::Indirection<parser::EntryStmt>>>(
             &epConstruct.u)}) {
       node.AddEntry(entryStmt->statement.value());
     }
@@ -53,13 +53,13 @@ static void GetGenerics(
     if (const auto *spec{
             std::get_if<parser::SpecificationConstruct>(&decl.u)}) {
       if (const auto *generic{std::get_if<
-              parser::Statement<common::Indirection<parser::GenericStmt>>>(
+              parser::Statement<parser::Indirection<parser::GenericStmt>>>(
               &spec->u)}) {
         const parser::GenericStmt &genericStmt{generic->statement.value()};
         const auto &genericSpec{std::get<parser::GenericSpec>(genericStmt.t)};
         node.AddGeneric(genericSpec);
       } else if (const auto *interface{
-                     std::get_if<common::Indirection<parser::InterfaceBlock>>(
+                     std::get_if<parser::Indirection<parser::InterfaceBlock>>(
                          &spec->u)}) {
         const parser::InterfaceBlock &interfaceBlock{interface->value()};
         const parser::InterfaceStmt &interfaceStmt{

@@ -39,10 +39,15 @@ struct IntrinsicTypeDataEditDesc {
   IntrinsicTypeDataEditDesc() = delete;
   IntrinsicTypeDataEditDesc(IntrinsicTypeDataEditDesc &&) = default;
   IntrinsicTypeDataEditDesc &operator=(IntrinsicTypeDataEditDesc &&) = default;
+#ifdef ENABLE_PARSE_TREE_COPYING
+  IntrinsicTypeDataEditDesc(const IntrinsicTypeDataEditDesc &) = default;
+  IntrinsicTypeDataEditDesc &operator=(
+      const IntrinsicTypeDataEditDesc &) = default;
+#endif
   IntrinsicTypeDataEditDesc(Kind &&k, std::optional<int> &&w,
       std::optional<int> &&d, std::optional<int> &&e)
-      : kind{k}, width{std::move(w)}, digits{std::move(d)}, exponentWidth{
-                                                                std::move(e)} {}
+      : kind{k}, width{std::move(w)}, digits{std::move(d)},
+        exponentWidth{std::move(e)} {}
   Kind kind;
   std::optional<int> width; // w
   std::optional<int> digits; // m or d
@@ -56,6 +61,10 @@ struct DerivedTypeDataEditDesc {
   DerivedTypeDataEditDesc() = delete;
   DerivedTypeDataEditDesc(DerivedTypeDataEditDesc &&) = default;
   DerivedTypeDataEditDesc &operator=(DerivedTypeDataEditDesc &&) = default;
+#ifdef ENABLE_PARSE_TREE_COPYING
+  DerivedTypeDataEditDesc(const DerivedTypeDataEditDesc &) = default;
+  DerivedTypeDataEditDesc &operator=(const DerivedTypeDataEditDesc &) = default;
+#endif
   DerivedTypeDataEditDesc(std::string &&t, std::list<std::int64_t> &&p)
       : type{std::move(t)}, parameters{std::move(p)} {}
   std::string type;
@@ -100,6 +109,10 @@ struct ControlEditDesc {
   ControlEditDesc() = delete;
   ControlEditDesc(ControlEditDesc &&) = default;
   ControlEditDesc &operator=(ControlEditDesc &&) = default;
+#ifdef ENABLE_PARSE_TREE_COPYING
+  ControlEditDesc(const ControlEditDesc &) = default;
+  ControlEditDesc &operator=(const ControlEditDesc &) = default;
+#endif
   explicit ControlEditDesc(Kind k) : kind{k} {}
   ControlEditDesc(Kind k, std::int64_t ct) : kind{k}, count{ct} {}
   ControlEditDesc(std::int64_t ct, Kind k) : kind{k}, count{ct} {}
@@ -116,6 +129,10 @@ struct FormatItem {
   FormatItem() = delete;
   FormatItem(FormatItem &&) = default;
   FormatItem &operator=(FormatItem &&) = default;
+#ifdef ENABLE_PARSE_TREE_COPYING
+  FormatItem(const FormatItem &) = default;
+  FormatItem &operator=(const FormatItem &) = default;
+#endif
   template <typename A, typename = common::NoLvalue<A>>
   FormatItem(std::optional<std::uint64_t> &&r, A &&x)
       : repeatCount{std::move(r)}, u{std::move(x)} {}
@@ -135,6 +152,10 @@ struct FormatSpecification {
   FormatSpecification() = delete;
   FormatSpecification(FormatSpecification &&) = default;
   FormatSpecification &operator=(FormatSpecification &&) = default;
+#ifdef ENABLE_PARSE_TREE_COPYING
+  FormatSpecification(const FormatSpecification &) = default;
+  FormatSpecification &operator=(const FormatSpecification &) = default;
+#endif
   explicit FormatSpecification(std::list<FormatItem> &&is)
       : items(std::move(is)) {}
   FormatSpecification(std::list<FormatItem> &&is, std::list<FormatItem> &&us)

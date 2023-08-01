@@ -17,7 +17,7 @@ void IfStmtChecker::Leave(const parser::IfStmt &ifStmt) {
   // C1143 Check that the action stmt is not an if stmt
   const auto &body{
       std::get<parser::UnlabeledStatement<parser::ActionStmt>>(ifStmt.t)};
-  if (std::holds_alternative<common::Indirection<parser::IfStmt>>(
+  if (std::holds_alternative<parser::Indirection<parser::IfStmt>>(
           body.statement.u)) {
     context_.Say(
         body.source, "IF statement is not allowed in IF statement"_err_en_US);

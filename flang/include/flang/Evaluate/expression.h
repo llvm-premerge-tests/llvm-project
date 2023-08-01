@@ -859,6 +859,7 @@ struct GenericExprWrapper {
       : v{std::move(x)} {}
   ~GenericExprWrapper();
   static void Deleter(GenericExprWrapper *);
+  static GenericExprWrapper *Copier(GenericExprWrapper *);
   std::optional<Expr<SomeType>> v; // vacant if error
 };
 
@@ -870,6 +871,7 @@ struct GenericAssignmentWrapper {
       : v{std::move(x)} {}
   ~GenericAssignmentWrapper();
   static void Deleter(GenericAssignmentWrapper *);
+  static GenericAssignmentWrapper *Copier(GenericAssignmentWrapper *);
   std::optional<Assignment> v; // vacant if error
 };
 

@@ -34,7 +34,11 @@ struct RemoveIndirectionHelper {
   using Type = A;
 };
 template <typename A>
-struct RemoveIndirectionHelper<common::Indirection<A>> {
+struct RemoveIndirectionHelper<common::Indirection<A, false>> {
+  using Type = A;
+};
+template <typename A>
+struct RemoveIndirectionHelper<common::Indirection<A, true>> {
   using Type = A;
 };
 
@@ -105,14 +109,14 @@ public:
       } else if constexpr (std::is_same_v<T, parser::ActionStmt>) {
         return std::visit(
             common::visitors{
-                [&](const common::Indirection<parser::CallStmt> &x) {
+                [&](const parser::Indirection<parser::CallStmt> &x) {
                   addEvaluation(lower::pft::Evaluation{
                       removeIndirection(x), pftParentStack.back(),
                       stmt.position, stmt.label});
                   checkForRoundingModeCall(x.value());
                   return true;
                 },
-                [&](const common::Indirection<parser::IfStmt> &x) {
+                [&](const parser::Indirection<parser::IfStmt> &x) {
                   convertIfStmt(x.value(), stmt.position, stmt.label);
                   return false;
                 },
@@ -1642,9 +1646,8 @@ private:
 Fortran::lower::pft::FunctionLikeUnit::FunctionLikeUnit(
     const parser::MainProgram &func, const lower::pft::PftNode &parent,
     const semantics::SemanticsContext &semanticsContext)
-    : ProgramUnit{func, parent}, endStmt{
-                                     getFunctionStmt<parser::EndProgramStmt>(
-                                         func)} {
+    : ProgramUnit{func, parent},
+      endStmt{getFunctionStmt<parser::EndProgramStmt>(func)} {
   const auto &programStmt =
       std::get<std::optional<parser::Statement<parser::ProgramStmt>>>(func.t);
   if (programStmt.has_value()) {
@@ -1728,8 +1731,8 @@ Fortran::lower::pft::ModuleLikeUnit::ModuleLikeUnit(
 
 Fortran::lower::pft::ModuleLikeUnit::ModuleLikeUnit(
     const parser::Submodule &m, const lower::pft::PftNode &parent)
-    : ProgramUnit{m, parent}, beginStmt{getModuleStmt<parser::SubmoduleStmt>(
-                                  m)},
+    : ProgramUnit{m, parent},
+      beginStmt{getModuleStmt<parser::SubmoduleStmt>(m)},
       endStmt{getModuleStmt<parser::EndSubmoduleStmt>(m)} {}
 
 parser::CharBlock

@@ -58,7 +58,7 @@ bool FormatErrorReporter::Say(const common::FormatMessage &msg) {
 }
 
 void IoChecker::Enter(
-    const parser::Statement<common::Indirection<parser::FormatStmt>> &stmt) {
+    const parser::Statement<parser::Indirection<parser::FormatStmt>> &stmt) {
   if (!stmt.label) {
     context_.Say("Format statement must be labeled"_err_en_US); // C1301
   }

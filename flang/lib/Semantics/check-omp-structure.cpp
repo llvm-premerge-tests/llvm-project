@@ -1617,7 +1617,7 @@ void OmpStructureChecker::CheckAtomicUpdateAssignmentStmt(
   const auto &var{std::get<parser::Variable>(assignment.t)};
   common::visit(
       common::visitors{
-          [&](const common::Indirection<parser::FunctionReference> &x) {
+          [&](const parser::Indirection<parser::FunctionReference> &x) {
             const auto &procedureDesignator{
                 std::get<parser::ProcedureDesignator>(x.value().v.t)};
             const parser::Name *name{
@@ -1632,7 +1632,7 @@ void OmpStructureChecker::CheckAtomicUpdateAssignmentStmt(
             } else if (name) {
               bool foundMatch{false};
               if (auto varDesignatorIndirection =
-                      std::get_if<Fortran::common::Indirection<
+                      std::get_if<Fortran::parser::Indirection<
                           Fortran::parser::Designator>>(&var.u)) {
                 const auto &varDesignator = varDesignatorIndirection->value();
                 if (const auto *dataRef = std::get_if<Fortran::parser::DataRef>(
@@ -2492,7 +2492,7 @@ void OmpStructureChecker::Enter(const parser::OmpClause::Depend &x) {
       if (const auto *dataRef{std::get_if<parser::DataRef>(&ele.u)}) {
         CheckDependList(*dataRef);
         if (const auto *arr{
-                std::get_if<common::Indirection<parser::ArrayElement>>(
+                std::get_if<parser::Indirection<parser::ArrayElement>>(
                     &dataRef->u)}) {
           CheckArraySection(arr->value(), GetLastName(*dataRef),
               llvm::omp::Clause::OMPC_depend);
@@ -2569,18 +2569,18 @@ llvm::StringRef OmpStructureChecker::getDirectiveName(
 void OmpStructureChecker::CheckDependList(const parser::DataRef &d) {
   common::visit(
       common::visitors{
-          [&](const common::Indirection<parser::ArrayElement> &elem) {
+          [&](const parser::Indirection<parser::ArrayElement> &elem) {
             // Check if the base element is valid on Depend Clause
             CheckDependList(elem.value().base);
           },
-          [&](const common::Indirection<parser::StructureComponent> &) {
+          [&](const parser::Indirection<parser::StructureComponent> &) {
             context_.Say(GetContext().clauseSource,
                 "A variable that is part of another variable "
                 "(such as an element of a structure) but is not an array "
                 "element or an array section cannot appear in a DEPEND "
                 "clause"_err_en_US);
           },
-          [&](const common::Indirection<parser::CoindexedNamedObject> &) {
+          [&](const parser::Indirection<parser::CoindexedNamedObject> &) {
             context_.Say(GetContext().clauseSource,
                 "Coarrays are not supported in DEPEND clause"_err_en_US);
           },
