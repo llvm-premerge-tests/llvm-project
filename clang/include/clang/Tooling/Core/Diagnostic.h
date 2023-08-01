@@ -21,6 +21,7 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/ADT/StringRef.h"
+#include <optional>
 #include <string>
 
 namespace clang {
@@ -54,6 +55,11 @@ struct DiagnosticMessage {
   std::string Message;
   std::string FilePath;
   unsigned FileOffset;
+
+  /// Diagnostics normally do not store Line and Col numbers but should if
+  /// exporting to yaml.
+  std::optional<unsigned> LineNumber;
+  std::optional<unsigned> ColumnNumber;
 
   /// Fixes for this diagnostic, grouped by file path.
   llvm::StringMap<Replacements> Fix;
