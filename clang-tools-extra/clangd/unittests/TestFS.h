@@ -26,13 +26,14 @@ namespace clangd {
 // directories.
 llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem>
 buildTestFS(llvm::StringMap<std::string> const &Files,
+            llvm::StringMap<std::string> const &Symlinks = {},
             llvm::StringMap<time_t> const &Timestamps = {});
 
 // A VFS provider that returns TestFSes containing a provided set of files.
 class MockFS : public ThreadsafeFS {
 public:
   IntrusiveRefCntPtr<llvm::vfs::FileSystem> viewImpl() const override {
-    auto MemFS = buildTestFS(Files, Timestamps);
+    auto MemFS = buildTestFS(Files, Symlinks, Timestamps);
     if (!OverlayRealFileSystemForModules)
       return MemFS;
     llvm::IntrusiveRefCntPtr<llvm::vfs::OverlayFileSystem> OverlayFileSystem =
@@ -43,6 +44,7 @@ public:
 
   // If relative paths are used, they are resolved with testPath().
   llvm::StringMap<std::string> Files;
+  llvm::StringMap<std::string> Symlinks;
   llvm::StringMap<time_t> Timestamps;
   // If true, real file system will be used as fallback for the in-memory one.
   // This is useful for testing module support.

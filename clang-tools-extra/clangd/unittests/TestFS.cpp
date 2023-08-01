@@ -31,6 +31,7 @@ bool pathConsumeFront(PathRef &Path, PathRef Prefix) {
 
 llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem>
 buildTestFS(llvm::StringMap<std::string> const &Files,
+            llvm::StringMap<std::string> const &Symlinks,
             llvm::StringMap<time_t> const &Timestamps) {
   llvm::IntrusiveRefCntPtr<llvm::vfs::InMemoryFileSystem> MemFS(
       new llvm::vfs::InMemoryFileSystem);
@@ -40,6 +41,11 @@ buildTestFS(llvm::StringMap<std::string> const &Files,
     MemFS->addFile(
         File, Timestamps.lookup(File),
         llvm::MemoryBuffer::getMemBufferCopy(FileAndContents.second, File));
+  }
+  for (auto &SymlinkAndContents : Symlinks) {
+    llvm::StringRef Src = SymlinkAndContents.first();
+    llvm::StringRef Dest = SymlinkAndContents.second;
+    MemFS->addSymbolicLink(Src, Dest, Timestamps.lookup(Src));
   }
   return MemFS;
 }

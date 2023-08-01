@@ -301,6 +301,20 @@ TEST_F(HeadersTest, SearchPath) {
               ElementsAre(Subdir, testPath("foo/bar"), testPath("foo")));
 }
 
+TEST_F(HeadersTest, SymlinkedSearchPath) {
+  MainFile = testPath("sub/main.cpp");
+  std::string Path = testPath("outer/foo/bar.h");
+  FS.Files[Path] = "";
+
+  std::string Symlink = testPath("sub/symlink");
+  FS.Symlinks[Symlink] = "../outer";
+
+  SearchDirArg = (llvm::Twine("-I") + Symlink).str();
+  CDB.ExtraClangFlags = {SearchDirArg.c_str()};
+  std::string test = testPath("outer/foo/bar.h");
+  EXPECT_EQ(calculate(test), "\"foo/bar.h\"");
+}
+
 TEST_F(HeadersTest, InsertInclude) {
   std::string Path = testPath("sub/bar.h");
   FS.Files[Path] = "";

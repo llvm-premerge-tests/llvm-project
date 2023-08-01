@@ -1160,6 +1160,11 @@ InMemoryFileSystem::getRealPath(const Twine &Path,
   if (auto EC = makeAbsolute(Output))
     return EC;
   llvm::sys::path::remove_dots(Output, /*remove_dot_dot=*/true);
+  if (auto Node = lookupNode(Output, true)) {
+    auto Name = Node.getName();
+    Output.clear();
+    Output.append(Name.begin(), Name.end());
+  }
   return {};
 }
 

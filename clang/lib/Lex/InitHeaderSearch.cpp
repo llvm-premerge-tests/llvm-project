@@ -165,9 +165,23 @@ bool InitHeaderSearch::AddUnmappedPath(const Twine &Path, IncludeDirGroup Group,
 
   // If the directory exists, add it.
   if (auto DE = FM.getOptionalDirectoryRef(MappedPathStr)) {
-    IncludePath.emplace_back(Group, DirectoryLookup(*DE, Type, isFramework),
-                             UserEntryIdx);
-    return true;
+    StringRef canonical = FM.getCanonicalName(*DE);
+    if (canonical == MappedPathStr) {
+      // It is a normal directory
+      IncludePath.emplace_back(Group, DirectoryLookup(*DE, Type, isFramework),
+                               UserEntryIdx);
+      return true;
+    }
+    if (Verbose) {
+      llvm::errs() << "rewrite the include " << MappedPathStr
+                   << " to its canonical path " << canonical << "\n";
+    }
+    // If it is a symlink, we add the canonical path.
+    if (auto cDE = FM.getOptionalDirectoryRef(canonical)) {
+      IncludePath.emplace_back(Group, DirectoryLookup(*cDE, Type, isFramework),
+                               UserEntryIdx);
+      return true;
+    }
   }
 
   // Check to see if this is an apple-style headermap (which are not allowed to
