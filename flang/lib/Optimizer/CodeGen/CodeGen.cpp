@@ -2906,6 +2906,7 @@ struct GlobalOpConversion : public FIROpConversion<fir::GlobalOp> {
     auto isConst = global.getConstant().has_value();
     auto g = rewriter.create<mlir::LLVM::GlobalOp>(
         loc, tyAttr, isConst, linkage, global.getSymName(), initAttr);
+    assert(g.getType() == tyAttr);
 
     auto module = global->getParentOfType<mlir::ModuleOp>();
     // Add comdat if necessary
