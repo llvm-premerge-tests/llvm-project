@@ -63,7 +63,7 @@ public:
     llvm::sort(V);
   }
 
-  size_t blockToIndex(BasicBlock *BB) const {
+  size_t blockToIndex(const BasicBlock *BB) const {
     auto *I = llvm::lower_bound(V, BB);
     assert(I != V.end() && *I == BB && "BasicBlockNumberng: Unknown block");
     return I - V.begin();
@@ -98,24 +98,15 @@ class SuspendCrossingInfo {
     bool Suspend = false;
     bool End = false;
     bool KillLoop = false;
-    bool Changed = false;
   };
   SmallVector<BlockData, SmallVectorThreshold> Block;
-
-  iterator_range<pred_iterator> predecessors(BlockData const &BD) const {
-    BasicBlock *BB = Mapping.indexToBlock(&BD - &Block[0]);
-    return llvm::predecessors(BB);
-  }
 
   BlockData &getBlockData(BasicBlock *BB) {
     return Block[Mapping.blockToIndex(BB)];
   }
 
-  /// Compute the BlockData for the current function in one iteration.
-  /// Returns whether the BlockData changes in this iteration.
-  /// Initialize - Whether this is the first iteration, we can optimize
-  /// the initial case a little bit by manual loop switch.
-  template <bool Initialize = false> bool computeBlockData();
+  // Perform "join" and "transfer" step for dataflow analysis.
+  void visitBlock(const BasicBlock &BB, BlockData &B);
 
 public:
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
@@ -223,70 +214,40 @@ LLVM_DUMP_METHOD void SuspendCrossingInfo::dump() const {
 }
 #endif
 
-template <bool Initialize> bool SuspendCrossingInfo::computeBlockData() {
-  const size_t N = Mapping.size();
-  bool Changed = false;
+void SuspendCrossingInfo::visitBlock(const BasicBlock &BB, BlockData &B) {
+  // Propagate Kills and Consumes from predecessors into B. This is a dataflow
+  // "join" operation.
+  for (const BasicBlock *Pred : predecessors(&BB)) {
+    unsigned PredIndex = Mapping.blockToIndex(Pred);
+    const BlockData &PredData = Block[PredIndex];
 
-  for (size_t I = 0; I < N; ++I) {
-    auto &B = Block[I];
+    B.Consumes |= PredData.Consumes;
+    B.Kills |= PredData.Kills;
 
-    // We don't need to count the predecessors when initialization.
-    if constexpr (!Initialize)
-      // If all the predecessors of the current Block don't change,
-      // the BlockData for the current block must not change too.
-      if (all_of(predecessors(B), [this](BasicBlock *BB) {
-            return !Block[Mapping.blockToIndex(BB)].Changed;
-          })) {
-        B.Changed = false;
-        continue;
-      }
-
-    // Saved Consumes and Kills bitsets so that it is easy to see
-    // if anything changed after propagation.
-    auto SavedConsumes = B.Consumes;
-    auto SavedKills = B.Kills;
-
-    for (BasicBlock *PI : predecessors(B)) {
-      auto PrevNo = Mapping.blockToIndex(PI);
-      auto &P = Block[PrevNo];
-
-      // Propagate Kills and Consumes from predecessors into B.
-      B.Consumes |= P.Consumes;
-      B.Kills |= P.Kills;
-
-      // If block P is a suspend block, it should propagate kills into block
-      // B for every block P consumes.
-      if (P.Suspend)
-        B.Kills |= P.Consumes;
-    }
-
-    if (B.Suspend) {
-      // If block S is a suspend block, it should kill all of the blocks it
-      // consumes.
-      B.Kills |= B.Consumes;
-    } else if (B.End) {
-      // If block B is an end block, it should not propagate kills as the
-      // blocks following coro.end() are reached during initial invocation
-      // of the coroutine while all the data are still available on the
-      // stack or in the registers.
-      B.Kills.reset();
-    } else {
-      // This is reached when B block it not Suspend nor coro.end and it
-      // need to make sure that it is not in the kill set.
-      B.KillLoop |= B.Kills[I];
-      B.Kills.reset(I);
-    }
-
-    if constexpr (!Initialize) {
-      B.Changed = (B.Kills != SavedKills) || (B.Consumes != SavedConsumes);
-      Changed |= B.Changed;
-    }
+    // If Pred is a suspend block, it should propagate kills into block
+    // B for every block Pred consumes.
+    if (PredData.Suspend)
+      B.Kills |= PredData.Consumes;
   }
 
-  if constexpr (Initialize)
-    return true;
-
-  return Changed;
+  // Update block information. This is a dataflow "transfer" operation.
+  if (B.Suspend) {
+    // If block S is a suspend block, it should kill all of the blocks it
+    // consumes.
+    B.Kills |= B.Consumes;
+  } else if (B.End) {
+    // If block B is an end block, it should not propagate kills as the
+    // blocks following coro.end() are reached during initial invocation
+    // of the coroutine while all the data are still available on the
+    // stack or in the registers.
+    B.Kills.reset();
+  } else {
+    // This is reached when B block it not Suspend nor coro.end and it
+    // need to make sure that it is not in the kill set.
+    unsigned BlockIndex = std::distance(Block.begin(), &B);
+    B.KillLoop |= B.Kills[BlockIndex];
+    B.Kills.reset(BlockIndex);
+  }
 }
 
 SuspendCrossingInfo::SuspendCrossingInfo(Function &F, coro::Shape &Shape)
@@ -300,7 +261,6 @@ SuspendCrossingInfo::SuspendCrossingInfo(Function &F, coro::Shape &Shape)
     B.Consumes.resize(N);
     B.Kills.resize(N);
     B.Consumes.set(I);
-    B.Changed = true;
   }
 
   // Mark all CoroEnd Blocks. We do not propagate Kills beyond coro.ends as
@@ -325,10 +285,58 @@ SuspendCrossingInfo::SuspendCrossingInfo(Function &F, coro::Shape &Shape)
       markSuspendBlock(Save);
   }
 
-  computeBlockData</*Initialize=*/true>();
+  // Dataflow analysis for BlockData.
+  std::deque<size_t> Worklist;
+  BitVector InWorklist(N);
 
-  while (computeBlockData())
-    ;
+  // We first visit every block in reverse post order. This successfully
+  // propagates the information forward through DAG-shaped parts of the CFG.
+  // We put the destination blocks of backedges into a worklist to re-visit
+  // later.
+  ReversePostOrderTraversal<Function *> RPOT(&F);
+  BitVector Visited(N);
+  for (const BasicBlock *BB : RPOT) {
+    size_t BBIndex = Mapping.blockToIndex(BB);
+    BlockData &B = Block[BBIndex];
+    Visited.set(BBIndex);
+
+    visitBlock(*BB, B);
+
+    // We need to re-visit any backedges later. A back-edge is an edge to a
+    // block we have already visited in the RPOT.
+    for (const BasicBlock *Succ : successors(BB)) {
+      size_t SuccIndex = Mapping.blockToIndex(Succ);
+      if (Visited.test(SuccIndex) && !InWorklist.test(SuccIndex)) {
+        Worklist.push_back(SuccIndex);
+        InWorklist.set(SuccIndex);
+      }
+    }
+  }
+
+  // Re-visit blocks in worklist and keep propagating until we reach a fixpoint.
+  while (!Worklist.empty()) {
+    size_t BBIndex = Worklist.front();
+    Worklist.pop_front();
+    InWorklist.reset(BBIndex);
+
+    const BasicBlock *BB = Mapping.indexToBlock(BBIndex);
+    BlockData &B = Block[BBIndex];
+    BitVector SavedConsumes = B.Consumes;
+    BitVector SavedKills = B.Kills;
+
+    visitBlock(*BB, B);
+
+    // We need to re-visit successors if there was any change.
+    if ((B.Kills != SavedKills) || (B.Consumes != SavedConsumes)) {
+      for (const BasicBlock *Succ : successors(BB)) {
+        size_t SuccIndex = Mapping.blockToIndex(Succ);
+        if (!InWorklist.test(SuccIndex)) {
+          Worklist.push_back(SuccIndex);
+          InWorklist.set(SuccIndex);
+        }
+      }
+    }
+  }
 
   LLVM_DEBUG(dump());
 }
