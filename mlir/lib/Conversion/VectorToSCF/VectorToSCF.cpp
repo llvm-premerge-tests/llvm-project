@@ -651,6 +651,179 @@ struct PrepareTransferWriteConversion
   }
 };
 
+/// Decompose a n-D PrintOp into a loop of elementary/scalar prints. This allows
+/// printing both scalable and fixed size vectors.
+///
+/// E.g.:
+/// ```
+/// vector.print %v : vector<[4]xi32>
+/// ```
+/// is rewritten to:
+/// ```
+/// %c0 = arith.constant 0 : index
+/// %c4 = arith.constant 4 : index
+/// %c1 = arith.constant 1 : index
+/// %vscale = vector.vscale
+/// %length = arith.muli %vscale, %c4 : index
+/// %lastIndex = arith.subi %length, %c1 : index
+/// vector.print <open>
+/// scf.for %i = %c0 to %length step %c1 {
+///   %el = vector.extractelement %v[%i : index] : vector<[4]xi32>
+///   vector.print %el : i32 <no_punctuation>
+///   %notLastIndex = arith.cmpi ult, %i, %lastIndex : index
+///   scf.if %notLastIndex {
+///     vector.print <comma>
+///   }
+/// }
+/// vector.print <close>
+/// vector.print
+/// ```
+///
+/// Note: A temporary buffer is allocated for rank > 1 vectors to allow dynamic
+/// indexing of elements.
+struct DecomposePrintOpConversion : public VectorToSCFPattern<vector::PrintOp> {
+  using VectorToSCFPattern<vector::PrintOp>::VectorToSCFPattern;
+  LogicalResult matchAndRewrite(vector::PrintOp printOp,
+                                PatternRewriter &rewriter) const override {
+    if (!printOp.getSource())
+      return failure();
+
+    VectorType vectorType = dyn_cast<VectorType>(printOp.getPrintType());
+    if (!vectorType)
+      return failure();
+
+    auto loc = printOp.getLoc();
+    auto value = printOp.getSource();
+
+    if (auto intTy = dyn_cast<IntegerType>(vectorType.getElementType())) {
+      // Oddly sized integers are (somewhat) buggy on a lot of backends, so to
+      // avoid issues extend them to a more standard size.
+      // https://github.com/llvm/llvm-project/issues/30613
+      auto width = intTy.getWidth();
+      auto legalWidth = llvm::NextPowerOf2(std::max(8u, width) - 1);
+      auto legalIntTy = IntegerType::get(rewriter.getContext(), legalWidth,
+                                         intTy.getSignedness());
+      // arith can only take signless integers, so we must cast back and forth.
+      auto signlessSourceVectorType =
+          vectorType.cloneWith({}, getIntTypeWithSignlessSemantics(intTy));
+      auto signlessTargetVectorType =
+          vectorType.cloneWith({}, getIntTypeWithSignlessSemantics(legalIntTy));
+      auto targetVectorType = vectorType.cloneWith({}, legalIntTy);
+      value = rewriter.create<vector::BitCastOp>(loc, signlessSourceVectorType,
+                                                 value);
+      if (width == 1 || intTy.isUnsigned())
+        value = rewriter.create<arith::ExtUIOp>(loc, signlessTargetVectorType,
+                                                value);
+      else
+        value = rewriter.create<arith::ExtSIOp>(loc, signlessTargetVectorType,
+                                                value);
+      value = rewriter.create<vector::BitCastOp>(loc, targetVectorType, value);
+      vectorType = targetVectorType;
+    }
+
+    Value alloc;
+    if (vectorType.getRank() > 1) {
+      // Spill vector to allow dynamically indexing elements.
+      alloc = vectorToMemref(rewriter, loc, value, vectorType);
+    } else if (vectorType.getRank() == 0) {
+      // Shape cast rank 0 vectors to rank 1.
+      vectorType = VectorType::get({1}, vectorType.getElementType());
+      value = rewriter.create<vector::ShapeCastOp>(loc, vectorType, value);
+    }
+
+    vector::PrintOp firstClose;
+    SmallVector<Value, 8> loopIndices;
+    auto shape = vectorType.getShape();
+    auto scalableDimensions = vectorType.getScalableDims();
+    for (unsigned d = 0; d < shape.size(); d++) {
+      // Setup loop bounds and step.
+      Value lowerBound = rewriter.create<arith::ConstantIndexOp>(loc, 0);
+      Value upperBound = rewriter.create<arith::ConstantIndexOp>(loc, shape[d]);
+      Value step = rewriter.create<arith::ConstantIndexOp>(loc, 1);
+      if (scalableDimensions[d]) {
+        auto vscale = rewriter.create<vector::VectorScaleOp>(
+            loc, rewriter.getIndexType());
+        upperBound = rewriter.create<arith::MulIOp>(loc, upperBound, vscale);
+      }
+      auto lastIndex = rewriter.create<arith::SubIOp>(loc, upperBound, step);
+
+      // Create a loop to print the elements surrounded by parentheses.
+      rewriter.create<vector::PrintOp>(loc, vector::PrintPunctuation::Open);
+      auto loop =
+          rewriter.create<scf::ForOp>(loc, lowerBound, upperBound, step);
+      auto printClose = rewriter.create<vector::PrintOp>(
+          loc, vector::PrintPunctuation::Close);
+      if (!firstClose)
+        firstClose = printClose;
+
+      auto loopIdx = loop.getInductionVar();
+      loopIndices.push_back(loopIdx);
+
+      // Print a comma after all but the last element.
+      rewriter.setInsertionPointToStart(loop.getBody());
+      auto notLastIndex = rewriter.create<arith::CmpIOp>(
+          loc, arith::CmpIPredicate::ult, loopIdx, lastIndex);
+      rewriter.create<scf::IfOp>(loc, notLastIndex,
+                                 [&](OpBuilder &builder, Location loc) {
+                                   builder.create<vector::PrintOp>(
+                                       loc, vector::PrintPunctuation::Comma);
+                                   builder.create<scf::YieldOp>(loc);
+                                 });
+
+      rewriter.setInsertionPointToStart(loop.getBody());
+    }
+
+    // Print the scalar elements in the inner most loop.
+    auto element = [&]() -> Value {
+      if (alloc)
+        return rewriter.create<memref::LoadOp>(loc, alloc, loopIndices);
+      return rewriter.create<vector::ExtractElementOp>(loc, value,
+                                                       loopIndices.front());
+    }();
+    rewriter.create<vector::PrintOp>(loc, element,
+                                     vector::PrintPunctuation::NoPunctuation);
+
+    rewriter.setInsertionPointAfter(firstClose);
+    rewriter.create<vector::PrintOp>(loc, printOp.getPunctuation());
+    rewriter.eraseOp(printOp);
+    return success();
+  }
+
+  static Value vectorToMemref(OpBuilder &builder, Location loc, Value value,
+                              VectorType type) {
+    SmallVector<int64_t, 8> memrefShape;
+    SmallVector<Value, 8> zeroIndices;
+    SmallVector<Value, 8> memrefDynamicDimensions;
+    auto shape = type.getShape();
+    auto scalableDimensions = type.getScalableDims();
+    auto zeroIndex = builder.create<arith::ConstantIndexOp>(loc, 0);
+    for (unsigned d = 0; d < shape.size(); d++) {
+      if (scalableDimensions[d]) {
+        memrefShape.push_back(ShapedType::kDynamic);
+        auto vscale =
+            builder.create<vector::VectorScaleOp>(loc, builder.getIndexType());
+        auto size = builder.create<arith::ConstantIndexOp>(loc, shape[d]);
+        auto scaledSize = builder.create<arith::MulIOp>(loc, size, vscale);
+        memrefDynamicDimensions.push_back(scaledSize);
+      } else {
+        memrefShape.push_back(shape[d]);
+      }
+      zeroIndices.push_back(zeroIndex);
+    }
+    auto memrefType = MemRefType::get(memrefShape, type.getElementType());
+    auto alloc = builder.create<memref::AllocaOp>(loc, memrefType,
+                                                  memrefDynamicDimensions);
+    builder.create<vector::TransferWriteOp>(loc, value, alloc,
+                                            ValueRange(zeroIndices));
+    return alloc;
+  }
+
+  static IntegerType getIntTypeWithSignlessSemantics(IntegerType intTy) {
+    return IntegerType::get(intTy.getContext(), intTy.getWidth(),
+                            IntegerType::Signless);
+  };
+};
+
 /// Progressive lowering of vector transfer ops: Unpack one dimension.
 ///
 /// 1. Unpack one dimension from the current buffer type and cast the buffer
@@ -1280,6 +1453,8 @@ void mlir::populateVectorToSCFConversionPatterns(
                  lowering_1_d::TransferOp1dConversion<TransferWriteOp>>(
         patterns.getContext(), options);
   }
+  patterns.add<lowering_n_d::DecomposePrintOpConversion>(patterns.getContext(),
+                                                         options);
 }
 
 namespace {

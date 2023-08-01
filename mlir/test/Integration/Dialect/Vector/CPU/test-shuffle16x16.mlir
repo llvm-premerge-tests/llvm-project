@@ -1,7 +1,6 @@
-// RUN: mlir-opt %s -convert-scf-to-cf \
+// RUN: mlir-opt %s  \
 // RUN:   -test-transform-dialect-interpreter \
-// RUN:   -test-transform-dialect-erase-schedule \
-// RUN:   -convert-vector-to-llvm -convert-func-to-llvm -reconcile-unrealized-casts | \
+// RUN:   -test-transform-dialect-erase-schedule -test-lower-to-llvm | \
 // RUN: mlir-cpu-runner -e entry -entry-point-result=void  \
 // RUN:   -shared-libs=%mlir_c_runner_utils | \
 // RUN: FileCheck %s
