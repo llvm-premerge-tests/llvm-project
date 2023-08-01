@@ -213,3 +213,27 @@ define i5 @urem_common_dividend_defined_cond(i1 noundef %b, i5 %x, i5 %y, i5 %z)
   %sel = select i1 %b, i5 %r2, i5 %r1
   ret i5 %sel
 }
+
+define i32 @rem_euclid_1(i32 %0) {
+; CHECK-LABEL: @rem_euclid_1(
+; CHECK-NEXT:    [[SEL:%.*]] = and i32 [[TMP0:%.*]], 7
+; CHECK-NEXT:    ret i32 [[SEL]]
+;
+  %rem = srem i32 %0, 8
+  %cond = icmp slt i32 %rem, 0
+  %add = add nsw i32 %rem, 8
+  %sel = select i1 %cond, i32 %add, i32 %rem
+  ret i32 %sel
+}
+
+define i32 @rem_euclid_2(i32 %0) {
+; CHECK-LABEL: @rem_euclid_2(
+; CHECK-NEXT:    [[SEL:%.*]] = and i32 [[TMP0:%.*]], 7
+; CHECK-NEXT:    ret i32 [[SEL]]
+;
+  %rem = srem i32 %0, 8
+  %cond = icmp sgt i32 %rem, -1
+  %add = add nsw i32 %rem, 8
+  %sel = select i1 %cond, i32 %rem, i32 %add
+  ret i32 %sel
+}
