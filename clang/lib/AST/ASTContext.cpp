@@ -6345,11 +6345,12 @@ bool ASTContext::isSameTypeConstraint(const TypeConstraint *XTC,
   auto *NCY = YTC->getNamedConcept();
   if (!NCX || !NCY || !isSameEntity(NCX, NCY))
     return false;
-  if (XTC->hasExplicitTemplateArgs() != YTC->hasExplicitTemplateArgs())
+  if (XTC->getConceptLoc()->hasExplicitTemplateArgs() !=
+      YTC->getConceptLoc()->hasExplicitTemplateArgs())
     return false;
-  if (XTC->hasExplicitTemplateArgs())
-    if (XTC->getTemplateArgsAsWritten()->NumTemplateArgs !=
-        YTC->getTemplateArgsAsWritten()->NumTemplateArgs)
+  if (XTC->getConceptLoc()->hasExplicitTemplateArgs())
+    if (XTC->getConceptLoc()->getTemplateArgsAsWritten()->NumTemplateArgs !=
+        YTC->getConceptLoc()->getTemplateArgsAsWritten()->NumTemplateArgs)
       return false;
 
   // Compare slowly by profiling.
