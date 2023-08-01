@@ -27,7 +27,7 @@ define void @test_monotonic_ptr_iv_inc_1_different_element_types_1_with_early_ex
 ; CHECK:       loop.next:
 ; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
 ; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[UPPER]]
-; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 true, true
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])
@@ -144,7 +144,7 @@ define void @test_monotonic_ptr_iv_inc_1_gep_step_size_i8_unknown_end_ptr_with_e
 ; CHECK:       loop.next:
 ; CHECK-NEXT:    [[T_1:%.*]] = icmp uge ptr [[PTR_IV]], [[START]]
 ; CHECK-NEXT:    [[T_2:%.*]] = icmp ult ptr [[PTR_IV]], [[END]]
-; CHECK-NEXT:    [[AND:%.*]] = and i1 [[T_1]], [[T_2]]
+; CHECK-NEXT:    [[AND:%.*]] = and i1 true, true
 ; CHECK-NEXT:    br i1 [[AND]], label [[LOOP_LATCH]], label [[EXIT]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    call void @use(ptr [[PTR_IV]])

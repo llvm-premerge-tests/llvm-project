@@ -18,6 +18,7 @@
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/ConstraintSystem.h"
 #include "llvm/Analysis/GlobalsModRef.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/DataLayout.h"
@@ -261,6 +262,13 @@ public:
 
   void addFact(CmpInst::Predicate Pred, Value *A, Value *B, unsigned NumIn,
                unsigned NumOut, SmallVectorImpl<StackEntry> &DFSInStack);
+
+  /// If \p A is a monotonically increasing induction phi with start value S and
+  /// \p Pred is ICMP_NE, try to add A < B and A >= S.
+  void addFactForInductionPhi(CmpInst *CI, CmpInst::Predicate Pred, Value *A,
+                              Value *B, unsigned NumIn, unsigned NumOut,
+                              SmallVectorImpl<StackEntry> &DFSInStack,
+                              DominatorTree &DT, LoopInfo &LI);
 
   /// Turn a comparison of the form \p Op0 \p Pred \p Op1 into a vector of
   /// constraints, using indices from the corresponding constraint system.
@@ -1119,13 +1127,15 @@ removeEntryFromStack(const StackEntry &E, ConstraintInfo &Info,
 static bool checkAndSecondOpImpliedByFirst(
     FactOrCheck &CB, ConstraintInfo &Info, Module *ReproducerModule,
     SmallVectorImpl<ReproducerEntry> &ReproducerCondStack,
-    SmallVectorImpl<StackEntry> &DFSInStack) {
+    SmallVectorImpl<StackEntry> &DFSInStack, DominatorTree &DT, LoopInfo &LI) {
   CmpInst::Predicate Pred;
   Value *A, *B;
   Instruction *And = CB.getContextInst();
   if (!match(And->getOperand(0), m_ICmp(Pred, m_Value(A), m_Value(B))))
     return false;
 
+  Info.addFactForInductionPhi(cast<CmpInst>(And->getOperand(0)), Pred, A, B,
+                              CB.NumIn, CB.NumOut, DFSInStack, DT, LI);
   // Optimistically add fact from first condition.
   unsigned OldSize = DFSInStack.size();
   Info.addFact(Pred, A, B, CB.NumIn, CB.NumOut, DFSInStack);
@@ -1148,6 +1158,102 @@ static bool checkAndSecondOpImpliedByFirst(
                          DFSInStack);
   }
   return Changed;
+}
+
+void ConstraintInfo::addFactForInductionPhi(
+    CmpInst *CI, CmpInst::Predicate Pred, Value *A, Value *B, unsigned NumIn,
+    unsigned NumOut, SmallVectorImpl<StackEntry> &DFSInStack, DominatorTree &DT,
+    LoopInfo &LI) {
+  auto *PN = dyn_cast<PHINode>(A);
+  // TODO: Extend to support B being the phi node.
+  if (Pred != CmpInst::ICMP_NE || !PN || PN->getNumIncomingValues() != 2)
+    return;
+
+  // Check if the edge for which we add the condition is staying in the loop,
+  // while the other edge leaves the loop.
+  Loop *L = LI.getLoopFor(PN->getParent());
+  if (!L || !CI->hasOneUse())
+    return;
+  Instruction *User = cast<Instruction>(*CI->user_begin());
+  // Support conditions implied by first operand of and.
+  if (match(User, m_OneUse(m_LogicalAnd(m_Value(), m_Value()))))
+    User = cast<Instruction>(*User->user_begin());
+
+  if (!isa<BranchInst>(User) || User->getParent() != PN->getParent())
+    return;
+
+  BasicBlock *InLoopSucc = nullptr;
+  BasicBlock *LoopExitSucc = nullptr;
+  // Find the block we add the condition for (using NumIn and NumOut) and the
+  // other block.
+  for (BasicBlock *Succ : successors(User->getParent())) {
+    auto *N = DT.getNode(Succ);
+    if (NumIn == N->getDFSNumIn() && NumOut == N->getDFSNumOut())
+      InLoopSucc = Succ;
+    else
+      LoopExitSucc = Succ;
+  }
+  if (!InLoopSucc || LI.getLoopFor(InLoopSucc) != L ||
+      LI.getLoopFor(LoopExitSucc) == L)
+    return;
+
+  // Check if PN is a monotonic pointer induction phi of the form
+  //   %pn = phi [ %start, %entry ], [ %iv.next, %loop ]
+  //   %iv.next = getelementptr inbounds %pn, %step
+  // with a positive step.
+  // TODO: generalize to support larger steps, e.g. if the branch controls the
+  //       only exit.
+  Value *StartValue = nullptr;
+  GetElementPtrInst *StepInst = nullptr;
+  for (unsigned I = 0; I != 2; ++I) {
+    StepInst = dyn_cast<GetElementPtrInst>(PN->getIncomingValue(I));
+    if (StepInst && StepInst->isInBounds() &&
+        StepInst->getPointerOperand() == PN) {
+      StartValue = PN->getIncomingValue(1 - I);
+      break;
+    }
+  }
+  if (!StartValue)
+    return;
+
+  // Make sure the GEP either steps by 1 byte or that the value we compare
+  // against is a GEP based on the same start value and all offsets are a
+  // multiple of the step size, to guarantee that the induction will reach the
+  // value.
+  const DataLayout &DL = CI->getModule()->getDataLayout();
+  unsigned BitWidth =
+      DL.getIndexTypeSizeInBits(StepInst->getPointerOperand()->getType());
+  APInt StepOffset(BitWidth, 0);
+  if (!StepInst->accumulateConstantOffset(DL, StepOffset) ||
+      StepOffset.isZero() || StepOffset.isNegative())
+    return;
+
+  if (!StepOffset.isOne()) {
+    auto *UpperGEP = dyn_cast<GetElementPtrInst>(B);
+    if (!UpperGEP || UpperGEP->getPointerOperand() != StartValue ||
+        !UpperGEP->isInBounds())
+      return;
+
+    MapVector<Value *, APInt> UpperVariableOffsets;
+    APInt UpperConstantOffset(BitWidth, 0);
+    if (!UpperGEP->collectOffset(DL, BitWidth, UpperVariableOffsets,
+                                 UpperConstantOffset))
+      return;
+    // All variable offsets and the constant offset have to be a multiple of the
+    // step.
+    if (!UpperConstantOffset.urem(StepOffset).isZero() ||
+        any_of(UpperVariableOffsets, [&StepOffset](const auto &P) {
+          return !P.second.urem(StepOffset).isZero();
+        }))
+      return;
+  }
+
+  // We know that PN != B, so if StartValue <= B we know that PN < B and PN >=
+  // StartValue.
+  if (!doesHold(CmpInst::ICMP_ULE, StartValue, B))
+    return;
+  addFact(CmpInst::ICMP_ULT, PN, B, NumIn, NumOut, DFSInStack);
+  addFact(CmpInst::ICMP_UGE, PN, StartValue, NumIn, NumOut, DFSInStack);
 }
 
 void ConstraintInfo::addFact(CmpInst::Predicate Pred, Value *A, Value *B,
@@ -1263,7 +1369,7 @@ tryToSimplifyOverflowMath(IntrinsicInst *II, ConstraintInfo &Info,
   return Changed;
 }
 
-static bool eliminateConstraints(Function &F, DominatorTree &DT,
+static bool eliminateConstraints(Function &F, DominatorTree &DT, LoopInfo &LI,
                                  OptimizationRemarkEmitter &ORE) {
   bool Changed = false;
   DT.updateDFSNumbers();
@@ -1358,9 +1464,9 @@ static bool eliminateConstraints(Function &F, DominatorTree &DT,
             ReproducerModule.get(), ReproducerCondStack, S.DT);
         if (!Simplified && match(CB.getContextInst(),
                                  m_LogicalAnd(m_Value(), m_Specific(Inst)))) {
-          Simplified =
-              checkAndSecondOpImpliedByFirst(CB, Info, ReproducerModule.get(),
-                                             ReproducerCondStack, DFSInStack);
+          Simplified = checkAndSecondOpImpliedByFirst(
+              CB, Info, ReproducerModule.get(), ReproducerCondStack, DFSInStack,
+              DT, LI);
         }
         Changed |= Simplified;
       }
@@ -1376,6 +1482,9 @@ static bool eliminateConstraints(Function &F, DominatorTree &DT,
         return;
       }
 
+      if (auto *CI = dyn_cast<CmpInst>(CB.Inst))
+        Info.addFactForInductionPhi(CI, Pred, A, B, CB.NumIn, CB.NumOut,
+                                    DFSInStack, DT, LI);
       Info.addFact(Pred, A, B, CB.NumIn, CB.NumOut, DFSInStack);
       if (ReproducerModule && DFSInStack.size() > ReproducerCondStack.size())
         ReproducerCondStack.emplace_back(Pred, A, B);
@@ -1440,12 +1549,14 @@ static bool eliminateConstraints(Function &F, DominatorTree &DT,
 PreservedAnalyses ConstraintEliminationPass::run(Function &F,
                                                  FunctionAnalysisManager &AM) {
   auto &DT = AM.getResult<DominatorTreeAnalysis>(F);
+  auto &LI = AM.getResult<LoopAnalysis>(F);
   auto &ORE = AM.getResult<OptimizationRemarkEmitterAnalysis>(F);
-  if (!eliminateConstraints(F, DT, ORE))
+  if (!eliminateConstraints(F, DT, LI, ORE))
     return PreservedAnalyses::all();
 
   PreservedAnalyses PA;
   PA.preserve<DominatorTreeAnalysis>();
+  PA.preserve<LoopAnalysis>();
   PA.preserveSet<CFGAnalyses>();
   return PA;
 }
