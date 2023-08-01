@@ -551,8 +551,8 @@ namespace {
     /// Temporaries - Temporary lvalues materialized within this stack frame.
     MapTy Temporaries;
 
-    /// CallLoc - The location of the call expression for this call.
-    SourceLocation CallLoc;
+    /// CallRange - The source range of the call expression for this call.
+    SourceRange CallRange;
 
     /// Index - The call index of this call.
     unsigned Index;
@@ -586,7 +586,7 @@ namespace {
     llvm::DenseMap<const ValueDecl *, FieldDecl *> LambdaCaptureFields;
     FieldDecl *LambdaThisCaptureField = nullptr;
 
-    CallStackFrame(EvalInfo &Info, SourceLocation CallLoc,
+    CallStackFrame(EvalInfo &Info, SourceRange CallRange,
                    const FunctionDecl *Callee, const LValue *This,
                    const Expr *CallExpr, CallRef Arguments);
     ~CallStackFrame();
@@ -630,7 +630,7 @@ namespace {
     void describe(llvm::raw_ostream &OS) const override;
 
     Frame *getCaller() const override { return Caller; }
-    SourceLocation getCallLocation() const override { return CallLoc; }
+    SourceRange getCallRange() const override { return CallRange; }
     const FunctionDecl *getCallee() const override { return Callee; }
 
     bool isStdFunction() const {
@@ -1468,11 +1468,11 @@ void SubobjectDesignator::diagnosePointerArithmetic(EvalInfo &Info,
   setInvalid();
 }
 
-CallStackFrame::CallStackFrame(EvalInfo &Info, SourceLocation CallLoc,
+CallStackFrame::CallStackFrame(EvalInfo &Info, SourceRange CallRange,
                                const FunctionDecl *Callee, const LValue *This,
                                const Expr *CallExpr, CallRef Call)
     : Info(Info), Caller(Info.CurrentCall), Callee(Callee), This(This),
-      CallExpr(CallExpr), Arguments(Call), CallLoc(CallLoc),
+      CallExpr(CallExpr), Arguments(Call), CallRange(CallRange),
       Index(Info.NextCallIndex++) {
   Info.CurrentCall = this;
   ++Info.CallStackDepth;
@@ -6237,7 +6237,7 @@ static bool HandleFunctionCall(SourceLocation CallLoc,
   if (!Info.CheckCallLimit(CallLoc))
     return false;
 
-  CallStackFrame Frame(Info, CallLoc, Callee, This, E, Call);
+  CallStackFrame Frame(Info, E->getSourceRange(), Callee, This, E, Call);
 
   // For a trivial copy or move assignment, perform an APValue copy. This is
   // essential for unions, where the operations performed by the assignment
@@ -6302,7 +6302,7 @@ static bool HandleConstructorCall(const Expr *E, const LValue &This,
       Info,
       ObjectUnderConstruction{This.getLValueBase(), This.Designator.Entries},
       RD->getNumBases());
-  CallStackFrame Frame(Info, CallLoc, Definition, &This, E, Call);
+  CallStackFrame Frame(Info, E->getSourceRange(), Definition, &This, E, Call);
 
   // FIXME: Creating an APValue just to hold a nonexistent return value is
   // wasteful.
@@ -12149,8 +12149,9 @@ bool IntExprEvaluator::VisitBuiltinCallExpr(const CallExpr *E,
           Callee->getIdentifier()->isStr("is_constant_evaluated")))) {
       // FIXME: Find a better way to avoid duplicated diagnostics.
       if (Info.EvalStatus.Diag)
-        Info.report((Info.CallStackDepth == 1) ? E->getExprLoc()
-                                               : Info.CurrentCall->CallLoc,
+        Info.report((Info.CallStackDepth == 1)
+                        ? E->getExprLoc()
+                        : Info.CurrentCall->getCallRange().getBegin(),
                     diag::warn_is_constant_evaluated_always_true_constexpr)
             << (Info.CallStackDepth == 1 ? "__builtin_is_constant_evaluated"
                                          : "std::is_constant_evaluated");
