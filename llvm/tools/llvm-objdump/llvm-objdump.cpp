@@ -1122,7 +1122,9 @@ static char getMappingSymbolKind(ArrayRef<MappingSymbolPair> MappingSymbols,
   });
   // Return zero for any address before the first mapping symbol; this means
   // we should use the default disassembly mode, depending on the target.
-  if (It == MappingSymbols.begin() || (--It)->first < SectionAddress)
+  // Only CHPE ranges, marked with upper letters, can cross section boundaries.
+  if (It == MappingSymbols.begin() ||
+      ((--It)->first < SectionAddress && isLower(It->second)))
     return '\x00';
   return It->second;
 }
@@ -1415,8 +1417,32 @@ disassembleObject(ObjectFile &Obj, const ObjectFile &DbgObj,
                   SourcePrinter &SP, bool InlineRelocs) {
   DisassemblerTarget *DT = &PrimaryTarget;
   bool PrimaryIsThumb = false;
-  if (isArmElf(Obj))
-    PrimaryIsThumb = PrimaryTarget.SubtargetInfo->checkFeatures("+thumb-mode");
+  std::vector<MappingSymbolPair> MappingSymbols;
+
+  if (SecondaryTarget) {
+    if (isArmElf(Obj)) {
+      PrimaryIsThumb =
+          PrimaryTarget.SubtargetInfo->checkFeatures("+thumb-mode");
+    } else if (const auto *COFFObj = dyn_cast<COFFObjectFile>(&Obj)) {
+      const chpe_metadata *CHPEMetadata = COFFObj->getCHPEMetadata();
+      if (CHPEMetadata && CHPEMetadata->CodeMapCount) {
+        uintptr_t CodeMapInt;
+        cantFail(COFFObj->getRvaPtr(CHPEMetadata->CodeMap, CodeMapInt));
+        auto CodeMap = reinterpret_cast<const chpe_range_entry *>(CodeMapInt);
+
+        for (uint32_t i = 0; i < CHPEMetadata->CodeMapCount; ++i) {
+          if (CodeMap[i].getType() != chpe_range_type::Amd64 ||
+              !CodeMap[i].Length)
+            continue;
+
+          // Mark x86_64 CHPE code ranges.
+          uint64_t Start = CodeMap[i].getStart() + COFFObj->getImageBase();
+          MappingSymbols.emplace_back(Start, 'X');
+          MappingSymbols.emplace_back(Start + CodeMap[i].Length, 'A');
+        }
+      }
+    }
+  }
 
   std::map<SectionRef, std::vector<RelocationRef>> RelocMap;
   if (InlineRelocs)
@@ -1426,7 +1452,6 @@ disassembleObject(ObjectFile &Obj, const ObjectFile &DbgObj,
   // Create a mapping from virtual address to symbol name.  This is used to
   // pretty print the symbols while disassembling.
   std::map<SectionRef, SectionSymbolsTy> AllSymbols;
-  std::vector<MappingSymbolPair> MappingSymbols;
   SectionSymbolsTy AbsoluteSymbols;
   const StringRef FileName = Obj.getFileName();
   const MachOObjectFile *MachO = dyn_cast<const MachOObjectFile>(&Obj);
@@ -1897,10 +1922,25 @@ disassembleObject(ObjectFile &Obj, const ObjectFile &DbgObj,
           char Kind = getMappingSymbolKind(MappingSymbols, SectionAddr, Index);
           DumpARMELFData = Kind == 'd';
           if (SecondaryTarget) {
-            if (Kind == 'a') {
+            switch (Kind) {
+            case 'a':
               DT = PrimaryIsThumb ? &*SecondaryTarget : &PrimaryTarget;
-            } else if (Kind == 't') {
+              break;
+            case 't':
               DT = PrimaryIsThumb ? &PrimaryTarget : &*SecondaryTarget;
+              break;
+            case 'A':
+              // X64 disassembler range may have left Index unaligned, so
+              // make sure that it's aligned when we switch back to ARM64
+              // code.
+              Index = llvm::alignTo(Index, 4);
+              DT = &PrimaryTarget;
+              if (Index >= End)
+                continue;
+              break;
+            case 'X':
+              DT = &*SecondaryTarget;
+              break;
             }
           }
         }
@@ -2211,6 +2251,24 @@ static void disassembleObject(ObjectFile *Obj, bool InlineRelocs) {
       else
         Features.AddFeature("+thumb-mode");
       SecondaryTarget.emplace(PrimaryTarget, Features);
+    }
+  } else if (const auto *COFFObj = dyn_cast<COFFObjectFile>(Obj)) {
+    const chpe_metadata *CHPEMetadata = COFFObj->getCHPEMetadata();
+    if (CHPEMetadata && CHPEMetadata->CodeMapCount) {
+      // Set up x86_64 disassembler for ARM64EC binaries.
+      Triple X64Triple(TripleName);
+      X64Triple.setArch(Triple::ArchType::x86_64);
+
+      std::string Error;
+      const Target *X64Target =
+          TargetRegistry::lookupTarget("", X64Triple, Error);
+      if (X64Target) {
+        SubtargetFeatures X64Features;
+        SecondaryTarget.emplace(X64Target, *Obj, X64Triple.getTriple(), "",
+                                X64Features);
+      } else {
+        reportWarning(Error, Obj->getFileName());
+      }
     }
   }
 
