@@ -1,12 +1,18 @@
 ; RUN: llc -mtriple=aarch64 -asm-verbose=0              < %s | FileCheck -DAUT="hint #29" --check-prefixes=COMMON,LDR %s
 ; RUN: llc -mtriple=aarch64 -asm-verbose=0 -mattr=v8.3a < %s | FileCheck -DAUT="autiasp"  --check-prefixes=COMMON,LDR %s
+; RUN: llc -mtriple=aarch64 -asm-verbose=0 -mattr=v8.3a,fpac < %s | FileCheck -DAUT="autiasp" --check-prefixes=COMMON,FPAC %s
 ; RUN: llc -mtriple=aarch64 -asm-verbose=0 -aarch64-check-authenticated-lr-by-load=0              < %s | FileCheck -DAUT="hint #29" -DXPAC="hint #7" --check-prefixes=COMMON,XPAC %s
 ; RUN: llc -mtriple=aarch64 -asm-verbose=0 -aarch64-check-authenticated-lr-by-load=0 -mattr=v8.3a < %s | FileCheck -DAUT="autiasp"  -DXPAC="xpaclri" --check-prefixes=COMMON,XPAC %s
+; RUN: llc -mtriple=aarch64 -asm-verbose=0 -aarch64-check-authenticated-lr-by-load=0 -mattr=v8.3a,fpac < %s | FileCheck -DAUT="autiasp" --check-prefixes=COMMON,FPAC %s
 
 define i32 @tailcall_direct() "sign-return-address"="non-leaf" {
 ; COMMON-LABEL: tailcall_direct:
 ; COMMON:         str x30, [sp, #-16]!
 ; COMMON:         ldr x30, [sp], #16
+;
+; FPAC-NEXT:      [[AUT]]
+; FPAC-NEXT:      .cfi_negate_ra_state
+; FPAC-NEXT:      b callee
 ;
 ; LDR-NEXT:       [[AUT]]
 ; LDR-NEXT:       .cfi_negate_ra_state
@@ -31,6 +37,10 @@ define i32 @tailcall_indirect(ptr %fptr) "sign-return-address"="non-leaf" {
 ; COMMON-LABEL: tailcall_indirect:
 ; COMMON:         str x30, [sp, #-16]!
 ; COMMON:         ldr x30, [sp], #16
+;
+; FPAC-NEXT:      [[AUT]]
+; FPAC-NEXT:      .cfi_negate_ra_state
+; FPAC-NEXT:      br x0
 ;
 ; LDR-NEXT:       [[AUT]]
 ; LDR-NEXT:       .cfi_negate_ra_state
@@ -72,6 +82,10 @@ define i32 @tailcall_direct_noframe_sign_all() "sign-return-address"="all" {
 ; COMMON-NOT:     str{{.*}}x30
 ; COMMON-NOT:     ldr{{.*}}x30
 ;
+; FPAC:           [[AUT]]
+; FPAC-NEXT:      .cfi_negate_ra_state
+; FPAC-NEXT:      b callee
+;
 ; LDR:            [[AUT]]
 ; LDR-NEXT:       .cfi_negate_ra_state
 ; LDR-NEXT:       ldr x16, [x30]
@@ -94,6 +108,10 @@ define i32 @tailcall_indirect_noframe_sign_all(ptr %fptr) "sign-return-address"=
 ; COMMON-LABEL: tailcall_indirect_noframe_sign_all:
 ; COMMON-NOT:     str{{.*}}x30
 ; COMMON-NOT:     ldr{{.*}}x30
+;
+; FPAC:           [[AUT]]
+; FPAC-NEXT:      .cfi_negate_ra_state
+; FPAC-NEXT:      br x0
 ;
 ; LDR:            [[AUT]]
 ; LDR-NEXT:       .cfi_negate_ra_state

@@ -1960,6 +1960,9 @@ static MachineBasicBlock &checkAuthenticatedLR(MachineFunction &MF,
   if (!MFnI.shouldSignReturnAddress(MF))
     return MBB;
 
+  if (MF.getSubtarget<AArch64Subtarget>().hasFPAC())
+    return MBB;
+
   auto TI = MBB.getFirstTerminator();
   if (TI == MBB.end())
     return MBB;
