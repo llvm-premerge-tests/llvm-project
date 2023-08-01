@@ -3818,7 +3818,7 @@ More details can be found in the OpenCL C language Spec v2.0, Section 6.5.
 
 def OpenCLAddressSpaceGenericDocs : Documentation {
   let Category = DocOpenCLAddressSpaces;
-  let Heading = "__generic, generic, [[clang::opencl_generic]]";
+  let Heading = "__generic, generic, [[clang::addrspace_generic]], [[clang::opencl_generic]]";
   let Content = [{
 The generic address space attribute is only available with OpenCL v2.0 and later.
 It can be used with pointer types. Variables in global and local scope and
@@ -3831,7 +3831,7 @@ spaces.
 
 def OpenCLAddressSpaceConstantDocs : Documentation {
   let Category = DocOpenCLAddressSpaces;
-  let Heading = "__constant, constant, [[clang::opencl_constant]]";
+  let Heading = "__constant, constant, [[clang::addrspace_constant]], [[clang::opencl_constant]]";
   let Content = [{
 The constant address space attribute signals that an object is located in
 a constant (non-modifiable) memory region. It is available to all work items.
@@ -3843,7 +3843,7 @@ have an initializer.
 
 def OpenCLAddressSpaceGlobalDocs : Documentation {
   let Category = DocOpenCLAddressSpaces;
-  let Heading = "__global, global, [[clang::opencl_global]]";
+  let Heading = "__global, global, [[clang::addrspace_global]], [[clang::opencl_global]]";
   let Content = [{
 The global address space attribute specifies that an object is allocated in
 global memory, which is accessible by all work items. The content stored in this
@@ -3881,7 +3881,7 @@ As ``global_device`` and ``global_host`` are a subset of
 
 def OpenCLAddressSpaceLocalDocs : Documentation {
   let Category = DocOpenCLAddressSpaces;
-  let Heading = "__local, local, [[clang::opencl_local]]";
+  let Heading = "__local, local, [[clang::addrspace_local]], [[clang::opencl_local]]";
   let Content = [{
 The local address space specifies that an object is allocated in the local (work
 group) memory area, which is accessible to all work items in the same work
@@ -3894,7 +3894,7 @@ space are allowed. Local address space variables cannot have an initializer.
 
 def OpenCLAddressSpacePrivateDocs : Documentation {
   let Category = DocOpenCLAddressSpaces;
-  let Heading = "__private, private, [[clang::opencl_private]]";
+  let Heading = "__private, private, [[clang::addrspace_private]], [[clang::opencl_private]]";
   let Content = [{
 The private address space specifies that an object is allocated in the private
 (work item) memory. Other work items cannot access the same memory area and its
