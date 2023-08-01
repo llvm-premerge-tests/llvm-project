@@ -13,6 +13,7 @@
 #ifndef LLVM_CLANG_STATICANALYZER_CORE_PATHSENSITIVE_SMTCONV_H
 #define LLVM_CLANG_STATICANALYZER_CORE_PATHSENSITIVE_SMTCONV_H
 
+#include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
 #include "clang/StaticAnalyzer/Core/PathSensitive/APSIntType.h"
 #include "clang/StaticAnalyzer/Core/PathSensitive/SymbolManager.h"
@@ -775,11 +776,11 @@ public:
     // If we have two real floating types, convert the smaller operand to the
     // bigger result
     // Note: Safe to skip updating bitwidth because this must terminate
-    int order = Ctx.getFloatingTypeOrder(LTy, RTy);
-    if (order > 0) {
+    FloatingRankCompareResult order = Ctx.getFloatingTypeOrder(LTy, RTy);
+    if ((order == FRCR_Greater) || (order == FRCR_Equal_Greater_Subrank)) {
       RHS = (*doCast)(Solver, RHS, LTy, LBitWidth, RTy, RBitWidth);
       RTy = LTy;
-    } else if (order == 0) {
+    } else if ((order == FRCR_Equal) || (order == FRCR_Equal_Lesser_Subrank)) {
       LHS = (*doCast)(Solver, LHS, RTy, RBitWidth, LTy, LBitWidth);
       LTy = RTy;
     } else {
