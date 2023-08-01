@@ -194,6 +194,15 @@ mgpuMemHostRegister(void *ptr, uint64_t sizeBytes) {
   CUDA_REPORT_IF_ERROR(cuMemHostRegister(ptr, sizeBytes, /*flags=*/0));
 }
 
+// Get a pointer to host pinned memory (by host register) for device accesses.
+// The device accesses will be zero-copy.
+extern "C" MLIR_CUDA_WRAPPERS_EXPORT void *mgpuGetDevicePointer(void *ptr) {
+  ScopedContext scopedContext;
+  CUdeviceptr devicePtr;
+  CUDA_REPORT_IF_ERROR(cudaGetDevicePointer(&devicePtr, ptr, /*flags=*/0));
+  return reinterpret_cast<void *>(devicePtr);
+}
+
 /// Registers a memref with the CUDA runtime. `descriptor` is a pointer to a
 /// ranked memref descriptor struct of rank `rank`. Helpful until we have
 /// transfer functions implemented.

@@ -1064,6 +1064,28 @@ def GPU_HostRegisterOp : GPU_Op<"host_register">,
   let assemblyFormat = "$value attr-dict `:` type($value)";
 }
 
+def GPU_GetDevicePtrOp : GPU_Op<"get_device_ptr"> {
+  let summary = "Produces an unranked memref for device access";
+  let description = [{
+    The `get_device_ptr` op produces an unranked memref for device to access the
+    `in` memref pinned (by host register) in host memory. Device accesses will 
+    be zero-copy. 
+
+    Example:
+
+    ```mlir
+    %1 = gpu.get_device_ptr %0 : memref<?xf32> to memref<?xf32>
+    ```
+  }];
+
+  let arguments = (ins AnyUnrankedMemRef:$in);
+  let results = (outs AnyUnrankedMemRef:$out);
+
+  let assemblyFormat = "$in attr-dict `:` type($in) `into` type($out)";
+}
+
+
+
 def GPU_HostUnregisterOp : GPU_Op<"host_unregister">,
     Arguments<(ins AnyUnrankedMemRef:$value)> {
   let summary = "Unregisters a memref for access from device.";

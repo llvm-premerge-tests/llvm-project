@@ -166,6 +166,10 @@ protected:
       {llvmIntPtrType /* intptr_t rank */,
        llvmPointerType /* void *memrefDesc */,
        llvmIntPtrType /* intptr_t elementSizeBytes */}};
+  FunctionCallBuilder getDevicePtrCallBuilder = {
+      "mgpuGetDevicePtr",
+      llvmPointerType /* void * */,
+      {llvmPointerType /* void *memrefDesc */}};
   FunctionCallBuilder hostUnregisterCallBuilder = {
       "mgpuMemHostUnregisterMemRef",
       llvmVoidType,
@@ -338,6 +342,17 @@ public:
 private:
   LogicalResult
   matchAndRewrite(gpu::HostRegisterOp hostRegisterOp, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override;
+};
+class ConvertGetDevicePtrOpToGpuRuntimeCallPattern
+    : public ConvertOpToGpuRuntimeCallPattern<gpu::GetDevicePtrOp> {
+public:
+  ConvertGetDevicePtrOpToGpuRuntimeCallPattern(LLVMTypeConverter &typeConverter)
+      : ConvertOpToGpuRuntimeCallPattern<gpu::GetDevicePtrOp>(typeConverter) {}
+
+private:
+  LogicalResult
+  matchAndRewrite(gpu::GetDevicePtrOp getDevicePtrOp, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override;
 };
 
@@ -883,6 +898,97 @@ LogicalResult ConvertHostRegisterOpToGpuRuntimeCallPattern::matchAndRewrite(
   hostRegisterCallBuilder.create(loc, rewriter, arguments);
 
   rewriter.eraseOp(op);
+  return success();
+}
+
+LogicalResult ConvertGetDevicePtrOpToGpuRuntimeCallPattern::matchAndRewrite(
+    gpu::GetDevicePtrOp getDevicePtrOp, OpAdaptor adaptor,
+    ConversionPatternRewriter &rewriter) const {
+  auto *op = getDevicePtrOp.getOperation();
+  if (failed(areAllLLVMTypes(op, adaptor.getOperands(), rewriter)))
+    return failure();
+
+  Location loc = op->getLoc();
+
+  auto memRefType = getDevicePtrOp.getIn().getType();
+  // auto shape = memRefType.getShape();
+  auto elementType = cast<UnrankedMemRefType>(memRefType).getElementType();
+  auto llvmElementType = getTypeConverter()->convertType(elementType);
+  auto llvmElementPtrType = getTypeConverter()->getPointerType(llvmElementType);
+  // auto elementSize = getSizeInBytes(loc, elementType, rewriter);
+
+  // SmallVector<Value, 4> shape;
+  // SmallVector<Value, 4> strides;
+  // Value sizeBytes;
+  // getMemRefDescriptorSizes(loc, memRefType, {}, rewriter,
+  //                          shape, strides, sizeBytes);
+
+  // auto arguments = getTypeConverter()->promoteOperands(
+  //     loc, op->getOperands(), adaptor.getOperands(), rewriter);
+  // arguments.push_back(elementSize);
+  Value hostMemRef = MemRefDescriptor(adaptor.getIn());
+
+  Value hostPtr = MemRefDescriptor(adaptor.getIn()).allocatedPtr(rewriter, loc);
+  if (!getTypeConverter()->useOpaquePointers())
+    hostPtr =
+        rewriter.create<LLVM::BitcastOp>(loc, llvmElementPtrType, hostPtr);
+
+  // Create the MemRef descriptor.
+  // auto resultMemRefDesc = this->createMemRefDescriptor(
+  //     loc, memRefType, devicePtr, alignedPtr, shape, strides, rewriter);
+
+  // clean up above
+  UnrankedMemRefDescriptor sourceDesc(adaptor.getIn());
+  Value rank = sourceDesc.rank(rewriter, loc);
+  // Value sourceUnderlyingDesc = sourceDesc.memRefDescPtr(rewriter, loc);
+
+  // Create and allocate storage for new memref descriptor.
+  auto result = UnrankedMemRefDescriptor::undef(
+      rewriter, loc, typeConverter->convertType(memRefType));
+  result.setRank(rewriter, loc, rank);
+  SmallVector<Value, 1> sizes;
+  UnrankedMemRefDescriptor::computeSizes(
+      rewriter, loc, *getTypeConverter(), result,
+      llvmElementPtrType.getAddressSpace(), sizes);
+  Value resultUnderlyingSize = sizes.front();
+  Value resultUnderlyingDesc = rewriter.create<LLVM::AllocaOp>(
+      loc, getVoidPtrType(), rewriter.getI8Type(), resultUnderlyingSize);
+  result.setMemRefDescPtr(rewriter, loc, resultUnderlyingDesc);
+
+  // Copy pointers, performing address space casts.
+  // Type llvmElementType =
+  //     typeConverter->convertType(elementType);
+  // LLVM::LLVMPointerType sourceElemPtrType =
+  //     getTypeConverter()->getPointerType(llvmElementType, sourceAddrSpace);
+  // auto resultElemPtrType =
+  //     getTypeConverter()->getPointerType(llvmElementType, resultAddrSpace);
+
+  // Value allocatedPtr = sourceDesc.allocatedPtr(
+  //     rewriter, loc, sourceUnderlyingDesc, sourceElemPtrType);
+  // Value alignedPtr =
+  //     sourceDesc.alignedPtr(rewriter, loc, *getTypeConverter(),
+  //                           sourceUnderlyingDesc, sourceElemPtrType);
+  // allocatedPtr = rewriter.create<LLVM::AddrSpaceCastOp>(
+  //     loc, resultElemPtrType, allocatedPtr);
+  // alignedPtr = rewriter.create<LLVM::AddrSpaceCastOp>(
+  //     loc, resultElemPtrType, alignedPtr);
+
+  Value devicePtr =
+      getDevicePtrCallBuilder.create(loc, rewriter, {hostPtr}).getResult();
+  if (!getTypeConverter()->useOpaquePointers())
+    devicePtr =
+        rewriter.create<LLVM::BitcastOp>(loc, llvmElementPtrType, devicePtr);
+
+  // No alignment.
+  Value alignedPtr = devicePtr;
+
+  result.setAllocatedPtr(rewriter, loc, resultUnderlyingDesc,
+                         llvmElementPtrType, devicePtr);
+  result.setAlignedPtr(rewriter, loc, *getTypeConverter(), resultUnderlyingDesc,
+                       llvmElementPtrType, alignedPtr);
+
+  rewriter.replaceOp(op, {result});
+
   return success();
 }
 
@@ -1892,6 +1998,7 @@ void mlir::populateGpuToLLVMConversionPatterns(LLVMTypeConverter &converter,
   patterns.add<ConvertAllocOpToGpuRuntimeCallPattern,
                ConvertDeallocOpToGpuRuntimeCallPattern,
                ConvertHostRegisterOpToGpuRuntimeCallPattern,
+               ConvertGetDevicePtrOpToGpuRuntimeCallPattern,
                ConvertHostUnregisterOpToGpuRuntimeCallPattern,
                ConvertMemcpyOpToGpuRuntimeCallPattern,
                ConvertMemsetOpToGpuRuntimeCallPattern,
