@@ -11,7 +11,9 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/ExecutionEngine/Orc/DebugUtils.h"
+#include "llvm/ExecutionEngine/Orc/IRCompileLayer.h"
 #include "llvm/ExecutionEngine/Orc/Shared/OrcError.h"
+#include "llvm/ExecutionEngine/Orc/ThreadSafeModule.h"
 #include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/MSVCErrorWorkarounds.h"
 
@@ -3073,6 +3075,22 @@ void ExecutionSession::OL_addDependenciesForAll(
   for (auto &KV : MR.SymbolFlags)
     MR.JD.addDependencies(KV.first, Dependencies);
 }
+
+using ProfilerAdderPassFunc = unique_function<ThreadSafeModule(
+    ThreadSafeModule M, Function &RecompileFunc)>;
+using ReoptimizePassFunc = unique_function<ThreadSafeModule(
+    ThreadSafeModule M, Function &RecompileFunc)>;
+
+class ReoptLayer {
+public:
+  void emit(std::unique_ptr<MaterializationResponsibility> MR,
+            ThreadSafeModule TSM);
+
+private:
+  IRCompileLayer &Layer;
+};
+
+class ReoptMaterializationUnit {};
 
 #ifndef NDEBUG
 void ExecutionSession::dumpDispatchInfo(Task &T) {

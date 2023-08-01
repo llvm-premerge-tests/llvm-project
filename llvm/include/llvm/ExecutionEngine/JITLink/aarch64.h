@@ -622,7 +622,7 @@ inline Block &createPointerJumpStubBlock(LinkGraph &G, Section &StubSection,
 /// Create a jump stub that jumps via the pointer at the given symbol and
 /// an anonymous symbol pointing to it. Return the anonymous symbol.
 ///
-/// The stub block will be created by createPointerJumpStubBlock.
+/// The stub block will be created by createPointerJumpStubBlock_aarch64.
 inline Symbol &createAnonymousPointerJumpStub(LinkGraph &G,
                                               Section &StubSection,
                                               Symbol &PointerSymbol) {
