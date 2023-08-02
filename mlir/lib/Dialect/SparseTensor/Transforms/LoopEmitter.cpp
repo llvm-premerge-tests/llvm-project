@@ -580,7 +580,7 @@ void LoopEmitter::categorizeLoopCondition(
 void LoopEmitter::enterNewLoopSeq(OpBuilder &builder, Location loc,
                                   ArrayRef<TensorLevel> tidLvls) {
   // TODO: sort
-  assert(loopSeqStack.size() == loopStack.size());
+  assert(loopSeqStack.size() == getCurrentDepth());
   // Prepares for all the tensors used in the current loop sequence.
   std::vector<std::tuple<TensorId, Level, bool>> slicedTids;
 
@@ -598,7 +598,7 @@ void LoopEmitter::enterNewLoopSeq(OpBuilder &builder, Location loc,
 }
 
 void LoopEmitter::exitCurrentLoopSeq(OpBuilder &builder, Location loc) {
-  assert(loopSeqStack.size() == loopStack.size() + 1);
+  assert(loopSeqStack.size() == getCurrentDepth() + 1);
 
   const auto &slicedTids = loopSeqStack.back().second;
 
@@ -623,7 +623,7 @@ Value LoopEmitter::genAffine(OpBuilder &builder, Location loc, AffineExpr a) {
     // should be indexed by `LoopId`...
     const auto loopId = a.cast<AffineDimExpr>().getPosition();
     assert(loopId < loopIdToOrd.size());
-    return loopStack[loopIdToOrd[loopId]].iv;
+    return getLoopIV(loopIdToOrd[loopId]);
   }
   case AffineExprKind::Add: {
     auto binOp = a.cast<AffineBinaryOpExpr>();
@@ -1244,6 +1244,78 @@ void LoopEmitter::genDenseAffineAddress(OpBuilder &builder, Location loc,
   posits[tid][lvl] = genAddress(builder, loc, tid, lvl, lvlCrd);
 }
 
+Value LoopEmitter::genIdxLocate(OpBuilder &builder, Location loc,
+                                TensorLevel tidLvl, AffineConstantExpr crd) {
+  auto [tid, lvl] = unpackTensorLevel(tidLvl);
+  assert(isValidLevel(tid, lvl));
+  // TODO: support locate index with unresolved parent level.
+  assert(lvl == 0 || lvlFullyResolved(tid, lvl - 1));
+
+  // Dense level support random access.
+  if (isDenseDLT(lvlTypes[tid][lvl])) {
+    genDenseAffineAddress(builder, loc, tidLvl, crd);
+    // We can always locate the coordinate on a dense level.
+    return constantI1(builder, loc, true);
+  }
+  // Loads pHi and pLo.
+  prepareLoopOverTensorAtLvl(builder, loc, tid, lvl);
+  const Value pLo = posits[tid][lvl];
+  const Value pHi = highs[tid][lvl];
+  // The index to locate.
+  auto index = genAffine(builder, loc, crd);
+  auto rtp = tensors[tid].getType().cast<RankedTensorType>();
+  auto dimSize = rtp.getShape()[toOrigDim(rtp, lvl)];
+  if (dimSize == 1) {
+    // A simple optimization: if the dimension size for the current level is
+    // one, there is no need to locate it (because all the coordinates must be 0
+    // if specified).
+    // TODO: we can canonicalize non-unqiue level (with dimSize == 1) into a
+    // unique level.
+    if (!isUniqueDLT(lvlTypes[tid][lvl]))
+      segHi[tid][lvl] = highs[tid][lvl];
+  } else {
+    const Value crdBuf = coordinatesBuffers[tid][lvl];
+    auto whileOp = builder.create<scf::WhileOp>(
+        loc, builder.getIndexType(), pLo,
+        /*beforeBuilder=*/
+        [crdBuf, index, pHi](OpBuilder &builder, Location loc,
+                             ValueRange args) {
+          auto inBound = CMPI(ult, args.front(), pHi);
+          auto ifInB = builder.create<scf::IfOp>(loc, builder.getIndexType(),
+                                                 inBound, true);
+          // if (inbound) {
+          builder.setInsertionPointToStart(&ifInB.getThenRegion().front());
+          auto crd = genIndexLoad(builder, loc, crdBuf, args.front());
+          auto lt = CMPI(ult, crd, index);
+          // pos = crd < index ? pos : pHi
+          YIELD(SELECT(lt, args.front(), pHi).getResult());
+          // } else {
+          builder.setInsertionPointToStart(&ifInB.getElseRegion().front());
+          // pos = pHi
+          YIELD(pHi);
+          // }
+          Value pos = ifInB.getResults().front();
+          builder.setInsertionPointAfter(ifInB);
+          builder.create<scf::ConditionOp>(loc, CMPI(ne, pos, pHi), pos);
+        },
+        /*afterBuilder=*/
+        [](OpBuilder &builder, Location loc, ValueRange args) {
+          // Generates pos ++;
+          YIELD(ADDI(args.front(), C_IDX(1)).getResult());
+        });
+
+    Value locatedPos = whileOp.getResult(0);
+    posits[tid][lvl] = locatedPos;
+
+    if (!isUniqueDLT(lvlTypes[tid][lvl])) {
+      segHi[tid][lvl] = genSegmentHigh(builder, loc, tid, lvl, posits[tid][lvl],
+                                       highs[tid][lvl]);
+    }
+  }
+  // We locate to the coordinate on a sparse level when pos < pHi.
+  return CMPI(ult, posits[tid][lvl], pHi);
+}
+
 void LoopEmitter::prepareLoopOverTensorAtLvl(OpBuilder &builder, Location loc,
                                              TensorId tid, Level dstLvl) {
   assert(isValidLevel(tid, dstLvl));
@@ -1613,7 +1685,6 @@ void LoopEmitter::exitCurrentLoop(RewriterBase &rewriter, Location loc,
   // Clean up the values, it would help use to discover potential bug at a
   // earlier stage (instead of silently using a wrong value).
   const LoopInfo &loopInfo = loopStack.back();
-
   // Sets the insertion point to the right position.
   rewriter.setInsertionPointToEnd(loopInfo.userCodeBlock);
   if (!loopInfo.userCodeBlock->empty() &&
@@ -1629,8 +1700,7 @@ void LoopEmitter::exitCurrentLoop(RewriterBase &rewriter, Location loc,
   } else {
     exitForLoop(rewriter, loc, reduc);
   }
-
-  assert(loopStack.size() == loopSeqStack.size());
+  assert(loopSeqStack.size() == getCurrentDepth());
   loopStack.pop_back();
 }
 

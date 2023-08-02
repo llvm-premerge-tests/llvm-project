@@ -55,6 +55,13 @@ public:
 
   void startEmit();
 
+  // Add sparse level information to make sure that locating on sparse levels
+  // is correctly handled when the constant coordinate is not specified in the
+  // sparse tensor.
+  // This can only be done *after* loop order is determined since the constant
+  // index expressions in the linalg have no corresponding loop.
+  void populateSparseConstLocateLevel();
+
   /// Generates loop boundary statements (entering/exiting loops). The function
   /// passes and updates the passed-in parameters.
   std::optional<Operation *>
@@ -157,6 +164,23 @@ public:
   Value getExpandCount() const { return expCount; }
   void endExpand();
 
+  void updateConstIdxLocatable(TensorId tid, Value v) {
+    cIdxLocatable[tid] = v;
+  }
+  Value getConstIdxLocatable(TensorId tid) { return cIdxLocatable[tid]; }
+
+  bool hasLocatedConstIdx() {
+    return llvm::any_of(cIdxLocatable, [](Value v) { return v != nullptr; });
+  }
+  void clearConstIdxLocatable() {
+    cIdxLocatable.assign(cIdxLocatable.size(), nullptr);
+  }
+
+  SmallVector<Value> saveConstIdxLocatable() { return cIdxLocatable; }
+  void restoreConstIdxLocatable(ArrayRef<Value> saved) {
+    return cIdxLocatable.assign(saved.begin(), saved.end());
+  }
+
   //
   // Reduction methods.
   //
@@ -203,6 +227,10 @@ private:
   Value expFilled;
   Value expAdded;
   Value expCount;
+
+  // A vector of boolean value that indicates whether the constant index can be
+  // located on the sparse level currently being generated.
+  SmallVector<Value> cIdxLocatable;
 
   // Bookkeeping for reductions (up-to-date value of the reduction, and indices
   // into the merger's expression tree. When the indices of a tensor reduction

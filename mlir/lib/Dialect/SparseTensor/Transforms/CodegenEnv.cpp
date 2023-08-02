@@ -55,7 +55,8 @@ CodegenEnv::CodegenEnv(linalg::GenericOp linop, SparsificationOptions opts,
     : linalgOp(linop), sparseOptions(opts),
       latticeMerger(numTensors, numLoops, numFilterLoops, maxRank),
       loopEmitter(), topSort(), sparseOut(nullptr), outerParNest(-1u),
-      insChain(), expValues(), expFilled(), expAdded(), expCount(), redVal(),
+      insChain(), expValues(), expFilled(), expAdded(), expCount(),
+      cIdxLocatable(numTensors + 1, nullptr), redVal(),
       redExp(detail::kInvalidId), redCustom(detail::kInvalidId),
       redValidLexInsert() {}
 
@@ -69,8 +70,51 @@ LogicalResult CodegenEnv::initTensorExp() {
   return success();
 }
 
+void CodegenEnv::populateSparseConstLocateLevel() {
+  auto getConstIdxRange = [](Level startLvl, ArrayRef<AffineExpr> dimExprs,
+                             SparseTensorType stt) -> std::pair<Level, bool> {
+    Level endLvl = startLvl;
+    bool hasSparseLocate = false;
+    while (endLvl < stt.getLvlRank() &&
+           dimExprs[toOrigDim(stt, endLvl)].isa<AffineConstantExpr>()) {
+      hasSparseLocate = hasSparseLocate || !isDenseDLT(stt.getLvlType(endLvl));
+      endLvl++;
+    }
+    return std::make_pair(endLvl, hasSparseLocate);
+  };
+
+  for (auto *t : linalgOp.getDpsInputOperands()) {
+    const auto stt = getSparseTensorType(t->get());
+    if (!stt.hasEncoding())
+      continue;
+
+    const auto dimExprs = linalgOp.getMatchingIndexingMap(t).getResults();
+    TensorId tid = t->getOperandNumber();
+    Level curLvl = 0;
+    while (curLvl < stt.getLvlRank()) {
+      auto [endLvl, isSparse] = getConstIdxRange(curLvl, dimExprs, stt);
+      if (isSparse) {
+        // There exist a constant index expression imposed on a sparse level
+        // between [curLvl, endLvl).
+        if (curLvl == 0) {
+          latticeMerger.addSparseLocate(tid, topSort.front());
+        } else {
+          Level prevLvl = curLvl - 1;
+          std::optional<LoopId> loopId = latticeMerger.getLoopId(tid, prevLvl);
+          assert(loopId.has_value());
+          latticeMerger.addSparseLocate(tid, loopId.value());
+        }
+      }
+      curLvl = std::max(curLvl + 1, endLvl);
+    }
+  }
+}
+
 void CodegenEnv::startEmit() {
   assert(insChain == nullptr && "must only start emitting once");
+
+  // Make merger aware of constant index location on sparse levels.
+  populateSparseConstLocateLevel();
   if (sparseOut) {
     insChain = sparseOut->get();
     latticeMerger.setHasSparseOut(true);

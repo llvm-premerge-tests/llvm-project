@@ -626,7 +626,7 @@ private:
   /// Finalizes the sparse position structure at this level.
   void finalizeSegment(uint64_t l, uint64_t full = 0, uint64_t count = 1) {
     if (count == 0)
-      return; // Short-circuit, since it'll be a nop.
+      return;                       // Short-circuit, since it'll be a nop.
     const auto dlt = getLvlType(l); // Avoid redundant bounds checking.
     if (isCompressedDLT(dlt)) {
       appendPos(l, coordinates[l].size(), count);
@@ -680,10 +680,10 @@ private:
   uint64_t lexDiff(const uint64_t *lvlCoords) const {
     const uint64_t lvlRank = getLvlRank();
     for (uint64_t l = 0; l < lvlRank; ++l)
-      if (lvlCoords[l] > lvlCursor[l])
-        return l;
-      else
+      if (lvlCoords[l] < lvlCursor[l])
         assert(lvlCoords[l] == lvlCursor[l] && "non-lexicographic insertion");
+      else if (!isUniqueLvl(l) || lvlCoords[l] > lvlCursor[l])
+        return l;
     assert(0 && "duplicate insertion");
     return -1u;
   }

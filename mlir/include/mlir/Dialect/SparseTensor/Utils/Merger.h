@@ -397,11 +397,13 @@ public:
 
   /// Returns true if any `TensorLoopId` in the bitvector corresponds
   /// to sparse level-type.
-  bool hasAnySparse(const BitVector &bits) const;
+  bool hasAnySparse(const BitVector &bits, bool incLocate) const;
 
   /// Returns true if bits contains a dependent index reduction condition on
   /// sparse levels.
   bool hasSparseIdxReduction(const BitVector &bits) const;
+
+  bool hasSparseIdxLocate(const BitVector &bits) const;
 
   /// Gets the level-type of the `t`th tensor on `i`th loop.
   DimLevelType getLvlType(TensorId t, LoopId i) const {
@@ -441,8 +443,10 @@ public:
     loopBounds[i] = std::make_pair(t, lvl);
   }
 
+  void addSparseLocate(TensorId t, LoopId i) { hasSparseLocate[t][i] = true; }
+
   using ForeachTensorLoopIdCallback = function_ref<void(
-      TensorLoopId, TensorId, std::optional<Level>, DimLevelType, bool)>;
+      TensorLoopId, TensorId, std::optional<Level>, DimLevelType, bool, bool)>;
 
   /// Iterates over a set of `TensorLoopId`s, invoking the callback
   /// for each `TensorLoopId` and passing it the corresponding tensor
@@ -467,9 +471,10 @@ public:
         assert(!optLvl.has_value());
         // Slice the tid along the dependent level to iterate current loop.
         callback(b, t, getLoopDependentLevel(b), lvlTp,
-                 /*isIdxReduc=*/true);
+                 /*isIdxReduc=*/true, /*isIdxLocate=*/false);
       } else {
-        callback(b, t, optLvl, lvlTp, /*isIdxReduc=*/false);
+        callback(b, t, optLvl, lvlTp, /*isIdxReduc=*/false,
+                 /*isIdxLocate=*/isSparseIdxLocate(b));
       }
     }
   }
@@ -522,6 +527,10 @@ public:
       return isCompressedDLT(dlt) || isSingletonDLT(dlt);
     }
     return false;
+  }
+
+  bool isSparseIdxLocate(TensorLoopId b) const {
+    return hasSparseLocate[tensor(b)][loop(b)];
   }
 
   Level getLoopDependentLevel(TensorLoopId b) const {
@@ -680,6 +689,7 @@ private:
   // Map that converts pair<TensorId, Level> to the corresponding LoopId.
   std::vector<std::vector<std::optional<LoopId>>> lvlToLoop;
 
+  std::vector<std::vector<bool>> hasSparseLocate;
   // Map from a loop to its dependencies if any.
   // The dependencies of a loop is a set of (tensor, level) pairs.
   // It is currently only set for non-trivial index expressions.
