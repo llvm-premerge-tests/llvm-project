@@ -7990,7 +7990,7 @@ SDValue SelectionDAGBuilder::lowerStartEH(SDValue Chain,
   return DAG.getEHLabel(getCurSDLoc(), Chain, BeginLabel);
 }
 
-SDValue SelectionDAGBuilder::lowerEndEH(SDValue Chain, const InvokeInst *II,
+SDValue SelectionDAGBuilder::lowerEndEH(SDValue Chain, const CallBase *CB,
                                         const BasicBlock *EHPadBB,
                                         MCSymbol *BeginLabel) {
   assert(BeginLabel && "BeginLabel should've been set");
@@ -8008,12 +8008,12 @@ SDValue SelectionDAGBuilder::lowerEndEH(SDValue Chain, const InvokeInst *II,
   // There is a platform (e.g. wasm) that uses funclet style IR but does not
   // actually use outlined funclets and their LSDA info style.
   if (MF.hasEHFunclets() && isFuncletEHPersonality(Pers)) {
-    assert(II && "II should've been set");
+    assert(CB && "CB should've been set");
     WinEHFuncInfo *EHInfo = MF.getWinEHFuncInfo();
-    EHInfo->addIPToStateRange(II, BeginLabel, EndLabel);
+    EHInfo->addIPToStateRange(CB, BeginLabel, EndLabel);
   } else if (!isScopedEHPersonality(Pers)) {
-    assert(EHPadBB);
-    MF.addInvoke(FuncInfo.MBBMap[EHPadBB], BeginLabel, EndLabel);
+    MF.addInvoke(EHPadBB ? FuncInfo.MBBMap[EHPadBB] : nullptr, BeginLabel,
+                 EndLabel);
   }
 
   return Chain;
@@ -8021,10 +8021,11 @@ SDValue SelectionDAGBuilder::lowerEndEH(SDValue Chain, const InvokeInst *II,
 
 std::pair<SDValue, SDValue>
 SelectionDAGBuilder::lowerInvokable(TargetLowering::CallLoweringInfo &CLI,
-                                    const BasicBlock *EHPadBB) {
+                                    const BasicBlock *EHPadBB,
+                                    bool EmitEHLabels) {
   MCSymbol *BeginLabel = nullptr;
 
-  if (EHPadBB) {
+  if (EmitEHLabels) {
     // Both PendingLoads and PendingExports must be flushed here;
     // this call might not return.
     (void)getRoot();
@@ -8052,9 +8053,8 @@ SelectionDAGBuilder::lowerInvokable(TargetLowering::CallLoweringInfo &CLI,
     DAG.setRoot(Result.second);
   }
 
-  if (EHPadBB) {
-    DAG.setRoot(lowerEndEH(getRoot(), cast_or_null<InvokeInst>(CLI.CB), EHPadBB,
-                           BeginLabel));
+  if (EmitEHLabels) {
+    DAG.setRoot(lowerEndEH(getRoot(), CLI.CB, EHPadBB, BeginLabel));
   }
 
   return Result;
@@ -8073,6 +8073,10 @@ void SelectionDAGBuilder::LowerCallTo(const CallBase &CB, SDValue Callee,
 
   const Value *SwiftErrorVal = nullptr;
   const TargetLowering &TLI = DAG.getTargetLoweringInfo();
+
+  // We need EH_LABELs for unwindabort call instructions and when there's an
+  // EHPadBB.
+  bool EmitEHLabels = EHPadBB != nullptr || CB.isUnwindAbort();
 
   if (isTailCall) {
     // Avoid emitting tail calls in functions with the disable-tail-calls
@@ -8163,7 +8167,8 @@ void SelectionDAGBuilder::LowerCallTo(const CallBase &CB, SDValue Callee,
       .setIsPreallocated(
           CB.countOperandBundlesOfType(LLVMContext::OB_preallocated) != 0)
       .setCFIType(CFIType);
-  std::pair<SDValue, SDValue> Result = lowerInvokable(CLI, EHPadBB);
+  std::pair<SDValue, SDValue> Result =
+      lowerInvokable(CLI, EHPadBB, EmitEHLabels);
 
   if (Result.first.getNode()) {
     Result.first = lowerRangeToAssertZExt(DAG, CB, Result.first);
@@ -9067,10 +9072,7 @@ void SelectionDAGBuilder::visitInlineAsm(const CallBase &Call,
   // memory and is nonvolatile.
   SDValue Glue, Chain = (HasSideEffect) ? getRoot() : DAG.getRoot();
 
-  bool EmitEHLabels = isa<InvokeInst>(Call);
-  if (EmitEHLabels) {
-    assert(EHPadBB && "InvokeInst must have an EHPadBB");
-  }
+  bool EmitEHLabels = isa<InvokeInst>(Call) || Call.isUnwindAbort();
   bool IsCallBr = isa<CallBrInst>(Call);
 
   if (IsCallBr || EmitEHLabels) {
@@ -9556,7 +9558,7 @@ void SelectionDAGBuilder::visitInlineAsm(const CallBase &Call,
     Chain = DAG.getNode(ISD::TokenFactor, getCurSDLoc(), MVT::Other, OutChains);
 
   if (EmitEHLabels) {
-    Chain = lowerEndEH(Chain, cast<InvokeInst>(&Call), EHPadBB, BeginLabel);
+    Chain = lowerEndEH(Chain, &Call, EHPadBB, BeginLabel);
   }
 
   // Only Update Root if inline assembly has a memory effect.
@@ -9841,7 +9843,8 @@ void SelectionDAGBuilder::visitPatchpoint(const CallBase &CB,
   TargetLowering::CallLoweringInfo CLI(DAG);
   populateCallLoweringInfo(CLI, &CB, NumMetaOpers, NumCallArgs, Callee,
                            ReturnTy, true);
-  std::pair<SDValue, SDValue> Result = lowerInvokable(CLI, EHPadBB);
+  std::pair<SDValue, SDValue> Result =
+      lowerInvokable(CLI, EHPadBB, EHPadBB || CB.isUnwindAbort());
 
   SDNode *CallEnd = Result.second.getNode();
   if (HasDef && (CallEnd->getOpcode() == ISD::CopyFromReg))

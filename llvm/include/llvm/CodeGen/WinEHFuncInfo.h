@@ -24,6 +24,7 @@ namespace llvm {
 
 class AllocaInst;
 class BasicBlock;
+class CallBase;
 class FuncletPadInst;
 class Function;
 class GlobalVariable;
@@ -102,7 +103,7 @@ struct WinEHFuncInfo {
 
   int getLastStateNumber() const { return CxxUnwindMap.size() - 1; }
 
-  void addIPToStateRange(const InvokeInst *II, MCSymbol *InvokeBegin,
+  void addIPToStateRange(const CallBase *CB, MCSymbol *InvokeBegin,
                          MCSymbol *InvokeEnd);
 
   void addIPToStateRange(int State, MCSymbol *InvokeBegin, MCSymbol *InvokeEnd);

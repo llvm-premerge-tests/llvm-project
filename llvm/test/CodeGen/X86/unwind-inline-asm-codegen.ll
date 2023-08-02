@@ -12,10 +12,10 @@ entry:
 
 define dso_local void @test() personality ptr @__gxx_personality_v0 {
 entry:
-
-; CHECK-LABEL: .Ltmp0:
+; CHECK-LABEL: test:
+; CHECK: .Ltmp0:
 ; CHECK: callq  trap
-; CHECK-LABEL: .Ltmp1:
+; CHECK: .Ltmp1:
 
   invoke void asm sideeffect unwind "call trap", "~{dirflag},~{fpsr},~{flags}"()
           to label %invoke.cont unwind label %lpad

@@ -576,6 +576,11 @@ bool llvm::isInTailCallPosition(const CallBase &Call, const TargetMachine &TM) {
   const Instruction *Term = ExitBB->getTerminator();
   const ReturnInst *Ret = dyn_cast<ReturnInst>(Term);
 
+  // A call marked unwindabort cannot be tail called, because the unwinder must
+  // examine the call frame.
+  if (Call.isUnwindAbort())
+    return false;
+
   // The block must end in a return statement or unreachable.
   //
   // FIXME: Decline tailcall if it's not guaranteed and if the block ends in

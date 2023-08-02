@@ -2,6 +2,8 @@
 ; RUN: llc %s -stop-after=irtranslator -verify-machineinstrs -mtriple aarch64-apple-darwin -global-isel -o - 2>&1 | FileCheck %s --check-prefix=DARWIN
 ; RUN: llc %s -stop-after=irtranslator -verify-machineinstrs -mtriple aarch64-windows -global-isel -o - 2>&1 | FileCheck %s --check-prefix=WINDOWS
 
+declare i32 @__gxx_personality_v0(...)
+
 declare void @simple_fn()
 define void @tail_call() {
   ; DARWIN-LABEL: name: tail_call
@@ -11,6 +13,30 @@ define void @tail_call() {
   ; WINDOWS: bb.1 (%ir-block.0):
   ; WINDOWS-NEXT:   TCRETURNdi @simple_fn, 0, csr_aarch64_aapcs, implicit $sp
   tail call void @simple_fn()
+  ret void
+}
+
+; We cannot tail-call when unwindabort is required.
+define void @no_tail_call_unwindabort() personality ptr @__gxx_personality_v0 {
+  ; DARWIN-LABEL: name: no_tail_call_unwindabort
+  ; DARWIN: bb.1 (%ir-block.0):
+  ; DARWIN-NEXT:   G_INVOKE_REGION_START
+  ; DARWIN-NEXT:   EH_LABEL <mcsymbol >
+  ; DARWIN-NEXT:   ADJCALLSTACKDOWN 0, 0, implicit-def $sp, implicit $sp
+  ; DARWIN-NEXT:   BL @simple_fn, csr_darwin_aarch64_aapcs, implicit-def $lr, implicit $sp
+  ; DARWIN-NEXT:   ADJCALLSTACKUP 0, 0, implicit-def $sp, implicit $sp
+  ; DARWIN-NEXT:   EH_LABEL <mcsymbol >
+  ; DARWIN-NEXT:   RET_ReallyLR
+  ; WINDOWS-LABEL: name: no_tail_call_unwindabort
+  ; WINDOWS: bb.1 (%ir-block.0):
+  ; WINDOWS-NEXT:   G_INVOKE_REGION_START
+  ; WINDOWS-NEXT:   EH_LABEL <mcsymbol >
+  ; WINDOWS-NEXT:   ADJCALLSTACKDOWN 0, 0, implicit-def $sp, implicit $sp
+  ; WINDOWS-NEXT:   BL @simple_fn, csr_aarch64_aapcs, implicit-def $lr, implicit $sp
+  ; WINDOWS-NEXT:   ADJCALLSTACKUP 0, 0, implicit-def $sp, implicit $sp
+  ; WINDOWS-NEXT:   EH_LABEL <mcsymbol >
+  ; WINDOWS-NEXT:   RET_ReallyLR
+  tail call unwindabort void @simple_fn()
   ret void
 }
 
