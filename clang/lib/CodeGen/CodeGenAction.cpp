@@ -745,9 +745,10 @@ void BackendConsumer::UnsupportedDiagHandler(
 
 void BackendConsumer::EmitOptimizationMessage(
     const llvm::DiagnosticInfoOptimizationBase &D, unsigned DiagID) {
-  // We only support warnings and remarks.
+  // We only support warnings, remarks and errors.
   assert(D.getSeverity() == llvm::DS_Remark ||
-         D.getSeverity() == llvm::DS_Warning);
+         D.getSeverity() == llvm::DS_Warning ||
+         D.getSeverity() == llvm::DS_Error);
 
   StringRef Filename;
   unsigned Line, Column;
@@ -840,7 +841,11 @@ void BackendConsumer::OptimizationRemarkHandler(
 
 void BackendConsumer::OptimizationFailureHandler(
     const llvm::DiagnosticInfoOptimizationFailure &D) {
-  EmitOptimizationMessage(D, diag::warn_fe_backend_optimization_failure);
+  unsigned DiagID = diag::warn_fe_backend_optimization_failure;
+  if (D.getSeverity() == DiagnosticSeverity::DS_Error)
+    DiagID = diag::err_fe_backend_optimization_failure;
+
+  EmitOptimizationMessage(D, DiagID);
 }
 
 void BackendConsumer::DontCallDiagHandler(const DiagnosticInfoDontCall &D) {

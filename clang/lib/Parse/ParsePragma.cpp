@@ -1375,6 +1375,7 @@ bool Parser::HandlePragmaLoopHint(LoopHint &Hint) {
     OptionPipelineDisabled = OptionInfo->isStr("pipeline");
     StateOption = llvm::StringSwitch<bool>(OptionInfo->getName())
                       .Case("vectorize", true)
+                      .Case("force_vectorize", true)
                       .Case("interleave", true)
                       .Case("vectorize_predicate", true)
                       .Default(false) ||
@@ -3522,6 +3523,7 @@ void PragmaLoopHintHandler::HandlePragma(Preprocessor &PP,
 
     bool OptionValid = llvm::StringSwitch<bool>(OptionInfo->getName())
                            .Case("vectorize", true)
+                           .Case("force_vectorize", true)
                            .Case("interleave", true)
                            .Case("unroll", true)
                            .Case("distribute", true)

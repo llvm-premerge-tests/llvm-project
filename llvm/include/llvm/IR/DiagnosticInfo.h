@@ -341,7 +341,7 @@ public:
 
   /// Return the absolute path tot the file.
   std::string getAbsolutePath() const;
-  
+
   const Function &getFunction() const { return Fn; }
   DiagnosticLocation getLocation() const { return Loc; }
 
@@ -983,9 +983,10 @@ public:
   /// of the diagnostic.
   DiagnosticInfoOptimizationFailure(const Function &Fn,
                                     const DiagnosticLocation &Loc,
-                                    const Twine &Msg)
-      : DiagnosticInfoIROptimization(DK_OptimizationFailure, DS_Warning,
-                                     nullptr, Fn, Loc, Msg) {}
+                                    const Twine &Msg,
+                                    DiagnosticSeverity Severity = DS_Warning)
+      : DiagnosticInfoIROptimization(DK_OptimizationFailure, Severity, nullptr,
+                                     Fn, Loc, Msg) {}
 
   /// \p PassName is the name of the pass emitting this diagnostic.  \p
   /// RemarkName is a textual identifier for the remark (single-word,
@@ -994,7 +995,8 @@ public:
   /// supported).
   DiagnosticInfoOptimizationFailure(const char *PassName, StringRef RemarkName,
                                     const DiagnosticLocation &Loc,
-                                    const Value *CodeRegion);
+                                    const Value *CodeRegion,
+                                    DiagnosticSeverity Severity = DS_Warning);
 
   static bool classof(const DiagnosticInfo *DI) {
     return DI->getKind() == DK_OptimizationFailure;

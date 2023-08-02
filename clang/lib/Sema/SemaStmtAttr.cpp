@@ -123,6 +123,7 @@ static Attr *handleLoopHintAttr(Sema &S, Stmt *St, const ParsedAttr &A,
     Option = llvm::StringSwitch<LoopHintAttr::OptionType>(
                  OptionLoc->Ident->getName())
                  .Case("vectorize", LoopHintAttr::Vectorize)
+                 .Case("force_vectorize", LoopHintAttr::ForceVectorize)
                  .Case("vectorize_width", LoopHintAttr::VectorizeWidth)
                  .Case("interleave", LoopHintAttr::Interleave)
                  .Case("vectorize_predicate", LoopHintAttr::VectorizePredicate)
@@ -151,6 +152,7 @@ static Attr *handleLoopHintAttr(Sema &S, Stmt *St, const ParsedAttr &A,
         return nullptr;
       State = LoopHintAttr::Numeric;
     } else if (Option == LoopHintAttr::Vectorize ||
+               Option == LoopHintAttr::ForceVectorize ||
                Option == LoopHintAttr::Interleave ||
                Option == LoopHintAttr::VectorizePredicate ||
                Option == LoopHintAttr::Unroll ||
@@ -375,8 +377,10 @@ CheckForIncompatibleAttributes(Sema &S,
 
     CategoryType Category = CategoryType::NumberOfCategories;
     LoopHintAttr::OptionType Option = LH->getOption();
+
     switch (Option) {
     case LoopHintAttr::Vectorize:
+    case LoopHintAttr::ForceVectorize:
     case LoopHintAttr::VectorizeWidth:
       Category = Vectorize;
       break;
@@ -409,6 +413,7 @@ CheckForIncompatibleAttributes(Sema &S,
     auto &CategoryState = HintAttrs[Category];
     const LoopHintAttr *PrevAttr;
     if (Option == LoopHintAttr::Vectorize ||
+        Option == LoopHintAttr::ForceVectorize ||
         Option == LoopHintAttr::Interleave || Option == LoopHintAttr::Unroll ||
         Option == LoopHintAttr::UnrollAndJam ||
         Option == LoopHintAttr::VectorizePredicate ||
@@ -425,7 +430,7 @@ CheckForIncompatibleAttributes(Sema &S,
 
     PrintingPolicy Policy(S.Context.getLangOpts());
     SourceLocation OptionLoc = LH->getRange().getBegin();
-    if (PrevAttr)
+    if (PrevAttr && Option != LoopHintAttr::ForceVectorize)
       // Cannot specify same type of attribute twice.
       S.Diag(OptionLoc, diag::err_pragma_loop_compatibility)
           << /*Duplicate=*/true << PrevAttr->getDiagnosticName(Policy)

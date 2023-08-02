@@ -217,6 +217,7 @@ LoopInfo::createLoopVectorizeMetadata(const LoopAttributes &Attrs,
   if (Attrs.VectorizeEnable == LoopAttributes::Disable)
     Enabled = false;
   else if (Attrs.VectorizeEnable != LoopAttributes::Unspecified ||
+           Attrs.ForceVectorizeEnable != LoopAttributes::Unspecified ||
            Attrs.VectorizePredicateEnable != LoopAttributes::Unspecified ||
            Attrs.InterleaveCount != 0 || Attrs.VectorizeWidth != 0 ||
            Attrs.VectorizeScalable != LoopAttributes::Unspecified)
@@ -262,6 +263,14 @@ LoopInfo::createLoopVectorizeMetadata(const LoopAttributes &Attrs,
         MDString::get(Ctx, "llvm.loop.vectorize.predicate.enable"),
         ConstantAsMetadata::get(ConstantInt::get(llvm::Type::getInt1Ty(Ctx),
                                                  IsVectorPredicateEnabled))};
+    Args.push_back(MDNode::get(Ctx, Vals));
+  }
+
+  if (Attrs.ForceVectorizeEnable == LoopAttributes::Enable) {
+    Metadata *Vals[] = {
+        MDString::get(Ctx, "llvm.loop.vectorize.force_vectorize"),
+        ConstantAsMetadata::get(
+            ConstantInt::get(llvm::Type::getInt1Ty(Ctx), true))};
     Args.push_back(MDNode::get(Ctx, Vals));
   }
 
@@ -644,8 +653,11 @@ void LoopInfoStack::push(BasicBlock *Header, clang::ASTContext &Ctx,
         setVectorizeWidth(1);
         setVectorizeScalable(LoopAttributes::Unspecified);
         break;
+      case LoopHintAttr::ForceVectorize:
+        setForceVectorizeEnable(false);
+        break;
       case LoopHintAttr::Interleave:
-        // Disable interleaving by speciyfing a count of 1.
+        // Disable interleaving by specifying a count of 1.
         setInterleaveCount(1);
         break;
       case LoopHintAttr::Unroll:
@@ -678,6 +690,9 @@ void LoopInfoStack::push(BasicBlock *Header, clang::ASTContext &Ctx,
       case LoopHintAttr::Interleave:
         setVectorizeEnable(true);
         break;
+      case LoopHintAttr::ForceVectorize:
+        setForceVectorizeEnable(true);
+        break;
       case LoopHintAttr::Unroll:
         setUnrollState(LoopAttributes::Enable);
         break;
@@ -703,6 +718,7 @@ void LoopInfoStack::push(BasicBlock *Header, clang::ASTContext &Ctx,
     case LoopHintAttr::AssumeSafety:
       switch (Option) {
       case LoopHintAttr::Vectorize:
+      case LoopHintAttr::ForceVectorize:
       case LoopHintAttr::Interleave:
         // Apply "llvm.mem.parallel_loop_access" metadata to load/stores.
         setParallel(true);
@@ -731,6 +747,7 @@ void LoopInfoStack::push(BasicBlock *Header, clang::ASTContext &Ctx,
         setUnrollAndJamState(LoopAttributes::Full);
         break;
       case LoopHintAttr::Vectorize:
+      case LoopHintAttr::ForceVectorize:
       case LoopHintAttr::Interleave:
       case LoopHintAttr::UnrollCount:
       case LoopHintAttr::UnrollAndJamCount:
@@ -777,6 +794,7 @@ void LoopInfoStack::push(BasicBlock *Header, clang::ASTContext &Ctx,
       case LoopHintAttr::UnrollAndJam:
       case LoopHintAttr::VectorizePredicate:
       case LoopHintAttr::Vectorize:
+      case LoopHintAttr::ForceVectorize:
       case LoopHintAttr::VectorizeWidth:
       case LoopHintAttr::Interleave:
       case LoopHintAttr::Distribute:

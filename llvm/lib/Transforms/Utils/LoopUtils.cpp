@@ -389,6 +389,11 @@ TransformationMode llvm::hasUnrollAndJamTransformation(const Loop *L) {
 }
 
 TransformationMode llvm::hasVectorizeTransformation(const Loop *L) {
+  std::optional<bool> EnableForceVectorize =
+      getOptionalBoolLoopAttribute(L, "llvm.loop.vectorize.force_vectorize");
+  if (EnableForceVectorize == true)
+    return TM_ForcedByUser;
+
   std::optional<bool> Enable =
       getOptionalBoolLoopAttribute(L, "llvm.loop.vectorize.enable");
 

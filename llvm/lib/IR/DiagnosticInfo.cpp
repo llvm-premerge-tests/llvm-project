@@ -351,14 +351,14 @@ void DiagnosticInfoSrcMgr::print(DiagnosticPrinter &DP) const {
 
 DiagnosticInfoOptimizationFailure::DiagnosticInfoOptimizationFailure(
     const char *PassName, StringRef RemarkName, const DiagnosticLocation &Loc,
-    const Value *CodeRegion)
+    const Value *CodeRegion, DiagnosticSeverity Severity)
     : DiagnosticInfoIROptimization(
-          DK_OptimizationFailure, DS_Warning, PassName, RemarkName,
+          DK_OptimizationFailure, Severity, PassName, RemarkName,
           *cast<BasicBlock>(CodeRegion)->getParent(), Loc, CodeRegion) {}
 
 bool DiagnosticInfoOptimizationFailure::isEnabled() const {
-  // Only print warnings.
-  return getSeverity() == DS_Warning;
+  // Only print warnings and errors.
+  return getSeverity() == DS_Warning || getSeverity() == DS_Error;
 }
 
 void DiagnosticInfoUnsupported::print(DiagnosticPrinter &DP) const {
