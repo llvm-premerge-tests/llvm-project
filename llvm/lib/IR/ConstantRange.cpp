@@ -1478,6 +1478,13 @@ ConstantRange::shl(const ConstantRange &Other) const {
 
   APInt OtherMax = Other.getUnsignedMax();
 
+  bool Neg = false;
+  if (getSingleElement() && isAllNegative()) {
+    Neg = true;
+    Min = Min.abs();
+    Max = Max.abs();
+  }
+
   // There's overflow!
   if (OtherMax.ugt(Max.countl_zero()))
     return getFull();
@@ -1487,7 +1494,12 @@ ConstantRange::shl(const ConstantRange &Other) const {
   Min <<= Other.getUnsignedMin();
   Max <<= OtherMax;
 
-  return ConstantRange::getNonEmpty(std::move(Min), std::move(Max) + 1);
+  if (Neg) {
+    Min = -Min;
+    Max = -Max;
+    return ConstantRange::getNonEmpty(std::move(Max), std::move(Min) + 1);
+  } else
+    return ConstantRange::getNonEmpty(std::move(Min), std::move(Max) + 1);
 }
 
 ConstantRange
