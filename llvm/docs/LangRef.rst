@@ -8866,6 +8866,7 @@ Syntax:
 
       <resultval> = catchswitch within <parent> [ label <handler1>, label <handler2>, ... ] unwind to caller
       <resultval> = catchswitch within <parent> [ label <handler1>, label <handler2>, ... ] unwind label <default>
+      <resultval> = catchswitch within <parent> [ label <handler1>, label <handler2>, ... ] unwindabort
 
 Overview:
 """""""""
@@ -8892,9 +8893,12 @@ The ``handlers`` are a nonempty list of successor blocks that each begin with a
 Semantics:
 """"""""""
 
-Executing this instruction transfers control to one of the successors in
-``handlers``, if appropriate, or continues to unwind via the unwind label if
-present.
+Executing this instruction transfers control to one of the successors
+in ``handlers``, if appropriate. If no handler matches, continues to
+unwind to the parent function (``unwind to caller``), to the
+specified unwind label (``unwind label <default>``), or, aborts the
+program (``unwindabort``). See also the description of ``unwindabort`` for the
+:ref:`call <i_call>` instruction.
 
 The ``catchswitch`` is both a terminator and a "pad" instruction, meaning that
 it must be both the first non-phi instruction and last instruction in the basic
