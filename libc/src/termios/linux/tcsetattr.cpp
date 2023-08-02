@@ -51,7 +51,8 @@ LLVM_LIBC_FUNCTION(int, tcsetattr,
       kt.c_cc[i] = 0;
   }
 
-  long ret = __llvm_libc::syscall_impl(SYS_ioctl, fd, cmd, &kt);
+  int ret =
+      static_cast<int>(__llvm_libc::syscall_impl(SYS_ioctl, fd, cmd, &kt));
   if (ret < 0) {
     libc_errno = -ret;
     return -1;

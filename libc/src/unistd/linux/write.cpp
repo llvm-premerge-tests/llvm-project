@@ -17,9 +17,10 @@
 namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(ssize_t, write, (int fd, const void *buf, size_t count)) {
-  long ret = __llvm_libc::syscall_impl(SYS_write, fd, buf, count);
+  ssize_t ret = static_cast<ssize_t>(
+      __llvm_libc::syscall_impl(SYS_write, fd, buf, count));
   if (ret < 0) {
-    libc_errno = -ret;
+    libc_errno = static_cast<int>(-ret);
     return -1;
   }
   return ret;

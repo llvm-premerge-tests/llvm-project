@@ -19,7 +19,8 @@ namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(int, execve,
                    (const char *path, char *const argv[], char *const envp[])) {
-  long ret = __llvm_libc::syscall_impl(SYS_execve, path, argv, envp);
+  int ret =
+      static_cast<int>(__llvm_libc::syscall_impl(SYS_execve, path, argv, envp));
   if (ret < 0) {
     libc_errno = -ret;
     return -1;

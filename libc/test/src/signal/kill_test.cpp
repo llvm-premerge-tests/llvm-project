@@ -18,12 +18,13 @@
 using __llvm_libc::testing::ErrnoSetterMatcher::Succeeds;
 
 TEST(LlvmLibcKillTest, TargetSelf) {
-  pid_t parent_pid = __llvm_libc::syscall_impl(SYS_getpid);
+  pid_t parent_pid = static_cast<pid_t>(__llvm_libc::syscall_impl(SYS_getpid));
   ASSERT_THAT(__llvm_libc::kill(parent_pid, 0), Succeeds(0));
 
   EXPECT_DEATH(
       [] {
-        pid_t child_pid = __llvm_libc::syscall_impl(SYS_getpid);
+        pid_t child_pid =
+            static_cast<pid_t>(__llvm_libc::syscall_impl(SYS_getpid));
         __llvm_libc::kill(child_pid, SIGKILL);
       },
       WITH_SIGNAL(SIGKILL));

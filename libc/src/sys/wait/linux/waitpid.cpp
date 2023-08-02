@@ -18,7 +18,8 @@
 namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(pid_t, waitpid, (pid_t pid, int *wait_status, int options)) {
-  pid = __llvm_libc::syscall_impl(SYS_wait4, pid, wait_status, options, 0);
+  pid = static_cast<pid_t>(
+      __llvm_libc::syscall_impl(SYS_wait4, pid, wait_status, options, 0));
   if (pid < 0) {
     libc_errno = -pid;
     return -1;

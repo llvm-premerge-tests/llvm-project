@@ -20,10 +20,10 @@ namespace __llvm_libc {
 LLVM_LIBC_FUNCTION(time_t, time, (time_t * tp)) {
   // TODO: Use the Linux VDSO to fetch the time and avoid the syscall.
   struct timespec ts;
-  long ret_val = __llvm_libc::syscall_impl(SYS_clock_gettime, CLOCK_REALTIME,
-                                           reinterpret_cast<long>(&ts));
-  if (ret_val < 0) {
-    libc_errno = -ret_val;
+  int ret = static_cast<int>(__llvm_libc::syscall_impl(
+      SYS_clock_gettime, CLOCK_REALTIME, reinterpret_cast<long>(&ts)));
+  if (ret < 0) {
+    libc_errno = -ret;
     return -1;
   }
 

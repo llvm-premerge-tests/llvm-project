@@ -19,7 +19,8 @@
 namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(int, tcflush, (int fd, int queue_selector)) {
-  long ret = __llvm_libc::syscall_impl(SYS_ioctl, fd, TCFLSH, queue_selector);
+  int ret = static_cast<int>(
+      __llvm_libc::syscall_impl(SYS_ioctl, fd, TCFLSH, queue_selector));
   if (ret < 0) {
     libc_errno = -ret;
     return -1;

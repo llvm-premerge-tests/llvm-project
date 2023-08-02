@@ -30,10 +30,11 @@ LLVM_LIBC_FUNCTION(int, open, (const char *path, int flags, ...)) {
   }
 
 #ifdef SYS_open
-  int fd = __llvm_libc::syscall_impl(SYS_open, path, flags, mode_flags);
+  int fd = static_cast<int>(
+      __llvm_libc::syscall_impl(SYS_open, path, flags, mode_flags));
 #else
-  int fd =
-      __llvm_libc::syscall_impl(SYS_openat, AT_FDCWD, path, flags, mode_flags);
+  int fd = static_cast<int>(
+      __llvm_libc::syscall_impl(SYS_openat, AT_FDCWD, path, flags, mode_flags));
 #endif
   if (fd > 0)
     return fd;

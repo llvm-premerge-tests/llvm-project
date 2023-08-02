@@ -18,7 +18,8 @@ namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(int, sched_rr_get_interval,
                    (pid_t tid, struct timespec *tp)) {
-  long ret = __llvm_libc::syscall_impl(SYS_sched_rr_get_interval, tid, tp);
+  int ret = static_cast<int>(
+      __llvm_libc::syscall_impl(SYS_sched_rr_get_interval, tid, tp));
   if (ret < 0) {
     libc_errno = -ret;
     return -1;

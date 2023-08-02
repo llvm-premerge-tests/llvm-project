@@ -53,8 +53,8 @@ LLVM_LIBC_FUNCTION(int, select,
     }
   }
   pselect6_sigset_t pss{nullptr, sizeof(sigset_t)};
-  long ret = __llvm_libc::syscall_impl(SYS_pselect6, nfds, read_set, write_set,
-                                       error_set, &ts, &pss);
+  int ret = static_cast<int>(__llvm_libc::syscall_impl(
+      SYS_pselect6, nfds, read_set, write_set, error_set, &ts, &pss));
   if (ret < 0) {
     libc_errno = -ret;
     return -1;

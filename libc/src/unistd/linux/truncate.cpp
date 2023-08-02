@@ -18,7 +18,8 @@
 namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(int, truncate, (const char *path, off_t len)) {
-  int ret = __llvm_libc::syscall_impl(SYS_truncate, path, len);
+  int ret =
+      static_cast<int>(__llvm_libc::syscall_impl(SYS_truncate, path, len));
   if (ret < 0) {
     libc_errno = -ret;
     return -1;

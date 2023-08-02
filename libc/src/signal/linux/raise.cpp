@@ -18,7 +18,8 @@ LLVM_LIBC_FUNCTION(int, raise, (int sig)) {
   block_all_signals(sigset);
   long pid = __llvm_libc::syscall_impl(SYS_getpid);
   long tid = __llvm_libc::syscall_impl(SYS_gettid);
-  int ret = __llvm_libc::syscall_impl(SYS_tgkill, pid, tid, sig);
+  int ret =
+      static_cast<int>(__llvm_libc::syscall_impl(SYS_tgkill, pid, tid, sig));
   restore_signals(sigset);
   return ret;
 }

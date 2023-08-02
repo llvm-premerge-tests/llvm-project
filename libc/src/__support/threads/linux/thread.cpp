@@ -334,7 +334,7 @@ int Thread::run(ThreadStyle style, ThreadRunner runner, void *arg, void *stack,
     start_thread();
   } else if (clone_result < 0) {
     cleanup_thread_resources(attrib);
-    return -clone_result;
+    return static_cast<int>(-clone_result);
   }
 
   return 0;
@@ -408,7 +408,8 @@ int Thread::set_name(const cpp::string_view &name) {
   if (*this == self) {
     // If we are setting the name of the current thread, then we can
     // use the syscall to set the name.
-    int retval = __llvm_libc::syscall_impl(SYS_prctl, PR_SET_NAME, name.data());
+    int retval = static_cast<int>(
+        __llvm_libc::syscall_impl(SYS_prctl, PR_SET_NAME, name.data()));
     if (retval < 0)
       return -retval;
     else
@@ -419,16 +420,17 @@ int Thread::set_name(const cpp::string_view &name) {
   cpp::StringStream path_stream(path_name_buffer);
   construct_thread_name_file_path(path_stream, attrib->tid);
 #ifdef SYS_open
-  int fd = __llvm_libc::syscall_impl(SYS_open, path_name_buffer, O_RDWR);
+  int fd = static_cast<int>(
+      __llvm_libc::syscall_impl(SYS_open, path_name_buffer, O_RDWR));
 #else
-  int fd =
-      __llvm_libc::syscall_impl(SYS_openat, AT_FDCWD, path_name_buffer, O_RDWR);
+  int fd = static_cast<int>(__llvm_libc::syscall_impl(
+      SYS_openat, AT_FDCWD, path_name_buffer, O_RDWR));
 #endif
   if (fd < 0)
     return -fd;
 
-  int retval =
-      __llvm_libc::syscall_impl(SYS_write, fd, name.data(), name.size());
+  int retval = static_cast<int>(
+      __llvm_libc::syscall_impl(SYS_write, fd, name.data(), name.size()));
   __llvm_libc::syscall_impl(SYS_close, fd);
 
   if (retval < 0)
@@ -448,7 +450,8 @@ int Thread::get_name(cpp::StringStream &name) const {
   if (*this == self) {
     // If we are getting the name of the current thread, then we can
     // use the syscall to get the name.
-    int retval = __llvm_libc::syscall_impl(SYS_prctl, PR_GET_NAME, name_buffer);
+    int retval = static_cast<int>(
+        __llvm_libc::syscall_impl(SYS_prctl, PR_GET_NAME, name_buffer));
     if (retval < 0)
       return -retval;
     name << name_buffer << cpp::StringStream::ENDS;
@@ -459,16 +462,17 @@ int Thread::get_name(cpp::StringStream &name) const {
   cpp::StringStream path_stream(path_name_buffer);
   construct_thread_name_file_path(path_stream, attrib->tid);
 #ifdef SYS_open
-  int fd = __llvm_libc::syscall_impl(SYS_open, path_name_buffer, O_RDONLY);
+  int fd = static_cast<int>(
+      __llvm_libc::syscall_impl(SYS_open, path_name_buffer, O_RDONLY));
 #else
-  int fd = __llvm_libc::syscall_impl(SYS_openat, AT_FDCWD, path_name_buffer,
-                                     O_RDONLY);
+  int fd = static_cast<int>(__llvm_libc::syscall_impl(
+      SYS_openat, AT_FDCWD, path_name_buffer, O_RDONLY));
 #endif
   if (fd < 0)
     return -fd;
 
-  int retval =
-      __llvm_libc::syscall_impl(SYS_read, fd, name_buffer, NAME_SIZE_MAX);
+  int retval = static_cast<int>(
+      __llvm_libc::syscall_impl(SYS_read, fd, name_buffer, NAME_SIZE_MAX));
   __llvm_libc::syscall_impl(SYS_close, fd);
   if (retval < 0)
     return -retval;

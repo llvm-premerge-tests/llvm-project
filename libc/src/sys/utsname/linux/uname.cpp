@@ -18,7 +18,7 @@
 namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(int, uname, (struct utsname * name)) {
-  long ret = __llvm_libc::syscall_impl(SYS_uname, name);
+  int ret = static_cast<int>(__llvm_libc::syscall_impl(SYS_uname, name));
 
   if (ret >= 0)
     return 1;
