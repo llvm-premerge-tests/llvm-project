@@ -2119,7 +2119,7 @@ static Value *simplifyAndInst(Value *Op0, Value *Op1, const SimplifyQuery &Q,
   // and 2^x-1, 2^C --> 0 where x <= C.
   const APInt *PowerC;
   Value *Shift;
-  if (match(Op1, m_Power2(PowerC)) &&
+  if (match(Op1, m_Power2(PowerC)) && PowerC->isNonNegative() &&
       match(Op0, m_Add(m_Value(Shift), m_AllOnes())) &&
       isKnownToBeAPowerOfTwo(Shift, Q.DL, /*OrZero*/ true, 0, Q.AC, Q.CxtI,
                              Q.DT)) {

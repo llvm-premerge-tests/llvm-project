@@ -2,6 +2,7 @@
 ; RUN: opt < %s -passes=instcombine -S | FileCheck %s
 declare void @use8(i8)
 declare i64 @llvm.vscale.i64()
+declare i32 @llvm.vscale.i32()
 
 define i8 @srem_non_matching(i8 %X, i8 %Y) {
 ; CHECK-LABEL: @srem_non_matching(
@@ -913,3 +914,20 @@ define i64 @and_add_shl_vscale_not_power2() vscale_range(1,16) {
   %rem = and i64 3072, %add
   ret i64 %rem
 }
+
+; Negative test: -2147483648 is a negative value of i32
+define i32 @and_add_shl_vscale_not_power2_negative() vscale_range(1,16) {
+; CHECK-LABEL: @and_add_shl_vscale_not_power2_negative(
+; CHECK-NEXT:    [[VSCALE:%.*]] = call i32 @llvm.vscale.i32()
+; CHECK-NEXT:    [[SHIFT:%.*]] = shl nuw nsw i32 [[VSCALE]], 6
+; CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 [[SHIFT]], -1
+; CHECK-NEXT:    [[REM:%.*]] = and i32 [[ADD]], -2147483648
+; CHECK-NEXT:    ret i32 [[REM]]
+;
+  %vscale = call i32 @llvm.vscale.i32()
+  %shift = shl nuw nsw i32 %vscale, 6
+  %add = add i32 %shift, -1
+  %rem = and i32 -2147483648, %add
+  ret i32 %rem
+}
+
