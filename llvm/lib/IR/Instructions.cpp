@@ -319,6 +319,12 @@ bool CallBase::isTailCall() const {
   return false;
 }
 
+bool CallBase::isUnwindAbort() const {
+  if (auto *CI = dyn_cast<CallInst>(this))
+    return CI->isUnwindAbort();
+  return false;
+}
+
 Intrinsic::ID CallBase::getIntrinsicID() const {
   if (auto *F = getCalledFunction())
     return F->getIntrinsicID();
@@ -694,6 +700,7 @@ CallInst::CallInst(const CallInst &CI)
     : CallBase(CI.Attrs, CI.FTy, CI.getType(), Instruction::Call,
                OperandTraits<CallBase>::op_end(this) - CI.getNumOperands(),
                CI.getNumOperands()) {
+  setUnwindAbort(CI.isUnwindAbort());
   setTailCallKind(CI.getTailCallKind());
   setCallingConv(CI.getCallingConv());
 
@@ -709,6 +716,7 @@ CallInst *CallInst::Create(CallInst *CI, ArrayRef<OperandBundleDef> OpB,
 
   auto *NewCI = CallInst::Create(CI->getFunctionType(), CI->getCalledOperand(),
                                  Args, OpB, CI->getName(), InsertPt);
+  NewCI->setUnwindAbort(CI->isUnwindAbort());
   NewCI->setTailCallKind(CI->getTailCallKind());
   NewCI->setCallingConv(CI->getCallingConv());
   NewCI->SubclassOptionalData = CI->SubclassOptionalData;

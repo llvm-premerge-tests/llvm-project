@@ -293,6 +293,28 @@ having more than one cleanup is pointless). The LLVM C++ front-end can generate
 such ``landingpad`` instructions due to inlining creating nested exception
 handling scopes.
 
+Noexcept
+--------
+
+C++11 added the `noexcept` qualifier on functions, which specifies that if any
+exceptions are thrown out of the function, the program should abort. Unlike
+dynamic exception specifiers (e.g. `throw(ExcType...)`), `noexcept` does not
+require the stack to be fully unwound (and all destructors called) along the way
+to program termination. This allowance is specified in order to allow for more
+efficient code generation, and more optimization opportunities.
+
+In order to efficiently support these semantics, LLVM's :ref:`i_call` has an
+`unwindabort` flag. This flag causes construction of the unwind tables to mark
+the callsite in such a way that the personality function knows to call
+std::terminate if an unwind is attempted through this stack frame -- without
+requiring the generation of a landingpad containing an explicit terminate call,
+and a corresponding usage of ``invoke`` for all calls within the function.
+
+Furthermore, this flag allows the inliner to delete a ``cleanuppad`` or a
+``landingpad`` with only a *cleanup* clause which is inlined through an
+``unwindabort``. (It's "as if" the unwinder only partially unwound before
+terminating the program, which is permitted.)
+
 Restrictions
 ------------
 

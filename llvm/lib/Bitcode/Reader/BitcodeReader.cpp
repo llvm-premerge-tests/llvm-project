@@ -6367,6 +6367,8 @@ Error BitcodeReader::parseFunctionBody(Function *F) {
       ResTypeID = getContainedTypeID(FTyID);
       OperandBundles.clear();
       InstructionList.push_back(I);
+      if (CCInfo & (1 << bitc::CALL_UNWINDABORT))
+        cast<CallInst>(I)->setUnwindAbort(true);
       cast<CallInst>(I)->setCallingConv(
           static_cast<CallingConv::ID>((0x7ff & CCInfo) >> bitc::CALL_CCONV));
       CallInst::TailCallKind TCK = CallInst::TCK_None;
