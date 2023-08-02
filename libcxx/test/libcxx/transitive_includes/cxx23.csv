@@ -438,10 +438,13 @@ optional limits
 optional new
 optional stdexcept
 optional version
+ostream array
 ostream bitset
 ostream cerrno
+ostream cmath
 ostream cstddef
 ostream cstdint
+ostream cstdio
 ostream cstring
 ostream initializer_list
 ostream ios
@@ -449,9 +452,13 @@ ostream iosfwd
 ostream limits
 ostream locale
 ostream new
+ostream optional
+ostream print
 ostream stdexcept
 ostream streambuf
 ostream string
+ostream string_view
+ostream tuple
 ostream typeinfo
 ostream version
 print array
