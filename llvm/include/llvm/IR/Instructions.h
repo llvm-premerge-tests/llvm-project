@@ -4343,6 +4343,7 @@ DEFINE_TRANSPARENT_OPERAND_ACCESSORS(ResumeInst, Value)
 //===----------------------------------------------------------------------===//
 class CatchSwitchInst : public Instruction {
   using UnwindDestField = BoolBitfieldElementT<0>;
+  using UnwindAbortField = BoolBitfieldElementT<1>;
 
   /// The number of operands actually allocated.  NumOperands is
   /// the number actually in use.
@@ -4407,6 +4408,11 @@ public:
   void setParentPad(Value *ParentPad) { setOperand(0, ParentPad); }
 
   // Accessor Methods for CatchSwitch stmt
+  bool isUnwindAbort() const { return getSubclassData<UnwindAbortField>(); }
+  void setUnwindAbort(bool IsUA = true) {
+    setSubclassData<UnwindAbortField>(IsUA);
+  }
+
   bool hasUnwindDest() const { return getSubclassData<UnwindDestField>(); }
   bool unwindsToCaller() const { return !hasUnwindDest(); }
   BasicBlock *getUnwindDest() const {
