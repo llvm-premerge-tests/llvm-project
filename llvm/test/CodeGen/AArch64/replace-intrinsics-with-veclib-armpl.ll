@@ -377,4 +377,26 @@ define <vscale x 4 x float> @llvm_pow_vscale_f32(<vscale x 4 x float> %in, <vsca
   ret <vscale x 4 x float> %1
 }
 
+; NOTE: TLI mappings for FREM instruction.
+
+define <vscale x 2 x double> @frem_vscale_f64(<vscale x 2 x double> %in1, <vscale x 2 x double> %in2) #0 {
+; CHECK-LABEL: define <vscale x 2 x double> @frem_vscale_f64
+; CHECK-SAME: (<vscale x 2 x double> [[IN1:%.*]], <vscale x 2 x double> [[IN2:%.*]]) #[[ATTR1]] {
+; CHECK-NEXT:    [[TMP1:%.*]] = call fast <vscale x 2 x double> @armpl_svfmod_f64_x(<vscale x 2 x double> [[IN1]], <vscale x 2 x double> [[IN2]], <vscale x 2 x i1> shufflevector (<vscale x 2 x i1> insertelement (<vscale x 2 x i1> poison, i1 true, i64 0), <vscale x 2 x i1> poison, <vscale x 2 x i32> zeroinitializer))
+; CHECK-NEXT:    ret <vscale x 2 x double> [[TMP1]]
+;
+  %out = frem fast <vscale x 2 x double> %in1, %in2
+  ret <vscale x 2 x double> %out
+}
+
+define <vscale x 4 x float> @frem_vscale_f32(<vscale x 4 x float> %in1, <vscale x 4 x float> %in2)  #0 {
+; CHECK-LABEL: define <vscale x 4 x float> @frem_vscale_f32
+; CHECK-SAME: (<vscale x 4 x float> [[IN1:%.*]], <vscale x 4 x float> [[IN2:%.*]]) #[[ATTR1]] {
+; CHECK-NEXT:    [[TMP1:%.*]] = call fast <vscale x 4 x float> @armpl_svfmod_f32_x(<vscale x 4 x float> [[IN1]], <vscale x 4 x float> [[IN2]], <vscale x 4 x i1> shufflevector (<vscale x 4 x i1> insertelement (<vscale x 4 x i1> poison, i1 true, i64 0), <vscale x 4 x i1> poison, <vscale x 4 x i32> zeroinitializer))
+; CHECK-NEXT:    ret <vscale x 4 x float> [[TMP1]]
+;
+  %out = frem fast <vscale x 4 x float> %in1, %in2
+  ret <vscale x 4 x float> %out
+}
+
 attributes #0 = { "target-features"="+sve" }
