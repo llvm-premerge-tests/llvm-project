@@ -485,6 +485,8 @@ public:
   bool processHint(mlir::IntegerAttr &result) const;
   bool processMergeable(mlir::UnitAttr &result) const;
   bool processNowait(mlir::UnitAttr &result) const;
+  bool processNumTeams(Fortran::lower::StatementContext &stmtCtx,
+                       mlir::Value &result) const;
   bool processNumThreads(Fortran::lower::StatementContext &stmtCtx,
                          mlir::Value &result) const;
   bool processOrdered(mlir::IntegerAttr &result) const;
@@ -1334,6 +1336,16 @@ bool ClauseProcessor::processMergeable(mlir::UnitAttr &result) const {
 
 bool ClauseProcessor::processNowait(mlir::UnitAttr &result) const {
   return markClauseOccurrence<ClauseTy::Nowait>(result);
+}
+
+bool ClauseProcessor::processNumTeams(Fortran::lower::StatementContext &stmtCtx,
+                                      mlir::Value &result) const {
+  if (auto *numTeamsClause = findUniqueClause<ClauseTy::NumTeams>()) {
+    result = fir::getBase(converter.genExprValue(
+        *Fortran::semantics::GetExpr(numTeamsClause->v), stmtCtx));
+    return true;
+  }
+  return false;
 }
 
 bool ClauseProcessor::processNumThreads(
@@ -2335,6 +2347,39 @@ genTargetOp(Fortran::lower::AbstractConverter &converter,
       mapOperands, mapTypesArrayAttr);
 }
 
+static mlir::omp::TeamsOp
+genTeamsOp(Fortran::lower::AbstractConverter &converter,
+           Fortran::lower::pft::Evaluation &eval,
+           mlir::Location currentLocation,
+           const Fortran::parser::OmpClauseList &clauseList,
+           bool outerCombined = false) {
+  Fortran::lower::StatementContext stmtCtx;
+  mlir::Value numTeamsClauseOperand, ifClauseOperand, threadLimitClauseOperand;
+  llvm::SmallVector<mlir::Value> allocateOperands, allocatorOperands,
+      reductionVars;
+  llvm::SmallVector<mlir::Attribute> reductionDeclSymbols;
+
+  ClauseProcessor cp(converter, clauseList);
+  cp.processIf(stmtCtx,
+               Fortran::parser::OmpIfClause::DirectiveNameModifier::Teams,
+               ifClauseOperand);
+  cp.processAllocate(allocatorOperands, allocateOperands);
+  cp.processDefault();
+  cp.processReduction(currentLocation, reductionVars, reductionDeclSymbols);
+  cp.processNumTeams(stmtCtx, numTeamsClauseOperand);
+  cp.processThreadLimit(stmtCtx, threadLimitClauseOperand);
+
+  return genOpWithBody<mlir::omp::TeamsOp>(
+      converter, eval, currentLocation, outerCombined, &clauseList,
+      /*num_teams_lower=*/nullptr, numTeamsClauseOperand, ifClauseOperand,
+      threadLimitClauseOperand, allocateOperands, allocatorOperands,
+      reductionVars,
+      reductionDeclSymbols.empty()
+          ? nullptr
+          : mlir::ArrayAttr::get(converter.getFirOpBuilder().getContext(),
+                                 reductionDeclSymbols));
+}
+
 //===----------------------------------------------------------------------===//
 // genOMP() Code generation helper functions
 //===----------------------------------------------------------------------===//
@@ -2535,7 +2580,8 @@ static void genOMP(Fortran::lower::AbstractConverter &converter,
   }
   if (teamsSet.test(ompDirective)) {
     validDirective = true;
-    TODO(currentLocation, "Teams construct");
+    genTeamsOp(converter, eval, currentLocation, loopOpClauseList,
+               /*outerCombined=*/true);
   }
   if (distributeSet.test(ompDirective)) {
     validDirective = true;
@@ -2677,7 +2723,6 @@ genOMP(Fortran::lower::AbstractConverter &converter,
   const auto &endClauseList =
       std::get<Fortran::parser::OmpClauseList>(endBlockDirective.t);
 
-  Fortran::lower::StatementContext stmtCtx;
   mlir::Location currentLocation = converter.genLocation(directive.source);
 
   // Codegen for combined directives
@@ -2688,7 +2733,8 @@ genOMP(Fortran::lower::AbstractConverter &converter,
     combinedDirective = true;
   }
   if (teamsSet.test(directive.v)) {
-    TODO(currentLocation, "Teams construct");
+    genTeamsOp(converter, eval, currentLocation, beginClauseList,
+               /*outerCombined=*/false);
     combinedDirective = true;
   }
   if (parallelSet.test(directive.v)) {
@@ -2731,6 +2777,8 @@ genOMP(Fortran::lower::AbstractConverter &converter,
       genTaskGroupOp(converter, eval, currentLocation, beginClauseList);
       break;
     case Directive::OMPD_teams:
+      genTeamsOp(converter, eval, currentLocation, beginClauseList);
+      break;
     case Directive::OMPD_workshare:
     default:
       TODO(currentLocation, "Unhandled block directive");
