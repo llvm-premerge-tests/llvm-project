@@ -4305,6 +4305,10 @@ multiclass sve2_int_bin_shift_imm_right_narrow_bottom<bits<3> opc, string asm,
   def : SVE_2_Op_Imm_Pat<nxv16i8, op, nxv8i16, i32, tvecshiftR8,  !cast<Instruction>(NAME # _B)>;
   def : SVE_2_Op_Imm_Pat<nxv8i16, op, nxv4i32, i32, tvecshiftR16, !cast<Instruction>(NAME # _H)>;
   def : SVE_2_Op_Imm_Pat<nxv4i32, op, nxv2i64, i32, tvecshiftR32, !cast<Instruction>(NAME # _S)>;
+
+  def : SVE_2_Op_Imm_Pat<nxv8i16, op, nxv8i16, i32, tvecshiftR8,  !cast<Instruction>(NAME # _B)>;
+  def : SVE_2_Op_Imm_Pat<nxv4i32, op, nxv4i32, i32, tvecshiftR16, !cast<Instruction>(NAME # _H)>;
+  def : SVE_2_Op_Imm_Pat<nxv2i64, op, nxv2i64, i32, tvecshiftR32, !cast<Instruction>(NAME # _S)>;
 }
 
 class sve2_int_bin_shift_imm_narrow_top<bits<3> tsz8_64, bits<3> opc,

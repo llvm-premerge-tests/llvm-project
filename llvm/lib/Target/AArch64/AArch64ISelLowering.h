@@ -214,6 +214,7 @@ enum NodeType : unsigned {
   SQSHLU_I,
   SRSHR_I,
   URSHR_I,
+  RSHRNB_I,
 
   // Vector shift by constant and insert
   VSLI,
