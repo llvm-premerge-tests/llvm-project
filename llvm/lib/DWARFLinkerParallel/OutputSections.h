@@ -44,6 +44,8 @@ enum class DebugSectionKind : uint8_t {
   DebugMacinfo,
   DebugMacro,
   DebugAddr,
+  DebugPubNames,
+  DebugPubTypes,
   NumberOfEnumEntries // must be last
 };
 constexpr static size_t SectionKindsNum =
@@ -143,7 +145,7 @@ struct SectionDescriptor {
 
   /// Section patches.
 #define ADD_PATCHES_LIST(T)                                                    \
-  T &notePatch(const T &Patch) { return List##T.noteItem(Patch); }             \
+  T &notePatch(const T &Patch) { return List##T.add(Patch); }                  \
   ArrayList<T> List##T;
 
   ADD_PATCHES_LIST(DebugStrPatch)
@@ -202,7 +204,7 @@ struct SectionDescriptor {
 
   /// Emit specified inplace string value into the current section contents.
   void emitInplaceString(StringRef String) {
-    OS << String;
+    OS << GlobalData->translateString(String);
     emitIntVal(0, 1);
   }
 

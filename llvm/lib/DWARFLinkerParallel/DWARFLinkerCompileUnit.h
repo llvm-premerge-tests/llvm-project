@@ -18,6 +18,8 @@ namespace dwarflinker_parallel {
 
 using OffsetToUnitTy = function_ref<CompileUnit *(uint64_t Offset)>;
 
+struct AttributesInfo;
+
 /// Stores all information related to a compile unit, be it in its original
 /// instance of the object file or its brand new cloned and generated DIE tree.
 class CompileUnit : public DwarfUnit {
@@ -511,6 +513,14 @@ private:
                           uint64_t OffsetToMacroTable,
                           SectionDescriptor &Section, bool hasDWARFv5Header);
 
+  /// Store accelerator information for the \p InputDieEntry.
+  void rememberAcceleratorEntries(const DWARFDebugInfoEntry *InputDieEntry,
+                                  uint64_t OutOffset, AttributesInfo &AttrInfo);
+
+  /// Store ObjC accelerator information for the \p InputDieEntry.
+  void rememberObjCAccelerator(const DWARFDebugInfoEntry *InputDieEntry,
+                               uint64_t OutOffset, AttributesInfo &AttrInfo);
+
   /// DWARFFile containing this compile unit.
   DWARFFile &File;
 
@@ -526,9 +536,9 @@ private:
   ResolvedPathsMap ResolvedFullPaths;
   StringMap<StringEntry *> ResolvedParentPaths;
 
-  /// This field instructs compile unit to store DIE name with stripped
-  /// template parameters into the accelerator table.
-  bool CanStripTemplateName = false;
+  /// This field instructs compile unit to store DIE name
+  /// into the objc accelerator table.
+  bool needRememberObjCAccelerator = false;
 
   /// Address to index map.
   DenseMap<uint64_t, uint64_t> AddrIndexMap;

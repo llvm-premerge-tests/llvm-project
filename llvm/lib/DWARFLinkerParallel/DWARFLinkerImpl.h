@@ -339,11 +339,23 @@ protected:
   void forEachSectionsSet(
       function_ref<void(OutputSections &SectionsSet)> SectionsSetHandler);
 
+  /// Enumerates all comple units.
+  void forEachCompileUnit(function_ref<void(CompileUnit *CU)> UnitHandler);
+
   /// Enumerates all patches and update them with the correct values.
   void patchOffsetsAndSizes();
 
+  /// Create accelerator tables.
+  void buildAcceleratorTables();
+
   /// Enumerate all compile units and put their data into the output stream.
   void writeDWARFToTheOutput();
+
+  std::unique_ptr<AccelTable<DWARF5AccelTableStaticData>> DebugNames;
+  std::unique_ptr<AccelTable<AppleAccelTableStaticOffsetData>> AppleNames;
+  std::unique_ptr<AccelTable<AppleAccelTableStaticOffsetData>> AppleNamespaces;
+  std::unique_ptr<AccelTable<AppleAccelTableStaticOffsetData>> AppleObjc;
+  std::unique_ptr<AccelTable<AppleAccelTableStaticTypeData>> AppleTypes;
 
   /// \defgroup Data members accessed asinchroniously.
   ///

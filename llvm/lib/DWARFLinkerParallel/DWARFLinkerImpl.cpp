@@ -742,7 +742,6 @@ Error DWARFLinkerImpl::LinkContext::cloneAndEmitPaperTrails() {
   uint64_t CurrentOffset = CU.getHeaderSize();
   DIE *CUDie =
       ParentGenerator.createDIE(dwarf::DW_TAG_compile_unit, CurrentOffset);
-  CU.setOutUnitDIE(CUDie);
 
   DebugInfoSection.notePatchWithOffsetUpdate(
       DebugStrPatch{{CurrentOffset},
@@ -805,11 +804,7 @@ Error DWARFLinkerImpl::LinkContext::cloneAndEmitPaperTrails() {
 
   CurrentOffset += 1; // End of children
   CUDie->setSize(CurrentOffset - CUDie->getOffset());
-
-  uint64_t UnitSize = 0;
-  UnitSize += CU.getHeaderSize();
-  UnitSize += CUDie->getSize();
-  CU.setUnitSize(UnitSize);
+  CU.setOutUnitDIE(CUDie);
 
   if (GlobalData.getOptions().NoOutput)
     return Error::success();
@@ -831,7 +826,8 @@ void DWARFLinkerImpl::glueCompileUnitsAndWriteToTheOutput() {
   // Patch size/offsets fields according to the assigned CU offsets.
   patchOffsetsAndSizes();
 
-  // FIXME: Build accelerator tables.
+  // Build accelerator tables.
+  buildAcceleratorTables();
 
   // Write debug tables from all object files/compile units into the
   // resulting file.
@@ -921,13 +917,12 @@ void DWARFLinkerImpl::assignOffsetsToStrings() {
   uint64_t CurDebugLineStrOffset = 0;
 
   // To save space we do not create any separate string table.
-  // We use already allocated string patches and assign offsets
-  // to them in the natural order.
+  // We use already allocated string patches and accelerator entries:
+  // enumerate them in natural order and assign offsets.
   // ASSUMPTION: strings should be stored into .debug_str/.debug_line_str
   // sections in the same order as they were assigned offsets.
-
-  forEachSectionsSet([&](OutputSections &SectionsSet) {
-    SectionsSet.forEach([&](SectionDescriptor &OutSection) {
+  forEachCompileUnit([&](CompileUnit *CU) {
+    CU->forEach([&](SectionDescriptor &OutSection) {
       assignOffsetsToStringsImpl(OutSection.ListDebugStrPatch, CurDebugStrIndex,
                                  CurDebugStrOffset, DebugStrStrings);
 
@@ -935,6 +930,9 @@ void DWARFLinkerImpl::assignOffsetsToStrings() {
                                  CurDebugLineStrIndex, CurDebugLineStrOffset,
                                  DebugLineStrStrings);
     });
+
+    assignOffsetsToStringsImpl(CU->AcceleratorRecords, CurDebugStrIndex,
+                               CurDebugStrOffset, DebugStrStrings);
   });
 }
 
@@ -985,6 +983,19 @@ void DWARFLinkerImpl::forEachSectionsSet(
   }
 }
 
+void DWARFLinkerImpl::forEachCompileUnit(
+    function_ref<void(CompileUnit *CU)> UnitHandler) {
+  // Enumerate module units.
+  for (const std::unique_ptr<LinkContext> &Context : ObjectContexts)
+    for (LinkContext::RefModuleUnit &ModuleUnit : Context->ModulesCompileUnits)
+      UnitHandler(ModuleUnit.Unit.get());
+
+  // Enumerate compile units.
+  for (const std::unique_ptr<LinkContext> &Context : ObjectContexts)
+    for (std::unique_ptr<CompileUnit> &CU : Context->CompileUnits)
+      UnitHandler(CU.get());
+}
+
 void DWARFLinkerImpl::patchOffsetsAndSizes() {
   forEachSectionsSet([&](OutputSections &SectionsSet) {
     SectionsSet.forEach([&](SectionDescriptor &OutSection) {
@@ -994,16 +1005,94 @@ void DWARFLinkerImpl::patchOffsetsAndSizes() {
   });
 }
 
+void DWARFLinkerImpl::buildAcceleratorTables() {
+  parallel::TaskGroup TG;
+
+  for (AccelTableKind CurAccelTable : GlobalData.Options.AccelTables) {
+    switch (CurAccelTable) {
+    case AccelTableKind::Apple: {
+      TG.spawn([&]() {
+        AppleNames =
+            std::make_unique<AccelTable<AppleAccelTableStaticOffsetData>>();
+        AppleNamespaces =
+            std::make_unique<AccelTable<AppleAccelTableStaticOffsetData>>();
+        AppleObjc =
+            std::make_unique<AccelTable<AppleAccelTableStaticOffsetData>>();
+        AppleTypes =
+            std::make_unique<AccelTable<AppleAccelTableStaticTypeData>>();
+
+        forEachCompileUnit([&](CompileUnit *CU) {
+          CU->AcceleratorRecords.forEach([&](const DwarfUnit::AccelInfo &Info) {
+            switch (Info.Type) {
+            case DwarfUnit::AccelType::None: {
+              assert(false);
+            } break;
+            case DwarfUnit::AccelType::Name: {
+              AppleNames->addName(
+                  *DebugStrStrings.getExistingEntry(Info.String),
+                  CU->getSectionDescriptor(DebugSectionKind::DebugInfo)
+                          .StartOffset +
+                      Info.OutOffset);
+            } break;
+            case DwarfUnit::AccelType::Namespace: {
+              AppleNamespaces->addName(
+                  *DebugStrStrings.getExistingEntry(Info.String),
+                  CU->getSectionDescriptor(DebugSectionKind::DebugInfo)
+                          .StartOffset +
+                      Info.OutOffset);
+            } break;
+            case DwarfUnit::AccelType::ObjC: {
+              AppleObjc->addName(
+                  *DebugStrStrings.getExistingEntry(Info.String),
+                  CU->getSectionDescriptor(DebugSectionKind::DebugInfo)
+                          .StartOffset +
+                      Info.OutOffset);
+            } break;
+            case DwarfUnit::AccelType::Type: {
+              AppleTypes->addName(
+                  *DebugStrStrings.getExistingEntry(Info.String),
+                  CU->getSectionDescriptor(DebugSectionKind::DebugInfo)
+                          .StartOffset +
+                      Info.OutOffset,
+                  Info.Tag,
+                  Info.ObjcClassImplementation
+                      ? dwarf::DW_FLAG_type_implementation
+                      : 0,
+                  Info.QualifiedNameHash);
+            } break;
+            }
+          });
+        });
+      });
+    } break;
+    case AccelTableKind::Pub: {
+      // Nothing to do. Already generated while compile units cloned.
+    } break;
+    case AccelTableKind::DebugNames: {
+      TG.spawn([&]() {
+        forEachCompileUnit([&](CompileUnit *CU) {
+          CU->AcceleratorRecords.forEach([&](const DwarfUnit::AccelInfo &Info) {
+            if (Info.OnlyAppleSections)
+              return;
+
+            if (DebugNames.get() == nullptr)
+              DebugNames =
+                  std::make_unique<AccelTable<DWARF5AccelTableStaticData>>();
+
+            DebugNames->addName(*DebugStrStrings.getExistingEntry(Info.String),
+                                Info.OutOffset, Info.Tag, CU->getUniqueID());
+          });
+        });
+      });
+    } break;
+    }
+  }
+}
+
 void DWARFLinkerImpl::writeDWARFToTheOutput() {
   bool HasAbbreviations = false;
-  uint64_t DebugStrNextOffset = 0;
-  uint64_t DebugLineStrNextOffset = 0;
 
-  // Emit zero length string. Accelerator tables does not work correctly
-  // if the first string is not zero length string.
-  TheDwarfEmitter->emitZeroString();
-  DebugStrNextOffset++;
-
+  // Enumerate all sections and store them into the final emitter.
   forEachSectionsSet([&](OutputSections &Sections) {
     Sections.forEach([&](SectionDescriptor &OutSection) {
       if (OutSection.getContents().empty())
@@ -1017,16 +1106,6 @@ void DWARFLinkerImpl::writeDWARFToTheOutput() {
       // Emit section content.
       TheDwarfEmitter->emitSectionContents(OutSection.getContents(),
                                            OutSection.getName());
-
-      // Pass through string patches and emit them in order.
-      if (!OutSection.ListDebugStrPatch.empty())
-        TheDwarfEmitter->emitStrings(OutSection.ListDebugStrPatch,
-                                     DebugStrStrings, DebugStrNextOffset);
-
-      if (!OutSection.ListDebugLineStrPatch.empty())
-        TheDwarfEmitter->emitLineStrings(OutSection.ListDebugLineStrPatch,
-                                         DebugLineStrStrings,
-                                         DebugLineStrNextOffset);
     });
   });
 
@@ -1034,6 +1113,63 @@ void DWARFLinkerImpl::writeDWARFToTheOutput() {
     const SmallVector<std::unique_ptr<DIEAbbrev>> Abbreviations;
     TheDwarfEmitter->emitAbbrevs(Abbreviations, 3);
   }
+
+  // Enumerate all string patches and store strings into the final emitter.
+  uint64_t DebugStrNextOffset = 0;
+  uint64_t DebugLineStrNextOffset = 0;
+
+  // Emit zero length string. Accelerator tables does not work correctly
+  // if the first string is not zero length string.
+  TheDwarfEmitter->emitZeroString();
+  DebugStrNextOffset++;
+
+  // ASSUMPTION: String patches are not used while generating objfile-common
+  // sections(like .debug_frame). Thus, only compile units and accelerator
+  // records are enumerated.
+  forEachCompileUnit([&](CompileUnit *CU) {
+    CU->forEach([&](SectionDescriptor &OutSection) {
+      // Pass through string patches and emit them in order.
+      if (!OutSection.ListDebugStrPatch.empty())
+        TheDwarfEmitter->emitStrings<DebugStrPatch>(
+            OutSection.ListDebugStrPatch, DebugStrStrings, DebugStrNextOffset);
+
+      if (!OutSection.ListDebugLineStrPatch.empty())
+        TheDwarfEmitter->emitLineStrings(OutSection.ListDebugLineStrPatch,
+                                         DebugLineStrStrings,
+                                         DebugLineStrNextOffset);
+    });
+
+    // Pass through accelerator entries and emit them in order.
+    TheDwarfEmitter->emitStrings<DwarfUnit::AccelInfo>(
+        CU->AcceleratorRecords, DebugStrStrings, DebugStrNextOffset);
+  });
+
+  if (DebugNames.get() != nullptr) {
+    DebugNamesUnitsOffsets CompUnits;
+    CompUnitIDToIdx CUidToIdx;
+
+    unsigned Id = 0;
+    forEachCompileUnit([&](CompileUnit *CU) {
+      CompUnits.push_back(
+          CU->getSectionDescriptor(DebugSectionKind::DebugInfo).StartOffset);
+
+      CUidToIdx[CU->getUniqueID()] = Id++;
+    });
+
+    TheDwarfEmitter->emitDebugNames(*DebugNames, CompUnits, CUidToIdx);
+  }
+
+  if (AppleNames.get() != nullptr)
+    TheDwarfEmitter->emitAppleNames(*AppleNames);
+
+  if (AppleNamespaces.get() != nullptr)
+    TheDwarfEmitter->emitAppleNamespaces(*AppleNamespaces);
+
+  if (AppleObjc.get() != nullptr)
+    TheDwarfEmitter->emitAppleObjc(*AppleObjc);
+
+  if (AppleTypes.get() != nullptr)
+    TheDwarfEmitter->emitAppleTypes(*AppleTypes);
 }
 
 } // end of namespace dwarflinker_parallel

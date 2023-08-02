@@ -18,35 +18,39 @@ namespace dwarflinker_parallel {
 /// This class is a simple list of T structures. It keeps elements as
 /// pre-allocated groups to save memory for each element's next pointer.
 /// It allocates internal data using specified per-thread BumpPtrAllocator.
+/// Method add() can be called asynchronously.
 template <typename T, size_t ItemsGroupSize = 512> class ArrayList {
 public:
-  /// Copy specified \p Item into the list.
-  T &noteItem(const T &Item) {
+  /// Add specified \p Item to the list.
+  T &add(const T &Item) {
     assert(Allocator != nullptr);
 
-    ItemsGroup *CurGroup = LastGroup;
-
-    if (CurGroup == nullptr) {
-      // Allocate first ItemsGroup.
-      LastGroup = Allocator->Allocate<ItemsGroup>();
-      LastGroup->ItemsCount = 0;
-      LastGroup->Next = nullptr;
-      GroupsHead = LastGroup;
-      CurGroup = LastGroup;
+    // Allocate head group if it is not allocated yet.
+    while (LastGroup == nullptr) {
+      if (allocateNewGroup(GroupsHead, nullptr))
+        LastGroup = GroupsHead.load();
     }
 
-    if (CurGroup->ItemsCount == ItemsGroupSize) {
-      // Allocate next ItemsGroup if current one is full.
-      LastGroup = Allocator->Allocate<ItemsGroup>();
-      LastGroup->ItemsCount = 0;
-      LastGroup->Next = nullptr;
-      CurGroup->Next = LastGroup;
+    ItemsGroup *CurGroup;
+    size_t CurItemsCount;
+    do {
       CurGroup = LastGroup;
-    }
+      CurItemsCount = CurGroup->ItemsCount.fetch_add(1);
 
-    // Copy item into the next position inside current ItemsGroup.
-    CurGroup->Items[CurGroup->ItemsCount] = Item;
-    return CurGroup->Items[CurGroup->ItemsCount++];
+      // Check whether current group is full.
+      if (CurItemsCount < ItemsGroupSize)
+        break;
+
+      // Allocate next group if necessary.
+      if (CurGroup->Next == nullptr)
+        allocateNewGroup(CurGroup->Next, nullptr);
+
+      LastGroup.compare_exchange_weak(CurGroup, CurGroup->Next);
+    } while (true);
+
+    // Store item into the current group.
+    CurGroup->Items[CurItemsCount] = Item;
+    return CurGroup->Items[CurItemsCount];
   }
 
   using ItemHandlerTy = function_ref<void(T &)>;
@@ -55,9 +59,8 @@ public:
   void forEach(ItemHandlerTy Handler) {
     for (ItemsGroup *CurGroup = GroupsHead; CurGroup != nullptr;
          CurGroup = CurGroup->Next) {
-      for (size_t Idx = 0; Idx < CurGroup->ItemsCount; Idx++) {
+      for (size_t Idx = 0; Idx < CurGroup->getItemsCount(); Idx++)
         Handler(CurGroup->Items[Idx]);
-      }
     }
   }
 
@@ -77,12 +80,41 @@ public:
 protected:
   struct ItemsGroup {
     std::array<T, ItemsGroupSize> Items;
-    ItemsGroup *Next = nullptr;
-    size_t ItemsCount = 0;
+    std::atomic<ItemsGroup *> Next = nullptr;
+    std::atomic<size_t> ItemsCount = 0;
+
+    size_t getItemsCount() const {
+      return std::min(ItemsCount.load(), ItemsGroupSize);
+    }
   };
 
-  ItemsGroup *GroupsHead = nullptr;
-  ItemsGroup *LastGroup = nullptr;
+  bool allocateNewGroup(std::atomic<ItemsGroup *> &AtomicGroup,
+                        ItemsGroup *Group) {
+    // Allocate new group.
+    ItemsGroup *NewGroup = Allocator->Allocate<ItemsGroup>();
+    NewGroup->ItemsCount = 0;
+    NewGroup->Next = nullptr;
+
+    // Try to replace current group with allocated one.
+    if (AtomicGroup.compare_exchange_weak(Group, NewGroup))
+      return true;
+
+    // Put allocated group as next group.
+    ItemsGroup *NextGroup = Group;
+    while (NextGroup != nullptr) {
+      NextGroup = NextGroup->Next;
+
+      if (NextGroup == nullptr) {
+        if (NextGroup->Next.compare_exchange_weak(NextGroup, NewGroup))
+          break;
+      }
+    }
+
+    return false;
+  }
+
+  std::atomic<ItemsGroup *> GroupsHead = nullptr;
+  std::atomic<ItemsGroup *> LastGroup = nullptr;
   parallel::PerThreadBumpPtrAllocator *Allocator = nullptr;
 };
 

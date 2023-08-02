@@ -35,9 +35,11 @@ namespace llvm {
 
 template <typename DataT> class AccelTable;
 class MCCodeEmitter;
-class DWARFDebugMacro;
 
 namespace dwarflinker_parallel {
+
+using DebugNamesUnitsOffsets = std::vector<std::variant<MCSymbol *, uint64_t>>;
+using CompUnitIDToIdx = DenseMap<unsigned, size_t>;
 
 /// This class emits DWARF data to the output stream. It emits already
 /// generated section data and specific data, which could not be generated
@@ -82,9 +84,13 @@ public:
   void emitZeroString();
 
   /// Emit strings into the .debug_str section.
-  void emitStrings(ArrayList<DebugStrPatch> &StringPatches,
+  template <typename PatchTy>
+  void emitStrings(ArrayList<PatchTy> &StringPatches,
                    const StringEntryToDwarfStringPoolEntryMap &Strings,
-                   uint64_t &NextOffset);
+                   uint64_t &NextOffset) {
+    emitStringsImpl<PatchTy>(StringPatches, Strings, NextOffset,
+                             MOFI->getDwarfStrSection());
+  }
 
   /// Emit strings into the .debug_line_str section.
   void emitLineStrings(ArrayList<DebugLineStrPatch> &StringPatches,
@@ -99,6 +105,23 @@ public:
 
   /// Returns size of generated .debug_info section.
   uint64_t getDebugInfoSectionSize() const { return DebugInfoSectionSize; }
+
+  /// Emits .debug_names section according to the specified \p Table.
+  void emitDebugNames(AccelTable<DWARF5AccelTableStaticData> &Table,
+                      DebugNamesUnitsOffsets &CUOffsets,
+                      CompUnitIDToIdx &UnitIDToIdxMap);
+
+  /// Emits .apple_names section according to the specified \p Table.
+  void emitAppleNames(AccelTable<AppleAccelTableStaticOffsetData> &Table);
+
+  /// Emits .apple_namespaces section according to the specified \p Table.
+  void emitAppleNamespaces(AccelTable<AppleAccelTableStaticOffsetData> &Table);
+
+  /// Emits .apple_objc section according to the specified \p Table.
+  void emitAppleObjc(AccelTable<AppleAccelTableStaticOffsetData> &Table);
+
+  /// Emits .apple_types section according to the specified \p Table.
+  void emitAppleTypes(AccelTable<AppleAccelTableStaticTypeData> &Table);
 
 private:
   // Enumerate all string patches and write them into the destination section.

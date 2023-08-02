@@ -17,7 +17,7 @@ static constexpr StringLiteral SectionNames[SectionKindsNum] = {
     "debug_info",     "debug_line",    "debug_frame",    "debug_ranges",
     "debug_rnglists", "debug_loc",     "debug_loclists", "debug_aranges",
     "debug_abbrev",   "debug_macinfo", "debug_macro",    "debug_addr",
-};
+    "debug_pubnames", "debug_pubtypes"};
 
 const StringLiteral &getSectionName(DebugSectionKind SectionKind) {
   return SectionNames[static_cast<uint8_t>(SectionKind)];
@@ -50,6 +50,10 @@ std::optional<DebugSectionKind> parseDebugTableName(llvm::StringRef SecName) {
             DebugSectionKind::DebugMacro)
       .Case(getSectionName(DebugSectionKind::DebugAddr),
             DebugSectionKind::DebugAddr)
+      .Case(getSectionName(DebugSectionKind::DebugPubNames),
+            DebugSectionKind::DebugPubNames)
+      .Case(getSectionName(DebugSectionKind::DebugPubTypes),
+            DebugSectionKind::DebugPubTypes)
       .Default(std::nullopt);
 
   return std::nullopt;
@@ -155,7 +159,7 @@ void SectionDescriptor::emitString(dwarf::Form StringForm,
 
   switch (StringForm) {
   case dwarf::DW_FORM_string: {
-    emitInplaceString(GlobalData->translateString(StringVal));
+    emitInplaceString(StringVal);
   } break;
   case dwarf::DW_FORM_strp: {
     notePatch(DebugStrPatch{

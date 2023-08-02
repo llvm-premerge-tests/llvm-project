@@ -164,6 +164,10 @@ MCSection *DwarfEmitterImpl::switchSection(StringRef SecName) {
       .Case("debug_macro", MC->getObjectFileInfo()->getDwarfMacroSection())
       .Case("debug_macinfo", MC->getObjectFileInfo()->getDwarfMacinfoSection())
       .Case("debug_addr", MC->getObjectFileInfo()->getDwarfAddrSection())
+      .Case("debug_pubnames",
+            MC->getObjectFileInfo()->getDwarfPubNamesSection())
+      .Case("debug_pubtypes",
+            MC->getObjectFileInfo()->getDwarfPubTypesSection())
       .Default(nullptr);
 }
 
@@ -219,13 +223,6 @@ void DwarfEmitterImpl::emitStringsImpl(
   });
 }
 
-void DwarfEmitterImpl::emitStrings(
-    ArrayList<DebugStrPatch> &StringPatches,
-    const StringEntryToDwarfStringPoolEntryMap &Strings, uint64_t &NextOffset) {
-  emitStringsImpl<DebugStrPatch>(StringPatches, Strings, NextOffset,
-                                 MOFI->getDwarfStrSection());
-}
-
 void DwarfEmitterImpl::emitLineStrings(
     ArrayList<DebugLineStrPatch> &StringPatches,
     const StringEntryToDwarfStringPoolEntryMap &Strings, uint64_t &NextOffset) {
@@ -240,7 +237,7 @@ void DwarfEmitterImpl::emitCompileUnitHeader(DwarfUnit &Unit) {
   // Emit size of content not including length itself. The size has already
   // been computed in CompileUnit::computeOffsets(). Subtract 4 to that size to
   // account for the length field.
-  Asm->emitInt32(Unit.getHeaderSize() + Unit.getOutUnitDIE()->getSize() - 4);
+  Asm->emitInt32(Unit.getUnitSize() - 4);
   Asm->emitInt16(Unit.getVersion());
 
   if (Unit.getVersion() >= 5) {
@@ -262,6 +259,61 @@ void DwarfEmitterImpl::emitDIE(DIE &Die) {
   Asm->emitDwarfDIE(Die);
   DebugInfoSectionSize += Die.getSize();
 }
+
+void DwarfEmitterImpl::emitDebugNames(
+    AccelTable<DWARF5AccelTableStaticData> &Table,
+    DebugNamesUnitsOffsets &CUOffsets, CompUnitIDToIdx &CUidToIdx) {
+  if (CUOffsets.empty())
+    return;
+
+  Asm->OutStreamer->switchSection(MOFI->getDwarfDebugNamesSection());
+  emitDWARF5AccelTable(Asm.get(), Table, CUOffsets,
+                       [&CUidToIdx](const DWARF5AccelTableStaticData &Entry) {
+                         return CUidToIdx[Entry.getCUIndex()];
+                       });
+}
+
+void DwarfEmitterImpl::emitAppleNamespaces(
+    AccelTable<AppleAccelTableStaticOffsetData> &Table) {
+  Asm->OutStreamer->switchSection(MOFI->getDwarfAccelNamespaceSection());
+  auto *SectionBegin = Asm->createTempSymbol("namespac_begin");
+  Asm->OutStreamer->emitLabel(SectionBegin);
+  emitAppleAccelTable(Asm.get(), Table, "namespac", SectionBegin);
+}
+
+void DwarfEmitterImpl::emitAppleNames(
+    AccelTable<AppleAccelTableStaticOffsetData> &Table) {
+  Asm->OutStreamer->switchSection(MOFI->getDwarfAccelNamesSection());
+  auto *SectionBegin = Asm->createTempSymbol("names_begin");
+  Asm->OutStreamer->emitLabel(SectionBegin);
+  emitAppleAccelTable(Asm.get(), Table, "names", SectionBegin);
+}
+
+void DwarfEmitterImpl::emitAppleObjc(
+    AccelTable<AppleAccelTableStaticOffsetData> &Table) {
+  Asm->OutStreamer->switchSection(MOFI->getDwarfAccelObjCSection());
+  auto *SectionBegin = Asm->createTempSymbol("objc_begin");
+  Asm->OutStreamer->emitLabel(SectionBegin);
+  emitAppleAccelTable(Asm.get(), Table, "objc", SectionBegin);
+}
+
+void DwarfEmitterImpl::emitAppleTypes(
+    AccelTable<AppleAccelTableStaticTypeData> &Table) {
+  Asm->OutStreamer->switchSection(MOFI->getDwarfAccelTypesSection());
+  auto *SectionBegin = Asm->createTempSymbol("types_begin");
+  Asm->OutStreamer->emitLabel(SectionBegin);
+  emitAppleAccelTable(Asm.get(), Table, "types", SectionBegin);
+}
+
+template void DwarfEmitterImpl::emitStringsImpl<DwarfUnit::AccelInfo>(
+    ArrayList<DwarfUnit::AccelInfo> &StringPatches,
+    const StringEntryToDwarfStringPoolEntryMap &Strings, uint64_t &NextOffset,
+    MCSection *OutSection);
+
+template void DwarfEmitterImpl::emitStringsImpl<DebugStrPatch>(
+    ArrayList<DebugStrPatch> &StringPatches,
+    const StringEntryToDwarfStringPoolEntryMap &Strings, uint64_t &NextOffset,
+    MCSection *OutSection);
 
 } // end of namespace dwarflinker_parallel
 } // namespace llvm
