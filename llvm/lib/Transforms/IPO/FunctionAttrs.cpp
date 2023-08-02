@@ -1379,6 +1379,8 @@ static bool InstrBreaksNonThrowing(Instruction &I, const SCCNodeSet &SCCNodes) {
   if (!I.mayThrow(/* IncludePhaseOneUnwind */ true))
     return false;
   if (const auto *CI = dyn_cast<CallInst>(&I)) {
+    if (CI->isUnwindAbort())
+      return false;
     if (Function *Callee = CI->getCalledFunction()) {
       // I is a may-throw call to a function inside our SCC. This doesn't
       // invalidate our current working assumption that the SCC is no-throw; we
@@ -1669,9 +1671,17 @@ static bool functionWillReturn(const Function &F) {
     return false;
 
   // If there are no loops, then the function is willreturn if all calls in
-  // it are willreturn.
+  // it are willreturn but not unwindabort.
   return all_of(instructions(F), [](const Instruction &I) {
-    return I.willReturn();
+    if (!I.willReturn())
+      return false;
+    // If the call is marked unwindabort, an unwind may be converted into an
+    // abort, so we can't deduce willreturn for the containing function.
+    if (const CallBase *Call = dyn_cast<CallBase>(&I)) {
+      if (Call->isUnwindAbort())
+        return false;
+    }
+    return true;
   });
 }
 

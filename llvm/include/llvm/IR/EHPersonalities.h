@@ -91,12 +91,13 @@ inline bool isScopedEHPersonality(EHPersonality Pers) {
 }
 
 /// Return true if this personality may be safely removed if there
-/// are no invoke instructions remaining in the current function.
+/// are no invoke/unwindabort instructions remaining in the current function.
 inline bool isNoOpWithoutInvoke(EHPersonality Pers) {
   switch (Pers) {
   case EHPersonality::Unknown:
     return false;
-  // All known personalities currently have this behavior
+  // All known personalities currently have no effect without an 'invoke' or
+  // 'call unwindabort' in the function.
   default:
     return true;
   }

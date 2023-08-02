@@ -222,3 +222,51 @@ define linkonce i32 @square(i32) {
 
 declare i64 @fn_noread() readnone
 declare void @fn_willreturn() willreturn
+
+
+declare i1 @maybe_raise_exception() uwtable noinline willreturn
+
+; Positive test: an invoke does not block willreturn
+define void @invoke_test() personality ptr @__gxx_personality_v0 {
+; CHECK: Function Attrs: mustprogress nounwind willreturn
+; CHECK-LABEL: @invoke_test(
+; CHECK-NEXT:    [[TMP1:%.*]] = invoke i1 @maybe_raise_exception()
+; CHECK-NEXT:    to label [[N:%.*]] unwind label [[F:%.*]]
+; CHECK:       N:
+; CHECK-NEXT:    ret void
+; CHECK:       F:
+; CHECK-NEXT:    [[VAL:%.*]] = landingpad { ptr, i32 }
+; CHECK-NEXT:    catch ptr null
+; CHECK-NEXT:    ret void
+;
+  invoke i1 @maybe_raise_exception()
+  to label %N unwind label %F
+  N:
+  ret void
+  F:
+  %val = landingpad { ptr, i32 }
+  catch ptr null
+  ret void
+}
+
+; Positive test: calling a willreturn function that may unwind is OK, too.
+define void @call_unwind_test() noinline uwtable {
+; CHECK: Function Attrs: mustprogress noinline willreturn uwtable
+; CHECK-LABEL: @call_unwind_test(
+; CHECK-NEXT:    [[TMP1:%.*]] = call i1 @maybe_raise_exception()
+; CHECK-NEXT:    ret void
+;
+  call i1 @maybe_raise_exception()
+  ret void
+}
+
+; Negative test: a 'call unwindabort' is _not_ OK: it may abort.
+define void @callabort_unwind_test() nounwind uwtable noinline personality ptr @__gxx_personality_v0 {
+; CHECK: Function Attrs: noinline nounwind uwtable
+; CHECK-LABEL: @callabort_unwind_test(
+; CHECK-NEXT:    [[TMP1:%.*]] = call unwindabort i1 @maybe_raise_exception()
+; CHECK-NEXT:    ret void
+;
+  call unwindabort i1 @maybe_raise_exception()
+  ret void
+}

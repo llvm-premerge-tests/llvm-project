@@ -2055,7 +2055,8 @@ struct AANoUnwindImpl : AANoUnwind {
     auto CheckForNoUnwind = [&](Instruction &I) {
       if (!I.mayThrow(/* IncludePhaseOneUnwind */ true))
         return true;
-
+      if (auto *CI = dyn_cast<CallInst>(&I); CI && CI->isUnwindAbort())
+        return true;
       if (const auto *CB = dyn_cast<CallBase>(&I)) {
         bool IsKnownNoUnwind;
         return AA::hasAssumedIRAttr<Attribute::NoUnwind>(
@@ -3348,7 +3349,13 @@ struct AAWillReturnImpl : public AAWillReturn {
       return ChangeStatus::UNCHANGED;
 
     auto CheckForWillReturn = [&](Instruction &I) {
-      IRPosition IPos = IRPosition::callsite_function(cast<CallBase>(I));
+      CallBase &CB = cast<CallBase>(I);
+      // If the call is marked unwindabort, an unwind may be converted into an
+      // abort, so we can't deduce willreturn for the containing function.
+      if (CB.isUnwindAbort())
+        return false;
+
+      IRPosition IPos = IRPosition::callsite_function(CB);
       bool IsKnown;
       if (AA::hasAssumedIRAttr<Attribute::WillReturn>(
               A, this, IPos, DepClassTy::REQUIRED, IsKnown)) {
