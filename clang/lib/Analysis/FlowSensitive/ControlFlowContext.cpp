@@ -67,6 +67,27 @@ static llvm::BitVector findReachableBlocks(const CFG &Cfg) {
   return BlockReachable;
 }
 
+static llvm::DenseMap<const Stmt *, const Stmt *>
+buildStmtToParentMap(const Stmt &S) {
+  llvm::DenseMap<const Stmt *, const Stmt *> Result;
+
+  llvm::SmallVector<const Stmt *> StmtsToVisit = {&S};
+  while (!StmtsToVisit.empty()) {
+    const Stmt *Parent = StmtsToVisit.back();
+    StmtsToVisit.pop_back();
+
+    for (const Stmt *Child : Parent->children()) {
+      if (Child == nullptr)
+        continue;
+
+      StmtsToVisit.push_back(Child);
+      Result[Child] = Parent;
+    }
+  }
+
+  return Result;
+}
+
 llvm::Expected<ControlFlowContext>
 ControlFlowContext::build(const FunctionDecl &Func) {
   if (!Func.hasBody())
@@ -106,7 +127,7 @@ ControlFlowContext::build(const Decl &D, Stmt &S, ASTContext &C) {
   llvm::BitVector BlockReachable = findReachableBlocks(*Cfg);
 
   return ControlFlowContext(&D, std::move(Cfg), std::move(StmtToBlock),
-                            std::move(BlockReachable));
+                            std::move(BlockReachable), buildStmtToParentMap(S));
 }
 
 llvm::Expected<ControlFlowContext>

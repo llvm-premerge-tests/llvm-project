@@ -573,12 +573,16 @@ public:
 
   /// Returns the `DeclContext` of the block being analysed, if any. Otherwise,
   /// returns null.
-  const DeclContext *getDeclCtx() const { return CallStack.back(); }
+  const DeclContext *getDeclCtx() const {
+    if (CallStack.empty())
+      return nullptr;
+    return CallStack.back();
+  }
 
   /// Returns the function currently being analyzed, or null if the code being
   /// analyzed isn't part of a function.
   const FunctionDecl *getCurrentFunc() const {
-    return dyn_cast<FunctionDecl>(getDeclCtx());
+    return dyn_cast_or_null<FunctionDecl>(getDeclCtx());
   }
 
   /// Returns whether this `Environment` can be extended to analyze the given
