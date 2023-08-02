@@ -172,6 +172,13 @@ ModuleDepCollector::makeInvocationForModuleBuildWithoutOutputs(
     CI.getHeaderSearchOpts().ModulesIgnoreMacros.clear();
   }
 
+  // Apply -Wsystem-headers-in-module for the current module.
+  for (StringRef Name : CI.getDiagnosticOpts().SystemHeaderWarningsModules)
+    if (Name == Deps.ID.ModuleName)
+      CI.getDiagnosticOpts().Warnings.push_back("system-headers");
+  // Remove the now unused option(s).
+  CI.getDiagnosticOpts().SystemHeaderWarningsModules.clear();
+
   Optimize(CI);
 
   return CI;
