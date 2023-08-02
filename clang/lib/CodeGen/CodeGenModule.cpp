@@ -689,6 +689,7 @@ void CodeGenModule::checkAliases() {
 void CodeGenModule::clear() {
   DeferredDeclsToEmit.clear();
   EmittedDeferredDecls.clear();
+  DeferredAnnotations.clear();
   if (OpenMPRuntime)
     OpenMPRuntime->clear();
 }
@@ -3078,6 +3079,10 @@ void CodeGenModule::EmitVTablesOpportunistically() {
 }
 
 void CodeGenModule::EmitGlobalAnnotations() {
+  for (const auto& [F, VD] : DeferredAnnotations)
+    AddGlobalAnnotations(VD, F);
+  DeferredAnnotations.clear();
+
   if (Annotations.empty())
     return;
 
@@ -4316,6 +4321,11 @@ llvm::Constant *CodeGenModule::GetOrCreateLLVMFunction(
       }
     }
 
+    // Store the declaration associated with this function so it is emitted at
+    // the end.
+    if (D && D->hasAttr<AnnotateAttr>() && isa<llvm::Function>(Entry))
+      DeferredAnnotations[cast<llvm::Function>(Entry)] = cast<ValueDecl>(D);
+
     if ((isa<llvm::Function>(Entry) || isa<llvm::GlobalAlias>(Entry)) &&
         (Entry->getValueType() == Ty)) {
       return Entry;
@@ -4345,6 +4355,11 @@ llvm::Constant *CodeGenModule::GetOrCreateLLVMFunction(
   llvm::Function *F =
       llvm::Function::Create(FTy, llvm::Function::ExternalLinkage,
                              Entry ? StringRef() : MangledName, &getModule());
+
+  // Update the declartion associated with this function so any new or inherited
+  // annotations are emitted.
+  if (D && D->hasAttr<AnnotateAttr>())
+    DeferredAnnotations[F] = cast<ValueDecl>(D);
 
   // If we already created a function with the same mangled name (but different
   // type) before, take its name and add it to the list of functions to be
@@ -4603,6 +4618,7 @@ CodeGenModule::GetOrCreateLLVMGlobal(StringRef MangledName, llvm::Type *Ty,
   // Lookup the entry, lazily creating it if necessary.
   llvm::GlobalValue *Entry = GetGlobalValue(MangledName);
   unsigned TargetAS = getContext().getTargetAddressSpace(AddrSpace);
+
   if (Entry) {
     if (WeakRefReferences.erase(Entry)) {
       if (D && !D->hasAttr<WeakAttr>())
@@ -5666,8 +5682,6 @@ void CodeGenModule::EmitGlobalFunctionDefinition(GlobalDecl GD,
     AddGlobalCtor(Fn, CA->getPriority());
   if (const DestructorAttr *DA = D->getAttr<DestructorAttr>())
     AddGlobalDtor(Fn, DA->getPriority(), true);
-  if (D->hasAttr<AnnotateAttr>())
-    AddGlobalAnnotations(D, Fn);
 }
 
 void CodeGenModule::EmitAliasDefinition(GlobalDecl GD) {
