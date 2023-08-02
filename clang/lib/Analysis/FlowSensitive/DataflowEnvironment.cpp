@@ -414,6 +414,87 @@ void Environment::popCall(const CXXConstructExpr *Call,
   }
 }
 
+/// Returns whether locations `Loc1` and `Loc2` associated with expression `E`
+/// in two different environments `Env1` and `Env2` should be considered
+/// equivalent.
+/// The idea is that the location of certain expressions is almost certainly not
+/// relevant for the result of the block, but changes in these locations may
+/// nevertheless hinder convergence.
+static bool exprLocsEquivalent(const Expr *E, StorageLocation *Loc1,
+                               StorageLocation *Loc2, const Environment &Env1,
+                               const Environment &Env2,
+                               Environment::ValueModel &Model,
+                               const ControlFlowContext *CFCtx) {
+  // prvalues have stable storage locations, so we don't need to compare them.
+  if (E->isPRValue())
+    return true;
+
+  // If we have no `ControlFlowContext`, we can't determine the parent of `E`,
+  // so we have to assume that location matters.
+  if (CFCtx == nullptr)
+    return Loc1 == Loc2;
+
+  const Stmt *Parent = CFCtx->getParent(E);
+  // An expression should always have a parent within the body of the function.
+  assert(Parent != nullptr);
+  if (Parent == nullptr)
+    return Loc1 == Loc2;
+
+  // If this an expression statement, the location is discarded.
+  if (isa<CompoundStmt>(Parent))
+    return true;
+
+  if (auto *Cast = dyn_cast<CastExpr>(Parent)) {
+    // If the expression is cast to void, its location is discarded.
+    if (Cast->getCastKind() == CK_ToVoid)
+      return true;
+
+    // If the expression is cast from an lvalue to an rvalue, its location is
+    // unlikely to matter. Instead, just compare the values.
+    if (Cast->getCastKind() == CK_LValueToRValue) {
+      if (Loc1 == nullptr || Loc2 == nullptr)
+          return Loc1 == Loc2;
+
+      Value *Val1 = Env1.getValue(*Loc1);
+      Value *Val2 = Env2.getValue(*Loc2);
+
+      if (Val1 == nullptr || Val2 == nullptr)
+          return Val1 == Val2;
+
+      return areEquivalentValues(*Val1, *Val2) ||
+             compareDistinctValues(E->getType(), *Val1, Env1, *Val2, Env2,
+                                   Model);
+    }
+  }
+
+  return Loc1 == Loc2;
+}
+
+/// Returns whether two `ExprToLoc` maps should be considered equivalent. The
+/// comparison ignores certain classes of expressions; see comments in
+/// `exprLocsEquivalent()`.
+static bool exprToLocEquivalent(
+    const llvm::DenseMap<const Expr *, StorageLocation *> &ExprToLoc1,
+    const llvm::DenseMap<const Expr *, StorageLocation *> &ExprToLoc2,
+    const Environment &Env1, const Environment &Env2,
+    Environment::ValueModel &Model) {
+  if (ExprToLoc1.size() != ExprToLoc2.size())
+    return false;
+
+  const ControlFlowContext *CFCtx = nullptr;
+  if (const FunctionDecl *Func = Env1.getCurrentFunc())
+    CFCtx = Env1.getDataflowAnalysisContext().getControlFlowContext(Func);
+
+  for (auto [E, Loc1] : ExprToLoc1) {
+    StorageLocation *Loc2 = ExprToLoc2.lookup(E);
+
+    if (!exprLocsEquivalent(E, Loc1, Loc2, Env1, Env2, Model, CFCtx))
+      return false;
+  }
+
+  return true;
+}
+
 bool Environment::equivalentTo(const Environment &Other,
                                Environment::ValueModel &Model) const {
   assert(DACtx == Other.DACtx);
@@ -430,7 +511,7 @@ bool Environment::equivalentTo(const Environment &Other,
   if (DeclToLoc != Other.DeclToLoc)
     return false;
 
-  if (ExprToLoc != Other.ExprToLoc)
+  if (!exprToLocEquivalent(ExprToLoc, Other.ExprToLoc, *this, Other, Model))
     return false;
 
   // Compare the contents for the intersection of their domains.

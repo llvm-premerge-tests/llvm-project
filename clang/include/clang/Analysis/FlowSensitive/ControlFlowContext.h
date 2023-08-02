@@ -63,21 +63,28 @@ public:
     return BlockReachable[B.getBlockID()];
   }
 
+  /// Returns the parent of `S` or null if the parent could not be found.
+  /// `S` must be a descendant of the function or statement passed to `build()`.
+  const Stmt *getParent(const Stmt *S) const { return StmtToParent.lookup(S); }
+
 private:
   // FIXME: Once the deprecated `build` method is removed, mark `D` as "must not
   // be null" and add an assertion.
   ControlFlowContext(const Decl *D, std::unique_ptr<CFG> Cfg,
                      llvm::DenseMap<const Stmt *, const CFGBlock *> StmtToBlock,
-                     llvm::BitVector BlockReachable)
+                     llvm::BitVector BlockReachable,
+                     llvm::DenseMap<const Stmt *, const Stmt *> StmtToParent)
       : ContainingDecl(D), Cfg(std::move(Cfg)),
         StmtToBlock(std::move(StmtToBlock)),
-        BlockReachable(std::move(BlockReachable)) {}
+        BlockReachable(std::move(BlockReachable)),
+        StmtToParent(std::move(StmtToParent)) {}
 
   /// The `Decl` containing the statement used to construct the CFG.
   const Decl *ContainingDecl;
   std::unique_ptr<CFG> Cfg;
   llvm::DenseMap<const Stmt *, const CFGBlock *> StmtToBlock;
   llvm::BitVector BlockReachable;
+  llvm::DenseMap<const Stmt *, const Stmt *> StmtToParent;
 };
 
 } // namespace dataflow
