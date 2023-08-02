@@ -18,6 +18,7 @@
 #include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/CodeGen/MachineOperand.h"
+#include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCObjectFileInfo.h"
 #include "llvm/MC/MCSectionELF.h"
@@ -1371,7 +1372,11 @@ void BTFDebug::beginInstruction(const MachineInstr *MI) {
     // This instruction will be skipped, no LineInfo has
     // been generated, construct one based on function signature.
     if (LineInfoGenerated == false) {
-      auto *S = MI->getMF()->getFunction().getSubprogram();
+      const Function &F = MI->getMF()->getFunction();
+      const DISubprogram *const S = F.getSubprogram();
+      if (!S) {
+        return;
+      }
       MCSymbol *FuncLabel = Asm->getFunctionBegin();
       constructLineInfo(S->getFile(), FuncLabel, S->getLine(), 0);
       LineInfoGenerated = true;
