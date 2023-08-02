@@ -6807,13 +6807,23 @@ bool LLParser::parseInvoke(Instruction *&Inst, PerFunctionState &PFS) {
 }
 
 /// parseResume
-///   ::= 'resume' TypeAndValue
+///   ::= 'resume' 'unwindabort'? TypeAndValue
 bool LLParser::parseResume(Instruction *&Inst, PerFunctionState &PFS) {
   Value *Exn; LocTy ExnLoc;
+  bool UnwindAbort = false;
+
+  if (Lex.getKind() == lltok::kw_unwindabort) {
+    Lex.Lex();
+    UnwindAbort = true;
+  }
+
   if (parseTypeAndValue(Exn, ExnLoc, PFS))
     return true;
 
   ResumeInst *RI = ResumeInst::Create(Exn);
+  if (UnwindAbort)
+    RI->setUnwindAbort();
+
   Inst = RI;
   return false;
 }

@@ -1640,6 +1640,25 @@ proceed:
   ret void
 }
 
+define void @instructions.resume() personality i32 -1 {
+  invoke void @llvm.donothing() to label %proceed unwind label %catch1
+  invoke void @llvm.donothing() to label %proceed unwind label %catch2
+
+catch1:
+landingpad i32 cleanup
+; CHECK: resume i32 0
+resume i32 0
+
+catch2:
+landingpad i32 cleanup
+; CHECK: resume unwindabort i32 0
+resume unwindabort i32 0
+
+proceed:
+  ret void
+}
+
+
 ;; Intrinsic Functions
 
 ; Intrinsic Functions -- Variable Argument Handling

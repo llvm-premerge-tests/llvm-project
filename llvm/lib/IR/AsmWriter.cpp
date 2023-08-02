@@ -4076,6 +4076,11 @@ void AssemblyWriter::printInstruction(const Instruction &I) {
       (isa<AtomicRMWInst>(I) && cast<AtomicRMWInst>(I).isVolatile()))
     Out << " volatile";
 
+  if (const ResumeInst *RI = dyn_cast<ResumeInst>(&I)) {
+    if (RI->isUnwindAbort())
+      Out << " unwindabort";
+  }
+
   // Print out optimization information.
   WriteOptimizationInfo(Out, &I);
 
