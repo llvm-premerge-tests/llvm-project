@@ -13,16 +13,98 @@
 
 #include "AMDGPU.h"
 #include "GCNSubtarget.h"
+#include "SIMachineFunctionInfo.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
-#include "llvm/IR/IntrinsicsAMDGPU.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/IntrinsicsAMDGPU.h"
 #include "llvm/IR/MDBuilder.h"
+#include "llvm/IR/Metadata.h"
 #include "llvm/Target/TargetMachine.h"
 #define DEBUG_TYPE "amdgpu-lower-kernel-arguments"
 
 using namespace llvm;
 
 namespace {
+
+class PreloadKernelArgInfo {
+private:
+  Function &F;
+
+  const GCNSubtarget &ST;
+
+  unsigned NumFreeUserSGPRs;
+
+public:
+  SmallVector<llvm::Metadata *, 8> KernelArgMetadata;
+
+  PreloadKernelArgInfo(Function &F, const GCNSubtarget &ST) : F(F), ST(ST) {
+    setInitialFreeUserSGPRsCount();
+  }
+
+  // Returns the maximum number of user SGPRs that we have available to preload
+  // arguments.
+  void setInitialFreeUserSGPRsCount() {
+    const Module *M = F.getParent();
+
+    const unsigned MaxUserSGRPs = 16;
+    unsigned NumUserSGPRs = 0;
+
+    const CallingConv::ID CC = F.getCallingConv();
+    const bool IsKernel =
+        CC == CallingConv::AMDGPU_KERNEL || CC == CallingConv::SPIR_KERNEL;
+    const bool HasCalls = F.hasFnAttribute("amdgpu-calls");
+    const bool HasStackObjects = F.hasFnAttribute("amdgpu-stack-objects");
+
+    // ImplicitBufferPtr
+    if (ST.isMesaGfxShader(F))
+      NumUserSGPRs += 2;
+
+    // PrivateSegmentBuffer
+    if (ST.isAmdHsaOrMesa(F) && !ST.enableFlatScratch())
+      NumUserSGPRs += 4;
+
+    // DispatchPtr
+    if (!F.hasFnAttribute("amdgpu-no-dispatch-ptr"))
+      NumUserSGPRs += 2;
+
+    // QueuePtr
+    if (!F.hasFnAttribute("amdgpu-no-queue-ptr") &&
+        AMDGPU::getCodeObjectVersion(*M) < AMDGPU::AMDHSA_COV5) {
+      NumUserSGPRs += 2;
+    }
+
+    // KernargSegmentPtr
+    if (IsKernel && (!F.arg_empty() || ST.getImplicitArgNumBytes(F) != 0))
+      NumUserSGPRs += 2;
+
+    // DispatchID
+    if (!F.hasFnAttribute("amdgpu-no-dispatch-id"))
+      NumUserSGPRs += 2;
+
+    // FlatScratchInit
+    if (ST.hasFlatAddressSpace() && AMDGPU::isEntryFunctionCC(CC) &&
+        (ST.isAmdHsaOrMesa(F) || ST.enableFlatScratch()) &&
+        (HasCalls || HasStackObjects || ST.enableFlatScratch()) &&
+        !ST.flatScratchIsArchitected()) {
+      NumUserSGPRs += 2;
+    }
+
+    // LDSKernelId
+    if (!IsKernel && !F.hasFnAttribute("amdgpu-no-lds-kernel-id"))
+      NumUserSGPRs += 1;
+
+    NumFreeUserSGPRs = MaxUserSGRPs - NumUserSGPRs;
+  }
+
+  bool allocPreloadArg(unsigned AllocSize) {
+    unsigned AllocSizeDword = alignTo(AllocSize, 4) / 4;
+    if (AllocSizeDword > NumFreeUserSGPRs)
+      return false;
+
+    NumFreeUserSGPRs -= AllocSizeDword;
+    return true;
+  }
+};
 
 class AMDGPULowerKernelArguments : public FunctionPass{
 public:
@@ -87,8 +169,14 @@ bool AMDGPULowerKernelArguments::runOnFunction(Function &F) {
       Attribute::getWithDereferenceableBytes(Ctx, TotalKernArgSize));
 
   uint64_t ExplicitArgOffset = 0;
+  // Preloaded kernel arguments must be sequential.
+  bool InPreloadSequence = false;
+  bool HasPreloadArgs = false;
+  PreloadKernelArgInfo PreloadInfo(F, ST);
 
+  int Idx = -1;
   for (Argument &Arg : F.args()) {
+    Idx++;
     const bool IsByRef = Arg.hasByRefAttr();
     Type *ArgTy = IsByRef ? Arg.getParamByRefType() : Arg.getType();
     MaybeAlign ParamAlign = IsByRef ? Arg.getParamAlign() : std::nullopt;
@@ -102,6 +190,19 @@ bool AMDGPULowerKernelArguments::runOnFunction(Function &F) {
 
     if (Arg.use_empty())
       continue;
+
+    if (Arg.hasInRegAttr() && (InPreloadSequence || !HasPreloadArgs) &&
+        PreloadInfo.allocPreloadArg(AllocSize)) {
+      // Preload this argument.
+      InPreloadSequence = true;
+      HasPreloadArgs = true;
+      MDBuilder MDB(Ctx);
+      PreloadInfo.KernelArgMetadata.push_back(
+          llvm::MDNode::get(Ctx, MDB.createConstant(llvm::ConstantInt::get(
+                                     Builder.getInt32Ty(), Idx))));
+    } else if (InPreloadSequence) {
+      InPreloadSequence = false;
+    }
 
     // If this is byval, the loads are already explicit in the function. We just
     // need to rewrite the pointer values.
@@ -224,6 +325,11 @@ bool AMDGPULowerKernelArguments::runOnFunction(Function &F) {
       Load->setName(Arg.getName() + ".load");
       Arg.replaceAllUsesWith(Load);
     }
+  }
+
+  if (HasPreloadArgs) {
+    F.setMetadata("preload_kernel_args",
+                  llvm::MDNode::get(Ctx, PreloadInfo.KernelArgMetadata));
   }
 
   KernArgSegment->addRetAttr(
