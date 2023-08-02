@@ -25,6 +25,7 @@
 #include "clang/Basic/CharInfo.h"
 #include "clang/Basic/LangOptions.h"
 #include "clang/Basic/ObjCRuntime.h"
+#include "clang/Basic/TargetOptions.h"
 #include "clang/Basic/Version.h"
 #include "clang/Config/config.h"
 #include "clang/Driver/Action.h"
@@ -2299,16 +2300,16 @@ getAMDGPUCodeObjectArgument(const Driver &D, const llvm::opt::ArgList &Args) {
 
 void tools::checkAMDGPUCodeObjectVersion(const Driver &D,
                                          const llvm::opt::ArgList &Args) {
-  const unsigned MinCodeObjVer = 2;
-  const unsigned MaxCodeObjVer = 5;
 
   if (auto *CodeObjArg = getAMDGPUCodeObjectArgument(D, Args)) {
     if (CodeObjArg->getOption().getID() ==
         options::OPT_mcode_object_version_EQ) {
-      unsigned CodeObjVer = MaxCodeObjVer;
-      auto Remnant =
-          StringRef(CodeObjArg->getValue()).getAsInteger(0, CodeObjVer);
-      if (Remnant || CodeObjVer < MinCodeObjVer || CodeObjVer > MaxCodeObjVer)
+      unsigned CodeObjVer = TargetOptions::COV_Default / 100;
+      auto CovStr = StringRef(CodeObjArg->getValue());
+      if(CovStr.starts_with("none")) return;
+  
+      CovStr.getAsInteger(0, CodeObjVer);
+      if (CodeObjVer < TargetOptions::COV_None || CodeObjVer > TargetOptions::COV_MAX)
         D.Diag(diag::err_drv_invalid_int_value)
             << CodeObjArg->getAsString(Args) << CodeObjArg->getValue();
     }
@@ -2317,9 +2318,13 @@ void tools::checkAMDGPUCodeObjectVersion(const Driver &D,
 
 unsigned tools::getAMDGPUCodeObjectVersion(const Driver &D,
                                            const llvm::opt::ArgList &Args) {
-  unsigned CodeObjVer = 4; // default
-  if (auto *CodeObjArg = getAMDGPUCodeObjectArgument(D, Args))
-    StringRef(CodeObjArg->getValue()).getAsInteger(0, CodeObjVer);
+
+  unsigned CodeObjVer = TargetOptions::COV_Default / 100; // default
+  if (haveAMDGPUCodeObjectVersionArgument(D, Args)) {
+    auto CodeObjArg = StringRef(getAMDGPUCodeObjectArgument(D, Args)->getValue());
+    if(CodeObjArg.starts_with("none"))  return TargetOptions::COV_None;
+    CodeObjArg.getAsInteger(0, CodeObjVer);
+  }
   return CodeObjVer;
 }
 

@@ -1055,15 +1055,19 @@ static void handleAMDGPUCodeObjectVersionOptions(const Driver &D,
   // provided the user (e.g. front end tests) can use the default.
   if (haveAMDGPUCodeObjectVersionArgument(D, Args)) {
     unsigned CodeObjVer = getAMDGPUCodeObjectVersion(D, Args);
+    if(CodeObjVer != 0) {
     CmdArgs.insert(CmdArgs.begin() + 1,
                    Args.MakeArgString(Twine("--amdhsa-code-object-version=") +
                                       Twine(CodeObjVer)));
     CmdArgs.insert(CmdArgs.begin() + 1, "-mllvm");
+    }
     // -cc1as does not accept -mcode-object-version option.
-    if (!IsCC1As)
+    if (!IsCC1As) {
+      std::string CodeObjVerStr = (CodeObjVer ? Twine(CodeObjVer) : "none").str();
       CmdArgs.insert(CmdArgs.begin() + 1,
                      Args.MakeArgString(Twine("-mcode-object-version=") +
-                                        Twine(CodeObjVer)));
+                                        CodeObjVerStr));
+    }
   }
 }
 

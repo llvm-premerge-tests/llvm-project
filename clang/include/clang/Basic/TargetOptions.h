@@ -86,6 +86,8 @@ public:
     COV_3 = 300,
     COV_4 = 400,
     COV_5 = 500,
+    COV_Default = 400,
+    COV_MAX = 500
   };
   /// \brief Code object version for AMDGPU.
   CodeObjectVersionKind CodeObjectVersion = CodeObjectVersionKind::COV_None;
