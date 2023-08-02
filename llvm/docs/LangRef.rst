@@ -12055,7 +12055,7 @@ Syntax:
 
 ::
 
-      <result> = [tail | musttail | notail ] call [fast-math flags] [cconv] [ret attrs] [addrspace(<num>)]
+      <result> = [tail | musttail | notail ] call [unwindabort] [fast-math flags] [cconv] [ret attrs] [addrspace(<num>)]
                  <ty>|<fnty> <fnptrval>(<function args>) [fn attrs] [ operand bundles ]
 
 Overview:
@@ -12100,6 +12100,7 @@ This instruction requires several arguments:
      non-varargs function to the appropriate varargs type is legal so
      long as the non-varargs prefixes obey the other rules.
    - The return type must not undergo automatic conversion to an `sret` pointer.
+   - The call cannot be 'unwindabort'.
 
   In addition, if the calling convention is not `swifttailcc` or `tailcc`:
 
@@ -12129,6 +12130,20 @@ This instruction requires several arguments:
 #. The optional ``notail`` marker indicates that the optimizers should not add
    ``tail`` or ``musttail`` markers to the call. It is used to prevent tail
    call optimization from being performed on the call.
+
+#. The optional '``unwindabort``' marker is used by `LLVM's exception
+   handling system <ExceptionHandling.html#overview>`_ to specify that
+   if the call stack is being unwound due to an exception, the
+   :ref:`personality function <personalityfn>` should abort the
+   process instead of continuing to unwind to the caller.
+
+   It is unspecified whether any intermediate *cleanup*
+   :ref:`landingpad <i_landingpad>` or :ref:`cleanuppad
+   <i_cleanuppad>` handlers are called during the unwind process, when
+   unwinding into an ``unwindabort``. (The compiler may omit any
+   cleanup which would resume execution only through ``unwindabort``,
+   or the personality function may simply not call cleanups once it
+   discovers it needs to abort.)
 
 #. The optional ``fast-math flags`` marker indicates that the call has one or more
    :ref:`fast-math flags <fastmath>`, which are optimization hints to enable
