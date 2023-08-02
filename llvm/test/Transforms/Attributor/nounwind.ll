@@ -138,6 +138,79 @@ define i32 @catch_thing_user() {
   ret i32 %catch_thing_call
 }
 
+; TEST 7: test that it's possible to deduce nounwind even when the
+; function contains an invoke to a throwing function. Unlike the
+; above test, the only potentially-unwinding calls are through
+; 'invoke'.
+define i32 @test_invoke_nounwind(i1 zeroext %val) personality ptr @__gxx_personality_v0 {
+; TUNIT: Function Attrs: noreturn nounwind
+; TUNIT-LABEL: define {{[^@]+}}@test_invoke_nounwind
+; TUNIT-SAME: (i1 zeroext [[VAL:%.*]]) #[[ATTR2:[0-9]+]] personality ptr @__gxx_personality_v0 {
+; TUNIT-NEXT:  entry:
+; TUNIT-NEXT:    [[CALL:%.*]] = invoke noundef i32 @maybe_throw(i1 noundef [[VAL]])
+; TUNIT-NEXT:    to label [[TRY_CONT:%.*]] unwind label [[LPAD:%.*]]
+; TUNIT:       lpad:
+; TUNIT-NEXT:    [[TMP0:%.*]] = landingpad { ptr, i32 }
+; TUNIT-NEXT:    catch ptr null
+; TUNIT-NEXT:    [[TMP1:%.*]] = extractvalue { ptr, i32 } [[TMP0]], 0
+; TUNIT-NEXT:    [[TMP2:%.*]] = tail call ptr @__cxa_begin_catch(ptr [[TMP1]]) #[[ATTR3:[0-9]+]]
+; TUNIT-NEXT:    tail call void @abort() #[[ATTR2]]
+; TUNIT-NEXT:    unreachable
+; TUNIT:       try.cont:
+; TUNIT-NEXT:    unreachable
+;
+; CGSCC: Function Attrs: noreturn nounwind
+; CGSCC-LABEL: define {{[^@]+}}@test_invoke_nounwind
+; CGSCC-SAME: (i1 noundef zeroext [[VAL:%.*]]) #[[ATTR1:[0-9]+]] personality ptr @__gxx_personality_v0 {
+; CGSCC-NEXT:  entry:
+; CGSCC-NEXT:    [[CALL:%.*]] = invoke noundef i32 @maybe_throw(i1 noundef [[VAL]])
+; CGSCC-NEXT:    to label [[TRY_CONT:%.*]] unwind label [[LPAD:%.*]]
+; CGSCC:       lpad:
+; CGSCC-NEXT:    [[TMP0:%.*]] = landingpad { ptr, i32 }
+; CGSCC-NEXT:    catch ptr null
+; CGSCC-NEXT:    [[TMP1:%.*]] = extractvalue { ptr, i32 } [[TMP0]], 0
+; CGSCC-NEXT:    [[TMP2:%.*]] = tail call ptr @__cxa_begin_catch(ptr [[TMP1]]) #[[ATTR2:[0-9]+]]
+; CGSCC-NEXT:    tail call void @abort() #[[ATTR1]]
+; CGSCC-NEXT:    unreachable
+; CGSCC:       try.cont:
+; CGSCC-NEXT:    unreachable
+;
+entry:
+  %call = invoke noundef i32 @maybe_throw(i1 %val)
+  to label %try.cont unwind label %lpad
+
+lpad:                                             ; preds = %entry
+  %0 = landingpad { ptr, i32 }
+  catch ptr null
+  %1 = extractvalue { ptr, i32 } %0, 0
+  %2 = tail call ptr @__cxa_begin_catch(ptr %1) nounwind
+  tail call void @abort() noreturn nounwind
+  unreachable
+
+try.cont:                                         ; preds = %entry
+  unreachable
+}
+
+; TEST 8: test that a function body with 'call unwindabort' can be
+; deduced as nounwind.
+define i32 @test_unwindabort(i1 zeroext %val) personality ptr @__gxx_personality_v0 {
+; TUNIT: Function Attrs: nounwind
+; TUNIT-LABEL: define {{[^@]+}}@test_unwindabort
+; TUNIT-SAME: (i1 zeroext [[VAL:%.*]]) #[[ATTR3]] personality ptr @__gxx_personality_v0 {
+; TUNIT-NEXT:    [[CALL:%.*]] = call unwindabort i32 @maybe_throw(i1 noundef [[VAL]])
+; TUNIT-NEXT:    ret i32 -1
+;
+; CGSCC: Function Attrs: nounwind
+; CGSCC-LABEL: define {{[^@]+}}@test_unwindabort
+; CGSCC-SAME: (i1 noundef zeroext [[VAL:%.*]]) #[[ATTR2]] personality ptr @__gxx_personality_v0 {
+; CGSCC-NEXT:    [[CALL:%.*]] = call unwindabort noundef i32 @maybe_throw(i1 noundef [[VAL]])
+; CGSCC-NEXT:    ret i32 [[CALL]]
+;
+  %call = call unwindabort i32 @maybe_throw(i1 %val)
+  ret i32 %call
+}
+
+declare void @abort() local_unnamed_addr noreturn nounwind
 
 declare i32 @__gxx_personality_v0(...)
 
@@ -147,6 +220,10 @@ declare void @__cxa_end_catch()
 ;.
 ; TUNIT: attributes #[[ATTR0]] = { mustprogress nofree norecurse nosync nounwind willreturn memory(none) }
 ; TUNIT: attributes #[[ATTR1]] = { mustprogress nofree nosync nounwind willreturn memory(none) }
+; TUNIT: attributes #[[ATTR2]] = { noreturn nounwind }
+; TUNIT: attributes #[[ATTR3]] = { nounwind }
 ;.
 ; CGSCC: attributes #[[ATTR0]] = { mustprogress nofree norecurse nosync nounwind willreturn memory(none) }
+; CGSCC: attributes #[[ATTR1]] = { noreturn nounwind }
+; CGSCC: attributes #[[ATTR2]] = { nounwind }
 ;.

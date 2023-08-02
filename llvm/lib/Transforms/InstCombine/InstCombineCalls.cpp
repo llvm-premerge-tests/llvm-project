@@ -35,6 +35,7 @@
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/EHPersonalities.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/InlineAsm.h"
@@ -1401,10 +1402,20 @@ Instruction *InstCombinerImpl::visitCallInst(CallInst &CI) {
   if (Value *FreedOp = getFreedOperand(&CI, &TLI))
     return visitFree(CI, FreedOp);
 
-  // If the caller function (i.e. us, the function that contains this CallInst)
-  // is nounwind, mark the call as nounwind, even if the callee isn't.
-  if (CI.getFunction()->doesNotThrow() && !CI.doesNotThrow()) {
+  // If the caller function (i.e. the function containing this CallInst) is
+  // nounwind, and the call is not unwindabort, mark the call as nounwind, even
+  // when the callee function isn't.
+  if (CI.getFunction()->doesNotThrow() && !CI.isUnwindAbort() &&
+      !CI.doesNotThrow()) {
     CI.setDoesNotThrow();
+    return &CI;
+  }
+
+  // If the call is unwindabort and nounwind (and if nounwind _actually_ means
+  // there can't be any unwinds...), then we can remove the 'unwindabort'.
+  if (CI.isUnwindAbort() && CI.doesNotThrow() &&
+      canSimplifyInvokeNoUnwind(CI.getFunction())) {
+    CI.setUnwindAbort(false);
     return &CI;
   }
 

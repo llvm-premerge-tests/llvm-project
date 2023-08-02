@@ -31,14 +31,15 @@ IRBuilder<> *EscapeEnumerator::Next() {
   if (Done)
     return nullptr;
 
-  // Find all 'return', 'resume', and 'unwind' instructions.
+  // Find all 'return', and 'resume' (but not 'resume unwindabort')
+  // instructions; these instructions may transfer control to the calling
+  // function.
   while (StateBB != StateE) {
     BasicBlock *CurBB = &*StateBB++;
 
-    // Branches and invokes do not escape, only unwind, resume, and return
-    // do.
     Instruction *TI = CurBB->getTerminator();
-    if (!isa<ReturnInst>(TI) && !isa<ResumeInst>(TI))
+    if (!(isa<ReturnInst>(TI) ||
+          (isa<ResumeInst>(TI) && !cast<ResumeInst>(TI)->isUnwindAbort())))
       continue;
 
     if (CallInst *CI = CurBB->getTerminatingMustTailCall())
@@ -55,13 +56,14 @@ IRBuilder<> *EscapeEnumerator::Next() {
   if (F.doesNotThrow())
     return nullptr;
 
-  // Find all 'call' instructions that may throw.
-  // We cannot tranform calls with musttail tag.
+  // Find all 'call' instructions that may unwind to the calling function.
+  // We cannot tranform calls with musttail tag, but it is handled above.
   SmallVector<Instruction *, 16> Calls;
   for (BasicBlock &BB : F)
     for (Instruction &II : BB)
       if (CallInst *CI = dyn_cast<CallInst>(&II))
-        if (!CI->doesNotThrow() && !CI->isMustTailCall())
+        if (!CI->isUnwindAbort() && !CI->doesNotThrow() &&
+            !CI->isMustTailCall())
           Calls.push_back(CI);
 
   if (Calls.empty())

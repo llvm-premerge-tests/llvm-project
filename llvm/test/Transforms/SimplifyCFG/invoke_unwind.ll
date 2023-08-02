@@ -86,6 +86,67 @@ lpad2:
   br label %rethrow
 }
 
+
+;; Now test that both simple-resume and common-resume propagate unwindabort properly.
+define i32 @test4() personality ptr @__gxx_personality_v0 {
+; CHECK-LABEL: @test4(
+; CHECK-NEXT:    call unwindabort void @bar()
+; CHECK-NEXT:    ret i32 0
+;
+  invoke void @bar( )
+    to label %1 unwind label %Rethrow
+  ret i32 0
+Rethrow:
+  %exn = landingpad {ptr, i32}
+  cleanup
+  resume unwindabort {ptr, i32} %exn
+}
+
+define i64 @test5(i1 %cond) personality ptr @__gxx_personality_v0 {
+; CHECK-LABEL: @test5(
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    br i1 [[COND:%.*]], label [[BR1:%.*]], label [[BR2:%.*]]
+; CHECK:       br1:
+; CHECK-NEXT:    [[CALL1:%.*]] = call unwindabort i64 @dummy1()
+; CHECK-NEXT:    br label [[INVOKE_CONT:%.*]]
+; CHECK:       br2:
+; CHECK-NEXT:    [[CALL2:%.*]] = call unwindabort i64 @dummy2()
+; CHECK-NEXT:    br label [[INVOKE_CONT]]
+; CHECK:       invoke.cont:
+; CHECK-NEXT:    [[C:%.*]] = phi i64 [ [[CALL1]], [[BR1]] ], [ [[CALL2]], [[BR2]] ]
+; CHECK-NEXT:    ret i64 [[C]]
+;
+entry:
+  br i1 %cond, label %br1, label %br2
+
+br1:
+  %call1 = invoke i64 @dummy1()
+  to label %invoke.cont unwind label %lpad1
+
+br2:
+  %call2 = invoke i64 @dummy2()
+  to label %invoke.cont unwind label %lpad2
+
+invoke.cont:
+  %c = phi i64 [%call1, %br1], [%call2, %br2]
+  ret i64 %c
+
+lpad1:
+  %0 = landingpad { ptr, i32 }
+  cleanup
+  br label %rethrow
+
+rethrow:
+  %lp = phi { ptr, i32 } [%0, %lpad1], [%1, %lpad2]
+  resume unwindabort { ptr, i32 } %lp
+
+lpad2:
+  %1 = landingpad { ptr, i32 }
+  cleanup
+  br label %rethrow
+}
+
+
 declare i32 @__gxx_personality_v0(...)
 ;.
 ; CHECK: [[PROF0]] = !{!"branch_weights", i32 371}
