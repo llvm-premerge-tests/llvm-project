@@ -10,9 +10,10 @@
 #define _LIBCPP___RANDOM_BINOMIAL_DISTRIBUTION_H
 
 #include <__config>
+#include <__math/exponential_functions.h>
+#include <__math/logarithms.h>
 #include <__random/is_valid.h>
 #include <__random/uniform_real_distribution.h>
-#include <cmath>
 #include <iosfwd>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
@@ -134,10 +135,10 @@ binomial_distribution<_IntType>::param_type::param_type(result_type __t, double 
     if (0 < __p_ && __p_ < 1)
     {
         __r0_ = static_cast<result_type>((__t_ + 1) * __p_);
-        __pr_ = _VSTD::exp(std::__libcpp_lgamma(__t_ + 1.) -
+        __pr_ = __math::exp(std::__libcpp_lgamma(__t_ + 1.) -
                            std::__libcpp_lgamma(__r0_ + 1.) -
-                           std::__libcpp_lgamma(__t_ - __r0_ + 1.) + __r0_ * _VSTD::log(__p_) +
-                           (__t_ - __r0_) * _VSTD::log(1 - __p_));
+                           std::__libcpp_lgamma(__t_ - __r0_ + 1.) + __r0_ * __math::log(__p_) +
+                           (__t_ - __r0_) * __math::log(1 - __p_));
         __odds_ratio_ = __p_ / (1 - __p_);
     }
 }

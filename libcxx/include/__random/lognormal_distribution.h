@@ -10,8 +10,8 @@
 #define _LIBCPP___RANDOM_LOGNORMAL_DISTRIBUTION_H
 
 #include <__config>
+#include <__math/exponential_functions.h>
 #include <__random/normal_distribution.h>
-#include <cmath>
 #include <iosfwd>
 #include <limits>
 
@@ -83,7 +83,7 @@ public:
     _LIBCPP_INLINE_VISIBILITY
     result_type operator()(_URNG& __g)
     {
-        return _VSTD::exp(__nd_(__g));
+        return __math::exp(__nd_(__g));
     }
 
     template<class _URNG>
@@ -91,7 +91,7 @@ public:
     result_type operator()(_URNG& __g, const param_type& __p)
     {
         typename normal_distribution<result_type>::param_type __pn(__p.m(), __p.s());
-        return _VSTD::exp(__nd_(__g, __pn));
+        return __math::exp(__nd_(__g, __pn));
     }
 
     // property functions

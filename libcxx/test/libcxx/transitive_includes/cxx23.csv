@@ -61,14 +61,12 @@ bitset string_view
 bitset version
 ccomplex complex
 charconv cerrno
-charconv cmath
 charconv cstddef
 charconv cstdint
 charconv initializer_list
 charconv limits
 charconv new
 chrono array
-chrono cmath
 chrono compare
 chrono cstddef
 chrono cstdint
@@ -105,7 +103,6 @@ codecvt stdexcept
 codecvt string
 codecvt typeinfo
 codecvt version
-compare cmath
 compare cstddef
 compare cstdint
 compare limits
@@ -212,7 +209,6 @@ filesystem string
 filesystem string_view
 filesystem version
 format array
-format cmath
 format cstddef
 format cstdint
 format initializer_list
@@ -418,7 +414,6 @@ new cstdlib
 new version
 numbers version
 numeric climits
-numeric cmath
 numeric cstddef
 numeric cstdint
 numeric cstring
@@ -456,7 +451,6 @@ ostream typeinfo
 ostream version
 print array
 print cerrno
-print cmath
 print cstddef
 print cstdint
 print cstdio
@@ -479,9 +473,9 @@ queue limits
 queue new
 queue vector
 queue version
-random cmath
 random cstddef
 random cstdint
+random cstdlib
 random initializer_list
 random iosfwd
 random limits
@@ -652,7 +646,6 @@ typeindex typeinfo
 typeindex version
 typeinfo cstddef
 typeinfo cstdint
-unordered_map cmath
 unordered_map compare
 unordered_map cstddef
 unordered_map cstdint
@@ -664,7 +657,6 @@ unordered_map optional
 unordered_map stdexcept
 unordered_map tuple
 unordered_map version
-unordered_set cmath
 unordered_set compare
 unordered_set cstddef
 unordered_set cstdint

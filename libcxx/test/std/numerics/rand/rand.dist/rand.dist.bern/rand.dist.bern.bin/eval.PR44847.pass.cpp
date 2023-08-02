@@ -18,11 +18,12 @@
 // Serializing/deserializing the state of the RNG requires iostreams
 // UNSUPPORTED: no-localization
 
-#include <random>
-#include <numeric>
-#include <vector>
 #include <cassert>
+#include <cmath>
+#include <numeric>
+#include <random>
 #include <sstream>
+#include <vector>
 
 #include "test_macros.h"
 

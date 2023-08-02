@@ -10,10 +10,10 @@
 #define _LIBCPP___RANDOM_EXPONENTIAL_DISTRIBUTION_H
 
 #include <__config>
+#include <__math/logarithms.h>
 #include <__random/generate_canonical.h>
 #include <__random/is_valid.h>
 #include <__random/uniform_real_distribution.h>
-#include <cmath>
 #include <iosfwd>
 #include <limits>
 
@@ -112,7 +112,7 @@ _RealType
 exponential_distribution<_RealType>::operator()(_URNG& __g, const param_type& __p)
 {
     static_assert(__libcpp_random_is_valid_urng<_URNG>::value, "");
-    return -_VSTD::log
+    return -__math::log
                   (
                       result_type(1) -
                       _VSTD::generate_canonical<result_type,

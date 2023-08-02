@@ -11,6 +11,7 @@
 
 #include <__algorithm/upper_bound.h>
 #include <__config>
+#include <__math/roots.h>
 #include <__random/is_valid.h>
 #include <__random/uniform_real_distribution.h>
 #include <iosfwd>
@@ -306,7 +307,7 @@ piecewise_linear_distribution<_RealType>::operator()(_URNG& __g, const param_typ
     const result_type __bk1 = __p.__b_[__k+1];
     const result_type __deltab = __bk1 - __bk;
     return (__bk * __dk1 - __bk1 * __dk +
-        _VSTD::sqrt(__deltab * (__deltab * __dk * __dk + 2 * __deltad * __u))) /
+        __math::sqrt(__deltab * (__deltab * __dk * __dk + 2 * __deltad * __u))) /
         __deltad;
 }
 

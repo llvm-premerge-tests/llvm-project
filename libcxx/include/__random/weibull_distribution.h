@@ -10,8 +10,8 @@
 #define _LIBCPP___RANDOM_WEIBULL_DISTRIBUTION_H
 
 #include <__config>
+#include <__math/exponential_functions.h>
 #include <__random/exponential_distribution.h>
-#include <cmath>
 #include <iosfwd>
 #include <limits>
 
@@ -86,7 +86,7 @@ public:
         _LIBCPP_INLINE_VISIBILITY
         result_type operator()(_URNG& __g, const param_type& __p)
         {return __p.b() *
-            _VSTD::pow(exponential_distribution<result_type>()(__g), 1/__p.a());}
+            __math::pow(exponential_distribution<result_type>()(__g), 1/__p.a());}
 
     // property functions
     _LIBCPP_INLINE_VISIBILITY

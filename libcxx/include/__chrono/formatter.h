@@ -41,7 +41,6 @@
 #include <__format/parser_std_format_spec.h>
 #include <__format/write_escaped.h>
 #include <__memory/addressof.h>
-#include <cmath>
 #include <ctime>
 #include <sstream>
 #include <string_view>

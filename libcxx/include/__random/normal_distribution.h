@@ -10,9 +10,10 @@
 #define _LIBCPP___RANDOM_NORMAL_DISTRIBUTION_H
 
 #include <__config>
+#include <__math/logarithms.h>
+#include <__math/roots.h>
 #include <__random/is_valid.h>
 #include <__random/uniform_real_distribution.h>
-#include <cmath>
 #include <iosfwd>
 #include <limits>
 
@@ -152,7 +153,7 @@ normal_distribution<_RealType>::operator()(_URNG& __g, const param_type& __p)
             __v = __uni(__g);
             __s = __u * __u + __v * __v;
         } while (__s > 1 || __s == 0);
-        result_type __fp = _VSTD::sqrt(-2 * _VSTD::log(__s) / __s);
+        result_type __fp = __math::sqrt(-2 * __math::log(__s) / __s);
         __v_ = __v * __fp;
         __v_hot_ = true;
         __up = __u * __fp;

@@ -29,12 +29,12 @@
 #include <__format/formatter_output.h>
 #include <__format/parser_std_format_spec.h>
 #include <__iterator/concepts.h>
+#include <__math/traits.h>
 #include <__memory/allocator.h>
 #include <__system_error/errc.h>
 #include <__type_traits/conditional.h>
 #include <__utility/move.h>
 #include <__utility/unreachable.h>
-#include <cmath>
 #include <cstddef>
 
 #ifndef _LIBCPP_HAS_NO_LOCALIZATION
@@ -643,10 +643,10 @@ _LIBCPP_HIDE_FROM_ABI auto __write_using_trailing_zeros(
 template <floating_point _Tp, class _CharT, class _FormatContext>
 _LIBCPP_HIDE_FROM_ABI typename _FormatContext::iterator
 __format_floating_point(_Tp __value, _FormatContext& __ctx, __format_spec::__parsed_specifications<_CharT> __specs) {
-  bool __negative = _VSTD::signbit(__value);
+  bool __negative = __math::signbit(__value);
 
-  if (!_VSTD::isfinite(__value)) [[unlikely]]
-    return __formatter::__format_floating_point_non_finite(__ctx.out(), __specs, __negative, _VSTD::isnan(__value));
+  if (!__math::isfinite(__value)) [[unlikely]]
+    return __formatter::__format_floating_point_non_finite(__ctx.out(), __specs, __negative, __math::isnan(__value));
 
   // Depending on the std-format-spec string the sign and the value
   // might not be outputted together:

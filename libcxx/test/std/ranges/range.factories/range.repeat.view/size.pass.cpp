@@ -10,11 +10,12 @@
 
 // constexpr auto size() const requires (!same_as<Bound, unreachable_sentinel_t>);
 
-#include <ranges>
-#include <numeric>
-#include <concepts>
 #include <cassert>
+#include <cmath>
+#include <concepts>
 #include <iterator>
+#include <numeric>
+#include <ranges>
 
 template <class T>
 concept has_size = requires(T&& view) {
