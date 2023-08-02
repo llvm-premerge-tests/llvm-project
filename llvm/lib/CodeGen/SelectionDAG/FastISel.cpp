@@ -1176,6 +1176,10 @@ bool FastISel::selectCall(const User *I) {
     return true;
   }
 
+  // Don't handle unwindabort calls yet
+  if (Call->isUnwindAbort())
+    return false;
+
   // Handle intrinsic function calls.
   if (const auto *II = dyn_cast<IntrinsicInst>(Call))
     return selectIntrinsicCall(II);

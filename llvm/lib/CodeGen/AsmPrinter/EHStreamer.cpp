@@ -211,9 +211,10 @@ void EHStreamer::computePadMap(
 /// Compute the call-site table.  The entry for an invoke has a try-range
 /// containing the call, a non-zero landing pad, and an appropriate action.  The
 /// entry for an ordinary call has a try-range containing the call and zero for
-/// the landing pad and the action.  Calls marked 'nounwind' have no entry and
-/// must not be contained in the try-range of any entry - they form gaps in the
-/// table.  Entries must be ordered by try-range address.
+/// the landing pad and the action.  Calls marked 'unwindabort' have no entry
+/// and must not be contained in the try-range of any entry - they form gaps in
+/// the table.  Calls marked 'nounwind' may be covered by anything -- either a
+/// neighboring entry or a gap. Entries must be ordered by try-range address.
 ///
 /// Call-sites are split into one or more call-site ranges associated with
 /// different sections of the function.

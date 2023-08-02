@@ -9,7 +9,7 @@
 ;SJLJ-NEXT:         endbr64
 ;SJLJ-NEXT:         pushq   %rbp
 ;SJLJ:               callq   _Unwind_SjLj_Register
-;SJLJ-NEXT: .Ltmp0:
+;SJLJ:      .Ltmp0:
 ;SJLJ-NEXT:         callq   _Z3foov
 ;SJLJ-NEXT: .Ltmp1:
 ;SJLJ-NEXT: # %bb.1:                                # %invoke.cont

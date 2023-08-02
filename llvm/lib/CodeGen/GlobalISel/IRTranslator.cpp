@@ -2507,9 +2507,6 @@ bool IRTranslator::translateCall(const User &U, MachineIRBuilder &MIRBuilder) {
   if (isa<GCStatepointInst, GCRelocateInst, GCResultInst>(U))
     return false;
 
-  if (CI.isInlineAsm())
-    return translateInlineAsm(CI, MIRBuilder);
-
   diagnoseDontCall(CI);
 
   Intrinsic::ID ID = Intrinsic::not_intrinsic;
@@ -2519,8 +2516,27 @@ bool IRTranslator::translateCall(const User &U, MachineIRBuilder &MIRBuilder) {
       ID = static_cast<Intrinsic::ID>(TII->getIntrinsicID(F));
   }
 
-  if (!F || !F->isIntrinsic() || ID == Intrinsic::not_intrinsic)
-    return translateCallBase(CI, MIRBuilder);
+  if (!F || !F->isIntrinsic() || ID == Intrinsic::not_intrinsic) {
+    bool NeedEHLabel = CI.isUnwindAbort();
+    MCSymbol *BeginSymbol = nullptr;
+    if (NeedEHLabel) {
+      MIRBuilder.buildInstr(TargetOpcode::G_INVOKE_REGION_START);
+      BeginSymbol = MF->getContext().createTempSymbol();
+      MIRBuilder.buildInstr(TargetOpcode::EH_LABEL).addSym(BeginSymbol);
+    }
+    if (CI.isInlineAsm()) {
+      if (!translateInlineAsm(CI, MIRBuilder))
+        return false;
+    } else if (!translateCallBase(CI, MIRBuilder))
+      return false;
+
+    if (NeedEHLabel) {
+      MCSymbol *EndSymbol = MF->getContext().createTempSymbol();
+      MIRBuilder.buildInstr(TargetOpcode::EH_LABEL).addSym(EndSymbol);
+      MF->addInvoke(nullptr, BeginSymbol, EndSymbol);
+    }
+    return true;
+  }
 
   assert(ID != Intrinsic::not_intrinsic && "unknown intrinsic");
 
