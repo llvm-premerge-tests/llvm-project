@@ -66,12 +66,19 @@ public:
 
   MVT getScalarShiftAmountTy(const DataLayout &, EVT) const override;
 
+  void finalizeLowering(MachineFunction &MF) const override;
+
 private:
   // Control Instruction Selection Features
   bool HasAlu32;
   bool HasJmp32;
   bool HasJmpExt;
   bool HasMovsx;
+
+  mutable bool HasError = false;
+
+  void fail(const SDLoc &DL, SelectionDAG &DAG, const Twine &Msg,
+            SDValue Val) const;
 
   SDValue LowerBR_CC(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const;

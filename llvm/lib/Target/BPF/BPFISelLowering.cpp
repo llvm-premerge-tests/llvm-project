@@ -37,8 +37,9 @@ static cl::opt<bool> BPFExpandMemcpyInOrder("bpf-expand-memcpy-in-order",
   cl::Hidden, cl::init(false),
   cl::desc("Expand memcpy into load/store pairs in order"));
 
-static void fail(const SDLoc &DL, SelectionDAG &DAG, const Twine &Msg,
-                 SDValue Val = {}) {
+void BPFTargetLowering::fail(const SDLoc &DL, SelectionDAG &DAG,
+                             const Twine &Msg, SDValue Val = {}) const {
+  HasError = true;
   std::string Str;
   if (Val) {
     raw_string_ostream OS(Str);
@@ -881,6 +882,13 @@ EVT BPFTargetLowering::getSetCCResultType(const DataLayout &, LLVMContext &,
 MVT BPFTargetLowering::getScalarShiftAmountTy(const DataLayout &DL,
                                               EVT VT) const {
   return (getHasAlu32() && VT == MVT::i32) ? MVT::i32 : MVT::i64;
+}
+
+void BPFTargetLowering::finalizeLowering(MachineFunction &MF) const {
+  if (HasError) {
+    report_fatal_error("failed to generate BPF instructions, see diagnostics");
+  }
+  TargetLowering::finalizeLowering(MF);
 }
 
 bool BPFTargetLowering::isLegalAddressingMode(const DataLayout &DL,
