@@ -29,7 +29,8 @@ TEST(LlvmLibcSchedRRGetIntervalTest, SmokeTest) {
   };
 
   auto TimespecToNs = [](struct timespec t) {
-    return t.tv_sec * 1000UL * 1000UL * 1000UL + t.tv_nsec;
+    return static_cast<unsigned long>(t.tv_sec * 1000UL * 1000UL * 1000UL +
+                                      t.tv_nsec);
   };
 
   struct timespec ts;
