@@ -222,6 +222,9 @@ public:
   void AddASTTemplateArgumentListInfo(
       const ASTTemplateArgumentListInfo *ASTTemplArgList);
 
+  // Emits a concept location.
+  void AddConceptLoc(const ConceptLoc *CL);
+
   /// Emit a reference to a declaration.
   void AddDeclRef(const Decl *D) {
     return Writer->AddDeclRef(D, *Record);
