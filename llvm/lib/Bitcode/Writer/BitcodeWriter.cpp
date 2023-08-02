@@ -2983,10 +2983,15 @@ void ModuleBitcodeWriter::writeInstruction(const Instruction &I,
     }
     break;
   }
-  case Instruction::Resume:
+  case Instruction::Resume: {
     Code = bitc::FUNC_CODE_INST_RESUME;
+    unsigned Flags = 0;
+    if (cast<ResumeInst>(I).isUnwindAbort())
+      Flags |= 1 << bitc::RESUME_UNWINDABORT;
     pushValueAndType(I.getOperand(0), InstID, Vals);
+    Vals.push_back(Flags);
     break;
+  }
   case Instruction::CleanupRet: {
     Code = bitc::FUNC_CODE_INST_CLEANUPRET;
     const auto &CRI = cast<CleanupReturnInst>(I);

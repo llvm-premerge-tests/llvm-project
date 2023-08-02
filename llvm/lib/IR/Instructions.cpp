@@ -1161,6 +1161,7 @@ ResumeInst::ResumeInst(const ResumeInst &RI)
     : Instruction(Type::getVoidTy(RI.getContext()), Instruction::Resume,
                   OperandTraits<ResumeInst>::op_begin(this), 1) {
   Op<0>() = RI.Op<0>();
+  setUnwindAbort(RI.isUnwindAbort());
 }
 
 ResumeInst::ResumeInst(Value *Exn, Instruction *InsertBefore)
