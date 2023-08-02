@@ -35,7 +35,7 @@ def OffsetSizeAndStrideOpInterface : OpInterface<"OffsetSizeAndStrideOpInterface
     Common interface for ops that allow specifying mixed dynamic and static
     offsets, sizes and strides variadic operands.
     Ops that implement this interface need to expose the following methods:
-      1. `getArrayAttrMaxRanks` to specify the length of static integer
+      1. `getOffsetSizeAndStrideRank` to specify the length of static integer
           attributes.
       2. `offsets`, `sizes` and `strides` variadic operands.
       3. `static_offsets`, resp. `static_sizes` and `static_strides` integer
@@ -44,10 +44,11 @@ def OffsetSizeAndStrideOpInterface : OpInterface<"OffsetSizeAndStrideOpInterface
          starting index of the OffsetSizeAndStrideOpInterface operands
 
     The invariants of this interface are:
-      1. `static_offsets`, `static_sizes` and `static_strides` have length
-          exactly `getArrayAttrMaxRanks()`[0] (resp. [1], [2]).
-      2. `offsets`, `sizes` and `strides` have each length at most
-         `getArrayAttrMaxRanks()`[0] (resp. [1], [2]).
+      1. `static_offsets`, `static_sizes` and `static_strides` have a length of
+          exactly `getOffsetsRank`, `getSizesRank` and `getStridesRank`,
+          respectively.
+      2. `offsets`, `sizes` and `strides` have each length of at most
+         `getOffsetsRank`, `getSizesRank` and `getStridesRank`, respectively.
       3. if an entry of `static_offsets` (resp. `static_sizes`,
          `static_strides`) is equal to a special sentinel value, namely
          `ShapedType::kDynamic`, then the corresponding entry is a dynamic
@@ -76,12 +77,48 @@ def OffsetSizeAndStrideOpInterface : OpInterface<"OffsetSizeAndStrideOpInterface
     >,
     InterfaceMethod<
       /*desc=*/[{
-        Return the expected rank of each of the`static_offsets`, `static_sizes`
-        and `static_strides` attributes.
+        Return the expected size of the `static_offsets` attribute.
       }],
-      /*retTy=*/"std::array<unsigned, 3>",
-      /*methodName=*/"getArrayAttrMaxRanks",
-      /*args=*/(ins)
+      /*retTy=*/"int64_t",
+      /*methodName=*/"getOffsetsRank",
+      /*args=*/(ins),
+      /*methodBody=*/"",
+      /*defaultImplementation=*/[{
+        FailureOr<int64_t> rank = ::mlir::detail::defaultArrayRank($_op);
+        if (succeeded(rank))
+          return *rank;
+        llvm_unreachable("getOffsetsRank not implemented");
+      }]
+    >,
+    InterfaceMethod<
+      /*desc=*/[{
+        Return the expected size of the `static_sizes` attribute.
+      }],
+      /*retTy=*/"int64_t",
+      /*methodName=*/"getSizesRank",
+      /*args=*/(ins),
+      /*methodBody=*/"",
+      /*defaultImplementation=*/[{
+        FailureOr<int64_t> rank = ::mlir::detail::defaultArrayRank($_op);
+        if (succeeded(rank))
+          return *rank;
+        llvm_unreachable("getOffsetsRank not implemented");
+      }]
+    >,
+    InterfaceMethod<
+      /*desc=*/[{
+        Return the expected size of the `static_strides` attribute.
+      }],
+      /*retTy=*/"int64_t",
+      /*methodName=*/"getStridesRank",
+      /*args=*/(ins),
+      /*methodBody=*/"",
+      /*defaultImplementation=*/[{
+        FailureOr<int64_t> rank = ::mlir::detail::defaultArrayRank($_op);
+        if (succeeded(rank))
+          return *rank;
+        llvm_unreachable("getOffsetsRank not implemented");
+      }]
     >,
     InterfaceMethod<
       /*desc=*/[{

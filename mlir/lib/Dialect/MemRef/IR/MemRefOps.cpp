@@ -2880,13 +2880,14 @@ raw_ostream &mlir::operator<<(raw_ostream &os, const Range &range) {
 /// with `b` at location `loc`.
 SmallVector<Range, 8> mlir::getOrCreateRanges(OffsetSizeAndStrideOpInterface op,
                                               OpBuilder &b, Location loc) {
-  std::array<unsigned, 3> ranks = op.getArrayAttrMaxRanks();
-  assert(ranks[0] == ranks[1] && "expected offset and sizes of equal ranks");
-  assert(ranks[1] == ranks[2] && "expected sizes and strides of equal ranks");
+  int64_t offsetsRank = op.getOffsetsRank();
+  assert(offsetsRank == op.getSizesRank() &&
+         "expected offset and sizes of equal ranks");
+  assert(op.getSizesRank() == op.getStridesRank() &&
+         "expected sizes and strides of equal ranks");
   SmallVector<Range, 8> res;
-  unsigned rank = ranks[0];
-  res.reserve(rank);
-  for (unsigned idx = 0; idx < rank; ++idx) {
+  res.reserve(offsetsRank);
+  for (unsigned idx = 0; idx < offsetsRank; ++idx) {
     Value offset =
         op.isDynamicOffset(idx)
             ? op.getDynamicOffset(idx)

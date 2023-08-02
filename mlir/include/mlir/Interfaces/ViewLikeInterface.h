@@ -37,6 +37,11 @@ bool sameOffsetsSizesAndStrides(
 unsigned getNumDynamicEntriesUpToIdx(ArrayRef<int64_t> staticVals,
                                      unsigned idx);
 
+/// Default implementation for `getOffsetsRank`, `getSizesRank` and
+/// `getStridesRank` of `OffsetSizeAndStrideOpInterface` that tries to infer the
+/// sizes of the corresponding arrays with the `ViewLikeOpInterface`.
+FailureOr<int64_t> defaultArrayRank(Operation *op);
+
 } // namespace detail
 } // namespace mlir
 

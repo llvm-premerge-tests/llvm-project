@@ -448,12 +448,11 @@ def Tensor_ExtractSliceOp : Tensor_OpWithOffsetSizesAndStrides<"extract_slice", 
       ArrayRef<OpFoldResult> staticSizes,
       ArrayRef<OpFoldResult> staticStrides);
 
-    /// Return the expected rank of each of the`static_offsets`, `static_sizes`
-    /// and `static_strides` attributes.
-    std::array<unsigned, 3> getArrayAttrMaxRanks() {
-      unsigned rank = getSourceType().getRank();
-      return {rank, rank, rank};
-    }
+    // Return the expected size of each of the `static_offsets`, `static_sizes`
+    // and `static_strides` attributes.
+    int64_t getOffsetsRank() { return getSourceType().getRank(); }
+    int64_t getSizesRank() { return getSourceType().getRank(); }
+    int64_t getStridesRank() { return getSourceType().getRank(); }
 
     /// Return the number of leading operands before the `offsets`, `sizes` and
     /// and `strides` operands.
@@ -877,12 +876,11 @@ def Tensor_InsertSliceOp : Tensor_OpWithOffsetSizesAndStrides<"insert_slice", [
       return getResultType();
     }
 
-    /// Return the expected rank of each of the`static_offsets`, `static_sizes`
-    /// and `static_strides` attributes.
-    std::array<unsigned, 3> getArrayAttrMaxRanks() {
-      unsigned rank = getResultType().getRank();
-      return {rank, rank, rank};
-    }
+    // Return the expected size of each of the `static_offsets`, `static_sizes`
+    // and `static_strides` attributes.
+    int64_t getOffsetsRank() { return getDestType().getRank(); }
+    int64_t getSizesRank() { return getDestType().getRank(); }
+    int64_t getStridesRank() { return getDestType().getRank(); }
 
     /// Return the dimensions of the dest that are omitted to insert a source
     /// when the result is rank-extended.
@@ -1461,12 +1459,11 @@ def Tensor_ParallelInsertSliceOp : Tensor_Op<"parallel_insert_slice", [
         getOperation()->getParentOp());
     }
 
-    /// Return the expected rank of each of the `static_offsets`, `static_sizes`
-    /// and `static_strides` attributes.
-    std::array<unsigned, 3> getArrayAttrMaxRanks() {
-      unsigned rank = getDestType().getRank();
-      return {rank, rank, rank};
-    }
+    // Return the expected size of each of the `static_offsets`, `static_sizes`
+    // and `static_strides` attributes.
+    int64_t getOffsetsRank() { return getDestType().getRank(); }
+    int64_t getSizesRank() { return getDestType().getRank(); }
+    int64_t getStridesRank() { return getDestType().getRank(); }
 
     /// Return the number of leading operands before `offsets`, `sizes` and
     /// `strides` operands.
