@@ -26,7 +26,7 @@ PPC64[LE] and has `basic support for Cuda devices`_.
 In addition, the LLVM OpenMP runtime `libomp` supports the OpenMP Tools
 Interface (OMPT) on x86, x86_64, AArch64, and PPC64 on Linux, Windows, and macOS.
 
-For the list of supported features from OpenMP 5.0 see `OpenMP implementation details`_.
+For the list of supported features from OpenMP 5.1 see `OpenMP implementation details`_.
 
 General improvements
 ====================
@@ -106,7 +106,7 @@ Features not supported or with limited support for Cuda devices
 
 .. _OpenMP implementation details:
 
-OpenMP 5.0 Implementation Details
+OpenMP 5.1 Implementation Details
 =================================
 
 The following table provides a quick overview over various OpenMP 5.0 features
