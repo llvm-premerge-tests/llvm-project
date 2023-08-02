@@ -216,10 +216,7 @@ define i5 @urem_common_dividend_defined_cond(i1 noundef %b, i5 %x, i5 %y, i5 %z)
 
 define i32 @rem_euclid_1(i32 %0) {
 ; CHECK-LABEL: @rem_euclid_1(
-; CHECK-NEXT:    [[REM:%.*]] = srem i32 [[TMP0:%.*]], 8
-; CHECK-NEXT:    [[COND:%.*]] = icmp slt i32 [[REM]], 0
-; CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 [[REM]], 8
-; CHECK-NEXT:    [[SEL:%.*]] = select i1 [[COND]], i32 [[ADD]], i32 [[REM]]
+; CHECK-NEXT:    [[SEL:%.*]] = and i32 [[TMP0:%.*]], 7
 ; CHECK-NEXT:    ret i32 [[SEL]]
 ;
   %rem = srem i32 %0, 8
@@ -231,10 +228,7 @@ define i32 @rem_euclid_1(i32 %0) {
 
 define i32 @rem_euclid_2(i32 %0) {
 ; CHECK-LABEL: @rem_euclid_2(
-; CHECK-NEXT:    [[REM:%.*]] = srem i32 [[TMP0:%.*]], 8
-; CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 [[REM]], 8
-; CHECK-NEXT:    [[COND1:%.*]] = icmp slt i32 [[REM]], 0
-; CHECK-NEXT:    [[SEL:%.*]] = select i1 [[COND1]], i32 [[ADD]], i32 [[REM]]
+; CHECK-NEXT:    [[SEL:%.*]] = and i32 [[TMP0:%.*]], 7
 ; CHECK-NEXT:    ret i32 [[SEL]]
 ;
   %rem = srem i32 %0, 8
@@ -291,10 +285,7 @@ define i32 @rem_euclid_wrong_operands_select(i32 %0) {
 
 define <2 x i32> @rem_euclid_vec(<2 x i32> %0) {
 ; CHECK-LABEL: @rem_euclid_vec(
-; CHECK-NEXT:    [[REM:%.*]] = srem <2 x i32> [[TMP0:%.*]], <i32 8, i32 8>
-; CHECK-NEXT:    [[COND:%.*]] = icmp slt <2 x i32> [[REM]], zeroinitializer
-; CHECK-NEXT:    [[ADD:%.*]] = add nsw <2 x i32> [[REM]], <i32 8, i32 8>
-; CHECK-NEXT:    [[SEL:%.*]] = select <2 x i1> [[COND]], <2 x i32> [[ADD]], <2 x i32> [[REM]]
+; CHECK-NEXT:    [[SEL:%.*]] = and <2 x i32> [[TMP0:%.*]], <i32 7, i32 7>
 ; CHECK-NEXT:    ret <2 x i32> [[SEL]]
 ;
   %rem = srem <2 x i32> %0, <i32 8, i32 8>
@@ -306,10 +297,7 @@ define <2 x i32> @rem_euclid_vec(<2 x i32> %0) {
 
 define i128 @rem_euclid_i128(i128 %0) {
 ; CHECK-LABEL: @rem_euclid_i128(
-; CHECK-NEXT:    [[REM:%.*]] = srem i128 [[TMP0:%.*]], 8
-; CHECK-NEXT:    [[COND:%.*]] = icmp slt i128 [[REM]], 0
-; CHECK-NEXT:    [[ADD:%.*]] = add nsw i128 [[REM]], 8
-; CHECK-NEXT:    [[SEL:%.*]] = select i1 [[COND]], i128 [[ADD]], i128 [[REM]]
+; CHECK-NEXT:    [[SEL:%.*]] = and i128 [[TMP0:%.*]], 7
 ; CHECK-NEXT:    ret i128 [[SEL]]
 ;
   %rem = srem i128 %0, 8
