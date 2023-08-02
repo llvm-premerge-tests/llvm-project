@@ -531,6 +531,10 @@ enum CallMarkersFlags {
   CALL_UNWINDABORT = 18
 };
 
+enum ResumeFlags {
+  RESUME_UNWINDABORT = 0,
+};
+
 // The function body block (FUNCTION_BLOCK_ID) describes function bodies.  It
 // can contain a constant block (CONSTANTS_BLOCK_ID).
 enum FunctionCodes {

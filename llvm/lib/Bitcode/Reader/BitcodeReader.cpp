@@ -5573,12 +5573,18 @@ Error BitcodeReader::parseFunctionBody(Function *F) {
       break;
     }
     case bitc::FUNC_CODE_INST_RESUME: { // RESUME: [opval]
-      unsigned Idx = 0;
+      unsigned OpNum = 0;
       Value *Val = nullptr;
       unsigned ValTypeID;
-      if (getValueTypePair(Record, Idx, NextValueNo, Val, ValTypeID, CurBB))
+      if (getValueTypePair(Record, OpNum, NextValueNo, Val, ValTypeID, CurBB))
         return error("Invalid record");
       I = ResumeInst::Create(Val);
+      unsigned Flags = 0;
+      if (OpNum < Record.size())
+        Flags = Record[OpNum++];
+      if (Flags & (1 << bitc::RESUME_UNWINDABORT))
+        cast<ResumeInst>(I)->setUnwindAbort();
+
       InstructionList.push_back(I);
       break;
     }
