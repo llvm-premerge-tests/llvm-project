@@ -4183,11 +4183,15 @@ void AssemblyWriter::printInstruction(const Instruction &I) {
       writeOperand(PadBB, /*PrintType=*/true);
       ++Op;
     }
-    Out << "] unwind ";
-    if (const BasicBlock *UnwindDest = CatchSwitch->getUnwindDest())
+    Out << "]";
+    if (CatchSwitch->isUnwindAbort()) {
+      Out << " unwindabort";
+    } else if (const BasicBlock *UnwindDest = CatchSwitch->getUnwindDest()) {
+      Out << " unwind ";
       writeOperand(UnwindDest, /*PrintType=*/true);
-    else
-      Out << "to caller";
+    } else {
+      Out << " unwind to caller";
+    }
   } else if (const auto *FPI = dyn_cast<FuncletPadInst>(&I)) {
     Out << " within ";
     writeOperand(FPI->getParentPad(), /*PrintType=*/false);

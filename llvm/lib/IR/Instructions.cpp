@@ -1281,6 +1281,7 @@ CatchSwitchInst::CatchSwitchInst(const CatchSwitchInst &CSI)
     : Instruction(CSI.getType(), Instruction::CatchSwitch, nullptr,
                   CSI.getNumOperands()) {
   init(CSI.getParentPad(), CSI.getUnwindDest(), CSI.getNumOperands());
+  setUnwindAbort(CSI.isUnwindAbort());
   setNumHungOffUseOperands(ReservedSpace);
   Use *OL = getOperandList();
   const Use *InOL = CSI.getOperandList();
