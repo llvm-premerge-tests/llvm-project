@@ -4211,6 +4211,9 @@ void AssemblyWriter::printInstruction(const Instruction &I) {
     else
       Out << "to caller";
   } else if (const CallInst *CI = dyn_cast<CallInst>(&I)) {
+    if (CI->isUnwindAbort())
+      Out << " unwindabort";
+
     // Print the calling convention being used.
     if (CI->getCallingConv() != CallingConv::C) {
       Out << " ";
