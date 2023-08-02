@@ -1415,12 +1415,11 @@ def MemRef_ReinterpretCastOp
     /// Return the rank of the result type.
     unsigned getResultRank() { return getType().getRank(); }
 
-    /// Return the expected rank of each of the`static_offsets`, `static_sizes`
-    /// and `static_strides` attributes.
-    std::array<unsigned, 3> getArrayAttrMaxRanks() {
-      unsigned resultRank = getType().getRank();
-      return {1, resultRank, resultRank};
-    }
+    // Return the expected size of each of the `static_offsets`, `static_sizes`
+    // and `static_strides` attributes.
+    int64_t getOffsetsRank() { return 1; }
+    int64_t getSizesRank() { return getType().getRank(); }
+    int64_t getStridesRank() { return getType().getRank(); }
 
     /// Return the number of leading operands before the `offsets`, `sizes` and
     /// and `strides` operands.
@@ -2051,13 +2050,6 @@ def SubViewOp : MemRef_OpWithOffsetSizesAndStrides<"subview", [
                                            ArrayRef<OpFoldResult> staticOffsets,
                                            ArrayRef<OpFoldResult> staticSizes,
                                            ArrayRef<OpFoldResult> staticStrides);
-
-    /// Return the expected rank of each of the`static_offsets`, `static_sizes`
-    /// and `static_strides` attributes.
-    std::array<unsigned, 3> getArrayAttrMaxRanks() {
-      unsigned rank = getSourceType().getRank();
-      return {rank, rank, rank};
-    }
 
     /// Return the number of leading operands before the `offsets`, `sizes` and
     /// and `strides` operands.

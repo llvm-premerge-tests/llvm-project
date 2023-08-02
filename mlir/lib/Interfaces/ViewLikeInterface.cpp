@@ -38,12 +38,12 @@ LogicalResult mlir::verifyListOfOperandsOrIntegers(Operation *op,
 
 LogicalResult
 mlir::detail::verifyOffsetSizeAndStrideOp(OffsetSizeAndStrideOpInterface op) {
-  std::array<unsigned, 3> maxRanks = op.getArrayAttrMaxRanks();
   // Offsets can come in 2 flavors:
-  //   1. Either single entry (when maxRanks == 1).
+  //   1. Either single entry (when getOffsetsRank() == 1).
   //   2. Or as an array whose rank must match that of the mixed sizes.
   // So that the result type is well-formed.
-  if (!(op.getMixedOffsets().size() == 1 && maxRanks[0] == 1) && // NOLINT
+  if (!(op.getMixedOffsets().size() == 1 &&
+        op.getOffsetsRank() == 1) && // NOLINT
       op.getMixedOffsets().size() != op.getMixedSizes().size())
     return op->emitError(
                "expected mixed offsets rank to match mixed sizes rank (")
@@ -57,14 +57,16 @@ mlir::detail::verifyOffsetSizeAndStrideOp(OffsetSizeAndStrideOpInterface op) {
            << op.getMixedSizes().size() << " vs " << op.getMixedStrides().size()
            << ") so the rank of the result type is well-formed.";
 
-  if (failed(verifyListOfOperandsOrIntegers(
-          op, "offset", maxRanks[0], op.getStaticOffsets(), op.getOffsets())))
+  if (failed(verifyListOfOperandsOrIntegers(op, "offset", op.getOffsetsRank(),
+                                            op.getStaticOffsets(),
+                                            op.getOffsets())))
     return failure();
   if (failed(verifyListOfOperandsOrIntegers(
-          op, "size", maxRanks[1], op.getStaticSizes(), op.getSizes())))
+          op, "size", op.getSizesRank(), op.getStaticSizes(), op.getSizes())))
     return failure();
-  if (failed(verifyListOfOperandsOrIntegers(
-          op, "stride", maxRanks[2], op.getStaticStrides(), op.getStrides())))
+  if (failed(verifyListOfOperandsOrIntegers(op, "stride", op.getStridesRank(),
+                                            op.getStaticStrides(),
+                                            op.getStrides())))
     return failure();
   return success();
 }
@@ -201,4 +203,13 @@ unsigned mlir::detail::getNumDynamicEntriesUpToIdx(ArrayRef<int64_t> staticVals,
                                                    unsigned idx) {
   return std::count_if(staticVals.begin(), staticVals.begin() + idx,
                        [&](int64_t val) { return ShapedType::isDynamic(val); });
+}
+
+FailureOr<int64_t> mlir::detail::defaultArrayRank(Operation *op) {
+  if (auto viewLikeOp = dyn_cast<ViewLikeOpInterface>(op))
+    if (auto shapedType =
+            dyn_cast<ShapedType>(viewLikeOp.getViewSource().getType()))
+      if (shapedType.hasRank())
+        return shapedType.getRank();
+  return failure();
 }
