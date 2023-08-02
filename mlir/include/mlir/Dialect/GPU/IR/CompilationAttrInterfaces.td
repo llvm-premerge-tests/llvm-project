@@ -6,7 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file defines interfaces for GPU target attributes.
+// This file defines interfaces for GPU target attributes & GPU binary handler
+// attributes.
 //
 //===----------------------------------------------------------------------===//
 
@@ -58,5 +59,57 @@ def GPUTargetArrayAttr :
 
 def GPUNonEmptyTargetArrayAttr :
   ConfinedAttr<GPUTargetArrayAttr, [ArrayMinCount<1>]>;
+
+//===----------------------------------------------------------------------===//
+// GPU binary handler attribute interface.
+//===----------------------------------------------------------------------===//
+
+def GPUBinaryHandlerLLVMTranslationAttrInterface :
+    AttrInterface<"BinaryHandlerLLVMTranslationAttrInterface"> {
+  let description = [{
+    Interface for GPU LLVM translation binary handler attributes. Attributes 
+    implementing this interface manage the interaction between GPU binaries
+    and host IR.
+  }];
+  let cppNamespace = "::mlir::gpu";
+  let methods = [
+    InterfaceMethod<[{
+        Embeds a GPU binary into a host LLVM module. The operation expected by
+        this method must be a GPU BinaryOp.
+
+        All attributes implementing this interface must implement this method.
+        If the method fails then it must return `failure`.
+      }],
+      "LogicalResult", "embedBinary",
+      (ins "Operation*":$binaryOp, "llvm::IRBuilderBase&":$hostBuilder,
+           "LLVM::ModuleTranslation&":$hostModuleTranslation)
+    >,
+    InterfaceMethod<[{
+        Launches a kernel inside a binary. The first argument must be a GPU
+        LaunchFuncOp, while the second one a GPU BinaryOp.
+
+        All attributes implementing this interface must implement this method.
+        If the method fails then it must return `failure`.
+      }],
+      "LogicalResult", "launchKernel",
+      (ins "Operation*":$launchFunc, "Operation*":$binaryOp,
+           "llvm::IRBuilderBase&":$hostBuilder,
+           "LLVM::ModuleTranslation&":$hostModuleTranslation)
+    >
+  ];
+}
+
+def ImplementsBinaryHandlerLLVMTranslationAttrInterface : AttrConstraint<
+  CPred<"isa<::mlir::gpu::BinaryHandlerLLVMTranslationAttrInterface>($_self)">,
+  "Attribute implementing the `BinaryHandlerLLVMTranslationAttrInterface` interface."
+>;
+
+def GPUBinaryHandlerLLVMTranslationAttr :
+    ConfinedAttr<AnyAttr, [ImplementsBinaryHandlerLLVMTranslationAttrInterface]> {
+  let description = [{
+    Generic compilation attribute implementing the `BinaryHandlerLLVMTranslationAttrInterface`
+    interface.
+  }];
+}
 
 #endif // GPU_COMPILATIONATTRINTERFACES
