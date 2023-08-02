@@ -2373,22 +2373,36 @@ void MachineVerifier::checkLivenessAtUse(const MachineOperand *MO,
                                          const LiveRange &LR,
                                          Register VRegOrUnit,
                                          LaneBitmask LaneMask) {
-  LiveQueryResult LRQ = LR.Query(UseIdx);
-  // Check if we have a segment at the use, note however that we only need one
-  // live subregister range, the others may be dead.
-  if (!LRQ.valueIn() && LaneMask.none()) {
-    report("No live segment at use", MO, MONum);
-    report_context_liverange(LR);
-    report_context_vreg_regunit(VRegOrUnit);
-    report_context(UseIdx);
-  }
-  if (MO->isKill() && !LRQ.isKill()) {
-    report("Live range continues after kill flag", MO, MONum);
-    report_context_liverange(LR);
-    report_context_vreg_regunit(VRegOrUnit);
-    if (LaneMask.any())
-      report_context_lanemask(LaneMask);
-    report_context(UseIdx);
+  const MachineInstr *MI = MO->getParent();
+  if (MI->isPHI()) {
+    // PHI use occurs on the edge, so check for live out here instead.
+    SlotIndex LiveOutIndex = LiveInts->getMBBEndIdx(
+      MI->getOperand(MONum + 1).getMBB()).getPrevSlot();
+    VNInfo *VNI = LR.getVNInfoAt(LiveOutIndex);
+    if (!VNI) {
+      report("PHI source not live out of predecessor", MO, MONum);
+      report_context_liverange(LR);
+      report_context_vreg_regunit(VRegOrUnit);
+      report_context(LiveOutIndex);
+    }
+  } else {
+    LiveQueryResult LRQ = LR.Query(UseIdx);
+    // Check if we have a segment at the use, note however that we only need one
+    // live subregister range, the others may be dead.
+    if (!LRQ.valueIn() && LaneMask.none()) {
+      report("No live segment at use", MO, MONum);
+      report_context_liverange(LR);
+      report_context_vreg_regunit(VRegOrUnit);
+      report_context(UseIdx);
+    }
+    if (MO->isKill() && !LRQ.isKill()) {
+      report("Live range continues after kill flag", MO, MONum);
+      report_context_liverange(LR);
+      report_context_vreg_regunit(VRegOrUnit);
+      if (LaneMask.any())
+        report_context_lanemask(LaneMask);
+      report_context(UseIdx);
+    }
   }
 }
 
@@ -2502,19 +2516,36 @@ void MachineVerifier::checkLiveness(const MachineOperand *MO, unsigned MONum) {
                                    ? TRI->getSubRegIndexLaneMask(SubRegIdx)
                                    : MRI->getMaxLaneMaskForVReg(Reg);
           LaneBitmask LiveInMask;
+          SlotIndex LiveOutIndex;
+          if (MI->isPHI()) {
+            LiveOutIndex = LiveInts->getMBBEndIdx(
+              MI->getOperand(MONum + 1).getMBB()).getPrevSlot();
+          }
+
           for (const LiveInterval::SubRange &SR : LI->subranges()) {
             if ((MOMask & SR.LaneMask).none())
               continue;
             checkLivenessAtUse(MO, MONum, UseIdx, SR, Reg, SR.LaneMask);
-            LiveQueryResult LRQ = SR.Query(UseIdx);
-            if (LRQ.valueIn())
-              LiveInMask |= SR.LaneMask;
+            if (MI->isPHI()) {
+              if (SR.getVNInfoAt(LiveOutIndex))
+                LiveInMask |= SR.LaneMask;
+            } else {
+              LiveQueryResult LRQ = SR.Query(UseIdx);
+              if (LRQ.valueIn())
+                LiveInMask |= SR.LaneMask;
+            }
           }
           // At least parts of the register has to be live at the use.
           if ((LiveInMask & MOMask).none()) {
             report("No live subrange at use", MO, MONum);
             report_context(*LI);
             report_context(UseIdx);
+          }
+          // For PHIs all lanes should be live
+          if (MI->isPHI() && (LiveInMask != MOMask)) {
+            report("Not all lanes of PHI source live at use", MO, MONum);
+            report_context(*LI);
+            report_context(LiveOutIndex);
           }
         }
       }
