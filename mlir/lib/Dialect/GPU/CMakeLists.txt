@@ -22,6 +22,7 @@ endif()
 
 add_mlir_dialect_library(MLIRGPUDialect
   IR/GPUDialect.cpp
+  IR/CompilationInterfaces.cpp
   IR/InferIntRangeInterfaceImpls.cpp
 
   ADDITIONAL_HEADER_DIRS
@@ -32,6 +33,7 @@ add_mlir_dialect_library(MLIRGPUDialect
   MLIRGPUOpsAttributesIncGen
   MLIRGPUOpsEnumsGen
   MLIRGPUOpInterfacesIncGen
+  MLIRGPUCompilationAttrInterfacesIncGen
 
   LINK_LIBS PUBLIC
   MLIRArithDialect
