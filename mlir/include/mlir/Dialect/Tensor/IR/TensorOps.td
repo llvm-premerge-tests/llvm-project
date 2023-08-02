@@ -456,7 +456,7 @@ def Tensor_ExtractSliceOp : Tensor_OpWithOffsetSizesAndStrides<"extract_slice", 
 
     /// Return the number of leading operands before the `offsets`, `sizes` and
     /// and `strides` operands.
-    static unsigned getOffsetSizeAndStrideStartOperandIndex() { return 1; }
+    static unsigned getOffsetsOperandIndex() { return 1; }
 
     /// Return the dimensions of the source that are dropped in the
     /// result when the result is rank-reduced.
@@ -888,7 +888,7 @@ def Tensor_InsertSliceOp : Tensor_OpWithOffsetSizesAndStrides<"insert_slice", [
 
     /// Return the number of leading operands before the `offsets`, `sizes` and
     /// and `strides` operands.
-    static unsigned getOffsetSizeAndStrideStartOperandIndex() { return 2; }
+    static unsigned getOffsetsOperandIndex() { return 2; }
 
     std::pair<int64_t, int64_t> getDpsInitsPositionRange() {
       return {1, 2};  // `dest` operand
@@ -1467,7 +1467,7 @@ def Tensor_ParallelInsertSliceOp : Tensor_Op<"parallel_insert_slice", [
 
     /// Return the number of leading operands before `offsets`, `sizes` and
     /// `strides` operands.
-    static unsigned getOffsetSizeAndStrideStartOperandIndex() { return 1; }
+    static unsigned getOffsetsOperandIndex() { return 1; }
 
     /// Return the OpResult of the enclosing ForallOp that is
     /// corresponding to this ParallelInsertSliceOp.

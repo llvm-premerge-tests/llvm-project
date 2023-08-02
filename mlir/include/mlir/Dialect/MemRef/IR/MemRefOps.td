@@ -1423,7 +1423,7 @@ def MemRef_ReinterpretCastOp
 
     /// Return the number of leading operands before the `offsets`, `sizes` and
     /// and `strides` operands.
-    static unsigned getOffsetSizeAndStrideStartOperandIndex() { return 1; }
+    static unsigned getOffsetsOperandIndex() { return 1; }
 
     /// Return a vector of all the static or dynamic sizes of the op, while
     /// statically inferring the sizes of the dynamic sizes, when possible.
@@ -2053,7 +2053,7 @@ def SubViewOp : MemRef_OpWithOffsetSizesAndStrides<"subview", [
 
     /// Return the number of leading operands before the `offsets`, `sizes` and
     /// and `strides` operands.
-    static unsigned getOffsetSizeAndStrideStartOperandIndex() { return 1; }
+    static unsigned getOffsetsOperandIndex() { return 1; }
 
     /// Return the dimensions of the source type that are dropped when
     /// the result is rank-reduced.

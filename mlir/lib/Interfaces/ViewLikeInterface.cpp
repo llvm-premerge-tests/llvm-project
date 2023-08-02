@@ -36,6 +36,11 @@ LogicalResult mlir::verifyListOfOperandsOrIntegers(Operation *op,
   return success();
 }
 
+LogicalResult mlir::detail::verifyMixedOffsetsOp(MixedOffsetsOpInterface op) {
+  return verifyListOfOperandsOrIntegers(op, "offset", op.getOffsetsRank(),
+                                        op.getStaticOffsets(), op.getOffsets());
+}
+
 LogicalResult
 mlir::detail::verifyOffsetSizeAndStrideOp(OffsetSizeAndStrideOpInterface op) {
   // Offsets can come in 2 flavors:
@@ -57,9 +62,8 @@ mlir::detail::verifyOffsetSizeAndStrideOp(OffsetSizeAndStrideOpInterface op) {
            << op.getMixedSizes().size() << " vs " << op.getMixedStrides().size()
            << ") so the rank of the result type is well-formed.";
 
-  if (failed(verifyListOfOperandsOrIntegers(op, "offset", op.getOffsetsRank(),
-                                            op.getStaticOffsets(),
-                                            op.getOffsets())))
+  if (failed(verifyMixedOffsetsOp(
+          cast<MixedOffsetsOpInterface>(op.getOperation()))))
     return failure();
   if (failed(verifyListOfOperandsOrIntegers(
           op, "size", op.getSizesRank(), op.getStaticSizes(), op.getSizes())))

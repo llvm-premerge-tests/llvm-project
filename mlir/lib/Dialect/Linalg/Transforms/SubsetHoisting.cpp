@@ -48,7 +48,7 @@ isSubsetLocationLoopInvariant(scf::ForOp forOp,
 static bool isSubsetLocationLoopInvariant(scf::ForOp forOp,
                                           tensor::InsertSliceOp insertSliceOp) {
   for (Value operand : insertSliceOp->getOperands().drop_front(
-           tensor::InsertSliceOp::getOffsetSizeAndStrideStartOperandIndex()))
+           tensor::InsertSliceOp::getOffsetsOperandIndex()))
     if (!forOp.isDefinedOutsideOfLoop(operand))
       return false;
   return true;

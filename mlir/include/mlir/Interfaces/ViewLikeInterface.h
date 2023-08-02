@@ -23,10 +23,15 @@
 namespace mlir {
 
 class OffsetSizeAndStrideOpInterface;
+class MixedOffsetsOpInterface;
 
 namespace detail {
 
+/// Verifier for `OffsetSizeAndStrideOpInterface`.
 LogicalResult verifyOffsetSizeAndStrideOp(OffsetSizeAndStrideOpInterface op);
+
+/// Verifier for `MixedOffsetsOpInterface`.
+LogicalResult verifyMixedOffsetsOp(MixedOffsetsOpInterface op);
 
 bool sameOffsetsSizesAndStrides(
     OffsetSizeAndStrideOpInterface a, OffsetSizeAndStrideOpInterface b,
