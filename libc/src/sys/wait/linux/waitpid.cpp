@@ -6,24 +6,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "src/sys/wait/waitpid.h"
-
-#include "src/__support/OSUtil/syscall.h" // For internal syscall function.
 #include "src/__support/common.h"
+#include "src/__support/libc_assert.h"
 
-#include "src/errno/libc_errno.h"
-#include <sys/syscall.h> // For syscall numbers.
-#include <sys/wait.h>
+#include "src/sys/wait/wait4Impl.h"
+#include "src/sys/wait/waitpid.h"
 
 namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(pid_t, waitpid, (pid_t pid, int *wait_status, int options)) {
-  pid = __llvm_libc::syscall_impl(SYS_wait4, pid, wait_status, options, 0);
-  if (pid < 0) {
-    libc_errno = -pid;
-    return -1;
-  }
-  return pid;
+  return internal::wait4impl(pid, wait_status, options, 0);
 }
 
 } // namespace __llvm_libc
