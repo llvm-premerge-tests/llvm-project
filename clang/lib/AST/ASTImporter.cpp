@@ -44,6 +44,7 @@
 #include "clang/AST/TypeLoc.h"
 #include "clang/AST/TypeVisitor.h"
 #include "clang/AST/UnresolvedSet.h"
+#include "clang/AST/ParentMapContext.h"
 #include "clang/Basic/Builtins.h"
 #include "clang/Basic/ExceptionSpecificationType.h"
 #include "clang/Basic/FileManager.h"
@@ -5812,7 +5813,6 @@ ExpectedDecl ASTNodeImporter::VisitClassTemplateDecl(ClassTemplateDecl *D) {
       if (FoundTemplate) {
         if (!hasSameVisibilityContextAndLinkage(FoundTemplate, D))
           continue;
-
         if (IsStructuralMatch(D, FoundTemplate)) {
           ClassTemplateDecl *TemplateWithDef =
               getTemplateDefinition(FoundTemplate);
@@ -5822,6 +5822,11 @@ ExpectedDecl ASTNodeImporter::VisitClassTemplateDecl(ClassTemplateDecl *D) {
             FoundByLookup = FoundTemplate;
           // Search in all matches because there may be multiple decl chains,
           // see ASTTests test ImportExistingFriendClassTemplateDef.
+          continue;
+        }
+        auto Parents = FoundDecl->getASTContext().getParents(*FoundDecl);
+        if (!Parents.empty() && nullptr != Parents.begin()->get<FriendDecl>() &&
+            FoundTemplate->getName() == D->getName()) {
           continue;
         }
         ConflictingDecls.push_back(FoundDecl);
