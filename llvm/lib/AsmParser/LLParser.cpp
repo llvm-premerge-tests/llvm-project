@@ -6938,20 +6938,27 @@ bool LLParser::parseCatchSwitch(Instruction *&Inst, PerFunctionState &PFS) {
   if (parseToken(lltok::rsquare, "expected ']' after catchswitch labels"))
     return true;
 
-  if (parseToken(lltok::kw_unwind, "expected 'unwind' after catchswitch scope"))
-    return true;
-
+  bool UnwindAbort = false;
   BasicBlock *UnwindBB = nullptr;
-  if (EatIfPresent(lltok::kw_to)) {
-    if (parseToken(lltok::kw_caller, "expected 'caller' in catchswitch"))
-      return true;
+  if (Lex.getKind() == lltok::kw_unwindabort) {
+    Lex.Lex();
+    UnwindAbort = true;
   } else {
-    if (parseTypeAndBasicBlock(UnwindBB, PFS))
+    if (parseToken(lltok::kw_unwind,
+                   "expected 'unwind' after catchswitch scope"))
       return true;
-  }
 
+    if (EatIfPresent(lltok::kw_to)) {
+      if (parseToken(lltok::kw_caller, "expected 'caller' in catchswitch"))
+        return true;
+    } else {
+      if (parseTypeAndBasicBlock(UnwindBB, PFS))
+        return true;
+    }
+  }
   auto *CatchSwitch =
       CatchSwitchInst::Create(ParentPad, UnwindBB, Table.size());
+  CatchSwitch->setUnwindAbort(UnwindAbort);
   for (BasicBlock *DestBB : Table)
     CatchSwitch->addHandler(DestBB);
   Inst = CatchSwitch;
