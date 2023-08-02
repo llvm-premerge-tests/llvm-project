@@ -80,3 +80,11 @@ define void @inline_asm() {
   musttail call void asm "ret", ""()
   ret void
 }
+
+declare i32 @testfn()
+declare void @person()
+define i32 @unwindabort() personality ptr @person {
+; CHECK: cannot use musttail with unwindabort
+  %v = musttail call unwindabort i32 @testfn()
+  ret i32 %v
+}
