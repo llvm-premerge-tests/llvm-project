@@ -71,6 +71,7 @@ except ImportError:
         sys.exit(1)
 
 from lldb.utils import symbolication
+from lldb.plugins.scripted_process import INTEL64_GPR, ARM64_GPR
 
 
 def read_plist(s):
@@ -84,7 +85,7 @@ class CrashLog(symbolication.Symbolicator):
     class Thread:
         """Class that represents a thread in a darwin crash log"""
 
-        def __init__(self, index, app_specific_backtrace):
+        def __init__(self, index, app_specific_backtrace, arch):
             self.index = index
             self.id = index
             self.images = list()
@@ -96,8 +97,37 @@ class CrashLog(symbolication.Symbolicator):
             self.queue = None
             self.crashed = False
             self.app_specific_backtrace = app_specific_backtrace
+            self.arch = arch
 
-        def dump(self, prefix):
+        def dump_registers(self, prefix=""):
+            registers_info = None
+            if self.arch:
+                if "x86_64" == self.arch:
+                    registers_info = INTEL64_GPR
+                elif "arm64" in self.arch:
+                    registers_info = ARM64_GPR
+                else:
+                    print("unknown target architecture: %s" % self.arch)
+                    return
+
+                for reg_info in registers_info:
+                    reg_name = None
+                    if reg_info["name"] in self.registers:
+                        reg_name = reg_info["name"]
+                    elif "generic" in reg_info and reg_info["generic"] in self.registers:
+                        reg_name = reg_info["generic"]
+                    else:
+                        # Skip register
+                        continue
+
+                    reg = self.registers[reg_name]
+                    print("%s    %-8s = %#16.16x" % (prefix, reg_name, reg))
+            else:
+                for reg in self.registers.keys():
+                    print("%s    %-8s = %#16.16x" % (prefix, reg, self.registers[reg]))
+
+
+        def dump(self, prefix=""):
             if self.app_specific_backtrace:
                 print(
                     "%Application Specific Backtrace[%u] %s"
@@ -111,8 +141,7 @@ class CrashLog(symbolication.Symbolicator):
                     frame.dump(prefix + "    ")
             if self.registers:
                 print("%s  Registers:" % (prefix))
-                for reg in self.registers.keys():
-                    print("%s    %-8s = %#16.16x" % (prefix, reg, self.registers[reg]))
+                self.dump_registers(prefix)
 
         def dump_symbolicated(self, crash_log, options):
             this_thread_crashed = self.app_specific_backtrace
@@ -194,8 +223,7 @@ class CrashLog(symbolication.Symbolicator):
                     print(frame)
             if self.registers:
                 print()
-                for reg in self.registers.keys():
-                    print("    %-8s = %#16.16x" % (reg, self.registers[reg]))
+                self.dump_registers()
             elif self.crashed:
                 print()
                 print("No thread state (register information) available")
@@ -655,7 +683,7 @@ class JSONCrashLogParser(CrashLogParser):
     def parse_threads(self, json_threads):
         idx = 0
         for json_thread in json_threads:
-            thread = self.crashlog.Thread(idx, False)
+            thread = self.crashlog.Thread(idx, False, self.crashlog.process_arch)
             if "name" in json_thread:
                 thread.name = json_thread["name"]
                 thread.reason = json_thread["name"]
@@ -749,7 +777,7 @@ class JSONCrashLogParser(CrashLogParser):
 
     def parse_app_specific_backtraces(self, json_app_specific_bts):
         for idx, backtrace in enumerate(json_app_specific_bts):
-            thread = self.crashlog.Thread(idx, True)
+            thread = self.crashlog.Thread(idx, True, self.crashlog.process_arch)
             thread.queue = "Application Specific Backtrace"
             if self.parse_asi_backtrace(thread, backtrace):
                 self.crashlog.threads.append(thread)
@@ -1008,7 +1036,7 @@ class TextCrashLogParser(CrashLogParser):
                 self.app_specific_backtrace = False
                 self.parse_mode = CrashLogParseMode.THREAD
                 thread_idx = int(thread_match.group(1))
-                self.thread = self.crashlog.Thread(thread_idx, False)
+                self.thread = self.crashlog.Thread(thread_idx, False, self.crashlog.process_arch)
                 return
             return
         elif line.startswith("Binary Images:"):
@@ -1020,12 +1048,12 @@ class TextCrashLogParser(CrashLogParser):
                 self.parse_mode = CrashLogParseMode.THREAD
                 self.app_specific_backtrace = True
                 idx = int(app_backtrace_match.group(1))
-                self.thread = self.crashlog.Thread(idx, True)
+                self.thread = self.crashlog.Thread(idx, True, self.crashlog.process_arch)
         elif line.startswith("Last Exception Backtrace:"):  # iOS
             self.parse_mode = CrashLogParseMode.THREAD
             self.app_specific_backtrace = True
             idx = 1
-            self.thread = self.crashlog.Thread(idx, True)
+            self.thread = self.crashlog.Thread(idx, True, self.crashlog.process_arch)
         self.crashlog.info_lines.append(line.strip())
 
     def parse_thread(self, line):
