@@ -95,8 +95,8 @@ struct LinalgOpInterface
   bool bufferizesToMemoryRead(Operation *op, OpOperand &opOperand,
                               const AnalysisState &state) const {
     // Operand is read if it is used in the computation.
-    auto genericOp = cast<linalg::LinalgOp>(op);
-    return genericOp.payloadUsesValueFromOperand(&opOperand);
+    auto linalgOp = cast<linalg::LinalgOp>(op);
+    return linalgOp.payloadUsesValueFromOperand(&opOperand);
   }
 
   bool bufferizesToMemoryWrite(Operation *op, OpOperand &opOperand,
@@ -104,6 +104,14 @@ struct LinalgOpInterface
     // Operand is written to if it is not an input/init.
     auto dpsOp = cast<DestinationStyleOpInterface>(op);
     return dpsOp.isDpsInit(&opOperand);
+  }
+
+  bool bufferizesToElementwiseAccess(Operation *op,
+                                     const AnalysisState &state) const {
+    auto linalgOp = cast<linalg::LinalgOp>(op);
+    return linalgOp.getNumLoops() == linalgOp.getNumParallelLoops() &&
+           all_of(linalgOp.getIndexingMapsArray(),
+                  [](AffineMap map) { return map.isIdentity(); });
   }
 
   LogicalResult bufferize(Operation *op, RewriterBase &rewriter,
