@@ -1362,6 +1362,7 @@ bool Parser::HandlePragmaLoopHint(LoopHint &Hint) {
   assert(!Toks.empty() &&
          "PragmaLoopHintInfo::Toks must contain at least one token.");
 
+
   // If no option is specified the argument is assumed to be a constant expr.
   bool OptionUnroll = false;
   bool OptionUnrollAndJam = false;
@@ -1381,6 +1382,7 @@ bool Parser::HandlePragmaLoopHint(LoopHint &Hint) {
                   OptionUnroll || OptionUnrollAndJam || OptionDistribute ||
                   OptionPipelineDisabled;
   }
+
 
   bool AssumeSafetyArg = !OptionUnroll && !OptionUnrollAndJam &&
                          !OptionDistribute && !OptionPipelineDisabled;
