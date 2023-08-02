@@ -568,7 +568,7 @@ define void @readnone_indirec(ptr %f, ptr %p) {
 
 define ptr @noalias_ret(ptr %f, ptr %p) {
 ; CHECK-LABEL: define ptr @noalias_ret
-; CHECK-SAME: (ptr nocapture readonly [[F:%.*]], ptr readonly [[P:%.*]]) #[[ATTR5]] {
+; CHECK-SAME: (ptr nocapture readonly [[F:%.*]], ptr nocapture readonly [[P:%.*]]) #[[ATTR5]] {
 ; CHECK-NEXT:    [[R:%.*]] = call noalias ptr [[F]](ptr [[P]]) #[[ATTR8]]
 ; CHECK-NEXT:    ret ptr [[R]]
 ;

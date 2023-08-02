@@ -314,8 +314,8 @@ UseCaptureKind llvm::DetermineUseCaptureKind(
     // its return value and doesn't unwind (a readonly function can leak bits
     // by throwing an exception or not depending on the input value).
     if (Call->onlyReadsMemory() && Call->doesNotThrow() &&
-        Call->getType()->isVoidTy())
-      return UseCaptureKind::NO_CAPTURE;
+        (Call->getType()->isVoidTy() || Call->returnDoesNotAlias()))
+        return UseCaptureKind::NO_CAPTURE;
 
     // The pointer is not captured if returned pointer is not captured.
     // NOTE: CaptureTracking users should not assume that only functions
