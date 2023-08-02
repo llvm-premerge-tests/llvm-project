@@ -29,7 +29,14 @@
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 #include "llvm/ADT/STLExtras.h"
 
+namespace llvm {
+class IRBuilderBase;
+}
+
 namespace mlir {
+namespace LLVM {
+class ModuleTranslation;
+}
 namespace gpu {
 
 /// Utility class for the GPU dialect to represent triples of `Value`s
