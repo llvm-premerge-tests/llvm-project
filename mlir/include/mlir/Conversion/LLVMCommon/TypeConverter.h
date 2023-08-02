@@ -132,6 +132,11 @@ public:
   /// integer type with the size configured for this type converter.
   Type getIndexType();
 
+  /// Gets the LLVM representation of the index type that matches the MemRefType
+  /// `t`. The returned type is an integer type with the size configured for
+  /// this type converter.
+  Type getIndexTypeMatchingMemRef(MemRefType t);
+
   /// Returns true if using opaque pointers was enabled in the lowering options.
   bool useOpaquePointers() const { return getOptions().useOpaquePointers; }
 

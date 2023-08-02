@@ -4954,6 +4954,7 @@ cc_library(
         ":MathDialect",
         ":MemRefDialect",
         ":MemRefToLLVM",
+        ":NVGPUDialect",
         ":NVVMDialect",
         ":Pass",
         ":Transforms",
