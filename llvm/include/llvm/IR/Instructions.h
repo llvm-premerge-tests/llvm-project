@@ -1653,6 +1653,11 @@ public:
       Bitfield::areContiguous<TailCallKindField, CallBase::CallingConvField>(),
       "Bitfields must be contiguous");
 
+  using UnwindAbortField = BoolBitfieldElementT<CallingConvField::NextBit>;
+  static_assert(
+      Bitfield::areContiguous<CallBase::CallingConvField, UnwindAbortField>(),
+      "Bitfields must be contiguous");
+
   TailCallKind getTailCallKind() const {
     return getSubclassData<TailCallKindField>();
   }
@@ -1672,6 +1677,11 @@ public:
 
   void setTailCall(bool IsTc = true) {
     setTailCallKind(IsTc ? TCK_Tail : TCK_None);
+  }
+
+  bool isUnwindAbort() const { return getSubclassData<UnwindAbortField>(); }
+  void setUnwindAbort(bool IsUA = true) {
+    setSubclassData<UnwindAbortField>(IsUA);
   }
 
   /// Return true if the call can return twice
