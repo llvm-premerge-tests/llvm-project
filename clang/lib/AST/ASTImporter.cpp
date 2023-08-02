@@ -44,6 +44,7 @@
 #include "clang/AST/TypeLoc.h"
 #include "clang/AST/TypeVisitor.h"
 #include "clang/AST/UnresolvedSet.h"
+#include "clang/AST/ParentMapContext.h"
 #include "clang/Basic/Builtins.h"
 #include "clang/Basic/ExceptionSpecificationType.h"
 #include "clang/Basic/FileManager.h"
@@ -5812,6 +5813,10 @@ ExpectedDecl ASTNodeImporter::VisitClassTemplateDecl(ClassTemplateDecl *D) {
       if (FoundTemplate) {
         if (!hasSameVisibilityContextAndLinkage(FoundTemplate, D))
           continue;
+        auto Parents = FoundDecl->getASTContext().getParents(*FoundDecl);
+        if (!Parents.empty() && nullptr != Parents.begin()->get<FriendDecl>()) {
+          continue;
+        }
 
         if (IsStructuralMatch(D, FoundTemplate)) {
           ClassTemplateDecl *TemplateWithDef =
