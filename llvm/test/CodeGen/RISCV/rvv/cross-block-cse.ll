@@ -8,11 +8,10 @@ define void @foo(<vscale x 2 x i32> %x, <vscale x 2 x i32> %y, ptr %p1, ptr %p2,
 ; CHECK-LABEL: foo:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetvli a3, zero, e32, m1, ta, ma
-; CHECK-NEXT:    vadd.vv v10, v8, v9
-; CHECK-NEXT:    vs1r.v v10, (a0)
+; CHECK-NEXT:    vadd.vv v8, v8, v9
+; CHECK-NEXT:    vs1r.v v8, (a0)
 ; CHECK-NEXT:    bnez a2, .LBB0_2
 ; CHECK-NEXT:  # %bb.1: # %falsebb
-; CHECK-NEXT:    vadd.vv v8, v8, v9
 ; CHECK-NEXT:    vs1r.v v8, (a1)
 ; CHECK-NEXT:  .LBB0_2: # %mergebb
 ; CHECK-NEXT:    ret
