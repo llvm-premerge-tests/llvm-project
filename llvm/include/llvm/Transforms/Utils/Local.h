@@ -354,6 +354,12 @@ BasicBlock *changeToInvokeAndSplitBasicBlock(CallInst *CI,
                                              BasicBlock *UnwindEdge,
                                              DomTreeUpdater *DTU = nullptr);
 
+enum class RemoveUnwindEdgeMode {
+  Normal,
+  Nounwind,
+  Unwindabort,
+};
+
 /// Replace 'BB's terminator with one that does not have an unwind successor
 /// block. Rewrites `invoke` to `call`, etc. Updates any PHIs in unwind
 /// successor. Returns the instruction that replaced the original terminator,
@@ -361,7 +367,11 @@ BasicBlock *changeToInvokeAndSplitBasicBlock(CallInst *CI,
 ///
 /// \param BB  Block whose terminator will be replaced.  Its terminator must
 ///            have an unwind successor.
-Instruction *removeUnwindEdge(BasicBlock *BB, DomTreeUpdater *DTU = nullptr);
+/// \param Mode Is the edge known to be 'nounwind' or 'unwindabort'?  (set if
+///             e.g. the unwind edge is known to be unreachable/reaches a
+///             'resume unwindabort')
+void removeUnwindEdge(BasicBlock *BB, RemoveUnwindEdgeMode Mode,
+                      DomTreeUpdater *DTU = nullptr);
 
 /// Remove all blocks that can not be reached from the function's entry.
 ///

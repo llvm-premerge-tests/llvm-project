@@ -78,7 +78,12 @@ define i32 @maybe_throw(i1 zeroext %0) {
 
 declare void @__cxa_rethrow()
 
-; TEST 6 - catch
+; TEST 6 - catch.
+;
+; In this test, it is not possible to deduce nounwind for
+; "catch_thing", because the call to @__cxa_end_catch is not marked
+; nounwind. TODO: _could_ it be marked nounwind?
+
 ; int catch_thing() {
 ;   try {
 ;       int a = doThing(true);
@@ -129,6 +134,8 @@ declare void @do_throw()
 declare void @abort() nounwind
 @catch_ty = external global ptr
 
+; Do not deduce nounwind for a invoke which doesn't catch everything,
+; as some exception types will pass through.
 define void @catch_specific_landingpad() personality ptr @__gxx_personality_v0 {
 ; CHECK: Function Attrs: noreturn
 ; CHECK-LABEL: define {{[^@]+}}@catch_specific_landingpad
@@ -156,6 +163,7 @@ unreachable:
   unreachable
 }
 
+; We _should_ deduce nounwind for a catch-all landingpad.
 define void @catch_all_landingpad() personality ptr @__gxx_personality_v0 {
 ; CHECK: Function Attrs: noreturn nounwind
 ; CHECK-LABEL: define {{[^@]+}}@catch_all_landingpad
@@ -183,6 +191,7 @@ unreachable:
   unreachable
 }
 
+; Do not deduce nounwind for a filter-some landingpad.
 define void @filter_specific_landingpad() personality ptr @__gxx_personality_v0 {
 ; CHECK: Function Attrs: noreturn
 ; CHECK-LABEL: define {{[^@]+}}@filter_specific_landingpad
@@ -210,6 +219,7 @@ unreachable:
   unreachable
 }
 
+; We _should_ deduce nounwind for a filter-none landingpad.
 define void @filter_none_landingpad() personality ptr @__gxx_personality_v0 {
 ; CHECK: Function Attrs: noreturn nounwind
 ; CHECK-LABEL: define {{[^@]+}}@filter_none_landingpad
@@ -237,6 +247,12 @@ unreachable:
   unreachable
 }
 
+; Do not deduce nounwind based on a cleanup clause. Even though
+; unwinding through this function cannot actually reach the parent,
+; since it never calls 'resume', the Phase-1 unwind process looks past
+; cleanup handlers to search for the final catch handler. It breaks
+; program semantics to cause that catch-handler to be unfindable, so
+; we must not infer nounwind.
 define void @cleanup_landingpad() personality ptr @__gxx_personality_v0 {
 ; CHECK: Function Attrs: noreturn
 ; CHECK-LABEL: define {{[^@]+}}@cleanup_landingpad
@@ -264,6 +280,9 @@ unreachable:
   unreachable
 }
 
+; This test is similar to cleanup_landingpad test case, but with
+; win32-style IR. For similar reasons, we don't mark this nounwind,
+; despite the lack of ability to unwind to the parent.
 define void @cleanuppad() personality ptr @__gxx_personality_v0 {
 ; CHECK: Function Attrs: noreturn
 ; CHECK-LABEL: define {{[^@]+}}@cleanuppad
@@ -289,6 +308,7 @@ unreachable:
   unreachable
 }
 
+; And, same where some types are caught and others handled as cleanup.
 define void @catchswitch_cleanuppad() personality ptr @__gxx_personality_v0 {
 ; CHECK: Function Attrs: noreturn
 ; CHECK-LABEL: define {{[^@]+}}@catchswitch_cleanuppad
@@ -326,6 +346,19 @@ cpad:
 
 unreachable:
   unreachable
+}
+
+; Test that a function body with 'call unwindabort' can be
+; deduced as nounwind.
+define i32 @test_unwindabort(i1 zeroext %val) personality ptr @__gxx_personality_v0 {
+; CHECK: Function Attrs: nounwind
+; CHECK-LABEL: define {{[^@]+}}@test_unwindabort
+; CHECK-SAME: (i1 zeroext [[VAL:%.*]]) #[[ATTR2:[0-9]+]] personality ptr @__gxx_personality_v0 {
+; CHECK-NEXT:    [[CALL:%.*]] = call unwindabort i32 @maybe_throw(i1 [[VAL]])
+; CHECK-NEXT:    ret i32 [[CALL]]
+;
+  %call = call unwindabort i32 @maybe_throw(i1 %val)
+  ret i32 %call
 }
 
 declare i32 @__gxx_personality_v0(...)

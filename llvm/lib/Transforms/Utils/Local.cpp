@@ -2619,16 +2619,28 @@ static bool markAliveBlocks(Function &F,
   return Changed;
 }
 
-Instruction *llvm::removeUnwindEdge(BasicBlock *BB, DomTreeUpdater *DTU) {
+void llvm::removeUnwindEdge(BasicBlock *BB, RemoveUnwindEdgeMode Mode,
+                            DomTreeUpdater *DTU) {
   Instruction *TI = BB->getTerminator();
 
-  if (auto *II = dyn_cast<InvokeInst>(TI))
-    return changeToCall(II, DTU);
+  if (auto *II = dyn_cast<InvokeInst>(TI)) {
+    CallInst *CI = changeToCall(II, DTU);
+    if (Mode == RemoveUnwindEdgeMode::Unwindabort)
+      CI->setUnwindAbort(true);
+    if (Mode == RemoveUnwindEdgeMode::Nounwind)
+      CI->setDoesNotThrow();
+    return;
+  }
 
   Instruction *NewTI;
   BasicBlock *UnwindDest;
 
   if (auto *CRI = dyn_cast<CleanupReturnInst>(TI)) {
+    // TODO: With Mode==Unwindabort, we should delete entire cleanup funclet, by
+    // recursively deleting unwind edges _to_ this cleanup.
+    //
+    // TODO: With Mode==Nounwind, we should replace the cleanupret with
+    // 'unreachable'.
     NewTI = CleanupReturnInst::Create(CRI->getCleanupPad(), nullptr, CRI);
     UnwindDest = CRI->getUnwindDest();
   } else if (auto *CatchSwitch = dyn_cast<CatchSwitchInst>(TI)) {
@@ -2638,6 +2650,13 @@ Instruction *llvm::removeUnwindEdge(BasicBlock *BB, DomTreeUpdater *DTU) {
     for (BasicBlock *PadBB : CatchSwitch->handlers())
       NewCatchSwitch->addHandler(PadBB);
 
+    if (Mode == RemoveUnwindEdgeMode::Unwindabort) {
+      NewCatchSwitch->setUnwindAbort(true);
+    } else if (Mode == RemoveUnwindEdgeMode::Nounwind) {
+      // TODO: Currently we cannot annotate a catchswitch that cannot unwind, as
+      // it doesn't have a 'nounwind' attribute. Thus, it gets marked 'unwind to
+      // parent instead, and we lose the knowledge that it should be nounwind.
+    }
     NewTI = NewCatchSwitch;
     UnwindDest = CatchSwitch->getUnwindDest();
   } else {
@@ -2651,7 +2670,6 @@ Instruction *llvm::removeUnwindEdge(BasicBlock *BB, DomTreeUpdater *DTU) {
   TI->eraseFromParent();
   if (DTU)
     DTU->applyUpdates({{DominatorTree::Delete, BB, UnwindDest}});
-  return NewTI;
 }
 
 /// removeUnreachableBlocks - Remove blocks that are not reachable, even
