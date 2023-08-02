@@ -1066,6 +1066,57 @@ def GPU_ModuleEndOp : GPU_Op<"module_end", [
   let assemblyFormat = "attr-dict";
 }
 
+def GPU_ObjectAttr : GPU_Attr<"Object", "object"> {
+  let description = [{
+    A GPU object attribute pairs a GPU target with a binary string,
+    encapsulating the information of how the object was generated with the
+    object itself.
+
+    The target attribute must implement the `TargetAttrInterface` interface.
+
+    ```
+      #gpu.object<#gpu.nvptx, "...">
+    ```
+  }];
+  let parameters = (ins "TargetAttrInterface":$target, "StringAttr":$object);
+  let assemblyFormat = [{`<` $target `,` $object `>`}];
+}
+
+def GPUObjectArrayAttr :
+  TypedArrayAttrBase<GPU_ObjectAttr, "An array of GPU object attributes">;
+
+def GPU_BinaryOp : GPU_Op<"binary", [Symbol]>,
+  Arguments<(ins SymbolNameAttr:$sym_name,
+                 GPUBinaryHandlerLLVMTranslationAttr:$binaryHandler,
+                 ConfinedAttr<GPUObjectArrayAttr, [ArrayMinCount<1>]>:$objects)> {
+  let summary = "An Op for storing serialized GPU binary objects.";
+  let description = [{
+    GPU binaries provide a semantic mechanism for storing GPU objects,
+    e.g. the result of compiling a GPU module to an object file.
+
+    This operation has 3 arguments:
+     - The name of the binary.
+     - An attribute implementing the `BinaryHandlerLLVMTranslationAttr` interface.
+     - An array of GPU object attributes.
+
+    ```
+      gpu.binary @myobject [#gpu.object<...>, #gpu.object<...>]
+    ```
+  }];
+  let builders = [
+    OpBuilder<(ins "StringRef":$name,
+                   "BinaryHandlerLLVMTranslationAttrInterface":$binaryHandler,
+                   "ArrayAttr":$objects)>,
+    OpBuilder<(ins "StringRef":$name,
+                   "BinaryHandlerLLVMTranslationAttrInterface":$binaryHandler,
+                   "ArrayRef<Attribute>":$objects)>
+  ];
+  let skipDefaultBuilders = 1;
+  let assemblyFormat = [{
+    $sym_name custom<BinaryHandler>($binaryHandler) attr-dict $objects
+  }];
+}
+
 def GPU_HostRegisterOp : GPU_Op<"host_register">,
     Arguments<(ins AnyUnrankedMemRef:$value)> {
   let summary = "Registers a memref for access from device.";
