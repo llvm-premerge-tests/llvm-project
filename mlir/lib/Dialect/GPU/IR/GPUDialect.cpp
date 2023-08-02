@@ -1576,6 +1576,39 @@ void GPUModuleOp::setTargets(ArrayRef<TargetAttrInterface> targets) {
 }
 
 //===----------------------------------------------------------------------===//
+// GPUBinaryOp
+//===----------------------------------------------------------------------===//
+void BinaryOp::build(OpBuilder &builder, OperationState &result, StringRef name,
+                     BinaryHandlerLLVMTranslationAttrInterface binaryHandler,
+                     ArrayAttr objects) {
+  auto &properties = result.getOrAddProperties<Properties>();
+  result.attributes.push_back(builder.getNamedAttr(
+      SymbolTable::getSymbolAttrName(), builder.getStringAttr(name)));
+  properties.objects = objects;
+  properties.binaryHandler = binaryHandler;
+}
+
+void BinaryOp::build(OpBuilder &builder, OperationState &result, StringRef name,
+                     BinaryHandlerLLVMTranslationAttrInterface binaryHandler,
+                     ArrayRef<Attribute> objects) {
+  build(builder, result, name, binaryHandler,
+        objects.size() > 0 ? builder.getArrayAttr(objects) : ArrayAttr());
+}
+
+static ParseResult parseBinaryHandler(OpAsmParser &parser,
+                                      Attribute &binaryHandler) {
+  if (parser.parseAttribute(binaryHandler))
+    return failure();
+  return success();
+}
+
+static void printBinaryHandler(OpAsmPrinter &printer, Operation *op,
+                               Attribute binaryHandler) {
+  if (binaryHandler)
+    printer << '<' << binaryHandler << '>';
+}
+
+//===----------------------------------------------------------------------===//
 // GPUMemcpyOp
 //===----------------------------------------------------------------------===//
 
