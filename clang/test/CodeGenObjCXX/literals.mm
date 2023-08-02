@@ -56,12 +56,12 @@ void test_array() {
   // Check cleanups
   // CHECK: call void @llvm.objc.release
   // CHECK-NOT: call void @llvm.objc.release
-  // CHECK: invoke void @_ZN1YD1Ev
+  // CHECK: call unwindabort void @_ZN1YD1Ev
   // CHECK: call void @llvm.objc.release
   // CHECK-NOT: call void @llvm.objc.release
-  // CHECK: invoke void @_ZN1XD1Ev
+  // CHECK: call unwindabort void @_ZN1XD1Ev
   // CHECK-NOT: call void @llvm.objc.release
-  // CHECK: unreachable
+  // CHECK: resume {
 }
 
 // CHECK-LABEL: define weak_odr void @_Z24test_array_instantiationIiEvv
@@ -103,12 +103,12 @@ void test_array_instantiation() {
   // Check cleanups
   // CHECK: call void @llvm.objc.release
   // CHECK-NOT: call void @llvm.objc.release
-  // CHECK: invoke void @_ZN1YD1Ev
+  // CHECK: call unwindabort void @_ZN1YD1Ev
   // CHECK: call void @llvm.objc.release
   // CHECK-NOT: call void @llvm.objc.release
-  // CHECK: invoke void @_ZN1XD1Ev
+  // CHECK: call unwindabort void @_ZN1XD1Ev
   // CHECK-NOT: call void @llvm.objc.release
-  // CHECK: unreachable
+  // CHECK: resume
 }
 
 template void test_array_instantiation<int>();

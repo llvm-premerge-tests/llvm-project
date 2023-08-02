@@ -64,18 +64,9 @@
 // CHECK:       if.then:
 // CHECK-NEXT:    [[EXCEPTION:%.*]] = call ptr @__cxa_allocate_exception(i64 4) #[[ATTR4]]
 // CHECK-NEXT:    store i32 42, ptr [[EXCEPTION]], align 16
-// CHECK-NEXT:    invoke void @__cxa_throw(ptr [[EXCEPTION]], ptr @_ZTIi, ptr null) #[[ATTR5]]
-// CHECK-NEXT:    to label [[UNREACHABLE:%.*]] unwind label [[TERMINATE_LPAD:%.*]]
+// CHECK-NEXT:    call unwindabort void @__cxa_throw(ptr [[EXCEPTION]], ptr @_ZTIi, ptr null) #[[ATTR5]]
 // CHECK:       if.end:
 // CHECK-NEXT:    ret i32 24
-// CHECK:       terminate.lpad:
-// CHECK-NEXT:    [[TMP1:%.*]] = landingpad { ptr, i32 }
-// CHECK-NEXT:    catch ptr null
-// CHECK-NEXT:    [[TMP2:%.*]] = extractvalue { ptr, i32 } [[TMP1]], 0
-// CHECK-NEXT:    call void @__clang_call_terminate(ptr [[TMP2]]) #[[ATTR6:[0-9]+]]
-// CHECK-NEXT:    unreachable
-// CHECK:       unreachable:
-// CHECK-NEXT:    unreachable
 //
 
 // CHECK: Function Attrs: mustprogress noinline nounwind optnone

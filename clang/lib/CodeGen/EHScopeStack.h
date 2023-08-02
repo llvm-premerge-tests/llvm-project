@@ -358,6 +358,9 @@ public:
   /// Determines whether the exception-scopes stack is empty.
   bool empty() const { return StartOfData == EndOfBuffer; }
 
+  /// Determines whether the current scope is of kind Terminate.
+  bool inTerminateScope() const;
+
   bool requiresLandingPad() const;
 
   /// Determines whether there are any normal cleanups on the stack.

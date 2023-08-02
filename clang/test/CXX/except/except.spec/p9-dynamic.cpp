@@ -14,12 +14,11 @@ void target() throw(int)
 }
 
 // CHECK-LABEL: _Z7target2v(
-// CHECK: invoke void @_Z8externalv()
-// CHECK:            landingpad { ptr, i32 }
+// CHECK-PRE17:      invoke void @_Z8externalv()
+// CHECK-PRE17:      landingpad { ptr, i32 }
 // CHECK-PRE17-NEXT:   filter [0 x ptr] zeroinitializer
-// CHECK-17-NEXT:      catch ptr null
 // CHECK-PRE17:      call void @__cxa_call_unexpected
-// CHECK-17:         call void @__clang_call_terminate
+// CHECK-17:         call unwindabort void @_Z8externalv()
 void target2() throw()
 {
   external();

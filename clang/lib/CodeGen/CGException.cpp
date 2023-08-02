@@ -227,7 +227,7 @@ static const EHPersonality &getSEHPersonalityMSVC(const llvm::Triple &T) {
   return EHPersonality::MSVC_C_specific_handler;
 }
 
-const EHPersonality &EHPersonality::get(CodeGenModule &CGM,
+const EHPersonality &EHPersonality::get(const CodeGenModule &CGM,
                                         const FunctionDecl *FD) {
   const llvm::Triple &T = CGM.getTarget().getTriple();
   const LangOptions &L = CGM.getLangOpts();
@@ -244,7 +244,7 @@ const EHPersonality &EHPersonality::get(CodeGenModule &CGM,
                      : getCPersonality(Target, L);
 }
 
-const EHPersonality &EHPersonality::get(CodeGenFunction &CGF) {
+const EHPersonality &EHPersonality::get(const CodeGenFunction &CGF) {
   const auto *FD = CGF.CurCodeDecl;
   // For outlined finallys and filters, use the SEH personality in case they
   // contain more SEH. This mostly only affects finallys. Filters could
@@ -436,6 +436,18 @@ llvm::Value *CodeGenFunction::getExceptionFromSlot() {
 
 llvm::Value *CodeGenFunction::getSelectorFromSlot() {
   return Builder.CreateLoad(getEHSelectorSlot(), "sel");
+}
+
+bool CodeGenFunction::shouldUseUnwindAbort() const {
+  return getLangOpts().Exceptions && EHStack.inTerminateScope() &&
+         EHPersonality::get(*this).supportsUnwindAbort();
+}
+
+void CodeGenFunction::setupPersonalityFn() {
+  if (!CurFn->hasPersonalityFn()) {
+    const EHPersonality &Personality = EHPersonality::get(*this);
+    CurFn->setPersonalityFn(getOpaquePersonalityFn(CGM, Personality));
+  }
 }
 
 void CodeGenFunction::EmitCXXThrowExpr(const CXXThrowExpr *E,
@@ -779,12 +791,9 @@ llvm::BasicBlock *CodeGenFunction::getInvokeDestImpl() {
   llvm::BasicBlock *LP = EHStack.begin()->getCachedLandingPad();
   if (LP) return LP;
 
-  const EHPersonality &Personality = EHPersonality::get(*this);
+  setupPersonalityFn();
 
-  if (!CurFn->hasPersonalityFn())
-    CurFn->setPersonalityFn(getOpaquePersonalityFn(CGM, Personality));
-
-  if (Personality.usesFuncletPads()) {
+  if (EHPersonality::get(*this).usesFuncletPads()) {
     // We don't need separate landing pads in the funclet model.
     LP = getEHDispatchBlock(EHStack.getInnermostEHScope());
   } else {
@@ -1516,10 +1525,7 @@ llvm::BasicBlock *CodeGenFunction::getTerminateLandingPad() {
   Builder.SetInsertPoint(TerminateLandingPad);
 
   // Tell the backend that this is a landing pad.
-  const EHPersonality &Personality = EHPersonality::get(*this);
-
-  if (!CurFn->hasPersonalityFn())
-    CurFn->setPersonalityFn(getOpaquePersonalityFn(CGM, Personality));
+  setupPersonalityFn();
 
   llvm::LandingPadInst *LPadInst =
       Builder.CreateLandingPad(llvm::StructType::get(Int8PtrTy, Int32Ty), 0);

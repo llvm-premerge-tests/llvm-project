@@ -98,7 +98,10 @@ int j() {
 }
 
 void k() noexcept {
-  g();
+  try {
+    g();
+  } catch(long)
+  {}
 }
 
 void l() {

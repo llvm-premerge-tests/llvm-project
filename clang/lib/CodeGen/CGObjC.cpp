@@ -2698,7 +2698,7 @@ llvm::Value *CodeGenFunction::EmitObjCAutoreleasePoolPush() {
 void CodeGenFunction::EmitObjCAutoreleasePoolPop(llvm::Value *value) {
   assert(value->getType() == Int8PtrTy);
 
-  if (getInvokeDest()) {
+  if (shouldUseUnwindAbort() || getInvokeDest()) {
     // Call the runtime method not the intrinsic if we are handling exceptions
     llvm::FunctionCallee &fn =
         CGM.getObjCEntrypoints().objc_autoreleasePoolPopInvoke;

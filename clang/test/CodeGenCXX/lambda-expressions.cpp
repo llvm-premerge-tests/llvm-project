@@ -170,7 +170,7 @@ namespace pr28595 {
     // CHECK: landingpad
     // CHECK: br label %[[CLEANUP:.*]]{{$}}
     // CHECK: landingpad
-    // CHECK: invoke void @_ZN7pr285954TempD1Ev
+    // CHECK: call unwindabort void @_ZN7pr285954TempD1Ev
     // CHECK: br label %[[CLEANUP]]
     //
     // CHECK: [[CLEANUP]]:
@@ -219,4 +219,3 @@ struct CaptureArrayAndThis {
     [array, this] {};
   }
 } capture_array_and_this;
-

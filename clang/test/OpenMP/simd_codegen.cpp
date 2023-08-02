@@ -125,7 +125,7 @@ void simple(float *a, float *b, float *c, float *d) {
 // CHECK: [[LIN_LOAD:%.+]] = load i32, ptr [[LIN_VAR]]
 // CHECK-NEXT: store i32 [[LIN_LOAD]], ptr [[LIN_START:%[^,]+]]
 // Remember linear step.
-// CHECK: [[CALL_VAL:%.+]] = invoke
+// CHECK: [[CALL_VAL:%.+]] = call unwindabort
 // CHECK: store i64 [[CALL_VAL]], ptr [[LIN_STEP:%[^,]+]]
 
 // CHECK: [[GLIN_LOAD:%.+]] = load ptr, ptr [[GLIN_VAR:@[^,]+]]
@@ -410,7 +410,7 @@ public:
 void iter_simple(IterDouble ia, IterDouble ib, IterDouble ic) {
 //
 // Calculate number of iterations before the loop body.
-// CHECK: [[DIFF1:%.+]] = invoke {{.*}}i32 @{{.*}}IterDouble{{.*}}
+// CHECK: [[DIFF1:%.+]] = call unwindabort {{.*}}i32 @{{.*}}IterDouble{{.*}}
 // CHECK: [[DIFF2:%.+]] = sub nsw i32 [[DIFF1]], 1
 // CHECK-NEXT: [[DIFF3:%.+]] = add nsw i32 [[DIFF2]], 1
 // CHECK-NEXT: [[DIFF4:%.+]] = sdiv i32 [[DIFF3]], 1
@@ -429,12 +429,12 @@ void iter_simple(IterDouble ia, IterDouble ib, IterDouble ic) {
 // Start of body: calculate i from index:
 // CHECK: [[IV1:%.+]] = load i32, ptr [[IT_OMP_IV]]{{.+}}!llvm.access.group
 // Call of operator+ (i, IV).
-// CHECK: {{%.+}} = invoke {{.+}} @{{.*}}IterDouble{{.*}}
+// CHECK: {{%.+}} = call unwindabort {{.+}} @{{.*}}IterDouble{{.*}}
 // ... loop body ...
    *i = *ic * 0.5;
 // Float multiply and save result.
 // CHECK: [[MULR:%.+]] = fmul double {{%.+}}, 5.000000e-01
-// CHECK-NEXT: invoke {{.+}} @{{.*}}IterDouble{{.*}}
+// CHECK-NEXT: call unwindabort {{.+}} @{{.*}}IterDouble{{.*}}
 // CHECK: store double [[MULR:%.+]], ptr [[RESULT_ADDR:%.+]], !llvm.access.group
    ++ic;
 //
@@ -801,16 +801,12 @@ void parallel_simd(float *a) {
 #pragma omp parallel
 #pragma omp simd
   // TERM_DEBUG-NOT: __kmpc_global_thread_num
-  // TERM_DEBUG:     invoke noundef i32 {{.*}}bar{{.*}}()
-  // TERM_DEBUG:     unwind label %[[TERM_LPAD:[^,]+]],
+  // TERM_DEBUG:     call unwindabort noundef i32 {{.*}}bar{{.*}}()
   // TERM_DEBUG-NOT: __kmpc_global_thread_num
-  // TERM_DEBUG:     [[TERM_LPAD]]
-  // TERM_DEBUG:     call void @__clang_call_terminate
-  // TERM_DEBUG:     unreachable
   for (unsigned i = 131071; i <= 2147483647; i += 127)
     a[i] += bar();
 }
-// TERM_DEBUG: !{{[0-9]+}} = !DILocation(line: [[@LINE-11]],
+// TERM_DEBUG: !{{[0-9]+}} = !DILocation(line: [[@LINE-7]],
 
 // CHECK-LABEL: S8
 // CHECK-DAG: call void @llvm.assume(i1
@@ -864,4 +860,3 @@ S8 s8(0);
 // OMP5-DAG: ![[NOVECT:.+]] = !{!"llvm.loop.vectorize.enable", i1 false}
 // OMP5-DAG: ![[DISABLE_VECT]] = distinct !{{.*}}![[NOVECT]]{{[,}]}}
 #endif // HEADER
-

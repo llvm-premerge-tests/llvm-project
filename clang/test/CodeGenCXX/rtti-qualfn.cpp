@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -std=c++1z -I%S %s -triple x86_64-linux-gnu -emit-llvm -o - -fcxx-exceptions | FileCheck %s
+// RUN: %clang_cc1 -std=c++1z -I%S %s -triple x86_64-linux-gnu -emit-llvm -o - -fexceptions -fcxx-exceptions | FileCheck %s
 
 #include "typeinfo"
 
@@ -12,7 +12,7 @@ auto &ti_noexcept_memptr = typeid(void (A::*)() noexcept);
 
 // CHECK-LABEL: define{{.*}} void @_Z1fv(
 __attribute__((noreturn)) void f() noexcept {
-  // CHECK: call void @__cxa_throw({{.*}}@_ZTIPDoFvvE
+  // CHECK: call unwindabort void @__cxa_throw({{.*}}@_ZTIPDoFvvE
   throw f;
 }
 

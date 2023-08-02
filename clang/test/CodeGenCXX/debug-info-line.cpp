@@ -130,17 +130,12 @@ struct bar {
 // global ctor cleanup
 // CHECK-LABEL: define
 // CHECK: invoke{{ }}
-// CHECK: invoke{{ }}
-// CHECK:   to label {{.*}}, !dbg [[DBG_GLBL_CTOR_B:!.*]]
-
-// terminate caller
-// CHECK-LABEL: define
+// CHECK: call unwindabort {{.*}}, !dbg [[DBG_GLBL_CTOR_B:!.*]]
 
 // global dtor cleanup
 // CHECK-LABEL: define
 // CHECK: invoke{{ }}
-// CHECK: invoke{{ }}
-// CHECK:   to label {{.*}}, !dbg [[DBG_GLBL_DTOR_B:!.*]]
+// CHECK: call unwindabort {{.*}}, !dbg [[DBG_GLBL_DTOR_B:!.*]]
 #line 1200
 bar b[1] = { //
     (fn(),   //

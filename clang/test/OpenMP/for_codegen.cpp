@@ -574,19 +574,15 @@ void parallel_for(float *a) {
 #pragma omp for schedule(static, 5)
   // TERM_DEBUG-NOT: __kmpc_global_thread_num
   // TERM_DEBUG:     call void @__kmpc_for_static_init_4u({{.+}}), !dbg [[DBG_LOC:![0-9]+]]
-  // TERM_DEBUG:     invoke noundef i32 {{.*}}foo{{.*}}()
-  // TERM_DEBUG:     unwind label %[[TERM_LPAD:.+]],
+  // TERM_DEBUG:     call unwindabort noundef i32 {{.*}}foo{{.*}}()
   // TERM_DEBUG-NOT: __kmpc_global_thread_num
   // TERM_DEBUG:     call void @__kmpc_for_static_fini({{.+}}), !dbg [[DBG_LOC]]
   // TERM_DEBUG:     call {{.+}} @__kmpc_barrier({{.+}}), !dbg [[DBG_LOC]]
-  // TERM_DEBUG:     [[TERM_LPAD]]
-  // TERM_DEBUG:     call void @__clang_call_terminate
-  // TERM_DEBUG:     unreachable
   for (unsigned i = 131071; i <= 2147483647; i += 127)
     a[i] += foo();
 }
 // Check source line corresponds to "#pragma omp for schedule(static, 5)" above:
-// TERM_DEBUG: [[DBG_LOC]] = !DILocation(line: [[@LINE-15]],
+// TERM_DEBUG: [[DBG_LOC]] = !DILocation(line: [[@LINE-11]],
 
 char i = 1, j = 2, k = 3;
 // CHECK-LABEL: for_with_global_lcv
@@ -779,30 +775,30 @@ void imperfectly_nested_loop() {
   for (int i = 0; i < 10; ++i) {
     {
       int a, d;
-      // OMP5: invoke void @{{.+}}first{{.+}}()
+      // OMP5: call unwindabort void @{{.+}}first{{.+}}()
       first();
       // OMP5: load i32{{.*}}!llvm.access.group ![[AG:[0-9]+]]
       // OMP5: store i32{{.*}}!llvm.access.group ![[AG]]
       a = d;
       for (int j = 0; j < 10; ++j) {
         int a, d;
-        // OMP5: invoke void @{{.+}}inner_f{{.+}}()
+        // OMP5: call unwindabort void @{{.+}}inner_f{{.+}}()
         inner_f();
         // OMP5: load i32{{.*}}!llvm.access.group ![[AG]]
         // OMP5: store i32{{.*}}!llvm.access.group ![[AG]]
         a = d;
         for (int k = 0; k < 10; ++k) {
           int a, d;
-          // OMP5: invoke void @{{.+}}body_f{{.+}}()
+          // OMP5: call unwindabort void @{{.+}}body_f{{.+}}()
           body_f();
           // OMP5: load i32{{.*}}!llvm.access.group ![[AG]]
           // OMP5: store i32{{.*}}!llvm.access.group ![[AG]]
           a = d;
         }
-        // OMP5: invoke void @{{.+}}inner_l{{.+}}()
+        // OMP5: call unwindabort void @{{.+}}inner_l{{.+}}()
         inner_l();
       }
-      // OMP5: invoke void @{{.+}}last{{.+}}()
+      // OMP5: call unwindabort void @{{.+}}last{{.+}}()
       last();
     }
   }

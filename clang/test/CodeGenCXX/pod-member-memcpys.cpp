@@ -263,7 +263,7 @@ CALL_CC(PODLikeMember)
 // CHECK: call void @llvm.memcpy.p0.p0.i64({{.*}} align 4 {{.*}} align 4 {{.*}}i64 16, i1 {{.*}})
 // CHECK: ret void
 // CHECK: landingpad
-// CHECK: invoke void @_ZN7PODLikeD1Ev
+// CHECK: call unwindabort void @_ZN7PODLikeD1Ev
 
 CALL_CC(PODMember)
 // PODMember copy-constructor:

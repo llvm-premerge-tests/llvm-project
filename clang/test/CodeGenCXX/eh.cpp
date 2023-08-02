@@ -162,7 +162,7 @@ namespace test8 {
       bar();
     } catch (A a) {
       // CHECK:      call ptr @__cxa_get_exception_ptr
-      // CHECK-NEXT: invoke void @_ZN5test81AC1ERKS0_(
+      // CHECK-NEXT: call unwindabort void @_ZN5test81AC1ERKS0_(
       // CHECK:      call ptr @__cxa_begin_catch
       // CHECK-NEXT: call void @_ZN5test81AD1Ev(
       // CHECK:      call void @__cxa_end_catch()

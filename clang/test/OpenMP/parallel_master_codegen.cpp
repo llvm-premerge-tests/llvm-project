@@ -312,26 +312,11 @@ void parallel_master_allocate() {
 // CHECK1-NEXT:    [[TMP3:%.*]] = icmp ne i32 [[TMP2]], 0
 // CHECK1-NEXT:    br i1 [[TMP3]], label [[OMP_IF_THEN:%.*]], label [[OMP_IF_END:%.*]]
 // CHECK1:       omp_if.then:
-// CHECK1-NEXT:    invoke void @_Z3foov()
-// CHECK1-NEXT:    to label [[INVOKE_CONT:%.*]] unwind label [[TERMINATE_LPAD:%.*]]
-// CHECK1:       invoke.cont:
+// CHECK1-NEXT:    call unwindabort void @_Z3foov()
 // CHECK1-NEXT:    call void @__kmpc_end_master(ptr @[[GLOB1]], i32 [[TMP1]])
 // CHECK1-NEXT:    br label [[OMP_IF_END]]
 // CHECK1:       omp_if.end:
 // CHECK1-NEXT:    ret void
-// CHECK1:       terminate.lpad:
-// CHECK1-NEXT:    [[TMP4:%.*]] = landingpad { ptr, i32 }
-// CHECK1-NEXT:    catch ptr null
-// CHECK1-NEXT:    [[TMP5:%.*]] = extractvalue { ptr, i32 } [[TMP4]], 0
-// CHECK1-NEXT:    call void @__clang_call_terminate(ptr [[TMP5]]) #[[ATTR6:[0-9]+]]
-// CHECK1-NEXT:    unreachable
-//
-//
-// CHECK1-LABEL: define {{[^@]+}}@__clang_call_terminate
-// CHECK1-SAME: (ptr noundef [[TMP0:%.*]]) #[[ATTR5:[0-9]+]] comdat {
-// CHECK1-NEXT:    [[TMP2:%.*]] = call ptr @__cxa_begin_catch(ptr [[TMP0]]) #[[ATTR4:[0-9]+]]
-// CHECK1-NEXT:    call void @_ZSt9terminatev() #[[ATTR6]]
-// CHECK1-NEXT:    unreachable
 //
 //
 // CHECK5-LABEL: define {{[^@]+}}@_Z23parallel_master_privatev

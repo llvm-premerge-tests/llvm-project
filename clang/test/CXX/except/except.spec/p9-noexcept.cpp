@@ -2,21 +2,18 @@
 
 void external();
 
+// CHECK-LABEL: @_Z6targetv(
+// CHECK: call unwindabort void @_Z8externalv()
+// CHECK: ret void
 void target() noexcept
 {
-  // CHECK: invoke void @_Z8externalv()
   external();
 }
-// CHECK:      [[T0:%.*]] = landingpad { ptr, i32 }
-// CHECK-NEXT:  catch ptr null
-// CHECK-NEXT: [[T1:%.*]] = extractvalue { ptr, i32 } [[T0]], 0
-// CHECK-NEXT: call void @__clang_call_terminate(ptr [[T1]]) [[NR_NUW:#[0-9]+]]
-// CHECK-NEXT: unreachable
 
+// CHECK-LABEL: @_Z7reversev(
+// CHECK: call void @_Z8externalv()
+// CHECK: ret void
 void reverse() noexcept(false)
 {
-  // CHECK: call void @_Z8externalv()
   external();
 }
-
-// CHECK: attributes [[NR_NUW]] = { noreturn nounwind }

@@ -59,12 +59,12 @@ int main() {
 // CHECK-NEXT: i32 1, label %[[SECTIONS_CASE1:.+]]
 #pragma omp section
 // CHECK:      [[SECTIONS_CASE0]]
-// CHECK-NEXT: invoke void @{{.*}}foo{{.*}}()
+// CHECK-NEXT: call unwindabort void @{{.*}}foo{{.*}}()
 // CHECK:      br label %[[SECTIONS_EXIT]]
     foo();
 #pragma omp section
 // CHECK:      [[SECTIONS_CASE1]]
-// CHECK-NEXT: invoke void @{{.*}}bar{{.*}}()
+// CHECK-NEXT: call unwindabort void @{{.*}}bar{{.*}}()
 // CHECK:      br label %[[SECTIONS_EXIT]]
     bar();
 // CHECK:      [[SECTIONS_EXIT]]
@@ -91,13 +91,9 @@ int main() {
 // CHECK:       call void {{.*}} @__kmpc_fork_call(
 // CHECK-NOT:   __kmpc_global_thread_num
 // CHECK:       call void @__kmpc_for_static_init_4(
-// CHECK:       invoke void @{{.*}}foo{{.*}}()
-// CHECK-NEXT:  unwind label %[[TERM_LPAD:.+]]
+// CHECK:       call unwindabort void @{{.*}}foo{{.*}}()
 // CHECK:       call void @__kmpc_for_static_fini(
 // CHECK:       call void @__kmpc_barrier(ptr [[IMPLICIT_BARRIER_SECTIONS_LOC]],
 // CHECK:       ret
-// CHECK:       [[TERM_LPAD]]
-// CHECK:       call void @__clang_call_terminate(ptr
-// CHECK-NEXT:  unreachable
 
 #endif

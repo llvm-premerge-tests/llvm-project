@@ -5,7 +5,8 @@
 // RUN: %clang_cc1 -triple=x86_64-linux-gnu -fexceptions -fcxx-exceptions -funwind-tables=2 -emit-llvm -o - %s | \
 // RUN:   FileCheck --check-prefixes=CHECK,ASYNCUNWIND %s
 
-void caller(void callback()) noexcept { callback(); }
+// Ensure that the generated __clang_call_terminate function gets an uwtable attribute when requested.
+void caller(void callback()) noexcept { try { callback(); } catch(int) {} }
 
 // CHECK: define {{.*}}void @__clang_call_terminate({{[^)]*}}) #[[#ATTRNUM:]]
 // CHECK: attributes #[[#ATTRNUM]] = {

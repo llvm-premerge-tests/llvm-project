@@ -4724,7 +4724,8 @@ void CodeGenFunction::EmitNoreturnRuntimeCallOrInvoke(
   SmallVector<llvm::OperandBundleDef, 1> BundleList =
       getBundlesForFunclet(callee.getCallee());
 
-  if (getInvokeDest()) {
+  bool UseUnwindAbort = shouldUseUnwindAbort();
+  if (!UseUnwindAbort && getInvokeDest()) {
     llvm::InvokeInst *invoke =
       Builder.CreateInvoke(callee,
                            getUnreachableBlock(),
@@ -4737,6 +4738,10 @@ void CodeGenFunction::EmitNoreturnRuntimeCallOrInvoke(
     llvm::CallInst *call = Builder.CreateCall(callee, args, BundleList);
     call->setDoesNotReturn();
     call->setCallingConv(getRuntimeCC());
+    if (UseUnwindAbort) {
+      call->setUnwindAbort();
+      setupPersonalityFn();
+    }
     Builder.CreateUnreachable();
   }
 }
@@ -4763,14 +4768,20 @@ CodeGenFunction::EmitRuntimeCallOrInvoke(llvm::FunctionCallee callee,
 llvm::CallBase *CodeGenFunction::EmitCallOrInvoke(llvm::FunctionCallee Callee,
                                                   ArrayRef<llvm::Value *> Args,
                                                   const Twine &Name) {
-  llvm::BasicBlock *InvokeDest = getInvokeDest();
+  bool UseUnwindAbort = shouldUseUnwindAbort();
+  llvm::BasicBlock *InvokeDest = UseUnwindAbort ? nullptr : getInvokeDest();
   SmallVector<llvm::OperandBundleDef, 1> BundleList =
       getBundlesForFunclet(Callee.getCallee());
 
   llvm::CallBase *Inst;
-  if (!InvokeDest)
-    Inst = Builder.CreateCall(Callee, Args, BundleList, Name);
-  else {
+  if (!InvokeDest) {
+    llvm::CallInst *CI = Builder.CreateCall(Callee, Args, BundleList, Name);
+    if (UseUnwindAbort) {
+      CI->setUnwindAbort();
+      setupPersonalityFn();
+    }
+    Inst = CI;
+  } else {
     llvm::BasicBlock *ContBB = createBasicBlock("invoke.cont");
     Inst = Builder.CreateInvoke(Callee, ContBB, InvokeDest, Args, BundleList,
                                 Name);
@@ -5479,6 +5490,8 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
 
   // Decide whether to use a call or an invoke.
   bool CannotThrow;
+  bool UseUnwindAbort = false;
+
   if (currentFunctionUsesSEHTry()) {
     // SEH cares about asynchronous exceptions, so everything can "throw."
     CannotThrow = false;
@@ -5495,6 +5508,12 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
     if (auto *FPtr = dyn_cast<llvm::Function>(CalleePtr))
       if (FPtr->hasFnAttribute(llvm::Attribute::NoUnwind))
         CannotThrow = true;
+
+    if (!CannotThrow && shouldUseUnwindAbort()) {
+      // If we can use unwindabort, don't use a landingpad.
+      UseUnwindAbort = true;
+      CannotThrow = true;
+    }
   }
 
   // If we made a temporary, be sure to clean up after ourselves. Note that we
@@ -5528,7 +5547,13 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
   // Emit the actual call/invoke instruction.
   llvm::CallBase *CI;
   if (!InvokeDest) {
-    CI = Builder.CreateCall(IRFuncTy, CalleePtr, IRCallArgs, BundleList);
+    llvm::CallInst *Call =
+        Builder.CreateCall(IRFuncTy, CalleePtr, IRCallArgs, BundleList);
+    if (UseUnwindAbort) {
+      Call->setUnwindAbort();
+      setupPersonalityFn();
+    }
+    CI = Call;
   } else {
     llvm::BasicBlock *Cont = createBasicBlock("invoke.cont");
     CI = Builder.CreateInvoke(IRFuncTy, CalleePtr, Cont, InvokeDest, IRCallArgs,

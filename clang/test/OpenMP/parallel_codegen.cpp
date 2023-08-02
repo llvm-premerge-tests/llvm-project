@@ -114,19 +114,11 @@ int main (int argc, char **argv) {
 // CHECK1-NEXT:    [[TMP1:%.*]] = load ptr, ptr [[A_ADDR]], align 8
 // CHECK1-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, ptr [[TMP1]], i64 1
 // CHECK1-NEXT:    [[TMP2:%.*]] = load i32, ptr [[ARRAYIDX]], align 4
-// CHECK1-NEXT:    invoke void @_Z3fooIiEvT_(i32 noundef [[TMP2]])
-// CHECK1-NEXT:    to label [[INVOKE_CONT:%.*]] unwind label [[TERMINATE_LPAD:%.*]]
-// CHECK1:       invoke.cont:
+// CHECK1-NEXT:    call unwindabort void @_Z3fooIiEvT_(i32 noundef [[TMP2]])
 // CHECK1-NEXT:    [[TMP3:%.*]] = load i32, ptr @global, align 4
 // CHECK1-NEXT:    [[ARRAYIDX1:%.*]] = getelementptr inbounds i32, ptr [[TMP1]], i64 1
 // CHECK1-NEXT:    store i32 [[TMP3]], ptr [[ARRAYIDX1]], align 4
 // CHECK1-NEXT:    ret void
-// CHECK1:       terminate.lpad:
-// CHECK1-NEXT:    [[TMP4:%.*]] = landingpad { ptr, i32 }
-// CHECK1-NEXT:    catch ptr null
-// CHECK1-NEXT:    [[TMP5:%.*]] = extractvalue { ptr, i32 } [[TMP4]], 0
-// CHECK1-NEXT:    call void @__clang_call_terminate(ptr [[TMP5]]) #[[ATTR6:[0-9]+]]
-// CHECK1-NEXT:    unreachable
 //
 //
 // CHECK1-LABEL: define {{[^@]+}}@_Z3fooIiEvT_
@@ -135,13 +127,6 @@ int main (int argc, char **argv) {
 // CHECK1-NEXT:    [[ARGC_ADDR:%.*]] = alloca i32, align 4
 // CHECK1-NEXT:    store i32 [[ARGC]], ptr [[ARGC_ADDR]], align 4
 // CHECK1-NEXT:    ret void
-//
-//
-// CHECK1-LABEL: define {{[^@]+}}@__clang_call_terminate
-// CHECK1-SAME: (ptr noundef [[TMP0:%.*]]) #[[ATTR4:[0-9]+]] comdat {
-// CHECK1-NEXT:    [[TMP2:%.*]] = call ptr @__cxa_begin_catch(ptr [[TMP0]]) #[[ATTR5:[0-9]+]]
-// CHECK1-NEXT:    call void @_ZSt9terminatev() #[[ATTR6]]
-// CHECK1-NEXT:    unreachable
 //
 //
 // CHECK1-LABEL: define {{[^@]+}}@main.omp_outlined.1
@@ -185,19 +170,11 @@ int main (int argc, char **argv) {
 // CHECK1-NEXT:    [[TMP2:%.*]] = load ptr, ptr [[GLOBAL_ADDR]], align 8
 // CHECK1-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, ptr [[TMP1]], i64 1
 // CHECK1-NEXT:    [[TMP3:%.*]] = load i32, ptr [[ARRAYIDX]], align 4
-// CHECK1-NEXT:    invoke void @_Z3fooIiEvT_(i32 noundef [[TMP3]])
-// CHECK1-NEXT:    to label [[INVOKE_CONT:%.*]] unwind label [[TERMINATE_LPAD:%.*]]
-// CHECK1:       invoke.cont:
+// CHECK1-NEXT:    call unwindabort void @_Z3fooIiEvT_(i32 noundef [[TMP3]])
 // CHECK1-NEXT:    [[TMP4:%.*]] = load i32, ptr [[TMP2]], align 4
 // CHECK1-NEXT:    [[ARRAYIDX1:%.*]] = getelementptr inbounds i32, ptr [[TMP1]], i64 1
 // CHECK1-NEXT:    store i32 [[TMP4]], ptr [[ARRAYIDX1]], align 4
 // CHECK1-NEXT:    ret void
-// CHECK1:       terminate.lpad:
-// CHECK1-NEXT:    [[TMP5:%.*]] = landingpad { ptr, i32 }
-// CHECK1-NEXT:    catch ptr null
-// CHECK1-NEXT:    [[TMP6:%.*]] = extractvalue { ptr, i32 } [[TMP5]], 0
-// CHECK1-NEXT:    call void @__clang_call_terminate(ptr [[TMP6]]) #[[ATTR6]]
-// CHECK1-NEXT:    unreachable
 //
 //
 // CHECK1-LABEL: define {{[^@]+}}@main.omp_outlined.2
@@ -232,19 +209,11 @@ int main (int argc, char **argv) {
 // CHECK1-NEXT:    [[TMP1:%.*]] = load ptr, ptr [[A_ADDR]], align 8
 // CHECK1-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, ptr [[TMP1]], i64 1
 // CHECK1-NEXT:    [[TMP2:%.*]] = load i32, ptr [[ARRAYIDX]], align 4
-// CHECK1-NEXT:    invoke void @_Z3fooIiEvT_(i32 noundef [[TMP2]])
-// CHECK1-NEXT:    to label [[INVOKE_CONT:%.*]] unwind label [[TERMINATE_LPAD:%.*]]
-// CHECK1:       invoke.cont:
+// CHECK1-NEXT:    call unwindabort void @_Z3fooIiEvT_(i32 noundef [[TMP2]])
 // CHECK1-NEXT:    [[TMP3:%.*]] = load i32, ptr @global, align 4
 // CHECK1-NEXT:    [[ARRAYIDX1:%.*]] = getelementptr inbounds i32, ptr [[TMP1]], i64 1
 // CHECK1-NEXT:    store i32 [[TMP3]], ptr [[ARRAYIDX1]], align 4
 // CHECK1-NEXT:    ret void
-// CHECK1:       terminate.lpad:
-// CHECK1-NEXT:    [[TMP4:%.*]] = landingpad { ptr, i32 }
-// CHECK1-NEXT:    catch ptr null
-// CHECK1-NEXT:    [[TMP5:%.*]] = extractvalue { ptr, i32 } [[TMP4]], 0
-// CHECK1-NEXT:    call void @__clang_call_terminate(ptr [[TMP5]]) #[[ATTR6]]
-// CHECK1-NEXT:    unreachable
 //
 //
 // CHECK1-LABEL: define {{[^@]+}}@_Z5tmainIPPcEiT_
@@ -277,20 +246,12 @@ int main (int argc, char **argv) {
 // CHECK1-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[ARGC_ADDR]], align 8
 // CHECK1-NEXT:    [[TMP1:%.*]] = load i64, ptr [[VLA_ADDR]], align 8
 // CHECK1-NEXT:    [[TMP2:%.*]] = load ptr, ptr [[TMP0]], align 8
-// CHECK1-NEXT:    invoke void @_Z3fooIPPcEvT_(ptr noundef [[TMP2]])
-// CHECK1-NEXT:    to label [[INVOKE_CONT:%.*]] unwind label [[TERMINATE_LPAD:%.*]]
-// CHECK1:       invoke.cont:
+// CHECK1-NEXT:    call unwindabort void @_Z3fooIPPcEvT_(ptr noundef [[TMP2]])
 // CHECK1-NEXT:    [[TMP3:%.*]] = load ptr, ptr [[VAR]], align 8
 // CHECK1-NEXT:    [[TMP4:%.*]] = mul nsw i64 0, [[TMP1]]
 // CHECK1-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds double, ptr [[TMP3]], i64 [[TMP4]]
 // CHECK1-NEXT:    [[ARRAYIDX1:%.*]] = getelementptr inbounds double, ptr [[ARRAYIDX]], i64 0
 // CHECK1-NEXT:    ret void
-// CHECK1:       terminate.lpad:
-// CHECK1-NEXT:    [[TMP5:%.*]] = landingpad { ptr, i32 }
-// CHECK1-NEXT:    catch ptr null
-// CHECK1-NEXT:    [[TMP6:%.*]] = extractvalue { ptr, i32 } [[TMP5]], 0
-// CHECK1-NEXT:    call void @__clang_call_terminate(ptr [[TMP6]]) #[[ATTR6]]
-// CHECK1-NEXT:    unreachable
 //
 //
 // CHECK1-LABEL: define {{[^@]+}}@_Z3fooIPPcEvT_
@@ -353,19 +314,11 @@ int main (int argc, char **argv) {
 // CHECK2-NEXT:    [[TMP1:%.*]] = load ptr, ptr [[A_ADDR]], align 8, !dbg [[DBG53]]
 // CHECK2-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, ptr [[TMP1]], i64 1, !dbg [[DBG54:![0-9]+]]
 // CHECK2-NEXT:    [[TMP2:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !dbg [[DBG54]]
-// CHECK2-NEXT:    invoke void @_Z3fooIiEvT_(i32 noundef [[TMP2]])
-// CHECK2-NEXT:    to label [[INVOKE_CONT:%.*]] unwind label [[TERMINATE_LPAD:%.*]], !dbg [[DBG53]]
-// CHECK2:       invoke.cont:
+// CHECK2-NEXT:    call unwindabort void @_Z3fooIiEvT_(i32 noundef [[TMP2]]), !dbg [[DBG53]]
 // CHECK2-NEXT:    [[TMP3:%.*]] = load i32, ptr @global, align 4, !dbg [[DBG55:![0-9]+]]
 // CHECK2-NEXT:    [[ARRAYIDX1:%.*]] = getelementptr inbounds i32, ptr [[TMP1]], i64 1, !dbg [[DBG56:![0-9]+]]
 // CHECK2-NEXT:    store i32 [[TMP3]], ptr [[ARRAYIDX1]], align 4, !dbg [[DBG57:![0-9]+]]
 // CHECK2-NEXT:    ret void, !dbg [[DBG55]]
-// CHECK2:       terminate.lpad:
-// CHECK2-NEXT:    [[TMP4:%.*]] = landingpad { ptr, i32 }
-// CHECK2-NEXT:    catch ptr null, !dbg [[DBG53]]
-// CHECK2-NEXT:    [[TMP5:%.*]] = extractvalue { ptr, i32 } [[TMP4]], 0, !dbg [[DBG53]]
-// CHECK2-NEXT:    call void @__clang_call_terminate(ptr [[TMP5]]) #[[ATTR7:[0-9]+]], !dbg [[DBG53]]
-// CHECK2-NEXT:    unreachable, !dbg [[DBG53]]
 //
 //
 // CHECK2-LABEL: define {{[^@]+}}@_Z3fooIiEvT_
@@ -375,13 +328,6 @@ int main (int argc, char **argv) {
 // CHECK2-NEXT:    store i32 [[ARGC]], ptr [[ARGC_ADDR]], align 4
 // CHECK2-NEXT:    call void @llvm.dbg.declare(metadata ptr [[ARGC_ADDR]], metadata [[META63:![0-9]+]], metadata !DIExpression()), !dbg [[DBG64:![0-9]+]]
 // CHECK2-NEXT:    ret void, !dbg [[DBG65:![0-9]+]]
-//
-//
-// CHECK2-LABEL: define {{[^@]+}}@__clang_call_terminate
-// CHECK2-SAME: (ptr noundef [[TMP0:%.*]]) #[[ATTR5:[0-9]+]] comdat {
-// CHECK2-NEXT:    [[TMP2:%.*]] = call ptr @__cxa_begin_catch(ptr [[TMP0]]) #[[ATTR6:[0-9]+]]
-// CHECK2-NEXT:    call void @_ZSt9terminatev() #[[ATTR7]]
-// CHECK2-NEXT:    unreachable
 //
 //
 // CHECK2-LABEL: define {{[^@]+}}@main.omp_outlined
@@ -404,7 +350,7 @@ int main (int argc, char **argv) {
 // CHECK2-NEXT:    [[TMP2:%.*]] = load ptr, ptr [[DOTGLOBAL_TID__ADDR]], align 8, !dbg [[DBG72]]
 // CHECK2-NEXT:    [[TMP3:%.*]] = load ptr, ptr [[DOTBOUND_TID__ADDR]], align 8, !dbg [[DBG72]]
 // CHECK2-NEXT:    [[TMP4:%.*]] = load ptr, ptr [[A_ADDR]], align 8, !dbg [[DBG72]]
-// CHECK2-NEXT:    call void @main.omp_outlined_debug__(ptr [[TMP2]], ptr [[TMP3]], i64 [[TMP0]], ptr [[TMP4]]) #[[ATTR6]], !dbg [[DBG72]]
+// CHECK2-NEXT:    call void @main.omp_outlined_debug__(ptr [[TMP2]], ptr [[TMP3]], i64 [[TMP0]], ptr [[TMP4]]) #[[ATTR5:[0-9]+]], !dbg [[DBG72]]
 // CHECK2-NEXT:    ret void, !dbg [[DBG72]]
 //
 //
@@ -460,19 +406,11 @@ int main (int argc, char **argv) {
 // CHECK2-NEXT:    [[TMP2:%.*]] = load ptr, ptr [[GLOBAL_ADDR]], align 8, !dbg [[DBG100]]
 // CHECK2-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, ptr [[TMP1]], i64 1, !dbg [[DBG101:![0-9]+]]
 // CHECK2-NEXT:    [[TMP3:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !dbg [[DBG101]]
-// CHECK2-NEXT:    invoke void @_Z3fooIiEvT_(i32 noundef [[TMP3]])
-// CHECK2-NEXT:    to label [[INVOKE_CONT:%.*]] unwind label [[TERMINATE_LPAD:%.*]], !dbg [[DBG100]]
-// CHECK2:       invoke.cont:
+// CHECK2-NEXT:    call unwindabort void @_Z3fooIiEvT_(i32 noundef [[TMP3]]), !dbg [[DBG100]]
 // CHECK2-NEXT:    [[TMP4:%.*]] = load i32, ptr [[TMP2]], align 4, !dbg [[DBG102:![0-9]+]]
 // CHECK2-NEXT:    [[ARRAYIDX1:%.*]] = getelementptr inbounds i32, ptr [[TMP1]], i64 1, !dbg [[DBG103:![0-9]+]]
 // CHECK2-NEXT:    store i32 [[TMP4]], ptr [[ARRAYIDX1]], align 4, !dbg [[DBG104:![0-9]+]]
 // CHECK2-NEXT:    ret void, !dbg [[DBG102]]
-// CHECK2:       terminate.lpad:
-// CHECK2-NEXT:    [[TMP5:%.*]] = landingpad { ptr, i32 }
-// CHECK2-NEXT:    catch ptr null, !dbg [[DBG100]]
-// CHECK2-NEXT:    [[TMP6:%.*]] = extractvalue { ptr, i32 } [[TMP5]], 0, !dbg [[DBG100]]
-// CHECK2-NEXT:    call void @__clang_call_terminate(ptr [[TMP6]]) #[[ATTR7]], !dbg [[DBG100]]
-// CHECK2-NEXT:    unreachable, !dbg [[DBG100]]
 //
 //
 // CHECK2-LABEL: define {{[^@]+}}@main.omp_outlined_debug__.1.omp_outlined
@@ -500,7 +438,7 @@ int main (int argc, char **argv) {
 // CHECK2-NEXT:    [[TMP4:%.*]] = load ptr, ptr [[DOTBOUND_TID__ADDR]], align 8, !dbg [[DBG112]]
 // CHECK2-NEXT:    [[TMP5:%.*]] = load ptr, ptr [[A_ADDR]], align 8, !dbg [[DBG112]]
 // CHECK2-NEXT:    [[TMP6:%.*]] = load ptr, ptr [[GLOBAL_ADDR]], align 8, !dbg [[DBG112]]
-// CHECK2-NEXT:    call void @main.omp_outlined_debug__.1.omp_outlined_debug__(ptr [[TMP3]], ptr [[TMP4]], i64 [[TMP0]], ptr [[TMP5]], ptr [[TMP6]]) #[[ATTR6]], !dbg [[DBG112]]
+// CHECK2-NEXT:    call void @main.omp_outlined_debug__.1.omp_outlined_debug__(ptr [[TMP3]], ptr [[TMP4]], i64 [[TMP0]], ptr [[TMP5]], ptr [[TMP6]]) #[[ATTR5]], !dbg [[DBG112]]
 // CHECK2-NEXT:    ret void, !dbg [[DBG112]]
 //
 //
@@ -519,7 +457,7 @@ int main (int argc, char **argv) {
 // CHECK2-NEXT:    [[TMP0:%.*]] = load i64, ptr [[VLA_ADDR]], align 8, !dbg [[DBG118:![0-9]+]]
 // CHECK2-NEXT:    [[TMP1:%.*]] = load ptr, ptr [[DOTGLOBAL_TID__ADDR]], align 8, !dbg [[DBG118]]
 // CHECK2-NEXT:    [[TMP2:%.*]] = load ptr, ptr [[DOTBOUND_TID__ADDR]], align 8, !dbg [[DBG118]]
-// CHECK2-NEXT:    call void @main.omp_outlined_debug__.1(ptr [[TMP1]], ptr [[TMP2]], i64 [[TMP0]]) #[[ATTR6]], !dbg [[DBG118]]
+// CHECK2-NEXT:    call void @main.omp_outlined_debug__.1(ptr [[TMP1]], ptr [[TMP2]], i64 [[TMP0]]) #[[ATTR5]], !dbg [[DBG118]]
 // CHECK2-NEXT:    ret void, !dbg [[DBG118]]
 //
 //
@@ -563,19 +501,11 @@ int main (int argc, char **argv) {
 // CHECK2-NEXT:    [[TMP1:%.*]] = load ptr, ptr [[A_ADDR]], align 8, !dbg [[DBG135]]
 // CHECK2-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, ptr [[TMP1]], i64 1, !dbg [[DBG136:![0-9]+]]
 // CHECK2-NEXT:    [[TMP2:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !dbg [[DBG136]]
-// CHECK2-NEXT:    invoke void @_Z3fooIiEvT_(i32 noundef [[TMP2]])
-// CHECK2-NEXT:    to label [[INVOKE_CONT:%.*]] unwind label [[TERMINATE_LPAD:%.*]], !dbg [[DBG135]]
-// CHECK2:       invoke.cont:
+// CHECK2-NEXT:    call unwindabort void @_Z3fooIiEvT_(i32 noundef [[TMP2]]), !dbg [[DBG135]]
 // CHECK2-NEXT:    [[TMP3:%.*]] = load i32, ptr @global, align 4, !dbg [[DBG137:![0-9]+]]
 // CHECK2-NEXT:    [[ARRAYIDX1:%.*]] = getelementptr inbounds i32, ptr [[TMP1]], i64 1, !dbg [[DBG138:![0-9]+]]
 // CHECK2-NEXT:    store i32 [[TMP3]], ptr [[ARRAYIDX1]], align 4, !dbg [[DBG139:![0-9]+]]
 // CHECK2-NEXT:    ret void, !dbg [[DBG137]]
-// CHECK2:       terminate.lpad:
-// CHECK2-NEXT:    [[TMP4:%.*]] = landingpad { ptr, i32 }
-// CHECK2-NEXT:    catch ptr null, !dbg [[DBG135]]
-// CHECK2-NEXT:    [[TMP5:%.*]] = extractvalue { ptr, i32 } [[TMP4]], 0, !dbg [[DBG135]]
-// CHECK2-NEXT:    call void @__clang_call_terminate(ptr [[TMP5]]) #[[ATTR7]], !dbg [[DBG135]]
-// CHECK2-NEXT:    unreachable, !dbg [[DBG135]]
 //
 //
 // CHECK2-LABEL: define {{[^@]+}}@main.omp_outlined_debug__.3.omp_outlined
@@ -598,7 +528,7 @@ int main (int argc, char **argv) {
 // CHECK2-NEXT:    [[TMP2:%.*]] = load ptr, ptr [[DOTGLOBAL_TID__ADDR]], align 8, !dbg [[DBG146]]
 // CHECK2-NEXT:    [[TMP3:%.*]] = load ptr, ptr [[DOTBOUND_TID__ADDR]], align 8, !dbg [[DBG146]]
 // CHECK2-NEXT:    [[TMP4:%.*]] = load ptr, ptr [[A_ADDR]], align 8, !dbg [[DBG146]]
-// CHECK2-NEXT:    call void @main.omp_outlined_debug__.3.omp_outlined_debug__(ptr [[TMP2]], ptr [[TMP3]], i64 [[TMP0]], ptr [[TMP4]]) #[[ATTR6]], !dbg [[DBG146]]
+// CHECK2-NEXT:    call void @main.omp_outlined_debug__.3.omp_outlined_debug__(ptr [[TMP2]], ptr [[TMP3]], i64 [[TMP0]], ptr [[TMP4]]) #[[ATTR5]], !dbg [[DBG146]]
 // CHECK2-NEXT:    ret void, !dbg [[DBG146]]
 //
 //
@@ -622,7 +552,7 @@ int main (int argc, char **argv) {
 // CHECK2-NEXT:    [[TMP2:%.*]] = load ptr, ptr [[DOTGLOBAL_TID__ADDR]], align 8, !dbg [[DBG153]]
 // CHECK2-NEXT:    [[TMP3:%.*]] = load ptr, ptr [[DOTBOUND_TID__ADDR]], align 8, !dbg [[DBG153]]
 // CHECK2-NEXT:    [[TMP4:%.*]] = load ptr, ptr [[A_ADDR]], align 8, !dbg [[DBG153]]
-// CHECK2-NEXT:    call void @main.omp_outlined_debug__.3(ptr [[TMP2]], ptr [[TMP3]], i64 [[TMP0]], ptr [[TMP4]]) #[[ATTR6]], !dbg [[DBG153]]
+// CHECK2-NEXT:    call void @main.omp_outlined_debug__.3(ptr [[TMP2]], ptr [[TMP3]], i64 [[TMP0]], ptr [[TMP4]]) #[[ATTR5]], !dbg [[DBG153]]
 // CHECK2-NEXT:    ret void, !dbg [[DBG153]]
 //
 //
@@ -661,21 +591,13 @@ int main (int argc, char **argv) {
 // CHECK2-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[ARGC_ADDR]], align 8, !dbg [[DBG175:![0-9]+]]
 // CHECK2-NEXT:    [[TMP1:%.*]] = load i64, ptr [[VLA_ADDR]], align 8, !dbg [[DBG175]]
 // CHECK2-NEXT:    [[TMP2:%.*]] = load ptr, ptr [[TMP0]], align 8, !dbg [[DBG176:![0-9]+]]
-// CHECK2-NEXT:    invoke void @_Z3fooIPPcEvT_(ptr noundef [[TMP2]])
-// CHECK2-NEXT:    to label [[INVOKE_CONT:%.*]] unwind label [[TERMINATE_LPAD:%.*]], !dbg [[DBG178:![0-9]+]]
-// CHECK2:       invoke.cont:
+// CHECK2-NEXT:    call unwindabort void @_Z3fooIPPcEvT_(ptr noundef [[TMP2]]), !dbg [[DBG178:![0-9]+]]
 // CHECK2-NEXT:    call void @llvm.dbg.declare(metadata ptr [[VAR]], metadata [[META179:![0-9]+]], metadata !DIExpression()), !dbg [[DBG186:![0-9]+]]
 // CHECK2-NEXT:    [[TMP3:%.*]] = load ptr, ptr [[VAR]], align 8, !dbg [[DBG187:![0-9]+]]
 // CHECK2-NEXT:    [[TMP4:%.*]] = mul nsw i64 0, [[TMP1]], !dbg [[DBG187]]
 // CHECK2-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds double, ptr [[TMP3]], i64 [[TMP4]], !dbg [[DBG187]]
 // CHECK2-NEXT:    [[ARRAYIDX1:%.*]] = getelementptr inbounds double, ptr [[ARRAYIDX]], i64 0, !dbg [[DBG187]]
 // CHECK2-NEXT:    ret void, !dbg [[DBG188:![0-9]+]]
-// CHECK2:       terminate.lpad:
-// CHECK2-NEXT:    [[TMP5:%.*]] = landingpad { ptr, i32 }
-// CHECK2-NEXT:    catch ptr null, !dbg [[DBG178]]
-// CHECK2-NEXT:    [[TMP6:%.*]] = extractvalue { ptr, i32 } [[TMP5]], 0, !dbg [[DBG178]]
-// CHECK2-NEXT:    call void @__clang_call_terminate(ptr [[TMP6]]) #[[ATTR7]], !dbg [[DBG178]]
-// CHECK2-NEXT:    unreachable, !dbg [[DBG178]]
 //
 //
 // CHECK2-LABEL: define {{[^@]+}}@_Z3fooIPPcEvT_
@@ -707,7 +629,7 @@ int main (int argc, char **argv) {
 // CHECK2-NEXT:    [[TMP2:%.*]] = load ptr, ptr [[DOTGLOBAL_TID__ADDR]], align 8, !dbg [[DBG201]]
 // CHECK2-NEXT:    [[TMP3:%.*]] = load ptr, ptr [[DOTBOUND_TID__ADDR]], align 8, !dbg [[DBG201]]
 // CHECK2-NEXT:    [[TMP4:%.*]] = load ptr, ptr [[ARGC_ADDR]], align 8, !dbg [[DBG201]]
-// CHECK2-NEXT:    call void @_Z5tmainIPPcEiT_.omp_outlined_debug__(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], i64 [[TMP1]]) #[[ATTR6]], !dbg [[DBG201]]
+// CHECK2-NEXT:    call void @_Z5tmainIPPcEiT_.omp_outlined_debug__(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], i64 [[TMP1]]) #[[ATTR5]], !dbg [[DBG201]]
 // CHECK2-NEXT:    ret void, !dbg [[DBG201]]
 //
 //

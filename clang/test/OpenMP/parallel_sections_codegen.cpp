@@ -101,14 +101,10 @@ int main() {
 // CHECK1-NEXT:    i32 1, label [[DOTOMP_SECTIONS_CASE1:%.*]]
 // CHECK1-NEXT:    ]
 // CHECK1:       .omp.sections.case:
-// CHECK1-NEXT:    invoke void @_Z3foov()
-// CHECK1-NEXT:    to label [[INVOKE_CONT:%.*]] unwind label [[TERMINATE_LPAD:%.*]]
-// CHECK1:       invoke.cont:
+// CHECK1-NEXT:    call unwindabort void @_Z3foov()
 // CHECK1-NEXT:    br label [[DOTOMP_SECTIONS_EXIT]]
 // CHECK1:       .omp.sections.case1:
-// CHECK1-NEXT:    invoke void @_Z3barv()
-// CHECK1-NEXT:    to label [[INVOKE_CONT2:%.*]] unwind label [[TERMINATE_LPAD]]
-// CHECK1:       invoke.cont2:
+// CHECK1-NEXT:    call unwindabort void @_Z3barv()
 // CHECK1-NEXT:    br label [[DOTOMP_SECTIONS_EXIT]]
 // CHECK1:       .omp.sections.exit:
 // CHECK1-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
@@ -120,23 +116,10 @@ int main() {
 // CHECK1:       omp.inner.for.end:
 // CHECK1-NEXT:    call void @__kmpc_for_static_fini(ptr @[[GLOB1]], i32 [[TMP1]])
 // CHECK1-NEXT:    ret void
-// CHECK1:       terminate.lpad:
-// CHECK1-NEXT:    [[TMP10:%.*]] = landingpad { ptr, i32 }
-// CHECK1-NEXT:    catch ptr null
-// CHECK1-NEXT:    [[TMP11:%.*]] = extractvalue { ptr, i32 } [[TMP10]], 0
-// CHECK1-NEXT:    call void @__clang_call_terminate(ptr [[TMP11]]) #[[ATTR7:[0-9]+]]
-// CHECK1-NEXT:    unreachable
-//
-//
-// CHECK1-LABEL: define {{[^@]+}}@__clang_call_terminate
-// CHECK1-SAME: (ptr noundef [[TMP0:%.*]]) #[[ATTR4:[0-9]+]] comdat {
-// CHECK1-NEXT:    [[TMP2:%.*]] = call ptr @__cxa_begin_catch(ptr [[TMP0]]) #[[ATTR5:[0-9]+]]
-// CHECK1-NEXT:    call void @_ZSt9terminatev() #[[ATTR7]]
-// CHECK1-NEXT:    unreachable
 //
 //
 // CHECK1-LABEL: define {{[^@]+}}@_Z5tmainIiET_v
-// CHECK1-SAME: () #[[ATTR6:[0-9]+]] comdat {
+// CHECK1-SAME: () #[[ATTR5:[0-9]+]] comdat {
 // CHECK1-NEXT:  entry:
 // CHECK1-NEXT:    call void (ptr, i32, ptr, ...) @__kmpc_fork_call(ptr @[[GLOB2]], i32 0, ptr @_Z5tmainIiET_v.omp_outlined)
 // CHECK1-NEXT:    ret i32 0
@@ -179,9 +162,7 @@ int main() {
 // CHECK1-NEXT:    i32 0, label [[DOTOMP_SECTIONS_CASE:%.*]]
 // CHECK1-NEXT:    ]
 // CHECK1:       .omp.sections.case:
-// CHECK1-NEXT:    invoke void @_Z3foov()
-// CHECK1-NEXT:    to label [[INVOKE_CONT:%.*]] unwind label [[TERMINATE_LPAD:%.*]]
-// CHECK1:       invoke.cont:
+// CHECK1-NEXT:    call unwindabort void @_Z3foov()
 // CHECK1-NEXT:    br label [[DOTOMP_SECTIONS_EXIT]]
 // CHECK1:       .omp.sections.exit:
 // CHECK1-NEXT:    br label [[OMP_INNER_FOR_INC:%.*]]
@@ -193,10 +174,4 @@ int main() {
 // CHECK1:       omp.inner.for.end:
 // CHECK1-NEXT:    call void @__kmpc_for_static_fini(ptr @[[GLOB1]], i32 [[TMP1]])
 // CHECK1-NEXT:    ret void
-// CHECK1:       terminate.lpad:
-// CHECK1-NEXT:    [[TMP10:%.*]] = landingpad { ptr, i32 }
-// CHECK1-NEXT:    catch ptr null
-// CHECK1-NEXT:    [[TMP11:%.*]] = extractvalue { ptr, i32 } [[TMP10]], 0
-// CHECK1-NEXT:    call void @__clang_call_terminate(ptr [[TMP11]]) #[[ATTR7]]
-// CHECK1-NEXT:    unreachable
 //

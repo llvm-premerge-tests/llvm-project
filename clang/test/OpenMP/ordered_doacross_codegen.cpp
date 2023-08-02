@@ -57,7 +57,7 @@ int main() {
   for (int i = 0; i < n; ++i) {
     a[i] = b[i] + 1;
     foo();
-// CHECK: invoke void [[FOO:.+]](
+// CHECK: call unwindabort void [[FOO:.+]](
 // CHECK: load i32, ptr [[I:%.+]],
 // CHECK-NEXT: sub nsw i32 %{{.+}}, 0
 // CHECK-NEXT: sdiv i32 %{{.+}}, 1
@@ -71,7 +71,7 @@ int main() {
 #pragma omp ordered depend(source)
     c[i] = c[i] + 1;
     foo();
-// CHECK: invoke void [[FOO]]
+// CHECK: call unwindabort void [[FOO]]
 // CHECK: load i32, ptr [[I]],
 // CHECK-NEXT: sub nsw i32 %{{.+}}, 2
 // CHECK-NEXT: sub nsw i32 %{{.+}}, 0
@@ -112,7 +112,7 @@ int main1() {
   for (int i = n; i > 0; --i) {
     a[i] = b[i] + 1;
     foo();
-// CHECK: invoke void [[FOO:.+]](
+// CHECK: call unwindabort void [[FOO:.+]](
 // CHECK: [[UB_VAL:%.+]] = load i32, ptr [[UB:%.+]],
 // CHECK-NEXT: [[I_VAL:%.+]] = load i32, ptr [[I:%.+]],
 // CHECK-NEXT: sub i32 [[UB_VAL]], [[I_VAL]]
@@ -127,7 +127,7 @@ int main1() {
 #pragma omp ordered depend(source)
     c[i] = c[i] + 1;
     foo();
-// CHECK: invoke void [[FOO]]
+// CHECK: call unwindabort void [[FOO]]
 // CHECK: [[UB_VAL:%.+]] = load i32, ptr [[UB]],
 // CHECK-NEXT: [[I_VAL:%.+]] = load i32, ptr [[I]],
 // CHECK-NEXT: [[SUB:%.+]] = sub nsw i32 [[I_VAL]], 2
@@ -181,7 +181,7 @@ struct TestStruct {
     for (T j = 0; j < M; j++)
       for (i = 0; i < n; i += 2) {
         a[i][j] = foo(i, j);
-// CHECK: invoke {{.+TestStruct.+foo}}
+// CHECK: call unwindabort {{.+TestStruct.+foo}}
 // CHECK: load ptr, ptr %
 // CHECK: load i32, ptr %
 // CHECK: load i32, ptr %
@@ -227,7 +227,7 @@ struct TestStruct {
 // CHECK-IRBUILDER-NEXT: call void @__kmpc_doacross_wait(ptr [[IDENT]], i32 [[GTID27]], ptr [[TMP]])
 #pragma omp ordered depend(sink : j, i - 2) depend(sink : j - 1, i)
         b[i][j] = bar(a[i][j], b[i - 1][j], b[i][j - 1]);
-// CHECK: invoke {{.+TestStruct.+bar}}
+// CHECK: call unwindabort {{.+TestStruct.+bar}}
 // CHECK: load ptr, ptr %
 // CHECK: load i32, ptr %
 // CHECK: load i32, ptr %

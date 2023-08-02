@@ -34,7 +34,7 @@ int testA() {
 // CHECK-LABEL: define linkonce_odr hidden void @__destroy_helper_block_e{{4|8}}_{{20|32}}rd{{24|40}}rd(
 // CHECK: invoke void @_Block_object_dispose(
 // CHECK: call void @_Block_object_dispose(
-// CHECK: invoke void @_Block_object_dispose(
+// CHECK: call unwindabort void @_Block_object_dispose(
 
 int testB() {
 	__block B b0, b1;

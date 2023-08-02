@@ -41,7 +41,7 @@ int main() {
 // IRBUILDER:       [[GTID:%.+]] = call {{.*}}i32 @__kmpc_global_thread_num(ptr [[DEFAULT_LOC:@.+]])
 // ALL:       			call {{.*}}void @__kmpc_critical(ptr [[DEFAULT_LOC]], i32 [[GTID]], ptr [[THE_NAME_LOCK]])
 // IRBUILDER-NEXT:	call {{.*}}void [[FOO]]()
-// NORMAL-NEXT:  		invoke {{.*}}void [[FOO]]()
+// NORMAL-NEXT:  		call unwindabort {{.*}}void [[FOO]]()
 // IRBUILDER-NEXT:		br label %[[AFTER:[^ ,]+]]
 // IRBUILDER:			[[AFTER]]
 // ALL:      				call {{.*}}void @__kmpc_end_critical(ptr [[DEFAULT_LOC]], i32 [[GTID]], ptr [[THE_NAME_LOCK]])
@@ -50,7 +50,7 @@ int main() {
 // IRBUILDER:   		[[GTID:%.+]] = call {{.*}}i32 @__kmpc_global_thread_num(ptr [[DEFAULT_LOC:@.+]])
 // ALL: 	      		call {{.*}}void @__kmpc_critical_with_hint(ptr [[DEFAULT_LOC]], i32 [[GTID]], ptr [[THE_NAME_LOCK1]], i{{64|32}} 23)
 // IRBUILDER-NEXT:	call {{.*}}void [[FOO]]()
-// NORMAL-NEXT:		  invoke {{.*}}void [[FOO]]()
+// NORMAL-NEXT:		  call unwindabort {{.*}}void [[FOO]]()
 // IRBUILDER-NEXT:		br label %[[AFTER:[^ ,]+]]
 // IRBUILDER:			[[AFTER]]
 // ALL:		       		call {{.*}}void @__kmpc_end_critical(ptr [[DEFAULT_LOC]], i32 [[GTID]], ptr [[THE_NAME_LOCK1]])
@@ -123,15 +123,11 @@ void parallel_critical() {
 #pragma omp critical
   // TERM_DEBUG-NOT: __kmpc_global_thread_num
   // TERM_DEBUG:     call void @__kmpc_critical({{.+}}), !dbg [[DBG_LOC_START:![0-9]+]]
-  // TERM_DEBUG:     invoke void {{.*}}foo{{.*}}()
-  // TERM_DEBUG:     unwind label %[[TERM_LPAD:.+]],
+  // TERM_DEBUG:     call unwindabort void {{.*}}foo{{.*}}()
   // TERM_DEBUG-NOT: __kmpc_global_thread_num
   // TERM_DEBUG:     call void @__kmpc_end_critical({{.+}}), !dbg [[DBG_LOC_END:![0-9]+]]
-  // TERM_DEBUG:     [[TERM_LPAD]]
-  // TERM_DEBUG:     call void @__clang_call_terminate
-  // TERM_DEBUG:     unreachable
   foo();
 }
-// TERM_DEBUG-DAG: [[DBG_LOC_START]] = !DILocation(line: [[@LINE-12]],
+// TERM_DEBUG-DAG: [[DBG_LOC_START]] = !DILocation(line: [[@LINE-8]],
 // TERM_DEBUG-DAG: [[DBG_LOC_END]] = !DILocation(line: [[@LINE-3]],
 #endif

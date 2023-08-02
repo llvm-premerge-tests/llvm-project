@@ -46,7 +46,7 @@ int main() {
 // ALL-NEXT:  			br i1 [[IS_MASTER]], label {{%?}}[[THEN:.+]], label {{%?}}[[EXIT:.+]]
 // ALL:       			[[THEN]]
 // IRBUILDER-NEXT:  call {{.*}}void [[FOO]]()
-// NORMAL-NEXT:  		invoke {{.*}}void [[FOO]]()
+// NORMAL-NEXT:  		call unwindabort {{.*}}void [[FOO]]()
 // ALL:       			call {{.*}}void @__kmpc_end_master(ptr [[DEFAULT_LOC]], i32 [[GTID]])
 // ALL-NEXT:  			br label {{%?}}[[EXIT]]
 // ALL:       			[[EXIT]]
@@ -99,16 +99,12 @@ void parallel_master() {
 #pragma omp master
   // TERM_DEBUG-NOT: __kmpc_global_thread_num
   // TERM_DEBUG:     call i32 @__kmpc_master({{.+}}), !dbg [[DBG_LOC_START:![0-9]+]]
-  // TERM_DEBUG:     invoke void {{.*}}foo{{.*}}()
-  // TERM_DEBUG:     unwind label %[[TERM_LPAD:.+]],
+  // TERM_DEBUG:     call unwindabort void {{.*}}foo{{.*}}()
   // TERM_DEBUG-NOT: __kmpc_global_thread_num
   // TERM_DEBUG:     call void @__kmpc_end_master({{.+}}), !dbg [[DBG_LOC_END:![0-9]+]]
-  // TERM_DEBUG:     [[TERM_LPAD]]
-  // TERM_DEBUG:     call void @__clang_call_terminate
-  // TERM_DEBUG:     unreachable
   foo();
 }
-// TERM_DEBUG-DAG: [[DBG_LOC_START]] = !DILocation(line: [[@LINE-12]],
+// TERM_DEBUG-DAG: [[DBG_LOC_START]] = !DILocation(line: [[@LINE-8]],
 // TERM_DEBUG-DAG: [[DBG_LOC_END]] = !DILocation(line: [[@LINE-3]],
 
 #endif

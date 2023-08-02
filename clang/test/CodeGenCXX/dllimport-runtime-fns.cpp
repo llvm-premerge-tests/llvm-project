@@ -27,19 +27,15 @@ void foo2() noexcept(true) { bar(); }
 // MSVC: call void @__std_terminate()
 // MSVC: declare dso_local void @__std_terminate()
 
-// _ZSt9terminatev and __cxa_begin_catch should be marked dllimport.
-// ITANIUM-LABEL: define linkonce_odr hidden void @__clang_call_terminate(ptr noundef %0)
-// ITANIUM: call ptr @__cxa_begin_catch({{.*}})
-// ITANIUM: call void @_ZSt9terminatev()
-// ITANIUM: declare dllimport ptr @__cxa_begin_catch(ptr)
-// ITANIUM: declare dllimport void @_ZSt9terminatev()
+// Itanium doesn't explicitly call these anymore.
+// ITANIUM-NOT: __clang_call_terminate
+// ITANIUM-NOT: __cxa_begin_catch
+// ITANIUM-NOT: _ZSt9terminatev
 
-// .. not for mingw.
-// GNU-LABEL: define linkonce_odr hidden void @__clang_call_terminate(ptr noundef %0)
-// GNU: call ptr @__cxa_begin_catch({{.*}})
-// GNU: call void @_ZSt9terminatev()
-// GNU: declare dso_local ptr @__cxa_begin_catch(ptr)
-// GNU: declare dso_local void @_ZSt9terminatev()
+// Nor does mingw.
+// GNU-NOT: __clang_call_terminate
+// GNU-NOT: __cxa_begin_catch
+// GNU-NOT: _ZSt9terminatev
 
 
 struct A {};
