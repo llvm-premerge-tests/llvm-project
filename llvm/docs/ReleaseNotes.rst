@@ -71,6 +71,8 @@ Changes to the AMDGPU Backend
 * `llvm.sqrt.f64` is now lowered correctly. Use `llvm.amdgcn.sqrt.f64`
   for raw instruction access.
 
+* Implemented :ref:`llvm.get.rounding <int_get_rounding>`
+
 Changes to the ARM Backend
 --------------------------
 

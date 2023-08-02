@@ -962,63 +962,82 @@ The AMDGPU backend implements the following LLVM IR intrinsics.
 .. table:: AMDGPU LLVM IR Intrinsics
   :name: amdgpu-llvm-ir-intrinsics-table
 
-  =========================================  ==========================================================
-  LLVM Intrinsic                             Description
-  =========================================  ==========================================================
-  llvm.amdgcn.sqrt                           Provides direct access to v_sqrt_f64, v_sqrt_f32 and v_sqrt_f16
-                                             (on targets with half support). Peforms sqrt function.
+  ==========================================  ==========================================================
+  LLVM Intrinsic                              Description
+  ==========================================  ==========================================================
+  llvm.amdgcn.sqrt                            Provides direct access to v_sqrt_f64, v_sqrt_f32 and v_sqrt_f16
+                                              (on targets with half support). Peforms sqrt function.
 
-  llvm.amdgcn.log                            Provides direct access to v_log_f32 and v_log_f16
-                                             (on targets with half support). Peforms log2 function.
+  llvm.amdgcn.log                             Provides direct access to v_log_f32 and v_log_f16
+                                              (on targets with half support). Peforms log2 function.
 
-  llvm.amdgcn.exp2                           Provides direct access to v_exp_f32 and v_exp_f16
-                                             (on targets with half support). Performs exp2 function.
+  llvm.amdgcn.exp2                            Provides direct access to v_exp_f32 and v_exp_f16
+                                              (on targets with half support). Performs exp2 function.
 
-  :ref:`llvm.frexp <int_frexp>`              Implemented for half, float and double.
+  :ref:`llvm.frexp <int_frexp>`               Implemented for half, float and double.
 
-  :ref:`llvm.log2 <int_log2>`                Implemented for float and half (and vectors of float or
-                                             half). Not implemented for double. Hardware provides
-                                             1ULP accuracy for float, and 0.51ULP for half. Float
-                                             instruction does not natively support denormal
-                                             inputs. Backend will optimize out denormal scaling if
-                                             marked with the :ref:`afn <fastmath_afn>` flag.
+  :ref:`llvm.log2 <int_log2>`                 Implemented for float and half (and vectors of float or
+                                              half). Not implemented for double. Hardware provides
+                                              1ULP accuracy for float, and 0.51ULP for half. Float
+                                              instruction does not natively support denormal
+                                              inputs. Backend will optimize out denormal scaling if
 
-  :ref:`llvm.sqrt <int_sqrt>`                Implemented for double, float and half (and vectors).
+  :ref:`llvm.sqrt <int_sqrt>`                 Implemented for double, float and half (and vectors).
 
-  :ref:`llvm.log <int_log>`                  Implemented for float and half (and vectors).
+  :ref:`llvm.log <int_log>`                   Implemented for float and half (and vectors).
 
-  :ref:`llvm.exp <int_exp>`                  Implemented for float and half (and vectors).
+  :ref:`llvm.exp2 <int_exp2>`                 Implemented for float and half (and vectors of float or
+                                              half). Not implemented for double. Hardware provides
+                                              1ULP accuracy for float, and 0.51ULP for half. Float
+                                              instruction does not natively support denormal
+                                              inputs. Backend will optimize out denormal scaling if
+                                              marked with the :ref:`afn <fastmath_afn>` flag.
 
-  :ref:`llvm.log10 <int_log10>`              Implemented for float and half (and vectors).
+  :ref:`llvm.exp <int_exp>`                   Implemented for float and half (and vectors).
 
-  :ref:`llvm.exp2 <int_exp2>`                Implemented for float and half (and vectors of float or
-                                             half). Not implemented for double. Hardware provides
-                                             1ULP accuracy for float, and 0.51ULP for half. Float
-                                             instruction does not natively support denormal
-                                             inputs. Backend will optimize out denormal scaling if
-                                             marked with the :ref:`afn <fastmath_afn>` flag.
+  :ref:`llvm.exp2 <int_exp2>`                 Implemented for float and half (and vectors of float or
+                                              half). Not implemented for double. Hardware provides
+                                              1ULP accuracy for float, and 0.51ULP for half. Float
+                                              instruction does not natively support denormal
+                                              inputs. Backend will optimize out denormal scaling if
+                                              marked with the :ref:`afn <fastmath_afn>` flag.
 
-  llvm.amdgcn.wave.reduce.umin               Performs an arithmetic unsigned min reduction on the unsigned values
-                                             provided by each lane in the wavefront.
-                                             Intrinsic takes a hint for reduction strategy using second operand
-                                             0: Target default preference,
-                                             1: `Iterative strategy`, and
-                                             2: `DPP`.
-                                             If target does not support the DPP operations (e.g. gfx6/7),
-                                             reduction will be performed using default iterative strategy.
-                                             Intrinsic is currently only implemented for i32.
+  llvm.amdgcn.wave.reduce.umin                Performs an arithmetic unsigned min reduction on the unsigned values
+                                              provided by each lane in the wavefront.
+                                              Intrinsic takes a hint for reduction strategy using second operand
+                                              0: Target default preference,
+                                              1: `Iterative strategy`, and
+                                              2: `DPP`.
+                                              If target does not support the DPP operations (e.g. gfx6/7),
+                                              reduction will be performed using default iterative strategy.
+                                              Intrinsic is currently only implemented for i32.
 
-  llvm.amdgcn.wave.reduce.umax               Performs an arithmetic unsigned max reduction on the unsigned values
-                                             provided by each lane in the wavefront.
-                                             Intrinsic takes a hint for reduction strategy using second operand
-                                             0: Target default preference,
-                                             1: `Iterative strategy`, and
-                                             2: `DPP`.
-                                             If target does not support the DPP operations (e.g. gfx6/7),
-                                             reduction will be performed using default iterative strategy.
-                                             Intrinsic is currently only implemented for i32.
+  llvm.amdgcn.wave.reduce.umax                Performs an arithmetic unsigned max reduction on the unsigned values
+                                              provided by each lane in the wavefront.
+                                              Intrinsic takes a hint for reduction strategy using second operand
+                                              0: Target default preference,
+                                              1: `Iterative strategy`, and
+                                              2: `DPP`.
+                                              If target does not support the DPP operations (e.g. gfx6/7),
+                                              reduction will be performed using default iterative strategy.
+                                              Intrinsic is currently only implemented for i32.
 
-  =========================================  ==========================================================
+  :ref:`llvm.get.rounding<int_get_rounding>`  AMDGPU supports two separately controllable rounding
+                                              modes depending on the floating-point type. One
+                                              controls float, and the other controls both double and
+                                              half operations. If both modes are the same, returns
+                                              one of the standard return values. If the modes are
+                                              different, returns one of :ref:`12 extended values
+                                              <amdgpu-rounding-mode-enumeration-values-table>`
+                                              describing the two modes.
+
+                                              To nearest, ties away from zero is not a supported
+                                              mode. The raw rounding mode values in the MODE
+                                              register do not exactly match the FLT_ROUNDS values,
+                                              so a conversion is performed.
+
+  ==========================================  ==========================================================
+
 
 .. TODO::
 
@@ -4853,6 +4872,22 @@ The fields used by CP for code objects before V3 also match those specified in
      FLOAT_ROUND_MODE_MINUS_INFINITY        2     Round Toward -infinity
      FLOAT_ROUND_MODE_ZERO                  3     Round Toward 0
      ====================================== ===== ==============================
+
+
+  .. table:: Extended FLT_ROUNDS Enumeration Values
+     :name: amdgpu-rounding-mode-enumeration-values-table
+
+     +------------------------+---------------+-------------------+--------------------+----------+
+     |                        | F32 NEAR_EVEN | F32 PLUS_INFINITY | F32 MINUS_INFINITY | F32 ZERO |
+     +------------------------+---------------+-------------------+--------------------+----------+
+     | F64/F16 NEAR_EVEN      |      1        |        11         |        14          |     17   |
+     +------------------------+---------------+-------------------+--------------------+----------+
+     | F64/F16 PLUS_INFINITY  |      8        |         2         |        15          |     18   |
+     +------------------------+---------------+-------------------+--------------------+----------+
+     | F64/F16 MINUS_INFINITY |      9        |        12         |         3          |     19   |
+     +------------------------+---------------+-------------------+--------------------+----------+
+     | F64/F16 ZERO           |     10        |        13         |        16          |     0    |
+     +------------------------+---------------+-------------------+--------------------+----------+
 
 ..
 
