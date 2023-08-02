@@ -13,6 +13,10 @@
 
 #define WITH_SIGNAL(X) #X
 
+#ifndef EXPECT_DEATH
+#define EXPECT_DEATH(FUNC, SIG) ASSERT_DEATH(FUNC, SIG)
+#endif
+
 namespace __llvm_libc::testing {
 using Test = ::zxtest::Test;
 }
