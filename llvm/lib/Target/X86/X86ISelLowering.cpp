@@ -22317,6 +22317,24 @@ static SDValue EmitCmp(SDValue Op0, SDValue Op1, unsigned X86CC,
   return Sub.getValue(1);
 }
 
+bool X86TargetLowering::optimizeFMulOrFDivAsShiftAddBitcast(
+    SDNode *N, SDValue, SDValue IntPow2) const {
+  if (N->getOpcode() == ISD::FDIV)
+    return true;
+
+  EVT FPVT = N->getValueType(0);
+  EVT IntVT = IntPow2.getValueType();
+
+  // This indicates a non-free bitcast.
+  // TODO: This is probably overly conservative as we will need to scale the
+  // integer vector anyways for the int->fp cast.
+  if (FPVT.isVector() &&
+      FPVT.getScalarSizeInBits() != IntVT.getScalarSizeInBits())
+    return false;
+
+  return true;
+}
+
 /// Check if replacement of SQRT with RSQRT should be disabled.
 bool X86TargetLowering::isFsqrtCheap(SDValue Op, SelectionDAG &DAG) const {
   EVT VT = Op.getValueType();
