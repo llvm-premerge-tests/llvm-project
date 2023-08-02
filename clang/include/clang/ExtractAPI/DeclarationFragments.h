@@ -20,10 +20,13 @@
 
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
+#include "clang/AST/DeclBase.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/DeclObjC.h"
+#include "clang/Basic/Specifiers.h"
 #include "clang/Lex/MacroInfo.h"
 #include "llvm/ADT/StringRef.h"
+#include <string>
 #include <vector>
 
 namespace clang {
@@ -173,8 +176,27 @@ public:
   /// Get the corresponding FragmentKind from string \p S.
   static FragmentKind parseFragmentKindFromString(StringRef S);
 
+  static DeclarationFragments
+  getExceptionSpecificationString(ExceptionSpecificationType ExceptionSpec);
+
+  static DeclarationFragments getStructureTypeFragment(const RecordDecl *Decl);
+
 private:
   std::vector<Fragment> Fragments;
+};
+
+class AccessControl {
+public:
+  AccessControl() = default;
+
+  const std::string &getAccess() const { return Access; }
+
+  void setAccess(std::string Acc) { Access = Acc; }
+
+  bool empty() const { return Access.empty(); }
+
+private:
+  std::string Access;
 };
 
 /// Store function signature information with DeclarationFragments of the
@@ -219,6 +241,49 @@ private:
 /// A factory class to build DeclarationFragments for different kinds of Decl.
 class DeclarationFragmentsBuilder {
 public:
+  /// Build FunctionSignature for a function-like declaration \c FunctionT like
+  /// FunctionDecl or ObjCMethodDecl.
+  ///
+  /// The logic and implementation of building a signature for a FunctionDecl
+  /// and an ObjCMethodDecl are exactly the same, but they do not share a common
+  /// base. This template helps reuse the code.
+  template <typename FunctionT>
+  static FunctionSignature getFunctionSignature(const FunctionT *Function) {
+    FunctionSignature Signature;
+
+    DeclarationFragments ReturnType, After;
+    ReturnType
+        .append(getFragmentsForType(Function->getReturnType(),
+                                    Function->getASTContext(), After))
+        .append(std::move(After));
+    Signature.setReturnType(ReturnType);
+
+    for (const auto *Param : Function->parameters())
+      Signature.addParameter(Param->getName(), getFragmentsForParam(Param));
+
+    return Signature;
+  }
+
+  static AccessControl getAccessControl(const Decl *Decl) {
+    AccessControl AccessControl;
+
+    switch (Decl->getAccess()) {
+    case AS_public:
+      AccessControl.setAccess("public");
+      break;
+    case AS_private:
+      AccessControl.setAccess("private");
+      break;
+    case AS_protected:
+      AccessControl.setAccess("protected");
+      break;
+    case AS_none:
+      AccessControl.setAccess("none");
+      break;
+    }
+    return AccessControl;
+  }
+
   /// Build DeclarationFragments for a variable declaration VarDecl.
   static DeclarationFragments getFragmentsForVar(const VarDecl *);
 
@@ -238,6 +303,19 @@ public:
 
   /// Build DeclarationFragments for a struct record declaration RecordDecl.
   static DeclarationFragments getFragmentsForStruct(const RecordDecl *);
+
+  static DeclarationFragments getFragmentsForCXXClass(const CXXRecordDecl *);
+
+  static DeclarationFragments
+  getFragmentsForSpecialCXXMethod(const CXXMethodDecl *);
+
+  static DeclarationFragments getFragmentsForCXXMethod(const CXXMethodDecl *);
+
+  static DeclarationFragments
+  getFragmentsForConversionFunction(const CXXConversionDecl *);
+
+  static DeclarationFragments
+  getFragmentsForOverloadedOperator(const CXXMethodDecl *);
 
   /// Build DeclarationFragments for an Objective-C category declaration
   /// ObjCCategoryDecl.
@@ -282,15 +360,6 @@ public:
 
   /// Build a sub-heading for macro \p Name.
   static DeclarationFragments getSubHeadingForMacro(StringRef Name);
-
-  /// Build FunctionSignature for a function-like declaration \c FunctionT like
-  /// FunctionDecl or ObjCMethodDecl.
-  ///
-  /// The logic and implementation of building a signature for a FunctionDecl
-  /// and an ObjCMethodDecl are exactly the same, but they do not share a common
-  /// base. This template helps reuse the code.
-  template <typename FunctionT>
-  static FunctionSignature getFunctionSignature(const FunctionT *);
 
 private:
   DeclarationFragmentsBuilder() = delete;
