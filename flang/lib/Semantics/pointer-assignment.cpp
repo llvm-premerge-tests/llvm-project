@@ -42,8 +42,8 @@ class PointerAssignmentChecker {
 public:
   PointerAssignmentChecker(SemanticsContext &context, const Scope &scope,
       parser::CharBlock source, const std::string &description)
-      : context_{context}, scope_{scope}, source_{source}, description_{
-                                                               description} {}
+      : context_{context}, scope_{scope}, source_{source},
+        description_{description} {}
   PointerAssignmentChecker(
       SemanticsContext &context, const Scope &scope, const Symbol &lhs)
       : context_{context}, scope_{scope}, source_{lhs.name()},
@@ -177,7 +177,7 @@ bool PointerAssignmentChecker::Check(const SomeExpr &rhs) {
   }
   if (const auto *pureProc{FindPureProcedureContaining(scope_)}) {
     if (pointerComponentLHS_) { // C1594(4) is a hard error
-      if (const Symbol * object{FindExternallyVisibleObject(rhs, *pureProc)}) {
+      if (const Symbol *object{FindExternallyVisibleObject(rhs, *pureProc)}) {
         if (auto *msg{Say(
                 "Externally visible object '%s' may not be associated with pointer component '%s' in a pure procedure"_err_en_US,
                 object->name(), pointerComponentLHS_->name())}) {
@@ -187,7 +187,7 @@ bool PointerAssignmentChecker::Check(const SomeExpr &rhs) {
         }
         return false;
       }
-    } else if (const Symbol * base{GetFirstSymbol(rhs)}) {
+    } else if (const Symbol *base{GetFirstSymbol(rhs)}) {
       if (const char *why{WhyBaseObjectIsSuspicious(
               base->GetUltimate(), scope_)}) { // C1594(3)
         evaluate::SayWithDeclaration(foldingContext_.messages(), *base,
@@ -360,7 +360,7 @@ bool PointerAssignmentChecker::Check(parser::CharBlock rhsName, bool isCall,
 }
 
 bool PointerAssignmentChecker::Check(const evaluate::ProcedureDesignator &d) {
-  if (const Symbol * symbol{d.GetSymbol()}) {
+  if (const Symbol *symbol{d.GetSymbol()}) {
     if (const auto *subp{
             symbol->GetUltimate().detailsIf<SubprogramDetails>()}) {
       if (subp->stmtFunction()) {

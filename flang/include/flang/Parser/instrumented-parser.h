@@ -54,8 +54,8 @@ public:
   constexpr InstrumentedParser(const MessageFixedText &tag, const PA &parser)
       : tag_{tag}, parser_{parser} {}
   std::optional<resultType> Parse(ParseState &state) const {
-    if (UserState * ustate{state.userState()}) {
-      if (ParsingLog * log{ustate->log()}) {
+    if (UserState *ustate{state.userState()}) {
+      if (ParsingLog *log{ustate->log()}) {
         const char *at{state.GetLocation()};
         if (log->Fails(at, tag_, state)) {
           return std::nullopt;

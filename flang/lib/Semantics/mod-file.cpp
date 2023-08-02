@@ -346,7 +346,7 @@ void ModFileWriter::PutDerivedType(
     return;
   }
   PutAttrs(decls_ << "type", typeSymbol.attrs());
-  if (const DerivedTypeSpec * extends{typeSymbol.GetParentTypeSpec()}) {
+  if (const DerivedTypeSpec *extends{typeSymbol.GetParentTypeSpec()}) {
     decls_ << ",extends(" << extends->name() << ')';
   }
   decls_ << "::" << typeSymbol.name();
@@ -423,7 +423,7 @@ static const Attrs subprogramPrefixAttrs{Attr::ELEMENTAL, Attr::IMPURE,
 
 void ModFileWriter::PutSubprogram(const Symbol &symbol) {
   auto &details{symbol.get<SubprogramDetails>()};
-  if (const Symbol * interface{details.moduleInterface()}) {
+  if (const Symbol *interface{details.moduleInterface()}) {
     const Scope *module{FindModuleContaining(interface->owner())};
     if (module && module != &symbol.owner()) {
       // Interface is in ancestor module
@@ -1185,7 +1185,9 @@ void SubprogramSymbolCollector::Collect() {
         needed = needed || (spec && useSet_.count(*spec) > 0) ||
             (dt && useSet_.count(*dt) > 0);
       } else if (const auto *subp{ultimate.detailsIf<SubprogramDetails>()}) {
-        const Symbol *interface { subp->moduleInterface() };
+        const Symbol *interface {
+          subp->moduleInterface()
+        };
         needed = needed || (interface && useSet_.count(*interface) > 0);
       }
       if (needed) {
@@ -1248,7 +1250,7 @@ void SubprogramSymbolCollector::DoSymbol(
                         DoBound(spec.lbound());
                         DoBound(spec.ubound());
                       }
-                      if (const Symbol * commonBlock{details.commonBlock()}) {
+                      if (const Symbol *commonBlock{details.commonBlock()}) {
                         DoSymbol(*commonBlock);
                       }
                     },
@@ -1287,9 +1289,9 @@ void SubprogramSymbolCollector::DoType(const DeclTypeSpec *type) {
     DoParamValue(type->characterTypeSpec().length());
     break;
   default:
-    if (const DerivedTypeSpec * derived{type->AsDerived()}) {
+    if (const DerivedTypeSpec *derived{type->AsDerived()}) {
       const auto &typeSymbol{derived->typeSymbol()};
-      if (const DerivedTypeSpec * extends{typeSymbol.GetParentTypeSpec()}) {
+      if (const DerivedTypeSpec *extends{typeSymbol.GetParentTypeSpec()}) {
         DoSymbol(extends->name(), extends->typeSymbol());
       }
       for (const auto &pair : derived->parameters()) {
@@ -1305,7 +1307,7 @@ void SubprogramSymbolCollector::DoType(const DeclTypeSpec *type) {
 }
 
 void SubprogramSymbolCollector::DoBound(const Bound &bound) {
-  if (const MaybeSubscriptIntExpr & expr{bound.GetExplicit()}) {
+  if (const MaybeSubscriptIntExpr &expr{bound.GetExplicit()}) {
     DoExpr(*expr);
   }
 }

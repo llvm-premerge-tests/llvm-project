@@ -150,16 +150,16 @@ InternalFormattedIoStatementState<DIR, CHAR>::InternalFormattedIoStatementState(
     std::size_t formatLength, const Descriptor *formatDescriptor,
     const char *sourceFile, int sourceLine)
     : InternalIoStatementState<DIR>{buffer, length, sourceFile, sourceLine},
-      ioStatementState_{*this}, format_{*this, format, formatLength,
-                                    formatDescriptor} {}
+      ioStatementState_{*this},
+      format_{*this, format, formatLength, formatDescriptor} {}
 
 template <Direction DIR, typename CHAR>
 InternalFormattedIoStatementState<DIR, CHAR>::InternalFormattedIoStatementState(
     const Descriptor &d, const CharType *format, std::size_t formatLength,
     const Descriptor *formatDescriptor, const char *sourceFile, int sourceLine)
     : InternalIoStatementState<DIR>{d, sourceFile, sourceLine},
-      ioStatementState_{*this}, format_{*this, format, formatLength,
-                                    formatDescriptor} {}
+      ioStatementState_{*this},
+      format_{*this, format, formatLength, formatDescriptor} {}
 
 template <Direction DIR, typename CHAR>
 void InternalFormattedIoStatementState<DIR, CHAR>::CompleteOperation() {
@@ -194,7 +194,7 @@ ExternalIoStatementBase::ExternalIoStatementBase(
     : IoStatementBase{sourceFile, sourceLine}, unit_{unit} {}
 
 MutableModes &ExternalIoStatementBase::mutableModes() {
-  if (const ChildIo * child{unit_.GetChildIo()}) {
+  if (const ChildIo *child{unit_.GetChildIo()}) {
     return child->parent().mutableModes();
   }
   return unit_.modes;
@@ -314,8 +314,8 @@ int NoUnitIoStatementState::EndIoStatement() {
 template <Direction DIR>
 ExternalIoStatementState<DIR>::ExternalIoStatementState(
     ExternalFileUnit &unit, const char *sourceFile, int sourceLine)
-    : ExternalIoStatementBase{unit, sourceFile, sourceLine}, mutableModes_{
-                                                                 unit.modes} {
+    : ExternalIoStatementBase{unit, sourceFile, sourceLine},
+      mutableModes_{unit.modes} {
   if constexpr (DIR == Direction::Output) {
     // If the last statement was a non-advancing IO input statement, the unit
     // furthestPositionInRecord was not advanced, but the positionInRecord may
@@ -879,9 +879,8 @@ ChildFormattedIoStatementState<DIR, CHAR>::ChildFormattedIoStatementState(
     ChildIo &child, const CHAR *format, std::size_t formatLength,
     const Descriptor *formatDescriptor, const char *sourceFile, int sourceLine)
     : ChildIoStatementState<DIR>{child, sourceFile, sourceLine},
-      mutableModes_{child.parent().mutableModes()}, format_{*this, format,
-                                                        formatLength,
-                                                        formatDescriptor} {}
+      mutableModes_{child.parent().mutableModes()},
+      format_{*this, format, formatLength, formatDescriptor} {}
 
 template <Direction DIR, typename CHAR>
 void ChildFormattedIoStatementState<DIR, CHAR>::CompleteOperation() {
@@ -1316,8 +1315,8 @@ bool InquireNoUnitState::Inquire(
 
 InquireUnconnectedFileState::InquireUnconnectedFileState(
     OwningPtr<char> &&path, const char *sourceFile, int sourceLine)
-    : NoUnitIoStatementState{*this, sourceFile, sourceLine}, path_{std::move(
-                                                                 path)} {}
+    : NoUnitIoStatementState{*this, sourceFile, sourceLine},
+      path_{std::move(path)} {}
 
 bool InquireUnconnectedFileState::Inquire(
     InquiryKeywordHash inquiry, char *result, std::size_t length) {

@@ -25,7 +25,7 @@ bool EmitEncoded(CONTEXT &to, const CHAR *data, std::size_t chars) {
       connection.internalIoCharKind == 0) {
     // Stream output: treat newlines as record advancements so that the left tab
     // limit is correctly managed
-    while (const CHAR * nl{FindCharacter(data, CHAR{'\n'}, chars)}) {
+    while (const CHAR *nl{FindCharacter(data, CHAR{'\n'}, chars)}) {
       auto pos{static_cast<std::size_t>(nl - data)};
       if (!EmitEncoded(to, data, pos)) {
         return false;

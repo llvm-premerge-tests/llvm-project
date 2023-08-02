@@ -96,7 +96,7 @@ auto IsVariableHelper::operator()(const Substring &x) const -> Result {
 }
 auto IsVariableHelper::operator()(const ProcedureDesignator &x) const
     -> Result {
-  if (const Symbol * symbol{x.GetSymbol()}) {
+  if (const Symbol *symbol{x.GetSymbol()}) {
     const Symbol *result{FindFunctionResult(*symbol)};
     return result && IsPointer(*result) && !IsProcedurePointer(*result);
   }
@@ -788,7 +788,7 @@ bool IsObjectPointer(const Expr<SomeType> &expr, FoldingContext &context) {
     return false;
   } else if (const auto *funcRef{UnwrapProcedureRef(expr)}) {
     return IsVariable(*funcRef);
-  } else if (const Symbol * symbol{UnwrapWholeSymbolOrComponentDataRef(expr)}) {
+  } else if (const Symbol *symbol{UnwrapWholeSymbolOrComponentDataRef(expr)}) {
     return IsPointer(symbol->GetUltimate());
   } else {
     return false;
@@ -1164,8 +1164,8 @@ bool IsAllocatableOrPointerObject(
 
 bool IsAllocatableDesignator(const Expr<SomeType> &expr) {
   // Allocatable sub-objects are not themselves allocatable (9.5.3.1 NOTE 2).
-  if (const semantics::Symbol *
-      sym{UnwrapWholeSymbolOrComponentOrCoarrayRef(expr)}) {
+  if (const semantics::Symbol *sym{
+          UnwrapWholeSymbolOrComponentOrCoarrayRef(expr)}) {
     return semantics::IsAllocatable(sym->GetUltimate());
   }
   return false;
@@ -1208,7 +1208,7 @@ namespace Fortran::semantics {
 const Symbol &ResolveAssociations(const Symbol &original) {
   const Symbol &symbol{original.GetUltimate()};
   if (const auto *details{symbol.detailsIf<AssocEntityDetails>()}) {
-    if (const Symbol * nested{UnwrapWholeSymbolDataRef(details->expr())}) {
+    if (const Symbol *nested{UnwrapWholeSymbolDataRef(details->expr())}) {
       return ResolveAssociations(*nested);
     }
   }
@@ -1219,7 +1219,7 @@ const Symbol &ResolveAssociationsExceptSelectRank(const Symbol &original) {
   const Symbol &symbol{original.GetUltimate()};
   if (const auto *details{symbol.detailsIf<AssocEntityDetails>()}) {
     if (!details->rank()) {
-      if (const Symbol * nested{UnwrapWholeSymbolDataRef(details->expr())}) {
+      if (const Symbol *nested{UnwrapWholeSymbolDataRef(details->expr())}) {
         return ResolveAssociations(*nested);
       }
     }
@@ -1234,7 +1234,7 @@ const Symbol &ResolveAssociationsExceptSelectRank(const Symbol &original) {
 static const Symbol *GetAssociatedVariable(const AssocEntityDetails &details) {
   if (const auto &expr{details.expr()}) {
     if (IsVariable(*expr) && !HasVectorSubscript(*expr)) {
-      if (const Symbol * varSymbol{GetFirstSymbol(*expr)}) {
+      if (const Symbol *varSymbol{GetFirstSymbol(*expr)}) {
         return &GetAssociationRoot(*varSymbol);
       }
     }
@@ -1245,7 +1245,7 @@ static const Symbol *GetAssociatedVariable(const AssocEntityDetails &details) {
 const Symbol &GetAssociationRoot(const Symbol &original) {
   const Symbol &symbol{ResolveAssociations(original)};
   if (const auto *details{symbol.detailsIf<AssocEntityDetails>()}) {
-    if (const Symbol * root{GetAssociatedVariable(*details)}) {
+    if (const Symbol *root{GetAssociatedVariable(*details)}) {
       return *root;
     }
   }
@@ -1255,8 +1255,8 @@ const Symbol &GetAssociationRoot(const Symbol &original) {
 const Symbol *GetMainEntry(const Symbol *symbol) {
   if (symbol) {
     if (const auto *subpDetails{symbol->detailsIf<SubprogramDetails>()}) {
-      if (const Scope * scope{subpDetails->entryScope()}) {
-        if (const Symbol * main{scope->symbol()}) {
+      if (const Scope *scope{subpDetails->entryScope()}) {
+        if (const Symbol *main{scope->symbol()}) {
           return main;
         }
       }
@@ -1327,7 +1327,7 @@ bool IsElementalProcedure(const Symbol &original) {
   // An ENTRY is elemental if its containing subprogram is
   const Symbol &symbol{DEREF(GetMainEntry(&original.GetUltimate()))};
   if (const auto *procDetails{symbol.detailsIf<ProcEntityDetails>()}) {
-    if (const Symbol * procInterface{procDetails->procInterface()}) {
+    if (const Symbol *procInterface{procDetails->procInterface()}) {
       // procedure with an elemental interface, ignoring the elemental
       // aspect of intrinsic functions
       return !procInterface->attrs().test(Attr::INTRINSIC) &&
@@ -1404,7 +1404,7 @@ bool IsAutomatic(const Symbol &original) {
   const Symbol &symbol{original.GetUltimate()};
   if (const auto *object{symbol.detailsIf<ObjectEntityDetails>()}) {
     if (!object->isDummy() && !IsAllocatable(symbol) && !IsPointer(symbol)) {
-      if (const DeclTypeSpec * type{symbol.GetType()}) {
+      if (const DeclTypeSpec *type{symbol.GetType()}) {
         // If a type parameter value is not a constant expression, the
         // object is automatic.
         if (type->category() == DeclTypeSpec::Character) {
@@ -1414,7 +1414,7 @@ bool IsAutomatic(const Symbol &original) {
               return true;
             }
           }
-        } else if (const DerivedTypeSpec * derived{type->AsDerived()}) {
+        } else if (const DerivedTypeSpec *derived{type->AsDerived()}) {
           for (const auto &pair : derived->parameters()) {
             if (const auto &value{pair.second.GetExplicit()}) {
               if (!evaluate::IsConstantExpr(*value)) {
@@ -1494,7 +1494,7 @@ bool IsSaved(const Symbol &original) {
     return true;
   } else if (scope.hasSAVE()) {
     return true; // bare SAVE statement
-  } else if (const Symbol * block{FindCommonBlockContaining(symbol)};
+  } else if (const Symbol *block{FindCommonBlockContaining(symbol)};
              block && block->attrs().test(Attr::SAVE)) {
     return true; // in COMMON with SAVE
   } else {
@@ -1680,7 +1680,7 @@ common::IgnoreTKRSet GetIgnoreTKR(const Symbol &symbol) {
   common::IgnoreTKRSet result;
   if (const auto *object{symbol.detailsIf<ObjectEntityDetails>()}) {
     result = object->ignoreTKR();
-    if (const Symbol * ownerSymbol{symbol.owner().symbol()}) {
+    if (const Symbol *ownerSymbol{symbol.owner().symbol()}) {
       if (const auto *ownerSubp{ownerSymbol->detailsIf<SubprogramDetails>()}) {
         if (ownerSubp->defaultIgnoreTKR()) {
           result |= common::ignoreTKRAll;

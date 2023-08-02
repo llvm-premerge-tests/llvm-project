@@ -550,7 +550,7 @@ void IoChecker::Enter(const parser::IoControlSpec::Size &var) {
 }
 
 void IoChecker::Enter(const parser::IoUnit &spec) {
-  if (const parser::Variable * var{std::get_if<parser::Variable>(&spec.u)}) {
+  if (const parser::Variable *var{std::get_if<parser::Variable>(&spec.u)}) {
     // Only now after generic resolution can it be known whether a function
     // call appearing as UNIT=f() is an integer scalar external unit number
     // or a character pointer for internal I/O.
@@ -753,7 +753,7 @@ void IoChecker::Leave(const parser::PrintStmt &) {
 static const parser::Name *FindNamelist(
     const std::list<parser::IoControlSpec> &controls) {
   for (const auto &control : controls) {
-    if (const parser::Name * namelist{std::get_if<parser::Name>(&control.u)}) {
+    if (const parser::Name *namelist{std::get_if<parser::Name>(&control.u)}) {
       if (namelist->symbol &&
           namelist->symbol->GetUltimate().has<NamelistDetails>()) {
         return namelist;
@@ -767,8 +767,8 @@ static void CheckForDoVariable(
     const parser::ReadStmt &readStmt, SemanticsContext &context) {
   const std::list<parser::InputItem> &items{readStmt.items};
   for (const auto &item : items) {
-    if (const parser::Variable *
-        variable{std::get_if<parser::Variable>(&item.u)}) {
+    if (const parser::Variable *variable{
+            std::get_if<parser::Variable>(&item.u)}) {
       context.CheckIndexVarRedefine(*variable);
     }
   }
@@ -778,7 +778,7 @@ void IoChecker::Leave(const parser::ReadStmt &readStmt) {
   if (!flags_.test(Flag::InternalUnit)) {
     CheckForPureSubprogram();
   }
-  if (const parser::Name * namelist{FindNamelist(readStmt.controls)}) {
+  if (const parser::Name *namelist{FindNamelist(readStmt.controls)}) {
     if (namelist->symbol) {
       CheckNamelist(*namelist->symbol, common::DefinedIo::ReadFormatted,
           namelist->source);
@@ -821,7 +821,7 @@ void IoChecker::Leave(const parser::WriteStmt &writeStmt) {
   if (!flags_.test(Flag::InternalUnit)) {
     CheckForPureSubprogram();
   }
-  if (const parser::Name * namelist{FindNamelist(writeStmt.controls)}) {
+  if (const parser::Name *namelist{FindNamelist(writeStmt.controls)}) {
     if (namelist->symbol) {
       CheckNamelist(*namelist->symbol, common::DefinedIo::WriteFormatted,
           namelist->source);
@@ -1036,8 +1036,8 @@ void IoChecker::CheckForDefinableVariable(
 
 void IoChecker::CheckForPureSubprogram() const { // C1597
   CHECK(context_.location());
-  if (const Scope *
-      scope{context_.globalScope().FindScope(*context_.location())}) {
+  if (const Scope *scope{
+          context_.globalScope().FindScope(*context_.location())}) {
     if (FindPureProcedureContaining(*scope)) {
       context_.Say(
           "External I/O is not allowed in a pure subprogram"_err_en_US);
@@ -1053,18 +1053,17 @@ static const Symbol *FindUnsafeIoDirectComponent(common::DefinedIo which,
   if (HasDefinedIo(which, derived, &scope)) {
     return nullptr;
   }
-  if (const Scope * dtScope{derived.scope()}) {
+  if (const Scope *dtScope{derived.scope()}) {
     for (const auto &pair : *dtScope) {
       const Symbol &symbol{*pair.second};
       if (IsAllocatableOrPointer(symbol)) {
         return &symbol;
       }
       if (const auto *details{symbol.detailsIf<ObjectEntityDetails>()}) {
-        if (const DeclTypeSpec * type{details->type()}) {
+        if (const DeclTypeSpec *type{details->type()}) {
           if (type->category() == DeclTypeSpec::Category::TypeDerived) {
             const DerivedTypeSpec &componentDerived{type->derivedTypeSpec()};
-            if (const Symbol *
-                bad{FindUnsafeIoDirectComponent(
+            if (const Symbol *bad{FindUnsafeIoDirectComponent(
                     which, componentDerived, scope)}) {
               return bad;
             }
@@ -1081,8 +1080,8 @@ static const Symbol *FindUnsafeIoDirectComponent(common::DefinedIo which,
 // in which the type was defined.
 static const Symbol *FindInaccessibleComponent(common::DefinedIo which,
     const DerivedTypeSpec &derived, const Scope &scope) {
-  if (const Scope * dtScope{derived.scope()}) {
-    if (const Scope * module{FindModuleContaining(*dtScope)}) {
+  if (const Scope *dtScope{derived.scope()}) {
+    if (const Scope *module{FindModuleContaining(*dtScope)}) {
       for (const auto &pair : *dtScope) {
         const Symbol &symbol{*pair.second};
         if (IsAllocatableOrPointer(symbol)) {
@@ -1090,7 +1089,7 @@ static const Symbol *FindInaccessibleComponent(common::DefinedIo which,
         }
         if (const auto *details{symbol.detailsIf<ObjectEntityDetails>()}) {
           const DerivedTypeSpec *componentDerived{nullptr};
-          if (const DeclTypeSpec * type{details->type()}) {
+          if (const DeclTypeSpec *type{details->type()}) {
             if (type->category() == DeclTypeSpec::Category::TypeDerived) {
               componentDerived = &type->derivedTypeSpec();
             }
@@ -1106,8 +1105,7 @@ static const Symbol *FindInaccessibleComponent(common::DefinedIo which,
             }
           }
           if (componentDerived) {
-            if (const Symbol *
-                bad{FindInaccessibleComponent(
+            if (const Symbol *bad{FindInaccessibleComponent(
                     which, *componentDerived, scope)}) {
               return bad;
             }
@@ -1128,8 +1126,7 @@ parser::Message *IoChecker::CheckForBadIoType(const evaluate::DynamicType &type,
   } else if (type.category() == TypeCategory::Derived) {
     const auto &derived{type.GetDerivedTypeSpec()};
     const Scope &scope{context_.FindScope(where)};
-    if (const Symbol *
-        bad{FindUnsafeIoDirectComponent(which, derived, scope)}) {
+    if (const Symbol *bad{FindUnsafeIoDirectComponent(which, derived, scope)}) {
       return &context_.SayWithDecl(*bad, where,
           "Derived type '%s' in I/O cannot have an allocatable or pointer direct component '%s' unless using defined I/O"_err_en_US,
           derived.name(), bad->name());
@@ -1140,8 +1137,7 @@ parser::Message *IoChecker::CheckForBadIoType(const evaluate::DynamicType &type,
             "Derived type '%s' in I/O may not be polymorphic unless using defined I/O"_err_en_US,
             derived.name());
       }
-      if (const Symbol *
-          bad{FindInaccessibleComponent(which, derived, scope)}) {
+      if (const Symbol *bad{FindInaccessibleComponent(which, derived, scope)}) {
         return &context_.Say(where,
             "I/O of the derived type '%s' may not be performed without defined I/O in a scope in which a direct component like '%s' is inaccessible"_err_en_US,
             derived.name(), bad->name());

@@ -154,7 +154,7 @@ int RTNAME(AllocatableAllocate)(Descriptor &descriptor, bool hasStat,
   }
   int stat{ReturnError(terminator, descriptor.Allocate(), errMsg, hasStat)};
   if (stat == StatOk) {
-    if (const DescriptorAddendum * addendum{descriptor.Addendum()}) {
+    if (const DescriptorAddendum *addendum{descriptor.Addendum()}) {
       if (const auto *derived{addendum->derivedType()}) {
         if (!derived->noInitializationNeeded()) {
           stat = Initialize(descriptor, *derived, terminator, hasStat, errMsg);

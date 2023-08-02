@@ -270,7 +270,7 @@ template <typename BTy, typename ETy> BTy FPowI(BTy base, ETy exp) {
   BTy result{1};
   BTy origBase{base};
   while (true) {
-    if (exp & ETy{1}) {
+    if (exp &ETy{1}) {
       result *= base;
     }
     exp >>= 1;

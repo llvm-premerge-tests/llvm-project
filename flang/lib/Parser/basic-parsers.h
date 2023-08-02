@@ -854,7 +854,7 @@ public:
       : parser_{parser}, message_{msg} {}
   constexpr NonstandardParser(PA parser) : parser_{parser} {}
   std::optional<resultType> Parse(ParseState &state) const {
-    if (UserState * ustate{state.userState()}) {
+    if (UserState *ustate{state.userState()}) {
       if (!ustate->features().IsEnabled(LF)) {
         return std::nullopt;
       }
@@ -892,7 +892,7 @@ public:
   constexpr DeprecatedParser(const DeprecatedParser &) = default;
   constexpr DeprecatedParser(PA parser) : parser_{parser} {}
   std::optional<resultType> Parse(ParseState &state) const {
-    if (UserState * ustate{state.userState()}) {
+    if (UserState *ustate{state.userState()}) {
       if (!ustate->features().IsEnabled(LF)) {
         return std::nullopt;
       }

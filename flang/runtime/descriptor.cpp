@@ -250,7 +250,7 @@ void Descriptor::Dump(FILE *f) const {
     std::fprintf(f, "         sm          %jd\n",
         static_cast<std::intmax_t>(raw_.dim[j].sm));
   }
-  if (const DescriptorAddendum * addendum{Addendum()}) {
+  if (const DescriptorAddendum *addendum{Addendum()}) {
     addendum->Dump(f);
   }
 }

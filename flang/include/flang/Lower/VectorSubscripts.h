@@ -81,8 +81,8 @@ public:
       llvm::SmallVector<LoweredSubscript, 16> &&loweredSubscripts,
       llvm::SmallVector<mlir::Value> &&componentPath,
       MaybeSubstring substringBounds, mlir::Type elementType)
-      : loweredBase{std::move(loweredBase)}, loweredSubscripts{std::move(
-                                                 loweredSubscripts)},
+      : loweredBase{std::move(loweredBase)},
+        loweredSubscripts{std::move(loweredSubscripts)},
         componentPath{std::move(componentPath)},
         substringBounds{substringBounds}, elementType{elementType} {};
 

@@ -31,8 +31,8 @@ Definition::Definition(
 Definition::Definition(const std::vector<std::string> &argNames,
     const TokenSequence &repl, std::size_t firstToken, std::size_t tokens,
     bool isVariadic)
-    : isFunctionLike_{true},
-      argumentCount_(argNames.size()), isVariadic_{isVariadic},
+    : isFunctionLike_{true}, argumentCount_(argNames.size()),
+      isVariadic_{isVariadic},
       replacement_{Tokenize(argNames, repl, firstToken, tokens)} {}
 
 Definition::Definition(const std::string &predefined, AllSources &sources)

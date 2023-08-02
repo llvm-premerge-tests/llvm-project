@@ -353,9 +353,9 @@ public:
   template <typename FIRST, typename CONSTRUCT, typename STMT>
   void CheckOptionalName(const char *constructTag, const CONSTRUCT &a,
       const parser::Statement<STMT> &stmt) {
-    if (const parser::CharBlock * name{GetStmtName(stmt)}) {
+    if (const parser::CharBlock *name{GetStmtName(stmt)}) {
       const auto &firstStmt{std::get<parser::Statement<FIRST>>(a.t)};
-      if (const parser::CharBlock * firstName{GetStmtName(firstStmt)}) {
+      if (const parser::CharBlock *firstName{GetStmtName(firstStmt)}) {
         if (*firstName != *name) {
           context_.Say(*name, "%s name mismatch"_err_en_US, constructTag)
               .Attach(*firstName, "should be"_en_US);
@@ -459,9 +459,9 @@ public:
 
   // C1401
   void Post(const parser::MainProgram &mainProgram) {
-    if (const parser::CharBlock *
-        endName{GetStmtName(std::get<parser::Statement<parser::EndProgramStmt>>(
-            mainProgram.t))}) {
+    if (const parser::CharBlock *endName{
+            GetStmtName(std::get<parser::Statement<parser::EndProgramStmt>>(
+                mainProgram.t))}) {
       if (const auto &program{
               std::get<std::optional<parser::Statement<parser::ProgramStmt>>>(
                   mainProgram.t)}) {
@@ -674,7 +674,7 @@ private:
     const auto &constructStmt{std::get<parser::Statement<FIRST>>(a.t)};
     const auto &endStmt{std::get<parser::Statement<END>>(a.t)};
     const parser::CharBlock *endName{GetStmtName(endStmt)};
-    if (const parser::CharBlock * constructName{GetStmtName(constructStmt)}) {
+    if (const parser::CharBlock *constructName{GetStmtName(constructStmt)}) {
       if (endName) {
         if (*constructName != *endName) {
           context_

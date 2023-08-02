@@ -414,7 +414,7 @@ int ArrayRef::Rank() const {
   }
   if (rank > 0) {
     return rank;
-  } else if (const Component * component{base_.UnwrapComponent()}) {
+  } else if (const Component *component{base_.UnwrapComponent()}) {
     return component->base().Rank();
   } else {
     return 0;
@@ -613,7 +613,7 @@ std::optional<DynamicType> Designator<T>::GetType() const {
       return DynamicType{TypeCategory::Character, T::kind};
     }
   }
-  if (const Symbol * symbol{GetLastSymbol()}) {
+  if (const Symbol *symbol{GetLastSymbol()}) {
     return DynamicType::From(*symbol);
   }
   return std::nullopt;
@@ -658,7 +658,7 @@ static bool AreSameSymbol(const Symbol &x, const Symbol &y) {
 // for Symbol references.
 template <typename A> static bool TestVariableEquality(const A &x, const A &y) {
   const SymbolRef *xSymbol{std::get_if<SymbolRef>(&x.u)};
-  if (const SymbolRef * ySymbol{std::get_if<SymbolRef>(&y.u)}) {
+  if (const SymbolRef *ySymbol{std::get_if<SymbolRef>(&y.u)}) {
     return xSymbol && AreSameSymbol(*xSymbol, *ySymbol);
   } else {
     return x.u == y.u;

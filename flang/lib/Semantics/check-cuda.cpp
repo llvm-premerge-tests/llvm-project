@@ -69,7 +69,7 @@ struct DeviceExprChecker
   DeviceExprChecker() : Base(*this) {}
   using Base::operator();
   Result operator()(const evaluate::ProcedureDesignator &x) const {
-    if (const Symbol * sym{x.GetInterfaceSymbol()}) {
+    if (const Symbol *sym{x.GetInterfaceSymbol()}) {
       const auto *subp{
           sym->GetUltimate().detailsIf<semantics::SubprogramDetails>()};
       if (subp) {

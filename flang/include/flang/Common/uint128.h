@@ -34,14 +34,14 @@ public:
   constexpr Int128(unsigned long n) : low_{n} {}
   constexpr Int128(unsigned long long n) : low_{n} {}
   constexpr Int128(int n)
-      : low_{static_cast<std::uint64_t>(n)}, high_{-static_cast<std::uint64_t>(
-                                                 n < 0)} {}
+      : low_{static_cast<std::uint64_t>(n)},
+        high_{-static_cast<std::uint64_t>(n < 0)} {}
   constexpr Int128(long n)
-      : low_{static_cast<std::uint64_t>(n)}, high_{-static_cast<std::uint64_t>(
-                                                 n < 0)} {}
+      : low_{static_cast<std::uint64_t>(n)},
+        high_{-static_cast<std::uint64_t>(n < 0)} {}
   constexpr Int128(long long n)
-      : low_{static_cast<std::uint64_t>(n)}, high_{-static_cast<std::uint64_t>(
-                                                 n < 0)} {}
+      : low_{static_cast<std::uint64_t>(n)},
+        high_{-static_cast<std::uint64_t>(n < 0)} {}
   constexpr Int128(const Int128 &) = default;
   constexpr Int128(Int128 &&) = default;
   constexpr Int128 &operator=(const Int128 &) = default;

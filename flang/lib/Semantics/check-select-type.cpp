@@ -134,7 +134,7 @@ private:
       return false;
     }
     if (!selectorType_.IsUnlimitedPolymorphic()) { // C1162
-      if (const semantics::Scope * guardScope{derived.typeSymbol().scope()}) {
+      if (const semantics::Scope *guardScope{derived.typeSymbol().scope()}) {
         if (const auto *selDerivedTypeSpec{
                 evaluate::GetDerivedTypeSpec(selectorType_)}) {
           if (!derived.Match(*selDerivedTypeSpec) &&

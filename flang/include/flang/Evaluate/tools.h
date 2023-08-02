@@ -331,7 +331,7 @@ bool IsArrayElement(const Expr<T> &expr, bool intoSubstring = true,
   if (auto dataRef{ExtractDataRef(expr, intoSubstring)}) {
     const DataRef *ref{&*dataRef};
     if (skipComponents) {
-      while (const Component * component{std::get_if<Component>(&ref->u)}) {
+      while (const Component *component{std::get_if<Component>(&ref->u)}) {
         ref = &component->base();
       }
     }
@@ -380,7 +380,7 @@ struct ExtractCoindexedObjectHelper {
     return common::visit(*this, dataRef.u);
   }
   std::optional<CoarrayRef> operator()(const NamedEntity &named) const {
-    if (const Component * component{named.UnwrapComponent()}) {
+    if (const Component *component{named.UnwrapComponent()}) {
       return (*this)(*component);
     } else {
       return std::nullopt;
@@ -414,7 +414,7 @@ template <typename A> std::optional<CoarrayRef> ExtractCoarrayRef(const A &x) {
 // extract and return that symbol, else null.
 template <typename A> const Symbol *UnwrapWholeSymbolDataRef(const A &x) {
   if (auto dataRef{ExtractDataRef(x)}) {
-    if (const SymbolRef * p{std::get_if<SymbolRef>(&dataRef->u)}) {
+    if (const SymbolRef *p{std::get_if<SymbolRef>(&dataRef->u)}) {
       return &p->get();
     }
   }
@@ -426,9 +426,9 @@ template <typename A> const Symbol *UnwrapWholeSymbolDataRef(const A &x) {
 template <typename A>
 const Symbol *UnwrapWholeSymbolOrComponentDataRef(const A &x) {
   if (auto dataRef{ExtractDataRef(x)}) {
-    if (const SymbolRef * p{std::get_if<SymbolRef>(&dataRef->u)}) {
+    if (const SymbolRef *p{std::get_if<SymbolRef>(&dataRef->u)}) {
       return &p->get();
-    } else if (const Component * c{std::get_if<Component>(&dataRef->u)}) {
+    } else if (const Component *c{std::get_if<Component>(&dataRef->u)}) {
       if (c->base().Rank() == 0) {
         return &c->GetLastSymbol();
       }
@@ -443,13 +443,13 @@ const Symbol *UnwrapWholeSymbolOrComponentDataRef(const A &x) {
 template <typename A>
 const Symbol *UnwrapWholeSymbolOrComponentOrCoarrayRef(const A &x) {
   if (auto dataRef{ExtractDataRef(x)}) {
-    if (const SymbolRef * p{std::get_if<SymbolRef>(&dataRef->u)}) {
+    if (const SymbolRef *p{std::get_if<SymbolRef>(&dataRef->u)}) {
       return &p->get();
-    } else if (const Component * c{std::get_if<Component>(&dataRef->u)}) {
+    } else if (const Component *c{std::get_if<Component>(&dataRef->u)}) {
       if (c->base().Rank() == 0) {
         return &c->GetLastSymbol();
       }
-    } else if (const CoarrayRef * c{std::get_if<CoarrayRef>(&dataRef->u)}) {
+    } else if (const CoarrayRef *c{std::get_if<CoarrayRef>(&dataRef->u)}) {
       if (c->subscript().empty()) {
         return &c->GetLastSymbol();
       }
@@ -902,7 +902,7 @@ const ProcedureRef *GetProcedureRef(const Expr<SomeType> &);
 // its set of attributes, otherwise the empty set.  Also works on variables that
 // are pointer results of functions.
 template <typename A> semantics::Attrs GetAttrs(const A &x) {
-  if (const Symbol * symbol{GetLastSymbol(x)}) {
+  if (const Symbol *symbol{GetLastSymbol(x)}) {
     return symbol->attrs();
   } else {
     return {};
@@ -913,7 +913,7 @@ template <>
 inline semantics::Attrs GetAttrs<Expr<SomeType>>(const Expr<SomeType> &x) {
   if (IsVariable(x)) {
     if (const auto *procRef{GetProcedureRef(x)}) {
-      if (const Symbol * interface{procRef->proc().GetInterfaceSymbol()}) {
+      if (const Symbol *interface{procRef->proc().GetInterfaceSymbol()}) {
         if (const auto *details{
                 interface->detailsIf<semantics::SubprogramDetails>()}) {
           if (details->isFunction() &&
@@ -925,7 +925,7 @@ inline semantics::Attrs GetAttrs<Expr<SomeType>>(const Expr<SomeType> &x) {
       }
     }
   }
-  if (const Symbol * symbol{GetLastSymbol(x)}) {
+  if (const Symbol *symbol{GetLastSymbol(x)}) {
     return symbol->attrs();
   } else {
     return {};

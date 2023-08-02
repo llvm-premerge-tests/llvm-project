@@ -631,7 +631,7 @@ const parser::Name *DirectiveAttributeVisitor<T>::GetLoopIndex(
     const parser::DoConstruct &x) {
   using Bounds = parser::LoopControl::Bounds;
   if (x.GetLoopControl()) {
-    if (const Bounds * b{std::get_if<Bounds>(&x.GetLoopControl()->u)}) {
+    if (const Bounds *b{std::get_if<Bounds>(&x.GetLoopControl()->u)}) {
       return &b->name.thing;
     } else {
       return nullptr;
@@ -1055,7 +1055,7 @@ void AccAttributeVisitor::Post(const parser::Name &name) {
   if (symbol && !dirContext_.empty() && GetContext().withinConstruct) {
     if (!symbol->owner().IsDerivedType() && !symbol->has<ProcEntityDetails>() &&
         !IsObjectWithDSA(*symbol)) {
-      if (Symbol * found{currScope().FindSymbol(name.source)}) {
+      if (Symbol *found{currScope().FindSymbol(name.source)}) {
         if (symbol != found) {
           name.symbol = found; // adjust the symbol within region
         } else if (GetContext().defaultDSA == Symbol::Flag::AccNone) {
@@ -1661,7 +1661,7 @@ void OmpAttributeVisitor::Post(const parser::Name &name) {
       // TODO: create a separate function to go through the rules for
       //       predetermined, explicitly determined, and implicitly
       //       determined data-sharing attributes (2.15.1.1).
-      if (Symbol * found{currScope().FindSymbol(name.source)}) {
+      if (Symbol *found{currScope().FindSymbol(name.source)}) {
         if (symbol != found) {
           name.symbol = found; // adjust the symbol within region
         } else if (GetContext().defaultDSA == Symbol::Flag::OmpNone) {

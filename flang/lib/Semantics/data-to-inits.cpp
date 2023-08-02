@@ -504,7 +504,7 @@ static const DerivedTypeSpec *HasDefaultInitialization(const Symbol &symbol) {
     if (object->init().has_value()) {
       return nullptr; // init is explicit, not default
     } else if (!object->isDummy() && object->type()) {
-      if (const DerivedTypeSpec * derived{object->type()->AsDerived()}) {
+      if (const DerivedTypeSpec *derived{object->type()->AsDerived()}) {
         DirectComponentIterator directs{*derived};
         if (std::find_if(
                 directs.begin(), directs.end(), [](const Symbol &component) {
@@ -582,8 +582,8 @@ static void PopulateWithComponentDefaults(SymbolDataInitialization &init,
                   foldingContext);
             }
           }
-        } else if (const DeclTypeSpec * type{component.GetType()}) {
-          if (const DerivedTypeSpec * componentDerived{type->AsDerived()}) {
+        } else if (const DeclTypeSpec *type{component.GetType()}) {
+          if (const DerivedTypeSpec *componentDerived{type->AsDerived()}) {
             PopulateWithComponentDefaults(init, componentOffset,
                 *componentDerived, foldingContext, component);
           }
@@ -826,7 +826,7 @@ static bool CombineEquivalencedInitialization(
         !HasDeclarationInitializer(symbol) && IsSaved(symbol) &&
         equivalenced.find(symbol) == equivalenced.end()) {
       // Static object, no local storage association, no explicit initialization
-      if (const DerivedTypeSpec * derived{HasDefaultInitialization(symbol)}) {
+      if (const DerivedTypeSpec *derived{HasDefaultInitialization(symbol)}) {
         auto newInitIter{inits.emplace(&symbol, symbol.size())};
         CHECK(newInitIter.second);
         auto &newInit{newInitIter.first->second};

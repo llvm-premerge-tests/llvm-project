@@ -202,8 +202,8 @@ Constant<Type<TypeCategory::Character, KIND>>::Constant(
 
 template <int KIND>
 Constant<Type<TypeCategory::Character, KIND>>::Constant(Scalar<Result> &&str)
-    : values_{std::move(str)}, length_{static_cast<ConstantSubscript>(
-                                   values_.size())} {}
+    : values_{std::move(str)},
+      length_{static_cast<ConstantSubscript>(values_.size())} {}
 
 template <int KIND>
 Constant<Type<TypeCategory::Character, KIND>>::Constant(ConstantSubscript len,

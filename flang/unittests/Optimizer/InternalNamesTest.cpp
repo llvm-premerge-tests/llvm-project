@@ -20,9 +20,9 @@ struct DeconstructedName {
   DeconstructedName(llvm::ArrayRef<std::string> modules,
       llvm::ArrayRef<std::string> procs, std::int64_t blockId,
       llvm::StringRef name, llvm::ArrayRef<std::int64_t> kinds)
-      : modules{modules.begin(), modules.end()}, procs{procs.begin(),
-                                                     procs.end()},
-        blockId{blockId}, name{name}, kinds{kinds.begin(), kinds.end()} {}
+      : modules{modules.begin(), modules.end()},
+        procs{procs.begin(), procs.end()}, blockId{blockId}, name{name},
+        kinds{kinds.begin(), kinds.end()} {}
 
   bool isObjEqual(const NameUniquer::DeconstructedName &actualObj) {
     return actualObj.modules == modules && actualObj.procs == procs &&

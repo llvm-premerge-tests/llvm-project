@@ -148,8 +148,8 @@ class SelectedRealKindVisitor {
 public:
   SelectedRealKindVisitor(const TargetCharacteristics &targetCharacteristics,
       std::int64_t p, std::int64_t r)
-      : targetCharacteristics_{targetCharacteristics}, precision_{p}, range_{
-                                                                          r} {}
+      : targetCharacteristics_{targetCharacteristics}, precision_{p},
+        range_{r} {}
   using Result = std::optional<int>;
   using Types = RealTypes;
   template <typename T> Result Test() const {

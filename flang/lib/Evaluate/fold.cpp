@@ -119,7 +119,7 @@ Component FoldOperation(FoldingContext &context, Component &&component) {
 }
 
 NamedEntity FoldOperation(FoldingContext &context, NamedEntity &&x) {
-  if (Component * c{x.UnwrapComponent()}) {
+  if (Component *c{x.UnwrapComponent()}) {
     return NamedEntity{FoldOperation(context, std::move(*c))};
   } else {
     return std::move(x);
@@ -190,7 +190,7 @@ DataRef FoldOperation(FoldingContext &context, DataRef &&dataRef) {
 Substring FoldOperation(FoldingContext &context, Substring &&substring) {
   auto lower{Fold(context, substring.lower())};
   auto upper{Fold(context, substring.upper())};
-  if (const DataRef * dataRef{substring.GetParentIf<DataRef>()}) {
+  if (const DataRef *dataRef{substring.GetParentIf<DataRef>()}) {
     return Substring{FoldOperation(context, DataRef{*dataRef}),
         std::move(lower), std::move(upper)};
   } else {

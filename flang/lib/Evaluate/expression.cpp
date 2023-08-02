@@ -236,8 +236,8 @@ DynamicType StructureConstructor::GetType() const { return result_.GetType(); }
 
 std::optional<Expr<SomeType>> StructureConstructor::CreateParentComponent(
     const Symbol &component) const {
-  if (const semantics::DerivedTypeSpec *
-      parentSpec{GetParentTypeSpec(derivedTypeSpec())}) {
+  if (const semantics::DerivedTypeSpec *parentSpec{
+          GetParentTypeSpec(derivedTypeSpec())}) {
     StructureConstructor structureConstructor{*parentSpec};
     if (const auto *parentDetails{
             component.detailsIf<semantics::DerivedTypeDetails>()}) {
@@ -263,7 +263,7 @@ static const Symbol *GetParentComponentSymbol(const Symbol &symbol) {
   if (symbol.test(Symbol::Flag::ParentComp)) {
     // we have a created parent component
     const auto &compObject{symbol.get<semantics::ObjectEntityDetails>()};
-    if (const semantics::DeclTypeSpec * compType{compObject.type()}) {
+    if (const semantics::DeclTypeSpec *compType{compObject.type()}) {
       const semantics::DerivedTypeSpec &dtSpec{compType->derivedTypeSpec()};
       const semantics::Symbol &compTypeSymbol{dtSpec.typeSymbol()};
       return &compTypeSymbol;
@@ -283,7 +283,7 @@ std::optional<Expr<SomeType>> StructureConstructor::Find(
   }
   // The component wasn't there directly, see if we're looking for the parent
   // component of an extended type
-  if (const Symbol * typeSymbol{GetParentComponentSymbol(component)}) {
+  if (const Symbol *typeSymbol{GetParentComponentSymbol(component)}) {
     return CreateParentComponent(*typeSymbol);
   }
   // Look for the component in the parent type component.  The parent type

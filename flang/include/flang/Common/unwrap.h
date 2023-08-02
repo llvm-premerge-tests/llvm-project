@@ -148,7 +148,7 @@ template <typename A, typename B> auto Unwrap(B &x) -> Constify<A, B> * {
 
 // Returns a copy of a wrapped value, if present, otherwise a vacant optional.
 template <typename A, typename B> std::optional<A> UnwrapCopy(const B &x) {
-  if (const A * p{Unwrap<A>(x)}) {
+  if (const A *p{Unwrap<A>(x)}) {
     return std::make_optional<A>(*p);
   } else {
     return std::nullopt;

@@ -19,7 +19,7 @@ namespace llvm {
 template <typename T, unsigned N>
 class SmallVector;
 class StringRef;
-}
+} // namespace llvm
 
 namespace mlir {
 class Location;

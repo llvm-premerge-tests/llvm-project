@@ -37,7 +37,7 @@ int Initialize(const Descriptor &instance, const typeInfo::DerivedType &derived,
         if (comp.genre() == typeInfo::Component::Genre::Automatic) {
           stat = ReturnError(terminator, allocDesc.Allocate(), errMsg, hasStat);
           if (stat == StatOk) {
-            if (const DescriptorAddendum * addendum{allocDesc.Addendum()}) {
+            if (const DescriptorAddendum *addendum{allocDesc.Addendum()}) {
               if (const auto *derived{addendum->derivedType()}) {
                 if (!derived->noInitializationNeeded()) {
                   stat = Initialize(
@@ -211,7 +211,7 @@ void Finalize(const Descriptor &descriptor,
         *componentDesc.ZeroBasedIndexedElement<typeInfo::Component>(k)};
     if (comp.genre() == typeInfo::Component::Genre::Allocatable ||
         comp.genre() == typeInfo::Component::Genre::Automatic) {
-      if (const typeInfo::DerivedType * compType{comp.derivedType()}) {
+      if (const typeInfo::DerivedType *compType{comp.derivedType()}) {
         if (!compType->noFinalizationNeeded()) {
           for (std::size_t j{0}; j < elements; ++j) {
             const Descriptor &compDesc{*descriptor.OffsetElement<Descriptor>(
@@ -281,7 +281,7 @@ void Destroy(const Descriptor &descriptor, bool finalize,
 }
 
 bool HasDynamicComponent(const Descriptor &descriptor) {
-  if (const DescriptorAddendum * addendum{descriptor.Addendum()}) {
+  if (const DescriptorAddendum *addendum{descriptor.Addendum()}) {
     if (const auto *derived = addendum->derivedType()) {
       const Descriptor &componentDesc{derived->component()};
       std::size_t myComponents{componentDesc.Elements()};

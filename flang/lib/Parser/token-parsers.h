@@ -606,8 +606,8 @@ inline constexpr auto optionalListBeforeColons(const PA &p) {
 struct SkipStuffBeforeStatement {
   using resultType = Success;
   static std::optional<Success> Parse(ParseState &state) {
-    if (UserState * ustate{state.userState()}) {
-      if (ParsingLog * log{ustate->log()}) {
+    if (UserState *ustate{state.userState()}) {
+      if (ParsingLog *log{ustate->log()}) {
         // Save memory: vacate the parsing log before each statement unless
         // we're logging the whole parse for debugging.
         if (!ustate->instrumentedParse()) {

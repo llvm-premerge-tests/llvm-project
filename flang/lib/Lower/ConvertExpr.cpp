@@ -7368,7 +7368,7 @@ fir::MutableBoxValue Fortran::lower::createMutableBox(
 }
 
 bool Fortran::lower::isParentComponent(const Fortran::lower::SomeExpr &expr) {
-  if (const Fortran::semantics::Symbol * symbol{GetLastSymbol(expr)}) {
+  if (const Fortran::semantics::Symbol *symbol{GetLastSymbol(expr)}) {
     if (symbol->test(Fortran::semantics::Symbol::Flag::ParentComp))
       return true;
   }

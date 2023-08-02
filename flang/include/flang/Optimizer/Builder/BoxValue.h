@@ -127,8 +127,8 @@ public:
   AbstractArrayBox() = default;
   AbstractArrayBox(llvm::ArrayRef<mlir::Value> extents,
                    llvm::ArrayRef<mlir::Value> lbounds)
-      : extents{extents.begin(), extents.end()}, lbounds{lbounds.begin(),
-                                                         lbounds.end()} {}
+      : extents{extents.begin(), extents.end()},
+        lbounds{lbounds.begin(), lbounds.end()} {}
 
   // Every array has extents that describe its shape.
   const llvm::SmallVectorImpl<mlir::Value> &getExtents() const {
@@ -366,8 +366,8 @@ public:
   /// in the address type.
   MutableBoxValue(mlir::Value addr, mlir::ValueRange lenParameters,
                   MutableProperties mutableProperties)
-      : AbstractIrBox(addr), lenParams{lenParameters.begin(),
-                                       lenParameters.end()},
+      : AbstractIrBox(addr),
+        lenParams{lenParameters.begin(), lenParameters.end()},
         mutableProperties{mutableProperties} {
     // Currently only accepts fir.(ref/ptr/heap)<fir.box<type>> mlir::Value for
     // the address. This may change if we accept

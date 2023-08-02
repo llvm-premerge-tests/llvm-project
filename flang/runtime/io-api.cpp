@@ -170,8 +170,7 @@ static Cookie NoopUnit(const Terminator &terminator, int unitNumber,
 static ExternalFileUnit *GetOrCreateUnit(int unitNumber, Direction direction,
     std::optional<bool> isUnformatted, const Terminator &terminator,
     Cookie &errorCookie) {
-  if (ExternalFileUnit *
-      unit{ExternalFileUnit::LookUpOrCreateAnonymous(
+  if (ExternalFileUnit *unit{ExternalFileUnit::LookUpOrCreateAnonymous(
           unitNumber, direction, isUnformatted, terminator)}) {
     errorCookie = nullptr;
     return unit;
@@ -201,7 +200,7 @@ Cookie BeginExternalListIO(
   if (*unit->isUnformatted) {
     iostat = IostatFormattedIoOnUnformattedUnit;
   }
-  if (ChildIo * child{unit->GetChildIo()}) {
+  if (ChildIo *child{unit->GetChildIo()}) {
     if (iostat == IostatOk) {
       iostat = child->CheckFormattingAndDirection(false, DIR);
     }
@@ -262,7 +261,7 @@ Cookie BeginExternalFormattedIO(const char *format, std::size_t formatLength,
   if (*unit->isUnformatted) {
     iostat = IostatFormattedIoOnUnformattedUnit;
   }
-  if (ChildIo * child{unit->GetChildIo()}) {
+  if (ChildIo *child{unit->GetChildIo()}) {
     if (iostat == IostatOk) {
       iostat = child->CheckFormattingAndDirection(false, DIR);
     }
@@ -320,7 +319,7 @@ Cookie BeginUnformattedIO(
   if (!*unit->isUnformatted) {
     iostat = IostatUnformattedIoOnFormattedUnit;
   }
-  if (ChildIo * child{unit->GetChildIo()}) {
+  if (ChildIo *child{unit->GetChildIo()}) {
     if (iostat == IostatOk) {
       iostat = child->CheckFormattingAndDirection(true, DIR);
     }
@@ -371,10 +370,9 @@ Cookie IONAME(BeginOpenUnit)( // OPEN(without NEWUNIT=)
     ExternalUnit unitNumber, const char *sourceFile, int sourceLine) {
   Terminator terminator{sourceFile, sourceLine};
   bool wasExtant{false};
-  if (ExternalFileUnit *
-      unit{ExternalFileUnit::LookUpOrCreate(
+  if (ExternalFileUnit *unit{ExternalFileUnit::LookUpOrCreate(
           unitNumber, terminator, wasExtant)}) {
-    if (ChildIo * child{unit->GetChildIo()}) {
+    if (ChildIo *child{unit->GetChildIo()}) {
       return &child->BeginIoStatement<ErroneousIoStatementState>(
           IostatBadOpOnChildUnit, nullptr /* no unit */, sourceFile,
           sourceLine);
@@ -400,7 +398,7 @@ Cookie IONAME(BeginOpenNewUnit)( // OPEN(NEWUNIT=j)
 Cookie IONAME(BeginWait)(ExternalUnit unitNumber, AsynchronousId id,
     const char *sourceFile, int sourceLine) {
   Terminator terminator{sourceFile, sourceLine};
-  if (ExternalFileUnit * unit{ExternalFileUnit::LookUp(unitNumber)}) {
+  if (ExternalFileUnit *unit{ExternalFileUnit::LookUp(unitNumber)}) {
     if (unit->Wait(id)) {
       return &unit->BeginIoStatement<ExternalMiscIoStatementState>(terminator,
           *unit, ExternalMiscIoStatementState::Wait, sourceFile, sourceLine);
@@ -421,14 +419,14 @@ Cookie IONAME(BeginWaitAll)(
 Cookie IONAME(BeginClose)(
     ExternalUnit unitNumber, const char *sourceFile, int sourceLine) {
   Terminator terminator{sourceFile, sourceLine};
-  if (ExternalFileUnit * unit{ExternalFileUnit::LookUp(unitNumber)}) {
-    if (ChildIo * child{unit->GetChildIo()}) {
+  if (ExternalFileUnit *unit{ExternalFileUnit::LookUp(unitNumber)}) {
+    if (ChildIo *child{unit->GetChildIo()}) {
       return &child->BeginIoStatement<ErroneousIoStatementState>(
           IostatBadOpOnChildUnit, nullptr /* no unit */, sourceFile,
           sourceLine);
     }
   }
-  if (ExternalFileUnit * unit{ExternalFileUnit::LookUpForClose(unitNumber)}) {
+  if (ExternalFileUnit *unit{ExternalFileUnit::LookUpForClose(unitNumber)}) {
     return &unit->BeginIoStatement<CloseStatementState>(
         terminator, *unit, sourceFile, sourceLine);
   } else {
@@ -440,8 +438,8 @@ Cookie IONAME(BeginClose)(
 Cookie IONAME(BeginFlush)(
     ExternalUnit unitNumber, const char *sourceFile, int sourceLine) {
   Terminator terminator{sourceFile, sourceLine};
-  if (ExternalFileUnit * unit{ExternalFileUnit::LookUp(unitNumber)}) {
-    if (ChildIo * child{unit->GetChildIo()}) {
+  if (ExternalFileUnit *unit{ExternalFileUnit::LookUp(unitNumber)}) {
+    if (ChildIo *child{unit->GetChildIo()}) {
       return &child->BeginIoStatement<ExternalMiscIoStatementState>(
           *unit, ExternalMiscIoStatementState::Flush, sourceFile, sourceLine);
     } else {
@@ -458,8 +456,8 @@ Cookie IONAME(BeginFlush)(
 Cookie IONAME(BeginBackspace)(
     ExternalUnit unitNumber, const char *sourceFile, int sourceLine) {
   Terminator terminator{sourceFile, sourceLine};
-  if (ExternalFileUnit * unit{ExternalFileUnit::LookUp(unitNumber)}) {
-    if (ChildIo * child{unit->GetChildIo()}) {
+  if (ExternalFileUnit *unit{ExternalFileUnit::LookUp(unitNumber)}) {
+    if (ChildIo *child{unit->GetChildIo()}) {
       return &child->BeginIoStatement<ErroneousIoStatementState>(
           IostatBadOpOnChildUnit, nullptr /* no unit */, sourceFile,
           sourceLine);
@@ -477,10 +475,9 @@ Cookie IONAME(BeginEndfile)(
     ExternalUnit unitNumber, const char *sourceFile, int sourceLine) {
   Terminator terminator{sourceFile, sourceLine};
   Cookie errorCookie{nullptr};
-  if (ExternalFileUnit *
-      unit{GetOrCreateUnit(unitNumber, Direction::Output, std::nullopt,
-          terminator, errorCookie)}) {
-    if (ChildIo * child{unit->GetChildIo()}) {
+  if (ExternalFileUnit *unit{GetOrCreateUnit(unitNumber, Direction::Output,
+          std::nullopt, terminator, errorCookie)}) {
+    if (ChildIo *child{unit->GetChildIo()}) {
       return &child->BeginIoStatement<ErroneousIoStatementState>(
           IostatBadOpOnChildUnit, nullptr /* no unit */, sourceFile,
           sourceLine);
@@ -497,10 +494,9 @@ Cookie IONAME(BeginRewind)(
     ExternalUnit unitNumber, const char *sourceFile, int sourceLine) {
   Terminator terminator{sourceFile, sourceLine};
   Cookie errorCookie{nullptr};
-  if (ExternalFileUnit *
-      unit{GetOrCreateUnit(unitNumber, Direction::Input, std::nullopt,
-          terminator, errorCookie)}) {
-    if (ChildIo * child{unit->GetChildIo()}) {
+  if (ExternalFileUnit *unit{GetOrCreateUnit(unitNumber, Direction::Input,
+          std::nullopt, terminator, errorCookie)}) {
+    if (ChildIo *child{unit->GetChildIo()}) {
       return &child->BeginIoStatement<ErroneousIoStatementState>(
           IostatBadOpOnChildUnit, nullptr /* no unit */, sourceFile,
           sourceLine);
@@ -516,8 +512,8 @@ Cookie IONAME(BeginRewind)(
 Cookie IONAME(BeginInquireUnit)(
     ExternalUnit unitNumber, const char *sourceFile, int sourceLine) {
   Terminator terminator{sourceFile, sourceLine};
-  if (ExternalFileUnit * unit{ExternalFileUnit::LookUp(unitNumber)}) {
-    if (ChildIo * child{unit->GetChildIo()}) {
+  if (ExternalFileUnit *unit{ExternalFileUnit::LookUp(unitNumber)}) {
+    if (ChildIo *child{unit->GetChildIo()}) {
       return &child->BeginIoStatement<InquireUnitState>(
           *unit, sourceFile, sourceLine);
     } else {
@@ -538,11 +534,10 @@ Cookie IONAME(BeginInquireFile)(const char *path, std::size_t pathLength,
   Terminator terminator{sourceFile, sourceLine};
   auto trimmed{SaveDefaultCharacter(
       path, TrimTrailingSpaces(path, pathLength), terminator)};
-  if (ExternalFileUnit *
-      unit{ExternalFileUnit::LookUp(
+  if (ExternalFileUnit *unit{ExternalFileUnit::LookUp(
           trimmed.get(), std::strlen(trimmed.get()))}) {
     // INQUIRE(FILE=) to a connected unit
-    if (ChildIo * child{unit->GetChildIo()}) {
+    if (ChildIo *child{unit->GetChildIo()}) {
       return &child->BeginIoStatement<InquireUnitState>(
           *unit, sourceFile, sourceLine);
     } else {

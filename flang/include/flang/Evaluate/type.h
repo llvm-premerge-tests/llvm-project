@@ -100,8 +100,8 @@ public:
   // When a known length is presented, resolve it to its effective
   // length of zero if it is negative.
   constexpr DynamicType(int k, std::int64_t len)
-      : category_{TypeCategory::Character}, kind_{k}, knownLength_{
-                                                          len >= 0 ? len : 0} {
+      : category_{TypeCategory::Character}, kind_{k},
+        knownLength_{len >= 0 ? len : 0} {
     CHECK(IsValidKindOfIntrinsicType(category_, kind_));
   }
   explicit constexpr DynamicType(

@@ -80,7 +80,7 @@ static const Symbol &GetRelevantSymbol(const evaluate::DataRef &dataRef,
       }
     }
   }
-  if (const Symbol * lastPointer{GetLastPointerSymbol(dataRef)}) {
+  if (const Symbol *lastPointer{GetLastPointerSymbol(dataRef)}) {
     return *lastPointer;
   } else {
     return dataRef.GetFirstSymbol();
@@ -118,7 +118,7 @@ static std::optional<parser::Message> WhyNotDefinableBase(parser::CharBlock at,
     return BlameSymbol(
         at, "'%s' is an INTENT(IN) dummy argument"_en_US, original);
   }
-  if (const Scope * pure{FindPureProcedureContaining(scope)}) {
+  if (const Scope *pure{FindPureProcedureContaining(scope)}) {
     // Additional checking for pure subprograms.
     if (!isTargetDefinition) {
       if (auto msg{CheckDefinabilityInPureScope(
@@ -126,15 +126,14 @@ static std::optional<parser::Message> WhyNotDefinableBase(parser::CharBlock at,
         return msg;
       }
     }
-    if (const Symbol *
-        visible{FindExternallyVisibleObject(
+    if (const Symbol *visible{FindExternallyVisibleObject(
             ultimate, *pure, isPointerDefinition)}) {
       return BlameSymbol(at,
           "'%s' is externally visible via '%s' and not definable in a pure subprogram"_en_US,
           original, visible->name());
     }
   }
-  if (const Scope * deviceContext{FindCUDADeviceContext(&scope)}) {
+  if (const Scope *deviceContext{FindCUDADeviceContext(&scope)}) {
     bool isOwnedByDeviceCode{deviceContext->Contains(ultimate.owner())};
     if (isPointerDefinition && !acceptAllocatable) {
       return BlameSymbol(at,
@@ -192,12 +191,12 @@ static std::optional<parser::Message> WhyNotDefinableLast(parser::CharBlock at,
               original);
         }
       }
-      if (const Symbol * impure{HasImpureFinal(ultimate)}) {
+      if (const Symbol *impure{HasImpureFinal(ultimate)}) {
         return BlameSymbol(at,
             "'%s' has an impure FINAL procedure '%s'"_because_en_US, original,
             impure->name());
       }
-      if (const DerivedTypeSpec * derived{GetDerivedTypeSpec(dyType)}) {
+      if (const DerivedTypeSpec *derived{GetDerivedTypeSpec(dyType)}) {
         if (!flags.test(DefinabilityFlag::PolymorphicOkInPure)) {
           if (auto bad{FindPolymorphicAllocatableUltimateComponent(*derived)}) {
             return BlameSymbol(at,
@@ -309,7 +308,7 @@ std::optional<parser::Message> WhyNotDefinable(parser::CharBlock at,
                 anyElemental |= ultimate.attrs().test(Attr::ELEMENTAL);
                 if (const auto *subp{ultimate.detailsIf<SubprogramDetails>()}) {
                   if (!subp->dummyArgs().empty()) {
-                    if (const Symbol * arg{subp->dummyArgs()[0]}) {
+                    if (const Symbol *arg{subp->dummyArgs()[0]}) {
                       const auto *object{arg->detailsIf<ObjectEntityDetails>()};
                       if (arg->Rank() == rank ||
                           (object && object->IsAssumedRank())) {
@@ -354,7 +353,7 @@ std::optional<parser::Message> WhyNotDefinable(parser::CharBlock at,
     if (const auto *procDesignator{
             std::get_if<evaluate::ProcedureDesignator>(&expr.u)}) {
       // Defining a procedure pointer
-      if (const Symbol * procSym{procDesignator->GetSymbol()}) {
+      if (const Symbol *procSym{procDesignator->GetSymbol()}) {
         if (evaluate::ExtractCoarrayRef(expr)) { // C1027
           return BlameSymbol(at,
               "Procedure pointer '%s' may not be a coindexed object"_because_en_US,

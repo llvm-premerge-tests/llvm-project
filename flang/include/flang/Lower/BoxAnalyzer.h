@@ -160,8 +160,8 @@ struct StaticArrayStaticChar : ScalarStaticChar, LBoundsAndShape {
   StaticArrayStaticChar(const Fortran::semantics::Symbol &sym, int64_t len,
                         llvm::SmallVectorImpl<int64_t> &&lbounds,
                         llvm::SmallVectorImpl<int64_t> &&shapes)
-      : ScalarStaticChar{sym, len}, LBoundsAndShape{std::move(lbounds),
-                                                    std::move(shapes)} {}
+      : ScalarStaticChar{sym, len},
+        LBoundsAndShape{std::move(lbounds), std::move(shapes)} {}
 
   static constexpr bool staticSize() {
     return ScalarStaticChar::staticSize() && LBoundsAndShape::staticSize();
@@ -174,13 +174,13 @@ struct StaticArrayDynamicChar : ScalarDynamicChar, LBoundsAndShape {
                          const Fortran::lower::SomeExpr &len,
                          llvm::SmallVectorImpl<int64_t> &&lbounds,
                          llvm::SmallVectorImpl<int64_t> &&shapes)
-      : ScalarDynamicChar{sym, len}, LBoundsAndShape{std::move(lbounds),
-                                                     std::move(shapes)} {}
+      : ScalarDynamicChar{sym, len},
+        LBoundsAndShape{std::move(lbounds), std::move(shapes)} {}
   StaticArrayDynamicChar(const Fortran::semantics::Symbol &sym,
                          llvm::SmallVectorImpl<int64_t> &&lbounds,
                          llvm::SmallVectorImpl<int64_t> &&shapes)
-      : ScalarDynamicChar{sym}, LBoundsAndShape{std::move(lbounds),
-                                                std::move(shapes)} {}
+      : ScalarDynamicChar{sym},
+        LBoundsAndShape{std::move(lbounds), std::move(shapes)} {}
 
   static constexpr bool staticSize() {
     return ScalarDynamicChar::staticSize() && LBoundsAndShape::staticSize();

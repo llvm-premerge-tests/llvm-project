@@ -42,7 +42,7 @@ static void CheckImplicitInterfaceArg(evaluate::ActualArgument &arg,
     } else if (type->IsPolymorphic()) {
       messages.Say(
           "Polymorphic argument requires an explicit interface"_err_en_US);
-    } else if (const DerivedTypeSpec * derived{GetDerivedTypeSpec(type)}) {
+    } else if (const DerivedTypeSpec *derived{GetDerivedTypeSpec(type)}) {
       if (!derived->parameters().empty()) {
         messages.Say(
             "Parameterized derived type argument requires an explicit interface"_err_en_US);
@@ -381,10 +381,10 @@ static void CheckExplicitDataArg(const characteristics::DummyDataObject &dummy,
             "Actual argument associated with TYPE(*) %s may not have a parameterized derived type"_err_en_US,
             dummyName);
       }
-      if (const Symbol *
-          tbp{FindImmediateComponent(*derived, [](const Symbol &symbol) {
-            return symbol.has<ProcBindingDetails>();
-          })}) { // 15.5.2.4(2)
+      if (const Symbol *tbp{
+              FindImmediateComponent(*derived, [](const Symbol &symbol) {
+                return symbol.has<ProcBindingDetails>();
+              })}) { // 15.5.2.4(2)
         evaluate::SayWithDeclaration(messages, *tbp,
             "Actual argument associated with TYPE(*) %s may not have type-bound procedure '%s'"_err_en_US,
             dummyName, tbp->name());
@@ -411,8 +411,8 @@ static void CheckExplicitDataArg(const characteristics::DummyDataObject &dummy,
       }
       if (auto coarrayRef{evaluate::ExtractCoarrayRef(actual)}) { // C1537
         const Symbol &coarray{coarrayRef->GetLastSymbol()};
-        if (const DeclTypeSpec * type{coarray.GetType()}) {
-          if (const DerivedTypeSpec * derived{type->AsDerived()}) {
+        if (const DeclTypeSpec *type{coarray.GetType()}) {
+          if (const DerivedTypeSpec *derived{type->AsDerived()}) {
             if (auto bad{semantics::FindPointerUltimateComponent(*derived)}) {
               evaluate::SayWithDeclaration(messages, coarray,
                   "Coindexed object '%s' with POINTER ultimate component '%s' cannot be associated with %s"_err_en_US,
@@ -850,7 +850,9 @@ static void CheckProcedureArg(evaluate::ActualArgument &arg,
   parser::ContextualMessages &messages{foldingContext.messages()};
   auto restorer{
       messages.SetLocation(arg.sourceLocation().value_or(messages.at()))};
-  const characteristics::Procedure &interface { dummy.procedure.value() };
+  const characteristics::Procedure &interface {
+    dummy.procedure.value()
+  };
   if (const auto *expr{arg.UnwrapExpr()}) {
     bool dummyIsPointer{
         dummy.attrs.test(characteristics::DummyProcedure::Attr::Pointer)};
@@ -1048,8 +1050,8 @@ static void CheckExplicitInterfaceArg(evaluate::ActualArgument &arg,
                     messages.Say(
                         "Actual argument associated with %s is a NULL() pointer without a MOLD= to provide a character length"_err_en_US,
                         dummyName);
-                  } else if (const DerivedTypeSpec *
-                      derived{GetDerivedTypeSpec(object.type.type())}) {
+                  } else if (const DerivedTypeSpec *derived{
+                                 GetDerivedTypeSpec(object.type.type())}) {
                     for (const auto &[pName, pValue] : derived->parameters()) {
                       if (pValue.isAssumed()) {
                         messages.Say(
@@ -1405,8 +1407,8 @@ static void CheckTransfer(evaluate::ActualArguments &arguments,
       }
     }
     if (arguments.size() > 2) { // SIZE=
-      if (const Symbol *
-          whole{UnwrapWholeSymbolOrComponentDataRef(arguments[2])}) {
+      if (const Symbol *whole{
+              UnwrapWholeSymbolOrComponentDataRef(arguments[2])}) {
         if (IsOptional(*whole)) {
           messages.Say(
               "SIZE= argument may not be the optional dummy argument '%s'"_err_en_US,

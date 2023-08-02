@@ -734,9 +734,9 @@ bool EquivalenceSets::IsSequenceType(const DeclTypeSpec *type,
     std::function<bool(const IntrinsicTypeSpec &)> predicate) {
   if (!type) {
     return false;
-  } else if (const IntrinsicTypeSpec * intrinsic{type->AsIntrinsic()}) {
+  } else if (const IntrinsicTypeSpec *intrinsic{type->AsIntrinsic()}) {
     return predicate(*intrinsic);
-  } else if (const DerivedTypeSpec * derived{type->AsDerived()}) {
+  } else if (const DerivedTypeSpec *derived{type->AsDerived()}) {
     for (const auto &pair : *derived->typeSymbol().scope()) {
       const Symbol &component{*pair.second};
       if (IsAllocatableOrPointer(component) ||
@@ -815,20 +815,20 @@ void SymbolMapper::MapSymbolExprs(Symbol &symbol) {
                          }
                        },
           [&](ProcEntityDetails &proc) {
-            if (const Symbol *
-                mappedSymbol{MapInterface(proc.procInterface())}) {
+            if (const Symbol *mappedSymbol{
+                    MapInterface(proc.procInterface())}) {
               proc.set_procInterface(*mappedSymbol);
-            } else if (const DeclTypeSpec * mappedType{MapType(proc.type())}) {
+            } else if (const DeclTypeSpec *mappedType{MapType(proc.type())}) {
               proc.set_type(*mappedType);
             }
             if (proc.init()) {
-              if (const Symbol * mapped{MapSymbol(*proc.init())}) {
+              if (const Symbol *mapped{MapSymbol(*proc.init())}) {
                 proc.set_init(*mapped);
               }
             }
           },
           [&](const HostAssocDetails &hostAssoc) {
-            if (const Symbol * mapped{MapSymbol(hostAssoc.symbol())}) {
+            if (const Symbol *mapped{MapSymbol(hostAssoc.symbol())}) {
               symbol.set_details(HostAssocDetails{*mapped});
             }
           },

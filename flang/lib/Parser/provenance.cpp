@@ -593,7 +593,7 @@ const CookedSource *AllCookedSources::Find(CharBlock x) const {
 
 std::optional<ProvenanceRange> AllCookedSources::GetProvenanceRange(
     CharBlock cb) const {
-  if (const CookedSource * c{Find(cb)}) {
+  if (const CookedSource *c{Find(cb)}) {
     return c->GetProvenanceRange(cb);
   } else {
     return std::nullopt;
@@ -647,10 +647,10 @@ void AllCookedSources::Dump(llvm::raw_ostream &o) const {
 }
 
 bool AllCookedSources::Precedes(CharBlock x, CharBlock y) const {
-  if (const CookedSource * xSource{Find(x)}) {
+  if (const CookedSource *xSource{Find(x)}) {
     if (xSource->AsCharBlock().Contains(y)) {
       return x.begin() < y.begin();
-    } else if (const CookedSource * ySource{Find(y)}) {
+    } else if (const CookedSource *ySource{Find(y)}) {
       return xSource->number() < ySource->number();
     } else {
       return true; // by fiat, all cooked source < anything outside

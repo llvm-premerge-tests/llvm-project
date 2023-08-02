@@ -1269,10 +1269,9 @@ Expr<TypeParamInquiry::Result> FoldOperation(
   if (base) {
     // Handling "designator%typeParam".  Get the value of the type parameter
     // from the instantiation of the base
-    if (const semantics::DeclTypeSpec *
-        declType{base->GetLastSymbol().GetType()}) {
-      if (const semantics::ParamValue *
-          paramValue{
+    if (const semantics::DeclTypeSpec *declType{
+            base->GetLastSymbol().GetType()}) {
+      if (const semantics::ParamValue *paramValue{
               declType->derivedTypeSpec().FindParameter(parameterName)}) {
         const semantics::MaybeIntExpr &paramExpr{paramValue->GetExplicit()};
         if (paramExpr && IsConstantExpr(*paramExpr)) {
@@ -1288,7 +1287,7 @@ Expr<TypeParamInquiry::Result> FoldOperation(
     if (const auto *pdt{context.pdtInstance()}) {
       auto restorer{context.WithoutPDTInstance()}; // don't loop
       bool isLen{false};
-      if (const semantics::Scope * scope{pdt->scope()}) {
+      if (const semantics::Scope *scope{pdt->scope()}) {
         auto iter{scope->find(parameterName)};
         if (iter != scope->end()) {
           const Symbol &symbol{*iter->second};

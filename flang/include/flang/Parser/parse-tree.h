@@ -1770,8 +1770,8 @@ struct PartRef {
   BOILERPLATE(PartRef);
   PartRef(Name &&n, std::list<SectionSubscript> &&ss,
       std::optional<ImageSelector> &&is)
-      : name{std::move(n)},
-        subscripts(std::move(ss)), imageSelector{std::move(is)} {}
+      : name{std::move(n)}, subscripts(std::move(ss)),
+        imageSelector{std::move(is)} {}
   Name name;
   std::list<SectionSubscript> subscripts;
   std::optional<ImageSelector> imageSelector;

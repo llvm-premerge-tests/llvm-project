@@ -134,7 +134,7 @@ public:
     return Combine(x.base(), x.symbol());
   }
   Result operator()(const NamedEntity &x) const {
-    if (const Component * component{x.UnwrapComponent()}) {
+    if (const Component *component{x.UnwrapComponent()}) {
       return visitor_(*component);
     } else {
       return visitor_(DEREF(x.UnwrapSymbolRef()));
@@ -176,9 +176,9 @@ public:
     return visitor_.Default();
   }
   Result operator()(const ProcedureDesignator &x) const {
-    if (const Component * component{x.GetComponent()}) {
+    if (const Component *component{x.GetComponent()}) {
       return visitor_(*component);
-    } else if (const Symbol * symbol{x.GetSymbol()}) {
+    } else if (const Symbol *symbol{x.GetSymbol()}) {
       return visitor_(*symbol);
     } else {
       return visitor_(DEREF(x.GetSpecificIntrinsic()));

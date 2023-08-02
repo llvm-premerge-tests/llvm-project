@@ -358,8 +358,7 @@ void OmpStructureChecker::CheckHintClause(
                                const Fortran::parser::OmpClauseList>) {
         ompClause = &clause;
       }
-      if (const Fortran::parser::OmpClause::Hint *
-          hintClause{
+      if (const Fortran::parser::OmpClause::Hint *hintClause{
               std::get_if<Fortran::parser::OmpClause::Hint>(&ompClause->u)}) {
         std::optional<std::int64_t> hintValue = GetIntValue(hintClause->v);
         if (hintValue && *hintValue >= 0) {
@@ -2329,7 +2328,7 @@ void OmpStructureChecker::Enter(const parser::OmpClause::Firstprivate &x) {
 void OmpStructureChecker::CheckIsLoopIvPartOfClause(
     llvmOmpClause clause, const parser::OmpObjectList &ompObjectList) {
   for (const auto &ompObject : ompObjectList.v) {
-    if (const parser::Name * name{parser::Unwrap<parser::Name>(ompObject)}) {
+    if (const parser::Name *name{parser::Unwrap<parser::Name>(ompObject)}) {
       if (name->symbol == GetContext().loopIV) {
         context_.Say(name->source,
             "DO iteration variable %s is not allowed in %s clause."_err_en_US,

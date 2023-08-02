@@ -41,8 +41,8 @@ struct IntrinsicTypeDataEditDesc {
   IntrinsicTypeDataEditDesc &operator=(IntrinsicTypeDataEditDesc &&) = default;
   IntrinsicTypeDataEditDesc(Kind &&k, std::optional<int> &&w,
       std::optional<int> &&d, std::optional<int> &&e)
-      : kind{k}, width{std::move(w)}, digits{std::move(d)}, exponentWidth{
-                                                                std::move(e)} {}
+      : kind{k}, width{std::move(w)}, digits{std::move(d)},
+        exponentWidth{std::move(e)} {}
   Kind kind;
   std::optional<int> width; // w
   std::optional<int> digits; // m or d

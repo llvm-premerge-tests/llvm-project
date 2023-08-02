@@ -116,7 +116,7 @@ private:
     }
     if (expr) {
       if (parameters) {
-        if (const Symbol * lenParam{evaluate::ExtractBareLenParameter(*expr)}) {
+        if (const Symbol *lenParam{evaluate::ExtractBareLenParameter(*expr)}) {
           return PackageIntValue(
               lenParameterEnum_, FindLenParameterIndex(*parameters, *lenParam));
         }
@@ -206,7 +206,7 @@ static SomeExpr SaveDerivedPointerTarget(Scope &scope, SourceName name,
     const auto &derivedType{dyType.GetDerivedTypeSpec()};
     ObjectEntityDetails object;
     DeclTypeSpec typeSpec{DeclTypeSpec::TypeDerived, derivedType};
-    if (const DeclTypeSpec * spec{scope.FindType(typeSpec)}) {
+    if (const DeclTypeSpec *spec{scope.FindType(typeSpec)}) {
       object.set_type(*spec);
     } else {
       object.set_type(scope.MakeDerivedType(
@@ -388,7 +388,7 @@ static std::optional<std::string> GetSuffixIfTypeKindParameters(
 }
 
 const Symbol *RuntimeTableBuilder::DescribeType(Scope &dtScope) {
-  if (const Symbol * info{dtScope.runtimeDerivedTypeDescription()}) {
+  if (const Symbol *info{dtScope.runtimeDerivedTypeDescription()}) {
     return info;
   }
   const DerivedTypeSpec *derivedTypeSpec{dtScope.derivedTypeSpec()};
@@ -401,8 +401,8 @@ const Symbol *RuntimeTableBuilder::DescribeType(Scope &dtScope) {
     // a module but used only by clients and submodules, enabling the
     // run-time "no initialization needed here" flag to work.
     DerivedTypeSpec derived{dtScope.symbol()->name(), *dtScope.symbol()};
-    if (const SymbolVector *
-        lenParameters{GetTypeParameters(*dtScope.symbol())}) {
+    if (const SymbolVector *lenParameters{
+            GetTypeParameters(*dtScope.symbol())}) {
       // Create dummy deferred values for the length parameters so that the
       // DerivedTypeSpec is complete and can be used in helpers.
       for (SymbolRef lenParam : *lenParameters) {
@@ -752,8 +752,8 @@ evaluate::StructureConstructor RuntimeTableBuilder::DescribeComponent(
   AddValue(values, componentSchema_, "offset"s, IntExpr<8>(symbol.offset()));
   // CHARACTER length
   auto len{typeAndShape->LEN()};
-  if (const semantics::DerivedTypeSpec *
-      pdtInstance{dtScope.derivedTypeSpec()}) {
+  if (const semantics::DerivedTypeSpec *pdtInstance{
+          dtScope.derivedTypeSpec()}) {
     auto restorer{foldingContext.WithPDTInstance(*pdtInstance)};
     len = Fold(foldingContext, std::move(len));
   }
@@ -785,11 +785,11 @@ evaluate::StructureConstructor RuntimeTableBuilder::DescribeComponent(
             evaluate::Designator<evaluate::SomeDerived>{
                 DEREF(derivedDescription)}}));
     // Package values of LEN parameters, if any
-    if (const SymbolVector * specParams{GetTypeParameters(spec.typeSymbol())}) {
+    if (const SymbolVector *specParams{GetTypeParameters(spec.typeSymbol())}) {
       for (SymbolRef ref : *specParams) {
         const auto &tpd{ref->get<TypeParamDetails>()};
         if (tpd.attr() == common::TypeParamAttr::Len) {
-          if (const ParamValue * paramValue{spec.FindParameter(ref->name())}) {
+          if (const ParamValue *paramValue{spec.FindParameter(ref->name())}) {
             lenParams.emplace_back(GetValue(*paramValue, parameters));
           } else {
             lenParams.emplace_back(GetValue(tpd.init(), parameters));
@@ -972,7 +972,7 @@ SymbolVector CollectBindings(const Scope &dtScope) {
       binding->set_numPrivatesNotOverridden(0);
     }
   }
-  if (const Scope * parentScope{dtScope.GetDerivedTypeParent()}) {
+  if (const Scope *parentScope{dtScope.GetDerivedTypeParent()}) {
     result = CollectBindings(*parentScope);
     // Apply overrides from the local bindings of the extended type
     for (auto iter{result.begin()}; iter != result.end(); ++iter) {
@@ -1020,7 +1020,7 @@ std::map<int, evaluate::StructureConstructor>
 RuntimeTableBuilder::DescribeSpecialGenerics(const Scope &dtScope,
     const Scope &thisScope, const DerivedTypeSpec *derivedTypeSpec) const {
   std::map<int, evaluate::StructureConstructor> specials;
-  if (const Scope * parentScope{dtScope.GetDerivedTypeParent()}) {
+  if (const Scope *parentScope{dtScope.GetDerivedTypeParent()}) {
     specials =
         DescribeSpecialGenerics(*parentScope, thisScope, derivedTypeSpec);
   }
@@ -1234,16 +1234,18 @@ RuntimeDerivedTypeTables BuildRuntimeDerivedTypeTables(
 // dummy argument.  Returns a non-null DeclTypeSpec pointer only if that
 // dtv argument exists and is a derived type.
 static const DeclTypeSpec *GetDefinedIoSpecificArgType(const Symbol &specific) {
-  const Symbol *interface{&specific.GetUltimate()};
+  const Symbol *interface {
+    &specific.GetUltimate()
+  };
   if (const auto *procEntity{specific.detailsIf<ProcEntityDetails>()}) {
     interface = procEntity->procInterface();
   }
   if (interface) {
-    if (const SubprogramDetails *
-            subprogram{interface->detailsIf<SubprogramDetails>()};
+    if (const SubprogramDetails *subprogram{
+            interface->detailsIf<SubprogramDetails>()};
         subprogram && !subprogram->dummyArgs().empty()) {
-      if (const Symbol * dtvArg{subprogram->dummyArgs().at(0)}) {
-        if (const DeclTypeSpec * declType{dtvArg->GetType()}) {
+      if (const Symbol *dtvArg{subprogram->dummyArgs().at(0)}) {
+        if (const DeclTypeSpec *declType{dtvArg->GetType()}) {
           return declType->AsDerived() ? declType : nullptr;
         }
       }
@@ -1256,7 +1258,7 @@ static const DeclTypeSpec *GetDefinedIoSpecificArgType(const Symbol &specific) {
 // defined I/O.
 static const Symbol *FindGenericDefinedIo(
     const Scope &scope, common::DefinedIo which) {
-  if (const Symbol * symbol{scope.FindSymbol(GenericKind::AsFortran(which))}) {
+  if (const Symbol *symbol{scope.FindSymbol(GenericKind::AsFortran(which))}) {
     const Symbol &generic{symbol->GetUltimate()};
     const auto &genericDetails{generic.get<GenericDetails>()};
     CHECK(std::holds_alternative<common::DefinedIo>(genericDetails.kind().u));
@@ -1282,13 +1284,12 @@ CollectNonTbpDefinedIoGenericInterfaces(
         {common::DefinedIo::ReadFormatted, common::DefinedIo::ReadUnformatted,
             common::DefinedIo::WriteFormatted,
             common::DefinedIo::WriteUnformatted}) {
-      if (const Symbol * generic{FindGenericDefinedIo(scope, which)}) {
+      if (const Symbol *generic{FindGenericDefinedIo(scope, which)}) {
         for (auto specific : generic->get<GenericDetails>().specificProcs()) {
-          if (const DeclTypeSpec *
-              declType{GetDefinedIoSpecificArgType(*specific)}) {
+          if (const DeclTypeSpec *declType{
+                  GetDefinedIoSpecificArgType(*specific)}) {
             const DerivedTypeSpec &derived{DEREF(declType->AsDerived())};
-            if (const Symbol *
-                dtDesc{derived.scope()
+            if (const Symbol *dtDesc{derived.scope()
                         ? derived.scope()->runtimeDerivedTypeDescription()
                         : nullptr}) {
               if (useRuntimeTypeInfoEntries &&
@@ -1344,11 +1345,10 @@ CollectNonTbpDefinedIoGenericInterfaces(
 
 static const Symbol *FindSpecificDefinedIo(const Scope &scope,
     const evaluate::DynamicType &derived, common::DefinedIo which) {
-  if (const Symbol * generic{FindGenericDefinedIo(scope, which)}) {
+  if (const Symbol *generic{FindGenericDefinedIo(scope, which)}) {
     for (auto ref : generic->get<GenericDetails>().specificProcs()) {
       const Symbol &specific{*ref};
-      if (const DeclTypeSpec *
-          thisType{GetDefinedIoSpecificArgType(specific)}) {
+      if (const DeclTypeSpec *thisType{GetDefinedIoSpecificArgType(specific)}) {
         if (evaluate::DynamicType{DEREF(thisType->AsDerived()), true}
                 .IsTkCompatibleWith(derived)) {
           return &specific.GetUltimate();
@@ -1371,8 +1371,8 @@ bool ShouldIgnoreRuntimeTypeInfoNonTbpGenericInterfaces(
       {common::DefinedIo::ReadFormatted, common::DefinedIo::ReadUnformatted,
           common::DefinedIo::WriteFormatted,
           common::DefinedIo::WriteUnformatted}) {
-    if (const Symbol *
-        specific{FindSpecificDefinedIo(typeScope, dyType, which)}) {
+    if (const Symbol *specific{
+            FindSpecificDefinedIo(typeScope, dyType, which)}) {
       // There's a non-TBP defined I/O procedure in the scope of the type's
       // definition that applies to this type.  It will appear in the type's
       // runtime information.  Determine whether it still applies in the

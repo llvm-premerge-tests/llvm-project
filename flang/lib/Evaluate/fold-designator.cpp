@@ -197,8 +197,8 @@ std::optional<OffsetSymbol> DesignatorFolder::FoldDesignator(
 
 std::optional<OffsetSymbol> DesignatorFolder::FoldDesignator(
     const ProcedureDesignator &proc, ConstantSubscript which) {
-  if (const Symbol * symbol{proc.GetSymbol()}) {
-    if (const Component * component{proc.GetComponent()}) {
+  if (const Symbol *symbol{proc.GetSymbol()}) {
+    if (const Component *component{proc.GetComponent()}) {
       return FoldDesignator(*component, which);
     } else if (which > 0) {
       isEmpty_ = true;
@@ -249,7 +249,7 @@ static std::optional<ArrayRef> OffsetToArrayRef(FoldingContext &context,
 static const Symbol *OffsetToUniqueComponent(
     const semantics::DerivedTypeSpec &spec, ConstantSubscript offset) {
   const Symbol *result{nullptr};
-  if (const semantics::Scope * scope{spec.scope()}) {
+  if (const semantics::Scope *scope{spec.scope()}) {
     for (const auto &pair : *scope) {
       const Symbol &component{*pair.second};
       if (offset >= static_cast<ConstantSubscript>(component.offset()) &&
@@ -290,8 +290,7 @@ static std::optional<DataRef> OffsetToDataRef(FoldingContext &context,
         }
         if (result && type->category() == TypeCategory::Derived &&
             size < result->GetLastSymbol().size()) {
-          if (const Symbol *
-              component{OffsetToUniqueComponent(
+          if (const Symbol *component{OffsetToUniqueComponent(
                   type->GetDerivedTypeSpec(), offset)}) {
             offset -= component->offset();
             return OffsetToDataRef(context,

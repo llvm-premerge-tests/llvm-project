@@ -61,7 +61,7 @@ private:
 };
 
 void AssignmentContext::Analyze(const parser::AssignmentStmt &stmt) {
-  if (const evaluate::Assignment * assignment{GetAssignment(stmt)}) {
+  if (const evaluate::Assignment *assignment{GetAssignment(stmt)}) {
     const SomeExpr &lhs{assignment->lhs};
     const SomeExpr &rhs{assignment->rhs};
     auto lhsLoc{std::get<parser::Variable>(stmt.t).GetSource()};
@@ -87,7 +87,7 @@ void AssignmentContext::Analyze(const parser::AssignmentStmt &stmt) {
 
 void AssignmentContext::Analyze(const parser::PointerAssignmentStmt &stmt) {
   CHECK(whereDepth_ == 0);
-  if (const evaluate::Assignment * assignment{GetAssignment(stmt)}) {
+  if (const evaluate::Assignment *assignment{GetAssignment(stmt)}) {
     parser::CharBlock at{context_.location().value()};
     auto restorer{foldingContext().messages().SetLocation(at)};
     CheckPointerAssignment(context_, *assignment, context_.FindScope(at));
@@ -110,7 +110,7 @@ static std::optional<std::string> GetPointerComponentDesignatorName(
 // Checks C1594(5,6); false if check fails
 bool CheckCopyabilityInPureScope(parser::ContextualMessages &messages,
     const SomeExpr &expr, const Scope &scope) {
-  if (const Symbol * base{GetFirstSymbol(expr)}) {
+  if (const Symbol *base{GetFirstSymbol(expr)}) {
     if (const char *why{
             WhyBaseObjectIsSuspicious(base->GetUltimate(), scope)}) {
       if (auto pointer{GetPointerComponentDesignatorName(expr)}) {

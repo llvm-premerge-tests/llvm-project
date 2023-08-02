@@ -88,8 +88,8 @@ class DoConcurrentBodyEnforce {
 public:
   DoConcurrentBodyEnforce(
       SemanticsContext &context, parser::CharBlock doConcurrentSourcePosition)
-      : context_{context}, doConcurrentSourcePosition_{
-                               doConcurrentSourcePosition} {}
+      : context_{context},
+        doConcurrentSourcePosition_{doConcurrentSourcePosition} {}
   std::set<parser::Label> labels() { return labels_; }
   template <typename T> bool Pre(const T &x) {
     if (const auto *expr{GetExpr(context_, x)}) {
@@ -157,8 +157,8 @@ public:
     }
     // Check the components
     if (const auto *details{symbol.detailsIf<ObjectEntityDetails>()}) {
-      if (const DeclTypeSpec * entityType{details->type()}) {
-        if (const DerivedTypeSpec * derivedType{entityType->AsDerived()}) {
+      if (const DeclTypeSpec *entityType{details->type()}) {
+        if (const DerivedTypeSpec *derivedType{entityType->AsDerived()}) {
           UltimateComponentIterator ultimates{*derivedType};
           for (const auto &ultimate : ultimates) {
             if (WillDeallocatePolymorphic(ultimate, WillDeallocate)) {
@@ -204,7 +204,7 @@ public:
             MightDeallocatePolymorphic(entity, DeallocateAll)) {
           SayDeallocateOfPolymorph(endBlockStmt.source, entity, reason);
         }
-        if (const Symbol * impure{HasImpureFinal(entity)}) {
+        if (const Symbol *impure{HasImpureFinal(entity)}) {
           SayDeallocateWithImpureFinal(entity, reason, *impure);
         }
       }
@@ -215,12 +215,12 @@ public:
   // Note that this case does not cause deallocation of coarray components
   void Post(const parser::AssignmentStmt &stmt) {
     const auto &variable{std::get<parser::Variable>(stmt.t)};
-    if (const Symbol * entity{GetLastName(variable).symbol}) {
+    if (const Symbol *entity{GetLastName(variable).symbol}) {
       const char *reason{"assignment"};
       if (MightDeallocatePolymorphic(*entity, DeallocateNonCoarray)) {
         SayDeallocateOfPolymorph(variable.GetSource(), *entity, reason);
       }
-      if (const Symbol * impure{HasImpureFinal(*entity)}) {
+      if (const Symbol *impure{HasImpureFinal(*entity)}) {
         SayDeallocateWithImpureFinal(*entity, reason, *impure);
       }
     }
@@ -253,7 +253,7 @@ public:
           SayDeallocateOfPolymorph(
               currentStatementSourcePosition_, entity, reason);
         }
-        if (const Symbol * impure{HasImpureFinal(entity)}) {
+        if (const Symbol *impure{HasImpureFinal(entity)}) {
           SayDeallocateWithImpureFinal(entity, reason, *impure);
         }
       }
@@ -346,7 +346,7 @@ public:
 
   // Check to see if the name is a variable from an enclosing scope
   void Post(const parser::Name &name) {
-    if (const Symbol * symbol{name.symbol}) {
+    if (const Symbol *symbol{name.symbol}) {
       if (IsVariableName(*symbol)) {
         const Scope &variableScope{symbol->owner()};
         if (DoesScopeContain(&variableScope, blockScope_)) {
@@ -428,8 +428,7 @@ public:
   }
 
   void Check(const parser::ForallAssignmentStmt &stmt) {
-    if (const evaluate::Assignment *
-        assignment{common::visit(
+    if (const evaluate::Assignment *assignment{common::visit(
             common::visitors{[&](const auto &x) { return GetAssignment(x); }},
             stmt.u)}) {
       CheckForallIndexesUsed(*assignment);
@@ -479,7 +478,7 @@ private:
 
   void CheckDoVariable(const parser::ScalarName &scalarName) {
     const parser::CharBlock &sourceLocation{scalarName.thing.source};
-    if (const Symbol * symbol{scalarName.thing.symbol}) {
+    if (const Symbol *symbol{scalarName.thing.symbol}) {
       if (!IsVariableName(*symbol)) {
         context_.Say(
             sourceLocation, "DO control must be an INTEGER variable"_err_en_US);
@@ -507,7 +506,7 @@ private:
 
   // Semantic checks for the limit and step expressions
   void CheckDoExpression(const parser::ScalarExpr &scalarExpression) {
-    if (const SomeExpr * expr{GetExpr(context_, scalarExpression)}) {
+    if (const SomeExpr *expr{GetExpr(context_, scalarExpression)}) {
       if (!ExprHasTypeCategory(*expr, TypeCategory::Integer)) {
         // No warnings or errors for type INTEGER
         const parser::CharBlock &loc{scalarExpression.thing.value().source};
@@ -566,7 +565,7 @@ private:
         // Loop through the names in the Local locality-spec getting their
         // symbols
         for (const parser::Name &name : names->v) {
-          if (const Symbol * symbol{parentScope.FindSymbol(name.source)}) {
+          if (const Symbol *symbol{parentScope.FindSymbol(name.source)}) {
             symbols.insert(ResolveAssociations(*symbol));
           }
         }
@@ -952,8 +951,8 @@ static void CheckIfArgIsDoVar(const evaluate::ActualArgument &arg,
     const parser::CharBlock location, SemanticsContext &context) {
   common::Intent intent{arg.dummyIntent()};
   if (intent == common::Intent::Out || intent == common::Intent::InOut) {
-    if (const SomeExpr * argExpr{arg.UnwrapExpr()}) {
-      if (const Symbol * var{evaluate::UnwrapWholeSymbolDataRef(*argExpr)}) {
+    if (const SomeExpr *argExpr{arg.UnwrapExpr()}) {
+      if (const Symbol *var{evaluate::UnwrapWholeSymbolDataRef(*argExpr)}) {
         if (intent == common::Intent::Out) {
           context.CheckIndexVarRedefine(location, *var);
         } else {
@@ -1028,7 +1027,7 @@ void DoForallChecker::Enter(const parser::Expr &parsedExpr) { ++exprDepth_; }
 void DoForallChecker::Leave(const parser::Expr &parsedExpr) {
   CHECK(exprDepth_ > 0);
   if (--exprDepth_ == 0) { // Only check top level expressions
-    if (const SomeExpr * expr{GetExpr(context_, parsedExpr)}) {
+    if (const SomeExpr *expr{GetExpr(context_, parsedExpr)}) {
       ActualArgumentSet argSet{CollectActualArguments(*expr)};
       for (const evaluate::ActualArgumentRef &argRef : argSet) {
         CheckIfArgIsDoVar(*argRef, parsedExpr.source, context_);

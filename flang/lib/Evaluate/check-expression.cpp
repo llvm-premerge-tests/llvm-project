@@ -290,7 +290,7 @@ public:
     return (*this)(x.left());
   }
   bool operator()(const ProcedureRef &x) const {
-    if (const SpecificIntrinsic * intrinsic{x.proc().GetSpecificIntrinsic()}) {
+    if (const SpecificIntrinsic *intrinsic{x.proc().GetSpecificIntrinsic()}) {
       return intrinsic->characteristics.value().attrs.test(
           characteristics::Procedure::Attr::NullPointer);
     }
@@ -1033,7 +1033,7 @@ public:
         sf_.name()};
   }
   Result operator()(const ProcedureDesignator &proc) const {
-    if (const Symbol * symbol{proc.GetSymbol()}) {
+    if (const Symbol *symbol{proc.GetSymbol()}) {
       const Symbol &ultimate{symbol->GetUltimate()};
       if (const auto *subp{
               ultimate.detailsIf<semantics::SubprogramDetails>()}) {

@@ -54,7 +54,7 @@ std::size_t Component::GetElementByteSize(const Descriptor &instance) const {
 std::size_t Component::GetElements(const Descriptor &instance) const {
   std::size_t elements{1};
   if (int rank{rank_}) {
-    if (const Value * boundValues{bounds()}) {
+    if (const Value *boundValues{bounds()}) {
       for (int j{0}; j < rank; ++j) {
         TypeParameterValue lb{
             boundValues[2 * j].GetValue(&instance).value_or(0)};
@@ -103,7 +103,7 @@ void Component::EstablishDescriptor(Descriptor &descriptor,
     descriptor.Establish(
         kind_, lengthInChars, nullptr, rank_, nullptr, attribute);
   } else if (cat == TypeCategory::Derived) {
-    if (const DerivedType * type{derivedType()}) {
+    if (const DerivedType *type{derivedType()}) {
       descriptor.Establish(*type, nullptr, rank_, nullptr, attribute);
     } else { // unlimited polymorphic
       descriptor.Establish(TypeCode{TypeCategory::Derived, 0}, 0, nullptr,

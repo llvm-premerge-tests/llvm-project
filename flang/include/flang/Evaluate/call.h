@@ -96,7 +96,7 @@ public:
   }
 
   const Symbol *GetAssumedTypeDummy() const {
-    if (const AssumedType * aType{std::get_if<AssumedType>(&u_)}) {
+    if (const AssumedType *aType{std::get_if<AssumedType>(&u_)}) {
       return &aType->symbol();
     } else {
       return nullptr;

@@ -406,13 +406,13 @@ void SemanticsContext::CheckIndexVarRedefine(
 }
 
 void SemanticsContext::CheckIndexVarRedefine(const parser::Variable &variable) {
-  if (const Symbol * entity{GetLastName(variable).symbol}) {
+  if (const Symbol *entity{GetLastName(variable).symbol}) {
     CheckIndexVarRedefine(variable.GetSource(), *entity);
   }
 }
 
 void SemanticsContext::CheckIndexVarRedefine(const parser::Name &name) {
-  if (const Symbol * entity{name.symbol}) {
+  if (const Symbol *entity{name.symbol}) {
     CheckIndexVarRedefine(name.source, *entity);
   }
 }
@@ -420,14 +420,14 @@ void SemanticsContext::CheckIndexVarRedefine(const parser::Name &name) {
 void SemanticsContext::ActivateIndexVar(
     const parser::Name &name, IndexVarKind kind) {
   CheckIndexVarRedefine(name);
-  if (const Symbol * indexVar{name.symbol}) {
+  if (const Symbol *indexVar{name.symbol}) {
     activeIndexVars_.emplace(
         ResolveAssociations(*indexVar), IndexVarInfo{name.source, kind});
   }
 }
 
 void SemanticsContext::DeactivateIndexVar(const parser::Name &name) {
-  if (Symbol * indexVar{name.symbol}) {
+  if (Symbol *indexVar{name.symbol}) {
     auto it{activeIndexVars_.find(ResolveAssociations(*indexVar))};
     if (it != activeIndexVars_.end() && it->second.location == name.source) {
       activeIndexVars_.erase(it);

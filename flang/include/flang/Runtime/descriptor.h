@@ -431,7 +431,7 @@ public:
   RT_API_ATTRS void Check() {
     assert(descriptor().rank() <= maxRank);
     assert(descriptor().SizeInBytes() <= byteSize);
-    if (DescriptorAddendum * addendum{descriptor().Addendum()}) {
+    if (DescriptorAddendum *addendum{descriptor().Addendum()}) {
       assert(hasAddendum);
       assert(addendum->LenParameters() <= maxLengthTypeParameters);
     } else {

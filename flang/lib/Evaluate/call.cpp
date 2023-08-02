@@ -67,8 +67,8 @@ void ActualArgument::Parenthesize() {
 
 SpecificIntrinsic::SpecificIntrinsic(
     IntrinsicProcedure n, characteristics::Procedure &&chars)
-    : name{n}, characteristics{
-                   new characteristics::Procedure{std::move(chars)}} {}
+    : name{n},
+      characteristics{new characteristics::Procedure{std::move(chars)}} {}
 
 DEFINE_DEFAULT_CONSTRUCTORS_AND_ASSIGNMENTS(SpecificIntrinsic)
 
@@ -99,7 +99,7 @@ std::optional<DynamicType> ProcedureDesignator::GetType() const {
 }
 
 int ProcedureDesignator::Rank() const {
-  if (const Symbol * symbol{GetSymbol()}) {
+  if (const Symbol *symbol{GetSymbol()}) {
     // Subtle: will be zero for functions returning procedure pointers
     return symbol->Rank();
   }
@@ -117,7 +117,7 @@ int ProcedureDesignator::Rank() const {
 }
 
 const Symbol *ProcedureDesignator::GetInterfaceSymbol() const {
-  if (const Symbol * symbol{GetSymbol()}) {
+  if (const Symbol *symbol{GetSymbol()}) {
     const Symbol &ultimate{symbol->GetUltimate()};
     if (const auto *proc{ultimate.detailsIf<semantics::ProcEntityDetails>()}) {
       return proc->procInterface();
@@ -132,9 +132,9 @@ const Symbol *ProcedureDesignator::GetInterfaceSymbol() const {
 }
 
 bool ProcedureDesignator::IsElemental() const {
-  if (const Symbol * interface{GetInterfaceSymbol()}) {
+  if (const Symbol *interface{GetInterfaceSymbol()}) {
     return IsElementalProcedure(*interface);
-  } else if (const Symbol * symbol{GetSymbol()}) {
+  } else if (const Symbol *symbol{GetSymbol()}) {
     return IsElementalProcedure(*symbol);
   } else if (const auto *intrinsic{std::get_if<SpecificIntrinsic>(&u)}) {
     return intrinsic->characteristics.value().attrs.test(
@@ -146,9 +146,9 @@ bool ProcedureDesignator::IsElemental() const {
 }
 
 bool ProcedureDesignator::IsPure() const {
-  if (const Symbol * interface{GetInterfaceSymbol()}) {
+  if (const Symbol *interface{GetInterfaceSymbol()}) {
     return IsPureProcedure(*interface);
-  } else if (const Symbol * symbol{GetSymbol()}) {
+  } else if (const Symbol *symbol{GetSymbol()}) {
     return IsPureProcedure(*symbol);
   } else if (const auto *intrinsic{std::get_if<SpecificIntrinsic>(&u)}) {
     return intrinsic->characteristics.value().attrs.test(

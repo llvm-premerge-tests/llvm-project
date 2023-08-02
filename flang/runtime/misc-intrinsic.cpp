@@ -25,7 +25,7 @@ static void TransferImpl(Descriptor &result, const Descriptor &source,
   if (resultExtent) {
     result.GetDimension(0).SetBounds(1, *resultExtent);
   }
-  if (const DescriptorAddendum * addendum{mold.Addendum()}) {
+  if (const DescriptorAddendum *addendum{mold.Addendum()}) {
     *result.Addendum() = *addendum;
   }
   if (int stat{result.Allocate()}) {

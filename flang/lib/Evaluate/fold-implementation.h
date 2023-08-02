@@ -160,7 +160,7 @@ std::optional<Constant<T>> Folder<T>::Folding(ArrayRef &aRef) {
       return std::nullopt;
     }
   }
-  if (Component * component{aRef.base().UnwrapComponent()}) {
+  if (Component *component{aRef.base().UnwrapComponent()}) {
     return GetConstantComponent(*component, &subscripts);
   } else if (std::optional<Constant<T>> array{
                  GetNamedConstant(aRef.base().GetLastSymbol())}) {

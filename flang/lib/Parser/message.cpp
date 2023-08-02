@@ -198,13 +198,13 @@ std::string Message::ToString() const {
 }
 
 void Message::ResolveProvenances(const AllCookedSources &allCooked) {
-  if (CharBlock * cb{std::get_if<CharBlock>(&location_)}) {
+  if (CharBlock *cb{std::get_if<CharBlock>(&location_)}) {
     if (std::optional<ProvenanceRange> resolved{
             allCooked.GetProvenanceRange(*cb)}) {
       location_ = *resolved;
     }
   }
-  if (Message * attachment{attachment_.get()}) {
+  if (Message *attachment{attachment_.get()}) {
     attachment->ResolveProvenances(allCooked);
   }
 }

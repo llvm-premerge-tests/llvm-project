@@ -1715,11 +1715,13 @@ static void genACCDataOp(Fortran::lower::AbstractConverter &converter,
                    std::get_if<Fortran::parser::AccClause::Wait>(&clause.u)) {
       genWaitClause(converter, waitClause, waitOperands, waitDevnum,
                     addWaitAttr, stmtCtx);
-    } else if(const auto *defaultClause = 
-                  std::get_if<Fortran::parser::AccClause::Default>(&clause.u)) {
+    } else if (const auto *defaultClause =
+                   std::get_if<Fortran::parser::AccClause::Default>(
+                       &clause.u)) {
       if ((defaultClause->v).v == llvm::acc::DefaultValue::ACC_Default_none)
         hasDefaultNone = true;
-      else if ((defaultClause->v).v == llvm::acc::DefaultValue::ACC_Default_present)
+      else if ((defaultClause->v).v ==
+               llvm::acc::DefaultValue::ACC_Default_present)
         hasDefaultPresent = true;
     }
   }

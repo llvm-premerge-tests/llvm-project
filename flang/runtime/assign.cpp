@@ -90,9 +90,9 @@ static int AllocateAssignmentLHS(
     to.raw().elem_len = from.ElementBytes();
   }
   const typeInfo::DerivedType *derived{nullptr};
-  if (const DescriptorAddendum * fromAddendum{from.Addendum()}) {
+  if (const DescriptorAddendum *fromAddendum{from.Addendum()}) {
     derived = fromAddendum->derivedType();
-    if (DescriptorAddendum * toAddendum{to.Addendum()}) {
+    if (DescriptorAddendum *toAddendum{to.Addendum()}) {
       toAddendum->set_derivedType(derived);
       std::size_t lenParms{derived ? derived->LenParameters() : 0};
       for (std::size_t j{0}; j < lenParms; ++j) {
@@ -379,8 +379,8 @@ static void Assign(
                      "bytes != from %zd bytes)",
         toElementBytes, fromElementBytes);
   }
-  if (const typeInfo::DerivedType *
-      updatedToDerived{toAddendum ? toAddendum->derivedType() : nullptr}) {
+  if (const typeInfo::DerivedType *updatedToDerived{
+          toAddendum ? toAddendum->derivedType() : nullptr}) {
     // Derived type intrinsic assignment, which is componentwise and elementwise
     // for all components, including parent components (10.2.1.2-3).
     // The target is first finalized if still necessary (7.5.6.3(1))
@@ -566,7 +566,7 @@ void RTNAME(AssignTemporary)(Descriptor &to, const Descriptor &from,
     const char *sourceFile, int sourceLine) {
   Terminator terminator{sourceFile, sourceLine};
   // Initialize the "to" if it is of derived type that needs initialization.
-  if (const DescriptorAddendum * addendum{to.Addendum()}) {
+  if (const DescriptorAddendum *addendum{to.Addendum()}) {
     if (const auto *derived{addendum->derivedType()}) {
       // Do not invoke the initialization, if the descriptor is unallocated.
       // AssignTemporary() is used for component-by-component assignments,
@@ -596,7 +596,7 @@ void RTNAME(CopyOutAssign)(Descriptor &to, const Descriptor &from,
   Terminator terminator{sourceFile, sourceLine};
   // Initialize the "to" if it is of derived type that needs initialization.
   if (!skipToInit) {
-    if (const DescriptorAddendum * addendum{to.Addendum()}) {
+    if (const DescriptorAddendum *addendum{to.Addendum()}) {
       if (const auto *derived{addendum->derivedType()}) {
         if (!derived->noInitializationNeeded()) {
           if (ReturnError(terminator, Initialize(to, *derived, terminator)) !=

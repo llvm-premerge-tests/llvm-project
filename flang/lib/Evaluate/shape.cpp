@@ -347,7 +347,7 @@ public:
   }
 
   template <typename T> Result operator()(const Expr<T> &expr) const {
-    if (const Symbol * whole{UnwrapWholeSymbolOrComponentDataRef(expr)}) {
+    if (const Symbol *whole{UnwrapWholeSymbolOrComponentDataRef(expr)}) {
       return (*this)(*whole);
     } else if constexpr (common::HasMember<Constant<T>, decltype(expr.u)>) {
       if (const auto *con{std::get_if<Constant<T>>(&expr.u)}) {
@@ -709,7 +709,7 @@ auto GetShapeHelper::operator()(const Symbol &symbol) const -> Result {
             return ScalarShape(); // no dimensions seen
           },
           [&](const semantics::ProcEntityDetails &proc) {
-            if (const Symbol * interface{proc.procInterface()}) {
+            if (const Symbol *interface{proc.procInterface()}) {
               return (*this)(*interface);
             } else {
               return ScalarShape();
@@ -789,7 +789,7 @@ auto GetShapeHelper::operator()(const ArrayRef &arrayRef) const -> Result {
     ++dimension;
   }
   if (shape.empty()) {
-    if (const Component * component{base.UnwrapComponent()}) {
+    if (const Component *component{base.UnwrapComponent()}) {
       return (*this)(component->base());
     }
   }
@@ -848,7 +848,7 @@ auto GetShapeHelper::operator()(const ProcedureRef &call) const -> Result {
       }
     }
     return ScalarShape();
-  } else if (const Symbol * symbol{call.proc().GetSymbol()}) {
+  } else if (const Symbol *symbol{call.proc().GetSymbol()}) {
     return (*this)(*symbol);
   } else if (const auto *intrinsic{call.proc().GetSpecificIntrinsic()}) {
     if (intrinsic->name == "shape" || intrinsic->name == "lbound" ||

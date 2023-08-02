@@ -88,13 +88,13 @@ void UnitMap::CloseAll(IoErrorHandler &handler) {
   {
     CriticalSection critical{lock_};
     for (int j{0}; j < buckets_; ++j) {
-      while (Chain * p{bucket_[j].get()}) {
+      while (Chain *p{bucket_[j].get()}) {
         bucket_[j].swap(p->next); // pops p from head of bucket list
         closeList.swap(p->next); // pushes p to closeList
       }
     }
   }
-  while (Chain * p{closeList.get()}) {
+  while (Chain *p{closeList.get()}) {
     closeList.swap(p->next); // pops p from head of closeList
     p->unit.CloseUnit(CloseStatus::Keep, handler);
     p->unit.~ExternalFileUnit();

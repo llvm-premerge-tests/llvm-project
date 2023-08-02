@@ -26,8 +26,8 @@ struct ArrayConstructorVector {
       int sourceLine, bool useValueLengthParameters)
       : to{to}, nextValuePosition{nextValuePosition},
         actualAllocationSize{actualAllocationSize}, sourceFile{sourceFile},
-        sourceLine{sourceLine}, useValueLengthParameters_{
-                                    useValueLengthParameters} {}
+        sourceLine{sourceLine},
+        useValueLengthParameters_{useValueLengthParameters} {}
 
   bool useValueLengthParameters() const { return useValueLengthParameters_; }
 

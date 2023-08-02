@@ -1642,9 +1642,8 @@ private:
 Fortran::lower::pft::FunctionLikeUnit::FunctionLikeUnit(
     const parser::MainProgram &func, const lower::pft::PftNode &parent,
     const semantics::SemanticsContext &semanticsContext)
-    : ProgramUnit{func, parent}, endStmt{
-                                     getFunctionStmt<parser::EndProgramStmt>(
-                                         func)} {
+    : ProgramUnit{func, parent},
+      endStmt{getFunctionStmt<parser::EndProgramStmt>(func)} {
   const auto &programStmt =
       std::get<std::optional<parser::Statement<parser::ProgramStmt>>>(func.t);
   if (programStmt.has_value()) {
@@ -1728,8 +1727,8 @@ Fortran::lower::pft::ModuleLikeUnit::ModuleLikeUnit(
 
 Fortran::lower::pft::ModuleLikeUnit::ModuleLikeUnit(
     const parser::Submodule &m, const lower::pft::PftNode &parent)
-    : ProgramUnit{m, parent}, beginStmt{getModuleStmt<parser::SubmoduleStmt>(
-                                  m)},
+    : ProgramUnit{m, parent},
+      beginStmt{getModuleStmt<parser::SubmoduleStmt>(m)},
       endStmt{getModuleStmt<parser::EndSubmoduleStmt>(m)} {}
 
 parser::CharBlock

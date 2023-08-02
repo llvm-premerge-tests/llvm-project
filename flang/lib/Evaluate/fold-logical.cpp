@@ -79,7 +79,7 @@ Expr<Type<TypeCategory::Logical, KIND>> FoldIntrinsicFunction(
     // must be done here.
     std::optional<Expr<SomeType>> constArgs[2];
     for (int i{0}; i <= 1; i++) {
-      if (BOZLiteralConstant * x{UnwrapExpr<BOZLiteralConstant>(args[i])}) {
+      if (BOZLiteralConstant *x{UnwrapExpr<BOZLiteralConstant>(args[i])}) {
         constArgs[i] = AsGenericExpr(Constant<LargestInt>{std::move(*x)});
       } else if (auto *x{UnwrapExpr<Expr<SomeInteger>>(args[i])}) {
         common::visit(

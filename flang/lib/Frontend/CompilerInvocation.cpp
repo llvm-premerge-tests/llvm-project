@@ -950,7 +950,8 @@ bool CompilerInvocation::createFromArgs(
     res.loweringOpts.setLowerToHighLevelFIR(true);
   }
 
-  if (args.hasArg(clang::driver::options::OPT_flang_experimental_polymorphism)) {
+  if (args.hasArg(
+          clang::driver::options::OPT_flang_experimental_polymorphism)) {
     res.loweringOpts.setPolymorphicTypeImpl(true);
   }
 

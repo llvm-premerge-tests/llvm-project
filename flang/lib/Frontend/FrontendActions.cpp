@@ -319,7 +319,7 @@ bool CodeGenAction::beginSourceFileAction() {
       // FIXME: This should eventually be moved out of the
       // if, so that it also functions for host, however,
       // we must fix the filtering to function reasonably
-      // for host first.  
+      // for host first.
       pm.addPass(fir::createOMPFunctionFilteringPass());
     }
   }

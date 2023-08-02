@@ -256,7 +256,7 @@ static const semantics::Symbol *FindParentComponent(
     // TODO: Combine with semantics::DerivedTypeDetails::GetParentComponent
     if (auto extends{dtDetails.GetParentComponentName()}) {
       if (auto iter{scope->find(*extends)}; iter != scope->cend()) {
-        if (const semantics::Symbol & symbol{*iter->second};
+        if (const semantics::Symbol &symbol{*iter->second};
             symbol.test(semantics::Symbol::Flag::ParentComp)) {
           return &symbol;
         }
@@ -268,7 +268,7 @@ static const semantics::Symbol *FindParentComponent(
 
 const semantics::DerivedTypeSpec *GetParentTypeSpec(
     const semantics::DerivedTypeSpec &derived) {
-  if (const semantics::Symbol * parent{FindParentComponent(derived)}) {
+  if (const semantics::Symbol *parent{FindParentComponent(derived)}) {
     return &parent->get<semantics::ObjectEntityDetails>()
                 .type()
                 ->derivedTypeSpec();
@@ -341,7 +341,7 @@ static const semantics::Symbol *GetParentComponent(
     const semantics::Scope &scope) {
   if (auto extends{details.GetParentComponentName()}) {
     if (auto iter{scope.find(*extends)}; iter != scope.cend()) {
-      if (const Symbol & symbol{*iter->second};
+      if (const Symbol &symbol{*iter->second};
           symbol.test(semantics::Symbol::Flag::ParentComp)) {
         return &symbol;
       }
@@ -363,7 +363,7 @@ static const semantics::Symbol *GetParentComponent(
 
 static const semantics::DerivedTypeSpec *GetParentTypeSpec(
     const semantics::Symbol *symbol, const semantics::Scope &scope) {
-  if (const Symbol * parentComponent{GetParentComponent(symbol, scope)}) {
+  if (const Symbol *parentComponent{GetParentComponent(symbol, scope)}) {
     return &parentComponent->get<semantics::ObjectEntityDetails>()
                 .type()
                 ->derivedTypeSpec();

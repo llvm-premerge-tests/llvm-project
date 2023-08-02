@@ -19,7 +19,7 @@ extern "C" {
 
 void RTNAME(Initialize)(
     const Descriptor &descriptor, const char *sourceFile, int sourceLine) {
-  if (const DescriptorAddendum * addendum{descriptor.Addendum()}) {
+  if (const DescriptorAddendum *addendum{descriptor.Addendum()}) {
     if (const auto *derived{addendum->derivedType()}) {
       if (!derived->noInitializationNeeded()) {
         Terminator terminator{sourceFile, sourceLine};
@@ -30,7 +30,7 @@ void RTNAME(Initialize)(
 }
 
 void RTNAME(Destroy)(const Descriptor &descriptor) {
-  if (const DescriptorAddendum * addendum{descriptor.Addendum()}) {
+  if (const DescriptorAddendum *addendum{descriptor.Addendum()}) {
     if (const auto *derived{addendum->derivedType()}) {
       if (!derived->noDestructionNeeded()) {
         // TODO: Pass source file & line information to the API
@@ -43,7 +43,7 @@ void RTNAME(Destroy)(const Descriptor &descriptor) {
 
 bool RTNAME(ClassIs)(
     const Descriptor &descriptor, const typeInfo::DerivedType &derivedType) {
-  if (const DescriptorAddendum * addendum{descriptor.Addendum()}) {
+  if (const DescriptorAddendum *addendum{descriptor.Addendum()}) {
     if (const auto *derived{addendum->derivedType()}) {
       if (derived == &derivedType) {
         return true;
@@ -80,7 +80,7 @@ inline bool CompareDerivedType(
 }
 
 static const typeInfo::DerivedType *GetDerivedType(const Descriptor &desc) {
-  if (const DescriptorAddendum * addendum{desc.Addendum()}) {
+  if (const DescriptorAddendum *addendum{desc.Addendum()}) {
     if (const auto *derived{addendum->derivedType()}) {
       return derived;
     }
@@ -159,7 +159,7 @@ bool RTNAME(ExtendsTypeOf)(const Descriptor &a, const Descriptor &mold) {
 }
 
 void RTNAME(DestroyWithoutFinalization)(const Descriptor &descriptor) {
-  if (const DescriptorAddendum * addendum{descriptor.Addendum()}) {
+  if (const DescriptorAddendum *addendum{descriptor.Addendum()}) {
     if (const auto *derived{addendum->derivedType()}) {
       if (!derived->noDestructionNeeded()) {
         Destroy(descriptor, /*finalize=*/false, *derived, nullptr);

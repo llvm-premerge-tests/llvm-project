@@ -97,7 +97,7 @@ std::optional<TypeAndShape> TypeAndShape::Characterize(
             if constexpr (std::is_same_v<Ty, semantics::EntityDetails> ||
                 std::is_same_v<Ty, semantics::ObjectEntityDetails> ||
                 std::is_same_v<Ty, semantics::TypeParamDetails>) {
-              if (const semantics::DeclTypeSpec * type{ultimate.GetType()}) {
+              if (const semantics::DeclTypeSpec *type{ultimate.GetType()}) {
                 if (auto dyType{DynamicType::From(*type)}) {
                   TypeAndShape result{
                       std::move(*dyType), GetShape(context, ultimate)};
@@ -151,7 +151,7 @@ std::optional<TypeAndShape> TypeAndShape::Characterize(
     const ActualArgument &arg, FoldingContext &context) {
   if (const auto *expr{arg.UnwrapExpr()}) {
     return Characterize(*expr, context);
-  } else if (const Symbol * assumed{arg.GetAssumedTypeDummy()}) {
+  } else if (const Symbol *assumed{arg.GetAssumedTypeDummy()}) {
     return Characterize(*assumed, context);
   } else {
     return std::nullopt;
@@ -417,9 +417,8 @@ std::optional<DummyDataObject> DummyDataObject::Characterize(
 }
 
 bool DummyDataObject::CanBePassedViaImplicitInterface() const {
-  if ((attrs &
-          Attrs{Attr::Allocatable, Attr::Asynchronous, Attr::Optional,
-              Attr::Pointer, Attr::Target, Attr::Value, Attr::Volatile})
+  if ((attrs &Attrs{Attr::Allocatable, Attr::Asynchronous, Attr::Optional,
+           Attr::Pointer, Attr::Target, Attr::Value, Attr::Volatile})
           .any()) {
     return false; // 15.4.2.2(3)(a)
   } else if ((type.attrs() &
@@ -493,7 +492,7 @@ bool DummyProcedure::IsCompatibleWith(
 }
 
 bool DummyProcedure::CanBePassedViaImplicitInterface() const {
-  if ((attrs & Attrs{Attr::Optional, Attr::Pointer}).any()) {
+  if ((attrs &Attrs{Attr::Optional, Attr::Pointer}).any()) {
     return false; // 15.4.2.2(3)(a)
   }
   return true;
@@ -595,8 +594,8 @@ static std::optional<Procedure> CharacterizeProcedure(
               }
               return intrinsic;
             }
-            if (const semantics::Symbol *
-                interfaceSymbol{proc.procInterface()}) {
+            if (const semantics::Symbol *interfaceSymbol{
+                    proc.procInterface()}) {
               auto interface {
                 CharacterizeProcedure(*interfaceSymbol, context, seenProcs)
               };
@@ -659,7 +658,7 @@ static std::optional<Procedure> CharacterizeProcedure(
             return CharacterizeProcedure(assoc.symbol(), context, seenProcs);
           },
           [&](const semantics::GenericDetails &generic) {
-            if (const semantics::Symbol * specific{generic.specific()}) {
+            if (const semantics::Symbol *specific{generic.specific()}) {
               return CharacterizeProcedure(*specific, context, seenProcs);
             } else {
               return std::optional<Procedure>{};
@@ -1245,8 +1244,7 @@ std::optional<Procedure> Procedure::Characterize(
     const ProcedureRef &ref, FoldingContext &context) {
   if (auto callee{Characterize(ref.proc(), context)}) {
     if (callee->functionResult) {
-      if (const Procedure *
-          proc{callee->functionResult->IsProcedurePointer()}) {
+      if (const Procedure *proc{callee->functionResult->IsProcedurePointer()}) {
         return {*proc};
       }
     }

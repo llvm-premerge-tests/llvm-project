@@ -319,7 +319,7 @@ void ExpressionAnalyzer::CheckConstantSubscripts(ArrayRef &ref) {
   bool anyPossiblyEmptyDim{false};
   int dim{0};
   for (Subscript &ss : ref.subscript()) {
-    if (Triplet * triplet{std::get_if<Triplet>(&ss.u)}) {
+    if (Triplet *triplet{std::get_if<Triplet>(&ss.u)}) {
       auto expr{Fold(triplet->stride())};
       auto stride{ToInt64(expr)};
       triplet->set_stride(std::move(expr));
@@ -2031,10 +2031,9 @@ MaybeExpr ExpressionAnalyzer::Analyze(
                 *symbol);
             continue;
           }
-        } else if (const Symbol * pointer{FindPointerComponent(*symbol)};
+        } else if (const Symbol *pointer{FindPointerComponent(*symbol)};
                    pointer && pureContext) { // C1594(4)
-          if (const Symbol *
-              visible{semantics::FindExternallyVisibleObject(
+          if (const Symbol *visible{semantics::FindExternallyVisibleObject(
                   *value, *pureContext)}) {
             Say(expr.source,
                 "The externally visible object '%s' may not be used in a pure procedure as the value for component '%s' which has the pointer component '%s'"_err_en_US,
@@ -2256,9 +2255,9 @@ auto ExpressionAnalyzer::AnalyzeProcedureComponentRef(
           // binding to be overridden by a PRIVATE one.
           CHECK(dyType && dyType->category() == TypeCategory::Derived &&
               !dyType->IsUnlimitedPolymorphic());
-          if (const Symbol *
-              latest{DEREF(dyType->GetDerivedTypeSpec().typeSymbol().scope())
-                         .FindComponent(sym->name())}) {
+          if (const Symbol *latest{
+                  DEREF(dyType->GetDerivedTypeSpec().typeSymbol().scope())
+                      .FindComponent(sym->name())}) {
             if (sym->attrs().test(semantics::Attr::PRIVATE)) {
               const auto *bindingModule{FindModuleContaining(generic.owner())};
               const Symbol *s{latest};
@@ -2879,7 +2878,7 @@ void ExpressionAnalyzer::Analyze(const parser::CallStmt &callStmt) {
       ProcedureDesignator *proc{std::get_if<ProcedureDesignator>(&callee->u)};
       CHECK(proc);
       bool isKernel{false};
-      if (const Symbol * procSym{proc->GetSymbol()}) {
+      if (const Symbol *procSym{proc->GetSymbol()}) {
         const Symbol &ultimate{procSym->GetUltimate()};
         if (const auto *subpDetails{
                 ultimate.detailsIf<semantics::SubprogramDetails>()}) {
@@ -3071,8 +3070,7 @@ std::optional<characteristics::Procedure> ExpressionAnalyzer::CheckCall(
         specificIntrinsic);
   }
   if (procSymbol && !IsPureProcedure(*procSymbol)) {
-    if (const semantics::Scope *
-        pure{semantics::FindPureProcedureContaining(
+    if (const semantics::Scope *pure{semantics::FindPureProcedureContaining(
             context_.FindScope(callSite))}) {
       Say(callSite,
           "Procedure '%s' referenced in pure subprogram '%s' must be pure too"_err_en_US,
@@ -4230,8 +4228,8 @@ std::optional<ProcedureRef> ArgumentAnalyzer::GetDefinedAssignmentProc() {
       if (const Symbol *binding{FindBoundOp(oprName, i, generic, true)}) {
         if (CheckAccessibleSymbol(scope, DEREF(generic))) {
           // ignore inaccessible type-bound ASSIGNMENT(=) generic
-        } else if (const Symbol *
-            resolution{GetBindingResolution(GetType(i), *binding)}) {
+        } else if (const Symbol *resolution{
+                       GetBindingResolution(GetType(i), *binding)}) {
           proc = resolution;
         } else {
           proc = binding;

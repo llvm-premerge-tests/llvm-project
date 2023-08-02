@@ -314,10 +314,10 @@ static bool HandleComponent(IoStatementState &io, Descriptor &desc,
   char compName[nameBufferSize];
   if (GetLowerCaseName(io, compName, sizeof compName)) {
     const DescriptorAddendum *addendum{source.Addendum()};
-    if (const typeInfo::DerivedType *
-        type{addendum ? addendum->derivedType() : nullptr}) {
-      if (const typeInfo::Component *
-          comp{type->FindDataComponent(compName, std::strlen(compName))}) {
+    if (const typeInfo::DerivedType *type{
+            addendum ? addendum->derivedType() : nullptr}) {
+      if (const typeInfo::Component *comp{
+              type->FindDataComponent(compName, std::strlen(compName))}) {
         bool createdDesc{false};
         if (comp->rank() > 0 && source.rank() > 0) {
           // If base and component are both arrays, the component name

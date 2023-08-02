@@ -140,7 +140,7 @@ int RTNAME(PointerAllocate)(Descriptor &pointer, bool hasStat,
   }
   int stat{ReturnError(terminator, pointer.Allocate(), errMsg, hasStat)};
   if (stat == StatOk) {
-    if (const DescriptorAddendum * addendum{pointer.Addendum()}) {
+    if (const DescriptorAddendum *addendum{pointer.Addendum()}) {
       if (const auto *derived{addendum->derivedType()}) {
         if (!derived->noInitializationNeeded()) {
           stat = Initialize(pointer, *derived, terminator, hasStat, errMsg);

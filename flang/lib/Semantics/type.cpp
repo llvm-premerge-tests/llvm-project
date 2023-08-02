@@ -118,8 +118,8 @@ void DerivedTypeSpec::EvaluateParameters(SemanticsContext &context) {
   auto parameterDecls{OrderParameterDeclarations(typeSymbol_)};
   for (const Symbol &symbol : parameterDecls) {
     const SourceName &name{symbol.name()};
-    if (ParamValue * paramValue{FindParameter(name)}) {
-      if (const MaybeIntExpr & expr{paramValue->GetExplicit()}) {
+    if (ParamValue *paramValue{FindParameter(name)}) {
+      if (const MaybeIntExpr &expr{paramValue->GetExplicit()}) {
         if (auto converted{evaluate::ConvertToType(symbol, SomeExpr{*expr})}) {
           SomeExpr folded{
               evaluate::Fold(foldingContext, std::move(*converted))};
@@ -267,8 +267,8 @@ static void InstantiateNonPDTScope(Scope &typeScope, Scope &containingScope) {
   auto &foldingContext{context.foldingContext()};
   for (auto &pair : typeScope) {
     Symbol &symbol{*pair.second};
-    if (DeclTypeSpec * type{symbol.GetType()}) {
-      if (DerivedTypeSpec * derived{type->AsDerived()}) {
+    if (DeclTypeSpec *type{symbol.GetType()}) {
+      if (DerivedTypeSpec *derived{type->AsDerived()}) {
         if (!(derived->IsForwardReferenced() &&
                 IsAllocatableOrPointer(symbol))) {
           derived->Instantiate(containingScope);
@@ -277,7 +277,7 @@ static void InstantiateNonPDTScope(Scope &typeScope, Scope &containingScope) {
     }
     if (!IsPointer(symbol)) {
       if (auto *object{symbol.detailsIf<ObjectEntityDetails>()}) {
-        if (MaybeExpr & init{object->init()}) {
+        if (MaybeExpr &init{object->init()}) {
           auto restorer{foldingContext.messages().SetLocation(symbol.name())};
           init = evaluate::NonPointerInitializationExpr(
               symbol, std::move(*init), foldingContext);
@@ -332,11 +332,11 @@ void DerivedTypeSpec::Instantiate(Scope &containingScope) {
       // when there is one, into the new scope as the initialization value
       // for the parameter.  And when there is no explicit value, add an
       // uninitialized type parameter to forestall use of any default.
-      if (ParamValue * paramValue{FindParameter(name)}) {
+      if (ParamValue *paramValue{FindParameter(name)}) {
         const TypeParamDetails &details{symbol.get<TypeParamDetails>()};
         paramValue->set_attr(details.attr());
         TypeParamDetails instanceDetails{details.attr()};
-        if (const DeclTypeSpec * type{details.type()}) {
+        if (const DeclTypeSpec *type{details.type()}) {
           instanceDetails.set_type(*type);
         }
         desc += sep;
@@ -426,7 +426,7 @@ void InstantiateHelper::InstantiateComponent(const Symbol &oldSymbol) {
   }
   newSymbol.flags() = oldSymbol.flags();
   if (auto *details{newSymbol.detailsIf<ObjectEntityDetails>()}) {
-    if (const DeclTypeSpec * newType{InstantiateType(newSymbol)}) {
+    if (const DeclTypeSpec *newType{InstantiateType(newSymbol)}) {
       details->ReplaceType(*newType);
     }
     for (ShapeSpec &dim : details->shape()) {
@@ -457,7 +457,7 @@ void InstantiateHelper::InstantiateComponent(const Symbol &oldSymbol) {
       // instantiation-specific expressions.
       parser::Walk(*parsedExpr, resetter);
     }
-    if (MaybeExpr & init{details->init()}) {
+    if (MaybeExpr &init{details->init()}) {
       // Non-pointer components with default initializers are
       // processed now so that those default initializers can be used
       // in PARAMETER structure constructors.
@@ -469,7 +469,7 @@ void InstantiateHelper::InstantiateComponent(const Symbol &oldSymbol) {
     }
   } else if (auto *procDetails{newSymbol.detailsIf<ProcEntityDetails>()}) {
     // We have a procedure pointer.  Instantiate its return type
-    if (const DeclTypeSpec * returnType{InstantiateType(newSymbol)}) {
+    if (const DeclTypeSpec *returnType{InstantiateType(newSymbol)}) {
       if (!procDetails->procInterface()) {
         procDetails->ReplaceType(*returnType);
       }
@@ -481,7 +481,7 @@ const DeclTypeSpec *InstantiateHelper::InstantiateType(const Symbol &symbol) {
   const DeclTypeSpec *type{symbol.GetType()};
   if (!type) {
     return nullptr; // error has occurred
-  } else if (const DerivedTypeSpec * spec{type->AsDerived()}) {
+  } else if (const DerivedTypeSpec *spec{type->AsDerived()}) {
     return &FindOrInstantiateDerivedType(scope_,
         CreateDerivedTypeSpec(*spec, symbol.test(Symbol::Flag::ParentComp)),
         type->category());
@@ -800,7 +800,7 @@ bool DeclTypeSpec::IsNumeric(TypeCategory tc) const {
   return category_ == Numeric && numericTypeSpec().category() == tc;
 }
 bool DeclTypeSpec::IsSequenceType() const {
-  if (const DerivedTypeSpec * derivedType{AsDerived()}) {
+  if (const DerivedTypeSpec *derivedType{AsDerived()}) {
     const auto *typeDetails{
         derivedType->typeSymbol().detailsIf<DerivedTypeDetails>()};
     return typeDetails && typeDetails->sequence();

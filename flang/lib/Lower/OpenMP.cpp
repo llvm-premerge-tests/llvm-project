@@ -1097,7 +1097,7 @@ addReductionDecl(mlir::Location currentLocation,
     for (const Fortran::parser::OmpObject &ompObject : objectList.v) {
       if (const auto *name{
               Fortran::parser::Unwrap<Fortran::parser::Name>(ompObject)}) {
-        if (const Fortran::semantics::Symbol * symbol{name->symbol}) {
+        if (const Fortran::semantics::Symbol *symbol{name->symbol}) {
           mlir::Value symVal = converter.getSymbolAddress(*symbol);
           mlir::Type redType =
               symVal.getType().cast<fir::ReferenceType>().getEleTy();
@@ -1134,7 +1134,7 @@ addReductionDecl(mlir::Location currentLocation,
       for (const Fortran::parser::OmpObject &ompObject : objectList.v) {
         if (const auto *name{
                 Fortran::parser::Unwrap<Fortran::parser::Name>(ompObject)}) {
-          if (const Fortran::semantics::Symbol * symbol{name->symbol}) {
+          if (const Fortran::semantics::Symbol *symbol{name->symbol}) {
             mlir::Value symVal = converter.getSymbolAddress(*symbol);
             mlir::Type redType =
                 symVal.getType().cast<fir::ReferenceType>().getEleTy();
@@ -3362,7 +3362,7 @@ void Fortran::lower::genOpenMPReduction(
         for (const Fortran::parser::OmpObject &ompObject : objectList.v) {
           if (const auto *name{
                   Fortran::parser::Unwrap<Fortran::parser::Name>(ompObject)}) {
-            if (const Fortran::semantics::Symbol * symbol{name->symbol}) {
+            if (const Fortran::semantics::Symbol *symbol{name->symbol}) {
               mlir::Value reductionVal = converter.getSymbolAddress(*symbol);
               mlir::Type reductionType =
                   reductionVal.getType().cast<fir::ReferenceType>().getEleTy();
@@ -3405,7 +3405,7 @@ void Fortran::lower::genOpenMPReduction(
           for (const Fortran::parser::OmpObject &ompObject : objectList.v) {
             if (const auto *name{Fortran::parser::Unwrap<Fortran::parser::Name>(
                     ompObject)}) {
-              if (const Fortran::semantics::Symbol * symbol{name->symbol}) {
+              if (const Fortran::semantics::Symbol *symbol{name->symbol}) {
                 mlir::Value reductionVal = converter.getSymbolAddress(*symbol);
                 for (const mlir::OpOperand &reductionValUse :
                      reductionVal.getUses()) {

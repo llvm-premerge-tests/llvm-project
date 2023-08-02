@@ -1752,7 +1752,7 @@ void AttrsVisitor::SetBindNameOn(Symbol &symbol) {
   }
   symbol.SetBindName(std::move(*label));
   if (!oldBindName.empty()) {
-    if (const std::string * newBindName{symbol.GetBindName()}) {
+    if (const std::string *newBindName{symbol.GetBindName()}) {
       if (oldBindName != *newBindName) {
         Say(symbol.name(), "The entity '%s' has multiple BIND names"_err_en_US);
       }
@@ -1869,7 +1869,7 @@ void DeclTypeSpecVisitor::Post(const parser::TypeSpec &typeSpec) {
   // expression semantics if the DeclTypeSpec is a valid TypeSpec.
   // The grammar ensures that it's an intrinsic or derived type spec,
   // not TYPE(*) or CLASS(*) or CLASS(T).
-  if (const DeclTypeSpec * spec{state_.declTypeSpec}) {
+  if (const DeclTypeSpec *spec{state_.declTypeSpec}) {
     switch (spec->category()) {
     case DeclTypeSpec::Numeric:
     case DeclTypeSpec::Logical:
@@ -1877,7 +1877,7 @@ void DeclTypeSpecVisitor::Post(const parser::TypeSpec &typeSpec) {
       typeSpec.declTypeSpec = spec;
       break;
     case DeclTypeSpec::TypeDerived:
-      if (const DerivedTypeSpec * derived{spec->AsDerived()}) {
+      if (const DerivedTypeSpec *derived{spec->AsDerived()}) {
         CheckForAbstractType(derived->typeSymbol()); // C703
         typeSpec.declTypeSpec = spec;
       }
@@ -2148,7 +2148,7 @@ void FuncResultStack::CompleteFunctionResultType() {
 // Called from ConvertTo{Object/Proc}Entity to cope with any appearance
 // of the function result in a specification expression.
 void FuncResultStack::CompleteTypeIfFunctionResult(Symbol &symbol) {
-  if (FuncInfo * info{Top()}) {
+  if (FuncInfo *info{Top()}) {
     if (info->resultSymbol == &symbol) {
       CompleteFunctionResultType();
     }
@@ -2336,7 +2336,7 @@ Symbol *ScopeHandler::FindSymbol(const parser::Name &name) {
 }
 Symbol *ScopeHandler::FindSymbol(const Scope &scope, const parser::Name &name) {
   if (scope.IsDerivedType()) {
-    if (Symbol * symbol{scope.FindComponent(name.source)}) {
+    if (Symbol *symbol{scope.FindComponent(name.source)}) {
       if (symbol->has<TypeParamDetails>()) {
         return Resolve(name, symbol);
       }
@@ -2353,7 +2353,7 @@ Symbol *ScopeHandler::FindSymbol(const Scope &scope, const parser::Name &name) {
 
 Symbol &ScopeHandler::MakeSymbol(
     Scope &scope, const SourceName &name, Attrs attrs) {
-  if (Symbol * symbol{FindInScope(scope, name)}) {
+  if (Symbol *symbol{FindInScope(scope, name)}) {
     CheckDuplicatedAttrs(name, *symbol, attrs);
     SetExplicitAttrs(*symbol, attrs);
     return *symbol;
@@ -2414,12 +2414,12 @@ Symbol *ScopeHandler::FindInTypeOrParents(const parser::Name &name) {
 }
 Symbol *ScopeHandler::FindInScopeOrBlockConstructs(
     const Scope &scope, SourceName name) {
-  if (Symbol * symbol{FindInScope(scope, name)}) {
+  if (Symbol *symbol{FindInScope(scope, name)}) {
     return symbol;
   }
   for (const Scope &child : scope.children()) {
     if (child.kind() == Scope::Kind::BlockConstruct) {
-      if (Symbol * symbol{FindInScopeOrBlockConstructs(child, name)}) {
+      if (Symbol *symbol{FindInScopeOrBlockConstructs(child, name)}) {
         return symbol;
       }
     }
@@ -2454,7 +2454,7 @@ void ScopeHandler::ApplyImplicitRules(
   if (context().HasError(symbol) || !NeedsType(symbol)) {
     return;
   }
-  if (const DeclTypeSpec * type{GetImplicitType(symbol)}) {
+  if (const DeclTypeSpec *type{GetImplicitType(symbol)}) {
     symbol.set(Symbol::Flag::Implicit);
     symbol.SetType(*type);
     return;
@@ -2554,7 +2554,7 @@ const DeclTypeSpec *ScopeHandler::GetImplicitType(
   const auto *type{implicitRulesMap_->at(scope).GetType(
       symbol.name(), respectImplicitNoneType)};
   if (type) {
-    if (const DerivedTypeSpec * derived{type->AsDerived()}) {
+    if (const DerivedTypeSpec *derived{type->AsDerived()}) {
       // Resolve any forward-referenced derived type; a quick no-op else.
       auto &instantiatable{*const_cast<DerivedTypeSpec *>(derived)};
       instantiatable.Instantiate(currScope());
@@ -2926,7 +2926,7 @@ void ModuleVisitor::EraseRenamedUse(const Symbol *useSymbol) {
     return;
   }
   const SourceName &name{useSymbol->name()};
-  if (const Symbol * symbol{FindInScope(name)}) {
+  if (const Symbol *symbol{FindInScope(name)}) {
     if (const auto *useDetails{symbol->detailsIf<UseDetails>()}) {
       const Symbol &moduleSymbol{useDetails->symbol()};
       if (moduleSymbol.name() == name &&
@@ -3052,10 +3052,10 @@ void ModuleVisitor::DoAddUse(SourceName location, SourceName localName,
       // it can be locally extended without corrupting the original.
       GenericDetails generic;
       generic.CopyFrom(*localGeneric);
-      if (Symbol * spec{localGeneric->specific()};
+      if (Symbol *spec{localGeneric->specific()};
           spec && !spec->attrs().test(Attr::PRIVATE)) {
         generic.set_specific(*spec);
-      } else if (Symbol * dt{generic.derivedType()};
+      } else if (Symbol *dt{generic.derivedType()};
                  dt && dt->attrs().test(Attr::PRIVATE)) {
         generic.clear_derivedType();
       }
@@ -3073,7 +3073,7 @@ void ModuleVisitor::DoAddUse(SourceName location, SourceName localName,
       localSymbol.flags() = useSymbol.flags();
       AddGenericUse(*localGeneric, localName, useUltimate);
       localGeneric->CopyFrom(*useGeneric);
-      if (const Symbol * useSpec{useGeneric->specific()};
+      if (const Symbol *useSpec{useGeneric->specific()};
           useSpec && !useSpec->attrs().test(Attr::PRIVATE)) {
         if (localGeneric->derivedType()) {
           msg =
@@ -3085,7 +3085,7 @@ void ModuleVisitor::DoAddUse(SourceName location, SourceName localName,
           msg =
               "Cannot use-associate generic interface '%s' with specific procedure of the same name when another such interface and procedure are in scope"_err_en_US;
         }
-      } else if (const Symbol * useDT{useGeneric->derivedType()};
+      } else if (const Symbol *useDT{useGeneric->derivedType()};
                  useDT && !useDT->attrs().test(Attr::PRIVATE)) {
         if (localGeneric->specific()) {
           msg =
@@ -3503,7 +3503,7 @@ bool SubprogramVisitor::HandleStmtFunction(const parser::StmtFunctionStmt &x) {
 bool SubprogramVisitor::Pre(const parser::Suffix &suffix) {
   if (suffix.resultName) {
     if (IsFunction(currScope())) {
-      if (FuncResultStack::FuncInfo * info{funcResultStack().Top()}) {
+      if (FuncResultStack::FuncInfo *info{funcResultStack().Top()}) {
         if (info->inFunctionStmt) {
           info->resultName = &suffix.resultName.value();
         } else {
@@ -3513,7 +3513,7 @@ bool SubprogramVisitor::Pre(const parser::Suffix &suffix) {
     } else {
       Message &msg{Say(*suffix.resultName,
           "RESULT(%s) may appear only in a function"_err_en_US)};
-      if (const Symbol * subprogram{InclusiveScope().symbol()}) {
+      if (const Symbol *subprogram{InclusiveScope().symbol()}) {
         msg.Attach(subprogram->name(), "Containing subprogram"_en_US);
       }
     }
@@ -3805,7 +3805,7 @@ void SubprogramVisitor::CreateEntry(
   bool hasGlobalBindingName{outer.IsGlobal() && suffix && suffix->binding &&
       suffix->binding->v.has_value()};
   if (!hasGlobalBindingName) {
-    if (Symbol * extant{FindSymbol(outer, entryName)}) {
+    if (Symbol *extant{FindSymbol(outer, entryName)}) {
       if (!HandlePreviousCalls(entryName, *extant, subpFlag)) {
         if (outer.IsTopLevel()) {
           Say2(entryName,
@@ -3830,7 +3830,7 @@ void SubprogramVisitor::CreateEntry(
           "RESULT(%s) may not have the same name as the function"_err_en_US,
           subprogram, "Containing function"_en_US);
       badResultName = true;
-    } else if (const Symbol * extant{FindSymbol(outer, resultName)}) { // C1574
+    } else if (const Symbol *extant{FindSymbol(outer, resultName)}) { // C1574
       if (const auto *details{extant->detailsIf<SubprogramDetails>()}) {
         if (details->entryScope() == &currScope()) {
           Say2(resultName.source,
@@ -3973,7 +3973,7 @@ void SubprogramVisitor::PostEntryStmt(const parser::EntryStmt &stmt) {
   SetBindNameOn(entrySymbol);
   for (const auto &dummyArg : std::get<std::list<parser::DummyArg>>(stmt.t)) {
     if (const auto *dummyName{std::get_if<parser::Name>(&dummyArg.u)}) {
-      if (Symbol * dummy{FindInScope(*dummyName)}) {
+      if (Symbol *dummy{FindInScope(*dummyName)}) {
         if (dummy->test(Symbol::Flag::EntryDummyArgument)) {
           const auto *subp{dummy->detailsIf<SubprogramDetails>()};
           if (subp && subp->isInterface()) { // ok
@@ -4005,7 +4005,7 @@ Symbol *ScopeHandler::FindSeparateModuleProcedureInterface(
       symbol = generic->specific();
     }
   }
-  if (const Symbol * defnIface{FindSeparateModuleSubprogramInterface(symbol)}) {
+  if (const Symbol *defnIface{FindSeparateModuleSubprogramInterface(symbol)}) {
     // Error recovery in case of multiple definitions
     symbol = const_cast<Symbol *>(defnIface);
   }
@@ -4061,8 +4061,8 @@ bool SubprogramVisitor::BeginSubprogram(const parser::Name &name,
     if (moduleInterface && &moduleInterface->owner() == &currScope()) {
       // Subprogram is MODULE FUNCTION or MODULE SUBROUTINE with an interface
       // previously defined in the same scope.
-      if (GenericDetails *
-          generic{DEREF(FindSymbol(name)).detailsIf<GenericDetails>()}) {
+      if (GenericDetails *generic{
+              DEREF(FindSymbol(name)).detailsIf<GenericDetails>()}) {
         generic->clear_specific();
       } else {
         EraseSymbol(name);
@@ -4219,7 +4219,7 @@ Symbol &SubprogramVisitor::PushSubprogramScope(const parser::Name &name,
     }
     set_inheritFromParent(false);
   }
-  if (Symbol * found{FindSymbol(name)};
+  if (Symbol *found{FindSymbol(name)};
       found && found->has<HostAssocDetails>()) {
     found->set(subpFlag); // PushScope() created symbol
   }
@@ -4991,9 +4991,9 @@ void DeclarationVisitor::Post(const parser::VectorTypeSpec &x) {
     vectorDerivedType.CookParameters(GetFoldingContext());
   }
 
-  if (const DeclTypeSpec *
-      extant{ppcBuiltinTypesScope->FindInstantiatedDerivedType(
-          vectorDerivedType, DeclTypeSpec::Category::TypeDerived)}) {
+  if (const DeclTypeSpec *extant{
+          ppcBuiltinTypesScope->FindInstantiatedDerivedType(
+              vectorDerivedType, DeclTypeSpec::Category::TypeDerived)}) {
     // This derived type and parameter expressions (if any) are already present
     // in the __ppc_intrinsics scope.
     SetDeclTypeSpec(*extant);
@@ -5015,7 +5015,7 @@ bool DeclarationVisitor::Pre(const parser::DeclarationTypeSpec::Type &) {
 
 void DeclarationVisitor::Post(const parser::DeclarationTypeSpec::Type &type) {
   const parser::Name &derivedName{std::get<parser::Name>(type.derived.t)};
-  if (const Symbol * derivedSymbol{derivedName.symbol}) {
+  if (const Symbol *derivedSymbol{derivedName.symbol}) {
     CheckForAbstractType(*derivedSymbol); // C706
   }
 }
@@ -5084,8 +5084,8 @@ void DeclarationVisitor::Post(const parser::DerivedTypeSpec &x) {
   if (!spec->MightBeParameterized()) {
     spec->EvaluateParameters(context());
   }
-  if (const DeclTypeSpec *
-      extant{currScope().FindInstantiatedDerivedType(*spec, category)}) {
+  if (const DeclTypeSpec *extant{
+          currScope().FindInstantiatedDerivedType(*spec, category)}) {
     // This derived type and parameter expressions (if any) are already present
     // in this scope.
     SetDeclTypeSpec(*extant);
@@ -5116,8 +5116,7 @@ void DeclarationVisitor::Post(const parser::DeclarationTypeSpec::Record &rec) {
   if (auto spec{ResolveDerivedType(typeName)}) {
     spec->CookParameters(GetFoldingContext());
     spec->EvaluateParameters(context());
-    if (const DeclTypeSpec *
-        extant{currScope().FindInstantiatedDerivedType(
+    if (const DeclTypeSpec *extant{currScope().FindInstantiatedDerivedType(
             *spec, DeclTypeSpec::TypeDerived)}) {
       SetDeclTypeSpec(*extant);
     } else {
@@ -5240,7 +5239,7 @@ void DeclarationVisitor::Post(const parser::TypeParamDefStmt &x) {
   auto attr{std::get<common::TypeParamAttr>(x.t)};
   for (auto &decl : std::get<std::list<parser::TypeParamDecl>>(x.t)) {
     auto &name{std::get<parser::Name>(decl.t)};
-    if (Symbol * symbol{MakeTypeSymbol(name, TypeParamDetails{attr})}) {
+    if (Symbol *symbol{MakeTypeSymbol(name, TypeParamDetails{attr})}) {
       SetType(name, *type);
       if (auto &init{
               std::get<std::optional<parser::ScalarIntConstantExpr>>(decl.t)}) {
@@ -5431,7 +5430,7 @@ void DeclarationVisitor::Post(const parser::ProcDecl &x) {
   }
   auto attrs{HandleSaveName(name.source, GetAttrs())};
   DerivedTypeDetails *dtDetails{nullptr};
-  if (Symbol * symbol{currScope().symbol()}) {
+  if (Symbol *symbol{currScope().symbol()}) {
     dtDetails = symbol->detailsIf<DerivedTypeDetails>();
   }
   if (!dtDetails) {
@@ -5519,7 +5518,7 @@ void DeclarationVisitor::CheckBindings(
   CHECK(currScope().IsDerivedType());
   for (auto &declaration : tbps.declarations) {
     auto &bindingName{std::get<parser::Name>(declaration.t)};
-    if (Symbol * binding{FindInScope(bindingName)}) {
+    if (Symbol *binding{FindInScope(bindingName)}) {
       if (auto *details{binding->detailsIf<ProcBindingDetails>()}) {
         const Symbol &ultimate{details->symbol().GetUltimate()};
         const Symbol &procedure{BypassGeneric(ultimate)};
@@ -5551,7 +5550,7 @@ void DeclarationVisitor::Post(
   if (!GetAttrs().test(Attr::DEFERRED)) { // C783
     Say("DEFERRED is required when an interface-name is provided"_err_en_US);
   }
-  if (Symbol * interface{NoteInterfaceName(x.interfaceName)}) {
+  if (Symbol *interface{NoteInterfaceName(x.interfaceName)}) {
     for (auto &bindingName : x.bindingNames) {
       if (auto *s{
               MakeTypeSymbol(bindingName, ProcBindingDetails{*interface})}) {
@@ -5600,7 +5599,7 @@ bool DeclarationVisitor::Pre(const parser::TypeBoundGenericStmt &x) {
   } else {
     // look in ancestor types for a generic of the same name
     for (const auto &name : GetAllNames(context(), symbolName)) {
-      if (Symbol * inherited{currScope().FindComponent(SourceName{name})}) {
+      if (Symbol *inherited{currScope().FindComponent(SourceName{name})}) {
         if (inherited->has<GenericDetails>()) {
           CheckAccessibility(symbolName, isPrivate, *inherited); // C771
         } else {
@@ -5775,7 +5774,7 @@ void DeclarationVisitor::Post(const parser::BasedPointer &bp) {
   }
   const parser::ObjectName &pointeeName{std::get<1>(bp.t)};
   DeclareObjectEntity(pointeeName);
-  if (Symbol * pointee{pointeeName.symbol}) {
+  if (Symbol *pointee{pointeeName.symbol}) {
     if (!ConvertToObjectEntity(*pointee)) {
       return;
     }
@@ -6025,7 +6024,7 @@ void DeclarationVisitor::CheckCommonBlocks() {
     } else if (symbol->IsFuncResult()) {
       Say(name,
           "Function result '%s' may not appear in a COMMON block"_err_en_US);
-    } else if (const DeclTypeSpec * type{symbol->GetType()}) {
+    } else if (const DeclTypeSpec *type{symbol->GetType()}) {
       if (type->category() == DeclTypeSpec::ClassStar) {
         Say(name,
             "Unlimited polymorphic pointer '%s' may not appear in a COMMON block"_err_en_US);
@@ -6176,7 +6175,7 @@ bool DeclarationVisitor::PassesLocalityChecks(
         name, symbol, "Coarray '%s' not allowed in a locality-spec"_err_en_US);
     return false;
   }
-  if (const DeclTypeSpec * type{symbol.GetType()}) {
+  if (const DeclTypeSpec *type{symbol.GetType()}) {
     if (type->IsPolymorphic() && IsDummy(symbol) &&
         !IsPointer(symbol)) { // C1128
       SayWithDecl(name, symbol,
@@ -6316,7 +6315,7 @@ std::optional<DerivedTypeSpec> DeclarationVisitor::ResolveDerivedType(
   Symbol *ultimate{symbol ? &symbol->GetUltimate() : nullptr};
   auto *generic{ultimate ? ultimate->detailsIf<GenericDetails>() : nullptr};
   if (generic) {
-    if (Symbol * genDT{generic->derivedType()}) {
+    if (Symbol *genDT{generic->derivedType()}) {
       symbol = genDT;
       generic = nullptr;
     }
@@ -6377,7 +6376,7 @@ Symbol *DeclarationVisitor::NoteInterfaceName(const parser::Name &name) {
 }
 
 void DeclarationVisitor::CheckExplicitInterface(const parser::Name &name) {
-  if (const Symbol * symbol{name.symbol}) {
+  if (const Symbol *symbol{name.symbol}) {
     const Symbol &ultimate{symbol->GetUltimate()};
     if (!context().HasError(*symbol) && !context().HasError(ultimate) &&
         !ultimate.HasExplicitInterface()) {
@@ -6675,7 +6674,7 @@ bool ConstructVisitor::Pre(const parser::DataStmtValue &x) {
   auto &mutableData{const_cast<parser::DataStmtConstant &>(data)};
   if (auto *elem{parser::Unwrap<parser::ArrayElement>(mutableData)}) {
     if (const auto *name{std::get_if<parser::Name>(&elem->base.u)}) {
-      if (const Symbol * symbol{FindSymbol(*name)}) {
+      if (const Symbol *symbol{FindSymbol(*name)}) {
         const Symbol &ultimate{symbol->GetUltimate()};
         if (ultimate.has<DerivedTypeDetails>()) {
           mutableData.u = elem->ConvertToStructureConstructor(
@@ -6813,15 +6812,15 @@ void ConstructVisitor::Post(const parser::SelectTypeStmt &x) {
       }
     }
   } else {
-    if (const Symbol *
-        whole{UnwrapWholeSymbolDataRef(association.selector.expr)}) {
+    if (const Symbol *whole{
+            UnwrapWholeSymbolDataRef(association.selector.expr)}) {
       ConvertToObjectEntity(const_cast<Symbol &>(*whole));
       if (!IsVariableName(*whole)) {
         Say(association.selector.source, // C901
             "Selector is not a variable"_err_en_US);
         association = {};
       }
-      if (const DeclTypeSpec * type{whole->GetType()}) {
+      if (const DeclTypeSpec *type{whole->GetType()}) {
         if (!type->IsPolymorphic()) { // C1159
           Say(association.selector.source,
               "Selector '%s' in SELECT TYPE statement must be "
@@ -6906,11 +6905,11 @@ bool ConstructVisitor::CheckDef(const std::optional<parser::Name> &x) {
   if (x && !x->symbol) {
     // Construct names are not scoped by BLOCK in the standard, but many,
     // but not all, compilers do treat them as if they were so scoped.
-    if (Symbol * inner{FindInScope(currScope(), *x)}) {
+    if (Symbol *inner{FindInScope(currScope(), *x)}) {
       SayAlreadyDeclared(*x, *inner);
     } else {
-      if (Symbol *
-          other{FindInScopeOrBlockConstructs(InclusiveScope(), x->source)}) {
+      if (Symbol *other{
+              FindInScopeOrBlockConstructs(InclusiveScope(), x->source)}) {
         SayWithDecl(*x, *other,
             "The construct name '%s' should be distinct at the subprogram level"_port_en_US);
       }
@@ -6938,8 +6937,8 @@ Symbol *ConstructVisitor::MakeAssocEntity() {
           "The associate name '%s' is already used in this associate statement"_err_en_US);
       return nullptr;
     }
-  } else if (const Symbol *
-      whole{UnwrapWholeSymbolDataRef(association.selector.expr)}) {
+  } else if (const Symbol *whole{
+                 UnwrapWholeSymbolDataRef(association.selector.expr)}) {
     symbol = &MakeSymbol(whole->name());
   } else {
     return nullptr;
@@ -6983,7 +6982,7 @@ void ConstructVisitor::SetTypeFromAssociation(Symbol &symbol) {
 void ConstructVisitor::SetAttrsFromAssociation(Symbol &symbol) {
   Attrs attrs{evaluate::GetAttrs(GetCurrentAssociation().selector.expr)};
   symbol.attrs() |=
-      attrs & Attrs{Attr::TARGET, Attr::ASYNCHRONOUS, Attr::VOLATILE};
+      attrs &Attrs{Attr::TARGET, Attr::ASYNCHRONOUS, Attr::VOLATILE};
   if (attrs.test(Attr::POINTER)) {
     SetImplicitAttr(symbol, Attr::TARGET);
   }
@@ -7112,9 +7111,9 @@ bool ResolveNamesVisitor::Pre(const parser::ImportStmt &x) {
     Say(std::move(*error));
   }
   for (auto &name : x.names) {
-    if (Symbol * outer{FindSymbol(scope.parent(), name)}) {
+    if (Symbol *outer{FindSymbol(scope.parent(), name)}) {
       scope.add_importName(name.source);
-      if (Symbol * symbol{FindInScope(name)}) {
+      if (Symbol *symbol{FindInScope(name)}) {
         if (outer->GetUltimate() == symbol->GetUltimate()) {
           Say(name,
               "The same '%s' is already present in this scope"_port_en_US);
@@ -7188,7 +7187,7 @@ const parser::Name *DeclarationVisitor::ResolveName(const parser::Name &name) {
     NotePossibleBadForwardRef(name);
     return &name;
   }
-  if (Symbol * symbol{name.symbol}) {
+  if (Symbol *symbol{name.symbol}) {
     if (CheckUseError(name)) {
       return nullptr; // reported an error
     }
@@ -7313,7 +7312,7 @@ const parser::Name *DeclarationVisitor::FindComponent(
   if (!type) {
     return nullptr; // should have already reported error
   }
-  if (const IntrinsicTypeSpec * intrinsic{type->AsIntrinsic()}) {
+  if (const IntrinsicTypeSpec *intrinsic{type->AsIntrinsic()}) {
     auto category{intrinsic->category()};
     MiscDetails::Kind miscKind{MiscDetails::Kind::None};
     if (component.source == "kind") {
@@ -7333,9 +7332,9 @@ const parser::Name *DeclarationVisitor::FindComponent(
       MakePlaceholder(component, miscKind);
       return &component;
     }
-  } else if (DerivedTypeSpec * derived{type->AsDerived()}) {
+  } else if (DerivedTypeSpec *derived{type->AsDerived()}) {
     derived->Instantiate(currScope()); // in case of forward referenced type
-    if (const Scope * scope{derived->scope()}) {
+    if (const Scope *scope{derived->scope()}) {
       if (Resolve(component, scope->FindComponent(component.source))) {
         if (auto msg{CheckAccessibleSymbol(currScope(), *component.symbol)}) {
           context().Say(component.source, *msg);
@@ -7496,7 +7495,7 @@ void ResolveNamesVisitor::HandleCall(
           [&](const parser::ProcComponentRef &x) {
             Walk(x);
             const parser::Name &name{x.v.thing.component};
-            if (Symbol * symbol{name.symbol}) {
+            if (Symbol *symbol{name.symbol}) {
               if (IsProcedure(*symbol)) {
                 SetProcFlag(name, *symbol, procFlag);
               }
@@ -7598,7 +7597,7 @@ void ResolveNamesVisitor::NoteExecutablePartCall(
     // Subtlety: The symbol pointers in the parse tree are not set, because
     // they might end up resolving elsewhere (e.g., construct entities in
     // SELECT TYPE).
-    if (Symbol * symbol{currScope().FindSymbol(name->source)}) {
+    if (Symbol *symbol{currScope().FindSymbol(name->source)}) {
       Symbol::Flag other{flag == Symbol::Flag::Subroutine
               ? Symbol::Flag::Function
               : Symbol::Flag::Subroutine};
@@ -8020,11 +8019,11 @@ bool ResolveNamesVisitor::Pre(const parser::PointerAssignmentStmt &x) {
   ResolveDataRef(dataRef);
   Walk(bounds);
   // Resolve unrestricted specific intrinsic procedures as in "p => cos".
-  if (const parser::Name * name{parser::Unwrap<parser::Name>(expr)}) {
+  if (const parser::Name *name{parser::Unwrap<parser::Name>(expr)}) {
     if (NameIsKnownOrIntrinsic(*name)) {
       // If the name is known because it is an object entity from a host
       // procedure, create a host associated symbol.
-      if (Symbol * symbol{name->symbol}; symbol &&
+      if (Symbol *symbol{name->symbol}; symbol &&
           symbol->GetUltimate().has<ObjectEntityDetails>() &&
           IsUplevelReference(*symbol)) {
         MakeHostAssocSymbol(*name, *symbol);
@@ -8117,8 +8116,8 @@ void ResolveNamesVisitor::Post(const parser::CompilerDirective &x) {
     }
     if (tkr->empty()) {
       Symbol *symbol{currScope().symbol()};
-      if (SubprogramDetails *
-          subp{symbol ? symbol->detailsIf<SubprogramDetails>() : nullptr}) {
+      if (SubprogramDetails *subp{
+              symbol ? symbol->detailsIf<SubprogramDetails>() : nullptr}) {
         subp->set_defaultIgnoreTKR(true);
       }
     } else {
@@ -8358,7 +8357,7 @@ void ResolveNamesVisitor::ResolveSpecificationParts(ProgramTree &node) {
   // will result in calls to the result pointer.
   // A function cannot be called recursively if RESULT was not used to define a
   // distinct result name (15.6.2.2 point 4.).
-  if (Symbol * symbol{scope.symbol()}) {
+  if (Symbol *symbol{scope.symbol()}) {
     if (auto *details{symbol->detailsIf<SubprogramDetails>()}) {
       if (details->isFunction()) {
         ConvertToObjectEntity(const_cast<Symbol &>(details->result()));
@@ -8490,8 +8489,8 @@ public:
 
   void Post(const parser::DerivedTypeStmt &x) {
     const auto &name{std::get<parser::Name>(x.t)};
-    if (Symbol * symbol{name.symbol}) {
-      if (Scope * scope{symbol->scope()}) {
+    if (Symbol *symbol{name.symbol}) {
+      if (Scope *scope{symbol->scope()}) {
         if (scope->IsDerivedType()) {
           resolver_.PushScope(*scope);
           pushedScope_ = true;
@@ -8583,10 +8582,10 @@ void ResolveNamesVisitor::FinishSpecificationParts(const ProgramTree &node) {
 // Validation is done later in declaration checking.
 void ResolveNamesVisitor::FinishDerivedTypeInstantiation(Scope &scope) {
   CHECK(scope.IsDerivedType() && !scope.symbol());
-  if (DerivedTypeSpec * spec{scope.derivedTypeSpec()}) {
+  if (DerivedTypeSpec *spec{scope.derivedTypeSpec()}) {
     spec->Instantiate(currScope());
     const Symbol &origTypeSymbol{spec->typeSymbol()};
-    if (const Scope * origTypeScope{origTypeSymbol.scope()}) {
+    if (const Scope *origTypeScope{origTypeSymbol.scope()}) {
       CHECK(origTypeScope->IsDerivedType() &&
           origTypeScope->symbol() == &origTypeSymbol);
       auto &foldingContext{GetFoldingContext()};
@@ -8597,7 +8596,7 @@ void ResolveNamesVisitor::FinishDerivedTypeInstantiation(Scope &scope) {
         if (IsPointer(comp)) {
           if (auto *details{comp.detailsIf<ObjectEntityDetails>()}) {
             auto origDetails{origComp.get<ObjectEntityDetails>()};
-            if (const MaybeExpr & init{origDetails.init()}) {
+            if (const MaybeExpr &init{origDetails.init()}) {
               SomeExpr newInit{*init};
               MaybeExpr folded{FoldExpr(std::move(newInit))};
               details->set_init(std::move(folded));

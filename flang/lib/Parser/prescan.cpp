@@ -36,8 +36,8 @@ Prescanner::Prescanner(const Prescanner &that)
       preprocessor_{that.preprocessor_}, allSources_{that.allSources_},
       features_{that.features_}, inFixedForm_{that.inFixedForm_},
       fixedFormColumnLimit_{that.fixedFormColumnLimit_},
-      encoding_{that.encoding_}, prescannerNesting_{that.prescannerNesting_ +
-                                     1},
+      encoding_{that.encoding_},
+      prescannerNesting_{that.prescannerNesting_ + 1},
       skipLeadingAmpersand_{that.skipLeadingAmpersand_},
       compilerDirectiveBloomFilter_{that.compilerDirectiveBloomFilter_},
       compilerDirectiveSentinels_{that.compilerDirectiveSentinels_} {}
@@ -915,7 +915,7 @@ void Prescanner::FortranInclude(const char *firstQuote) {
   llvm::raw_string_ostream error{buf};
   Provenance provenance{GetProvenance(nextLine_)};
   std::optional<std::string> prependPath;
-  if (const SourceFile * currentFile{allSources_.GetSourceFile(provenance)}) {
+  if (const SourceFile *currentFile{allSources_.GetSourceFile(provenance)}) {
     prependPath = DirectoryName(currentFile->path());
   }
   const SourceFile *included{
