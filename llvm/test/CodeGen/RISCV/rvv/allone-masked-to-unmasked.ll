@@ -90,3 +90,31 @@ entry:
 
   ret <vscale x 1 x i8> %a
 }
+
+declare <vscale x 1 x i1> @llvm.riscv.vmflt.mask.nxv1f32(
+  <vscale x 1 x i1>,
+  <vscale x 1 x float>,
+  <vscale x 1 x float>,
+  <vscale x 1 x i1>,
+  iXLen);
+
+; FIXME: Make sure we preserve the passthrough on mask pseudos without policy
+; operands
+define <vscale x 1 x i1> @test4(ptr %0, <vscale x 1 x float> %1, <vscale x 1 x float> %2, iXLen %3) {
+; CHECK-LABEL: test4:
+; CHECK:       # %bb.0: # %entry
+; CHECK-NEXT:    vsetvli zero, a1, e32, mf2, ta, ma
+; CHECK-NEXT:    vmflt.vv v0, v8, v9
+; CHECK-NEXT:    ret
+entry:
+  %allone = call <vscale x 1 x i1> @llvm.riscv.vmset.nxv1i1(
+    iXLen %3);
+  %passthru = load <vscale x 1 x i1>, ptr %0
+  %a = call <vscale x 1 x i1> @llvm.riscv.vmflt.mask.nxv1f32(
+    <vscale x 1 x i1> %passthru,
+    <vscale x 1 x float> %1,
+    <vscale x 1 x float> %2,
+    <vscale x 1 x i1> %allone,
+    iXLen %3)
+  ret <vscale x 1 x i1> %a
+}
