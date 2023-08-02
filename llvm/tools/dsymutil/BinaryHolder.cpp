@@ -276,5 +276,20 @@ void BinaryHolder::clear() {
   ObjectCache.clear();
 }
 
+void BinaryHolder::eraseObjectEntry(StringRef Filename) {
+  if (Verbose)
+    WithColor::note() << "erasing '" << Filename << "' from cache\n";
+
+  if (isArchive(Filename)) {
+    StringRef ArchiveFilename = getArchiveAndObjectName(Filename).first;
+    std::lock_guard<std::mutex> Lock(ArchiveCacheMutex);
+    ArchiveCache.erase(ArchiveFilename);
+    return;
+  }
+
+  std::lock_guard<std::mutex> Lock(ObjectCacheMutex);
+  ObjectCache.erase(Filename);
+}
+
 } // namespace dsymutil
 } // namespace llvm
