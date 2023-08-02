@@ -3820,12 +3820,15 @@ bool CompilerInvocation::ParseLangArgs(LangOptions &Opts, ArgList &Args,
   }
 
   // Set the flag to prevent the implementation from emitting device exception
-  // handling code for those requiring so.
+  // handling code for those requiring so. However, if the user explicitly
+  // enabled exception handling on the device, we will allow exceptions during
+  // Sema and handle the exceptions differently in CodeGen.
   if ((Opts.OpenMPIsTargetDevice && (T.isNVPTX() || T.isAMDGCN())) ||
       Opts.OpenCLCPlusPlus) {
-
-    Opts.Exceptions = 0;
-    Opts.CXXExceptions = 0;
+    Opts.Exceptions = Args.hasFlag(options::OPT_fexceptions,
+                                   options::OPT_fno_exceptions, false);
+    Opts.CXXExceptions = Args.hasFlag(options::OPT_fcxx_exceptions,
+                                      options::OPT_fno_cxx_exceptions, false);
   }
   if (Opts.OpenMPIsTargetDevice && T.isNVPTX()) {
     Opts.OpenMPCUDANumSMs =
