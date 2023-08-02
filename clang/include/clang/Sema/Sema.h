@@ -7068,6 +7068,8 @@ public:
                                  NestedNameSpecInfo &IdInfo,
                                  bool EnteringContext);
 
+  bool IsInvalidSMECallConversion(QualType FromType, QualType ToType);
+
   /// The parser has parsed a nested-name-specifier
   /// 'template[opt] template-name < template-args >::'.
   ///

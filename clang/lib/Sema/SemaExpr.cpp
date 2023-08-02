@@ -9690,6 +9690,30 @@ ExprResult Sema::ActOnConditionalOp(SourceLocation QuestionLoc,
       ColonLoc, result, VK, OK);
 }
 
+// Check that the SME attributes for PSTATE.ZA and PSTATE.SM are compatible.
+bool Sema::IsInvalidSMECallConversion(QualType FromType, QualType ToType) {
+  unsigned FromAttributes = 0, ToAttributes = 0;
+  if (const auto *FromFn =
+          dyn_cast<FunctionProtoType>(Context.getCanonicalType(FromType)))
+    FromAttributes =
+        FromFn->getAArch64SMEAttributes() & FunctionType::SME_AttributeMask;
+  if (const auto *ToFn =
+          dyn_cast<FunctionProtoType>(Context.getCanonicalType(ToType)))
+    ToAttributes =
+        ToFn->getAArch64SMEAttributes() & FunctionType::SME_AttributeMask;
+
+  if (FromAttributes == ToAttributes)
+    return false;
+
+  // Make an exception for preserves_za, which can be dropped because it's
+  // only a hint.
+  unsigned Changed = FromAttributes ^ ToAttributes;
+  bool DropsPreservesZA =
+      Changed == FunctionType::SME_PStateZAPreservedMask &&
+      (FromAttributes & FunctionType::SME_PStateZAPreservedMask);
+  return !DropsPreservesZA;
+}
+
 // Check if we have a conversion between incompatible cmse function pointer
 // types, that is, a conversion between a function pointer with the
 // cmse_nonsecure_call attribute and one without.
@@ -9855,6 +9879,8 @@ checkPointerTypesForAssignment(Sema &S, QualType LHSType, QualType RHSType,
       S.IsFunctionConversion(ltrans, rtrans, ltrans))
     return Sema::IncompatibleFunctionPointer;
   if (IsInvalidCmseNSCallConversion(S, ltrans, rtrans))
+    return Sema::IncompatibleFunctionPointer;
+  if (S.IsInvalidSMECallConversion(rtrans, ltrans))
     return Sema::IncompatibleFunctionPointer;
   return ConvTy;
 }
