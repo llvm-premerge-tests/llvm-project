@@ -17619,16 +17619,19 @@ static SDValue ExtractBitFromMaskVector(SDValue Op, SelectionDAG &DAG,
     unsigned NumElts = VecVT.getVectorNumElements();
     // Extending v8i1/v16i1 to 512-bit get better performance on KNL
     // than extending to 128/256bit.
-    MVT ExtEltVT = (NumElts <= 8) ? MVT::getIntegerVT(128 / NumElts) : MVT::i8;
-    MVT ExtVecVT = MVT::getVectorVT(ExtEltVT, NumElts);
-    SDValue Ext = DAG.getNode(ISD::SIGN_EXTEND, dl, ExtVecVT, Vec);
-    SDValue Elt = DAG.getNode(ISD::EXTRACT_VECTOR_ELT, dl, ExtEltVT, Ext, Idx);
-    return DAG.getNode(ISD::TRUNCATE, dl, EltVT, Elt);
+    if (NumElts != 1) {
+      MVT ExtEltVT =
+          (NumElts <= 8) ? MVT::getIntegerVT(128 / NumElts) : MVT::i8;
+      MVT ExtVecVT = MVT::getVectorVT(ExtEltVT, NumElts);
+      SDValue Ext = DAG.getNode(ISD::SIGN_EXTEND, dl, ExtVecVT, Vec);
+      SDValue Elt =
+          DAG.getNode(ISD::EXTRACT_VECTOR_ELT, dl, ExtEltVT, Ext, Idx);
+      return DAG.getNode(ISD::TRUNCATE, dl, EltVT, Elt);
+    }
+  } else {
+    if (IdxC->getZExtValue() == 0) // the operation is legal
+      return Op;
   }
-
-  unsigned IdxVal = IdxC->getZExtValue();
-  if (IdxVal == 0) // the operation is legal
-    return Op;
 
   // Extend to natively supported kshift.
   unsigned NumElems = VecVT.getVectorNumElements();
@@ -17639,10 +17642,15 @@ static SDValue ExtractBitFromMaskVector(SDValue Op, SelectionDAG &DAG,
                       DAG.getUNDEF(WideVecVT), Vec,
                       DAG.getIntPtrConstant(0, dl));
   }
+  if (NumElems == 1) {
+    if (Subtarget.hasDQI())
+      return DAG.getBitcast(MVT::i8, Vec);
+    return DAG.getNode(ISD::TRUNCATE, dl, EltVT, DAG.getBitcast(MVT::i16, Vec));
+  }
 
   // Use kshiftr instruction to move to the lower element.
   Vec = DAG.getNode(X86ISD::KSHIFTR, dl, WideVecVT, Vec,
-                    DAG.getTargetConstant(IdxVal, dl, MVT::i8));
+                    DAG.getTargetConstant(IdxC->getZExtValue(), dl, MVT::i8));
 
   return DAG.getNode(ISD::EXTRACT_VECTOR_ELT, dl, Op.getValueType(), Vec,
                      DAG.getIntPtrConstant(0, dl));
