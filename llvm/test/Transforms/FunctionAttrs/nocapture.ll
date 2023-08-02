@@ -556,15 +556,26 @@ define void @recurse_fptr(ptr %f, ptr %p) {
   ret void
 }
 
-define void @readnone_indirec(ptr %f, ptr %p) {
-; CHECK-LABEL: define void @readnone_indirec
-; CHECK-SAME: (ptr nocapture readonly [[F:%.*]], ptr readnone [[P:%.*]]) #[[ATTR18:[0-9]+]] {
-; CHECK-NEXT:    call void [[F]](ptr [[P]]) #[[ATTR21:[0-9]+]]
-; CHECK-NEXT:    ret void
+define ptr @noalias_ret(ptr %f, ptr %p) {
+; CHECK-LABEL: define ptr @noalias_ret
+; CHECK-SAME: (ptr nocapture readonly [[F:%.*]], ptr readonly [[P:%.*]]) #[[ATTR5]] {
+; CHECK-NEXT:    [[R:%.*]] = call noalias ptr [[F]](ptr [[P]]) #[[ATTR8]]
+; CHECK-NEXT:    ret ptr [[R]]
 ;
-  call void %f(ptr %p) readnone
-  ret void
+  %r = call noalias ptr %f(ptr %p) readonly nounwind
+  ret ptr %r
 }
+
+define ptr @noalias_ret_fail(ptr %f, ptr %p) {
+; CHECK-LABEL: define ptr @noalias_ret_fail
+; CHECK-SAME: (ptr nocapture readonly [[F:%.*]], ptr readonly [[P:%.*]]) #[[ATTR18:[0-9]+]] {
+; CHECK-NEXT:    [[R:%.*]] = call noalias ptr [[F]](ptr [[P]]) #[[ATTR21:[0-9]+]]
+; CHECK-NEXT:    ret ptr [[R]]
+;
+  %r = call noalias ptr %f(ptr %p) readonly willreturn
+  ret ptr %r
+}
+
 
 
 declare ptr @llvm.launder.invariant.group.p0(ptr)
