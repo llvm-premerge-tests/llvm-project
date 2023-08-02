@@ -158,6 +158,9 @@ public:
   const ASTTemplateArgumentListInfo*
   readASTTemplateArgumentListInfo();
 
+  // Reads a concept location from the given record.
+  ConceptLoc *readConceptLoc();
+
   /// Reads a declarator info from the given record, advancing Idx.
   TypeSourceInfo *readTypeSourceInfo();
 

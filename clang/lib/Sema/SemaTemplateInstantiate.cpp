@@ -2769,11 +2769,9 @@ bool Sema::SubstTypeConstraint(
       TC->getTemplateArgsAsWritten();
 
   if (!EvaluateConstraints) {
-    Inst->setTypeConstraint(TC->getNestedNameSpecifierLoc(),
-                            TC->getConceptNameInfo(), TC->getNamedConcept(),
-                            TC->getNamedConcept(), TemplArgInfo,
-                            TC->getImmediatelyDeclaredConstraint());
-    return false;
+      Inst->setTypeConstraint(TC->getConceptLoc(),
+                              TC->getImmediatelyDeclaredConstraint());
+      return false;
   }
 
   TemplateArgumentListInfo InstArgs;

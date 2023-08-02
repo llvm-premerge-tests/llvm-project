@@ -469,20 +469,25 @@ void TypeLocWriter::VisitUnaryTransformTypeLoc(UnaryTransformTypeLoc TL) {
   Record.AddTypeSourceInfo(TL.getUnderlyingTInfo());
 }
 
+void ASTRecordWriter::AddConceptLoc(const ConceptLoc *CL) {
+  push_back(CL != nullptr);
+  if (!CL)
+    return;
+  AddNestedNameSpecifierLoc(CL->getNestedNameSpecifierLoc());
+  AddSourceLocation(CL->getTemplateKWLoc());
+  AddDeclarationNameInfo(CL->getConceptNameInfo());
+  AddDeclRef(CL->getFoundDecl());
+  AddDeclRef(CL->getNamedConcept());
+  push_back(CL->getTemplateArgsAsWritten() != nullptr);
+  if (CL->getTemplateArgsAsWritten())
+    AddASTTemplateArgumentListInfo(CL->getTemplateArgsAsWritten());
+}
+
 void TypeLocWriter::VisitAutoTypeLoc(AutoTypeLoc TL) {
   addSourceLocation(TL.getNameLoc());
   Record.push_back(TL.isConstrained());
   if (TL.isConstrained()) {
-    Record.AddNestedNameSpecifierLoc(TL.getNestedNameSpecifierLoc());
-    addSourceLocation(TL.getTemplateKWLoc());
-    addSourceLocation(TL.getConceptNameLoc());
-    Record.AddDeclRef(TL.getFoundDecl());
-    addSourceLocation(TL.getLAngleLoc());
-    addSourceLocation(TL.getRAngleLoc());
-    for (unsigned I = 0; I < TL.getNumArgs(); ++I)
-      Record.AddTemplateArgumentLocInfo(
-          TL.getTypePtr()->getTypeConstraintArguments()[I].getKind(),
-          TL.getArgLocInfo(I));
+    Record.AddConceptLoc(TL.getConceptLoc());
   }
   Record.push_back(TL.isDecltypeAuto());
   if (TL.isDecltypeAuto())

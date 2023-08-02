@@ -312,6 +312,13 @@ public:
   /// \returns false if the visitation was terminated early, true otherwise.
   bool TraverseObjCProtocolLoc(ObjCProtocolLoc ProtocolLoc);
 
+  /// Recursively visit concept reference with location information.
+  ///
+  /// \returns false if the visitation was terminated early, true otherwise.
+  bool TraverseConceptLoc(const ConceptLoc *CL);
+
+  // Visit concept loc.
+  bool VisitConceptLoc(const ConceptLoc *CL) { return true; }
   // ---- Methods on Attrs ----
 
   // Visit an attribute.
@@ -469,9 +476,6 @@ public:
 private:
   // These are helper methods used by more than one Traverse* method.
   bool TraverseTemplateParameterListHelper(TemplateParameterList *TPL);
-  /// Traverses the qualifier, name and template arguments of a concept
-  /// reference.
-  bool TraverseConceptReferenceHelper(const ConceptReference &C);
 
   // Traverses template parameter lists of either a DeclaratorDecl or TagDecl.
   template <typename T>
@@ -507,17 +511,17 @@ template <typename Derived>
 bool RecursiveASTVisitor<Derived>::TraverseTypeConstraint(
     const TypeConstraint *C) {
   if (!getDerived().shouldVisitImplicitCode()) {
-    TRY_TO(TraverseConceptReferenceHelper(*C));
+    TRY_TO(TraverseConceptLoc(C->getConceptLoc()));
     return true;
   }
   if (Expr *IDC = C->getImmediatelyDeclaredConstraint()) {
     TRY_TO(TraverseStmt(IDC));
   } else {
-    // Avoid traversing the ConceptReference in the TypeConstraint
+    // Avoid traversing the ConceptLoc in the TypeConstraint
     // if we have an immediately-declared-constraint, otherwise
     // we'll end up visiting the concept and the arguments in
     // the TC twice.
-    TRY_TO(TraverseConceptReferenceHelper(*C));
+    TRY_TO(TraverseConceptLoc(C->getConceptLoc()));
   }
   return true;
 }
@@ -538,18 +542,6 @@ bool RecursiveASTVisitor<Derived>::TraverseConceptRequirement(
         cast<concepts::NestedRequirement>(R));
   }
   llvm_unreachable("unexpected case");
-}
-
-template <typename Derived>
-bool RecursiveASTVisitor<Derived>::TraverseConceptReferenceHelper(
-    const ConceptReference &C) {
-  TRY_TO(TraverseNestedNameSpecifierLoc(C.getNestedNameSpecifierLoc()));
-  TRY_TO(TraverseDeclarationNameInfo(C.getConceptNameInfo()));
-  if (C.hasExplicitTemplateArgs())
-    TRY_TO(TraverseTemplateArgumentLocsHelper(
-        C.getTemplateArgsAsWritten()->getTemplateArgs(),
-        C.getTemplateArgsAsWritten()->NumTemplateArgs));
-  return true;
 }
 
 template <typename Derived>
@@ -1356,10 +1348,7 @@ DEF_TRAVERSE_TYPELOC(UnaryTransformType, {
 DEF_TRAVERSE_TYPELOC(AutoType, {
   TRY_TO(TraverseType(TL.getTypePtr()->getDeducedType()));
   if (TL.isConstrained()) {
-    TRY_TO(TraverseNestedNameSpecifierLoc(TL.getNestedNameSpecifierLoc()));
-    TRY_TO(TraverseDeclarationNameInfo(TL.getConceptNameInfo()));
-    for (unsigned I = 0, E = TL.getNumArgs(); I != E; ++I)
-      TRY_TO(TraverseTemplateArgumentLoc(TL.getArgLoc(I)));
+    TRY_TO(TraverseConceptLoc(TL.getConceptLoc()));
   }
 })
 
@@ -2522,6 +2511,18 @@ bool RecursiveASTVisitor<Derived>::TraverseObjCProtocolLoc(
   return true;
 }
 
+template <typename Derived>
+bool RecursiveASTVisitor<Derived>::TraverseConceptLoc(const ConceptLoc *CL) {
+  TRY_TO(VisitConceptLoc(CL));
+  TRY_TO(TraverseNestedNameSpecifierLoc(CL->getNestedNameSpecifierLoc()));
+  TRY_TO(TraverseDeclarationNameInfo(CL->getConceptNameInfo()));
+  if (CL->hasExplicitTemplateArgs())
+    TRY_TO(TraverseTemplateArgumentLocsHelper(
+        CL->getTemplateArgsAsWritten()->getTemplateArgs(),
+        CL->getTemplateArgsAsWritten()->NumTemplateArgs));
+  return true;
+}
+
 // If shouldVisitImplicitCode() returns false, this method traverses only the
 // syntactic form of InitListExpr.
 // If shouldVisitImplicitCode() return true, this method is called once for
@@ -2904,7 +2905,7 @@ DEF_TRAVERSE_STMT(CoyieldExpr, {
 })
 
 DEF_TRAVERSE_STMT(ConceptSpecializationExpr,
-                  { TRY_TO(TraverseConceptReferenceHelper(*S)); })
+                  { TRY_TO(TraverseConceptLoc(S->getConceptLoc())); })
 
 DEF_TRAVERSE_STMT(RequiresExpr, {
   TRY_TO(TraverseDecl(S->getBody()));

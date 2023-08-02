@@ -14,6 +14,7 @@
 #ifndef LLVM_CLANG_AST_TYPELOC_H
 #define LLVM_CLANG_AST_TYPELOC_H
 
+#include "clang/AST/ASTConcept.h"
 #include "clang/AST/DeclarationName.h"
 #include "clang/AST/NestedNameSpecifier.h"
 #include "clang/AST/TemplateBase.h"
@@ -2104,16 +2105,10 @@ class DeducedTypeLoc
                                        DeducedType> {};
 
 struct AutoTypeLocInfo : TypeSpecLocInfo {
-  NestedNameSpecifierLoc NestedNameSpec;
-  SourceLocation TemplateKWLoc;
-  SourceLocation ConceptNameLoc;
-  NamedDecl *FoundDecl = nullptr;
-  SourceLocation LAngleLoc;
-  SourceLocation RAngleLoc;
-
   // For decltype(auto).
   SourceLocation RParenLoc;
 
+  ConceptLoc *CL = nullptr;
   // Followed by a TemplateArgumentLocInfo[]
 };
 
@@ -2135,79 +2130,75 @@ public:
     return getTypePtr()->isConstrained();
   }
 
-  const NestedNameSpecifierLoc &getNestedNameSpecifierLoc() const {
-    return getLocalData()->NestedNameSpec;
-  }
+  void setConceptLoc(ConceptLoc *Loc) { getLocalData()->CL = Loc; }
 
-  void setNestedNameSpecifierLoc(NestedNameSpecifierLoc NNS) {
-    getLocalData()->NestedNameSpec = NNS;
+  ConceptLoc *getConceptLoc() const { return getLocalData()->CL; }
+
+  // FIXME: Deprecate the following functions and let the caller directly
+  // work with the ConceptLoc.
+  const NestedNameSpecifierLoc getNestedNameSpecifierLoc() const {
+    if (getConceptLoc())
+      return getConceptLoc()->getNestedNameSpecifierLoc();
+    return NestedNameSpecifierLoc();
   }
 
   SourceLocation getTemplateKWLoc() const {
-    return getLocalData()->TemplateKWLoc;
-  }
-
-  void setTemplateKWLoc(SourceLocation Loc) {
-    getLocalData()->TemplateKWLoc = Loc;
+    if (getConceptLoc())
+      return getConceptLoc()->getTemplateKWLoc();
+    return SourceLocation();
   }
 
   SourceLocation getConceptNameLoc() const {
-    return getLocalData()->ConceptNameLoc;
-  }
-
-  void setConceptNameLoc(SourceLocation Loc) {
-    getLocalData()->ConceptNameLoc = Loc;
+    if (getConceptLoc())
+      return getConceptLoc()->getConceptNameLoc();
+    return SourceLocation();
   }
 
   NamedDecl *getFoundDecl() const {
-    return getLocalData()->FoundDecl;
-  }
-
-  void setFoundDecl(NamedDecl *D) {
-    getLocalData()->FoundDecl = D;
+    if (getConceptLoc())
+      return getConceptLoc()->getFoundDecl();
+    return nullptr;
   }
 
   ConceptDecl *getNamedConcept() const {
-    return getTypePtr()->getTypeConstraintConcept();
+    if (getConceptLoc())
+      return getConceptLoc()->getNamedConcept();
+    return nullptr;
   }
 
-  DeclarationNameInfo getConceptNameInfo() const;
+  DeclarationNameInfo getConceptNameInfo() const {
+    return getConceptLoc()->getConceptNameInfo();
+  }
 
   bool hasExplicitTemplateArgs() const {
-    return getLocalData()->LAngleLoc.isValid();
+    return (
+        getConceptLoc() && getConceptLoc()->getTemplateArgsAsWritten() &&
+        getConceptLoc()->getTemplateArgsAsWritten()->getLAngleLoc().isValid());
   }
 
   SourceLocation getLAngleLoc() const {
-    return this->getLocalData()->LAngleLoc;
-  }
-
-  void setLAngleLoc(SourceLocation Loc) {
-    this->getLocalData()->LAngleLoc = Loc;
+    if (getConceptLoc() && getConceptLoc()->getTemplateArgsAsWritten())
+      return getConceptLoc()->getTemplateArgsAsWritten()->getLAngleLoc();
+    return SourceLocation();
   }
 
   SourceLocation getRAngleLoc() const {
-    return this->getLocalData()->RAngleLoc;
-  }
-
-  void setRAngleLoc(SourceLocation Loc) {
-    this->getLocalData()->RAngleLoc = Loc;
+    if (getConceptLoc() && getConceptLoc()->getTemplateArgsAsWritten())
+      return getConceptLoc()->getTemplateArgsAsWritten()->getRAngleLoc();
+    return SourceLocation();
   }
 
   unsigned getNumArgs() const {
     return getTypePtr()->getTypeConstraintArguments().size();
   }
 
-  void setArgLocInfo(unsigned i, TemplateArgumentLocInfo AI) {
-    getArgInfos()[i] = AI;
-  }
-
-  TemplateArgumentLocInfo getArgLocInfo(unsigned i) const {
-    return getArgInfos()[i];
-  }
-
   TemplateArgumentLoc getArgLoc(unsigned i) const {
+    if (getConceptLoc())
+      return getConceptLoc()->getTemplateArgsAsWritten()->getTemplateArgs()[i];
+    // FIXME: Check why we still need this fallback in case that there is no
+    // ConceptLoc.
     return TemplateArgumentLoc(getTypePtr()->getTypeConstraintArguments()[i],
-                               getArgLocInfo(i));
+                               getArgInfos()[i]);
   }
 
   SourceRange getLocalSourceRange() const {

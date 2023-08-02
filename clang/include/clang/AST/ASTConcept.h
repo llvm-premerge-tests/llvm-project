@@ -14,7 +14,9 @@
 #ifndef LLVM_CLANG_AST_ASTCONCEPT_H
 #define LLVM_CLANG_AST_ASTCONCEPT_H
 
+#include "clang/AST/Decl.h"
 #include "clang/AST/Expr.h"
+#include "clang/AST/PrettyPrinter.h"
 #include "clang/Basic/SourceLocation.h"
 #include "llvm/ADT/PointerUnion.h"
 #include "llvm/ADT/SmallVector.h"
@@ -109,7 +111,7 @@ struct ASTConstraintSatisfaction final :
 
 /// \brief Common data class for constructs that reference concepts with
 /// template arguments.
-class ConceptReference {
+class ConceptLoc {
 protected:
   // \brief The optional nested name specifier used when naming the concept.
   NestedNameSpecifierLoc NestedNameSpec;
@@ -135,16 +137,25 @@ protected:
   const ASTTemplateArgumentListInfo *ArgsAsWritten;
 
 public:
-  ConceptReference(NestedNameSpecifierLoc NNS, SourceLocation TemplateKWLoc,
-                   DeclarationNameInfo ConceptNameInfo, NamedDecl *FoundDecl,
-                   ConceptDecl *NamedConcept,
-                   const ASTTemplateArgumentListInfo *ArgsAsWritten)
+  ConceptLoc(NestedNameSpecifierLoc NNS, SourceLocation TemplateKWLoc,
+             DeclarationNameInfo ConceptNameInfo, NamedDecl *FoundDecl,
+             ConceptDecl *NamedConcept,
+             const ASTTemplateArgumentListInfo *ArgsAsWritten)
       : NestedNameSpec(NNS), TemplateKWLoc(TemplateKWLoc),
         ConceptName(ConceptNameInfo), FoundDecl(FoundDecl),
         NamedConcept(NamedConcept), ArgsAsWritten(ArgsAsWritten) {}
 
-  ConceptReference()
+  ConceptLoc()
       : FoundDecl(nullptr), NamedConcept(nullptr), ArgsAsWritten(nullptr) {}
+
+  static ConceptLoc *Create(const ASTContext &C, NestedNameSpecifierLoc NNS,
+                            SourceLocation TemplateKWLoc,
+                            DeclarationNameInfo ConceptNameInfo,
+                            NamedDecl *FoundDecl, ConceptDecl *NamedConcept,
+                            const ASTTemplateArgumentListInfo *ArgsAsWritten) {
+    return new (C) ConceptLoc(NNS, TemplateKWLoc, ConceptNameInfo, FoundDecl,
+                              NamedConcept, ArgsAsWritten);
+  }
 
   const NestedNameSpecifierLoc &getNestedNameSpecifierLoc() const {
     return NestedNameSpec;
@@ -175,22 +186,20 @@ public:
   bool hasExplicitTemplateArgs() const {
     return ArgsAsWritten != nullptr;
   }
+
+  void print(llvm::raw_ostream &OS, PrintingPolicy Policy) const;
 };
 
-class TypeConstraint : public ConceptReference {
+class TypeConstraint {
   /// \brief The immediately-declared constraint expression introduced by this
   /// type-constraint.
   Expr *ImmediatelyDeclaredConstraint = nullptr;
+  ConceptLoc *Loc;
 
 public:
-  TypeConstraint(NestedNameSpecifierLoc NNS,
-                 DeclarationNameInfo ConceptNameInfo, NamedDecl *FoundDecl,
-                 ConceptDecl *NamedConcept,
-                 const ASTTemplateArgumentListInfo *ArgsAsWritten,
-                 Expr *ImmediatelyDeclaredConstraint) :
-      ConceptReference(NNS, /*TemplateKWLoc=*/SourceLocation(), ConceptNameInfo,
-                       FoundDecl, NamedConcept, ArgsAsWritten),
-      ImmediatelyDeclaredConstraint(ImmediatelyDeclaredConstraint) {}
+  TypeConstraint(ConceptLoc *Loc, Expr *ImmediatelyDeclaredConstraint)
+      : ImmediatelyDeclaredConstraint(ImmediatelyDeclaredConstraint), Loc(Loc) {
+  }
 
   /// \brief Get the immediately-declared constraint expression introduced by
   /// this type-constraint, that is - the constraint expression that is added to
@@ -199,7 +208,37 @@ public:
     return ImmediatelyDeclaredConstraint;
   }
 
-  void print(llvm::raw_ostream &OS, PrintingPolicy Policy) const;
+  ConceptLoc *getConceptLoc() const { return Loc; }
+
+  // FIXME: Instead of using these concept related functions the callers should
+  // directly work with the corresponding ConceptLoc.
+  ConceptDecl *getNamedConcept() const { return Loc->getNamedConcept(); }
+
+  SourceLocation getConceptNameLoc() const { return Loc->getConceptNameLoc(); }
+
+  bool hasExplicitTemplateArgs() const {
+    return Loc->hasExplicitTemplateArgs();
+  }
+
+  const ASTTemplateArgumentListInfo *getTemplateArgsAsWritten() const {
+    return Loc->getTemplateArgsAsWritten();
+  }
+
+  SourceLocation getTemplateKWLoc() const { return Loc->getTemplateKWLoc(); }
+
+  NamedDecl *getFoundDecl() const { return Loc->getFoundDecl(); }
+
+  const NestedNameSpecifierLoc &getNestedNameSpecifierLoc() const {
+    return Loc->getNestedNameSpecifierLoc();
+  }
+
+  const DeclarationNameInfo &getConceptNameInfo() const {
+    return Loc->getConceptNameInfo();
+  }
+
+  void print(llvm::raw_ostream &OS, PrintingPolicy Policy) const {
+    Loc->print(OS, Policy);
+  }
 };
 
 } // clang
