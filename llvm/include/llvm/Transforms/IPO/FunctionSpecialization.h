@@ -184,6 +184,7 @@ public:
 private:
   friend class InstVisitor<InstCostVisitor, Constant *>;
 
+  Cost estimateBasicBlocks(SmallVectorImpl<BasicBlock *> &WorkList);
   Cost estimateSwitchInst(SwitchInst &I);
   Cost estimateBranchInst(BranchInst &I);
 
