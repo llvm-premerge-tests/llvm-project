@@ -588,11 +588,6 @@ def Vector_ExtractOp :
     %3 = vector.extract %1[]: vector<f32>
     ```
   }];
-  let builders = [
-    // Convenience builder which assumes the values in `position` are defined by
-    // ConstantIndexOp.
-    OpBuilder<(ins "Value":$source, "ValueRange":$position)>
-  ];
   let extraClassDeclaration = [{
     VectorType getSourceVectorType() {
       return ::llvm::cast<VectorType>(getVector().getType());
@@ -709,10 +704,6 @@ def Vector_InsertOp :
     $source `,` $dest $position attr-dict `:` type($source) `into` type($dest)
   }];
 
-  let builders = [
-    // Convenience builder which assumes all values are constant indices.
-    OpBuilder<(ins "Value":$source, "Value":$dest, "ValueRange":$position)>
-  ];
   let extraClassDeclaration = [{
     Type getSourceType() { return getSource().getType(); }
     VectorType getDestVectorType() {

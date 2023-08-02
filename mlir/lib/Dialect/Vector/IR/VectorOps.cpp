@@ -1126,14 +1126,6 @@ OpFoldResult vector::ExtractElementOp::fold(FoldAdaptor adaptor) {
 // ExtractOp
 //===----------------------------------------------------------------------===//
 
-// Convenience builder which assumes the values are constant indices.
-void vector::ExtractOp::build(OpBuilder &builder, OperationState &result,
-                              Value source, ValueRange position) {
-  SmallVector<int64_t> positionConstants = llvm::to_vector(llvm::map_range(
-      position, [](Value pos) { return getConstantIntValue(pos).value(); }));
-  build(builder, result, source, positionConstants);
-}
-
 LogicalResult
 ExtractOp::inferReturnTypes(MLIRContext *, std::optional<Location>,
                             ExtractOp::Adaptor adaptor,
@@ -2273,16 +2265,6 @@ OpFoldResult vector::InsertElementOp::fold(FoldAdaptor adaptor) {
 //===----------------------------------------------------------------------===//
 // InsertOp
 //===----------------------------------------------------------------------===//
-
-// Convenience builder which assumes the values are constant indices.
-void InsertOp::build(OpBuilder &builder, OperationState &result, Value source,
-                     Value dest, ValueRange position) {
-  SmallVector<int64_t, 4> positionConstants =
-      llvm::to_vector<4>(llvm::map_range(position, [](Value pos) {
-        return getConstantIntValue(pos).value();
-      }));
-  build(builder, result, source, dest, positionConstants);
-}
 
 LogicalResult InsertOp::verify() {
   ArrayRef<int64_t> position = getPosition();
