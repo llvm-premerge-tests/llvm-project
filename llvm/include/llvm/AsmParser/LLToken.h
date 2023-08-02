@@ -84,6 +84,7 @@ enum Kind {
   kw_tail,
   kw_musttail,
   kw_notail,
+  kw_unwindabort,
   kw_target,
   kw_triple,
   kw_source_filename,

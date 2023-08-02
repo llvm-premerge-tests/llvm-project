@@ -3751,10 +3751,12 @@ static AttrBuilder getParameterABIAttributes(LLVMContext& C, unsigned I, Attribu
 
 void Verifier::verifyMustTailCall(CallInst &CI) {
   Check(!CI.isInlineAsm(), "cannot use musttail call with inline asm", &CI);
+  Check(!CI.isUnwindAbort(), "cannot use musttail with unwindabort", &CI);
 
   Function *F = CI.getParent()->getParent();
   FunctionType *CallerTy = F->getFunctionType();
   FunctionType *CalleeTy = CI.getFunctionType();
+
   Check(CallerTy->isVarArg() == CalleeTy->isVarArg(),
         "cannot guarantee tail call due to mismatched varargs", &CI);
   Check(isTypeCongruent(CallerTy->getReturnType(), CalleeTy->getReturnType()),
@@ -3838,6 +3840,12 @@ void Verifier::verifyMustTailCall(CallInst &CI) {
 
 void Verifier::visitCallInst(CallInst &CI) {
   visitCallBase(CI);
+
+  if (CI.isUnwindAbort()) {
+    Check(CI.getFunction()->hasPersonalityFn(),
+          "Call with unwindabort needs to be in a function with a personality.",
+          &CI);
+  }
 
   if (CI.isMustTailCall())
     verifyMustTailCall(CI);
