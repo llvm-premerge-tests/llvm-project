@@ -40,6 +40,45 @@ void write_simd_regs() {
   WRITE_SIMD(31);
 }
 
+void write_simd_regs_expr() {
+#define WRITE_SIMD(NUM)                                                        \
+  asm volatile("MOV v" #NUM ".d[0], %0\n\t"                                    \
+               "MOV v" #NUM ".d[1], %0\n\t" ::"r"(NUM + 1))
+
+  WRITE_SIMD(0);
+  WRITE_SIMD(1);
+  WRITE_SIMD(2);
+  WRITE_SIMD(3);
+  WRITE_SIMD(4);
+  WRITE_SIMD(5);
+  WRITE_SIMD(6);
+  WRITE_SIMD(7);
+  WRITE_SIMD(8);
+  WRITE_SIMD(9);
+  WRITE_SIMD(10);
+  WRITE_SIMD(11);
+  WRITE_SIMD(12);
+  WRITE_SIMD(13);
+  WRITE_SIMD(14);
+  WRITE_SIMD(15);
+  WRITE_SIMD(16);
+  WRITE_SIMD(17);
+  WRITE_SIMD(18);
+  WRITE_SIMD(19);
+  WRITE_SIMD(20);
+  WRITE_SIMD(21);
+  WRITE_SIMD(22);
+  WRITE_SIMD(23);
+  WRITE_SIMD(24);
+  WRITE_SIMD(25);
+  WRITE_SIMD(26);
+  WRITE_SIMD(27);
+  WRITE_SIMD(28);
+  WRITE_SIMD(29);
+  WRITE_SIMD(30);
+  WRITE_SIMD(31);
+}
+
 unsigned verify_simd_regs() {
   uint64_t got_low = 0;
   uint64_t got_high = 0;
