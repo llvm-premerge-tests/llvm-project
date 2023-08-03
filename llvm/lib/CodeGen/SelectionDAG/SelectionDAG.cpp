@@ -7644,10 +7644,24 @@ static SDValue getMemsetStores(SelectionDAG &DAG, const SDLoc &dl,
     // the smaller value for free with a truncate.
     SDValue Value = MemSetValue;
     if (VT.bitsLT(LargestVT)) {
+      unsigned Index;
+      unsigned NElts = LargestVT.getSizeInBits() / VT.getSizeInBits();
+      EVT SVT = EVT::getVectorVT(*DAG.getContext(), VT.getScalarType(), NElts);
       if (!LargestVT.isVector() && !VT.isVector() &&
           TLI.isTruncateFree(LargestVT, VT))
         Value = DAG.getNode(ISD::TRUNCATE, dl, VT, MemSetValue);
-      else
+      else if (LargestVT.isVector() && !VT.isVector() &&
+               TLI.shallExtractConstSplatVectorElementToStore(
+                   LargestVT.getTypeForEVT(*DAG.getContext()),
+                   VT.getSizeInBits(), Index) &&
+               TLI.isTypeLegal(SVT) &&
+               LargestVT.getSizeInBits() == SVT.getSizeInBits()) {
+        // Target which can combine store(extractelement VectorTy, Idx) can get
+        // the smaller value for free.
+        SDValue TailValue = DAG.getNode(ISD::BITCAST, dl, SVT, MemSetValue);
+        Value = DAG.getNode(ISD::EXTRACT_VECTOR_ELT, dl, VT, TailValue,
+                            DAG.getVectorIdxConstant(Index, dl));
+      } else
         Value = getMemsetValue(Src, VT, DAG, dl);
     }
     assert(Value.getValueType() == VT && "Value with wrong type.");
