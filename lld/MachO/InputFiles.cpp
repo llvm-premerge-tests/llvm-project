@@ -185,6 +185,29 @@ static bool checkCompatibility(const InputFile *input) {
   return true;
 }
 
+template <class Header>
+static bool compatWithTargetArch(const InputFile *file, const Header *hdr) {
+  uint32_t cpuType;
+  std::tie(cpuType, std::ignore) = getCPUTypeFromArchitecture(config->arch());
+
+  if (hdr->cputype != cpuType) {
+    Architecture arch =
+        getArchitectureFromCpuType(hdr->cputype, hdr->cpusubtype);
+    auto msg = config->errorForArchMismatch
+                   ? static_cast<void (*)(const Twine &)>(error)
+                   : warn;
+
+    msg(toString(file) + " has architecture " + getArchitectureName(arch) +
+        " which is incompatible with target architecture " +
+        getArchitectureName(config->arch()));
+    return false;
+  }
+
+  if (!checkCompatibility(file))
+    return false;
+  return true;
+}
+
 // This cache mostly exists to store system libraries (and .tbds) as they're
 // loaded, rather than the input archives, which are already cached at a higher
 // level, and other files like the filelist that are only read once.
@@ -955,21 +978,10 @@ template <class LP> void ObjFile::parse() {
   auto *buf = reinterpret_cast<const uint8_t *>(mb.getBufferStart());
   auto *hdr = reinterpret_cast<const Header *>(mb.getBufferStart());
 
-  uint32_t cpuType;
-  std::tie(cpuType, std::ignore) = getCPUTypeFromArchitecture(config->arch());
-  if (hdr->cputype != cpuType) {
-    Architecture arch =
-        getArchitectureFromCpuType(hdr->cputype, hdr->cpusubtype);
-    auto msg = config->errorForArchMismatch
-                   ? static_cast<void (*)(const Twine &)>(error)
-                   : warn;
-    msg(toString(this) + " has architecture " + getArchitectureName(arch) +
-        " which is incompatible with target architecture " +
-        getArchitectureName(config->arch()));
+  // If we've already checked the arch, then don't need to check again.
+  if (!compatArch)
     return;
-  }
-
-  if (!checkCompatibility(this))
+  if (!(compatArch = compatWithTargetArch(this, hdr)))
     return;
 
   for (auto *cmd : findCommands<linker_option_command>(hdr, LC_LINKER_OPTION)) {
@@ -1026,6 +1038,12 @@ template <class LP> void ObjFile::parseLazy() {
 
   auto *buf = reinterpret_cast<const uint8_t *>(mb.getBufferStart());
   auto *hdr = reinterpret_cast<const Header *>(mb.getBufferStart());
+
+  if (!compatArch)
+    return;
+  if (!(compatArch = compatWithTargetArch(this, hdr)))
+    return;
+
   const load_command *cmd = findCommand(hdr, LC_SYMTAB);
   if (!cmd)
     return;
@@ -2089,6 +2107,33 @@ ArchiveFile::ArchiveFile(std::unique_ptr<object::Archive> &&f, bool forceHidden)
       forceHidden(forceHidden) {}
 
 void ArchiveFile::addLazySymbols() {
+  Error err = Error::success();
+  Expected<MemoryBufferRef> mbOrErr =
+      this->file->child_begin(err)->getMemoryBufferRef();
+
+  // Ignore the I/O error here - will be reported later.
+  if (!err && mbOrErr) {
+    if (identify_magic(mbOrErr->getBuffer()) == file_magic::macho_object) {
+      if (target->wordSize == 8)
+        compatArch = compatWithTargetArch(
+            this, reinterpret_cast<const LP64::mach_header *>(
+                      mbOrErr->getBufferStart()));
+      else
+        compatArch = compatWithTargetArch(
+            this, reinterpret_cast<const ILP32::mach_header *>(
+                      mbOrErr->getBufferStart()));
+
+      if (!compatArch)
+        return;
+    }
+  } else {
+    if (!mbOrErr)
+      llvm::handleAllErrors(mbOrErr.takeError(),
+                            [](const llvm::ErrorInfoBase &EI) {
+                              // do nothing
+                            });
+  }
+
   for (const object::Archive::Symbol &sym : file->symbols())
     symtab->addLazyArchive(sym.getName(), this, sym);
 }
