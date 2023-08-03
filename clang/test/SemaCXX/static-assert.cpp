@@ -262,7 +262,29 @@ namespace Diagnostics {
     return 'c';
   }
   static_assert(getChar() == 'a', ""); // expected-error {{failed}} \
-                                       // expected-note {{evaluates to ''c' == 'a''}}
+                                       // expected-note {{evaluates to ''c' (99) == 'a' (97)'}}
+  static_assert((char)9 == '\x61', ""); // expected-error {{failed}} \
+                                        // expected-note {{evaluates to ''\t' (9) == 'a' (97)'}}
+  static_assert((char)10 == '\0', ""); // expected-error {{failed}} \
+                                       // expected-note {{n' (10) == '<U+0000>' (0)'}}
+  // The note above is intended to match "evaluates to '\n' (10) == '<U+0000>' (0)'", but if we write it as it is,
+  // the "\n" cannot be consumed by the diagnostic consumer.
+  static_assert((signed char)10 == (char)-123, ""); // expected-error {{failed}} \
+                                                    // expected-note {{evaluates to '10 == '<85>' (-123)'}}
+  static_assert((char)-4 == (unsigned char)-8, ""); // expected-error {{failed}} \
+                                                    // expected-note {{evaluates to ''<FC>' (-4) == 248'}}
+  static_assert((char)-128 == (char)-123, ""); // expected-error {{failed}} \
+                                               // expected-note {{evaluates to ''<80>' (-128) == '<85>' (-123)'}}
+  static_assert('\xA0' == (char)'\x20', ""); // expected-error {{failed}} \
+                                             // expected-note {{evaluates to ''<A0>' (-96) == ' ' (32)'}}
+static_assert((char16_t)L'ゆ' == L"C̵̭̯̠̎͌ͅť̺"[1], ""); // expected-error {{failed}} \
+                                                // expected-note {{evaluates to 'u'ゆ' (12422) == L'̵' (821)'}}
+static_assert(L"＼／"[1] == u'\xFFFD', ""); // expected-error {{failed}} \
+                                           // expected-note {{evaluates to 'L'／' (65295) == u'�' (65533)'}}
+static_assert(L"⚾"[0] == U'🌍', ""); // expected-error {{failed}} \
+                                       // expected-note {{evaluates to 'L'⚾' (9918) == U'🌍' (127757)'}}
+static_assert(U"\a"[0] == (wchar_t)9, ""); // expected-error {{failed}} \
+                                           // expected-note {{evaluates to 'U'\a' (7) == L'\t' (9)'}}
 
   /// Bools are printed as bools.
   constexpr bool invert(bool b) {
