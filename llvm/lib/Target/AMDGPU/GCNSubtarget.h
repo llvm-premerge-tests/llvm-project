@@ -15,6 +15,7 @@
 #define LLVM_LIB_TARGET_AMDGPU_GCNSUBTARGET_H
 
 #include "AMDGPUCallLowering.h"
+#include "AMDGPUInlineAsmLowering.h"
 #include "AMDGPURegisterBankInfo.h"
 #include "AMDGPUSubtarget.h"
 #include "SIFrameLowering.h"
@@ -50,7 +51,7 @@ public:
 private:
   /// GlobalISel related APIs.
   std::unique_ptr<AMDGPUCallLowering> CallLoweringInfo;
-  std::unique_ptr<InlineAsmLowering> InlineAsmLoweringInfo;
+  std::unique_ptr<AMDGPUInlineAsmLowering> InlineAsmLoweringInfo;
   std::unique_ptr<InstructionSelector> InstSelector;
   std::unique_ptr<LegalizerInfo> Legalizer;
   std::unique_ptr<AMDGPURegisterBankInfo> RegBankInfo;

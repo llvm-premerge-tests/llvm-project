@@ -48,6 +48,9 @@ public:
                                             std::vector<MachineOperand> &Ops,
                                             MachineIRBuilder &MIRBuilder) const;
 
+  /// builds an extension or copy from Src to Dst register.
+  virtual bool buildAnyextOrCopy(Register Dst, Register Src,
+                              MachineIRBuilder &MIRBuilder) const;
 protected:
   /// Getter for generic TargetLowering class.
   const TargetLowering *getTLI() const { return TLI; }

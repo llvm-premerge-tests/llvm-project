@@ -13,6 +13,7 @@
 
 #include "AMDGPUSubtarget.h"
 #include "AMDGPUCallLowering.h"
+#include "AMDGPUInlineAsmLowering.h"
 #include "AMDGPUInstructionSelector.h"
 #include "AMDGPULegalizerInfo.h"
 #include "AMDGPURegisterBankInfo.h"
@@ -181,7 +182,7 @@ GCNSubtarget::GCNSubtarget(const Triple &TT, StringRef GPU, StringRef FS,
   MaxWavesPerEU = AMDGPU::IsaInfo::getMaxWavesPerEU(this);
   EUsPerCU = AMDGPU::IsaInfo::getEUsPerCU(this);
   CallLoweringInfo.reset(new AMDGPUCallLowering(*getTargetLowering()));
-  InlineAsmLoweringInfo.reset(new InlineAsmLowering(getTargetLowering()));
+  InlineAsmLoweringInfo.reset(new AMDGPUInlineAsmLowering(*getTargetLowering()));
   Legalizer.reset(new AMDGPULegalizerInfo(*this, TM));
   RegBankInfo.reset(new AMDGPURegisterBankInfo(*this));
   InstSelector.reset(new AMDGPUInstructionSelector(
