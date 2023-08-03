@@ -29,6 +29,9 @@ int llvm_module_dump(bool Lazy, bool New);
 int llvm_module_list_functions(void);
 int llvm_module_list_globals(void);
 
+// bpf-unsupported-emit.c
+int llvm_test_bpf_unsupported_emit(void);
+
 // calc.c
 int llvm_calc(void);
 

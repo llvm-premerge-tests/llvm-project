@@ -16,6 +16,7 @@ executable("llvm-c-test") {
   }
   sources = [
     "attributes.c",
+    "bpf-unsupported-emit.c",
     "calc.c",
     "debuginfo.c",
     "diagnostic.c",

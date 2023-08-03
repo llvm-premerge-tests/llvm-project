@@ -41,6 +41,7 @@ endif ()
 
 add_llvm_tool(llvm-c-test
   attributes.c
+  bpf-unsupported-emit.c
   calc.c
   debuginfo.c
   diagnostic.c
@@ -49,8 +50,8 @@ add_llvm_tool(llvm-c-test
   helpers.c
   include-all.c
   main.c
-  module.c
   metadata.c
+  module.c
   object.c
   targets.c
   )

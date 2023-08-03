@@ -67,6 +67,9 @@ static void print_usage(void) {
   fprintf(stderr, "  * --test-dibuilder\n");
   fprintf(stderr,
           "    Run tests for the DIBuilder C API - print generated module\n\n");
+  fprintf(stderr, "  * --test-bpf-unsupported-emit\n");
+  fprintf(stderr,
+          "    Generate BPF asm from IR - print generated assembly\n\n");
 }
 
 int main(int argc, char **argv) {
@@ -114,6 +117,8 @@ int main(int argc, char **argv) {
     return llvm_test_diagnostic_handler();
   } else if (argc == 2 && !strcmp(argv[1], "--test-dibuilder")) {
     return llvm_test_dibuilder();
+  } else if (argc == 2 && !strcmp(argv[1], "--test-bpf-unsupported-emit")) {
+    return llvm_test_bpf_unsupported_emit();
   } else {
     print_usage();
   }
