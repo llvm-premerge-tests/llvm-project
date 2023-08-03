@@ -11,424 +11,140 @@ add_subdirectory(vendor)
 # TODO: We should have an option to enable or disable these on a per-function
 # basis.
 option(LIBC_GPU_VENDOR_MATH "Use vendor wrappers for GPU math" ON)
+
+# As a temporary solution to the above problem, we can add another CMake option
+# that allows the user to select between generic and built-in versions of the
+# math functions.
+option(LIBC_GPU_BUILTIN_MATH "Use built-in wrappers for GPU math" OFF)
+
+# And these options are regarded as mutually exclusive.
+if (${LIBC_GPU_VENDOR_MATH} AND ${LIBC_GPU_BUILTIN_MATH})
+  message(WARNING "\
+    Invalid CMake configuration. Please do not enable both \
+    'LIBC_GPU_VENDOR_MATH' and 'LIBC_GPU_BUILTIN_MATH'.\
+  ")
+endif()
+
 function(add_math_entrypoint_gpu_object name)
   get_fq_target_name("vendor.${name}" fq_vendor_specific_target_name)
-  if(TARGET ${fq_vendor_specific_target_name} AND ${LIBC_GPU_VENDOR_MATH})
+  if(TARGET ${fq_vendor_specific_target_name} AND ${LIBC_GPU_VENDOR_MATH} 
+    AND NOT ${LIBC_GPU_BUILTIN_MATH})
     return()
+  endif()
+
+  # If the user has not specified to use vendor math and has also not specified
+  # to use built-in math, we check wether a generic implementation exists. If a
+  # generic version exists, we do not add a built-in entry point.
+  if(NOT ${LIBC_GPU_BUILTIN_MATH})
+    get_filename_component(generic_file_path
+      "${CMAKE_CURRENT_LIST_DIR}/../generic/${name}.cpp" ABSOLUTE)
+    if (EXISTS ${generic_file_path})
+      return()
+    endif()
   endif()
 
   add_entrypoint_object(
     ${name}
-    ${ARGN}
+    SRCS
+      ${name}.cpp
+    HDRS
+      ../${name}.h
+    COMPILE_OPTIONS
+      -O2
   )
 endfunction()
 
-add_math_entrypoint_gpu_object(
-  ceil
-  SRCS
-    ceil.cpp
-  HDRS
-    ../ceil.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  ceilf
-  SRCS
-    ceilf.cpp
-  HDRS
-    ../ceilf.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  copysign
-  SRCS
-    copysign.cpp
-  HDRS
-    ../copysign.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  copysignf
-  SRCS
-    copysignf.cpp
-  HDRS
-    ../copysignf.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  fabs
-  SRCS
-    fabs.cpp
-  HDRS
-    ../fabs.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  fabsf
-  SRCS
-    fabsf.cpp
-  HDRS
-    ../fabsf.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  floor
-  SRCS
-    floor.cpp
-  HDRS
-    ../floor.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  floorf
-  SRCS
-    floorf.cpp
-  HDRS
-    ../floorf.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  fma
-  SRCS
-    fma.cpp
-  HDRS
-    ../fma.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  fmaf
-  SRCS
-    fmaf.cpp
-  HDRS
-    ../fmaf.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  fmax
-  SRCS
-    fmax.cpp
-  HDRS
-    ../fmax.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  fmaxf
-  SRCS
-    fmaxf.cpp
-  HDRS
-    ../fmaxf.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  fmin
-  SRCS
-    fmin.cpp
-  HDRS
-    ../fmin.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  fminf
-  SRCS
-    fminf.cpp
-  HDRS
-    ../fminf.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  fmod
-  SRCS
-    fmod.cpp
-  HDRS
-    ../fmod.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  fmodf
-  SRCS
-    fmodf.cpp
-  HDRS
-    ../fmodf.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  frexp
-  SRCS
-    frexp.cpp
-  HDRS
-    ../frexp.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  frexpf
-  SRCS
-    frexpf.cpp
-  HDRS
-    ../frexpf.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  modf
-  SRCS
-    modf.cpp
-  HDRS
-    ../modf.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  modff
-  SRCS
-    modff.cpp
-  HDRS
-    ../modff.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  nearbyint
-  SRCS
-    nearbyint.cpp
-  HDRS
-    ../nearbyint.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  nearbyintf
-  SRCS
-    nearbyintf.cpp
-  HDRS
-    ../nearbyintf.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  remainder
-  SRCS
-    remainder.cpp
-  HDRS
-    ../remainder.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  remainderf
-  SRCS
-    remainderf.cpp
-  HDRS
-    ../remainderf.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  remquo
-  SRCS
-    remquo.cpp
-  HDRS
-    ../remquo.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  remquof
-  SRCS
-    remquof.cpp
-  HDRS
-    ../remquof.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  rint
-  SRCS
-    rint.cpp
-  HDRS
-    ../rint.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  rintf
-  SRCS
-    rintf.cpp
-  HDRS
-    ../rintf.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  round
-  SRCS
-    round.cpp
-  HDRS
-    ../round.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  scalbn
-  SRCS
-    scalbn.cpp
-  HDRS
-    ../scalbn.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  scalbnf
-  SRCS
-    scalbnf.cpp
-  HDRS
-    ../scalbnf.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  sinh
-  SRCS
-    sinh.cpp
-  HDRS
-    ../sinh.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  sinhf
-  SRCS
-    sinhf.cpp
-  HDRS
-    ../sinhf.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  sqrt
-  SRCS
-    sqrt.cpp
-  HDRS
-    ../sqrt.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  sqrtf
-  SRCS
-    sqrtf.cpp
-  HDRS
-    ../sqrtf.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  tan
-  SRCS
-    tan.cpp
-  HDRS
-    ../tan.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  tanf
-  SRCS
-    tanf.cpp
-  HDRS
-    ../tanf.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  tanh
-  SRCS
-    tanh.cpp
-  HDRS
-    ../tanh.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  tanhf
-  SRCS
-    tanhf.cpp
-  HDRS
-    ../tanhf.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  trunc
-  SRCS
-    trunc.cpp
-  HDRS
-    ../trunc.h
-  COMPILE_OPTIONS
-    -O2
-)
-
-add_math_entrypoint_gpu_object(
-  truncf
-  SRCS
-    truncf.cpp
-  HDRS
-    ../truncf.h
-  COMPILE_OPTIONS
-    -O2
-)
+add_math_entrypoint_gpu_object(acos)
+add_math_entrypoint_gpu_object(acosf)
+add_math_entrypoint_gpu_object(acosh)
+add_math_entrypoint_gpu_object(acoshf)
+add_math_entrypoint_gpu_object(asin)
+add_math_entrypoint_gpu_object(asinf)
+add_math_entrypoint_gpu_object(asinh)
+add_math_entrypoint_gpu_object(asinhf)
+add_math_entrypoint_gpu_object(atan)
+add_math_entrypoint_gpu_object(atanf)
+add_math_entrypoint_gpu_object(atan2)
+add_math_entrypoint_gpu_object(atan2f)
+add_math_entrypoint_gpu_object(atanh)
+add_math_entrypoint_gpu_object(atanhf)
+add_math_entrypoint_gpu_object(ceil)
+add_math_entrypoint_gpu_object(ceilf)
+add_math_entrypoint_gpu_object(copysign)
+add_math_entrypoint_gpu_object(copysignf)
+add_math_entrypoint_gpu_object(cos)
+add_math_entrypoint_gpu_object(cosf)
+add_math_entrypoint_gpu_object(cosh)
+add_math_entrypoint_gpu_object(coshf)
+add_math_entrypoint_gpu_object(erf)
+add_math_entrypoint_gpu_object(erff)
+add_math_entrypoint_gpu_object(exp)
+add_math_entrypoint_gpu_object(exp2)
+add_math_entrypoint_gpu_object(exp2f)
+add_math_entrypoint_gpu_object(expf)
+add_math_entrypoint_gpu_object(expm1)
+add_math_entrypoint_gpu_object(expm1f)
+add_math_entrypoint_gpu_object(fabs)
+add_math_entrypoint_gpu_object(fabsf)
+add_math_entrypoint_gpu_object(floor)
+add_math_entrypoint_gpu_object(floorf)
+add_math_entrypoint_gpu_object(fma)
+add_math_entrypoint_gpu_object(fmaf)
+add_math_entrypoint_gpu_object(fmax)
+add_math_entrypoint_gpu_object(fmaxf)
+add_math_entrypoint_gpu_object(fmin)
+add_math_entrypoint_gpu_object(fminf)
+add_math_entrypoint_gpu_object(fmod)
+add_math_entrypoint_gpu_object(fmodf)
+add_math_entrypoint_gpu_object(frexp)
+add_math_entrypoint_gpu_object(frexpf)
+add_math_entrypoint_gpu_object(hypot)
+add_math_entrypoint_gpu_object(hypotf)
+add_math_entrypoint_gpu_object(ldexp)
+add_math_entrypoint_gpu_object(ldexpf)
+add_math_entrypoint_gpu_object(llrint)
+add_math_entrypoint_gpu_object(llrintf)
+add_math_entrypoint_gpu_object(llround)
+add_math_entrypoint_gpu_object(llroundf)
+add_math_entrypoint_gpu_object(log10)
+add_math_entrypoint_gpu_object(log10f)
+add_math_entrypoint_gpu_object(log1p)
+add_math_entrypoint_gpu_object(log1pf)
+add_math_entrypoint_gpu_object(log2)
+add_math_entrypoint_gpu_object(log2f)
+add_math_entrypoint_gpu_object(log)
+add_math_entrypoint_gpu_object(logf)
+add_math_entrypoint_gpu_object(lrint)
+add_math_entrypoint_gpu_object(lrintf)
+add_math_entrypoint_gpu_object(lround)
+add_math_entrypoint_gpu_object(lroundf)
+add_math_entrypoint_gpu_object(modf)
+add_math_entrypoint_gpu_object(modff)
+add_math_entrypoint_gpu_object(nearbyint)
+add_math_entrypoint_gpu_object(nearbyintf)
+add_math_entrypoint_gpu_object(pow)
+add_math_entrypoint_gpu_object(powf)
+add_math_entrypoint_gpu_object(remainder)
+add_math_entrypoint_gpu_object(remainderf)
+add_math_entrypoint_gpu_object(remquo)
+add_math_entrypoint_gpu_object(remquof)
+add_math_entrypoint_gpu_object(rint)
+add_math_entrypoint_gpu_object(rintf)
+add_math_entrypoint_gpu_object(round)
+add_math_entrypoint_gpu_object(roundf)
+add_math_entrypoint_gpu_object(scalbn)
+add_math_entrypoint_gpu_object(scalbnf)
+add_math_entrypoint_gpu_object(sin)
+add_math_entrypoint_gpu_object(sinf)
+add_math_entrypoint_gpu_object(sinh)
+add_math_entrypoint_gpu_object(sinhf)
+add_math_entrypoint_gpu_object(sqrt)
+add_math_entrypoint_gpu_object(sqrtf)
+add_math_entrypoint_gpu_object(tan)
+add_math_entrypoint_gpu_object(tanf)
+add_math_entrypoint_gpu_object(tanh)
+add_math_entrypoint_gpu_object(tanhf)
+add_math_entrypoint_gpu_object(tgamma)
+add_math_entrypoint_gpu_object(tgammaf)
+add_math_entrypoint_gpu_object(trunc)
+add_math_entrypoint_gpu_object(truncf)
