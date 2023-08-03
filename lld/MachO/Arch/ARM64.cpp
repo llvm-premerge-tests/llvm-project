@@ -605,11 +605,18 @@ void ARM64::applyOptimizationHints(uint8_t *outBuf, const ObjFile &obj) const {
     auto secIt = std::prev(llvm::upper_bound(
         obj.sections, addr,
         [](uint64_t off, const Section *sec) { return off < sec->addr; }));
+    if (secIt < obj.sections.begin() || secIt > obj.sections.end() ||
+        secIt == obj.sections.end())
+      return false;
     const Section *sec = *secIt;
 
     auto subsecIt = std::prev(llvm::upper_bound(
         sec->subsections, addr - sec->addr,
         [](uint64_t off, Subsection subsec) { return off < subsec.offset; }));
+    if (subsecIt < sec->subsections.begin() ||
+        subsecIt > sec->subsections.end() || subsecIt == sec->subsections.end())
+      return false;
+
     const Subsection &subsec = *subsecIt;
     const ConcatInputSection *isec =
         dyn_cast_or_null<ConcatInputSection>(subsec.isec);
