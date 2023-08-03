@@ -2640,7 +2640,11 @@ LLVM_ATTRIBUTE_ALWAYS_INLINE static bool CheckChildSame(
 LLVM_ATTRIBUTE_ALWAYS_INLINE static bool
 CheckPatternPredicate(const unsigned char *MatcherTable, unsigned &MatcherIndex,
                       const SelectionDAGISel &SDISel) {
-  return SDISel.CheckPatternPredicate(MatcherTable[MatcherIndex++]);
+  int64_t Val = MatcherTable[MatcherIndex++];
+  if (Val & 128)
+    Val = GetVBR(Val, MatcherTable, MatcherIndex);
+
+  return SDISel.CheckPatternPredicate(Val);
 }
 
 /// CheckNodePredicate - Implements OP_CheckNodePredicate.

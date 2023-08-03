@@ -473,11 +473,13 @@ EmitMatcher(const Matcher *N, const unsigned Indent, unsigned CurrentIdx,
 
   case Matcher::CheckPatternPredicate: {
     StringRef Pred =cast<CheckPatternPredicateMatcher>(N)->getPredicate();
-    OS << "OPC_CheckPatternPredicate, " << getPatternPredicate(Pred) << ',';
+    OS << "OPC_CheckPatternPredicate, ";
+    unsigned Bytes =
+        1 + EmitVBRValue(getPatternPredicate(Pred), OS);
     if (!OmitComments)
       OS << " // " << Pred;
     OS << '\n';
-    return 2;
+    return Bytes;
   }
   case Matcher::CheckPredicate: {
     TreePredicateFn Pred = cast<CheckPredicateMatcher>(N)->getPredicate();
