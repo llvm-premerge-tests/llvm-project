@@ -1074,7 +1074,6 @@ std::optional<TemplateDeductionInfo *> Sema::isSFINAEContext() const {
   if (InNonInstantiationSFINAEContext)
     return std::optional<TemplateDeductionInfo *>(nullptr);
 
-  bool SawLambdaSubstitution = false;
   for (SmallVectorImpl<CodeSynthesisContext>::const_reverse_iterator
          Active = CodeSynthesisContexts.rbegin(),
          ActiveEnd = CodeSynthesisContexts.rend();
@@ -1101,10 +1100,7 @@ std::optional<TemplateDeductionInfo *> Sema::isSFINAEContext() const {
       // A lambda-expression appearing in a function type or a template
       // parameter is not considered part of the immediate context for the
       // purposes of template argument deduction.
-
-      // We need to check parents.
-      SawLambdaSubstitution = true;
-      break;
+      return std::nullopt;
 
     case CodeSynthesisContext::DefaultTemplateArgumentInstantiation:
     case CodeSynthesisContext::PriorTemplateArgumentSubstitution:
@@ -1120,8 +1116,6 @@ std::optional<TemplateDeductionInfo *> Sema::isSFINAEContext() const {
       // We're either substituting explicitly-specified template arguments,
       // deduced template arguments. SFINAE applies unless we are in a lambda
       // expression, see [temp.deduct]p9.
-      if (SawLambdaSubstitution)
-        return std::nullopt;
       [[fallthrough]];
     case CodeSynthesisContext::ConstraintSubstitution:
     case CodeSynthesisContext::RequirementInstantiation:
