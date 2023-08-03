@@ -298,4 +298,16 @@ protected:
 
 } // end namespace llvm
 
+#define LLVM_MAKE_OPT_ID(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS,      \
+                         FLAGS, PARAM, HELPTEXT, METAVAR, VALUES)              \
+  OPT_##ID
+
+#define LLVM_CONSTRUCT_OPT_INFO(PREFIX, NAME, ID, KIND, GROUP, ALIAS,          \
+                                ALIASARGS, FLAGS, PARAM, HELPTEXT, METAVAR,    \
+                                VALUES)                                        \
+  llvm::opt::OptTable::Info {                                                  \
+    PREFIX, NAME, HELPTEXT, METAVAR, OPT_##ID, llvm::opt::Option::KIND##Class, \
+        PARAM, FLAGS, OPT_##GROUP, OPT_##ALIAS, ALIASARGS, VALUES              \
+  }
+
 #endif // LLVM_OPTION_OPTTABLE_H
