@@ -1011,6 +1011,9 @@ protected:
     /// Whether this parameter is an ObjC method parameter or not.
     unsigned IsObjCMethodParam : 1;
 
+    /// Whether this is a C++23 explicit object parameter
+    unsigned IsExplicitObjectParameter : 1;
+
     /// If IsObjCMethodParam, a Decl::ObjCDeclQualifier.
     /// Otherwise, the number of function parameter scopes enclosing
     /// the function parameter scope in which this parameter was
@@ -1720,6 +1723,9 @@ public:
 
 /// Represents a parameter to a function.
 class ParmVarDecl : public VarDecl {
+  SourceLocation ExplicitObjectParameterIntroducerLoc;
+  friend class ASTDeclReader;
+
 public:
   enum { MaxFunctionScopeDepth = 255 };
   enum { MaxFunctionScopeIndex = 255 };
@@ -1731,6 +1737,7 @@ protected:
       : VarDecl(DK, C, DC, StartLoc, IdLoc, Id, T, TInfo, S) {
     assert(ParmVarDeclBits.HasInheritedDefaultArg == false);
     assert(ParmVarDeclBits.DefaultArgKind == DAK_None);
+    assert(ParmVarDeclBits.IsExplicitObjectParameter == false);
     assert(ParmVarDeclBits.IsKNRPromoted == false);
     assert(ParmVarDeclBits.IsObjCMethodParam == false);
     setDefaultArg(DefArg);
@@ -1805,6 +1812,20 @@ public:
   }
   void setKNRPromoted(bool promoted) {
     ParmVarDeclBits.IsKNRPromoted = promoted;
+  }
+
+  bool isExplicitObjectParameter() const {
+    return ParmVarDeclBits.IsExplicitObjectParameter;
+  }
+
+  void setIsExplicitObjectParameter(bool isExplicitObjectParam,
+                                    SourceLocation Loc = SourceLocation()) {
+    ParmVarDeclBits.IsExplicitObjectParameter = isExplicitObjectParam;
+    ExplicitObjectParameterIntroducerLoc = Loc;
+  }
+
+  SourceLocation getExplicitObjectParamThisLoc() const {
+    return ExplicitObjectParameterIntroducerLoc;
   }
 
   Expr *getDefaultArg();
@@ -2637,6 +2658,10 @@ public:
   /// may be fewer than the number of function parameters, if some of the
   /// parameters have default arguments (in C++).
   unsigned getMinRequiredArguments() const;
+
+  unsigned getMinRequiredExplicitArguments() const;
+
+  bool hasCXXExplicitFunctionObjectParameter() const;
 
   /// Determine whether this function has a single parameter, or multiple
   /// parameters where all but the first have default arguments.

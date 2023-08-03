@@ -11,7 +11,7 @@ struct NonConstCopy {
   NonConstCopy &operator=(NonConstCopy&);
 };
 
-struct VirtualInheritsNonConstCopy : virtual NonConstCopy { 
+struct VirtualInheritsNonConstCopy : virtual NonConstCopy {
   VirtualInheritsNonConstCopy();
   VirtualInheritsNonConstCopy &operator=(const VirtualInheritsNonConstCopy&);
 };

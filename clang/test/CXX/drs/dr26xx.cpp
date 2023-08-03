@@ -1,4 +1,6 @@
-// RUN: %clang_cc1 -std=c++20 -triple x86_64-unknown-unknown %s -verify
+// RUN: %clang_cc1 -std=c++20 -Wno-c++2b-extensions -triple x86_64-unknown-unknown %s -verify
+// RUN: %clang_cc1 -std=c++2b -triple x86_64-unknown-unknown %s -verify
+
 
 namespace dr2621 { // dr2621: yes
 enum class E { a };
@@ -115,6 +117,13 @@ class X {
   int m;
 };
 int i0 = f<X>(0);   //expected-error {{no matching function for call to 'f'}}
+}
+
+namespace dr2653 { // dr2653: 16
+  struct Test { void f(this const auto& = Test{}); };
+  // expected-error@-1 {{an explicit object parameter cannot have a default argument}}
+  auto L =[](this const auto& = Test{}){};
+  // expected-error@-1 {{an explicit object parameter cannot have a default argument}}
 }
 
 namespace dr2654 { // dr2654: 16

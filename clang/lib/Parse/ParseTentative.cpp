@@ -1559,6 +1559,15 @@ Parser::isCXXDeclarationSpecifier(ImplicitTypenameContext AllowImplicitTypename,
   case tok::kw___vector:
     return TPResult::True;
 
+  case tok::kw_this: {
+    if (getLangOpts().CPlusPlus) {
+      RevertingTentativeParsingAction PA(*this);
+      ConsumeToken();
+      return isCXXDeclarationSpecifier(AllowImplicitTypename, BracedCastResult,
+                                       InvalidAsDeclSpec);
+    }
+    [[fallthrough]];
+  }
   case tok::annot_template_id: {
     TemplateIdAnnotation *TemplateId = takeTemplateIdAnnotation(Tok);
     // If lookup for the template-name found nothing, don't assume we have a

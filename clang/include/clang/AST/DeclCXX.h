@@ -2060,6 +2060,14 @@ public:
 
   bool isStatic() const;
   bool isInstance() const { return !isStatic(); }
+  bool isExplicitObjectMemberFunction() const;
+  bool isImplicitObjectMemberFunction() const;
+  const ParmVarDecl *getNonObjectParameter(unsigned I) const {
+    return getParamDecl(isExplicitObjectMemberFunction() ? I + 1 : I);
+  }
+  ParmVarDecl *getNonObjectParameter(unsigned I) {
+    return getParamDecl(isExplicitObjectMemberFunction() ? I + 1 : I);
+  }
 
   /// Returns true if the given operator is implicitly static in a record
   /// context.
@@ -2169,13 +2177,18 @@ public:
   /// Return the type of the object pointed by \c this.
   ///
   /// See getThisType() for usage restriction.
-  QualType getThisObjectType() const;
+
+  QualType getFunctionObjectParameterReferenceType() const;
+  QualType getFunctionObjectParameterType() const {
+    return getFunctionObjectParameterReferenceType().getNonReferenceType();
+  }
+
+  unsigned getNumExplicitParams() const {
+    return getNumParams() - (isExplicitObjectMemberFunction() ? 1 : 0);
+  }
 
   static QualType getThisType(const FunctionProtoType *FPT,
                               const CXXRecordDecl *Decl);
-
-  static QualType getThisObjectType(const FunctionProtoType *FPT,
-                                    const CXXRecordDecl *Decl);
 
   Qualifiers getMethodQualifiers() const {
     return getType()->castAs<FunctionProtoType>()->getMethodQuals();

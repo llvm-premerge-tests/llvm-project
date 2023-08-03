@@ -35,6 +35,17 @@ inline bool isLambdaCallOperator(const DeclContext *DC) {
   return isLambdaCallOperator(cast<CXXMethodDecl>(DC));
 }
 
+inline bool isLambdaCallWithExplicitObjectParameter(const DeclContext *DC) {
+  return isLambdaCallOperator(DC) &&
+         cast<CXXMethodDecl>(DC)->isExplicitObjectMemberFunction();
+}
+
+inline bool isLambdaCallWithImplicitObjectParameter(const DeclContext *DC) {
+  return isLambdaCallOperator(DC) &&
+         !cast<CXXMethodDecl>(DC)->getType().isNull() &&
+         !cast<CXXMethodDecl>(DC)->isExplicitObjectMemberFunction();
+}
+
 inline bool isGenericLambdaCallOperatorSpecialization(const CXXMethodDecl *MD) {
   if (!MD) return false;
   const CXXRecordDecl *LambdaClass = MD->getParent();
