@@ -8128,6 +8128,11 @@ VPValue *VPRecipeBuilder::createEdgeMask(BasicBlock *Src, BasicBlock *Dst,
   VPValue *EdgeMask = Plan.getVPValueOrAddLiveIn(BI->getCondition());
   assert(EdgeMask && "No Edge Mask found for condition");
 
+  VPBuilder::InsertPointGuard Guard(Builder);
+  VPBasicBlock *SrcVPBB = Builder.BB2VPBB[Src];
+  assert(SrcVPBB && "Cannot find corresponding VPBB for the BB");
+  Builder.setInsertPoint(SrcVPBB, SrcVPBB->end());
+
   if (BI->getSuccessor(0) != Dst)
     EdgeMask = Builder.createNot(EdgeMask, BI->getDebugLoc());
 
@@ -8202,6 +8207,11 @@ VPValue *VPRecipeBuilder::createBlockInMask(BasicBlock *BB, VPlan &Plan) {
       BlockMask = EdgeMask;
       continue;
     }
+
+    VPBuilder::InsertPointGuard Guard(Builder);
+    VPBasicBlock *VPBB = Builder.BB2VPBB[BB];
+    assert(VPBB && "Cannot find corresponding VPBB for the BB");
+    Builder.setInsertPoint(VPBB, VPBB->end());
 
     BlockMask = Builder.createOr(BlockMask, EdgeMask, {});
   }
@@ -8923,6 +8933,8 @@ std::optional<VPlanPtr> LoopVectorizationPlanner::tryToBuildVPlanWithVPRecipes(
     if (VPBB != HeaderVPBB)
       VPBB->setName(BB->getName());
     Builder.setInsertPoint(VPBB);
+
+    Builder.BB2VPBB[BB]= VPBB;
 
     // Introduce each ingredient into VPlan.
     // TODO: Model and preserve debug intrinsics in VPlan.
