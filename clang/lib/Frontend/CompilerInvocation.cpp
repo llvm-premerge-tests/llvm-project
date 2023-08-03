@@ -628,7 +628,7 @@ static void GenerateArg(SmallVectorImpl<const char *> &Args,
                         llvm::opt::OptSpecifier OptSpecifier,
                         CompilerInvocation::StringAllocator SA) {
   Option Opt = getDriverOptTable().getOption(OptSpecifier);
-  denormalizeSimpleFlag(Args, SA(Opt.getPrefix() + Opt.getName()), SA,
+  denormalizeSimpleFlag(Args, Opt.getSpelling(), SA,
                         Option::OptionClass::FlagClass, 0);
 }
 
@@ -637,8 +637,7 @@ static void GenerateArg(SmallVectorImpl<const char *> &Args,
                         const Twine &Value,
                         CompilerInvocation::StringAllocator SA) {
   Option Opt = getDriverOptTable().getOption(OptSpecifier);
-  denormalizeString(Args, SA(Opt.getPrefix() + Opt.getName()), SA,
-                    Opt.getKind(), 0, Value);
+  denormalizeString(Args, Opt.getSpelling(), SA, Opt.getKind(), 0, Value);
 }
 
 // Parse command line arguments into CompilerInvocation.
