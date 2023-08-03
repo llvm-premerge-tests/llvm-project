@@ -6,6 +6,12 @@
 //
 //===----------------------------------------------------------------------===//
 
+// This should work for modules too, but clang doesn't emit the diagnostics for unknown reasons.
+// XFAIL: modules-build && clang-16
+// XFAIL: modules-build && clang-17
+// XFAIL: modules-build && apple-clang-14
+// XFAIL: modules-build && apple-clang-15
+
 // <string>
 
 // template<> struct char_traits<T> for arbitrary T

@@ -132,7 +132,9 @@ def is_header(file):
     return (
         not file.is_dir()
         and not file.name == "module.modulemap.in"
+        and not file.name == "internal_module_attributes.json.in"
         and not file.name == "CMakeLists.txt"
+        and not file.name == "generate_module_map.py"
         and file.name != "libcxx.imp"
     )
 

@@ -1039,10 +1039,8 @@ foreach(feature LIBCXX_ENABLE_FILESYSTEM LIBCXX_ENABLE_LOCALIZATION LIBCXX_ENABL
 endforeach()
 
 configure_file("__config_site.in" "${LIBCXX_GENERATED_INCLUDE_TARGET_DIR}/__config_site" @ONLY)
-configure_file("module.modulemap.in" "${LIBCXX_GENERATED_INCLUDE_DIR}/module.modulemap" @ONLY)
 
-set(_all_includes "${LIBCXX_GENERATED_INCLUDE_TARGET_DIR}/__config_site"
-                  "${LIBCXX_GENERATED_INCLUDE_DIR}/module.modulemap")
+set(_all_includes "${LIBCXX_GENERATED_INCLUDE_TARGET_DIR}/__config_site")
 foreach(f ${files})
   set(src "${CMAKE_CURRENT_SOURCE_DIR}/${f}")
   set(dst "${LIBCXX_GENERATED_INCLUDE_DIR}/${f}")
@@ -1052,6 +1050,50 @@ foreach(f ${files})
     COMMENT "Copying CXX header ${f}")
   list(APPEND _all_includes "${dst}")
 endforeach()
+
+check_cxx_compiler_flag(-cxx-isystem CXX_SUPPORTS_CXX_ISYSTEM_FLAG)
+check_cxx_compiler_flag(-fshow-skipped-includes CXX_SUPPORTS_FSHOW_SKIPPED_INCLUDES_FLAG)
+if (CXX_SUPPORTS_CXX_ISYSTEM_FLAG AND CXX_SUPPORTS_FSHOW_SKIPPED_INCLUDES_FLAG AND CXX_SUPPORTS_NOSTDINCXX_FLAG)
+  set(LIBCXX_INTERMEDIATES_DIR "${LLVM_BINARY_DIR}/intermediates")
+  configure_file(module.modulemap.in "${LIBCXX_INTERMEDIATES_DIR}/module.modulemap" @ONLY)
+  configure_file(internal_module_attributes.json.in "${LIBCXX_INTERMEDIATES_DIR}/internal_module_attributes.json" @ONLY)
+
+  if (LIBCXX_GENERATED_INCLUDE_DIR STREQUAL LIBCXX_GENERATED_INCLUDE_TARGET_DIR)
+    set(libcxx_include_target_directory "")
+  else()
+    set(libcxx_include_target_directory --libcxx-include-target-directory "${LIBCXX_GENERATED_INCLUDE_TARGET_DIR}")
+  endif()
+
+  if (DEFINED CMAKE_CXX_COMPILER_TARGET)
+    set(compiler_target --target ${CMAKE_CXX_COMPILER_TARGET})
+  elseif (DEFINED LLVM_DEFAULT_TARGET_TRIPLE)
+    set(compiler_target --target ${LLVM_DEFAULT_TARGET_TRIPLE})
+  else()
+    set(compiler_target "")
+  endif()
+
+  if (DEFINED CMAKE_OSX_SYSROOT)
+    set(isysroot --isysroot ${CMAKE_OSX_SYSROOT})
+  else()
+    set(isysroot "")
+  endif()
+
+  add_custom_command(OUTPUT "${LIBCXX_GENERATED_INCLUDE_DIR}/module.modulemap"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/generate_module_map.py"
+            "${LIBCXX_INTERMEDIATES_DIR}/module.modulemap"
+            "${LIBCXX_INTERMEDIATES_DIR}/internal_module_attributes.json"
+            ${_all_includes}
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/generate_module_map.py"
+            --libcxx-include-directory "${LIBCXX_GENERATED_INCLUDE_DIR}"
+            ${libcxx_include_target_directory}
+            --intermediates-directory "${LIBCXX_INTERMEDIATES_DIR}"
+            --cxx-compiler "${CMAKE_CXX_COMPILER}"
+            ${compiler_target}
+            ${isysroot}
+    COMMENT "Generating clang module map module.modulemap")
+
+  list(APPEND _all_includes "${LIBCXX_GENERATED_INCLUDE_DIR}/module.modulemap")
+endif()
 
 add_custom_target(generate-cxx-headers ALL DEPENDS ${_all_includes})
 
@@ -1078,10 +1120,12 @@ if (LIBCXX_INSTALL_HEADERS)
     COMPONENT cxx-headers)
 
   # Install the generated modulemap file to the generic include dir.
-  install(FILES "${LIBCXX_GENERATED_INCLUDE_DIR}/module.modulemap"
-    DESTINATION "${LIBCXX_INSTALL_INCLUDE_DIR}"
-    PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-    COMPONENT cxx-headers)
+  if (EXISTS "${LIBCXX_GENERATED_INCLUDE_DIR}/module.modulemap")
+    install(FILES "${LIBCXX_GENERATED_INCLUDE_DIR}/module.modulemap"
+      DESTINATION "${LIBCXX_INSTALL_INCLUDE_DIR}"
+      PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+      COMPONENT cxx-headers)
+  endif()
 
   if (NOT CMAKE_CONFIGURATION_TYPES)
     add_custom_target(install-cxx-headers

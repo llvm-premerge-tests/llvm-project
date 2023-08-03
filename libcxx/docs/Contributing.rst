@@ -47,12 +47,29 @@ sure you don't forget anything:
 - Did you add all new named declarations to the ``std`` module?
 - If you added a header:
 
-  - Did you add it to ``include/module.modulemap.in``?
   - Did you add it to ``include/CMakeLists.txt``?
   - If it's a public header, did you update ``utils/libcxx/test/header_information.py``?
 
 - Did you add the relevant feature test macro(s) for your feature? Did you update the ``generate_feature_test_macro_components.py`` script with it?
 - Did you run the ``libcxx-generate-files`` target and verify its output?
+
+clang modules
+=============
+
+The clang module map is put together from ``include/module.modulemap.in`` and ``include/internal_module_attributes.json.in``
+by ``include/generate_module_map.py``.
+
+- Public headers need to be added to ``include/module.modulemap.in``.
+- Private headers will be automatically added to the generated module map.
+- Private module attributes need to be added to ``include/internal_module_attributes.json.in``.
+  Most private headers do not need any module attributes.
+- ``include/generate_module_map.py`` may need to be modified in the following situations.
+    - ``validate_exports`` needs to be updated if module naming conventions change.
+    - ``write_libcxx_includes`` needs to be updated when the subdirectories and files that need to be ignored are updated.
+    - ``build_include_tree`` needs to be updated when new C++ versions are added.
+    - ``build_include_tree`` needs to be updated when new macros control what gets included. So far there is one set of
+        macros that maximizes the includes. If that becomes false, then the script will need to be updated to run different
+        combinations of macros to catch every possible include.
 
 The review process
 ==================

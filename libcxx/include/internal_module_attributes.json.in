@@ -1,0 +1,1062 @@
+{
+    "__assert": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__availability": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__bit_reference": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__config": {
+        "textual": true,
+        "exports": [
+            "*"
+        ]
+    },
+    "__config_site": {
+        "textual": true
+    },
+    "__hash_table": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__locale": {
+        "exports": [
+            "*"
+        ],
+        "requires": [
+            "@requires_LIBCXX_ENABLE_LOCALIZATION@"
+        ]
+    },
+    "__mbstate_t.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__node_handle": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__split_buffer": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__std_mbstate_t.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__threading_support": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__tree": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__undef_macros": {
+        "exports": [
+            "*"
+        ],
+        "textual": true
+    },
+    "__verbose_abort": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__algorithm/copy.h": {
+        "exports": [
+            "__algorithm/copy_move_common.h"
+        ]
+    },
+    "__algorithm/copy_move_common.h": {
+        "exports": [
+            "__type_traits/is_trivially_copyable.h"
+        ]
+    },
+    "__algorithm/find.h": {
+        "exports": [
+            "__algorithm/unwrap_iter.h"
+        ]
+    },
+    "__algorithm/iterator_operations.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__algorithm/minmax.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__algorithm/pstl_backend.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__algorithm/pstl_backends/cpu_backend.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__algorithm/pstl_backends/cpu_backends/backend.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__algorithm/pstl_backends/cpu_backends/serial.h": {
+        "textual": true
+    },
+    "__algorithm/pstl_backends/cpu_backends/thread.h": {
+        "textual": true
+    },
+    "__algorithm/pstl_backends/cpu_backends/transform.h": {
+        "exports": [
+            "__algorithm/transform.h"
+        ]
+    },
+    "__algorithm/pstl_find.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__algorithm/pstl_for_each.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__algorithm/pstl_frontend_dispatch.h": {
+        "exports": [
+            "__utility/forward.h"
+        ]
+    },
+    "__algorithm/pstl_stable_sort.h": {
+        "exports": [
+            "__functional/operations.h"
+        ]
+    },
+    "__algorithm/ranges_binary_search.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_clamp.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_copy.h": {
+        "exports": [
+            "__algorithm/in_out_result.h"
+        ]
+    },
+    "__algorithm/ranges_copy_backward.h": {
+        "exports": [
+            "__algorithm/in_out_result.h"
+        ]
+    },
+    "__algorithm/ranges_copy_if.h": {
+        "exports": [
+            "__algorithm/in_out_result.h"
+        ]
+    },
+    "__algorithm/ranges_copy_n.h": {
+        "exports": [
+            "__algorithm/in_out_result.h"
+        ]
+    },
+    "__algorithm/ranges_equal_range.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_for_each.h": {
+        "exports": [
+            "__algorithm/in_fun_result.h"
+        ]
+    },
+    "__algorithm/ranges_for_each_n.h": {
+        "exports": [
+            "__algorithm/in_fun_result.h"
+        ]
+    },
+    "__algorithm/ranges_includes.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_inplace_merge.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_is_heap.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_is_heap_until.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_is_sorted.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_is_sorted_until.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_lexicographical_compare.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_lower_bound.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_make_heap.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_max.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_max_element.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_merge.h": {
+        "exports": [
+            "__algorithm/in_in_out_result.h"
+        ]
+    },
+    "__algorithm/ranges_min.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_min_element.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_minmax.h": {
+        "exports": [
+            "__functional/ranges_operations.h",
+            "__algorithm/min_max_result.h"
+        ]
+    },
+    "__algorithm/ranges_minmax_element.h": {
+        "exports": [
+            "__functional/ranges_operations.h",
+            "__algorithm/min_max_result.h"
+        ]
+    },
+    "__algorithm/ranges_mismatch.h": {
+        "exports": [
+            "__algorithm/in_in_result.h"
+        ]
+    },
+    "__algorithm/ranges_move.h": {
+        "exports": [
+            "__algorithm/in_out_result.h"
+        ]
+    },
+    "__algorithm/ranges_move_backward.h": {
+        "exports": [
+            "__algorithm/in_out_result.h"
+        ]
+    },
+    "__algorithm/ranges_next_permutation.h": {
+        "exports": [
+            "__algorithm/in_found_result.h",
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_nth_element.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_partial_sort.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_partial_sort_copy.h": {
+        "exports": [
+            "__algorithm/in_out_result.h",
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_pop_heap.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_prev_permutation.h": {
+        "exports": [
+            "__algorithm/in_found_result.h",
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_push_heap.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_remove_copy.h": {
+        "exports": [
+            "__algorithm/in_out_result.h"
+        ]
+    },
+    "__algorithm/ranges_remove_copy_if.h": {
+        "exports": [
+            "__algorithm/in_out_result.h"
+        ]
+    },
+    "__algorithm/ranges_replace_copy.h": {
+        "exports": [
+            "__algorithm/in_out_result.h"
+        ]
+    },
+    "__algorithm/ranges_replace_copy_if.h": {
+        "exports": [
+            "__algorithm/in_out_result.h"
+        ]
+    },
+    "__algorithm/ranges_reverse_copy.h": {
+        "exports": [
+            "__algorithm/in_out_result.h"
+        ]
+    },
+    "__algorithm/ranges_rotate_copy.h": {
+        "exports": [
+            "__algorithm/in_out_result.h"
+        ]
+    },
+    "__algorithm/ranges_set_difference.h": {
+        "exports": [
+            "__algorithm/in_out_result.h"
+        ]
+    },
+    "__algorithm/ranges_set_intersection.h": {
+        "exports": [
+            "__algorithm/in_in_out_result.h"
+        ]
+    },
+    "__algorithm/ranges_set_symmetric_difference.h": {
+        "exports": [
+            "__algorithm/in_in_out_result.h",
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_set_union.h": {
+        "exports": [
+            "__algorithm/in_in_out_result.h",
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_sort.h": {
+        "exports": [
+            "__algorithm/make_projected.h",
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_sort_heap.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_stable_sort.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/ranges_swap_ranges.h": {
+        "exports": [
+            "__algorithm/in_in_result.h"
+        ]
+    },
+    "__algorithm/ranges_transform.h": {
+        "exports": [
+            "__algorithm/in_in_out_result.h",
+            "__algorithm/in_out_result.h"
+        ]
+    },
+    "__algorithm/ranges_unique_copy.h": {
+        "exports": [
+            "__algorithm/in_out_result.h"
+        ]
+    },
+    "__algorithm/ranges_upper_bound.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__algorithm/sort.h": {
+        "exports": [
+            "__debug_utils/strict_weak_ordering_check.h"
+        ]
+    },
+    "__algorithm/swap_ranges.h": {
+        "exports": [
+            "__algorithm/iterator_operations.h"
+        ]
+    },
+    "__algorithm/unwrap_iter.h": {
+        "exports": [
+            "__iterator/iterator_traits.h"
+        ]
+    },
+    "__algorithm/unwrap_range.h": {
+        "exports": [
+            "__utility/pair.h"
+        ]
+    },
+    "__atomic/aliases.h": {
+        "exports": [
+            "__atomic/atomic.h"
+        ]
+    },
+    "__atomic/atomic.h": {
+        "exports": [
+            "__atomic/atomic_base.h"
+        ]
+    },
+    "__atomic/atomic_flag.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__chrono/duration.h": {
+        "exports": [
+            "__type_traits/is_convertible.h"
+        ]
+    },
+    "__chrono/formatter.h": {
+        "requires": [
+            "@requires_LIBCXX_ENABLE_LOCALIZATION@"
+        ]
+    },
+    "__chrono/high_resolution_clock.h": {
+        "exports": [
+            "__chrono/steady_clock.h",
+            "__chrono/system_clock.h"
+        ]
+    },
+    "__chrono/ostream.h": {
+        "requires": [
+            "@requires_LIBCXX_ENABLE_LOCALIZATION@"
+        ]
+    },
+    "__chrono/parser_std_format_spec.h": {
+        "requires": [
+            "@requires_LIBCXX_ENABLE_LOCALIZATION@"
+        ]
+    },
+    "__chrono/steady_clock.h": {
+        "exports": [
+            "__chrono/time_point.h"
+        ]
+    },
+    "__chrono/system_clock.h": {
+        "exports": [
+            "__chrono/time_point.h"
+        ]
+    },
+    "__concepts/constructible.h": {
+        "exports": [
+            "__concepts/destructible.h"
+        ]
+    },
+    "__concepts/destructible.h": {
+        "exports": [
+            "__type_traits/is_nothrow_destructible.h"
+        ]
+    },
+    "__concepts/equality_comparable.h": {
+        "exports": [
+            "__type_traits/common_reference.h"
+        ]
+    },
+    "__concepts/movable.h": {
+        "exports": [
+            "__type_traits/is_object.h"
+        ]
+    },
+    "__concepts/same_as.h": {
+        "exports": [
+            "__type_traits/is_same.h"
+        ]
+    },
+    "__condition_variable/condition_variable.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__debug_utils/strict_weak_ordering_check.h": {
+        "exports": [
+            "__type_traits/is_constant_evaluated.h"
+        ]
+    },
+    "__exception/exception_ptr.h": {
+        "exports": [
+            "__exception/operations.h"
+        ]
+    },
+    "__filesystem/directory_entry.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__filesystem/directory_iterator.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__filesystem/filesystem_error.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__filesystem/path.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__filesystem/recursive_directory_iterator.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__format/format_context.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__format/format_functions.h": {
+        "exports": [
+            "std_string"
+        ]
+    },
+    "__format/format_to_n_result.h": {
+        "exports": [
+            "__iterator/incrementable_traits.h"
+        ]
+    },
+    "__format/unicode.h": {
+        "exports": [
+            "__format/extended_grapheme_cluster_table.h"
+        ]
+    },
+    "__functional/boyer_moore_searcher.h": {
+        "exports": [
+            "__memory/shared_ptr.h"
+        ]
+    },
+    "__functional/compose.h": {
+        "exports": [
+            "__functional/perfect_forward.h"
+        ]
+    },
+    "__functional/hash.h": {
+        "exports": [
+            "std_cstdint",
+            "__type_traits/underlying_type.h",
+            "__utility/pair.h"
+        ]
+    },
+    "__functional/invoke.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__functional/perfect_forward.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__fwd/array.h": {
+        "module_directory": "__array",
+        "submodule_name": "array_fwd"
+    },
+    "__fwd/fstream.h": {
+        "module_directory": "__iosfwd",
+        "submodule_name": "fstream_fwd"
+    },
+    "__fwd/get.h": {
+        "module_directory": "__tuple",
+        "submodule_name": "get_fwd"
+    },
+    "__fwd/hash.h": {
+        "module_directory": "__functional",
+        "submodule_name": "hash_fwd"
+    },
+    "__fwd/ios.h": {
+        "module_directory": "__iosfwd",
+        "submodule_name": "ios_fwd"
+    },
+    "__fwd/istream.h": {
+        "module_directory": "__iosfwd",
+        "submodule_name": "istream_fwd"
+    },
+    "__fwd/mdspan.h": {
+        "module_directory": "__mdspan",
+        "submodule_name": "mdspan_fwd"
+    },
+    "__fwd/memory_resource.h": {
+        "module_directory": "__memory_resource",
+        "submodule_name": "memory_resource_fwd"
+    },
+    "__fwd/ostream.h": {
+        "module_directory": "__iosfwd",
+        "submodule_name": "ostream_fwd"
+    },
+    "__fwd/pair.h": {
+        "module_directory": "__utility",
+        "submodule_name": "pair_fwd"
+    },
+    "__fwd/span.h": {
+        "module_directory": "__span",
+        "submodule_name": "span_fwd"
+    },
+    "__fwd/sstream.h": {
+        "module_directory": "__iosfwd",
+        "submodule_name": "sstream_fwd"
+    },
+    "__fwd/streambuf.h": {
+        "module_directory": "__iosfwd",
+        "submodule_name": "streambuf_fwd"
+    },
+    "__fwd/string.h": {
+        "module_directory": "__string",
+        "submodule_name": "string_fwd"
+    },
+    "__fwd/string_view.h": {
+        "module_directory": "__string_view",
+        "submodule_name": "string_view_fwd"
+    },
+    "__fwd/subrange.h": {
+        "module_directory": "__ranges",
+        "submodule_name": "subrange_fwd",
+        "exports": [
+            "__iterator/concepts.h"
+        ]
+    },
+    "__fwd/tuple.h": {
+        "module_directory": "__tuple",
+        "submodule_name": "tuple_fwd"
+    },
+    "__iterator/concepts.h": {
+        "exports": [
+            "__concepts/constructible.h",
+            "__concepts/equality_comparable.h",
+            "__concepts/movable.h",
+            "__type_traits/common_reference.h",
+            "__type_traits/is_reference.h",
+            "__type_traits/remove_cvref.h"
+        ]
+    },
+    "__iterator/distance.h": {
+        "exports": [
+            "__ranges/size.h"
+        ]
+    },
+    "__iterator/iterator_traits.h": {
+        "exports": [
+            "__type_traits/is_primary_template.h"
+        ]
+    },
+    "__iterator/mergeable.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__iterator/ostreambuf_iterator.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__iterator/sortable.h": {
+        "exports": [
+            "__functional/ranges_operations.h"
+        ]
+    },
+    "__locale_dir/locale_base_api/bsd_locale_defaults.h": {
+        "textual": true
+    },
+    "__locale_dir/locale_base_api/bsd_locale_fallbacks.h": {
+        "textual": true
+    },
+    "__mdspan/extents.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__memory/builtin_new_allocator.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__memory/concepts.h": {
+        "exports": [
+            "__type_traits/remove_reference.h"
+        ]
+    },
+    "__memory/ranges_uninitialized_algorithms.h": {
+        "exports": [
+            "__algorithm/in_out_result.h"
+        ]
+    },
+    "__memory/shared_ptr.h": {
+        "exports": [
+            "__memory/uninitialized_algorithms.h"
+        ]
+    },
+    "__memory/uninitialized_algorithms.h": {
+        "exports": [
+            "__algorithm/copy.h"
+        ]
+    },
+    "__memory/unique_ptr.h": {
+        "exports": [
+            "__type_traits/add_lvalue_reference.h",
+            "__type_traits/is_pointer.h",
+            "__type_traits/type_identity.h"
+        ]
+    },
+    "__memory_resource/synchronized_pool_resource.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__numeric/pstl_transform_reduce.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__random/discrete_distribution.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__random/piecewise_constant_distribution.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__random/piecewise_linear_distribution.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__random/random_device.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__random/seed_seq.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__ranges/all.h": {
+        "exports": [
+            "__functional/compose.h",
+            "__functional/perfect_forward.h",
+            "__ranges/owning_view.h"
+        ]
+    },
+    "__ranges/concepts.h": {
+        "exports": [
+            "__iterator/concepts.h"
+        ]
+    },
+    "__ranges/counted.h": {
+        "exports": [
+            "std_span"
+        ]
+    },
+    "__ranges/filter_view.h": {
+        "exports": [
+            "__ranges/range_adaptor.h"
+        ]
+    },
+    "__ranges/istream_view.h": {
+        "requires": [
+            "@requires_LIBCXX_ENABLE_LOCALIZATION@"
+        ]
+    },
+    "__ranges/join_view.h": {
+        "exports": [
+            "__iterator/iterator_with_data.h",
+            "__iterator/segmented_iterator.h"
+        ]
+    },
+    "__ranges/lazy_split_view.h": {
+        "exports": [
+            "__ranges/non_propagating_cache.h"
+        ]
+    },
+    "__ranges/size.h": {
+        "exports": [
+            "__type_traits/make_unsigned.h"
+        ]
+    },
+    "__ranges/subrange.h": {
+        "exports": [
+            "__fwd/subrange.h"
+        ]
+    },
+    "__ranges/transform_view.h": {
+        "exports": [
+            "__functional/bind_back.h",
+            "__functional/perfect_forward.h",
+            "__ranges/movable_box.h"
+        ]
+    },
+    "__stop_token/stop_source.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__stop_token/stop_state.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__stop_token/stop_token.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__string/char_traits.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__string/constexpr_c_functions.h": {
+        "exports": [
+            "__type_traits/is_equality_comparable.h"
+        ]
+    },
+    "__system_error/error_code.h": {
+        "exports": [
+            "__functional/hash.h",
+            "__functional/unary_function.h"
+        ]
+    },
+    "__system_error/error_condition.h": {
+        "exports": [
+            "__functional/hash.h",
+            "__functional/unary_function.h"
+        ]
+    },
+    "__thread/thread.h": {
+        "exports": [
+            "*"
+        ]
+    },
+    "__tuple/pair_like.h": {
+        "exports": [
+            "__tuple/tuple_like.h"
+        ]
+    },
+    "__type_traits/add_lvalue_reference.h": {
+        "exports": [
+            "__type_traits/is_referenceable.h"
+        ]
+    },
+    "__type_traits/apply_cv.h": {
+        "exports": [
+            "__type_traits/is_const.h",
+            "__type_traits/is_volatile.h"
+        ]
+    },
+    "__type_traits/common_reference.h": {
+        "exports": [
+            "__type_traits/remove_cvref.h"
+        ]
+    },
+    "__type_traits/common_type.h": {
+        "exports": [
+            "__utility/declval.h"
+        ]
+    },
+    "__type_traits/decay.h": {
+        "exports": [
+            "__type_traits/add_pointer.h"
+        ]
+    },
+    "__type_traits/invoke.h": {
+        "exports": [
+            "__type_traits/conditional.h",
+            "__type_traits/decay.h",
+            "__type_traits/enable_if.h",
+            "__type_traits/is_base_of.h",
+            "__type_traits/is_core_convertible.h",
+            "__type_traits/is_reference_wrapper.h",
+            "__type_traits/is_same.h",
+            "__type_traits/is_void.h",
+            "__type_traits/nat.h",
+            "__type_traits/remove_cv.h"
+        ]
+    },
+    "__type_traits/is_arithmetic.h": {
+        "exports": [
+            "__type_traits/integral_constant.h"
+        ]
+    },
+    "__type_traits/is_array.h": {
+        "exports": [
+            "__type_traits/integral_constant.h"
+        ]
+    },
+    "__type_traits/is_convertible.h": {
+        "exports": [
+            "__type_traits/is_array.h"
+        ]
+    },
+    "__type_traits/is_core_convertible.h": {
+        "exports": [
+            "__type_traits/integral_constant.h"
+        ]
+    },
+    "__type_traits/is_enum.h": {
+        "exports": [
+            "__type_traits/integral_constant.h"
+        ]
+    },
+    "__type_traits/is_equality_comparable.h": {
+        "exports": [
+            "__type_traits/integral_constant.h"
+        ]
+    },
+    "__type_traits/is_execution_policy.h": {
+        "exports": [
+            "__type_traits/remove_cvref.h"
+        ]
+    },
+    "__type_traits/is_nothrow_destructible.h": {
+        "exports": [
+            "__type_traits/is_destructible.h"
+        ]
+    },
+    "__type_traits/is_nothrow_move_constructible.h": {
+        "exports": [
+            "__type_traits/is_nothrow_constructible.h"
+        ]
+    },
+    "__type_traits/is_null_pointer.h": {
+        "exports": [
+            "std_cstddef"
+        ]
+    },
+    "__type_traits/is_object.h": {
+        "exports": [
+            "__type_traits/is_scalar.h"
+        ]
+    },
+    "__type_traits/is_primary_template.h": {
+        "exports": [
+            "__type_traits/enable_if.h"
+        ]
+    },
+    "__type_traits/is_same.h": {
+        "exports": [
+            "__type_traits/integral_constant.h"
+        ]
+    },
+    "__type_traits/is_scalar.h": {
+        "exports": [
+            "__type_traits/is_null_pointer.h"
+        ]
+    },
+    "__type_traits/is_swappable.h": {
+        "exports": [
+            "__type_traits/is_move_constructible.h"
+        ]
+    },
+    "__type_traits/is_void.h": {
+        "exports": [
+            "__type_traits/integral_constant.h"
+        ]
+    },
+    "__type_traits/make_unsigned.h": {
+        "exports": [
+            "__type_traits/is_unsigned.h"
+        ]
+    },
+    "__type_traits/remove_cv.h": {
+        "exports": [
+            "__type_traits/remove_const.h",
+            "__type_traits/remove_volatile.h"
+        ]
+    },
+    "__type_traits/underlying_type.h": {
+        "exports": [
+            "__type_traits/is_enum.h"
+        ]
+    },
+    "__utility/auto_cast.h": {
+        "exports": [
+            "__type_traits/decay.h"
+        ]
+    },
+    "__utility/cmp.h": {
+        "exports": [
+            "__type_traits/make_unsigned.h"
+        ]
+    },
+    "__utility/move.h": {
+        "exports": [
+            "__type_traits/is_copy_constructible.h",
+            "__type_traits/is_nothrow_move_constructible.h",
+            "__type_traits/remove_reference.h"
+        ]
+    },
+    "__utility/pair.h": {
+        "exports": [
+            "__fwd/pair.h",
+            "__fwd/subrange.h",
+            "__tuple/pair_like.h",
+            "__type_traits/is_assignable.h",
+            "__type_traits/is_constructible.h",
+            "__type_traits/is_convertible.h",
+            "__type_traits/is_copy_assignable.h",
+            "__type_traits/is_move_assignable.h",
+            "__type_traits/is_nothrow_copy_constructible.h",
+            "__type_traits/is_nothrow_default_constructible.h",
+            "__type_traits/is_nothrow_move_assignable.h"
+        ]
+    },
+    "__utility/swap.h": {
+        "exports": [
+            "__type_traits/is_swappable.h"
+        ]
+    }
+}
