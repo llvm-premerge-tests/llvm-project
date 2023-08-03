@@ -1461,12 +1461,15 @@ struct AMDGPUStreamManagerTy final
   using ResourcePoolTy = GenericDeviceResourceManagerTy<ResourceRef>;
 
   AMDGPUStreamManagerTy(GenericDeviceTy &Device, hsa_agent_t HSAAgent)
-      : GenericDeviceResourceManagerTy(Device), NextQueue(0), Agent(HSAAgent) {}
+      : GenericDeviceResourceManagerTy(Device),
+        OMPX_QueueTracking("LIBOMPTARGET_AMDGPU_HSA_QUEUE_BUSY_TRACKING", true),
+        NextQueue(0), Agent(HSAAgent) {}
 
   Error init(uint32_t InitialSize, int NumHSAQueues, int HSAQueueSize) {
     Queues = std::vector<AMDGPUQueueTy>(NumHSAQueues);
     QueueSize = HSAQueueSize;
     MaxNumQueues = NumHSAQueues;
+    OMPX_QueueTracking = OMPX_QueueTracking.get();
     // Initialize one queue eagerly
     if (auto Err = Queues.front().init(Agent, QueueSize))
       return Err;
@@ -1508,14 +1511,15 @@ private:
     uint32_t StartIndex = NextQueue % MaxNumQueues;
     AMDGPUQueueTy *Q = nullptr;
 
-    for (int i = 0; i < MaxNumQueues; ++i) {
-      Q = &Queues[StartIndex++];
-      if (StartIndex == MaxNumQueues)
-        StartIndex = 0;
+    if (OMPX_QueueTracking || NextQueue < MaxNumQueues)
+      for (int i = 0; i < MaxNumQueues; ++i) {
+        Q = &Queues[StartIndex++];
+        if (StartIndex == MaxNumQueues)
+          StartIndex = 0;
 
-      if (Q->isBusy())
-        continue;
-      else {
+        if (OMPX_QueueTracking && Q->isBusy())
+          continue;
+
         if (auto Err = Q->init(Agent, QueueSize))
           return Err;
 
@@ -1523,7 +1527,6 @@ private:
         Stream->Queue = Q;
         return Plugin::success();
       }
-    }
 
     // All queues busy: Round robin (StartIndex has the initial value again)
     Queues[StartIndex].addUser();
@@ -1531,6 +1534,9 @@ private:
     ++NextQueue;
     return Plugin::success();
   }
+
+  /// Envar for controlling the tracking of busy HSA queues.
+  BoolEnvar OMPX_QueueTracking;
 
   /// The next queue index to use for round robin selection.
   uint32_t NextQueue;
