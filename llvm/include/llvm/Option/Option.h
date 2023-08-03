@@ -100,6 +100,11 @@ public:
     return Info->Name;
   }
 
+  StringLiteral getSpelling() const {
+    assert(Info && "Must have a valid info!");
+    return Info->Spelling;
+  }
+
   const Option getGroup() const {
     assert(Info && "Must have a valid info!");
     assert(Owner && "Must have a valid owner!");
