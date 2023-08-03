@@ -98,6 +98,7 @@ enum TokKind {
   Defm,
   Defset,
   Defvar,
+  Dump, // Dump is just a syntactic sugar on top of assert and !dump.
   Foreach,
   If,
   Let,
@@ -136,6 +137,7 @@ enum TokKind {
   XEmpty,
   XIf,
   XCond,
+  XDump,
   XEq,
   XIsA,
   XDag,

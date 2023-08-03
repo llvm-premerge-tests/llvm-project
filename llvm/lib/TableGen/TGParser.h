@@ -266,6 +266,7 @@ private:  // Parser methods.
   bool ParseIf(MultiClass *CurMultiClass);
   bool ParseIfBody(MultiClass *CurMultiClass, StringRef Kind);
   bool ParseAssert(MultiClass *CurMultiClass, Record *CurRec = nullptr);
+  bool ParseDump(MultiClass *CurMultiClass, Record *CurRec = nullptr);
   bool ParseTopLevelLet(MultiClass *CurMultiClass);
   void ParseLetList(SmallVectorImpl<LetRecord> &Result);
 

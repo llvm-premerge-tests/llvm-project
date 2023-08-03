@@ -925,6 +925,7 @@ public:
     GETDAGARG,
     GETDAGNAME,
     SETDAGOP,
+    DUMP
   };
 
 private:

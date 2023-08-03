@@ -203,9 +203,9 @@ identifiers::
 
    assert     bit           bits          class         code
    dag        def           else          false         foreach
-   defm       defset        defvar        field         if
-   in         include       int           let           list
-   multiclass string        then          true
+   defm       defset        defvar        dump          field
+   if         in            include       int           let
+   list       multiclass    string        then          true
 
 .. warning::
   The ``field`` reserved word is deprecated, except when used with the
@@ -1240,6 +1240,21 @@ the next iteration.  The following ``defvar`` will not work::
 Variables can also be defined with ``defvar`` in a record body. See
 `Defvar in a Record Body`_ for more details.
 
+``dump`` --- print the content of a variable or record
+------------------------------------------------------
+
+A ``dump`` statement prints the content of a variable or a record to
+standard error output.
+
+.. productionlist::
+   Dump: "dump" `TokString` "," `TokIdentifier` ";"
+
+Example: the following statements will print ``The value of X is 0``
+to standard output.
+
+  defvar X = 0;
+  dump "The value of X is ", X;
+
 ``foreach`` --- iterate over a sequence of statements
 -----------------------------------------------------
 
@@ -1670,6 +1685,19 @@ and non-0 as true.
 ``!div(``\ *a*\ ``,`` *b*\ ``)``
     This operator performs signed division of *a* by *b*, and produces the quotient.
     Division by 0 produces an error. Division of INT64_MIN by -1 produces an error.
+
+``!dump(``\ *string*\ ``,``\ *name*\ ``)``
+    This operator will:
+
+       1. concatenate the string *string* with the casting of *name*
+          to a string, and print it to standard output.
+
+       2. return the value *name*.
+
+     The following example will instantiate the class ``X`` with a
+     value of ``n`` equal to ``0``, and print the string ``n = 0`` to
+     standard output: ``class X<int n> {...} def : X<!dump("n = ",
+     0)>;``
 
 ``!empty(``\ *a*\ ``)``
     This operator produces 1 if the string, list, or DAG *a* is empty; 0 otherwise.

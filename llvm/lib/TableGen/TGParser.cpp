@@ -1340,6 +1340,32 @@ Init *TGParser::ParseOperation(Record *CurRec, RecTy *ItemType) {
 
     return (IsAOpInit::get(Type, LHS))->Fold();
   }
+  case tgtok::XDump: {
+    // Value ::= !dump '(' String ','  Value ')'
+    Lex.Lex(); // eat the operation
+    if (!consume(tgtok::l_paren)) {
+      TokError("expected '('");
+      return nullptr;
+    }
+    Init *LHS = ParseSimpleValue(CurRec);
+    if (!consume(tgtok::comma)) {
+      TokError("expected ','");
+      return nullptr;
+    }
+    TypedInit *RHS = dyn_cast<TypedInit>(ParseSimpleValue(CurRec));
+    if (!RHS) {
+      Error(Lex.getLoc(), "Expected value as second operand");
+      return nullptr;
+    }
+
+    if (!consume(tgtok::r_paren)) {
+      TokError("expected ')'");
+      return nullptr;
+    }
+
+    return (BinOpInit::get(BinOpInit::DUMP, LHS, RHS, RHS->getType()))
+        ->Fold(CurRec);
+  }
 
   case tgtok::XExists: {
     // Value ::= !exists '<' Type '>' '(' Value ')'
@@ -3360,6 +3386,9 @@ bool TGParser::ParseBodyItem(Record *CurRec) {
   if (Lex.getCode() == tgtok::Assert)
     return ParseAssert(nullptr, CurRec);
 
+  if (Lex.getCode() == tgtok::Dump)
+    return ParseDump(nullptr, CurRec);
+
   if (Lex.getCode() == tgtok::Defvar)
     return ParseDefvar(CurRec);
 
@@ -3825,6 +3854,40 @@ bool TGParser::ParseAssert(MultiClass *CurMultiClass, Record *CurRec) {
   return false;
 }
 
+bool TGParser::ParseDump(MultiClass *CurMultiClass, Record *CurRec) {
+  Lex.Lex(); // eat the operation
+
+  Init *LHS = ParseSimpleValue(CurRec);
+  if (!consume(tgtok::comma)) {
+    TokError("expected ','");
+    return true;
+  }
+  TypedInit *RHS = dyn_cast<TypedInit>(ParseSimpleValue(CurRec));
+  if (!RHS) {
+    Error(Lex.getLoc(), "Exepcted value as second operand");
+    return true;
+  }
+  if (!consume(tgtok::semi)) {
+    TokError("expected ';'");
+    return true;
+  }
+
+  // Turn this print str, expr into an assert:
+  //   assert 1, !cast<string>(!dump(str, expr))
+  SMLoc ConditionLoc = Lex.getLoc();
+  Init *Condition = BitInit::get(Records, true);
+  Init *XDump =
+      BinOpInit::get(BinOpInit::DUMP, LHS, RHS, RHS->getType())->Fold(CurRec);
+  Init *Message =
+      UnOpInit::get(UnOpInit::CAST, XDump, StringRecTy::get(Records));
+  if (CurRec)
+    CurRec->addAssertion(ConditionLoc, Condition, Message);
+  else
+    addEntry(std::make_unique<Record::AssertionInfo>(ConditionLoc, Condition,
+                                                     Message));
+  return false;
+}
+
 /// ParseClass - Parse a tblgen class definition.
 ///
 ///   ClassInst ::= CLASS ID TemplateArgList? ObjectBody
@@ -3973,6 +4036,7 @@ bool TGParser::ParseTopLevelLet(MultiClass *CurMultiClass) {
 ///  MultiClassObject ::= DefInst
 ///  MultiClassObject ::= DefMInst
 ///  MultiClassObject ::= Defvar
+///  MultiClassObject ::= Dump
 ///  MultiClassObject ::= Foreach
 ///  MultiClassObject ::= If
 ///  MultiClassObject ::= LETCommand '{' ObjectList '}'
@@ -4040,7 +4104,7 @@ bool TGParser::ParseMultiClass() {
       switch (Lex.getCode()) {
       default:
         return TokError("expected 'assert', 'def', 'defm', 'defvar', "
-                        "'foreach', 'if', or 'let' in multiclass body");
+                        "'foreach', 'if', 'dump', or 'let' in multiclass body");
 
       case tgtok::Assert:
       case tgtok::Def:
@@ -4049,6 +4113,7 @@ bool TGParser::ParseMultiClass() {
       case tgtok::Foreach:
       case tgtok::If:
       case tgtok::Let:
+      case tgtok::Dump:
         if (ParseObject(CurMultiClass))
           return true;
         break;
@@ -4192,9 +4257,11 @@ bool TGParser::ParseDefm(MultiClass *CurMultiClass) {
 bool TGParser::ParseObject(MultiClass *MC) {
   switch (Lex.getCode()) {
   default:
-    return TokError(
-               "Expected assert, class, def, defm, defset, foreach, if, or let");
+    return TokError("Expected assert, class, def, defm, defset, foreach, "
+                    "print, if, or let");
   case tgtok::Assert:  return ParseAssert(MC);
+  case tgtok::Dump:
+    return ParseDump(MC);
   case tgtok::Def:     return ParseDef(MC);
   case tgtok::Defm:    return ParseDefm(MC);
   case tgtok::Defvar:  return ParseDefvar();

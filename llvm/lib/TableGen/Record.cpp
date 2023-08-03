@@ -1185,6 +1185,17 @@ static std::optional<unsigned> getDagArgNoByKey(DagInit *Dag, Init *Key,
 
 Init *BinOpInit::Fold(Record *CurRec) const {
   switch (getOpcode()) {
+  case DUMP: {
+    if (isa<StringInit>(LHS) && RHS->isConcrete()) {
+      errs() << LHS->getAsUnquotedString();
+      if (const auto *Def = dyn_cast<DefInit>(RHS))
+        errs() << *Def->getDef() << "\n";
+      else
+        errs() << RHS->getAsString() << "\n";
+      return RHS;
+    }
+    break;
+  }
   case CONCAT: {
     DagInit *LHSs = dyn_cast<DagInit>(LHS);
     DagInit *RHSs = dyn_cast<DagInit>(RHS);
@@ -1497,6 +1508,9 @@ std::string BinOpInit::getAsString() const {
     break;
   case GETDAGNAME:
     Result = "!getdagname";
+    break;
+  case DUMP:
+    Result = "!dump";
     break;
   }
   return Result + "(" + LHS->getAsString() + ", " + RHS->getAsString() + ")";
