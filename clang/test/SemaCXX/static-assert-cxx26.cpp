@@ -298,3 +298,12 @@ Good<Frobble> a; // expected-note {{in instantiation}}
 Bad<int> b; // expected-note {{in instantiation}}
 
 }
+
+namespace EscapeInDiagnostic {
+static_assert('\u{9}' == (char)1, ""); // expected-error {{failed}} \
+                                       // expected-note {{evaluates to ''\t' (9) == '<U+0001>' (1)'}}
+static_assert((char8_t)-128 == (char8_t)-123, ""); // expected-error {{failed}} \
+                                                   // expected-note {{evaluates to ''<80>' (128) == '<85>' (133)'}}
+static_assert((char16_t)0xFEFF == (char16_t)0xDB93, ""); // expected-error {{failed}} \
+                                                         // expected-note {{evaluates to ''﻿' (65279) == '\xDB93' (56211)'}}
+}
