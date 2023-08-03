@@ -1,5 +1,7 @@
 from __future__ import absolute_import
+import contextlib
 import errno
+import inspect
 import io
 import itertools
 import getopt
@@ -11,6 +13,7 @@ import platform
 import shutil
 import tempfile
 import threading
+import traceback
 
 import io
 
@@ -31,6 +34,29 @@ class InternalShellError(Exception):
     def __init__(self, command, message):
         self.command = command
         self.message = message
+
+
+class ScriptFatal(Exception):
+    """
+    A script had a fatal error such that there's no point in retrying.  The
+    message has not been emitted on stdout or stderr but is instead included in
+    this exception.
+    """
+
+    def __init__(self, message):
+        super().__init__(message)
+
+
+class ScriptFail(Exception):
+    """
+    A script failed, but it might by worth retrying.  Any failure message has
+    already been emitted on stdout or stderr.
+    """
+
+    def __init__(self, exitCode, timeoutInfo):
+        self.exitCode = exitCode
+        self.timeoutInfo = timeoutInfo
+        self.status = Test.FAIL if timeoutInfo is None else Test.TIMEOUT
 
 
 kIsWindows = platform.system() == "Windows"
@@ -994,7 +1020,7 @@ def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
                 ShUtil.ShParser(ln, litConfig.isWindows, test.config.pipefail).parse()
             )
         except:
-            return lit.Test.Result(Test.FAIL, "shell parser error on: %r" % ln)
+            raise ScriptFatal("shell parser error on: %r\n" % ln)
 
     cmd = cmds[0]
     for c in cmds[1:]:
@@ -1352,7 +1378,9 @@ class ExpandableScriptDirective(object):
 
         '\' is documented as indicating a line continuation even if whitespace
         separates it from the newline.  It looks like a line continuation, and
-        it would be confusing if it didn't behave as one.
+        it would be confusing if it didn't behave as one.  (However, for python
+        directives, we just let the python compiler decide how to handle this
+        case.)
         """
         assert False, "expected method to be called on derived class"
 
@@ -1515,6 +1543,105 @@ class SubstDirective(ExpandableScriptDirective):
         substitutions[existing[0]] = (self.name, value_repl)
 
 
+class PythonDirective(ExpandableScriptDirective):
+    """
+    A lit directive taking a python statement.  For example,
+    'PYTHON: lit.run(cmd)'.
+
+    indent: The indentation found on the first line and expected on continuation
+        lines.  It must be stripped for python to compile the code.
+    body: The uncompiled code accumulated so far from the directive and its
+        continuation lines.
+    """
+
+    def __init__(self, start_line_number, end_line_number, keyword, line):
+        super().__init__(start_line_number, end_line_number, keyword)
+        # Add blank lines so python diagnostics produce correct line numbers.
+        self.body = (start_line_number - 1) * "\n"
+        # Determine the indentation and remove it so that it's valid python.
+        line_stripped = line.lstrip()
+        self.indent = line[0 : len(line) - len(line_stripped)]
+        self.body += line_stripped + "\n"
+
+    def add_continuation(self, line_number, keyword, line):
+        if keyword != self.keyword:
+            return False
+        # Add blank lines so python diagnostics produce correct line numbers.
+        assert (
+            self.end_line_number < line_number
+        ), "expected monotonically increasing line number"
+        self.body += (line_number - self.end_line_number - 1) * "\n"
+        self.end_line_number = line_number
+        # Remove common leading indentation so it's valid python.
+        if not line.startswith(self.indent):
+            raise ValueError(
+                f"'{self.keyword}' directive continuation line has indentation "
+                f"that is inconsistent with previous lines"
+            )
+        self.body += line[len(self.indent) :] + "\n"
+        return True
+
+    def needs_continuation(self):
+        # Unlike lit directives that always mark a continued line with a
+        # trailing '\\', sometimes you cannot tell whether a python directive is
+        # continued until you see the indentation of the next python directive.
+        # In general, lit shouldn't reimplement python's line continuation and
+        # block syntax handling.  Thus, lit just concatenates all consecutive
+        # python directives and compiles them together even if they could be
+        # compiled separately.
+        return False
+
+    @staticmethod
+    def executePython(what, filename, pythonCode, python_dict, log):
+        """
+        Execute python code passed as an argument.
+        """
+        try:
+            c = compile(pythonCode, filename, "exec")
+        except Exception as e:
+            # Report the exception without this stack frame.  Bothering the lit
+            # user with lit internals is just a distraction.
+            tb = e.__traceback__.tb_next
+            traceText = "".join(traceback.format_exception(None, e, tb))
+            raise ScriptFatal(f"error compiling {what}:\n{traceText}")
+        log(f"# executing {what}\n")
+        outIO = StringIO()
+        errIO = StringIO()
+        traceText = ""
+        try:
+            with contextlib.redirect_stdout(outIO), contextlib.redirect_stderr(
+                errIO
+            ):
+                exec(c, python_dict)
+        except ScriptFail:
+            raise
+        except Exception as e:
+            # Report the exception without this stack frame.  Bothering the lit
+            # user with lit internals is just a distraction.
+            tb = e.__traceback__.tb_next
+            traceText = "".join(traceback.format_exception(None, e, tb))
+            raise ScriptFail(1, None)
+        finally:
+            outText = outIO.getvalue()
+            errText = errIO.getvalue() + traceText
+            if outText:
+                log(f"# stdout from {what}:\n{outText}\n")
+            if errText:
+                log(f"# stderr from {what}:\n{errText}\n")
+
+    def execute(self, python_dict, log):
+        """
+        Execute the python code in this directive.
+        """
+        self.executePython(
+            f"'{self.keyword}' directive {self.get_location()}",
+            "<lit test>",
+            self.body,
+            python_dict,
+            log,
+        )
+
+
 def applySubstitutions(script, substitutions, conditions={}, recursion_limit=None):
     """
     Apply substitutions to the script.  Allow full regular expression syntax.
@@ -1669,7 +1796,7 @@ def applySubstitutions(script, substitutions, conditions={}, recursion_limit=Non
             if isinstance(directive, CommandDirective):
                 line = directive.command
             else:
-                # Can come from preamble_commands.
+                # Can come from preamble_commands or from lit.expand.
                 assert isinstance(directive, str)
                 line = directive
             output.append(unescapePercents(process(line)))
@@ -1693,6 +1820,7 @@ class ParserKind(object):
         'DEFINE: %{name}=value'
     REDEFINE: A keyword taking a lit substitution redefinition. Ex
         'REDEFINE: %{name}=value'
+    PYTHON: A keyword taking a python statement. Ex 'PYTHON: lit.run(cmd)'
     """
 
     TAG = 0
@@ -1703,6 +1831,7 @@ class ParserKind(object):
     CUSTOM = 5
     DEFINE = 6
     REDEFINE = 7
+    PYTHON = 8
 
     @staticmethod
     def allowedKeywordSuffixes(value):
@@ -1715,6 +1844,7 @@ class ParserKind(object):
             ParserKind.CUSTOM: [":", "."],
             ParserKind.DEFINE: [":"],
             ParserKind.REDEFINE: [":"],
+            ParserKind.PYTHON: [":"],
         }[value]
 
     @staticmethod
@@ -1728,6 +1858,7 @@ class ParserKind(object):
             ParserKind.CUSTOM: "CUSTOM",
             ParserKind.DEFINE: "DEFINE",
             ParserKind.REDEFINE: "REDEFINE",
+            ParserKind.PYTHON: "PYTHON",
         }[value]
 
 
@@ -1788,6 +1919,10 @@ class IntegratedTestKeywordParser(object):
         elif kind == ParserKind.REDEFINE:
             self.parser = lambda line_number, line, output: self._handleSubst(
                 line_number, line, output, self.keyword, new_subst=False
+            )
+        elif kind == ParserKind.PYTHON:
+            self.parser = lambda line_number, line, output: self._handlePython(
+                line_number, line, output, self.keyword
             )
         else:
             raise ValueError("Unknown kind '%s'" % kind)
@@ -1897,6 +2032,16 @@ class IntegratedTestKeywordParser(object):
         )
         return output
 
+    @classmethod
+    def _handlePython(cls, line_number, line, output, keyword):
+        """A parser for PYTHON type keywords"""
+        if output and output[-1].add_continuation(line_number, keyword, line):
+            return output
+        if output is None:
+            output = []
+        output.append(PythonDirective(line_number, line_number, keyword, line))
+        return output
+
 
 def _parseKeywords(sourcepath, additional_parsers=[], require_script=True):
     """_parseKeywords
@@ -1921,6 +2066,9 @@ def _parseKeywords(sourcepath, additional_parsers=[], require_script=True):
         IntegratedTestKeywordParser("DEFINE:", ParserKind.DEFINE, initial_value=script),
         IntegratedTestKeywordParser(
             "REDEFINE:", ParserKind.REDEFINE, initial_value=script
+        ),
+        IntegratedTestKeywordParser(
+            "PYTHON:", ParserKind.PYTHON, initial_value=script
         ),
     ]
     keyword_parsers = {p.keyword: p for p in builtin_parsers}
@@ -1947,9 +2095,11 @@ def _parseKeywords(sourcepath, additional_parsers=[], require_script=True):
 
     # Verify the script contains a run line.
     if require_script and not any(
-        isinstance(directive, CommandDirective) for directive in script
+        isinstance(directive, CommandDirective)
+        or isinstance(directive, PythonDirective)
+        for directive in script
     ):
-        raise ValueError("Test has no 'RUN:' line")
+        raise ValueError("Test has no 'RUN:' line or 'PYTHON:' line")
 
     # Check for unterminated run or subst lines.
     #
@@ -2006,6 +2156,7 @@ def parseIntegratedTestScript(test, additional_parsers=[], require_script=True):
     script = parsed["RUN:"] or []
     assert parsed["DEFINE:"] == script
     assert parsed["REDEFINE:"] == script
+    assert parsed["PYTHON:"] == script
     test.xfails += parsed["XFAIL:"] or []
     test.requires += parsed["REQUIRES:"] or []
     test.unsupported += parsed["UNSUPPORTED:"] or []
@@ -2042,24 +2193,164 @@ def parseIntegratedTestScript(test, additional_parsers=[], require_script=True):
     return script
 
 
-def _runShTest(test, litConfig, useExternalSh, script, tmpBase):
-    def runOnce(execdir):
-        if useExternalSh:
-            res = executeScript(test, litConfig, tmpBase, script, execdir)
-        else:
-            res = executeScriptInternal(test, litConfig, tmpBase, script, execdir)
-        if isinstance(res, lit.Test.Result):
-            return res
+# This is used in the lit test suite to check that symbols from lit's
+# implementation are not accidentally made available to 'PYTHON:' directives.
+def pythonDirectiveInaccessibleFunction():
+    assert False, "should be inaccessible from 'PYTHON:' directives"
 
-        out, err, exitCode, timeoutInfo = res
-        if exitCode == 0:
-            status = Test.PASS
+
+# script must be a list in which each item is either a (1) string that is a
+# shell command or (2) an ExpandableScriptDirective object, which might produce
+# shell commands.
+#
+# If substitutionApplier is not specified, lit substitutions in shell commands
+# are treated as plain text.  Otherwise substitutionApplier must be a function
+# that accepts a list of strings and returns the same list with lit
+# substitutions expanded.
+def _runShTest(
+    test,
+    litConfig,
+    useExternalSh,
+    script,
+    tmpBase,
+    substitutionApplier=lambda x: x,
+):
+    # scriptPart has the same constraints as script for _runShTest except
+    # scriptPart cannot contain python directives.
+    def runShScript(scriptPart, addStdout, addStderr):
+        scriptPart = substitutionApplier(scriptPart)
+        # If there were only substitution directives, there's nothing left now.
+        if not scriptPart:
+            return
+        # Execute the remaining shell commands.
+        if useExternalSh:
+            res = executeScript(test, litConfig, tmpBase, scriptPart, execdir)
         else:
-            if timeoutInfo is None:
-                status = Test.FAIL
-            else:
-                status = Test.TIMEOUT
-        return out, err, exitCode, timeoutInfo, status
+            res = executeScriptInternal(
+                test, litConfig, tmpBase, scriptPart, execdir
+            )
+        out, err, exitCode, timeoutInfo = res
+        addStdout(out)
+        addStderr(err)
+        if exitCode != 0:
+            raise ScriptFail(exitCode, timeoutInfo)
+
+    class PythonDirectiveLitAPI(object):
+        """
+        Class for the 'lit' object accessible in 'PYTHON:' directives and in
+        config.prologue.
+        """
+
+        # All members of PythonDirectiveLitAPI are exposed within 'PYTHON:'
+        # directives.  Symbols only required for lit iternals should be declared
+        # outside it.
+
+        # TODO: In the future, extend the 'lit' API to be able to *write*
+        # substitutions?
+
+        @staticmethod
+        def has(feature):
+            """
+            Check if config.available_features indicates a feature is enabled.
+            """
+            return feature in test.config.available_features
+
+        @staticmethod
+        def expand(text):
+            """
+            Expand substitutions in 'text' with their most recent values (from,
+            for example, the most recent 'DEFINE:' and 'REDEFINE:' directives),
+            and return the result.
+            """
+            return substitutionApplier([text])[0]
+
+        @staticmethod
+        def run(cmd):
+            """
+            Execute 'cmd' as if it appeared in a 'RUN:' directive.
+            """
+            msg = ""
+            # In the execution trace, report the call stack for this lit.run
+            # call.  However, skip this stack frame, and then climb the call
+            # stack, adding each frame, until we've reached this file again,
+            # and skip the rest.  That is, bothering the lit user with lit
+            # internals is just a distraction.
+            for caller in inspect.stack()[1:]:
+                if caller.filename == __file__:
+                    break
+                loc = f"{caller.filename}:{caller.lineno}"
+                if not msg:
+                    msg += f"# lit.run called from {loc}"
+                else:
+                    msg += "\n"
+                    msg += f"#         called from {loc}"
+            print(msg)
+            runShScript(
+                [cmd],
+                lambda s: print(s, end=""),
+                lambda s: print(s, end="", file=sys.stderr),
+            )
+
+    # Make one attempt to run the test.
+    def runOnce(execdir):
+        out = err = ""
+
+        def addStdout(text):
+            nonlocal out
+            out += text
+
+        def addStderr(text):
+            nonlocal err
+            err += text
+
+        python_dict = dict()
+        python_dict["lit"] = PythonDirectiveLitAPI
+        try:
+            # Execute the python prologue, if any.
+            prologue = test.config.prologue
+            if prologue:
+                python_dict["__file__"] = os.path.abspath(prologue)
+                with open(prologue) as f:
+                    what = f"config.prologue='{prologue}'"
+                    PythonDirective.executePython(
+                        what, prologue, f.read(), python_dict, addStdout
+                    )
+                del python_dict["__file__"]
+            # Execute the script.
+            scriptRemaining = script
+            while scriptRemaining:
+                # Execute all leading python directives.
+                for pythonDirIndex, pythonDir in enumerate(scriptRemaining):
+                    if not isinstance(pythonDir, PythonDirective):
+                        break
+                    pythonDir.execute(python_dict, addStdout)
+                else:
+                    scriptRemaining = []
+                    break
+                scriptRemaining = scriptRemaining[pythonDirIndex:]
+                # Extract all directives before the next python directive into
+                # a script fragment.
+                pythonDirIndex = next(
+                    (
+                        i
+                        for i, d in enumerate(scriptRemaining)
+                        if isinstance(d, PythonDirective)
+                    ),
+                    len(scriptRemaining),
+                )
+                scriptPart = scriptRemaining[:pythonDirIndex]
+                scriptRemaining = scriptRemaining[pythonDirIndex:]
+                # In that script fragment, execute substitution directives and
+                # expand substitutions in shell commands, and then execute the
+                # resulting shell script.
+                runShScript(scriptPart, addStdout, addStderr)
+                # Repeat until nothing's left in the original script.
+        except ScriptFatal as e:
+            out += str(e)
+            return out, err, 1, None, Test.UNRESOLVED
+        except ScriptFail as e:
+            return out, err, e.exitCode, e.timeoutInfo, e.status
+        return out, err, 0, None, Test.PASS
 
     # Create the output directory if it does not already exist.
     lit.util.mkdir_p(os.path.dirname(tmpBase))
@@ -2069,9 +2360,6 @@ def _runShTest(test, litConfig, useExternalSh, script, tmpBase):
     attempts = test.allowed_retries + 1
     for i in range(attempts):
         res = runOnce(execdir)
-        if isinstance(res, lit.Test.Result):
-            return res
-
         out, err, exitCode, timeoutInfo, status = res
         if status != Test.FAIL:
             break
@@ -2118,11 +2406,20 @@ def executeShTest(
         test, tmpDir, tmpBase, normalize_slashes=useExternalSh
     )
     conditions = {feature: True for feature in test.config.available_features}
-    script = applySubstitutions(
-        script,
-        substitutions,
-        conditions,
-        recursion_limit=test.config.recursiveExpansionLimit,
-    )
 
-    return _runShTest(test, litConfig, useExternalSh, script, tmpBase)
+    def substitutionApplier(lines):
+        return applySubstitutions(
+            lines,
+            substitutions,
+            conditions,
+            recursion_limit=test.config.recursiveExpansionLimit,
+        )
+
+    return _runShTest(
+        test,
+        litConfig,
+        useExternalSh,
+        script,
+        tmpBase,
+        substitutionApplier=substitutionApplier,
+    )

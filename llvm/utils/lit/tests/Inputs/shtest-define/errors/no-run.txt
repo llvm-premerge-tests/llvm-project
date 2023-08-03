@@ -3,6 +3,6 @@
 # DEFINE: %{local:echo}=foo
 # REDEFINE: %{global:echo}=bar
 
-# CHECK: Test has no '{{RUN}}:' line
+# CHECK: Test has no '{{RUN}}:' line or '{{PYTHON}}:' line
 
 # CHECK: Unresolved: 1
