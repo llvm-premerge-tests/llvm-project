@@ -17,7 +17,7 @@
 namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(int, sched_yield, ()) {
-  long ret = __llvm_libc::syscall_impl(SYS_sched_yield);
+  int ret = static_cast<int>(__llvm_libc::syscall_impl(SYS_sched_yield));
   // As of writing this, yield() cannot fail
   if (ret < 0) {
     libc_errno = -ret;

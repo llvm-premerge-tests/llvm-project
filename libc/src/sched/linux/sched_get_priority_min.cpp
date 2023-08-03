@@ -17,7 +17,8 @@
 namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(int, sched_get_priority_min, (int policy)) {
-  long ret = __llvm_libc::syscall_impl(SYS_sched_get_priority_min, policy);
+  int ret = static_cast<int>(
+      __llvm_libc::syscall_impl(SYS_sched_get_priority_min, policy));
   if (ret < 0) {
     libc_errno = -ret;
     return -1;

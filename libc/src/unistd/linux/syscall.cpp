@@ -24,7 +24,7 @@ LLVM_LIBC_FUNCTION(long, __llvm_libc_syscall,
   // Syscalls may return large positive values that overflow, but will never
   // return values between -4096 and -1
   if (static_cast<unsigned long>(ret) > -4096UL) {
-    libc_errno = -ret;
+    libc_errno = static_cast<int>(-ret);
     return -1;
   }
   return ret;

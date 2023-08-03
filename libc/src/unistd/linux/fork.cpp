@@ -25,9 +25,10 @@ namespace __llvm_libc {
 LLVM_LIBC_FUNCTION(pid_t, fork, (void)) {
   invoke_prepare_callbacks();
 #ifdef SYS_fork
-  pid_t ret = __llvm_libc::syscall_impl(SYS_fork);
+  pid_t ret = static_cast<pid_t>(__llvm_libc::syscall_impl(SYS_fork));
 #elif defined(SYS_clone)
-  pid_t ret = __llvm_libc::syscall_impl(SYS_clone, SIGCHLD, 0);
+  pid_t ret =
+      static_cast<pid_t>(__llvm_libc::syscall_impl(SYS_clone, SIGCHLD, 0));
 #else
 #error "fork and clone syscalls not available."
 #endif
@@ -36,14 +37,15 @@ LLVM_LIBC_FUNCTION(pid_t, fork, (void)) {
     // The child is created with a single thread whose self object will be a
     // copy of parent process' thread which called fork. So, we have to fix up
     // the child process' self object with the new process' tid.
-    self.attrib->tid = __llvm_libc::syscall_impl(SYS_gettid);
+    self.attrib->tid =
+        static_cast<pid_t>(__llvm_libc::syscall_impl(SYS_gettid));
     invoke_child_callbacks();
     return 0;
   }
 
   if (ret < 0) {
     // Error case, a child process was not created.
-    libc_errno = -ret;
+    libc_errno = static_cast<int>(-ret);
     return -1;
   }
 

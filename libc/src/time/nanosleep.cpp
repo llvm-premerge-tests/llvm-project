@@ -20,9 +20,11 @@ namespace __llvm_libc {
 LLVM_LIBC_FUNCTION(int, nanosleep,
                    (const struct timespec *req, struct timespec *rem)) {
 #if SYS_nanosleep
-  int ret = __llvm_libc::syscall_impl(SYS_nanosleep, req, rem);
+  int ret =
+      static_cast<int>(__llvm_libc::syscall_impl(SYS_nanosleep, req, rem));
 #elif defined(SYS_clock_nanosleep_time64)
-  int ret = __llvm_libc::syscall_impl(SYS_clock_nanosleep_time64, req, rem);
+  int ret = static_cast<int>(
+      __llvm_libc::syscall_impl(SYS_clock_nanosleep_time64, req, rem));
 #else
 #error "SYS_nanosleep and SYS_clock_nanosleep_time64 syscalls not available."
 #endif

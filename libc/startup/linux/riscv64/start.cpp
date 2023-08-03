@@ -130,7 +130,7 @@ __attribute__((noinline)) static void do_start() {
   auto tid = __llvm_libc::syscall_impl(SYS_gettid);
   if (tid <= 0)
     __llvm_libc::syscall_impl(SYS_exit, 1);
-  __llvm_libc::main_thread_attrib.tid = tid;
+  __llvm_libc::main_thread_attrib.tid = static_cast<int>(tid);
 
   // After the argv array, is a 8-byte long NULL value before the array of env
   // values. The end of the env values is marked by another 8-byte long NULL
@@ -193,10 +193,12 @@ __attribute__((noinline)) static void do_start() {
   __llvm_libc::atexit(&__llvm_libc::call_fini_array_callbacks);
 
   __llvm_libc::call_init_array_callbacks(
-      app.args->argc, reinterpret_cast<char **>(app.args->argv),
+      static_cast<int>(app.args->argc),
+      reinterpret_cast<char **>(app.args->argv),
       reinterpret_cast<char **>(env_ptr));
 
-  int retval = main(app.args->argc, reinterpret_cast<char **>(app.args->argv),
+  int retval = main(static_cast<int>(app.args->argc),
+                    reinterpret_cast<char **>(app.args->argv),
                     reinterpret_cast<char **>(env_ptr));
 
   // TODO: TLS cleanup should be done after all other atexit callbacks
