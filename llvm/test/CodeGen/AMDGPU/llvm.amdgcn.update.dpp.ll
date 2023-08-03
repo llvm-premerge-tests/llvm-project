@@ -103,9 +103,128 @@ define amdgpu_kernel void @update_dpp64_imm_src_test(ptr addrspace(1) %out, i64 
   ret void
 }
 
+; GCN-LABEL: {{^}}dpp_test_f32:
+; GCN:  v_mov_b32_e32 [[DST:v[0-9]+]], s{{[0-9]+}}
+; GCN:  v_mov_b32_e32 [[SRC:v[0-9]+]], s{{[0-9]+}}
+; GFX8-OPT: s_mov
+; GFX8-OPT: s_mov
+; GFX8-NOOPT: s_nop 1
+; GCN:  v_mov_b32_dpp [[DST]], [[SRC]] quad_perm:[1,0,0,0] row_mask:0x1 bank_mask:0x1{{$}}
+define amdgpu_kernel void @dpp_test_f32(ptr addrspace(1) %out, float %in1, float %in2) {
+  %tmp0 = call float @llvm.amdgcn.update.dpp.f32(float %in1, float %in2, i32 1, i32 1, i32 1, i1 0) #0
+  store float %tmp0, ptr addrspace(1) %out
+  ret void
+}
+
+; GCN-LABEL: {{^}}dpp_test_f32_imm_comb1:
+; GCN:  v_mov_b32_e32 [[DST:v[0-9]+]], s{{[0-9]+}}
+; GCN:  v_mov_b32_e32 [[SRC:v[0-9]+]], s{{[0-9]+}}
+; GFX8-OPT: s_mov
+; GFX8-OPT: s_mov
+; GFX8-NOOPT: s_nop 1
+; GCN:  v_mov_b32_dpp [[DST]], [[SRC]] quad_perm:[0,0,0,0] row_mask:0x0 bank_mask:0x0{{$}}
+define amdgpu_kernel void @dpp_test_f32_imm_comb1(ptr addrspace(1) %out, float %in1, float %in2) {
+  %tmp0 = call float @llvm.amdgcn.update.dpp.f32(float %in1, float %in2, i32 0, i32 0, i32 0, i1 0) #0
+  store float %tmp0, ptr addrspace(1) %out
+  ret void
+}
+
+; GCN-LABEL: {{^}}dpp_test_f32_imm_comb2:
+; GCN:  v_mov_b32_e32 [[DST:v[0-9]+]], s{{[0-9]+}}
+; GCN:  v_mov_b32_e32 [[SRC:v[0-9]+]], s{{[0-9]+}}
+; GFX8-OPT: s_mov
+; GFX8-OPT: s_mov
+; GFX8-NOOPT: s_nop 1
+; GCN:  v_mov_b32_dpp [[DST]], [[SRC]] quad_perm:[3,0,0,0] row_mask:0x3 bank_mask:0x3{{$}}
+define amdgpu_kernel void @dpp_test_f32_imm_comb2(ptr addrspace(1) %out, float %in1, float %in2) {
+  %tmp0 = call float @llvm.amdgcn.update.dpp.f32(float %in1, float %in2, i32 3, i32 3, i32 3, i1 0) #0
+  store float %tmp0, ptr addrspace(1) %out
+  ret void
+}
+
+; GCN-LABEL: {{^}}dpp_test_f32_imm_comb3:
+; GCN:  v_mov_b32_e32 [[DST:v[0-9]+]], s{{[0-9]+}}
+; GCN:  v_mov_b32_e32 [[SRC:v[0-9]+]], s{{[0-9]+}}
+; GFX8-OPT: s_mov
+; GFX8-OPT: s_mov
+; GFX8-NOOPT: s_nop 1
+; GCN:  v_mov_b32_dpp [[DST]], [[SRC]] quad_perm:[1,0,0,0] row_mask:0x2 bank_mask:0x3 bound_ctrl:1{{$}}
+define amdgpu_kernel void @dpp_test_f32_imm_comb3(ptr addrspace(1) %out, float %in1, float %in2) {
+  %tmp0 = call float @llvm.amdgcn.update.dpp.f32(float %in1, float %in2, i32 1, i32 2, i32 3, i1 1) #0
+  store float %tmp0, ptr addrspace(1) %out
+  ret void
+}
+
+; GCN-LABEL: {{^}}dpp_test_f32_imm_comb4:
+; GCN:  v_mov_b32_e32 [[DST:v[0-9]+]], s{{[0-9]+}}
+; GCN:  v_mov_b32_e32 [[SRC:v[0-9]+]], s{{[0-9]+}}
+; GFX8-OPT: s_mov
+; GFX8-OPT: s_mov
+; GFX8-NOOPT: s_nop 1
+; GCN:  v_mov_b32_dpp [[DST]], [[SRC]] quad_perm:[0,1,0,0] row_mask:0x3 bank_mask:0x2 bound_ctrl:1{{$}}
+define amdgpu_kernel void @dpp_test_f32_imm_comb4(ptr addrspace(1) %out, float %in1, float %in2) {
+  %tmp0 = call float @llvm.amdgcn.update.dpp.f32(float %in1, float %in2, i32 4, i32 3, i32 2, i1 1) #0
+  store float %tmp0, ptr addrspace(1) %out
+  ret void
+}
+
+; GCN-LABEL: {{^}}dpp_test_f32_imm_comb5:
+; GCN:  v_mov_b32_e32 [[DST:v[0-9]+]], s{{[0-9]+}}
+; GCN:  v_mov_b32_e32 [[SRC:v[0-9]+]], s{{[0-9]+}}
+; GFX8-OPT: s_mov
+; GFX8-OPT: s_mov
+; GFX8-NOOPT: s_nop 1
+; GCN:  v_mov_b32_dpp [[DST]], [[SRC]] quad_perm:[3,3,3,0] row_mask:0xe bank_mask:0xd bound_ctrl:1{{$}}
+define amdgpu_kernel void @dpp_test_f32_imm_comb5(ptr addrspace(1) %out, float %in1, float %in2) {
+  %tmp0 = call float @llvm.amdgcn.update.dpp.f32(float %in1, float %in2, i32 63, i32 62, i32 61, i1 1) #0
+  store float %tmp0, ptr addrspace(1) %out
+  ret void
+}
+
+; GCN-LABEL: {{^}}dpp_test_f32_imm_comb6:
+; GCN:  v_mov_b32_e32 [[DST:v[0-9]+]], s{{[0-9]+}}
+; GCN:  v_mov_b32_e32 [[SRC:v[0-9]+]], s{{[0-9]+}}
+; GFX8-OPT: s_mov
+; GFX8-OPT: s_mov
+; GFX8-NOOPT: s_nop 1
+; GCN:  v_mov_b32_dpp [[DST]], [[SRC]] quad_perm:[3,3,3,0] row_mask:0xf bank_mask:0xf bound_ctrl:1{{$}}
+define amdgpu_kernel void @dpp_test_f32_imm_comb6(ptr addrspace(1) %out, float %in1, float %in2) {
+  %tmp0 = call float @llvm.amdgcn.update.dpp.f32(float %in1, float %in2, i32 63, i32 63, i32 63, i1 1) #0
+  store float %tmp0, ptr addrspace(1) %out
+  ret void
+}
+
+
+; GCN-LABEL: {{^}}dpp_test_f32_imm_comb7:
+; GCN:  v_mov_b32_e32 [[DST:v[0-9]+]], s{{[0-9]+}}
+; GCN:  v_mov_b32_e32 [[SRC:v[0-9]+]], s{{[0-9]+}}
+; GFX8-OPT: s_mov
+; GFX8-OPT: s_mov
+; GFX8-NOOPT: s_nop 1
+; GCN:  v_mov_b32_dpp [[DST]], [[SRC]] quad_perm:[0,0,0,1] row_mask:0x0 bank_mask:0x0 bound_ctrl:1{{$}}
+define amdgpu_kernel void @dpp_test_f32_imm_comb7(ptr addrspace(1) %out, float %in1, float %in2) {
+  %tmp0 = call float @llvm.amdgcn.update.dpp.f32(float %in1, float %in2, i32 64, i32 64, i32 64, i1 1) #0
+  store float %tmp0, ptr addrspace(1) %out
+  ret void
+}
+
+; GCN-LABEL: {{^}}dpp_test_f32_imm_comb8:
+; GCN:  v_mov_b32_e32 [[DST:v[0-9]+]], s{{[0-9]+}}
+; GCN:  v_mov_b32_e32 [[SRC:v[0-9]+]], s{{[0-9]+}}
+; GFX8-OPT: s_mov
+; GFX8-OPT: s_mov
+; GFX8-NOOPT: s_nop 1
+; GCN:  v_mov_b32_dpp [[DST]], [[SRC]] quad_perm:[3,3,1,0] row_mask:0xf bank_mask:0x0 bound_ctrl:1{{$}}
+define amdgpu_kernel void @dpp_test_f32_imm_comb8(ptr addrspace(1) %out, float %in1, float %in2) {
+  %tmp0 = call float @llvm.amdgcn.update.dpp.f32(float %in1, float %in2, i32 31, i32 63, i32 128, i1 1) #0
+  store float %tmp0, ptr addrspace(1) %out
+  ret void
+}
+
 declare i32 @llvm.amdgcn.workitem.id.x()
 declare void @llvm.amdgcn.s.barrier()
 declare i32 @llvm.amdgcn.update.dpp.i32(i32, i32, i32, i32, i32, i1) #0
+declare float @llvm.amdgcn.update.dpp.f32(float, float, i32, i32, i32, i1) #0
 declare i64 @llvm.amdgcn.update.dpp.i64(i64, i64, i32, i32, i32, i1) #0
 
 attributes #0 = { nounwind readnone convergent }
