@@ -1244,7 +1244,9 @@ void DWARFRewriter::updateDWARFObjectAddressRanges(
       NeedConverted = true;
 
     uint64_t CurRangeBase = 0;
-    if (std::optional<uint64_t> DWOId = Unit.getDWOId()) {
+    if (Unit.isDWOUnit()) {
+      std::optional<uint64_t> DWOId = Unit.getDWOId();
+      assert(DWOId && "DWOId is not found for DWO Unit.");
       CurRangeBase = getDwoRangesBase(*DWOId);
     }
     if (NeedConverted || RangesAttrInfo.getForm() == dwarf::DW_FORM_rnglistx)
