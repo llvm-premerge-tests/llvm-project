@@ -81,15 +81,15 @@ define half @test_v11f16(<11 x half> %a) nounwind {
 ; CHECK-NOFP-LABEL: test_v11f16:
 ; CHECK-NOFP:       // %bb.0:
 ; CHECK-NOFP-NEXT:    ldr h16, [sp, #8]
-; CHECK-NOFP-NEXT:    fcvt s1, h1
 ; CHECK-NOFP-NEXT:    ldr h17, [sp]
+; CHECK-NOFP-NEXT:    fcvt s1, h1
 ; CHECK-NOFP-NEXT:    fcvt s0, h0
 ; CHECK-NOFP-NEXT:    fcvt s2, h2
 ; CHECK-NOFP-NEXT:    fcvt s16, h16
 ; CHECK-NOFP-NEXT:    fcvt s17, h17
 ; CHECK-NOFP-NEXT:    fmin s1, s1, s16
-; CHECK-NOFP-NEXT:    ldr h16, [sp, #16]
 ; CHECK-NOFP-NEXT:    fmin s0, s0, s17
+; CHECK-NOFP-NEXT:    ldr h16, [sp, #16]
 ; CHECK-NOFP-NEXT:    fcvt s16, h16
 ; CHECK-NOFP-NEXT:    fcvt h1, s1
 ; CHECK-NOFP-NEXT:    fcvt h0, s0
@@ -132,8 +132,8 @@ define half @test_v11f16(<11 x half> %a) nounwind {
 ; CHECK-FP-NEXT:    // kill: def $h2 killed $h2 def $q2
 ; CHECK-FP-NEXT:    // kill: def $h3 killed $h3 def $q3
 ; CHECK-FP-NEXT:    // kill: def $h4 killed $h4 def $q4
-; CHECK-FP-NEXT:    mov x8, sp
 ; CHECK-FP-NEXT:    // kill: def $h5 killed $h5 def $q5
+; CHECK-FP-NEXT:    mov x8, sp
 ; CHECK-FP-NEXT:    // kill: def $h6 killed $h6 def $q6
 ; CHECK-FP-NEXT:    // kill: def $h7 killed $h7 def $q7
 ; CHECK-FP-NEXT:    mov v0.h[1], v1.h[0]
@@ -141,11 +141,11 @@ define half @test_v11f16(<11 x half> %a) nounwind {
 ; CHECK-FP-NEXT:    mov v0.h[2], v2.h[0]
 ; CHECK-FP-NEXT:    ld1 { v1.h }[0], [x8]
 ; CHECK-FP-NEXT:    add x8, sp, #8
-; CHECK-FP-NEXT:    mov v0.h[3], v3.h[0]
 ; CHECK-FP-NEXT:    ld1 { v1.h }[1], [x8]
 ; CHECK-FP-NEXT:    add x8, sp, #16
-; CHECK-FP-NEXT:    mov v0.h[4], v4.h[0]
+; CHECK-FP-NEXT:    mov v0.h[3], v3.h[0]
 ; CHECK-FP-NEXT:    ld1 { v1.h }[2], [x8]
+; CHECK-FP-NEXT:    mov v0.h[4], v4.h[0]
 ; CHECK-FP-NEXT:    mov v0.h[5], v5.h[0]
 ; CHECK-FP-NEXT:    mov v0.h[6], v6.h[0]
 ; CHECK-FP-NEXT:    mov v0.h[7], v7.h[0]

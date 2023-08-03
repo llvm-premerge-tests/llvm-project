@@ -2134,7 +2134,7 @@ define <4 x i32> @cmhsz4xi32(<4 x i32> %A) {
 define <2 x i64> @cmhsz2xi64(<2 x i64> %A) {
 ; CHECK-LABEL: cmhsz2xi64:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    mov w8, #2
+; CHECK-NEXT:    mov w8, #2 // =0x2
 ; CHECK-NEXT:    dup v1.2d, x8
 ; CHECK-NEXT:    cmhs v0.2d, v0.2d, v1.2d
 ; CHECK-NEXT:    ret
@@ -2262,7 +2262,7 @@ define <4 x i32> @cmhiz4xi32(<4 x i32> %A) {
 define <2 x i64> @cmhiz2xi64(<2 x i64> %A) {
 ; CHECK-LABEL: cmhiz2xi64:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    mov w8, #1
+; CHECK-NEXT:    mov w8, #1 // =0x1
 ; CHECK-NEXT:    dup v1.2d, x8
 ; CHECK-NEXT:    cmhi v0.2d, v0.2d, v1.2d
 ; CHECK-NEXT:    ret
@@ -2522,7 +2522,7 @@ define <4 x i32> @cmloz4xi32(<4 x i32> %A) {
 define <2 x i64> @cmloz2xi64(<2 x i64> %A) {
 ; CHECK-LABEL: cmloz2xi64:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    mov w8, #2
+; CHECK-NEXT:    mov w8, #2 // =0x2
 ; CHECK-NEXT:    dup v1.2d, x8
 ; CHECK-NEXT:    cmhi v0.2d, v1.2d, v0.2d
 ; CHECK-NEXT:    ret
@@ -5422,8 +5422,8 @@ define <4 x i32> @fcmule4xfloat_fast_zext(<4 x float> %A, <4 x float> %B) {
 ;
 ; GISEL-LABEL: fcmule4xfloat_fast_zext:
 ; GISEL:       // %bb.0:
-; GISEL-NEXT:    adrp x8, .LCPI322_0
 ; GISEL-NEXT:    fcmgt v0.4s, v0.4s, v1.4s
+; GISEL-NEXT:    adrp x8, .LCPI322_0
 ; GISEL-NEXT:    ldr q1, [x8, :lo12:.LCPI322_0]
 ; GISEL-NEXT:    bic v0.16b, v1.16b, v0.16b
 ; GISEL-NEXT:    ret
