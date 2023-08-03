@@ -158,6 +158,10 @@ public:
     PrebuiltModuleDeps.emplace_back(std::move(PMD));
   }
 
+  bool alreadySeenModuleDependency(ModuleID ID) override {
+    return AlreadySeen.contains(ID);
+  }
+
   void handleModuleDependency(ModuleDeps MD) override {
     ClangModuleDeps[MD.ID] = std::move(MD);
   }

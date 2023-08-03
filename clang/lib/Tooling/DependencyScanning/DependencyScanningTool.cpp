@@ -172,15 +172,7 @@ TranslationUnitDeps FullDependencyConsumer::takeTranslationUnitDeps() {
   TU.FileDeps = std::move(Dependencies);
   TU.PrebuiltModuleDeps = std::move(PrebuiltModuleDeps);
   TU.Commands = std::move(Commands);
-
-  for (auto &&M : ClangModuleDeps) {
-    auto &MD = M.second;
-    // TODO: Avoid handleModuleDependency even being called for modules
-    //   we've already seen.
-    if (AlreadySeen.count(M.first))
-      continue;
-    TU.ModuleGraph.push_back(std::move(MD));
-  }
+  TU.ModuleGraph = takeModuleGraphDeps();
   TU.ClangModuleDeps = std::move(DirectModuleDeps);
 
   return TU;
@@ -189,14 +181,8 @@ TranslationUnitDeps FullDependencyConsumer::takeTranslationUnitDeps() {
 ModuleDepsGraph FullDependencyConsumer::takeModuleGraphDeps() {
   ModuleDepsGraph ModuleGraph;
 
-  for (auto &&M : ClangModuleDeps) {
-    auto &MD = M.second;
-    // TODO: Avoid handleModuleDependency even being called for modules
-    //   we've already seen.
-    if (AlreadySeen.count(M.first))
-      continue;
+  for (auto &&[ID, MD] : ClangModuleDeps)
     ModuleGraph.push_back(std::move(MD));
-  }
 
   return ModuleGraph;
 }

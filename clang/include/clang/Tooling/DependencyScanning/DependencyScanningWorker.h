@@ -54,6 +54,8 @@ public:
 
   virtual void handlePrebuiltModuleDependency(PrebuiltModuleDep PMD) = 0;
 
+  virtual bool alreadySeenModuleDependency(ModuleID ID) { return false; }
+
   virtual void handleModuleDependency(ModuleDeps MD) = 0;
 
   virtual void handleDirectModuleDependency(ModuleID MD) = 0;

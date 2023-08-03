@@ -406,7 +406,8 @@ void ModuleDepCollectorPP::EndOfMainFile() {
         MDC.ProvidedStdCXXModule, MDC.RequiredStdCXXModules);
 
   for (auto &&I : MDC.ModularDeps)
-    MDC.Consumer.handleModuleDependency(*I.second);
+    if (!MDC.Consumer.alreadySeenModuleDependency(I.second->ID))
+      MDC.Consumer.handleModuleDependency(*I.second);
 
   for (const Module *M : MDC.DirectModularDeps) {
     auto It = MDC.ModularDeps.find(M);
@@ -458,19 +459,6 @@ ModuleDepCollectorPP::handleTopLevelModule(const Module *M) {
   serialization::ModuleFile *MF =
       MDC.ScanInstance.getASTReader()->getModuleManager().lookup(
           M->getASTFile());
-  MDC.ScanInstance.getASTReader()->visitInputFiles(
-      *MF, true, true, [&](const serialization::InputFile &IF, bool isSystem) {
-        // __inferred_module.map is the result of the way in which an implicit
-        // module build handles inferred modules. It adds an overlay VFS with
-        // this file in the proper directory and relies on the rest of Clang to
-        // handle it like normal. With explicitly built modules we don't need
-        // to play VFS tricks, so replace it with the correct module map.
-        if (IF.getFile()->getName().endswith("__inferred_module.map")) {
-          MDC.addFileDep(MD, ModuleMap->getName());
-          return;
-        }
-        MDC.addFileDep(MD, IF.getFile()->getName());
-      });
 
   llvm::DenseSet<const Module *> SeenDeps;
   addAllSubmodulePrebuiltDeps(M, MD, SeenDeps);
@@ -493,10 +481,27 @@ ModuleDepCollectorPP::handleTopLevelModule(const Module *M) {
 
   MDC.associateWithContextHash(CI, MD);
 
+  if (MDC.Consumer.alreadySeenModuleDependency(MD.ID))
+    return MD.ID;
+
   // Finish the compiler invocation. Requires dependencies and the context hash.
   MDC.addOutputPaths(CI, MD);
 
   MD.BuildArguments = CI.getCC1CommandLine();
+
+  MDC.ScanInstance.getASTReader()->visitInputFiles(
+      *MF, true, true, [&](const serialization::InputFile &IF, bool isSystem) {
+        // __inferred_module.map is the result of the way in which an implicit
+        // module build handles inferred modules. It adds an overlay VFS with
+        // this file in the proper directory and relies on the rest of Clang to
+        // handle it like normal. With explicitly built modules we don't need
+        // to play VFS tricks, so replace it with the correct module map.
+        if (IF.getFile()->getName().endswith("__inferred_module.map")) {
+          MDC.addFileDep(MD, ModuleMap->getName());
+          return;
+        }
+        MDC.addFileDep(MD, IF.getFile()->getName());
+      });
 
   return MD.ID;
 }
