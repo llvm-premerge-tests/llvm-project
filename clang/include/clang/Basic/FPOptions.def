@@ -12,19 +12,24 @@
 #  error Define the OPTION macro to handle floating point language options
 #endif
 
+#define SIMPLE_OPTION(name, type, width, previousName) \
+  OPTION(name, type, static_cast<type>, static_cast<type>, width, previousName)
+
 // OPTION(name, type, width, previousName)
-OPTION(FPContractMode, LangOptions::FPModeKind, 2, First)
-OPTION(RoundingMath, bool, 1, FPContractMode)
-OPTION(ConstRoundingMode, LangOptions::RoundingMode, 3, RoundingMath)
-OPTION(SpecifiedExceptionMode, LangOptions::FPExceptionModeKind, 2, ConstRoundingMode)
-OPTION(AllowFEnvAccess, bool, 1, SpecifiedExceptionMode)
-OPTION(AllowFPReassociate, bool, 1, AllowFEnvAccess)
-OPTION(NoHonorNaNs, bool, 1, AllowFPReassociate)
-OPTION(NoHonorInfs, bool, 1, NoHonorNaNs)
-OPTION(NoSignedZero, bool, 1, NoHonorInfs)
-OPTION(AllowReciprocal, bool, 1, NoSignedZero)
-OPTION(AllowApproxFunc, bool, 1, AllowReciprocal)
-OPTION(FPEvalMethod, LangOptions::FPEvalMethodKind, 2, AllowApproxFunc)
-OPTION(Float16ExcessPrecision, LangOptions::ExcessPrecisionKind, 2, FPEvalMethod)
-OPTION(BFloat16ExcessPrecision, LangOptions::ExcessPrecisionKind, 2, FPEvalMethod)
+SIMPLE_OPTION(FPContractMode, LangOptions::FPModeKind, 2, First)
+SIMPLE_OPTION(RoundingMath, bool, 1, FPContractMode)
+OPTION(ConstRoundingMode, LangOptions::RoundingMode, llvm::encodeRoundingMode, llvm::decodeRoundingMode, 3, RoundingMath)
+SIMPLE_OPTION(SpecifiedExceptionMode, LangOptions::FPExceptionModeKind, 2, ConstRoundingMode)
+SIMPLE_OPTION(AllowFEnvAccess, bool, 1, SpecifiedExceptionMode)
+SIMPLE_OPTION(AllowFPReassociate, bool, 1, AllowFEnvAccess)
+SIMPLE_OPTION(NoHonorNaNs, bool, 1, AllowFPReassociate)
+SIMPLE_OPTION(NoHonorInfs, bool, 1, NoHonorNaNs)
+SIMPLE_OPTION(NoSignedZero, bool, 1, NoHonorInfs)
+SIMPLE_OPTION(AllowReciprocal, bool, 1, NoSignedZero)
+SIMPLE_OPTION(AllowApproxFunc, bool, 1, AllowReciprocal)
+SIMPLE_OPTION(FPEvalMethod, LangOptions::FPEvalMethodKind, 2, AllowApproxFunc)
+SIMPLE_OPTION(Float16ExcessPrecision, LangOptions::ExcessPrecisionKind, 2, FPEvalMethod)
+SIMPLE_OPTION(BFloat16ExcessPrecision, LangOptions::ExcessPrecisionKind, 2, FPEvalMethod)
+
+#undef SIMPLE_OPTION
 #undef OPTION

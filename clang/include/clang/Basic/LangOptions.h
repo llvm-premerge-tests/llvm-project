@@ -670,7 +670,7 @@ public:
   // Define a fake option named "First" so that we have a PREVIOUS even for the
   // real first option.
   static constexpr storage_type FirstShift = 0, FirstWidth = 0;
-#define OPTION(NAME, TYPE, WIDTH, PREVIOUS)                                    \
+#define OPTION(NAME, ENCODE, DECODE, TYPE, WIDTH, PREVIOUS)                    \
   static constexpr storage_type NAME##Shift =                                  \
       PREVIOUS##Shift + PREVIOUS##Width;                                       \
   static constexpr storage_type NAME##Width = WIDTH;                           \
@@ -679,7 +679,7 @@ public:
 #include "clang/Basic/FPOptions.def"
 
   static constexpr storage_type TotalWidth = 0
-#define OPTION(NAME, TYPE, WIDTH, PREVIOUS) +WIDTH
+#define OPTION(NAME, ENCODE, DECODE, TYPE, WIDTH, PREVIOUS) +WIDTH
 #include "clang/Basic/FPOptions.def"
       ;
   static_assert(TotalWidth <= StorageBitSize, "Too short type for FPOptions");
@@ -783,12 +783,13 @@ public:
   FPOptionsOverride getChangesFrom(const FPOptions &Base) const;
 
   // We can define most of the accessors automatically:
-#define OPTION(NAME, TYPE, WIDTH, PREVIOUS)                                    \
+#define OPTION(NAME, TYPE, ENCODE, DECODE, WIDTH, PREVIOUS)                    \
   TYPE get##NAME() const {                                                     \
-    return static_cast<TYPE>((Value & NAME##Mask) >> NAME##Shift);             \
+    return DECODE((Value & NAME##Mask) >> NAME##Shift);                        \
   }                                                                            \
   void set##NAME(TYPE value) {                                                 \
-    Value = (Value & ~NAME##Mask) | (storage_type(value) << NAME##Shift);      \
+    Value =                                                                    \
+        (Value & ~NAME##Mask) | (storage_type(ENCODE(value)) << NAME##Shift);  \
   }
 #include "clang/Basic/FPOptions.def"
   LLVM_DUMP_METHOD void dump();
@@ -890,7 +891,7 @@ public:
   }
   bool operator!=(FPOptionsOverride other) const { return !(*this == other); }
 
-#define OPTION(NAME, TYPE, WIDTH, PREVIOUS)                                    \
+#define OPTION(NAME, TYPE, ENCODE, DECODE, WIDTH, PREVIOUS)                    \
   bool has##NAME##Override() const {                                           \
     return OverrideMask & FPOptions::NAME##Mask;                               \
   }                                                                            \

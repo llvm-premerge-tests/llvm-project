@@ -35,17 +35,27 @@ namespace llvm {
 /// rounding mode value, so it does not need to fit the bit fields.
 ///
 enum class RoundingMode : int8_t {
+  // Special values.
+  Invalid = -2, ///< Denotes invalid value.
+  Dynamic = -1, ///< Denotes mode unknown at compile time.
+
   // Rounding mode defined in IEEE-754.
   TowardZero        = 0,    ///< roundTowardZero.
   NearestTiesToEven = 1,    ///< roundTiesToEven.
   TowardPositive    = 2,    ///< roundTowardPositive.
   TowardNegative    = 3,    ///< roundTowardNegative.
-  NearestTiesToAway = 4,    ///< roundTiesToAway.
-
-  // Special values.
-  Dynamic = 7,    ///< Denotes mode unknown at compile time.
-  Invalid = -1    ///< Denotes invalid value.
+  NearestTiesToAway = 4     ///< roundTiesToAway.
 };
+
+/// Encode a RoundingMode value into a form suitable for a bitfield.
+constexpr int8_t encodeRoundingMode(RoundingMode RM) {
+  return static_cast<int8_t>(RM) + 1;
+}
+
+/// Decode a RoundingMode value from a form suitable for a bitfield.
+constexpr RoundingMode decodeRoundingMode(int8_t Val) {
+  return static_cast<RoundingMode>(Val - 1);
+}
 
 /// Returns text representation of the given rounding mode.
 inline StringRef spell(RoundingMode RM) {
