@@ -368,7 +368,7 @@ SDValue BPFTargetLowering::LowerFormalArguments(
         HasMemArgs = true;
       else
         report_fatal_error("unhandled argument location");
-      InVals.push_back(DAG.getConstant(0, DL, VA.getLocVT()));
+      InVals.push_back(DAG.getUNDEF(VA.getLocVT()));
     }
   }
   if (HasMemArgs)
@@ -532,7 +532,7 @@ BPFTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
     return DAG.getNode(Opc, DL, MVT::Other, Chain);
   }
 
-  // Analize return values.
+  // Analyze return values.
   CCInfo.AnalyzeReturn(Outs, getHasAlu32() ? RetCC_BPF32 : RetCC_BPF64);
 
   SDValue Glue;
@@ -572,9 +572,9 @@ SDValue BPFTargetLowering::LowerCallResult(
   CCState CCInfo(CallConv, IsVarArg, MF, RVLocs, *DAG.getContext());
 
   if (Ins.size() > 1) {
-    fail(DL, DAG, "only small returns supported");
+    fail(DL, DAG, "only small returns are supported");
     for (auto &In : Ins)
-      InVals.push_back(DAG.getConstant(0, DL, In.VT));
+      InVals.push_back(DAG.getUNDEF(In.VT));
     return DAG.getCopyFromReg(Chain, DL, 1, Ins[0].VT, InGlue).getValue(1);
   }
 
