@@ -373,7 +373,8 @@ private:
   BinaryFunction *FoldedIntoFunction{nullptr};
 
   /// All fragments for a parent function.
-  SmallPtrSet<BinaryFunction *, 1> Fragments;
+  using FragmentsSetTy = SmallPtrSet<BinaryFunction *, 1>;
+  FragmentsSetTy Fragments;
 
   /// The profile data for the number of times the function was executed.
   uint64_t ExecutionCount{COUNT_NO_PROFILE};
@@ -1777,6 +1778,17 @@ public:
   /// Returns if this function is a parent of \p Other function.
   bool isParentOf(const BinaryFunction &Other) const {
     return llvm::is_contained(Fragments, &Other);
+  }
+
+  /// Return the child fragment form parent function
+  iterator_range<FragmentsSetTy::const_iterator> getFragments() const {
+    return iterator_range<FragmentsSetTy::const_iterator>(Fragments.begin(),
+                                                          Fragments.end());
+  }
+
+  /// Return the parent function for split function fragments.
+  FragmentsSetTy *getParentFragments() {
+    return &ParentFragments;
   }
 
   /// Returns if this function is a parent or child of \p Other function.
