@@ -4513,6 +4513,28 @@ bool Sema::CheckRISCVLMUL(CallExpr *TheCall, unsigned ArgNum) {
          << Arg->getSourceRange();
 }
 
+static bool CheckInvalidEGW(const TargetInfo &TI, CallExpr *TheCall, Sema &S,
+                            QualType Type, int EGW) {
+  assert((EGW == 128 || EGW == 256) && "EGW can only be 128 or 256 bits");
+  std::array<std::pair<int, const char *>, 3> ValidPairs128 =
+      {{{1, "zvl256b"}, {2, "zvl128b"}, {4, "zvl64b"}}};
+  std::array<std::pair<int, const char *>, 4> ValidPairs256 = 
+      {{{1, "zvl512b"}, {2, "zvl256b"}, {4, "zvl128b"}, {8, "zvl64b"}}};
+
+  auto Check = [&](const auto &ValidPairs) -> bool {
+    for (const auto &P : ValidPairs)
+      if (Type->isRVVType(/*ElementCount*/P.first) && !TI.hasFeature(P.second))
+        return S.Diag(TheCall->getBeginLoc(),
+            diag::err_riscv_type_requires_extension) << Type << P.second;
+    return false;
+  };
+
+  if (EGW == 128)
+    return Check(ValidPairs128);
+  else
+    return Check(ValidPairs256);
+}
+
 bool Sema::CheckRISCVBuiltinFunctionCall(const TargetInfo &TI,
                                          unsigned BuiltinID,
                                          CallExpr *TheCall) {
@@ -4671,6 +4693,57 @@ bool Sema::CheckRISCVBuiltinFunctionCall(const TargetInfo &TI,
                  (VecInfo.EC.getKnownMinValue() * VecInfo.NumVectors);
     return SemaBuiltinConstantArgRange(TheCall, 1, 0, MaxIndex - 1);
   }
+  // Vector Crypto
+  case RISCVVector::BI__builtin_rvv_vaeskf1_vi_tu:
+  case RISCVVector::BI__builtin_rvv_vaeskf2_vi_tu:
+  case RISCVVector::BI__builtin_rvv_vaeskf2_vi:
+  case RISCVVector::BI__builtin_rvv_vsm4k_vi_tu: {
+    QualType Op1Type = TheCall->getArg(0)->getType();
+    QualType Op2Type = TheCall->getArg(1)->getType();
+    return CheckInvalidEGW(TI, TheCall, *this, Op1Type, 128) ||
+           CheckInvalidEGW(TI, TheCall, *this, Op2Type, 128) ||
+           SemaBuiltinConstantArgRange(TheCall, 2, 0, 31);
+  }
+  case RISCVVector::BI__builtin_rvv_vsm3c_vi_tu:
+  case RISCVVector::BI__builtin_rvv_vsm3c_vi: {
+    QualType Op1Type = TheCall->getArg(0)->getType();
+    return CheckInvalidEGW(TI, TheCall, *this, Op1Type, 256) ||
+           SemaBuiltinConstantArgRange(TheCall, 2, 0, 31);
+  }
+  case RISCVVector::BI__builtin_rvv_vaeskf1_vi:
+  case RISCVVector::BI__builtin_rvv_vsm4k_vi: {
+    QualType Op1Type = TheCall->getArg(0)->getType();
+    return CheckInvalidEGW(TI, TheCall, *this, Op1Type, 128) ||
+           SemaBuiltinConstantArgRange(TheCall, 1, 0, 31);
+  }
+  case RISCVVector::BI__builtin_rvv_vaesdf_vv:
+  case RISCVVector::BI__builtin_rvv_vaesdf_vs:
+  case RISCVVector::BI__builtin_rvv_vaesdm_vv:
+  case RISCVVector::BI__builtin_rvv_vaesdm_vs:
+  case RISCVVector::BI__builtin_rvv_vaesef_vv:
+  case RISCVVector::BI__builtin_rvv_vaesef_vs:
+  case RISCVVector::BI__builtin_rvv_vaesem_vv:
+  case RISCVVector::BI__builtin_rvv_vaesem_vs:
+  case RISCVVector::BI__builtin_rvv_vaesz_vs:
+  case RISCVVector::BI__builtin_rvv_vsm4r_vv:
+  case RISCVVector::BI__builtin_rvv_vsm4r_vs:
+  case RISCVVector::BI__builtin_rvv_vaesdf_vv_tu:
+  case RISCVVector::BI__builtin_rvv_vaesdf_vs_tu:
+  case RISCVVector::BI__builtin_rvv_vaesdm_vv_tu:
+  case RISCVVector::BI__builtin_rvv_vaesdm_vs_tu:
+  case RISCVVector::BI__builtin_rvv_vaesef_vv_tu:
+  case RISCVVector::BI__builtin_rvv_vaesef_vs_tu:
+  case RISCVVector::BI__builtin_rvv_vaesem_vv_tu:
+  case RISCVVector::BI__builtin_rvv_vaesem_vs_tu:
+  case RISCVVector::BI__builtin_rvv_vaesz_vs_tu:
+  case RISCVVector::BI__builtin_rvv_vsm4r_vv_tu:
+  case RISCVVector::BI__builtin_rvv_vsm4r_vs_tu: {
+    QualType Op1Type = TheCall->getArg(0)->getType();
+    QualType Op2Type = TheCall->getArg(1)->getType();
+    return CheckInvalidEGW(TI, TheCall, *this, Op1Type, 128) ||
+           CheckInvalidEGW(TI, TheCall, *this, Op2Type, 128);
+  }
+
   case RISCVVector::BI__builtin_rvv_sf_vc_i_se_u8mf8:
   case RISCVVector::BI__builtin_rvv_sf_vc_i_se_u8mf4:
   case RISCVVector::BI__builtin_rvv_sf_vc_i_se_u8mf2:
