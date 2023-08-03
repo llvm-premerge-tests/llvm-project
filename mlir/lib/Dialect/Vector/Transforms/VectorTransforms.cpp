@@ -598,19 +598,17 @@ struct BubbleDownVectorBitCastForExtract
     unsigned expandRatio =
         castDstType.getNumElements() / castSrcType.getNumElements();
 
-    auto getFirstIntValue = [](ArrayAttr attr) -> uint64_t {
-      return (*attr.getAsValueRange<IntegerAttr>().begin()).getZExtValue();
+    auto getFirstIntValue = [](ArrayRef<OpFoldResult> values) -> uint64_t {
+      assert(values[0].is<Attribute>() && "Unexpected non-constant index");
+      return cast<IntegerAttr>(values[0].get<Attribute>()).getInt();
     };
 
-    uint64_t index = getFirstIntValue(extractOp.getPosition());
+    uint64_t index = getFirstIntValue(extractOp.getMixedPosition());
 
     // Get the single scalar (as a vector) in the source value that packs the
     // desired scalar. E.g. extract vector<1xf32> from vector<4xf32>
-    VectorType oneScalarType =
-        VectorType::get({1}, castSrcType.getElementType());
     Value packedValue = rewriter.create<vector::ExtractOp>(
-        extractOp.getLoc(), oneScalarType, castOp.getSource(),
-        rewriter.getI64ArrayAttr(index / expandRatio));
+        extractOp.getLoc(), castOp.getSource(), index / expandRatio);
 
     // Cast it to a vector with the desired scalar's type.
     // E.g. f32 -> vector<2xf16>
@@ -620,9 +618,8 @@ struct BubbleDownVectorBitCastForExtract
         extractOp.getLoc(), packedType, packedValue);
 
     // Finally extract the desired scalar.
-    rewriter.replaceOpWithNewOp<vector::ExtractOp>(
-        extractOp, extractOp.getType(), castedValue,
-        rewriter.getI64ArrayAttr(index % expandRatio));
+    rewriter.replaceOpWithNewOp<vector::ExtractOp>(extractOp, castedValue,
+                                                   index % expandRatio);
 
     return success();
   }

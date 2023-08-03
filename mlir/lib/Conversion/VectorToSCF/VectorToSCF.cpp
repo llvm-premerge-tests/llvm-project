@@ -885,10 +885,10 @@ struct UnrollTransferReadConversion
   /// If the result of the TransferReadOp has exactly one user, which is a
   /// vector::InsertOp, return that operation's indices.
   void getInsertionIndices(TransferReadOp xferOp,
-                           SmallVector<int64_t, 8> &indices) const {
+                           SmallVectorImpl<OpFoldResult> &indices) const {
     if (auto insertOp = getInsertOp(xferOp)) {
-      for (Attribute attr : insertOp.getPosition())
-        indices.push_back(dyn_cast<IntegerAttr>(attr).getInt());
+      auto pos = insertOp.getMixedPosition();
+      indices.append(pos.begin(), pos.end());
     }
   }
 
@@ -927,9 +927,9 @@ struct UnrollTransferReadConversion
             getXferIndices(b, xferOp, iv, xferIndices);
 
             // Indices for the new vector.insert op.
-            SmallVector<int64_t, 8> insertionIndices;
+            SmallVector<OpFoldResult, 8> insertionIndices;
             getInsertionIndices(xferOp, insertionIndices);
-            insertionIndices.push_back(i);
+            insertionIndices.push_back(rewriter.getIndexAttr(i));
 
             auto inBoundsAttr = dropFirstElem(b, xferOp.getInBoundsAttr());
             auto newXferOp = b.create<vector::TransferReadOp>(
@@ -1012,10 +1012,10 @@ struct UnrollTransferWriteConversion
   /// If the input of the given TransferWriteOp is an ExtractOp, return its
   /// indices.
   void getExtractionIndices(TransferWriteOp xferOp,
-                            SmallVector<int64_t, 8> &indices) const {
+                            SmallVectorImpl<OpFoldResult> &indices) const {
     if (auto extractOp = getExtractOp(xferOp)) {
-      for (Attribute attr : extractOp.getPosition())
-        indices.push_back(dyn_cast<IntegerAttr>(attr).getInt());
+      auto pos = extractOp.getMixedPosition();
+      indices.append(pos.begin(), pos.end());
     }
   }
 
@@ -1053,9 +1053,9 @@ struct UnrollTransferWriteConversion
             getXferIndices(b, xferOp, iv, xferIndices);
 
             // Indices for the new vector.extract op.
-            SmallVector<int64_t, 8> extractionIndices;
+            SmallVector<OpFoldResult, 8> extractionIndices;
             getExtractionIndices(xferOp, extractionIndices);
-            extractionIndices.push_back(i);
+            extractionIndices.push_back(b.getI64IntegerAttr(i));
 
             auto extracted =
                 b.create<vector::ExtractOp>(loc, vec, extractionIndices);

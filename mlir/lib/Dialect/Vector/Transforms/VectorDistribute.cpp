@@ -938,19 +938,12 @@ struct WarpOpExtract : public OpRewritePattern<WarpExecuteOnLane0Op> {
            "vector.extract does not support rank 0 sources");
 
     // "vector.extract %v[] : vector<...xf32>" can be canonicalized to %v.
-    if (extractOp.getPosition().empty())
+    if (extractOp.getNumIndices() == 0)
       return failure();
 
-    // Rewrite vector.extract with 1d source to vector.extractelement.
-    if (extractSrcType.getRank() == 1) {
-      assert(extractOp.getPosition().size() == 1 && "expected 1 index");
-      int64_t pos = cast<IntegerAttr>(extractOp.getPosition()[0]).getInt();
-      rewriter.setInsertionPoint(extractOp);
-      rewriter.replaceOpWithNewOp<vector::ExtractElementOp>(
-          extractOp, extractOp.getVector(),
-          rewriter.create<arith::ConstantIndexOp>(loc, pos));
-      return success();
-    }
+    // Skip vector.extract already with 1d source.
+    if (extractSrcType.getRank() == 1)
+      return failure();
 
     // All following cases are 2d or higher dimensional source vectors.
 
@@ -968,7 +961,7 @@ struct WarpOpExtract : public OpRewritePattern<WarpExecuteOnLane0Op> {
       Value distributedVec = newWarpOp->getResult(newRetIndices[0]);
       // Extract from distributed vector.
       Value newExtract = rewriter.create<vector::ExtractOp>(
-          loc, distributedVec, extractOp.getPosition());
+          loc, distributedVec, extractOp.getMixedPosition());
       rewriter.replaceAllUsesWith(newWarpOp->getResult(operandNumber),
                                   newExtract);
       return success();
@@ -994,7 +987,7 @@ struct WarpOpExtract : public OpRewritePattern<WarpExecuteOnLane0Op> {
     SmallVector<int64_t> newDistributedShape(extractSrcType.getShape().begin(),
                                              extractSrcType.getShape().end());
     for (int i = 0; i < distributedType.getRank(); ++i)
-      newDistributedShape[i + extractOp.getPosition().size()] =
+      newDistributedShape[i + extractOp.getNumIndices()] =
           distributedType.getDimSize(i);
     auto newDistributedType =
         VectorType::get(newDistributedShape, distributedType.getElementType());
@@ -1006,7 +999,7 @@ struct WarpOpExtract : public OpRewritePattern<WarpExecuteOnLane0Op> {
     Value distributedVec = newWarpOp->getResult(newRetIndices[0]);
     // Extract from distributed vector.
     Value newExtract = rewriter.create<vector::ExtractOp>(
-        loc, distributedVec, extractOp.getPosition());
+        loc, distributedVec, extractOp.getMixedPosition());
     rewriter.replaceAllUsesWith(newWarpOp->getResult(operandNumber),
                                 newExtract);
     return success();
@@ -1195,19 +1188,12 @@ struct WarpOpInsert : public OpRewritePattern<WarpExecuteOnLane0Op> {
     Location loc = insertOp.getLoc();
 
     // "vector.insert %v, %v[] : ..." can be canonicalized to %v.
-    if (insertOp.getPosition().empty())
+    if (insertOp.getNumIndices() == 0)
       return failure();
 
-    // Rewrite vector.insert with 1d dest to vector.insertelement.
-    if (insertOp.getDestVectorType().getRank() == 1) {
-      assert(insertOp.getPosition().size() == 1 && "expected 1 index");
-      int64_t pos = cast<IntegerAttr>(insertOp.getPosition()[0]).getInt();
-      rewriter.setInsertionPoint(insertOp);
-      rewriter.replaceOpWithNewOp<vector::InsertElementOp>(
-          insertOp, insertOp.getSource(), insertOp.getDest(),
-          rewriter.create<arith::ConstantIndexOp>(loc, pos));
-      return success();
-    }
+    // Skip vector.insert already with 1d dest.
+    if (insertOp.getDestVectorType().getRank() == 1)
+      return failure();
 
     if (warpOp.getResult(operandNumber).getType() == operand->get().getType()) {
       // There is no distribution, this is a broadcast. Simply move the insert
@@ -1221,7 +1207,7 @@ struct WarpOpInsert : public OpRewritePattern<WarpExecuteOnLane0Op> {
       Value distributedSrc = newWarpOp->getResult(newRetIndices[0]);
       Value distributedDest = newWarpOp->getResult(newRetIndices[1]);
       Value newResult = rewriter.create<vector::InsertOp>(
-          loc, distributedSrc, distributedDest, insertOp.getPosition());
+          loc, distributedSrc, distributedDest, insertOp.getMixedPosition());
       rewriter.replaceAllUsesWith(newWarpOp->getResult(operandNumber),
                                   newResult);
       return success();
@@ -1252,7 +1238,7 @@ struct WarpOpInsert : public OpRewritePattern<WarpExecuteOnLane0Op> {
     // Case 2: distrDestDim = 0 (dim of size 128) => distrSrcDim = -1. In that
     //         case, one lane will insert the source vector<96xf32>. The other
     //         lanes will not do anything.
-    int64_t distrSrcDim = distrDestDim - insertOp.getPosition().size();
+    int64_t distrSrcDim = distrDestDim - insertOp.getNumIndices();
     if (distrSrcDim >= 0)
       distrSrcShape[distrSrcDim] = distrDestType.getDimSize(distrDestDim);
     auto distrSrcType =
@@ -1272,14 +1258,12 @@ struct WarpOpInsert : public OpRewritePattern<WarpExecuteOnLane0Op> {
     if (distrSrcDim >= 0) {
       // Every lane inserts a small piece.
       newResult = rewriter.create<vector::InsertOp>(
-          loc, distributedSrc, distributedDest, insertOp.getPosition());
+          loc, distributedSrc, distributedDest, insertOp.getMixedPosition());
     } else {
       // One lane inserts the entire source vector.
       int64_t elementsPerLane = distrDestType.getDimSize(distrDestDim);
-      SmallVector<int64_t> newPos = llvm::to_vector(
-          llvm::map_range(insertOp.getPosition(), [](Attribute attr) {
-            return cast<IntegerAttr>(attr).getInt();
-          }));
+      SmallVector<OpFoldResult> pos = insertOp.getMixedPosition();
+      SmallVector<int64_t> newPos = getAsIntegers(pos);
       // tid of inserting lane: pos / elementsPerLane
       Value insertingLane = rewriter.create<arith::ConstantIndexOp>(
           loc, newPos[distrDestDim] / elementsPerLane);

@@ -34,8 +34,18 @@ using namespace mlir;
 
 /// Gets the first integer value from `attr`, assuming it is an integer array
 /// attribute.
-static uint64_t getFirstIntValue(ArrayAttr attr) {
-  return (*attr.getAsValueRange<IntegerAttr>().begin()).getZExtValue();
+static uint64_t getFirstIntValue(ValueRange values) {
+  return values[0].getDefiningOp<arith::ConstantIndexOp>().value();
+}
+static uint64_t getFirstIntValue(ArrayRef<Attribute> attr) {
+  return cast<IntegerAttr>(attr[0]).getInt();
+}
+static uint64_t getFirstIntValue(ArrayRef<OpFoldResult> foldResults) {
+  auto attr = foldResults[0].dyn_cast<Attribute>();
+  if (attr)
+    return getFirstIntValue(attr);
+
+  return getFirstIntValue(ValueRange{foldResults[0].get<Value>()});
 }
 
 /// Returns the number of bits for the given scalar/vector type.
@@ -152,7 +162,7 @@ struct VectorExtractOpConvert final
       return success();
     }
 
-    int32_t id = getFirstIntValue(extractOp.getPosition());
+    int32_t id = getFirstIntValue(extractOp.getMixedPosition());
     rewriter.replaceOpWithNewOp<spirv::CompositeExtractOp>(
         extractOp, adaptor.getVector(), id);
     return success();
@@ -232,7 +242,7 @@ struct VectorInsertOpConvert final
       return success();
     }
 
-    int32_t id = getFirstIntValue(insertOp.getPosition());
+    int32_t id = getFirstIntValue(insertOp.getMixedPosition());
     rewriter.replaceOpWithNewOp<spirv::CompositeInsertOp>(
         insertOp, adaptor.getSource(), adaptor.getDest(), id);
     return success();
