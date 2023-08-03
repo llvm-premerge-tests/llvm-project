@@ -793,6 +793,16 @@ def StdC : StandardSpec<"stdc"> {
       ]
   >;
 
+  HeaderSpec Limits = HeaderSpec<
+      "limits.h",
+      [
+        Macro<"LONG_MAX">,
+      ],
+      [], // Types
+      [], // Enumerations
+      [] // Functions
+  >;
+
   HeaderSpec Errno = HeaderSpec<
       "errno.h",
       [
@@ -1110,6 +1120,7 @@ def StdC : StandardSpec<"stdc"> {
     StdIO,
     StdLib,
     IntTypes,
+    Limits,
     SetJmp,
     Signal,
     Threads,
