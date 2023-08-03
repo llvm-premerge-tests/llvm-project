@@ -20523,6 +20523,9 @@ SDValue DAGCombiner::replaceStoreOfInsertLoad(StoreSDNode *ST) {
     return SDValue();
   EVT PtrVT = Ptr.getValueType();
 
+  if(Idx.getValueType().getSizeInBits() < PtrVT.getSizeInBits())
+    Idx = DAG.getZExtOrTrunc(Idx, DL, PtrVT);
+
   SDValue Offset =
       DAG.getNode(ISD::MUL, DL, PtrVT, Idx,
                   DAG.getConstant(EltVT.getSizeInBits() / 8, DL, PtrVT));
