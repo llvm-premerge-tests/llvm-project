@@ -135,6 +135,28 @@ static void enableDebuginfod(LLVMSymbolizer &Symbolizer,
   HTTPClient::initialize();
 }
 
+static std::pair<std::string, StringRef>
+getSpaceDelimitedWord(StringRef Source) {
+  const char kDelimiters[] = " \n\r";
+  const char *Pos = Source.data();
+  std::string Result;
+  Pos += strspn(Pos, kDelimiters);
+  if (*Pos == '"' || *Pos == '\'') {
+    char Quote = *Pos;
+    Pos++;
+    const char *End = strchr(Pos, Quote);
+    if (!End)
+      return std::make_pair(Result, Source);
+    Result = std::string(Pos, End - Pos);
+    Pos = End + 1;
+  } else {
+    int NameLength = strcspn(Pos, kDelimiters);
+    Result = std::string(Pos, NameLength);
+    Pos += NameLength;
+  }
+  return std::make_pair(Result, StringRef(Pos, Source.end() - Pos));
+}
+
 static bool parseCommand(StringRef BinaryName, bool IsAddr2Line,
                          StringRef InputString, Command &Cmd,
                          std::string &ModuleName, object::BuildID &BuildID,
@@ -152,7 +174,6 @@ static bool parseCommand(StringRef BinaryName, bool IsAddr2Line,
     Cmd = Command::Code;
   }
 
-  const char *Pos;
   // Skip delimiters and parse input filename (if needed).
   if (BinaryName.empty() && BuildID.empty()) {
     bool HasFilePrefix = false;
@@ -175,21 +196,9 @@ static bool parseCommand(StringRef BinaryName, bool IsAddr2Line,
     if (HasFilePrefix && HasBuildIDPrefix)
       return false;
 
-    Pos = InputString.data();
-    Pos += strspn(Pos, kDelimiters);
-    if (*Pos == '"' || *Pos == '\'') {
-      char Quote = *Pos;
-      Pos++;
-      const char *End = strchr(Pos, Quote);
-      if (!End)
-        return false;
-      ModuleName = std::string(Pos, End - Pos);
-      Pos = End + 1;
-    } else {
-      int NameLength = strcspn(Pos, kDelimiters);
-      ModuleName = std::string(Pos, NameLength);
-      Pos += NameLength;
-    }
+    std::tie(ModuleName, InputString) = getSpaceDelimitedWord(InputString);
+    if (ModuleName.empty())
+      return false;
     if (HasBuildIDPrefix) {
       BuildID = parseBuildID(ModuleName);
       if (BuildID.empty())
@@ -197,13 +206,13 @@ static bool parseCommand(StringRef BinaryName, bool IsAddr2Line,
       ModuleName.clear();
     }
   } else {
-    Pos = InputString.data();
     ModuleName = BinaryName.str();
   }
+
   // Skip delimiters and parse module offset.
-  Pos += strspn(Pos, kDelimiters);
-  int OffsetLength = strcspn(Pos, kDelimiters);
-  StringRef Offset(Pos, OffsetLength);
+  InputString = InputString.ltrim();
+  int OffsetLength = InputString.find_first_of(kDelimiters);
+  StringRef Offset = InputString.substr(0, OffsetLength);
   // GNU addr2line assumes the offset is hexadecimal and allows a redundant
   // "0x" or "0X" prefix; do the same for compatibility.
   if (IsAddr2Line)
