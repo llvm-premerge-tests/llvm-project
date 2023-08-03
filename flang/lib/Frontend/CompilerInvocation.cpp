@@ -153,6 +153,63 @@ static bool parseDebugArgs(Fortran::frontend::CodeGenOptions &opts,
   return true;
 }
 
+/// Parse a remark command line argument. It may be missing, disabled/enabled by
+/// '-R[no-]group' or specified with a regular expression by '-Rgroup=regexp'.
+/// On top of that, it can be disabled/enabled globally by '-R[no-]everything'.
+static CodeGenOptions::OptRemark
+parseOptimizationRemark(clang::DiagnosticsEngine &Diags,
+                        llvm::opt::ArgList &Args, llvm::opt::OptSpecifier OptEQ,
+                        llvm::StringRef Name) {
+  CodeGenOptions::OptRemark Result;
+
+  auto InitializeResultPattern = [&Diags, &Args,
+                                  &Result](const llvm::opt::Arg *A,
+                                           llvm::StringRef Pattern) {
+    Result.Pattern = Pattern.str();
+
+    std::string RegexError;
+    Result.Regex = std::make_shared<llvm::Regex>(Result.Pattern);
+    if (!Result.Regex->isValid(RegexError)) {
+      Diags.Report(clang::diag::err_drv_optimization_remark_pattern)
+          << RegexError << A->getAsString(Args);
+      return false;
+    }
+
+    return true;
+  };
+
+  for (llvm::opt::Arg *A : Args) {
+    if (A->getOption().matches(clang::driver::options::OPT_R_Joined)) {
+      llvm::StringRef Value = A->getValue();
+
+      if (Value == Name)
+        Result.Kind = CodeGenOptions::RK_Enabled;
+      else if (Value == "everything")
+        Result.Kind = CodeGenOptions::RK_EnabledEverything;
+      else if (Value.split('-') == std::make_pair(llvm::StringRef("no"), Name))
+        Result.Kind = CodeGenOptions::RK_Disabled;
+      else if (Value == "no-everything")
+        Result.Kind = CodeGenOptions::RK_DisabledEverything;
+      else
+        continue;
+
+      if (Result.Kind == CodeGenOptions::RK_Disabled ||
+          Result.Kind == CodeGenOptions::RK_DisabledEverything) {
+        Result.Pattern = "";
+        Result.Regex = nullptr;
+      } else {
+        InitializeResultPattern(A, ".*");
+      }
+    } else if (A->getOption().matches(OptEQ)) {
+      Result.Kind = CodeGenOptions::RK_WithPattern;
+      if (!InitializeResultPattern(A, A->getValue()))
+        return CodeGenOptions::OptRemark();
+    }
+  }
+
+  return Result;
+}
+
 static void parseCodeGenArgs(Fortran::frontend::CodeGenOptions &opts,
                              llvm::opt::ArgList &args,
                              clang::DiagnosticsEngine &diags) {
@@ -194,13 +251,42 @@ static void parseCodeGenArgs(Fortran::frontend::CodeGenOptions &opts,
           args.getLastArg(clang::driver::options::OPT_opt_record_file))
     opts.OptRecordFile = a->getValue();
 
-  if (const llvm::opt::Arg *a =
-          args.getLastArg(clang::driver::options::OPT_opt_record_format))
-    opts.OptRecordFormat = a->getValue();
+  bool needLocTracking = false;
+
+  if (!opts.OptRecordFile.empty())
+    needLocTracking = true;
 
   if (const llvm::opt::Arg *a =
-          args.getLastArg(clang::driver::options::OPT_opt_record_passes))
+          args.getLastArg(clang::driver::options::OPT_opt_record_passes)) {
     opts.OptRecordPasses = a->getValue();
+    needLocTracking = true;
+  }
+
+  if (const llvm::opt::Arg *a =
+          args.getLastArg(clang::driver::options::OPT_opt_record_format)) {
+    opts.OptRecordFormat = a->getValue();
+    needLocTracking = true;
+  }
+
+  opts.OptimizationRemark = parseOptimizationRemark(
+      diags, args, clang::driver::options::OPT_Rpass_EQ, "pass");
+
+  opts.OptimizationRemarkMissed = parseOptimizationRemark(
+      diags, args, clang::driver::options::OPT_Rpass_missed_EQ, "pass-missed");
+
+  opts.OptimizationRemarkAnalysis = parseOptimizationRemark(
+      diags, args, clang::driver::options::OPT_Rpass_analysis_EQ,
+      "pass-analysis");
+
+  needLocTracking |= opts.OptimizationRemark.hasValidPattern() ||
+                     opts.OptimizationRemarkMissed.hasValidPattern() ||
+                     opts.OptimizationRemarkAnalysis.hasValidPattern();
+
+  // If the user requested a flag that requires source locations available in
+  // the backend, make sure that the backend tracks source location information.
+  if (needLocTracking &&
+      opts.getDebugInfo() == llvm::codegenoptions::NoDebugInfo)
+    opts.setDebugInfo(llvm::codegenoptions::LocTrackingOnly);
 
   if (auto *a = args.getLastArg(clang::driver::options::OPT_save_temps_EQ))
     opts.SaveTempsDir = a->getValue();
@@ -903,6 +989,28 @@ static bool parseFloatingPointArgs(CompilerInvocation &invoc,
   return true;
 }
 
+static void addDiagnosticArgs(const llvm::opt::ArgList &Args,
+                              llvm::opt::OptSpecifier Group,
+                              llvm::opt::OptSpecifier GroupWithValue,
+                              std::vector<std::string> &Diagnostics) {
+  for (auto *A : Args.filtered(Group)) {
+    if (A->getOption().getKind() == llvm::opt::Option::FlagClass) {
+      // The argument is a pure flag (such as OPT_Wall or OPT_Wdeprecated). Add
+      // its name (minus the "W" or "R" at the beginning) to the diagnostics.
+      Diagnostics.push_back(
+          std::string(A->getOption().getName().drop_front(1)));
+    } else if (A->getOption().matches(GroupWithValue)) {
+      // This is -Wfoo= or -Rfoo=, where foo is the name of the diagnostic
+      // group. Add only the group name to the diagnostics.
+      Diagnostics.push_back(
+          std::string(A->getOption().getName().drop_front(1).rtrim("=-")));
+    } else {
+      // Otherwise, add its value (for OPT_W_Joined and similar).
+      Diagnostics.push_back(A->getValue());
+    }
+  }
+}
+
 bool CompilerInvocation::createFromArgs(
     CompilerInvocation &res, llvm::ArrayRef<const char *> commandLineArgs,
     clang::DiagnosticsEngine &diags, const char *argv0) {
@@ -953,6 +1061,10 @@ bool CompilerInvocation::createFromArgs(
   if (args.hasArg(clang::driver::options::OPT_flang_experimental_polymorphism)) {
     res.loweringOpts.setPolymorphicTypeImpl(true);
   }
+
+  addDiagnosticArgs(args, clang::driver::options::OPT_R_Group,
+                    clang::driver::options::OPT_R_value_Group,
+                    res.getDiagnosticOpts().Remarks);
 
   success &= parseFrontendArgs(res.getFrontendOpts(), args, diags);
   parseTargetArgs(res.getTargetOpts(), args);
