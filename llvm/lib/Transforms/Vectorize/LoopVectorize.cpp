@@ -3914,7 +3914,7 @@ void InnerLoopVectorizer::fixReduction(VPReductionPHIRecipe *PhiR,
   // a Select choosing between the vectorized LoopExitInst and vectorized Phi,
   // instead of the former. For an inloop reduction the reduction will already
   // be predicated, and does not need to be handled here.
-  if (Cost->foldTailByMasking() && !PhiR->isInLoop()) {
+  if (PhiR->getParent()->getPlan()->hasTailFolded() && !PhiR->isInLoop()) {
     for (unsigned Part = 0; Part < UF; ++Part) {
       Value *VecLoopExitInst = State.get(LoopExitInstDef, Part);
       SelectInst *Sel = nullptr;
@@ -9264,7 +9264,7 @@ void LoopVectorizationPlanner::adjustRecipesForReductions(
   // If tail is folded by masking, introduce selects between the phi
   // and the live-out instruction of each reduction, at the beginning of the
   // dedicated latch block.
-  if (CM.foldTailByMasking()) {
+  if (Plan->hasTailFolded()) {
     Builder.setInsertPoint(LatchVPBB, LatchVPBB->begin());
     for (VPRecipeBase &R :
          Plan->getVectorLoopRegion()->getEntryBasicBlock()->phis()) {

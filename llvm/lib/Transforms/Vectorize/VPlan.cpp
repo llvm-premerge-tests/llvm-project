@@ -938,6 +938,32 @@ void VPlan::addLiveOut(PHINode *PN, VPValue *V) {
   LiveOuts.insert({PN, new VPLiveOut(PN, V)});
 }
 
+bool VPlan::hasTailFolded() {
+  VPBasicBlock *HeaderVPBB = getVectorLoopRegion()->getEntryBasicBlock();
+  return any_of(*HeaderVPBB, [this](VPRecipeBase &R) {
+    // A widened canonical IV or active-lane-mask PHI imply the tail being
+    // folded.
+    if (isa<VPWidenCanonicalIVRecipe>(&R) || isa<VPActiveLaneMaskPHIRecipe>(&R))
+      return true;
+
+    auto *VPI = dyn_cast<VPInstruction>(&R);
+    if (!VPI)
+      return false;
+    if (VPI->getOpcode() == VPInstruction::ActiveLaneMask)
+      return true;
+    if (VPI->getOpcode() != VPInstruction::ICmpULE)
+      return false;
+    auto IsWidenCanonicalIV = [](const VPRecipeBase &R) {
+      if (auto *Ind = dyn_cast<VPWidenIntOrFpInductionRecipe>(&R))
+        return Ind->isCanonical();
+      return isa<VPWidenCanonicalIVRecipe>(&R);
+    };
+    if (IsWidenCanonicalIV(*VPI->getOperand(0)->getDefiningRecipe()) &&
+        VPI->getOperand(1) == getOrCreateBackedgeTakenCount())
+      return true;
+  });
+}
+
 void VPlan::updateDominatorTree(DominatorTree *DT, BasicBlock *LoopHeaderBB,
                                 BasicBlock *LoopLatchBB,
                                 BasicBlock *LoopExitBB) {

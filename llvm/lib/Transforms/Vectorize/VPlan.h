@@ -2653,6 +2653,9 @@ public:
   VPBasicBlock *getPreheader() { return Preheader; }
   const VPBasicBlock *getPreheader() const { return Preheader; }
 
+  /// Returns true if the tail loop is folded in the VPlan.
+  bool hasTailFolded();
+
 private:
   /// Add to the given dominator tree the header block and every new basic block
   /// that was created between it and the latch block, inclusive.
