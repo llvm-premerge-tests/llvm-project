@@ -28,7 +28,6 @@ TaskDescriptorTy *__kmpc_omp_task_alloc(IdentTy *, int32_t, int32_t,
                                         size_t TaskSizeInclPrivateValues,
                                         size_t SharedValuesSize,
                                         TaskFnTy TaskFn) {
-  FunctionTracingRAII();
   auto TaskSizeInclPrivateValuesPadded =
       utils::roundUp(TaskSizeInclPrivateValues, uint64_t(sizeof(void *)));
   auto TaskSizeTotal = TaskSizeInclPrivateValuesPadded + SharedValuesSize;
@@ -43,14 +42,12 @@ TaskDescriptorTy *__kmpc_omp_task_alloc(IdentTy *, int32_t, int32_t,
 
 int32_t __kmpc_omp_task(IdentTy *Loc, uint32_t TId,
                         TaskDescriptorTy *TaskDescriptor) {
-  FunctionTracingRAII();
   return __kmpc_omp_task_with_deps(Loc, TId, TaskDescriptor, 0, 0, 0, 0);
 }
 
 int32_t __kmpc_omp_task_with_deps(IdentTy *Loc, uint32_t TId,
                                   TaskDescriptorTy *TaskDescriptor, int32_t,
                                   void *, int32_t, void *) {
-  FunctionTracingRAII();
   state::DateEnvironmentRAII DERAII(Loc);
 
   TaskDescriptor->TaskFn(0, TaskDescriptor);
@@ -61,13 +58,11 @@ int32_t __kmpc_omp_task_with_deps(IdentTy *Loc, uint32_t TId,
 
 void __kmpc_omp_task_begin_if0(IdentTy *Loc, uint32_t TId,
                                TaskDescriptorTy *TaskDescriptor) {
-  FunctionTracingRAII();
   state::enterDataEnvironment(Loc);
 }
 
 void __kmpc_omp_task_complete_if0(IdentTy *Loc, uint32_t TId,
                                   TaskDescriptorTy *TaskDescriptor) {
-  FunctionTracingRAII();
   state::exitDataEnvironment();
 
   memory::freeGlobal(TaskDescriptor, "explicit task descriptor");
@@ -75,20 +70,17 @@ void __kmpc_omp_task_complete_if0(IdentTy *Loc, uint32_t TId,
 
 void __kmpc_omp_wait_deps(IdentTy *Loc, uint32_t TId, int32_t, void *, int32_t,
                           void *) {
-  FunctionTracingRAII();
 }
 
-void __kmpc_taskgroup(IdentTy *Loc, uint32_t TId) { FunctionTracingRAII(); }
+void __kmpc_taskgroup(IdentTy *Loc, uint32_t TId) {}
 
-void __kmpc_end_taskgroup(IdentTy *Loc, uint32_t TId) { FunctionTracingRAII(); }
+void __kmpc_end_taskgroup(IdentTy *Loc, uint32_t TId) {}
 
 int32_t __kmpc_omp_taskyield(IdentTy *Loc, uint32_t TId, int) {
-  FunctionTracingRAII();
   return 0;
 }
 
 int32_t __kmpc_omp_taskwait(IdentTy *Loc, uint32_t TId) {
-  FunctionTracingRAII();
   return 0;
 }
 
@@ -96,7 +88,6 @@ void __kmpc_taskloop(IdentTy *Loc, uint32_t TId,
                      TaskDescriptorTy *TaskDescriptor, int,
                      uint64_t *LowerBound, uint64_t *UpperBound, int64_t, int,
                      int32_t, uint64_t, void *) {
-  FunctionTracingRAII();
   // Skip task entirely if empty iteration space.
   if (*LowerBound > *UpperBound)
     return;

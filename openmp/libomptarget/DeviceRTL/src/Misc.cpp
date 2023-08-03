@@ -78,12 +78,10 @@ double getWTime() {
 
 extern "C" {
 int32_t __kmpc_cancellationpoint(IdentTy *, int32_t, int32_t) {
-  FunctionTracingRAII();
   return 0;
 }
 
 int32_t __kmpc_cancel(IdentTy *, int32_t, int32_t) {
-  FunctionTracingRAII();
   return 0;
 }
 
