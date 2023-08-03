@@ -120,6 +120,7 @@ bool rangeContainsExpansionsOrDirectives(SourceRange Range,
   SourceLocation Loc = Range.getBegin();
 
   while (Loc <= Range.getEnd()) {
+  //while (SM.isBeforeInTranslationUnit(Loc, Range.getEnd())) {
     if (Loc.isMacroID())
       return true;
 

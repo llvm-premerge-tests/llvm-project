@@ -134,6 +134,10 @@ New check aliases
 Changes in existing checks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+- Improved :doc: `modernize-avoid-c-arrays
+  <clang-tidy/checks/modernize/avoid-c-arrays>` check to provide fix-its for
+  C-style arrays declared in function bodies.
+
 Removed checks
 ^^^^^^^^^^^^^^
 

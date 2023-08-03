@@ -10,8 +10,8 @@ modernize-avoid-c-arrays
 Finds C-style array types and recommend to use ``std::array<>`` /
 ``std::vector<>``. All types of C arrays are diagnosed.
 
-However, fix-it are potentially dangerous in header files and are therefore not
-emitted right now.
+Fix-its are generated for C-style arrays in function bodies. Fix-its are not
+provided in other contexts (e.g., class member variables).
 
 .. code:: c++
 
@@ -33,6 +33,17 @@ emitted right now.
   array<int[4], 2> d; // warning: do not declare C-style arrays, use std::array<> instead
 
   using k = int[4]; // warning: do not declare C-style arrays, use std::array<> instead
+
+  void somefunction() {
+    int a[10]; // warning: do not declare C-style arrays, use std::array<> instead
+               // replaced with 'std::array<int, 10> a'
+    int v = a[0];
+    int* ptr = a; // replaced with 'int* ptr = a.begin()'
+
+    int a2[] = {1,2,3}; // warning: do not declare C-style arrays, use std::array<> instead
+                        // In C++14 and older, replaced with 'std::array<int, 3> a2 = {{1,2,3}}'
+                        // In C++17 and newer, replaced with 'std::array a2 = {1,2,3}'
+  }
 
 
 However, the ``extern "C"`` code is ignored, since it is common to share
@@ -58,3 +69,11 @@ such headers between C code, and C++ code.
 Similarly, the ``main()`` function is ignored. Its second and third parameters
 can be either ``char* argv[]`` or ``char** argv``, but cannot be
 ``std::array<>``.
+
+Options
+-------
+
+.. option:: IncludeStyle
+
+   A string specifying which include-style is used, `llvm` or `google`. Default
+   is `llvm`.

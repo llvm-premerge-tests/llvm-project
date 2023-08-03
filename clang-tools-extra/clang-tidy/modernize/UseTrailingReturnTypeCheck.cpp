@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "UseTrailingReturnTypeCheck.h"
+#include "../utils/TypeUtils.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
@@ -20,6 +21,9 @@
 using namespace clang::ast_matchers;
 
 namespace clang::tidy::modernize {
+
+using utils::type::ClassifiedToken;
+
 namespace {
 struct UnqualNameVisitor : public RecursiveASTVisitor<UnqualNameVisitor> {
 public:
@@ -167,100 +171,6 @@ SourceLocation UseTrailingReturnTypeCheck::findTrailingReturnTypeSourceLocation(
   return Result;
 }
 
-static bool isCvr(Token T) {
-  return T.isOneOf(tok::kw_const, tok::kw_volatile, tok::kw_restrict);
-}
-
-static bool isSpecifier(Token T) {
-  return T.isOneOf(tok::kw_constexpr, tok::kw_inline, tok::kw_extern,
-                   tok::kw_static, tok::kw_friend, tok::kw_virtual);
-}
-
-static std::optional<ClassifiedToken>
-classifyToken(const FunctionDecl &F, Preprocessor &PP, Token Tok) {
-  ClassifiedToken CT;
-  CT.T = Tok;
-  CT.IsQualifier = true;
-  CT.IsSpecifier = true;
-  bool ContainsQualifiers = false;
-  bool ContainsSpecifiers = false;
-  bool ContainsSomethingElse = false;
-
-  Token End;
-  End.startToken();
-  End.setKind(tok::eof);
-  SmallVector<Token, 2> Stream{Tok, End};
-
-  // FIXME: do not report these token to Preprocessor.TokenWatcher.
-  PP.EnterTokenStream(Stream, false, /*IsReinject=*/false);
-  while (true) {
-    Token T;
-    PP.Lex(T);
-    if (T.is(tok::eof))
-      break;
-
-    bool Qual = isCvr(T);
-    bool Spec = isSpecifier(T);
-    CT.IsQualifier &= Qual;
-    CT.IsSpecifier &= Spec;
-    ContainsQualifiers |= Qual;
-    ContainsSpecifiers |= Spec;
-    ContainsSomethingElse |= !Qual && !Spec;
-  }
-
-  // If the Token/Macro contains more than one type of tokens, we would need
-  // to split the macro in order to move parts to the trailing return type.
-  if (ContainsQualifiers + ContainsSpecifiers + ContainsSomethingElse > 1)
-    return std::nullopt;
-
-  return CT;
-}
-
-std::optional<SmallVector<ClassifiedToken, 8>>
-UseTrailingReturnTypeCheck::classifyTokensBeforeFunctionName(
-    const FunctionDecl &F, const ASTContext &Ctx, const SourceManager &SM,
-    const LangOptions &LangOpts) {
-  SourceLocation BeginF = expandIfMacroId(F.getBeginLoc(), SM);
-  SourceLocation BeginNameF = expandIfMacroId(F.getLocation(), SM);
-
-  // Create tokens for everything before the name of the function.
-  std::pair<FileID, unsigned> Loc = SM.getDecomposedLoc(BeginF);
-  StringRef File = SM.getBufferData(Loc.first);
-  const char *TokenBegin = File.data() + Loc.second;
-  Lexer Lexer(SM.getLocForStartOfFile(Loc.first), LangOpts, File.begin(),
-              TokenBegin, File.end());
-  Token T;
-  SmallVector<ClassifiedToken, 8> ClassifiedTokens;
-  while (!Lexer.LexFromRawLexer(T) &&
-         SM.isBeforeInTranslationUnit(T.getLocation(), BeginNameF)) {
-    if (T.is(tok::raw_identifier)) {
-      IdentifierInfo &Info = Ctx.Idents.get(
-          StringRef(SM.getCharacterData(T.getLocation()), T.getLength()));
-
-      if (Info.hasMacroDefinition()) {
-        const MacroInfo *MI = PP->getMacroInfo(&Info);
-        if (!MI || MI->isFunctionLike()) {
-          // Cannot handle function style macros.
-          diag(F.getLocation(), Message);
-          return std::nullopt;
-        }
-      }
-
-      T.setIdentifierInfo(&Info);
-      T.setKind(Info.getTokenID());
-    }
-
-    if (std::optional<ClassifiedToken> CT = classifyToken(F, *PP, T))
-      ClassifiedTokens.push_back(*CT);
-    else {
-      diag(F.getLocation(), Message);
-      return std::nullopt;
-    }
-  }
-
-  return ClassifiedTokens;
-}
-
 static bool hasAnyNestedLocalQualifiers(QualType Type) {
   bool Result = Type.hasLocalQualifiers();
   if (Type->isPointerType())
@@ -293,9 +203,11 @@ SourceRange UseTrailingReturnTypeCheck::findReturnTypeAndCVSourceRange(
 
   // Include qualifiers to the left and right of the return type.
   std::optional<SmallVector<ClassifiedToken, 8>> MaybeTokens =
-      classifyTokensBeforeFunctionName(F, Ctx, SM, LangOpts);
-  if (!MaybeTokens)
+      utils::type::classifyDeclTypeTokens(*PP, F, Ctx);
+  if (!MaybeTokens) {
+    diag(F.getLocation(), Message);
     return {};
+  }
   const SmallVector<ClassifiedToken, 8> &Tokens = *MaybeTokens;
 
   ReturnTypeRange.setBegin(expandIfMacroId(ReturnTypeRange.getBegin(), SM));
@@ -345,9 +257,11 @@ void UseTrailingReturnTypeCheck::keepSpecifiers(
   // Tokenize return type. If it contains macros which contain a mix of
   // qualifiers, specifiers and types, give up.
   std::optional<SmallVector<ClassifiedToken, 8>> MaybeTokens =
-      classifyTokensBeforeFunctionName(F, Ctx, SM, LangOpts);
-  if (!MaybeTokens)
+      utils::type::classifyDeclTypeTokens(*PP, F, Ctx);
+  if (!MaybeTokens) {
+    diag(F.getLocation(), Message);
     return;
+  }
 
   // Find specifiers, remove them from the return type, add them to 'auto'.
   unsigned int ReturnTypeBeginOffset =

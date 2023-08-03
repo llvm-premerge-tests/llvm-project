@@ -15,12 +15,6 @@
 
 namespace clang::tidy::modernize {
 
-struct ClassifiedToken {
-  Token T;
-  bool IsQualifier;
-  bool IsSpecifier;
-};
-
 /// Rewrites function signatures to use a trailing return type.
 ///
 /// For the user-facing documentation see:
@@ -43,10 +37,6 @@ private:
   SourceLocation findTrailingReturnTypeSourceLocation(
       const FunctionDecl &F, const FunctionTypeLoc &FTL, const ASTContext &Ctx,
       const SourceManager &SM, const LangOptions &LangOpts);
-  std::optional<SmallVector<ClassifiedToken, 8>>
-  classifyTokensBeforeFunctionName(const FunctionDecl &F, const ASTContext &Ctx,
-                                   const SourceManager &SM,
-                                   const LangOptions &LangOpts);
   SourceRange findReturnTypeAndCVSourceRange(const FunctionDecl &F,
                                              const TypeLoc &ReturnLoc,
                                              const ASTContext &Ctx,
