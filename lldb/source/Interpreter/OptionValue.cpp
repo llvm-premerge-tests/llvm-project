@@ -15,249 +15,310 @@
 using namespace lldb;
 using namespace lldb_private;
 
+
+OptionValue::OptionValue(const OptionValue &other) {
+  std::lock_guard<std::recursive_mutex> lock(other.m_mutex);
+
+  m_parent_wp = other.m_parent_wp;
+  m_callback = other.m_callback;
+  m_value_was_set = other.m_value_was_set;
+
+}
+
+OptionValue& OptionValue::operator=(const OptionValue &other) {
+  std::scoped_lock lock(m_mutex, other.m_mutex);
+
+  m_parent_wp = other.m_parent_wp;
+  m_callback = other.m_callback;
+  m_value_was_set = other.m_value_was_set;
+
+  return *this;
+}
+
 Status OptionValue::SetSubValue(const ExecutionContext *exe_ctx,
                                 VarSetOperationType op, llvm::StringRef name,
                                 llvm::StringRef value) {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   Status error;
   error.SetErrorString("SetSubValue is not supported");
   return error;
 }
 
 OptionValueBoolean *OptionValue::GetAsBoolean() {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeBoolean)
     return static_cast<OptionValueBoolean *>(this);
   return nullptr;
 }
 
 const OptionValueBoolean *OptionValue::GetAsBoolean() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeBoolean)
     return static_cast<const OptionValueBoolean *>(this);
   return nullptr;
 }
 
 const OptionValueChar *OptionValue::GetAsChar() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeChar)
     return static_cast<const OptionValueChar *>(this);
   return nullptr;
 }
 
 OptionValueChar *OptionValue::GetAsChar() {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeChar)
     return static_cast<OptionValueChar *>(this);
   return nullptr;
 }
 
 OptionValueFileSpec *OptionValue::GetAsFileSpec() {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeFileSpec)
     return static_cast<OptionValueFileSpec *>(this);
   return nullptr;
 }
 
 const OptionValueFileSpec *OptionValue::GetAsFileSpec() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeFileSpec)
     return static_cast<const OptionValueFileSpec *>(this);
   return nullptr;
 }
 
 OptionValueFileSpecList *OptionValue::GetAsFileSpecList() {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeFileSpecList)
     return static_cast<OptionValueFileSpecList *>(this);
   return nullptr;
 }
 
 const OptionValueFileSpecList *OptionValue::GetAsFileSpecList() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeFileSpecList)
     return static_cast<const OptionValueFileSpecList *>(this);
   return nullptr;
 }
 
 OptionValueArch *OptionValue::GetAsArch() {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeArch)
     return static_cast<OptionValueArch *>(this);
   return nullptr;
 }
 
 const OptionValueArch *OptionValue::GetAsArch() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeArch)
     return static_cast<const OptionValueArch *>(this);
   return nullptr;
 }
 
 OptionValueArray *OptionValue::GetAsArray() {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeArray)
     return static_cast<OptionValueArray *>(this);
   return nullptr;
 }
 
 const OptionValueArray *OptionValue::GetAsArray() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeArray)
     return static_cast<const OptionValueArray *>(this);
   return nullptr;
 }
 
 OptionValueArgs *OptionValue::GetAsArgs() {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeArgs)
     return static_cast<OptionValueArgs *>(this);
   return nullptr;
 }
 
 const OptionValueArgs *OptionValue::GetAsArgs() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeArgs)
     return static_cast<const OptionValueArgs *>(this);
   return nullptr;
 }
 
 OptionValueDictionary *OptionValue::GetAsDictionary() {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeDictionary)
     return static_cast<OptionValueDictionary *>(this);
   return nullptr;
 }
 
 const OptionValueDictionary *OptionValue::GetAsDictionary() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeDictionary)
     return static_cast<const OptionValueDictionary *>(this);
   return nullptr;
 }
 
 OptionValueEnumeration *OptionValue::GetAsEnumeration() {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeEnum)
     return static_cast<OptionValueEnumeration *>(this);
   return nullptr;
 }
 
 const OptionValueEnumeration *OptionValue::GetAsEnumeration() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeEnum)
     return static_cast<const OptionValueEnumeration *>(this);
   return nullptr;
 }
 
 OptionValueFormat *OptionValue::GetAsFormat() {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeFormat)
     return static_cast<OptionValueFormat *>(this);
   return nullptr;
 }
 
 const OptionValueFormat *OptionValue::GetAsFormat() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeFormat)
     return static_cast<const OptionValueFormat *>(this);
   return nullptr;
 }
 
 OptionValueLanguage *OptionValue::GetAsLanguage() {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeLanguage)
     return static_cast<OptionValueLanguage *>(this);
   return nullptr;
 }
 
 const OptionValueLanguage *OptionValue::GetAsLanguage() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeLanguage)
     return static_cast<const OptionValueLanguage *>(this);
   return nullptr;
 }
 
 OptionValueFormatEntity *OptionValue::GetAsFormatEntity() {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeFormatEntity)
     return static_cast<OptionValueFormatEntity *>(this);
   return nullptr;
 }
 
 const OptionValueFormatEntity *OptionValue::GetAsFormatEntity() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeFormatEntity)
     return static_cast<const OptionValueFormatEntity *>(this);
   return nullptr;
 }
 
 OptionValuePathMappings *OptionValue::GetAsPathMappings() {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypePathMap)
     return static_cast<OptionValuePathMappings *>(this);
   return nullptr;
 }
 
 const OptionValuePathMappings *OptionValue::GetAsPathMappings() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypePathMap)
     return static_cast<const OptionValuePathMappings *>(this);
   return nullptr;
 }
 
 OptionValueProperties *OptionValue::GetAsProperties() {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeProperties)
     return static_cast<OptionValueProperties *>(this);
   return nullptr;
 }
 
 const OptionValueProperties *OptionValue::GetAsProperties() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeProperties)
     return static_cast<const OptionValueProperties *>(this);
   return nullptr;
 }
 
 OptionValueRegex *OptionValue::GetAsRegex() {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeRegex)
     return static_cast<OptionValueRegex *>(this);
   return nullptr;
 }
 
 const OptionValueRegex *OptionValue::GetAsRegex() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeRegex)
     return static_cast<const OptionValueRegex *>(this);
   return nullptr;
 }
 
 OptionValueSInt64 *OptionValue::GetAsSInt64() {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeSInt64)
     return static_cast<OptionValueSInt64 *>(this);
   return nullptr;
 }
 
 const OptionValueSInt64 *OptionValue::GetAsSInt64() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeSInt64)
     return static_cast<const OptionValueSInt64 *>(this);
   return nullptr;
 }
 
 OptionValueString *OptionValue::GetAsString() {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeString)
     return static_cast<OptionValueString *>(this);
   return nullptr;
 }
 
 const OptionValueString *OptionValue::GetAsString() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeString)
     return static_cast<const OptionValueString *>(this);
   return nullptr;
 }
 
 OptionValueUInt64 *OptionValue::GetAsUInt64() {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeUInt64)
     return static_cast<OptionValueUInt64 *>(this);
   return nullptr;
 }
 
 const OptionValueUInt64 *OptionValue::GetAsUInt64() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeUInt64)
     return static_cast<const OptionValueUInt64 *>(this);
   return nullptr;
 }
 
 OptionValueUUID *OptionValue::GetAsUUID() {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeUUID)
     return static_cast<OptionValueUUID *>(this);
   return nullptr;
 }
 
 const OptionValueUUID *OptionValue::GetAsUUID() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (GetType() == OptionValue::eTypeUUID)
     return static_cast<const OptionValueUUID *>(this);
   return nullptr;
 }
 
 std::optional<bool> OptionValue::GetBooleanValue() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (const OptionValueBoolean *option_value = GetAsBoolean())
     return option_value->GetCurrentValue();
   return {};
 }
 
 bool OptionValue::SetBooleanValue(bool new_value) {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (OptionValueBoolean *option_value = GetAsBoolean()) {
     option_value->SetCurrentValue(new_value);
     return true;
@@ -266,12 +327,14 @@ bool OptionValue::SetBooleanValue(bool new_value) {
 }
 
 std::optional<char> OptionValue::GetCharValue() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (const OptionValueChar *option_value = GetAsChar())
     return option_value->GetCurrentValue();
   return {};
 }
 
 bool OptionValue::SetCharValue(char new_value) {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (OptionValueChar *option_value = GetAsChar()) {
     option_value->SetCurrentValue(new_value);
     return true;
@@ -280,12 +343,14 @@ bool OptionValue::SetCharValue(char new_value) {
 }
 
 std::optional<int64_t> OptionValue::GetEnumerationValue() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (const OptionValueEnumeration *option_value = GetAsEnumeration())
     return option_value->GetCurrentValue();
   return {};
 }
 
 bool OptionValue::SetEnumerationValue(int64_t value) {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (OptionValueEnumeration *option_value = GetAsEnumeration()) {
     option_value->SetCurrentValue(value);
     return true;
@@ -294,12 +359,14 @@ bool OptionValue::SetEnumerationValue(int64_t value) {
 }
 
 std::optional<FileSpec> OptionValue::GetFileSpecValue() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (const OptionValueFileSpec *option_value = GetAsFileSpec())
     return option_value->GetCurrentValue();
   return {};
 }
 
 bool OptionValue::SetFileSpecValue(FileSpec file_spec) {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (OptionValueFileSpec *option_value = GetAsFileSpec()) {
     option_value->SetCurrentValue(file_spec, false);
     return true;
@@ -308,6 +375,7 @@ bool OptionValue::SetFileSpecValue(FileSpec file_spec) {
 }
 
 bool OptionValue::AppendFileSpecValue(FileSpec file_spec) {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (OptionValueFileSpecList *option_value = GetAsFileSpecList()) {
     option_value->AppendCurrentValue(file_spec);
     return true;
@@ -316,6 +384,7 @@ bool OptionValue::AppendFileSpecValue(FileSpec file_spec) {
 }
 
 std::optional<FileSpecList> OptionValue::GetFileSpecListValue() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (const OptionValueFileSpecList *option_value = GetAsFileSpecList())
     return option_value->GetCurrentValue();
   return {};
@@ -328,6 +397,7 @@ std::optional<lldb::Format> OptionValue::GetFormatValue() const {
 }
 
 bool OptionValue::SetFormatValue(lldb::Format new_value) {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (OptionValueFormat *option_value = GetAsFormat()) {
     option_value->SetCurrentValue(new_value);
     return true;
@@ -336,12 +406,14 @@ bool OptionValue::SetFormatValue(lldb::Format new_value) {
 }
 
 std::optional<lldb::LanguageType> OptionValue::GetLanguageValue() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (const OptionValueLanguage *option_value = GetAsLanguage())
     return option_value->GetCurrentValue();
   return {};
 }
 
 bool OptionValue::SetLanguageValue(lldb::LanguageType new_language) {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (OptionValueLanguage *option_value = GetAsLanguage()) {
     option_value->SetCurrentValue(new_language);
     return true;
@@ -350,24 +422,30 @@ bool OptionValue::SetLanguageValue(lldb::LanguageType new_language) {
 }
 
 const FormatEntity::Entry *OptionValue::GetFormatEntity() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
+
   if (const OptionValueFormatEntity *option_value = GetAsFormatEntity())
     return &option_value->GetCurrentValue();
   return nullptr;
 }
 
 const RegularExpression *OptionValue::GetRegexValue() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
+
   if (const OptionValueRegex *option_value = GetAsRegex())
     return option_value->GetCurrentValue();
   return nullptr;
 }
 
 std::optional<int64_t> OptionValue::GetSInt64Value() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (const OptionValueSInt64 *option_value = GetAsSInt64())
     return option_value->GetCurrentValue();
   return {};
 }
 
 bool OptionValue::SetSInt64Value(int64_t new_value) {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (OptionValueSInt64 *option_value = GetAsSInt64()) {
     option_value->SetCurrentValue(new_value);
     return true;
@@ -376,12 +454,14 @@ bool OptionValue::SetSInt64Value(int64_t new_value) {
 }
 
 std::optional<llvm::StringRef> OptionValue::GetStringValue() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (const OptionValueString *option_value = GetAsString())
     return option_value->GetCurrentValueAsRef();
   return {};
 }
 
 bool OptionValue::SetStringValue(llvm::StringRef new_value) {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (OptionValueString *option_value = GetAsString()) {
     option_value->SetCurrentValue(new_value);
     return true;
@@ -390,12 +470,14 @@ bool OptionValue::SetStringValue(llvm::StringRef new_value) {
 }
 
 std::optional<uint64_t> OptionValue::GetUInt64Value() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (const OptionValueUInt64 *option_value = GetAsUInt64())
     return option_value->GetCurrentValue();
   return {};
 }
 
 bool OptionValue::SetUInt64Value(uint64_t new_value) {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (OptionValueUInt64 *option_value = GetAsUInt64()) {
     option_value->SetCurrentValue(new_value);
     return true;
@@ -404,12 +486,14 @@ bool OptionValue::SetUInt64Value(uint64_t new_value) {
 }
 
 std::optional<UUID> OptionValue::GetUUIDValue() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (const OptionValueUUID *option_value = GetAsUUID())
     return option_value->GetCurrentValue();
   return {};
 }
 
 bool OptionValue::SetUUIDValue(const UUID &uuid) {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (OptionValueUUID *option_value = GetAsUUID()) {
     option_value->SetCurrentValue(uuid);
     return true;
@@ -418,12 +502,14 @@ bool OptionValue::SetUUIDValue(const UUID &uuid) {
 }
 
 std::optional<ArchSpec> OptionValue::GetArchSpecValue() const {
+  std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (const OptionValueArch *option_value = GetAsArch())
     return option_value->GetCurrentValue();
   return {};
 }
 
 bool OptionValue::SetArchSpecValue(ArchSpec arch_spec) {
+    std::lock_guard<std::recursive_mutex> lock(m_mutex);
   if (OptionValueArch *option_value = GetAsArch()) {
     option_value->SetCurrentValue(arch_spec, false);
     return true;
@@ -546,6 +632,7 @@ bool OptionValue::DumpQualifiedName(Stream &strm) const {
 }
 
 OptionValueSP OptionValue::DeepCopy(const OptionValueSP &new_parent) const {
+    std::lock_guard<std::recursive_mutex> lock(m_mutex);
   auto clone = Clone();
   clone->SetParent(new_parent);
   return clone;
