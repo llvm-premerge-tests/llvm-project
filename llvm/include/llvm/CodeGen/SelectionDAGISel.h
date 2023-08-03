@@ -295,7 +295,7 @@ public:
     llvm_unreachable("Tblgen should generate this!");
   }
 
-  void SelectCodeCommon(SDNode *NodeToMatch, const unsigned char *MatcherTable,
+  void SelectCodeCommon(SDNode *NodeToMatch, const unsigned short *MatcherTable,
                         unsigned TableSize);
 
   /// Return true if complex patterns for this target can mutate the

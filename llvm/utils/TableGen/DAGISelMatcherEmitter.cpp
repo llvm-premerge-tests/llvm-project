@@ -1142,7 +1142,7 @@ void llvm::EmitMatcherTable(Matcher *TheMatcher,
   OS << "  // Some target values are emitted as 2 bytes, TARGET_VAL handles\n";
   OS << "  // this.\n";
   OS << "  #define TARGET_VAL(X) X & 255, unsigned(X) >> 8\n";
-  OS << "  static const unsigned char MatcherTable[] = {\n";
+  OS << "  static const unsigned short MatcherTable[] = {\n";
   TotalSize = MatcherEmitter.EmitMatcherList(TheMatcher, 1, 0, OS);
   OS << "    0\n  }; // Total Array size is " << (TotalSize+1) << " bytes\n\n";
 
