@@ -34,6 +34,7 @@
 #include "clang/AST/LambdaCapture.h"
 #include "clang/AST/NestedNameSpecifier.h"
 #include "clang/AST/OperationKinds.h"
+#include "clang/AST/ParentMapContext.h"
 #include "clang/AST/Stmt.h"
 #include "clang/AST/StmtCXX.h"
 #include "clang/AST/StmtObjC.h"
@@ -5821,7 +5822,11 @@ ExpectedDecl ASTNodeImporter::VisitClassTemplateDecl(ClassTemplateDecl *D) {
       if (FoundTemplate) {
         if (!hasSameVisibilityContextAndLinkage(FoundTemplate, D))
           continue;
-
+        auto Parents = FoundDecl->getASTContext().getParents(*FoundDecl);
+        if (!Parents.empty() && nullptr != Parents.begin()->get<FriendDecl>() &&
+            FoundTemplate->getName() == D->getName() &&
+            !IsStructuralMatch(D, FoundTemplate, false))
+          continue;
         if (IsStructuralMatch(D, FoundTemplate)) {
           ClassTemplateDecl *TemplateWithDef =
               getTemplateDefinition(FoundTemplate);
