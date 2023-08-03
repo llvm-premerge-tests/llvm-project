@@ -319,7 +319,7 @@ def OMPMarkDeclareTargetPass
 
 def OMPFunctionFiltering : Pass<"omp-function-filtering"> {
   let summary = "Filters out functions intended for the host when compiling "
-                "for the device and vice versa.";
+                "for the device.";
   let constructor = "::fir::createOMPFunctionFilteringPass()";
   let dependentDialects = [
     "mlir::func::FuncDialect"
