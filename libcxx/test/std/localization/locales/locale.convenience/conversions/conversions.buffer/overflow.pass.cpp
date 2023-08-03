@@ -18,13 +18,15 @@
 
 // XFAIL: no-wide-characters
 
-#include <locale>
+#include "test_macros.h"
+
 #include <cassert>
 #include <codecvt>
-#include <fstream>
+#include <locale>
+#ifndef TEST_HAS_NO_FILESYSTEM
+#  include <fstream>
+#endif
 #include <sstream>
-
-#include "test_macros.h"
 
 struct test_buf
     : public std::wbuffer_convert<std::codecvt_utf8<wchar_t> >

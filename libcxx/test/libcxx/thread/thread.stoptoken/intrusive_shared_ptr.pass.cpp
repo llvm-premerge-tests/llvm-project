@@ -9,6 +9,8 @@
 
 // UNSUPPORTED: c++03, c++11, c++14, c++17
 
+// UNSUPPORTED: no-theads
+
 #include <__stop_token/intrusive_shared_ptr.h>
 #include <atomic>
 #include <cassert>
