@@ -769,9 +769,7 @@ void BackendConsumer::EmitOptimizationMessage(
   if (D.getHotness())
     MsgStream << " (hotness: " << *D.getHotness() << ")";
 
-  Diags.Report(Loc, DiagID)
-      << AddFlagValue(D.getPassName())
-      << MsgStream.str();
+  Diags.Report(Loc, DiagID) << AddFlagValue(D.getPassName()) << MsgStream.str();
 
   if (BadDebugInfo)
     // If we were not able to translate the file:line:col information

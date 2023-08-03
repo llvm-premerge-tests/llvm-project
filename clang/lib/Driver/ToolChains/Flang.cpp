@@ -516,6 +516,9 @@ void Flang::ConstructJob(Compilation &C, const JobAction &JA,
   // Add Codegen options
   addCodegenOptions(Args, CmdArgs);
 
+  // -rpass flags
+  Args.AddAllArgs(CmdArgs, options::OPT_R_Group);
+
   // Remarks can be enabled with any of the `-f.*optimization-record.*` flags.
   if (willEmitRemarks(Args))
     renderRemarksOptions(Args, CmdArgs, Input);
