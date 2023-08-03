@@ -771,9 +771,8 @@ bool DiagnosticIDs::ProcessDiag(DiagnosticsEngine &Diag) const {
   // diagnostics.
   if (Diag.FatalErrorOccurred) {
     if (DiagLevel >= DiagnosticIDs::Error &&
-        Diag.Client->IncludeInDiagnosticCounts()) {
+        Diag.Client->IncludeInDiagnosticCounts())
       ++Diag.NumErrors;
-    }
 
     return false;
   }
@@ -794,9 +793,8 @@ bool DiagnosticIDs::ProcessDiag(DiagnosticsEngine &Diag) const {
       Diag.UncompilableErrorOccurred = true;
 
     Diag.ErrorOccurred = true;
-    if (Diag.Client->IncludeInDiagnosticCounts()) {
+    if (Diag.Client->IncludeInDiagnosticCounts())
       ++Diag.NumErrors;
-    }
 
     // If we've emitted a lot of errors, emit a fatal error instead of it to
     // stop a flood of bogus errors.
