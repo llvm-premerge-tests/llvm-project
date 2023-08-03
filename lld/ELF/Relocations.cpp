@@ -904,7 +904,8 @@ static void addPltEntry(PltSection &plt, GotPltSection &gotPlt,
                 sym, 0, R_ABS});
 }
 
-static void addGotEntry(Symbol &sym) {
+namespace lld::elf {
+void addGotEntry(Symbol &sym) {
   in.got->addEntry(sym);
   uint64_t off = sym.getGotOffset();
 
@@ -922,6 +923,7 @@ static void addGotEntry(Symbol &sym) {
   else
     addRelativeReloc(*in.got, off, sym, 0, R_ABS, target->symbolicRel);
 }
+} // namespace lld::elf
 
 static void addTpOffsetGotEntry(Symbol &sym) {
   in.got->addEntry(sym);
