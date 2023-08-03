@@ -40,60 +40,57 @@ using namespace llvm::PatternMatch;
 namespace {
 
 static cl::opt<bool> WidenLoads(
-  "amdgpu-codegenprepare-widen-constant-loads",
-  cl::desc("Widen sub-dword constant address space loads in AMDGPUCodeGenPrepare"),
-  cl::ReallyHidden,
-  cl::init(false));
+    "amdgpu-codegenprepare-widen-constant-loads",
+    cl::desc(
+        "Widen sub-dword constant address space loads in AMDGPUCodeGenPrepare"),
+    cl::ReallyHidden, cl::init(false));
 
 static cl::opt<bool> Widen16BitOps(
-  "amdgpu-codegenprepare-widen-16-bit-ops",
-  cl::desc("Widen uniform 16-bit instructions to 32-bit in AMDGPUCodeGenPrepare"),
-  cl::ReallyHidden,
-  cl::init(true));
+    "amdgpu-codegenprepare-widen-16-bit-ops",
+    cl::desc(
+        "Widen uniform 16-bit instructions to 32-bit in AMDGPUCodeGenPrepare"),
+    cl::ReallyHidden, cl::init(true));
 
 static cl::opt<bool>
-    ScalarizeLargePHIs("amdgpu-codegenprepare-break-large-phis",
-                       cl::desc("Break large PHI nodes for DAGISel"),
-                       cl::ReallyHidden, cl::init(true));
+    BreakLargePHIs("amdgpu-codegenprepare-break-large-phis",
+                   cl::desc("Break large PHI nodes for DAGISel"),
+                   cl::ReallyHidden, cl::init(true));
 
 static cl::opt<bool>
-    ForceScalarizeLargePHIs("amdgpu-codegenprepare-force-break-large-phis",
-                            cl::desc("For testing purposes, always break large "
-                                     "PHIs even if it isn't profitable."),
-                            cl::ReallyHidden, cl::init(false));
+    ForceBreakLargePHIs("amdgpu-codegenprepare-force-break-large-phis",
+                        cl::desc("For testing purposes, always break large "
+                                 "PHIs even if it isn't profitable."),
+                        cl::ReallyHidden, cl::init(false));
 
-static cl::opt<unsigned> ScalarizeLargePHIsThreshold(
+static cl::opt<unsigned> BreakLargePHIsThreshold(
     "amdgpu-codegenprepare-break-large-phis-threshold",
     cl::desc("Minimum type size in bits for breaking large PHI nodes"),
     cl::ReallyHidden, cl::init(32));
 
 static cl::opt<bool> UseMul24Intrin(
-  "amdgpu-codegenprepare-mul24",
-  cl::desc("Introduce mul24 intrinsics in AMDGPUCodeGenPrepare"),
-  cl::ReallyHidden,
-  cl::init(true));
+    "amdgpu-codegenprepare-mul24",
+    cl::desc("Introduce mul24 intrinsics in AMDGPUCodeGenPrepare"),
+    cl::ReallyHidden, cl::init(true));
 
 // Legalize 64-bit division by using the generic IR expansion.
-static cl::opt<bool> ExpandDiv64InIR(
-  "amdgpu-codegenprepare-expand-div64",
-  cl::desc("Expand 64-bit division in AMDGPUCodeGenPrepare"),
-  cl::ReallyHidden,
-  cl::init(false));
+static cl::opt<bool>
+    ExpandDiv64InIR("amdgpu-codegenprepare-expand-div64",
+                    cl::desc("Expand 64-bit division in AMDGPUCodeGenPrepare"),
+                    cl::ReallyHidden, cl::init(false));
 
 // Leave all division operations as they are. This supersedes ExpandDiv64InIR
 // and is used for testing the legalizer.
 static cl::opt<bool> DisableIDivExpand(
-  "amdgpu-codegenprepare-disable-idiv-expansion",
-  cl::desc("Prevent expanding integer division in AMDGPUCodeGenPrepare"),
-  cl::ReallyHidden,
-  cl::init(false));
+    "amdgpu-codegenprepare-disable-idiv-expansion",
+    cl::desc("Prevent expanding integer division in AMDGPUCodeGenPrepare"),
+    cl::ReallyHidden, cl::init(false));
 
 // Disable processing of fdiv so we can better test the backend implementations.
 static cl::opt<bool> DisableFDivExpand(
-  "amdgpu-codegenprepare-disable-fdiv-expansion",
-  cl::desc("Prevent expanding floating point division in AMDGPUCodeGenPrepare"),
-  cl::ReallyHidden,
-  cl::init(false));
+    "amdgpu-codegenprepare-disable-fdiv-expansion",
+    cl::desc(
+        "Prevent expanding floating point division in AMDGPUCodeGenPrepare"),
+    cl::ReallyHidden, cl::init(false));
 
 class AMDGPUCodeGenPrepareImpl
     : public InstVisitor<AMDGPUCodeGenPrepareImpl, bool> {
@@ -216,27 +213,25 @@ public:
   /// we expand some divisions here, we need to perform this before obscuring.
   bool foldBinOpIntoSelect(BinaryOperator &I) const;
 
-  bool divHasSpecialOptimization(BinaryOperator &I,
-                                 Value *Num, Value *Den) const;
-  int getDivNumBits(BinaryOperator &I,
-                    Value *Num, Value *Den,
-                    unsigned AtLeast, bool Signed) const;
+  bool divHasSpecialOptimization(BinaryOperator &I, Value *Num,
+                                 Value *Den) const;
+  int getDivNumBits(BinaryOperator &I, Value *Num, Value *Den, unsigned AtLeast,
+                    bool Signed) const;
 
   /// Expands 24 bit div or rem.
-  Value* expandDivRem24(IRBuilder<> &Builder, BinaryOperator &I,
-                        Value *Num, Value *Den,
-                        bool IsDiv, bool IsSigned) const;
+  Value *expandDivRem24(IRBuilder<> &Builder, BinaryOperator &I, Value *Num,
+                        Value *Den, bool IsDiv, bool IsSigned) const;
 
-  Value *expandDivRem24Impl(IRBuilder<> &Builder, BinaryOperator &I,
-                            Value *Num, Value *Den, unsigned NumBits,
-                            bool IsDiv, bool IsSigned) const;
+  Value *expandDivRem24Impl(IRBuilder<> &Builder, BinaryOperator &I, Value *Num,
+                            Value *Den, unsigned NumBits, bool IsDiv,
+                            bool IsSigned) const;
 
   /// Expands 32 bit div or rem.
-  Value* expandDivRem32(IRBuilder<> &Builder, BinaryOperator &I,
-                        Value *Num, Value *Den) const;
+  Value *expandDivRem32(IRBuilder<> &Builder, BinaryOperator &I, Value *Num,
+                        Value *Den) const;
 
-  Value *shrinkDivRem64(IRBuilder<> &Builder, BinaryOperator &I,
-                        Value *Num, Value *Den) const;
+  Value *shrinkDivRem64(IRBuilder<> &Builder, BinaryOperator &I, Value *Num,
+                        Value *Den) const;
   void expandDivRem64(BinaryOperator &I) const;
 
   /// Widen a scalar load.
@@ -319,6 +314,8 @@ public:
 } // end anonymous namespace
 
 bool AMDGPUCodeGenPrepareImpl::run(Function &F) {
+  BreakPhiNodesCache.clear();
+
   bool MadeChange = false;
 
   Function::iterator NextBB;
@@ -364,12 +361,14 @@ Type *AMDGPUCodeGenPrepareImpl::getI32Ty(IRBuilder<> &B, const Type *T) const {
 
 bool AMDGPUCodeGenPrepareImpl::isSigned(const BinaryOperator &I) const {
   return I.getOpcode() == Instruction::AShr ||
-      I.getOpcode() == Instruction::SDiv || I.getOpcode() == Instruction::SRem;
+         I.getOpcode() == Instruction::SDiv ||
+         I.getOpcode() == Instruction::SRem;
 }
 
 bool AMDGPUCodeGenPrepareImpl::isSigned(const SelectInst &I) const {
-  return isa<ICmpInst>(I.getOperand(0)) ?
-      cast<ICmpInst>(I.getOperand(0))->isSigned() : false;
+  return isa<ICmpInst>(I.getOperand(0))
+             ? cast<ICmpInst>(I.getOperand(0))->isSigned()
+             : false;
 }
 
 bool AMDGPUCodeGenPrepareImpl::needsPromotionToI32(const Type *T) const {
@@ -440,8 +439,7 @@ bool AMDGPUCodeGenPrepareImpl::promoteUniformOpToI32(BinaryOperator &I) const {
 
   if (I.getOpcode() == Instruction::SDiv ||
       I.getOpcode() == Instruction::UDiv ||
-      I.getOpcode() == Instruction::SRem ||
-      I.getOpcode() == Instruction::URem)
+      I.getOpcode() == Instruction::SRem || I.getOpcode() == Instruction::URem)
     return false;
 
   IRBuilder<> Builder(&I);
@@ -491,7 +489,7 @@ bool AMDGPUCodeGenPrepareImpl::promoteUniformOpToI32(ICmpInst &I) const {
   Type *I32Ty = getI32Ty(Builder, I.getOperand(0)->getType());
   Value *ExtOp0 = nullptr;
   Value *ExtOp1 = nullptr;
-  Value *NewICmp  = nullptr;
+  Value *NewICmp = nullptr;
 
   if (I.isSigned()) {
     ExtOp0 = Builder.CreateSExt(I.getOperand(0), I32Ty);
@@ -549,13 +547,12 @@ bool AMDGPUCodeGenPrepareImpl::promoteUniformBitreverseToI32(
 
   Type *I32Ty = getI32Ty(Builder, I.getType());
   Function *I32 =
-      Intrinsic::getDeclaration(Mod, Intrinsic::bitreverse, { I32Ty });
+      Intrinsic::getDeclaration(Mod, Intrinsic::bitreverse, {I32Ty});
   Value *ExtOp = Builder.CreateZExt(I.getOperand(0), I32Ty);
-  Value *ExtRes = Builder.CreateCall(I32, { ExtOp });
+  Value *ExtRes = Builder.CreateCall(I32, {ExtOp});
   Value *LShrOp =
       Builder.CreateLShr(ExtRes, 32 - getBaseElementBitWidth(I.getType()));
-  Value *TruncRes =
-      Builder.CreateTrunc(LShrOp, I.getType());
+  Value *TruncRes = Builder.CreateTrunc(LShrOp, I.getType());
 
   I.replaceAllUsesWith(TruncRes);
   I.eraseFromParent();
@@ -583,8 +580,7 @@ static void extractValues(IRBuilder<> &Builder,
     Values.push_back(Builder.CreateExtractElement(V, I));
 }
 
-static Value *insertValues(IRBuilder<> &Builder,
-                           Type *Ty,
+static Value *insertValues(IRBuilder<> &Builder, Type *Ty,
                            SmallVectorImpl<Value *> &Values) {
   if (!Ty->isVectorTy()) {
     assert(Values.size() == 1);
@@ -743,15 +739,15 @@ bool AMDGPUCodeGenPrepareImpl::foldBinOpIntoSelect(BinaryOperator &BO) const {
 
   // TODO: Handle special 0/-1 cases DAG combine does, although we only really
   // need to handle divisions here.
-  Constant *FoldedT = SelOpNo ?
-    ConstantFoldBinaryOpOperands(BO.getOpcode(), CBO, CT, *DL) :
-    ConstantFoldBinaryOpOperands(BO.getOpcode(), CT, CBO, *DL);
+  Constant *FoldedT =
+      SelOpNo ? ConstantFoldBinaryOpOperands(BO.getOpcode(), CBO, CT, *DL)
+              : ConstantFoldBinaryOpOperands(BO.getOpcode(), CT, CBO, *DL);
   if (!FoldedT || isa<ConstantExpr>(FoldedT))
     return false;
 
-  Constant *FoldedF = SelOpNo ?
-    ConstantFoldBinaryOpOperands(BO.getOpcode(), CBO, CF, *DL) :
-    ConstantFoldBinaryOpOperands(BO.getOpcode(), CF, CBO, *DL);
+  Constant *FoldedF =
+      SelOpNo ? ConstantFoldBinaryOpOperands(BO.getOpcode(), CBO, CF, *DL)
+              : ConstantFoldBinaryOpOperands(BO.getOpcode(), CF, CBO, *DL);
   if (!FoldedF || isa<ConstantExpr>(FoldedF))
     return false;
 
@@ -760,8 +756,8 @@ bool AMDGPUCodeGenPrepareImpl::foldBinOpIntoSelect(BinaryOperator &BO) const {
   if (const FPMathOperator *FPOp = dyn_cast<const FPMathOperator>(&BO))
     Builder.setFastMathFlags(FPOp->getFastMathFlags());
 
-  Value *NewSelect = Builder.CreateSelect(Sel->getCondition(),
-                                          FoldedT, FoldedF);
+  Value *NewSelect =
+      Builder.CreateSelect(Sel->getCondition(), FoldedT, FoldedF);
   NewSelect->takeName(&BO);
   BO.replaceAllUsesWith(NewSelect);
   BO.eraseFromParent();
@@ -1160,8 +1156,8 @@ static bool hasUnsafeFPMath(const Function &F) {
   return Attr.getValueAsBool();
 }
 
-static std::pair<Value*, Value*> getMul64(IRBuilder<> &Builder,
-                                          Value *LHS, Value *RHS) {
+static std::pair<Value *, Value *> getMul64(IRBuilder<> &Builder, Value *LHS,
+                                            Value *RHS) {
   Type *I32Ty = Builder.getInt32Ty();
   Type *I64Ty = Builder.getInt64Ty();
 
@@ -1174,7 +1170,7 @@ static std::pair<Value*, Value*> getMul64(IRBuilder<> &Builder,
   return std::pair(Lo, Hi);
 }
 
-static Value* getMulHu(IRBuilder<> &Builder, Value *LHS, Value *RHS) {
+static Value *getMulHu(IRBuilder<> &Builder, Value *LHS, Value *RHS) {
   return getMul64(Builder, LHS, RHS).second;
 }
 
@@ -1245,12 +1241,12 @@ Value *AMDGPUCodeGenPrepareImpl::expandDivRem24Impl(
                        : Builder.CreateUIToFP(IA, F32Ty);
 
   // float fb = (float)ib;
-  Value *FB = IsSigned ? Builder.CreateSIToFP(IB,F32Ty)
-                       : Builder.CreateUIToFP(IB,F32Ty);
+  Value *FB = IsSigned ? Builder.CreateSIToFP(IB, F32Ty)
+                       : Builder.CreateUIToFP(IB, F32Ty);
 
   Function *RcpDecl = Intrinsic::getDeclaration(Mod, Intrinsic::amdgcn_rcp,
                                                 Builder.getFloatTy());
-  Value *RCP = Builder.CreateCall(RcpDecl, { FB });
+  Value *RCP = Builder.CreateCall(RcpDecl, {FB});
   Value *FQM = Builder.CreateFMul(FA, RCP);
 
   // fq = trunc(fqm);
@@ -1264,8 +1260,8 @@ Value *AMDGPUCodeGenPrepareImpl::expandDivRem24Impl(
   auto FMAD = !ST->hasMadMacF32Insts()
                   ? Intrinsic::fma
                   : (Intrinsic::ID)Intrinsic::amdgcn_fmad_ftz;
-  Value *FR = Builder.CreateIntrinsic(FMAD,
-                                      {FQNeg->getType()}, {FQNeg, FB, FA}, FQ);
+  Value *FR =
+      Builder.CreateIntrinsic(FMAD, {FQNeg->getType()}, {FQNeg, FB, FA}, FQ);
 
   // int iq = (int)fq;
   Value *IQ = IsSigned ? Builder.CreateFPToSI(FQ, I32Ty)
@@ -1301,8 +1297,7 @@ Value *AMDGPUCodeGenPrepareImpl::expandDivRem24Impl(
       Res = Builder.CreateShl(Res, InRegBits);
       Res = Builder.CreateAShr(Res, InRegBits);
     } else {
-      ConstantInt *TruncMask
-        = Builder.getInt32((UINT64_C(1) << DivBits) - 1);
+      ConstantInt *TruncMask = Builder.getInt32((UINT64_C(1) << DivBits) - 1);
       Res = Builder.CreateAnd(Res, TruncMask);
     }
   }
@@ -1338,8 +1333,8 @@ bool AMDGPUCodeGenPrepareImpl::divHasSpecialOptimization(BinaryOperator &I,
     // fold (udiv x, (shl c, y)) -> x >>u (log2(c)+y) iff c is power of 2
     if (BinOpDen->getOpcode() == Instruction::Shl &&
         isa<Constant>(BinOpDen->getOperand(0)) &&
-        isKnownToBeAPowerOfTwo(BinOpDen->getOperand(0), *DL, true,
-                               0, AC, &I, DT)) {
+        isKnownToBeAPowerOfTwo(BinOpDen->getOperand(0), *DL, true, 0, AC, &I,
+                               DT)) {
       return true;
     }
   }
@@ -1369,7 +1364,7 @@ Value *AMDGPUCodeGenPrepareImpl::expandDivRem32(IRBuilder<> &Builder,
   Builder.setFastMathFlags(FMF);
 
   if (divHasSpecialOptimization(I, X, Y))
-    return nullptr;  // Keep it for later optimization.
+    return nullptr; // Keep it for later optimization.
 
   bool IsDiv = Opc == Instruction::UDiv || Opc == Instruction::SDiv;
   bool IsSigned = Opc == Instruction::SRem || Opc == Instruction::SDiv;
@@ -1389,8 +1384,8 @@ Value *AMDGPUCodeGenPrepareImpl::expandDivRem32(IRBuilder<> &Builder,
   }
 
   if (Value *Res = expandDivRem24(Builder, I, X, Y, IsDiv, IsSigned)) {
-    return IsSigned ? Builder.CreateSExtOrTrunc(Res, Ty) :
-                      Builder.CreateZExtOrTrunc(Res, Ty);
+    return IsSigned ? Builder.CreateSExtOrTrunc(Res, Ty)
+                    : Builder.CreateZExtOrTrunc(Res, Ty);
   }
 
   ConstantInt *Zero = Builder.getInt32(0);
@@ -1486,7 +1481,7 @@ Value *AMDGPUCodeGenPrepareImpl::shrinkDivRem64(IRBuilder<> &Builder,
                                                 BinaryOperator &I, Value *Num,
                                                 Value *Den) const {
   if (!ExpandDiv64InIR && divHasSpecialOptimization(I, Num, Den))
-    return nullptr;  // Keep it for later optimization.
+    return nullptr; // Keep it for later optimization.
 
   Instruction::BinaryOps Opc = I.getOpcode();
 
@@ -1499,15 +1494,15 @@ Value *AMDGPUCodeGenPrepareImpl::shrinkDivRem64(IRBuilder<> &Builder,
 
   Value *Narrowed = nullptr;
   if (NumDivBits <= 24) {
-    Narrowed = expandDivRem24Impl(Builder, I, Num, Den, NumDivBits,
-                                  IsDiv, IsSigned);
+    Narrowed =
+        expandDivRem24Impl(Builder, I, Num, Den, NumDivBits, IsDiv, IsSigned);
   } else if (NumDivBits <= 32) {
     Narrowed = expandDivRem32(Builder, I, Num, Den);
   }
 
   if (Narrowed) {
-    return IsSigned ? Builder.CreateSExt(Narrowed, Num->getType()) :
-                      Builder.CreateZExt(Narrowed, Num->getType());
+    return IsSigned ? Builder.CreateSExt(Narrowed, Num->getType())
+                    : Builder.CreateZExt(Narrowed, Num->getType());
   }
 
   return nullptr;
@@ -1550,8 +1545,7 @@ bool AMDGPUCodeGenPrepareImpl::visitBinaryOperator(BinaryOperator &I) {
 
   if ((Opc == Instruction::URem || Opc == Instruction::UDiv ||
        Opc == Instruction::SRem || Opc == Instruction::SDiv) &&
-      ScalarSize <= 64 &&
-      !DisableIDivExpand) {
+      ScalarSize <= 64 && !DisableIDivExpand) {
     Value *Num = I.getOperand(0);
     Value *Den = I.getOperand(1);
     IRBuilder<> Builder(&I);
@@ -1630,17 +1624,16 @@ bool AMDGPUCodeGenPrepareImpl::visitLoadInst(LoadInst &I) {
     // If we have range metadata, we need to convert the type, and not make
     // assumptions about the high bits.
     if (auto *Range = WidenLoad->getMetadata(LLVMContext::MD_range)) {
-      ConstantInt *Lower =
-        mdconst::extract<ConstantInt>(Range->getOperand(0));
+      ConstantInt *Lower = mdconst::extract<ConstantInt>(Range->getOperand(0));
 
       if (Lower->isNullValue()) {
         WidenLoad->setMetadata(LLVMContext::MD_range, nullptr);
       } else {
         Metadata *LowAndHigh[] = {
-          ConstantAsMetadata::get(ConstantInt::get(I32Ty, Lower->getValue().zext(32))),
-          // Don't make assumptions about the high bits.
-          ConstantAsMetadata::get(ConstantInt::get(I32Ty, 0))
-        };
+            ConstantAsMetadata::get(
+                ConstantInt::get(I32Ty, Lower->getValue().zext(32))),
+            // Don't make assumptions about the high bits.
+            ConstantAsMetadata::get(ConstantInt::get(I32Ty, 0))};
 
         WidenLoad->setMetadata(LLVMContext::MD_range,
                                MDNode::get(Mod->getContext(), LowAndHigh));
@@ -1777,47 +1770,79 @@ static bool isInterestingPHIIncomingValue(const Value *V) {
   return false;
 }
 
-bool AMDGPUCodeGenPrepareImpl::canBreakPHINode(const PHINode &I) {
-  // Check in the cache, or add an entry for this node.
-  //
-  // We init with false because we consider all PHI nodes unbreakable until we
-  // reach a conclusion. Doing the opposite - assuming they're break-able until
-  // proven otherwise - can be harmful in some pathological cases so we're
-  // conservative for now.
-  const auto [It, DidInsert] = BreakPhiNodesCache.insert({&I, false});
-  if (!DidInsert)
-    return It->second;
+static void collectPHINodes(const PHINode &I,
+                            DenseSet<const PHINode *> &SeenPHIs) {
+  const auto [It, Inserted] = SeenPHIs.insert(&I);
+  if (!Inserted)
+    return;
 
-  // This function may recurse, so to guard against infinite looping, this PHI
-  // is conservatively considered unbreakable until we reach a conclusion.
-
-  // Don't break PHIs that have no interesting incoming values. That is, where
-  // there is no clear opportunity to fold the "extractelement" instructions we
-  // would add.
-  //
-  // Note: IC does not run after this pass, so we're only interested in the
-  // foldings that the DAG combiner can do.
-  if (none_of(I.incoming_values(),
-              [&](Value *V) { return isInterestingPHIIncomingValue(V); }))
-    return false;
-
-  // Now, check users for unbreakable PHI nodes. If we have an unbreakable PHI
-  // node as user, we don't want to break this PHI either because it's unlikely
-  // to be beneficial. We would just explode the vector and reassemble it
-  // directly, wasting instructions.
-  //
-  // In the case where multiple users are PHI nodes, we want at least half of
-  // them to be breakable.
-  int Score = 0;
-  for (const Value *U : I.users()) {
-    if (const auto *PU = dyn_cast<PHINode>(U))
-      Score += canBreakPHINode(*PU) ? 1 : -1;
+  for (const Value *Inc : I.incoming_values()) {
+    if (const auto *PhiInc = dyn_cast<PHINode>(Inc))
+      collectPHINodes(*PhiInc, SeenPHIs);
   }
 
-  if (Score < 0)
-    return false;
+  for (const User *U : I.users()) {
+    if (const auto *PhiU = dyn_cast<PHINode>(U))
+      collectPHINodes(*PhiU, SeenPHIs);
+  }
+}
 
-  return BreakPhiNodesCache[&I] = true;
+bool AMDGPUCodeGenPrepareImpl::canBreakPHINode(const PHINode &I) {
+  // Check in the cache first.
+  if (const auto It = BreakPhiNodesCache.find(&I);
+      It != BreakPhiNodesCache.end())
+    return It->second;
+
+  // We consider PHI nodes as part of "chains", so given a PHI node I, we
+  // recursively consider all its users and incoming values that are also PHI
+  // nodes. We then make a decision about all of those PHIs at once. Either they
+  // all get broken up, or none of them do. That way, we avoid cases where a
+  // single PHI is/is not broken and we end up reforming/exploding a vector
+  // multiple times, or even worse, doing it in a loop.
+  DenseSet<const PHINode *> WorkList;
+  collectPHINodes(I, WorkList);
+
+#ifndef NDEBUG
+  // Check that none of the PHI nodes in the worklist are in the map. If some of
+  // them are, it means we're not good enough at collecting related PHIs.
+  for (const PHINode *WLP : WorkList) {
+    assert(BreakPhiNodesCache.count(WLP) == 0);
+  }
+#endif
+
+  // To consider a PHI profitable to break, we need to see some interesting
+  // incoming values. At least 2/3rd (rounded up) of all PHIs in the worklist
+  // must have one to consider all PHIs breakable.
+  //
+  // This threshold has been determined through performance testing.
+  //
+  // Note that the computation below is equivalent to
+  //
+  //    (unsigned)ceil((K / 3.0) * 2)
+  //
+  // It's simply written this way to avoid mixing integral/FP arithmetic.
+  const auto Threshold = (alignTo(WorkList.size() * 2, 3) / 3);
+  unsigned NumBreakablePHIs = 0;
+  bool CanBreak = false;
+  for (const PHINode *Cur : WorkList) {
+    // Don't break PHIs that have no interesting incoming values. That is, where
+    // there is no clear opportunity to fold the "extractelement" instructions
+    // we would add.
+    //
+    // Note: IC does not run after this pass, so we're only interested in the
+    // foldings that the DAG combiner can do.
+    if (any_of(Cur->incoming_values(), isInterestingPHIIncomingValue)) {
+      if (++NumBreakablePHIs >= Threshold) {
+        CanBreak = true;
+        break;
+      }
+    }
+  }
+
+  for (const PHINode *Cur : WorkList)
+    BreakPhiNodesCache[Cur] = CanBreak;
+
+  return CanBreak;
 }
 
 /// Helper class for "break large PHIs" (visitPHINode).
@@ -1898,14 +1923,15 @@ bool AMDGPUCodeGenPrepareImpl::visitPHINode(PHINode &I) {
   // operations with most elements being "undef". This inhibits a lot of
   // optimization opportunities and can result in unreasonably high register
   // pressure and the inevitable stack spilling.
-  if (!ScalarizeLargePHIs || getCGPassBuilderOption().EnableGlobalISelOption)
+  if (!BreakLargePHIs || getCGPassBuilderOption().EnableGlobalISelOption)
     return false;
 
   FixedVectorType *FVT = dyn_cast<FixedVectorType>(I.getType());
-  if (!FVT || DL->getTypeSizeInBits(FVT) <= ScalarizeLargePHIsThreshold)
+  if (!FVT || FVT->getNumElements() == 1 ||
+      DL->getTypeSizeInBits(FVT) <= BreakLargePHIsThreshold)
     return false;
 
-  if (!ForceScalarizeLargePHIs && !canBreakPHINode(I))
+  if (!ForceBreakLargePHIs && !canBreakPHINode(I))
     return false;
 
   std::vector<VectorSlice> Slices;
@@ -1930,8 +1956,7 @@ bool AMDGPUCodeGenPrepareImpl::visitPHINode(PHINode &I) {
       Slices.emplace_back(EltTy, Idx, 1);
   }
 
-  if (Slices.size() == 1)
-    return false;
+  assert(Slices.size() > 1);
 
   // Create one PHI per vector piece. The "VectorSlice" class takes care of
   // creating the necessary instruction to extract the relevant slices of each
