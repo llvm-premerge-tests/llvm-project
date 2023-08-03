@@ -488,14 +488,14 @@ def Bufferization_DeallocOp : Bufferization_Op<"dealloc", [
     The memrefs to be deallocated must be the originally allocated memrefs,
     however, the memrefs to be retained may be arbitrary memrefs.
 
-    Returns a list of conditions corresponding to the list of memrefs which
-    indicates the new ownerships, i.e., if the memref was deallocated the
-    ownership was dropped (set to 'false') and otherwise will be the same as the
-    input condition.
+    Returns a list of conditions corresponding to the list of retained memrefs
+    which indicates their ownerships, i.e., the disjunction of ownership values
+    of all aliases in the list of memrefs to be deallocated. If there is no
+    alias, the result will be 'false' 
 
     Example:
     ```mlir
-    %0:2 = bufferization.dealloc %a0, %a1 if %cond0, %cond1 retain %r0, %r1 :
+    bufferization.dealloc %a0, %a1 if %cond0, %cond1 retain %r0, %r1 :
       memref<2xf32>, memref<4xi32> retain memref<?xf32>, memref<f64>
     ```
     Deallocation will be called on `%a0` if `%cond0` is 'true' and neither `%r0`
