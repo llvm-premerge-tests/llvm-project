@@ -12,6 +12,7 @@
 #include "clang/Driver/Driver.h"
 #include "clang/Driver/DriverDiagnostic.h"
 #include "clang/Driver/Options.h"
+#include "llvm/TargetParser/Host.h"
 #include "llvm/TargetParser/LoongArchTargetParser.h"
 
 using namespace clang::driver;
@@ -128,18 +129,18 @@ void loongarch::getLoongArchTargetFeatures(const Driver &D,
                                            std::vector<StringRef> &Features) {
   StringRef ArchName;
   if (const Arg *A = Args.getLastArg(options::OPT_march_EQ)) {
-    if (!llvm::LoongArch::isValidArchName(A->getValue())) {
-      D.Diag(clang::diag::err_drv_invalid_arch_name) << A->getAsString(Args);
-      return;
-    }
     ArchName = A->getValue();
+    // Handle -march=native.
+    if (ArchName == "native") {
+      ArchName = llvm::sys::getHostCPUName();
+      if (ArchName == "generic")
+        ArchName = llvm::LoongArch::getDefaultArch(Triple.isLoongArch64());
+    }
   }
 
-  // TODO: handle -march=native and -mtune=xx.
-
   // Select a default arch name.
-  if (ArchName.empty() && Triple.isLoongArch64())
-    ArchName = "loongarch64";
+  if (ArchName.empty())
+    ArchName = llvm::LoongArch::getDefaultArch(Triple.isLoongArch64());
 
   if (!ArchName.empty())
     llvm::LoongArch::getArchFeatures(ArchName, Features);
@@ -186,4 +187,25 @@ void loongarch::getLoongArchTargetFeatures(const Driver &D,
     A->ignoreTargetSpecific();
   if (Arg *A = Args.getLastArgNoClaim(options::OPT_mfpu_EQ))
     A->ignoreTargetSpecific();
+}
+
+std::string loongarch::getLoongArchTargetCPU(const llvm::opt::ArgList &Args,
+                                             const llvm::Triple &Triple) {
+  std::string CPU;
+  // If we have -march, use that.
+  if (const Arg *A = Args.getLastArg(options::OPT_march_EQ))
+    CPU = A->getValue();
+
+  // Handle CPU name is 'native'.
+  if (CPU == "native") {
+    CPU = llvm::sys::getHostCPUName();
+    if (CPU == "generic")
+      CPU = llvm::LoongArch::getDefaultArch(Triple.isLoongArch64());
+  }
+
+  // Select a default CPU name.
+  if (CPU.empty())
+    CPU = llvm::LoongArch::getDefaultArch(Triple.isLoongArch64());
+
+  return CPU;
 }
