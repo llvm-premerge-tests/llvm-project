@@ -114,6 +114,17 @@ def ApplyLowerMasksPatternsOp : Op<Transform_Dialect,
   let assemblyFormat = "attr-dict";
 }
 
+def ApplyLowerMasksForSideEffectingOpsPatternsOp : Op<Transform_Dialect,
+    "apply_patterns.vector.lower_masks_for_side_effecting_ops",
+    [DeclareOpInterfaceMethods<PatternDescriptorOpInterface>]> {
+  let description = [{
+    Indicates that vector.mask operations surrounding side-effecting ops should
+    be lowered.
+  }];
+
+  let assemblyFormat = "attr-dict";
+}
+
 def ApplyLowerMaskedTransfersPatternsOp : Op<Transform_Dialect,
     "apply_patterns.vector.lower_masked_transfers",
     [DeclareOpInterfaceMethods<PatternDescriptorOpInterface>]> {
@@ -308,6 +319,16 @@ def ApplyFoldArithExtensionPatternsOp : Op<Transform_Dialect,
   let description = [{
     Collect a set of patterns that fold arithmetic extension on floating point
     into vector contract for the backends with native support.
+  }];
+
+  let assemblyFormat = "attr-dict";
+}
+
+def ApplyVectorReductionToContractPatternsOp : Op<Transform_Dialect,
+    "apply_patterns.vector.reduction_to_contract",
+    [DeclareOpInterfaceMethods<PatternDescriptorOpInterface>]> {
+  let description = [{
+    Collect a set of patterns that convert reductions to contract.
   }];
 
   let assemblyFormat = "attr-dict";

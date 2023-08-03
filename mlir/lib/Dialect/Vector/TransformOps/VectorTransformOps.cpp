@@ -37,6 +37,11 @@ void transform::ApplyFoldArithExtensionPatternsOp::populatePatterns(
   vector::populateFoldArithExtensionPatterns(patterns);
 }
 
+void transform::ApplyVectorReductionToContractPatternsOp::populatePatterns(
+    RewritePatternSet &patterns) {
+  vector::populateVectorReductionToContractPatterns(patterns);
+}
+
 void transform::ApplyRankReducingSubviewPatternsOp::populatePatterns(
     RewritePatternSet &patterns) {
   vector::populateVectorTransferDropUnitDimsPatterns(patterns);
@@ -64,6 +69,11 @@ void transform::ApplyLowerContractionPatternsOp::populatePatterns(
 void transform::ApplyLowerMasksPatternsOp::populatePatterns(
     RewritePatternSet &patterns) {
   populateVectorMaskOpLoweringPatterns(patterns);
+}
+
+void transform::ApplyLowerMasksForSideEffectingOpsPatternsOp::populatePatterns(
+    RewritePatternSet &patterns) {
+  populateVectorMaskLoweringPatternsForSideEffectingOps(patterns);
 }
 
 void transform::ApplyLowerMaskedTransfersPatternsOp::populatePatterns(
