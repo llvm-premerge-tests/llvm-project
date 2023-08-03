@@ -1648,8 +1648,15 @@ detail::ConversionPatternRewriterImpl &ConversionPatternRewriter::getImpl() {
 LogicalResult
 ConversionPattern::matchAndRewrite(Operation *op,
                                    PatternRewriter &rewriter) const {
-  auto &dialectRewriter = static_cast<ConversionPatternRewriter &>(rewriter);
-  auto &rewriterImpl = dialectRewriter.getImpl();
+  ConversionPatternRewriter *conversionRewriter;
+#ifndef NDEBUG
+  conversionRewriter = dynamic_cast<ConversionPatternRewriter *>(&rewriter);
+  assert(conversionRewriter &&
+         "cannot use conversion pattern outside of dialect conversion");
+#else
+  conversionRewriter = static_cast<ConversionPatternRewriter *>(&rewriter);
+#endif // NDEBUG
+  auto &rewriterImpl = conversionRewriter->getImpl();
 
   // Track the current conversion pattern type converter in the rewriter.
   llvm::SaveAndRestore currentConverterGuard(rewriterImpl.currentTypeConverter,
@@ -1661,7 +1668,7 @@ ConversionPattern::matchAndRewrite(Operation *op,
                                       op->getOperands(), operands))) {
     return failure();
   }
-  return matchAndRewrite(op, operands, dialectRewriter);
+  return matchAndRewrite(op, operands, *conversionRewriter);
 }
 
 //===----------------------------------------------------------------------===//
