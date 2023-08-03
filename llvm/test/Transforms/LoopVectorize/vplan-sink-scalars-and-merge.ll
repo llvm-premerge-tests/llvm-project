@@ -336,6 +336,8 @@ define void @pred_cfg1(i32 %k, i32 %j) {
 ; CHECK-NEXT:   WIDEN ir<%c.1> = icmp ult ir<%iv>, ir<%j>
 ; CHECK-NEXT:   WIDEN ir<%mul> = mul ir<%iv>, ir<10>
 ; CHECK-NEXT:   EMIT vp<[[MASK2:%.+]]> = select vp<[[MASK1]]> ir<%c.1> ir<false>
+; CHECK-NEXT:   EMIT vp<[[NOT:%.+]]> = not ir<%c.1>
+; CHECK-NEXT:   EMIT vp<[[MASK3:%.+]]> = select vp<[[MASK1]]> vp<[[NOT]]> ir<false>
 ; CHECK-NEXT: Successor(s): pred.load
 ; CHECK-EMPTY:
 ; CHECK-NEXT: <xVFxUF> pred.load: {
@@ -356,8 +358,6 @@ define void @pred_cfg1(i32 %k, i32 %j) {
 ; CHECK-NEXT: Successor(s): then.0.0
 ; CHECK-EMPTY:
 ; CHECK-NEXT: then.0.0:
-; CHECK-NEXT:   EMIT vp<[[NOT:%.+]]> = not ir<%c.1>
-; CHECK-NEXT:   EMIT vp<[[MASK3:%.+]]> = select vp<[[MASK1]]> vp<[[NOT]]> ir<false>
 ; CHECK-NEXT:   BLEND %p = ir<0>/vp<[[MASK3]]> vp<[[PRED]]>/vp<[[MASK2]]>
 ; CHECK-NEXT:   EMIT vp<[[OR:%.+]]> = or vp<[[MASK2]]> vp<[[MASK3]]>
 ; CHECK-NEXT: Successor(s): pred.store
@@ -436,6 +436,8 @@ define void @pred_cfg2(i32 %k, i32 %j) {
 ; CHECK-NEXT:   WIDEN ir<%c.0> = icmp ult ir<%iv>, ir<%j>
 ; CHECK-NEXT:   WIDEN ir<%c.1> = icmp ugt ir<%iv>, ir<%j>
 ; CHECK-NEXT:   EMIT vp<[[MASK2:%.+]]> = select vp<[[MASK1]]> ir<%c.0> ir<false>
+; CHECK-NEXT:   EMIT vp<[[NOT:%.+]]> = not ir<%c.0>
+; CHECK-NEXT:   EMIT vp<[[MASK3:%.+]]> = select vp<[[MASK1]]> vp<[[NOT]]> ir<false>
 ; CHECK-NEXT: Successor(s): pred.load
 ; CHECK-EMPTY:
 ; CHECK-NEXT: <xVFxUF> pred.load: {
@@ -456,8 +458,6 @@ define void @pred_cfg2(i32 %k, i32 %j) {
 ; CHECK-NEXT: Successor(s): then.0.0
 ; CHECK-EMPTY:
 ; CHECK-NEXT: then.0.0:
-; CHECK-NEXT:   EMIT vp<[[NOT:%.+]]> = not ir<%c.0>
-; CHECK-NEXT:   EMIT vp<[[MASK3:%.+]]> = select vp<[[MASK1]]> vp<[[NOT]]> ir<false>
 ; CHECK-NEXT:   BLEND %p = ir<0>/vp<[[MASK3]]> vp<[[PRED]]>/vp<[[MASK2]]>
 ; CHECK-NEXT:   EMIT vp<[[OR:%.+]]> = or vp<[[MASK2]]> vp<[[MASK3]]>
 ; CHECK-NEXT:   EMIT vp<[[MASK4:%.+]]> = select vp<[[OR]]> ir<%c.1> ir<false>
@@ -543,6 +543,8 @@ define void @pred_cfg3(i32 %k, i32 %j) {
 ; CHECK-NEXT:   WIDEN ir<%mul> = mul ir<%iv>, ir<10>
 ; CHECK-NEXT:   WIDEN ir<%c.0> = icmp ult ir<%iv>, ir<%j>
 ; CHECK-NEXT:   EMIT vp<[[MASK2:%.+]]> = select vp<[[MASK1:%.+]]> ir<%c.0> ir<false>
+; CHECK-NEXT:   EMIT vp<[[NOT:%.+]]> = not ir<%c.0>
+; CHECK-NEXT:   EMIT vp<[[MASK3:%.+]]> = select vp<[[MASK1]]> vp<[[NOT]]> ir<false>
 ; CHECK-NEXT: Successor(s): pred.load
 ; CHECK-EMPTY:
 ; CHECK-NEXT: <xVFxUF> pred.load: {
@@ -563,8 +565,6 @@ define void @pred_cfg3(i32 %k, i32 %j) {
 ; CHECK-NEXT: Successor(s): then.0.0
 ; CHECK-EMPTY:
 ; CHECK-NEXT: then.0.0:
-; CHECK-NEXT:   EMIT vp<[[NOT:%.+]]> = not ir<%c.0>
-; CHECK-NEXT:   EMIT vp<[[MASK3:%.+]]> = select vp<[[MASK1]]> vp<[[NOT]]> ir<false>
 ; CHECK-NEXT:   BLEND %p = ir<0>/vp<[[MASK3]]> vp<[[PRED]]>/vp<[[MASK2]]>
 ; CHECK-NEXT:   EMIT vp<[[MASK4:%.+]]> = or vp<[[MASK2]]> vp<[[MASK3]]>
 ; CHECK-NEXT:   EMIT vp<[[MASK5:%.+]]> = select vp<[[MASK4]]> ir<%c.0> ir<false>
@@ -675,8 +675,8 @@ define void @merge_3_replicate_region(i32 %k, i32 %j) {
 ; CHECK-EMPTY:
 ; CHECK-NEXT: loop.3:
 ; CHECK-NEXT:   WIDEN ir<%c.0> = icmp ult ir<%iv>, ir<%j>
-; CHECK-NEXT:   WIDEN ir<%mul> = mul vp<[[PRED1]]>, vp<[[PRED2]]>
 ; CHECK-NEXT:   EMIT vp<[[MASK2:%.+]]> = select vp<[[MASK]]> ir<%c.0> ir<false>
+; CHECK-NEXT:   WIDEN ir<%mul> = mul vp<[[PRED1]]>, vp<[[PRED2]]>
 ; CHECK-NEXT: Successor(s): pred.store
 ; CHECK-EMPTY:
 ; CHECK-NEXT: <xVFxUF> pred.store: {
