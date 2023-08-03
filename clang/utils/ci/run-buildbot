@@ -80,6 +80,7 @@ build-clang)
         -B build                                                               \
         -G Ninja                                                               \
         -DCMAKE_CXX_COMPILER_LAUNCHER="ccache"                                 \
+        -DLLVM_ENABLE_MODULES=On                                               \
         -DCMAKE_BUILD_TYPE=Release                                             \
         -DCMAKE_INSTALL_PREFIX=install                                         \
         -DLLVM_ENABLE_PROJECTS="clang;compiler-rt"                             \
