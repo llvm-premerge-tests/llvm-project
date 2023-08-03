@@ -138,6 +138,9 @@ public:
   /// mask for the block BB.
   VPValue *createBlockInMask(BasicBlock *BB, VPlan &Plan);
 
+  /// Create the mask for the vector loop header block when tail-folding.
+  VPValue *createTailFoldHeaderMask(VPlan &Plan);
+
   /// A helper function that computes the predicate of the edge between SRC
   /// and DST.
   VPValue *createEdgeMask(BasicBlock *Src, BasicBlock *Dst, VPlan &Plan);
