@@ -105,8 +105,6 @@ struct SimpleEnumValueTable {
   }
 
   void emit(raw_ostream &OS) const {
-    write_cstring(OS, StringRef(getOptionSpelling(R)));
-    OS << ", ";
     OS << ShouldParse;
     OS << ", ";
     OS << ShouldAlwaysEmit;
@@ -306,6 +304,9 @@ static void EmitOptParser(RecordKeeper &Records, raw_ostream &OS) {
     // The option string.
     OS << ", \"" << R.getValueAsString("Name") << '"';
 
+    // The option spelling.
+    OS << ", \"" << R.getValueAsString("Name") << '"';
+
     // The option identifier name.
     OS << ", " << getOptionName(R);
 
@@ -348,6 +349,11 @@ static void EmitOptParser(RecordKeeper &Records, raw_ostream &OS) {
 
     // The option string.
     emitNameUsingSpelling(OS, R);
+
+    // The option spelling.
+    OS << ", llvm::StringLiteral(";
+    write_cstring(OS, getOptionSpelling(R));
+    OS << ")";
 
     // The option identifier name.
     OS << ", " << getOptionName(R);
