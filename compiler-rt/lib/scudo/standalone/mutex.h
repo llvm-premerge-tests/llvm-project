@@ -35,7 +35,7 @@ public:
 #pragma nounroll
 #endif
     for (u8 I = 0U; I < NumberOfTries; I++) {
-      yieldProcessor(NumberOfYields);
+      yieldProcessor();
       if (tryLock())
         return;
     }
@@ -53,10 +53,20 @@ public:
   }
 
 private:
+  void yieldProcessor() {
+    // The value comes from the minimum time spent among operations that guarded
+    // by mutex.
+    constexpr u32 SpinTimes = 256;
+    volatile u32 V = 0;
+    for (u32 I = 0; I < SpinTimes; ++I)
+      ++V;
+  }
+
   void assertHeldImpl();
 
-  static constexpr u8 NumberOfTries = 8U;
-  static constexpr u8 NumberOfYields = 8U;
+  // TODO(chiahungduan): Adapt this value based on scenarios. E.g., primary and
+  // secondary allocator have different allocation time.
+  static constexpr u8 NumberOfTries = 32U;
 
 #if SCUDO_LINUX
   atomic_u32 M = {};
