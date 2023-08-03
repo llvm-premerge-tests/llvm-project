@@ -408,23 +408,23 @@ int X86InstrInfo::getSPAdjust(const MachineInstr &MI) const {
   }
 
   // To know whether a call adjusts the stack, we need information
-  // that is bound to the following ADJCALLSTACKUP pseudo.
-  // Look for the next ADJCALLSTACKUP that follows the call.
+  // that is bound to the preceding ADJCALLSTACKDOWN pseudo.
+  // Look for the next ADJCALLSTACKDOWN that precedes the call.
   if (MI.isCall()) {
     const MachineBasicBlock *MBB = MI.getParent();
-    auto I = ++MachineBasicBlock::const_iterator(MI);
-    for (auto E = MBB->end(); I != E; ++I) {
-      if (I->getOpcode() == getCallFrameDestroyOpcode() ||
+    auto I = MachineBasicBlock::const_iterator(MI);
+    for (auto E = MBB->begin(); I-- != E; ) {
+      if (I->getOpcode() == getCallFrameSetupOpcode() ||
           I->isCall())
         break;
     }
 
-    // If we could not find a frame destroy opcode, then it has already
+    // If we could not find a frame setup opcode, then it has already
     // been simplified, so we don't care.
-    if (I->getOpcode() != getCallFrameDestroyOpcode())
+    if (I->getOpcode() != getCallFrameSetupOpcode())
       return 0;
 
-    return -(I->getOperand(1).getImm());
+    return I->getOperand(1).getImm();
   }
 
   // Currently handle only PUSHes we can reasonably expect to see

@@ -143,6 +143,8 @@ public:
                            int SPAdj, unsigned FIOperandNum,
                            RegScavenger *RS = nullptr) const override;
 
+  bool supportsBackwardScavenger() const override { return true; }
+
   /// findDeadCallerSavedReg - Return a caller-saved register that isn't live
   /// when it reaches the "return" instruction. We can then pop a stack object
   /// to this register without worry about clobbering it.

@@ -1486,14 +1486,23 @@ void PEI::replaceFrameIndicesBackward(MachineBasicBlock *BB,
   if (LocalRS)
     LocalRS->enterBasicBlockEnd(*BB);
 
+  bool InsideCallSequence = false;
   for (MachineBasicBlock::iterator I = BB->end(); I != BB->begin();) {
     MachineInstr &MI = *std::prev(I);
 
     if (TII.isFrameInstr(MI)) {
+      InsideCallSequence = !TII.isFrameSetup(MI);
       SPAdj -= TII.getSPAdjust(MI);
       TFI.eliminateCallFramePseudoInstr(MF, *BB, &MI);
       continue;
     }
+
+    // If we are looking at a call sequence, we need to keep track of
+    // the SP adjustment made by each instruction in the sequence.
+    // This includes both the frame setup/destroy pseudos (handled above),
+    // as well as other instructions that have side effects w.r.t the SP.
+    if (InsideCallSequence)
+      SPAdj -= TII.getSPAdjust(MI);
 
     // Step backwards to get the liveness state at (immedately after) MI.
     if (LocalRS)
