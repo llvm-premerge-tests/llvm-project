@@ -134,6 +134,10 @@ New check aliases
 Changes in existing checks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+- Improved :doc:`modernize-loop-convert
+  <clang-tidy/checks/modernize/loop-convert>` to support for-loops with
+  iterators initialized by free functions like `begin`, `end`, or `size`.
+
 Removed checks
 ^^^^^^^^^^^^^^
 
