@@ -32,9 +32,9 @@ define void @store_16_elements(<16 x i8> %vec, ptr %out) {
 ; CHECK-NEXT:  ext.16b	v1, v0, v0, #8
 ; CHECK-NEXT:  addv.8b	b0, v0
 ; CHECK-NEXT:  addv.8b	b1, v1
-; CHECK-NEXT:  fmov	    w9, s0
-; CHECK-NEXT:  fmov	    w8, s1
-; CHECK-NEXT:  orr	    w8, w9, w8, lsl #8
+; CHECK-NEXT:  fmov	    w8, s0
+; CHECK-NEXT:  fmov	    w9, s1
+; CHECK-NEXT:  orr	    w8, w8, w9, lsl #8
 ; CHECK-NEXT:  strh	    w8, [x0]
 ; CHECK-NEXT:  ret
 
@@ -129,12 +129,12 @@ define void @add_trunc_compare_before_store(<4 x i32> %vec, ptr %out) {
 
 ; CHECK-LABEL: add_trunc_compare_before_store
 ; CHECK:       ; %bb.0:
+; CHECK-NEXT:  shl.4s	v0, v0, #31
 ; CHECK-NEXT:  Lloh8:
 ; CHECK-NEXT:  adrp	    x8, lCPI4_0@PAGE
-; CHECK-NEXT:  shl.4s	v0, v0, #31
-; CHECK-NEXT:  cmlt.4s	v0, v0, #0
 ; CHECK-NEXT:  Lloh9:
 ; CHECK-NEXT:  ldr	    q1, [x8, lCPI4_0@PAGEOFF]
+; CHECK-NEXT:  cmlt.4s	v0, v0, #0
 ; CHECK-NEXT:  and.16b	v0, v0, v1
 ; CHECK-NEXT:  addv.4s	s0, v0
 ; CHECK-NEXT:  fmov 	w8, s0
@@ -155,12 +155,12 @@ define void @add_trunc_mask_unknown_vector_type(<4 x i1> %vec, ptr %out) {
 
 ; CHECK-LABEL: add_trunc_mask_unknown_vector_type
 ; CHECK:       ; %bb.0:
+; CHECK-NEXT:  shl.4h	v0, v0, #15
 ; CHECK-NEXT: Lloh10:
 ; CHECK-NEXT:  adrp	    x8, lCPI5_0@PAGE
-; CHECK-NEXT:  shl.4h	v0, v0, #15
-; CHECK-NEXT:  cmlt.4h	v0, v0, #0
 ; CHECK-NEXT: Lloh11:
 ; CHECK-NEXT:  ldr	    d1, [x8, lCPI5_0@PAGEOFF]
+; CHECK-NEXT:  cmlt.4h	v0, v0, #0
 ; CHECK-NEXT:  and.8b    v0, v0, v1
 ; CHECK-NEXT:  addv.4h	h0, v0
 ; CHECK-NEXT:  fmov	    w8, s0

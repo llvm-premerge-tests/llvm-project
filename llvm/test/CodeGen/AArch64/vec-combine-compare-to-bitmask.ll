@@ -36,9 +36,9 @@ define i16 @convert_to_bitmask16(<16 x i8> %vec) {
 ; CHECK-NEXT:  ext.16b	v1, v0, v0, #8
 ; CHECK-NEXT:  addv.8b	b0, v0
 ; CHECK-NEXT:  addv.8b	b1, v1
-; CHECK-NEXT:  fmov	    w9, s0
-; CHECK-NEXT:  fmov	    w8, s1
-; CHECK-NEXT:  orr	    w0, w9, w8, lsl #8
+; CHECK-NEXT:  fmov	    w8, s0
+; CHECK-NEXT:  fmov	    w9, s1
+; CHECK-NEXT:  orr	    w0, w8, w9, lsl #8
 ; CHECK-NEXT:  ret
 
   %cmp_result = icmp ne <16 x i8> %vec, zeroinitializer
@@ -160,12 +160,12 @@ define i4 @convert_to_bitmask_no_compare(<4 x i32> %vec1, <4 x i32> %vec2) {
 
 ; CHECK-LABEL: convert_to_bitmask_no_compare
 ; CHECK:       ; %bb.0:
+; CHECK-NEXT:  and.16b  v0, v0, v1
 ; CHECK-NEXT: Lloh10:
 ; CHECK-NEXT:  adrp	    x8, lCPI5_0@PAGE
-; CHECK-NEXT:  and.16b  v0, v0, v1
-; CHECK-NEXT:  shl.4s	v0, v0, #31
 ; CHECK-NEXT: Lloh11:
 ; CHECK-NEXT:  ldr	    q1, [x8, lCPI5_0@PAGEOFF]
+; CHECK-NEXT:  shl.4s	v0, v0, #31
 ; CHECK-NEXT:  cmlt.4s	v0, v0, #0
 ; CHECK-NEXT:  and.16b	v0, v0, v1
 ; CHECK-NEXT:  addv.4s	s0, v0
@@ -187,10 +187,10 @@ define i4 @convert_to_bitmask_with_compare_chain(<4 x i32> %vec1, <4 x i32> %vec
 
 ; CHECK-LABEL: convert_to_bitmask_with_compare_chain
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT: Lloh12:
-; CHECK-NEXT:  adrp	    x8, lCPI6_0@PAGE
 ; CHECK-NEXT:  cmeq.4s	v2, v0, #0
 ; CHECK-NEXT:  cmeq.4s	v0, v0, v1
+; CHECK-NEXT: Lloh12:
+; CHECK-NEXT:  adrp	    x8, lCPI6_0@PAGE
 ; CHECK-NEXT: Lloh13:
 ; CHECK-NEXT:  ldr	    q1, [x8, lCPI6_0@PAGEOFF]
 ; CHECK-NEXT:  bic.16b	v0, v0, v2
@@ -219,9 +219,9 @@ define i4 @convert_to_bitmask_with_trunc_in_chain(<4 x i32> %vec1, <4 x i32> %ve
 ; CHECK-NEXT: Lloh14:
 ; CHECK-NEXT:  adrp	    x8, lCPI7_0@PAGE
 ; CHECK-NEXT:  bic.16b	v0, v1, v0
-; CHECK-NEXT:  shl.4s	v0, v0, #31
 ; CHECK-NEXT: Lloh15:
 ; CHECK-NEXT:  ldr	    q1, [x8, lCPI7_0@PAGEOFF]
+; CHECK-NEXT:  shl.4s	v0, v0, #31
 ; CHECK-NEXT:  cmlt.4s	v0, v0, #0
 ; CHECK-NEXT:  and.16b	v0, v0, v1
 ; CHECK-NEXT:  addv.4s	s0, v0
@@ -245,19 +245,19 @@ define i4 @convert_to_bitmask_with_unknown_type_in_long_chain(<4 x i32> %vec1, <
 ; CHECK-LABEL: convert_to_bitmask_with_unknown_type_in_long_chain
 ; CHECK:      ; %bb.0:
 ; CHECK-NEXT: 	cmeq.4s	v0, v0, #0
+; CHECK-NEXT: 	cmeq.4s	v1, v1, #0
 ; CHECK-NEXT: Lloh16:
 ; CHECK-NEXT: 	adrp	x8, lCPI8_0@PAGE
-; CHECK-NEXT: 	cmeq.4s	v1, v1, #0
 ; CHECK-NEXT: 	movi	d2, #0x000000ffffffff
+; CHECK-NEXT: 	movi	d3, #0x00ffffffffffff
 ; CHECK-NEXT: 	bic.16b	v0, v1, v0
 ; CHECK-NEXT: 	movi	d1, #0xffff0000ffff0000
 ; CHECK-NEXT: 	xtn.4h	v0, v0
-; CHECK-NEXT: 	movi	d3, #0x00ffffffffffff
 ; CHECK-NEXT: 	orr.8b	v0, v0, v2
 ; CHECK-NEXT: 	movi	d2, #0x00ffffffff0000
 ; CHECK-NEXT: 	eor.8b	v1, v0, v1
-; CHECK-NEXT: 	mov.h	v1[2], wzr
 ; CHECK-NEXT: 	eor.8b	v0, v0, v2
+; CHECK-NEXT: 	mov.h	v1[2], wzr
 ; CHECK-NEXT: 	orr.8b	v0, v0, v3
 ; CHECK-NEXT: 	orr.8b	v0, v1, v0
 ; CHECK-NEXT: Lloh17:
@@ -293,15 +293,15 @@ define i4 @convert_to_bitmask_with_different_types_in_chain(<4 x i16> %vec1, <4 
 
 ; CHECK-LABEL: convert_to_bitmask_with_different_types_in_chain
 ; CHECK:      ; %bb.0:
+; CHECK-NEXT: 	cmeq.4s	v1, v1, #0
+; CHECK-NEXT: 	cmeq.4h	v0, v0, #0
 ; CHECK-NEXT: Lloh18:
 ; CHECK-NEXT: 	adrp	x8, lCPI9_0@PAGE
-; CHECK-NEXT: 	cmeq.4h	v0, v0, #0
-; CHECK-NEXT: 	cmeq.4s	v1, v1, #0
 ; CHECK-NEXT: 	xtn.4h	v1, v1
-; CHECK-NEXT: Lloh19:
-; CHECK-NEXT: 	ldr	d2, [x8, lCPI9_0@PAGEOFF]
 ; CHECK-NEXT: 	orn.8b	v0, v1, v0
-; CHECK-NEXT: 	and.8b	v0, v0, v2
+; CHECK-NEXT: Lloh19:
+; CHECK-NEXT: 	ldr	d1, [x8, lCPI9_0@PAGEOFF]
+; CHECK-NEXT: 	and.8b	v0, v0, v1
 ; CHECK-NEXT: 	addv.4h	h0, v0
 ; CHECK-NEXT: 	fmov	w0, s0
 ; CHECK-NEXT: 	ret
@@ -316,19 +316,19 @@ define i4 @convert_to_bitmask_with_different_types_in_chain(<4 x i16> %vec1, <4 
 define i16 @convert_to_bitmask_without_knowing_type(<16 x i1> %vec) {
 ; CHECK-LABEL: convert_to_bitmask_without_knowing_type:
 ; CHECK:       ; %bb.0:
+; CHECK-NEXT:    shl.16b v0, v0, #7
 ; CHECK-NEXT:  Lloh20:
 ; CHECK-NEXT:    adrp x8, lCPI10_0@PAGE
-; CHECK-NEXT:    shl.16b v0, v0, #7
-; CHECK-NEXT:    cmlt.16b v0, v0, #0
 ; CHECK-NEXT:  Lloh21:
 ; CHECK-NEXT:    ldr q1, [x8, lCPI10_0@PAGEOFF]
+; CHECK-NEXT:    cmlt.16b v0, v0, #0
 ; CHECK-NEXT:    and.16b v0, v0, v1
 ; CHECK-NEXT:    ext.16b v1, v0, v0, #8
 ; CHECK-NEXT:    addv.8b b0, v0
 ; CHECK-NEXT:    addv.8b b1, v1
-; CHECK-NEXT:    fmov w9, s0
-; CHECK-NEXT:    fmov w8, s1
-; CHECK-NEXT:    orr w0, w9, w8, lsl #8
+; CHECK-NEXT:    fmov w8, s0
+; CHECK-NEXT:    fmov w9, s1
+; CHECK-NEXT:    orr w0, w8, w9, lsl #8
 ; CHECK-NEXT:    ret
 
   %bitmask = bitcast <16 x i1> %vec to i16
@@ -356,12 +356,12 @@ define i2 @convert_to_bitmask_2xi32(<2 x i32> %vec) {
 define i4 @convert_to_bitmask_4xi8(<4 x i8> %vec) {
 ; CHECK-LABEL: convert_to_bitmask_4xi8
 ; CHECK:       ; %bb.0:
+; CHECK-NEXT:  	bic.4h	v0, #255, lsl #8
 ; CHECK-NEXT:  Lloh24:
 ; CHECK-NEXT:  	adrp	x8, lCPI12_0@PAGE
-; CHECK-NEXT:  	bic.4h	v0, #255, lsl #8
-; CHECK-NEXT:  	cmeq.4h	v0, v0, #0
 ; CHECK-NEXT:  Lloh25:
 ; CHECK-NEXT:  	ldr	d1, [x8, lCPI12_0@PAGEOFF]
+; CHECK-NEXT:  	cmeq.4h	v0, v0, #0
 ; CHECK-NEXT:  	bic.8b	v0, v1, v0
 ; CHECK-NEXT:  	addv.4h	h0, v0
 ; CHECK-NEXT:  	fmov	w0, s0
@@ -401,14 +401,14 @@ define i4 @convert_to_bitmask_float(<4 x float> %vec) {
 
 ; CHECK-LABEL: convert_to_bitmask_float
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT: Lloh28:
-; CHECK-NEXT:  adrp	    x8, lCPI14_0@PAGE
 ; CHECK-NEXT:  fcmgt.4s	v1, v0, #0.0
 ; CHECK-NEXT:  fcmlt.4s	v0, v0, #0.0
-; CHECK-NEXT: Lloh29:
-; CHECK-NEXT:  ldr	    q2, [x8, lCPI14_0@PAGEOFF]
+; CHECK-NEXT: Lloh28:
+; CHECK-NEXT:  adrp	    x8, lCPI14_0@PAGE
 ; CHECK-NEXT:  orr.16b	v0, v0, v1
-; CHECK-NEXT:  and.16b	v0, v0, v2
+; CHECK-NEXT: Lloh29:
+; CHECK-NEXT:  ldr	    q1, [x8, lCPI14_0@PAGEOFF]
+; CHECK-NEXT:  and.16b	v0, v0, v1
 ; CHECK-NEXT:  addv.4s	s0, v0
 ; CHECK-NEXT:  fmov	    w0, s0
 ; CHECK-NEXT:  ret
@@ -432,10 +432,10 @@ define i8 @convert_large_vector(<8 x i32> %vec) {
 ; CHECK-NEXT:  .short	128
 
 ; CHECK-LABEL: convert_large_vector:
+; CHECK:       cmeq.4s	v1, v1, #0
+; CHECK-NEXT:  cmeq.4s	v0, v0, #0
 ; CHECK:      Lloh30:
 ; CHECK-NEXT:  adrp	x8, lCPI15_0@PAGE
-; CHECK-NEXT:  cmeq.4s	v1, v1, #0
-; CHECK-NEXT:  cmeq.4s	v0, v0, #0
 ; CHECK-NEXT:  uzp1.8h	v0, v0, v1
 ; CHECK-NEXT: Lloh31:
 ; CHECK-NEXT:  ldr	q1, [x8, lCPI15_0@PAGEOFF]

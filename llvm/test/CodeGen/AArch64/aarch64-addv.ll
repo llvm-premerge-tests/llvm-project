@@ -93,16 +93,16 @@ entry:
 declare i32 @llvm.vector.reduce.add.v16i32(<16 x i32>)
 
 define i32 @oversized_ADDV_512(ptr %arr)  {
-; SDAG-LABEL:  oversized_ADDV_512:
-; SDAG:        // %bb.0:
-; SDAG-NEXT:     ldp q0, q1, [x0, #32]
-; SDAG-NEXT:     ldp q3, q2, [x0]
-; SDAG-NEXT:     add v0.4s, v3.4s, v0.4s
-; SDAG-NEXT:     add v1.4s, v2.4s, v1.4s
-; SDAG-NEXT:     add v0.4s, v0.4s, v1.4s
-; SDAG-NEXT:     addv s0, v0.4s
-; SDAG-NEXT:     fmov w0, s0
-; SDAG-NEXT:     ret
+; SDAG-LABEL: oversized_ADDV_512:
+; SDAG:       // %bb.0:
+; SDAG-NEXT:    ldp q0, q1, [x0, #32]
+; SDAG-NEXT:    ldp q2, q3, [x0]
+; SDAG-NEXT:    add v1.4s, v3.4s, v1.4s
+; SDAG-NEXT:    add v0.4s, v2.4s, v0.4s
+; SDAG-NEXT:    add v0.4s, v0.4s, v1.4s
+; SDAG-NEXT:    addv s0, v0.4s
+; SDAG-NEXT:    fmov w0, s0
+; SDAG-NEXT:    ret
 ;
 ; GISEL-LABEL: oversized_ADDV_512:
 ; GISEL:       // %bb.0:
@@ -148,19 +148,19 @@ entry:
 }
 
 define i32 @addv_combine_i32(<4 x i32> %a1, <4 x i32> %a2) {
-; SDAG-LABEL:  addv_combine_i32:
-; SDAG:        // %bb.0: // %entry
-; SDAG-NEXT:     add v0.4s, v0.4s, v1.4s
-; SDAG-NEXT:     addv s0, v0.4s
-; SDAG-NEXT:     fmov w0, s0
-; SDAG-NEXT:     ret
+; SDAG-LABEL: addv_combine_i32:
+; SDAG:       // %bb.0: // %entry
+; SDAG-NEXT:    add v0.4s, v0.4s, v1.4s
+; SDAG-NEXT:    addv s0, v0.4s
+; SDAG-NEXT:    fmov w0, s0
+; SDAG-NEXT:    ret
 ;
 ; GISEL-LABEL: addv_combine_i32:
 ; GISEL:       // %bb.0: // %entry
-; GISEL-NEXT:    addv  s0, v0.4s
-; GISEL-NEXT:    addv  s1, v1.4s
-; GISEL-NEXT:    fmov  w8, s0
-; GISEL-NEXT:    fmov  w9, s1
+; GISEL-NEXT:    addv s0, v0.4s
+; GISEL-NEXT:    addv s1, v1.4s
+; GISEL-NEXT:    fmov w8, s0
+; GISEL-NEXT:    fmov w9, s1
 ; GISEL-NEXT:    add w0, w8, w9
 ; GISEL-NEXT:    ret
 entry:
@@ -171,19 +171,19 @@ entry:
 }
 
 define i64 @addv_combine_i64(<2 x i64> %a1, <2 x i64> %a2) {
-; SDAG-LABEL:  addv_combine_i64:
-; SDAG:        // %bb.0: // %entry
-; SDAG-NEXT:     add v0.2d, v0.2d, v1.2d
-; SDAG-NEXT:     addp d0, v0.2d
-; SDAG-NEXT:     fmov x0, d0
-; SDAG-NEXT:     ret
+; SDAG-LABEL: addv_combine_i64:
+; SDAG:       // %bb.0: // %entry
+; SDAG-NEXT:    add v0.2d, v0.2d, v1.2d
+; SDAG-NEXT:    addp d0, v0.2d
+; SDAG-NEXT:    fmov x0, d0
+; SDAG-NEXT:    ret
 ;
 ; GISEL-LABEL: addv_combine_i64:
 ; GISEL:       // %bb.0: // %entry
-; GISEL-NEXT:    addp  d0, v0.2d
-; GISEL-NEXT:    addp  d1, v1.2d
-; GISEL-NEXT:    fmov  x8, d0
-; GISEL-NEXT:    fmov  x9, d1
+; GISEL-NEXT:    addp d0, v0.2d
+; GISEL-NEXT:    addp d1, v1.2d
+; GISEL-NEXT:    fmov x8, d0
+; GISEL-NEXT:    fmov x9, d1
 ; GISEL-NEXT:    add x0, x8, x9
 ; GISEL-NEXT:    ret
 entry:

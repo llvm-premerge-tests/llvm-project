@@ -55,7 +55,7 @@ struct non_packed_struct gs_non_packed_struct;
 __attribute__((noinline)) void named_arg_non_packed_struct(double d0, double d1, double d2, double d3,
                                  double d4, double d5, double d6, double d7,
                                  double d8, struct non_packed_struct s_non_packed_struct) {
-// CHECK: ldr q0, [sp, #16]
+// CHECK: ldr q1, [sp, #16]
     gd = d8;
     gs_non_packed_struct = s_non_packed_struct;
 }
