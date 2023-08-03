@@ -1470,6 +1470,11 @@ std::string PatternEmitter::handleOpCreation(DagNode tree, int resultIndex,
                              resultOp.getQualCppClassName(), locToUse);
     supplyValuesForOpArgs(tree, childNodeNames, depth);
     os << "\n  );\n}\n";
+    os << formatv("for (auto attr: op0->getAttrs()) {\n"
+                  "  {0}->setAttr(attr.getName(), attr.getValue());\n"
+                  "}\n",
+                  valuePackName);
+
     return resultValue;
   }
 
@@ -1508,6 +1513,10 @@ std::string PatternEmitter::handleOpCreation(DagNode tree, int resultIndex,
   os << formatv("{0} = rewriter.create<{1}>({2}, tblgen_types, "
                 "tblgen_values, tblgen_attrs);\n",
                 valuePackName, resultOp.getQualCppClassName(), locToUse);
+  os << formatv("for (auto attr: op0->getAttrs()) {\n"
+                "  {0}->setAttr(attr.getName(), attr.getValue());\n"
+                "}\n",
+                valuePackName);
   os.unindent() << "}\n";
   return resultValue;
 }
