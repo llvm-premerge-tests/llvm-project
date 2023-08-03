@@ -870,8 +870,15 @@ class TextCrashLogParser(CrashLogParser):
         with open(self.path, "r", encoding="utf-8") as f:
             lines = f.read().splitlines()
 
-        for line in lines:
+        idx = 0
+        lines_count = len(lines)
+        while True:
+            if idx >= lines_count:
+                break
+
+            line = lines[idx]
             line_len = len(line)
+
             if line_len == 0:
                 if self.thread:
                     if self.parse_mode == CrashLogParseMode.THREAD:
@@ -895,15 +902,36 @@ class TextCrashLogParser(CrashLogParser):
                         self.crashlog.info_lines[-1]
                     ):
                         self.crashlog.info_lines.append(line)
+
+                empty_lines = 0
+                while (
+                    idx + empty_lines < lines_count
+                    and len(lines[idx + empty_lines]) == 0
+                ):
+                    empty_lines = empty_lines + 1
+
+                if (
+                    empty_lines == 1
+                    and idx + empty_lines < lines_count - 1
+                    and self.parse_mode != CrashLogParseMode.NORMAL
+                ):
+                    # check if next line can be parsed with the current parse mode
+                    next_line_idx = idx + empty_lines
+                    if self.parsers[self.parse_mode](lines[next_line_idx]):
+                        # If that suceeded, skip the empty line and the next line.
+                        idx = next_line_idx + 1
+                        continue
                 self.parse_mode = CrashLogParseMode.NORMAL
             else:
                 self.parsers[self.parse_mode](line)
+
+            idx = idx + 1
 
         return self.crashlog
 
     def parse_exception(self, line):
         if not line.startswith("Exception"):
-            return
+            return False
         if line.startswith("Exception Type:"):
             self.crashlog.thread_exception = line[15:].strip()
             exception_type_match = self.exception_type_regex.search(line)
@@ -921,7 +949,7 @@ class TextCrashLogParser(CrashLogParser):
         elif line.startswith("Exception Codes:"):
             self.crashlog.thread_exception_data = line[16:].strip()
             if "type" not in self.crashlog.exception:
-                return
+                return False
             exception_codes_match = self.exception_codes_regex.search(line)
             if exception_codes_match:
                 self.crashlog.exception["codes"] = self.crashlog.thread_exception_data
@@ -932,10 +960,11 @@ class TextCrashLogParser(CrashLogParser):
                 ]
         else:
             if "type" not in self.crashlog.exception:
-                return
+                return False
             exception_extra_match = self.exception_extra_regex.search(line)
             if exception_extra_match:
                 self.crashlog.exception["message"] = exception_extra_match.group(1)
+        return True
 
     def parse_normal(self, line):
         if line.startswith("Process:"):
@@ -1030,14 +1059,14 @@ class TextCrashLogParser(CrashLogParser):
 
     def parse_thread(self, line):
         if line.startswith("Thread"):
-            return
+            return False
         if self.null_frame_regex.search(line):
             print('warning: thread parser ignored null-frame: "%s"' % line)
-            return
+            return False
         frame_match = self.frame_regex.search(line)
         if not frame_match:
             print('error: frame regex failed for line: "%s"' % line)
-            return
+            return False
 
         frame_id = (
             frame_img_name
@@ -1104,6 +1133,8 @@ class TextCrashLogParser(CrashLogParser):
             self.crashlog.Frame(int(frame_id), int(frame_addr, 0), description)
         )
 
+        return True
+
     def parse_images(self, line):
         image_match = self.image_regex_uuid.search(line)
         if image_match:
@@ -1137,17 +1168,21 @@ class TextCrashLogParser(CrashLogParser):
 
             self.images.append(image)
             self.crashlog.images.append(image)
+            return True
         else:
             print("error: image regex failed for: %s" % line)
+            return False
 
     def parse_thread_registers(self, line):
         # "r12: 0x00007fff6b5939c8  r13: 0x0000000007000006  r14: 0x0000000000002a03  r15: 0x0000000000000c00"
         reg_values = re.findall("([a-z0-9]+): (0x[0-9a-f]+)", line, re.I)
         for reg, value in reg_values:
             self.thread.registers[reg] = int(value, 16)
+        return True
 
     def parse_system(self, line):
         self.crashlog.system_profile.append(line)
+        return True
 
     def parse_instructions(self, line):
         pass
