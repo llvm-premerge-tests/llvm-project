@@ -57,7 +57,6 @@
 #include <ctype.h>
 #include <float.h>
 #include <string.h>
-#include <iomanip>
 #include <limits>
 #include <map>
 #include <set>
