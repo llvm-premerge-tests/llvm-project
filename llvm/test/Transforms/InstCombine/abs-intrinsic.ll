@@ -485,10 +485,10 @@ define i32 @sub_abs_lt(i32 %x, i32 %y) {
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp slt i32 [[X:%.*]], [[Y:%.*]]
 ; CHECK-NEXT:    br i1 [[CMP]], label [[COND_TRUE:%.*]], label [[COND_END:%.*]]
 ; CHECK:       cond.true:
-; CHECK-NEXT:    [[SUB_NEG:%.*]] = sub i32 [[Y]], [[X]]
+; CHECK-NEXT:    [[TMP0:%.*]] = sub nsw i32 [[Y]], [[X]]
 ; CHECK-NEXT:    br label [[COND_END]]
 ; CHECK:       cond.end:
-; CHECK-NEXT:    [[R:%.*]] = phi i32 [ [[SUB_NEG]], [[COND_TRUE]] ], [ 0, [[ENTRY:%.*]] ]
+; CHECK-NEXT:    [[R:%.*]] = phi i32 [ [[TMP0]], [[COND_TRUE]] ], [ 0, [[ENTRY:%.*]] ]
 ; CHECK-NEXT:    ret i32 [[R]]
 ;
 entry:
@@ -512,8 +512,7 @@ define i32 @sub_abs_sle(i32 %x, i32 %y) {
 ; CHECK-NEXT:    [[CMP_NOT:%.*]] = icmp sgt i32 [[X:%.*]], [[Y:%.*]]
 ; CHECK-NEXT:    br i1 [[CMP_NOT]], label [[COND_END:%.*]], label [[COND_TRUE:%.*]]
 ; CHECK:       cond.true:
-; CHECK-NEXT:    [[SUB:%.*]] = sub nsw i32 [[X]], [[Y]]
-; CHECK-NEXT:    [[TMP0:%.*]] = call i32 @llvm.abs.i32(i32 [[SUB]], i1 true)
+; CHECK-NEXT:    [[TMP0:%.*]] = sub nsw i32 [[Y]], [[X]]
 ; CHECK-NEXT:    br label [[COND_END]]
 ; CHECK:       cond.end:
 ; CHECK-NEXT:    [[R:%.*]] = phi i32 [ [[TMP0]], [[COND_TRUE]] ], [ 0, [[ENTRY:%.*]] ]
@@ -540,8 +539,7 @@ define i8 @src_sub_abs_sleF(i8 %x, i8 %y) {
 ; CHECK-NEXT:    [[CMP_NOT:%.*]] = icmp sgt i8 [[X:%.*]], [[Y:%.*]]
 ; CHECK-NEXT:    br i1 [[CMP_NOT]], label [[COND_END:%.*]], label [[COND_TRUE:%.*]]
 ; CHECK:       cond.true:
-; CHECK-NEXT:    [[SUB:%.*]] = sub nsw i8 [[X]], [[Y]]
-; CHECK-NEXT:    [[TMP0:%.*]] = call i8 @llvm.abs.i8(i8 [[SUB]], i1 false)
+; CHECK-NEXT:    [[TMP0:%.*]] = sub i8 [[Y]], [[X]]
 ; CHECK-NEXT:    br label [[COND_END]]
 ; CHECK:       cond.end:
 ; CHECK-NEXT:    [[R:%.*]] = phi i8 [ [[TMP0]], [[COND_TRUE]] ], [ 0, [[ENTRY:%.*]] ]
@@ -567,8 +565,7 @@ define i8 @sub_abs_sleT(i8 %x, i8 %y) {
 ; CHECK-NEXT:    [[CMP_NOT:%.*]] = icmp sgt i8 [[X:%.*]], [[Y:%.*]]
 ; CHECK-NEXT:    br i1 [[CMP_NOT]], label [[COND_END:%.*]], label [[COND_TRUE:%.*]]
 ; CHECK:       cond.true:
-; CHECK-NEXT:    [[SUB:%.*]] = sub nsw i8 [[X]], [[Y]]
-; CHECK-NEXT:    [[TMP0:%.*]] = call i8 @llvm.abs.i8(i8 [[SUB]], i1 true)
+; CHECK-NEXT:    [[TMP0:%.*]] = sub nsw i8 [[Y]], [[X]]
 ; CHECK-NEXT:    br label [[COND_END]]
 ; CHECK:       cond.end:
 ; CHECK-NEXT:    [[R:%.*]] = phi i8 [ [[TMP0]], [[COND_TRUE]] ], [ 0, [[ENTRY:%.*]] ]
@@ -594,10 +591,10 @@ define i32 @sub_abs_lt_min_not_poison(i32 %x, i32 %y) {
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp slt i32 [[X:%.*]], [[Y:%.*]]
 ; CHECK-NEXT:    br i1 [[CMP]], label [[COND_TRUE:%.*]], label [[COND_END:%.*]]
 ; CHECK:       cond.true:
-; CHECK-NEXT:    [[SUB_NEG:%.*]] = sub i32 [[Y]], [[X]]
+; CHECK-NEXT:    [[TMP0:%.*]] = sub i32 [[Y]], [[X]]
 ; CHECK-NEXT:    br label [[COND_END]]
 ; CHECK:       cond.end:
-; CHECK-NEXT:    [[R:%.*]] = phi i32 [ [[SUB_NEG]], [[COND_TRUE]] ], [ 0, [[ENTRY:%.*]] ]
+; CHECK-NEXT:    [[R:%.*]] = phi i32 [ [[TMP0]], [[COND_TRUE]] ], [ 0, [[ENTRY:%.*]] ]
 ; CHECK-NEXT:    ret i32 [[R]]
 ;
 entry:
