@@ -33,9 +33,10 @@ define dso_local i32 @main() #0 {
 ; V6M-LABEL: main:
 ; V6M:       @ %bb.0: @ %entry
 ; V6M-NEXT:    push {r7, lr}
-; V6M-NEXT:    sub sp, #24
+; V6M-NEXT:    sub sp, #32
 ; V6M-NEXT:    movs r0, #0
-; V6M-NEXT:    str r0, [sp, #4]
+; V6M-NEXT:    str r0, [sp, #12]
+; V6M-NEXT:    mrs r12, apsr
 ; V6M-NEXT:    movs r0, :upper8_15:__stack_chk_guard
 ; V6M-NEXT:    lsls r0, r0, #8
 ; V6M-NEXT:    adds r0, :upper0_7:__stack_chk_guard
@@ -43,11 +44,13 @@ define dso_local i32 @main() #0 {
 ; V6M-NEXT:    adds r0, :lower8_15:__stack_chk_guard
 ; V6M-NEXT:    lsls r0, r0, #8
 ; V6M-NEXT:    adds r0, :lower0_7:__stack_chk_guard
+; V6M-NEXT:    msr apsr, r12
 ; V6M-NEXT:    ldr r0, [r0]
-; V6M-NEXT:    str r0, [sp, #20]
-; V6M-NEXT:    add r0, sp, #8
+; V6M-NEXT:    str r0, [sp, #28]
+; V6M-NEXT:    add r0, sp, #16
 ; V6M-NEXT:    ldrb r0, [r0]
-; V6M-NEXT:    ldr r1, [sp, #20]
+; V6M-NEXT:    ldr r1, [sp, #28]
+; V6M-NEXT:    mrs r12, apsr
 ; V6M-NEXT:    movs r2, :upper8_15:__stack_chk_guard
 ; V6M-NEXT:    lsls r2, r2, #8
 ; V6M-NEXT:    adds r2, :upper0_7:__stack_chk_guard
@@ -55,11 +58,12 @@ define dso_local i32 @main() #0 {
 ; V6M-NEXT:    adds r2, :lower8_15:__stack_chk_guard
 ; V6M-NEXT:    lsls r2, r2, #8
 ; V6M-NEXT:    adds r2, :lower0_7:__stack_chk_guard
+; V6M-NEXT:    msr apsr, r12
 ; V6M-NEXT:    ldr r2, [r2]
 ; V6M-NEXT:    cmp r2, r1
 ; V6M-NEXT:    bne .LBB0_2
 ; V6M-NEXT:  @ %bb.1: @ %entry
-; V6M-NEXT:    add sp, #24
+; V6M-NEXT:    add sp, #32
 ; V6M-NEXT:    pop {r7, pc}
 ; V6M-NEXT:  .LBB0_2: @ %entry
 ; V6M-NEXT:    bl __stack_chk_fail
