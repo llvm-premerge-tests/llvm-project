@@ -233,8 +233,8 @@ static unsigned getNumOpRegs(const MachineInstr &I, unsigned OpIdx) {
   return InlineAsm::getNumOperandRegisters(Flag);
 }
 
-static bool buildAnyextOrCopy(Register Dst, Register Src,
-                              MachineIRBuilder &MIRBuilder) {
+bool InlineAsmLowering::buildAnyextOrCopy(Register Dst, Register Src,
+                              MachineIRBuilder &MIRBuilder) const {
   const TargetRegisterInfo *TRI =
       MIRBuilder.getMF().getSubtarget().getRegisterInfo();
   MachineRegisterInfo *MRI = MIRBuilder.getMRI();
