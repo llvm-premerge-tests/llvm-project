@@ -37,19 +37,20 @@ static constexpr const ArrayRef<StringLiteral>
 
 // Create table mapping all options defined in COFFOptions.td
 static constexpr opt::OptTable::Info infoTable[] = {
-#define OPTION(X1, X2, ID, KIND, GROUP, ALIAS, X7, X8, X9, X10, X11, X12)      \
+#define OPTION(X1, X2, X3, ID, KIND, GROUP, ALIAS, X8, X9, X10, X11, X12, X13) \
   {X1,                                                                         \
    X2,                                                                         \
-   X10,                                                                        \
+   X3,                                                                         \
    X11,                                                                        \
+   X12,                                                                        \
    COFF_OPT_##ID,                                                              \
    opt::Option::KIND##Class,                                                   \
+   X10,                                                                        \
    X9,                                                                         \
-   X8,                                                                         \
    COFF_OPT_##GROUP,                                                           \
    COFF_OPT_##ALIAS,                                                           \
-   X7,                                                                         \
-   X12},
+   X8,                                                                         \
+   X13},
 #include "COFFOptions.inc"
 #undef OPTION
 };

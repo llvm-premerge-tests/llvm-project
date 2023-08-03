@@ -45,6 +45,7 @@ public:
     /// matching.
     ArrayRef<StringLiteral> Prefixes;
     StringRef Name;
+    StringLiteral Spelling;
     const char *HelpText;
     const char *MetaVar;
     unsigned ID;

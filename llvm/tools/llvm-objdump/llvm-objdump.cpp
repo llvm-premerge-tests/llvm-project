@@ -128,12 +128,21 @@ namespace objdump_opt {
 #undef PREFIX
 
 static constexpr opt::OptTable::Info ObjdumpInfoTable[] = {
-#define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM,  \
-               HELPTEXT, METAVAR, VALUES)                                      \
-  {PREFIX,          NAME,         HELPTEXT,                                    \
-   METAVAR,         OBJDUMP_##ID, opt::Option::KIND##Class,                    \
-   PARAM,           FLAGS,        OBJDUMP_##GROUP,                             \
-   OBJDUMP_##ALIAS, ALIASARGS,    VALUES},
+#define OPTION(PREFIX, NAME, SPELLING, ID, KIND, GROUP, ALIAS, ALIASARGS,      \
+               FLAGS, PARAM, HELPTEXT, METAVAR, VALUES)                        \
+  {PREFIX,                                                                     \
+   NAME,                                                                       \
+   SPELLING,                                                                   \
+   HELPTEXT,                                                                   \
+   METAVAR,                                                                    \
+   OBJDUMP_##ID,                                                               \
+   opt::Option::KIND##Class,                                                   \
+   PARAM,                                                                      \
+   FLAGS,                                                                      \
+   OBJDUMP_##GROUP,                                                            \
+   OBJDUMP_##ALIAS,                                                            \
+   ALIASARGS,                                                                  \
+   VALUES},
 #include "ObjdumpOpts.inc"
 #undef OPTION
 };
@@ -149,8 +158,8 @@ public:
 
 enum OtoolOptID {
   OTOOL_INVALID = 0, // This is not an option ID.
-#define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM,  \
-               HELPTEXT, METAVAR, VALUES)                                      \
+#define OPTION(PREFIX, NAME, SPELLING, ID, KIND, GROUP, ALIAS, ALIASARGS,      \
+               FLAGS, PARAM, HELPTEXT, METAVAR, VALUES)                        \
   OTOOL_##ID,
 #include "OtoolOpts.inc"
 #undef OPTION
@@ -165,12 +174,21 @@ namespace otool {
 #undef PREFIX
 
 static constexpr opt::OptTable::Info OtoolInfoTable[] = {
-#define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM,  \
-               HELPTEXT, METAVAR, VALUES)                                      \
-  {PREFIX,        NAME,       HELPTEXT,                                        \
-   METAVAR,       OTOOL_##ID, opt::Option::KIND##Class,                        \
-   PARAM,         FLAGS,      OTOOL_##GROUP,                                   \
-   OTOOL_##ALIAS, ALIASARGS,  VALUES},
+#define OPTION(PREFIX, NAME, SPELLING, ID, KIND, GROUP, ALIAS, ALIASARGS,      \
+               FLAGS, PARAM, HELPTEXT, METAVAR, VALUES)                        \
+  {PREFIX,                                                                     \
+   NAME,                                                                       \
+   SPELLING,                                                                   \
+   HELPTEXT,                                                                   \
+   METAVAR,                                                                    \
+   OTOOL_##ID,                                                                 \
+   opt::Option::KIND##Class,                                                   \
+   PARAM,                                                                      \
+   FLAGS,                                                                      \
+   OTOOL_##GROUP,                                                              \
+   OTOOL_##ALIAS,                                                              \
+   ALIASARGS,                                                                  \
+   VALUES},
 #include "OtoolOpts.inc"
 #undef OPTION
 };

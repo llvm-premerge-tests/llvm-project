@@ -77,8 +77,8 @@ public:
 
 enum Windres_ID {
   WINDRES_INVALID = 0, // This is not a correct option ID.
-#define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM,  \
-               HELPTEXT, METAVAR, VALUES)                                      \
+#define OPTION(PREFIX, NAME, SPELLING, ID, KIND, GROUP, ALIAS, ALIASARGS,      \
+               FLAGS, PARAM, HELPTEXT, METAVAR, VALUES)                        \
   WINDRES_##ID,
 #include "WindresOpts.inc"
 #undef OPTION
@@ -93,12 +93,21 @@ namespace windres_opt {
 #undef PREFIX
 
 static constexpr opt::OptTable::Info InfoTable[] = {
-#define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM,  \
-               HELPTEXT, METAVAR, VALUES)                                      \
-  {PREFIX,          NAME,         HELPTEXT,                                    \
-   METAVAR,         WINDRES_##ID, opt::Option::KIND##Class,                    \
-   PARAM,           FLAGS,        WINDRES_##GROUP,                             \
-   WINDRES_##ALIAS, ALIASARGS,    VALUES},
+#define OPTION(PREFIX, NAME, SPELLING, ID, KIND, GROUP, ALIAS, ALIASARGS,      \
+               FLAGS, PARAM, HELPTEXT, METAVAR, VALUES)                        \
+  {PREFIX,                                                                     \
+   NAME,                                                                       \
+   SPELLING,                                                                   \
+   HELPTEXT,                                                                   \
+   METAVAR,                                                                    \
+   WINDRES_##ID,                                                               \
+   opt::Option::KIND##Class,                                                   \
+   PARAM,                                                                      \
+   FLAGS,                                                                      \
+   WINDRES_##GROUP,                                                            \
+   WINDRES_##ALIAS,                                                            \
+   ALIASARGS,                                                                  \
+   VALUES},
 #include "WindresOpts.inc"
 #undef OPTION
 };

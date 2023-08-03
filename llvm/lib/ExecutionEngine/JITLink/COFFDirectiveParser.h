@@ -26,7 +26,8 @@ namespace jitlink {
 
 enum {
   COFF_OPT_INVALID = 0,
-#define OPTION(_1, _2, ID, _4, _5, _6, _7, _8, _9, _10, _11, _12) COFF_OPT_##ID,
+#define OPTION(_1, _2, _3, ID, _5, _6, _7, _8, _9, _10, _11, _12, _13)         \
+  COFF_OPT_##ID,
 #include "COFFOptions.inc"
 #undef OPTION
 };

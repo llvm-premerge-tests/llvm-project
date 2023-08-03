@@ -67,8 +67,8 @@ static const StringRef ToolName = "llvm-lipo";
 namespace {
 enum LipoID {
   LIPO_INVALID = 0, // This is not an option ID.
-#define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM,  \
-               HELPTEXT, METAVAR, VALUES)                                      \
+#define OPTION(PREFIX, NAME, SPELLING, ID, KIND, GROUP, ALIAS, ALIASARGS,      \
+               FLAGS, PARAM, HELPTEXT, METAVAR, VALUES)                        \
   LIPO_##ID,
 #include "LipoOpts.inc"
 #undef OPTION
@@ -83,12 +83,21 @@ namespace lipo {
 #undef PREFIX
 
 static constexpr opt::OptTable::Info LipoInfoTable[] = {
-#define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM,  \
-               HELPTEXT, METAVAR, VALUES)                                      \
-  {PREFIX,       NAME,      HELPTEXT,                                          \
-   METAVAR,      LIPO_##ID, opt::Option::KIND##Class,                          \
-   PARAM,        FLAGS,     LIPO_##GROUP,                                      \
-   LIPO_##ALIAS, ALIASARGS, VALUES},
+#define OPTION(PREFIX, NAME, SPELLING, ID, KIND, GROUP, ALIAS, ALIASARGS,      \
+               FLAGS, PARAM, HELPTEXT, METAVAR, VALUES)                        \
+  {PREFIX,                                                                     \
+   NAME,                                                                       \
+   SPELLING,                                                                   \
+   HELPTEXT,                                                                   \
+   METAVAR,                                                                    \
+   LIPO_##ID,                                                                  \
+   opt::Option::KIND##Class,                                                   \
+   PARAM,                                                                      \
+   FLAGS,                                                                      \
+   LIPO_##GROUP,                                                               \
+   LIPO_##ALIAS,                                                               \
+   ALIASARGS,                                                                  \
+   VALUES},
 #include "LipoOpts.inc"
 #undef OPTION
 };

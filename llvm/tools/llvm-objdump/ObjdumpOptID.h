@@ -3,8 +3,8 @@
 
 enum ObjdumpOptID {
   OBJDUMP_INVALID = 0, // This is not an option ID.
-#define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM,  \
-               HELPTEXT, METAVAR, VALUES)                                      \
+#define OPTION(PREFIX, NAME, SPELLING, ID, KIND, GROUP, ALIAS, ALIASARGS,      \
+               FLAGS, PARAM, HELPTEXT, METAVAR, VALUES)                        \
   OBJDUMP_##ID,
 #include "ObjdumpOpts.inc"
 #undef OPTION
