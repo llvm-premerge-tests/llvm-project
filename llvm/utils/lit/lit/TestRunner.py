@@ -8,6 +8,7 @@ import re
 import stat
 import pathlib
 import platform
+import shlex
 import shutil
 import tempfile
 import threading
@@ -340,12 +341,12 @@ def executeBuiltinExport(cmd, shenv):
 
 
 def executeBuiltinEcho(cmd, shenv):
-    """Interpret a redirected echo command"""
+    """Interpret a redirected echo or @echo command"""
     opened_files = []
     stdin, stdout, stderr = processRedirects(cmd, subprocess.PIPE, shenv, opened_files)
     if stdin != subprocess.PIPE or stderr != subprocess.PIPE:
         raise InternalShellError(
-            cmd, "stdin and stderr redirects not supported for echo"
+            cmd, f"stdin and stderr redirects not supported for {cmd.args[0]}"
         )
 
     # Some tests have un-redirected echo commands to help debug test failures.
@@ -692,6 +693,7 @@ def _executeShCmd(cmd, shenv, results, timeoutHelper):
         "cd": executeBuiltinCd,
         "export": executeBuiltinExport,
         "echo": executeBuiltinEcho,
+        "@echo": executeBuiltinEcho,
         "mkdir": executeBuiltinMkdir,
         "popd": executeBuiltinPopd,
         "pushd": executeBuiltinPushd,
@@ -982,19 +984,45 @@ def _executeShCmd(cmd, shenv, results, timeoutHelper):
     return exitCode
 
 
+def formatOutput(title, data, limit=None):
+    if not data.strip():
+        return ""
+    if not limit is None and len(data) > limit:
+        data = data[:limit] + "\n...\n"
+        msg = "data was truncated"
+    else:
+        msg = ""
+    ndashes = 30
+    out =  f"# .---{title}{'-' * (ndashes - 4 - len(title))}\n"
+    out += f"# | " + "\n# | ".join(data.splitlines()) + "\n"
+    out += f"# `---{msg}{'-' * (ndashes - 4 - len(msg))}\n"
+    return out
+
+
 def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
     cmds = []
     for i, ln in enumerate(commands):
         match = re.match(kPdbgRegex, ln)
         if match:
+            dbg = match.group(1)
             command = match.group(2)
-            ln = commands[i] = match.expand(": '\\1'; \\2" if command else ": '\\1'")
+        else:
+            dbg = "command line"
+            command = ln
+        ln = f"@echo '# {dbg}' "
+        if command:
+            ln += f"&& @echo {shlex.quote(command.lstrip())} && {command}"
+        else:
+            ln += "has no command after substitutions"
+        commands[i] = ln
         try:
             cmds.append(
                 ShUtil.ShParser(ln, litConfig.isWindows, test.config.pipefail).parse()
             )
         except:
-            return lit.Test.Result(Test.FAIL, "shell parser error on: %r" % ln)
+            return lit.Test.Result(
+                Test.FAIL, f"shell parser error on {dbg}: {command.lstrip()}\n"
+            )
 
     cmd = cmds[0]
     for c in cmds[1:]:
@@ -1014,8 +1042,32 @@ def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
 
     out = err = ""
     for i, result in enumerate(results):
-        # Write the command line run.
-        out += "$ %s\n" % (" ".join('"%s"' % s for s in result.command.args),)
+        # The purpose of an "@echo" command is merely to add a debugging message
+        # directly to lit's output.
+        if result.command.args[0] == "@echo":
+            out += result.stdout
+            assert (
+                result.exitCode == 0
+                and not result.stderr
+                and not result.outputFiles
+            ), "expected @echo command to merely print to stdout"
+            continue
+
+        # Write the command line that was run.  Properly quote it.  Leading
+        # "!" commands should not be quoted as that would indicate they are not
+        # the builtins.
+        out += "# executed command: "
+        nLeadingBangs = next(
+            (i for i, cmd in enumerate(result.command.args) if cmd != "!"),
+            len(result.command.args),
+        )
+        out += "! " * nLeadingBangs
+        out += " ".join(
+            shlex.quote(str(s))
+            for i, s in enumerate(result.command.args)
+            if i >= nLeadingBangs
+        )
+        out += "\n"
 
         # If nothing interesting happened, move on.
         if (
@@ -1030,22 +1082,16 @@ def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
 
         # Add the command output, if redirected.
         for (name, path, data) in result.outputFiles:
-            if data.strip():
-                out += "# redirected output from %r:\n" % (name,)
-                data = to_string(data.decode("utf-8", errors="replace"))
-                if len(data) > 1024:
-                    out += data[:1024] + "\n...\n"
-                    out += "note: data was truncated\n"
-                else:
-                    out += data
-                out += "\n"
-
+            data = to_string(data.decode("utf-8", errors="replace"))
+            out += formatOutput(
+                f"redirected output from '{name}'", data, limit=1024
+            )
         if result.stdout.strip():
-            out += "# command output:\n%s\n" % (result.stdout,)
+            out += formatOutput("command stdout", result.stdout)
         if result.stderr.strip():
-            out += "# command stderr:\n%s\n" % (result.stderr,)
+            out += formatOutput("command stderr", result.stderr)
         if not result.stdout.strip() and not result.stderr.strip():
-            out += "note: command had no output on stdout or stderr\n"
+            out += "# note: command had no output on stdout or stderr\n"
 
         # Show the error conditions:
         if result.exitCode != 0:
@@ -1055,9 +1101,9 @@ def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
                 codeStr = hex(int(result.exitCode & 0xFFFFFFFF)).rstrip("L")
             else:
                 codeStr = str(result.exitCode)
-            out += "error: command failed with exit status: %s\n" % (codeStr,)
+            out += "# error: command failed with exit status: %s\n" % (codeStr,)
         if litConfig.maxIndividualTestTime > 0 and result.timeoutReached:
-            out += "error: command reached timeout: %s\n" % (
+            out += "# error: command reached timeout: %s\n" % (
                 str(result.timeoutReached),
             )
 
