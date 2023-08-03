@@ -52,6 +52,8 @@ namespace llvm {
 extern cl::opt<bool> EnableVPlanNativePath;
 }
 
+extern cl::opt<bool> EnableBOSCCVectorization;
+
 #define DEBUG_TYPE "vplan"
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
@@ -368,11 +370,12 @@ void VPBasicBlock::execute(VPTransformState *State) {
     // block.
     cast<BranchInst>(ExitingBB->getTerminator())->setSuccessor(0, NewBB);
   } else if (PrevVPBB && /* A */
-             !((SingleHPred = getSingleHierarchicalPredecessor()) &&
-               SingleHPred->getExitingBasicBlock() == PrevVPBB &&
-               PrevVPBB->getSingleHierarchicalSuccessor() &&
-               (SingleHPred->getParent() == getEnclosingLoopRegion() &&
-                !IsLoopRegion(SingleHPred))) &&         /* B */
+             (getPlan()->hasBOSCCBlocks() ||
+              !((SingleHPred = getSingleHierarchicalPredecessor()) &&
+                SingleHPred->getExitingBasicBlock() == PrevVPBB &&
+                PrevVPBB->getSingleHierarchicalSuccessor() &&
+                (SingleHPred->getParent() == getEnclosingLoopRegion() &&
+                 !IsLoopRegion(SingleHPred)))) &&         /* B */
              !(Replica && getPredecessors().empty())) { /* C */
     // The last IR basic block is reused, as an optimization, in three cases:
     // A. the first VPBB reuses the loop pre-header BB - when PrevVPBB is null;
@@ -464,7 +467,7 @@ static bool hasConditionalTerminator(const VPBasicBlock *VPBB) {
   const VPRecipeBase *R = &VPBB->back();
   auto *VPI = dyn_cast<VPInstruction>(R);
   bool IsCondBranch =
-      isa<VPBranchOnMaskRecipe>(R) ||
+      isa<VPBranchOnMaskRecipe>(R) || isa<VPBranchOnBOSCCGuardRecipe>(R) ||
       (VPI && (VPI->getOpcode() == VPInstruction::BranchOnCond ||
                VPI->getOpcode() == VPInstruction::BranchOnCount));
   (void)IsCondBranch;
@@ -754,7 +757,7 @@ void VPlan::execute(VPTransformState *State) {
   }
 
   // We do not attempt to preserve DT for outer loop vectorization currently.
-  if (!EnableVPlanNativePath) {
+  if (!EnableVPlanNativePath && !EnableBOSCCVectorization) {
     BasicBlock *VectorHeaderBB = State->CFG.VPBB2IRBB[Header];
     State->DT->addNewBlock(VectorHeaderBB, VectorPreHeader);
     updateDominatorTree(State->DT, VectorHeaderBB, VectorLatchBB,

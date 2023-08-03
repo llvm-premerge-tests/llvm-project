@@ -172,6 +172,10 @@ STATISTIC(LoopsVectorized, "Number of loops vectorized");
 STATISTIC(LoopsAnalyzed, "Number of loops analyzed for vectorization");
 STATISTIC(LoopsEpilogueVectorized, "Number of epilogues vectorized");
 
+cl::opt<bool> EnableBOSCCVectorization(
+    "enable-boscc-vectorization", cl::init(false), cl::Hidden,
+    cl::desc("Enable BOSCC Vectorizer"));
+
 static cl::opt<bool> EnableEpilogueVectorization(
     "enable-epilogue-vectorization", cl::init(true), cl::Hidden,
     cl::desc("Enable vectorization of epilogue loops."));
@@ -198,6 +202,10 @@ static cl::opt<unsigned> TinyTripCountVectorThreshold(
 static cl::opt<unsigned> VectorizeMemoryCheckThreshold(
     "vectorize-memory-check-threshold", cl::init(128), cl::Hidden,
     cl::desc("The maximum allowed number of runtime memory checks"));
+
+static cl::opt<unsigned> BOSCCInstructionInBlockThreshold(
+    "boscc-instructions-in-threshold", cl::init(5), cl::Hidden,
+    cl::desc("The minimum instructions in a block required for boscc"));
 
 // Option prefer-predicate-over-epilogue indicates that an epilogue is undesired,
 // that predication is preferred, and this lists all options. I.e., the
@@ -935,6 +943,37 @@ protected:
   void printDebugTracesAtStart() override;
   void printDebugTracesAtEnd() override;
 };
+
+// Block level BOSCC vectorization planner
+class BOSCCBlockPlanner {
+  BasicBlock *BB;
+  VPBasicBlock *VPBB;
+  Loop *OrigLoop;
+  DominatorTree *DT;
+  const TargetTransformInfo *TTI;
+  VPBuilder &Builder;
+  VPBasicBlock *VPGuardBlock;
+  VPBasicBlock *VPJoinBlock;
+  VPBasicBlock *VPVecContinueBlock;
+
+public:
+  BOSCCBlockPlanner(BasicBlock *BB, VPBasicBlock *VPBB, Loop *OrigLoop,
+                    DominatorTree *DT, const TargetTransformInfo *TTI,
+                    VPBuilder &Builder)
+      : BB(BB), VPBB(VPBB), OrigLoop(OrigLoop), DT(DT), TTI(TTI),
+        Builder(Builder), VPGuardBlock(nullptr), VPJoinBlock(nullptr),
+        VPVecContinueBlock(nullptr) {}
+
+  bool isBlockLegalForBOSCC();
+  bool isBlockProfitableForBOSCC();
+  bool isBlockLegalAndProfitableForBOSCC();
+  VPBasicBlock *getVPGuardBlock() { return VPGuardBlock; }
+  VPBasicBlock *getVPJoinBlock() { return VPJoinBlock; }
+  VPBasicBlock *getVPVecContinueBlock() { return VPVecContinueBlock; }
+  VPBasicBlock *createBOSCCBlocks();
+  bool needBOSCCLiveOut(Instruction *I);
+};
+
 } // end namespace llvm
 
 /// Look for a meaningful debug location on the instruction or it's
@@ -1091,6 +1130,7 @@ void InnerLoopVectorizer::collectPoisonGeneratingRecipes(
           isa<VPInterleaveRecipe>(CurRec) ||
           isa<VPScalarIVStepsRecipe>(CurRec) ||
           isa<VPCanonicalIVPHIRecipe>(CurRec) ||
+          isa<VPBOSCCLiveOutRecipe>(CurRec) ||
           isa<VPActiveLaneMaskPHIRecipe>(CurRec))
         continue;
 
@@ -8071,6 +8111,110 @@ void EpilogueVectorizerEpilogueLoop::printDebugTracesAtEnd() {
   });
 }
 
+// BOSCC Legal Check
+bool BOSCCBlockPlanner::isBlockLegalForBOSCC() {
+  if (!EnableBOSCCVectorization)
+    return false;
+  if (ForceTargetSupportsScalableVectors)
+    return false;
+  if (TTI->enableScalableVectorization())
+    return false;
+  BasicBlock *Latch = OrigLoop->getLoopLatch();
+  return !DT->dominates(BB, Latch);
+}
+
+// BOSCC Profitablity Check
+bool BOSCCBlockPlanner::isBlockProfitableForBOSCC() {
+  // TBD: At this point the profitablity is controlled by a threshold
+  // This can be improved later.
+  return (BB->sizeWithoutDebug() > BOSCCInstructionInBlockThreshold);
+}
+
+// BOSCC Legal & Profitablity Check
+bool BOSCCBlockPlanner::isBlockLegalAndProfitableForBOSCC() {
+  return isBlockLegalForBOSCC() && isBlockProfitableForBOSCC();
+}
+
+// Creates the BOSCC Block layout for a given conditional block
+//
+// This creates the "GUARD", "BOSCC.VEC", "BOSCC.VEC.CONTINUE" & "BOSCC.JOIN"
+//
+// Consider below block layout
+//
+//     | \
+//     |  \
+//     |  BB
+//     |  /
+//     | /
+//
+// It gets transformed to:
+//
+//    | \
+//    |  \
+//    |  BB.BOSCC.GUARD 
+//    |  | \
+//    |  |  \
+//    |  |  BB.BOSCC.VEC 
+//    |  |   |
+//    |  |   |
+//    |  |  BB.BOSCC.VEC.CONTINUE 
+//    |  |  / 
+//    |  | /
+//    |  BB.BOSCC.JOIN
+//    | /
+//
+// BB.BOSCC.GUARD : This serves the purpose of guarding with right condition
+// BB.BOSCC.VEC : This is the vector block corrosponds to BB
+// BB.BOSCC.VEC.CONTINUE: Auxilary block to facilitate control flow
+// BB.BOSCC.JOIN: Required for PHI generation for the live out from BB
+//
+VPBasicBlock *BOSCCBlockPlanner::createBOSCCBlocks() {
+  Builder.setInsertPoint(VPBB);
+  VPBasicBlock *SuccBlock = cast<VPBasicBlock>(VPBB->getSingleSuccessor());
+  VPBlockUtils::disconnectBlocks(VPBB, SuccBlock);
+  VPBasicBlock *VPVecBlock = new VPBasicBlock();
+  VPVecBlock->setParent(VPBB->getParent());
+  VPVecContinueBlock = new VPBasicBlock();
+  VPVecContinueBlock->setParent(VPBB->getParent());
+  VPJoinBlock = new VPBasicBlock();
+  VPJoinBlock->setParent(VPBB->getParent());
+  VPGuardBlock = VPBB;
+  VPGuardBlock->setName(BB->getName() + ".boscc.guard");
+  VPVecBlock->setName(BB->getName() + ".boscc.vec");
+  VPVecContinueBlock->setName(BB->getName() + ".boscc.vec.continue");
+  VPJoinBlock->setName(BB->getName() + ".boscc.join");
+  VPGuardBlock->markBOSCCBlock();
+  VPVecBlock->markBOSCCBlock();
+  VPJoinBlock->markBOSCCBlock();
+  VPVecContinueBlock->markBOSCCBlock();
+  VPBlockUtils::insertTwoBlocksAfter(VPVecBlock, VPJoinBlock, VPGuardBlock);
+  VPBlockUtils::connectBlocks(VPVecBlock, VPVecContinueBlock);
+  VPBlockUtils::connectBlocks(VPVecContinueBlock, VPJoinBlock);
+  VPBlockUtils::connectBlocks(VPJoinBlock, SuccBlock);
+  return VPVecBlock;
+}
+
+// Identify if there is a need for BOSCC liveout for the
+// given instruction.
+bool BOSCCBlockPlanner::needBOSCCLiveOut(Instruction *I) {
+  // There has to be a join block to generate live outs
+  if (!getVPJoinBlock())
+    return false;
+  // If the instruction has usage across basic block
+  for (Use &U : I->uses()) {
+    Instruction *UseInst = dyn_cast<Instruction>(U.getUser());
+    if (!UseInst || (UseInst->getParent() == I->getParent()))
+      continue;
+    return true;
+  }
+  // If a condition plays a role in terminator branch
+  // Required for nested conditional statements.
+  BranchInst *TermBr = dyn_cast<BranchInst>(I->getParent()->getTerminator());
+  if (TermBr && TermBr->isConditional() && (TermBr->getCondition() == I))
+    return true;
+  return false;
+}
+
 bool LoopVectorizationPlanner::getDecisionAndClampRange(
     const std::function<bool(ElementCount)> &Predicate, VFRange &Range) {
   assert(!Range.isEmpty() && "Trying to test an empty VF range.");
@@ -8920,12 +9064,31 @@ std::optional<VPlanPtr> LoopVectorizationPlanner::tryToBuildVPlanWithVPRecipes(
   for (BasicBlock *BB : make_range(DFS.beginRPO(), DFS.endRPO())) {
     // Relevant instructions from basic block BB will be grouped into VPRecipe
     // ingredients and fill a new VPBasicBlock.
+    // Init the BOSCC Planner and check the legal and profitablity
+    BOSCCBlockPlanner BOSCCPlanner(BB, VPBB, OrigLoop, DT, &TTI, Builder);
+    bool BOSCCRequiredOnBlock =
+        BOSCCPlanner.isBlockLegalAndProfitableForBOSCC();
+    if (BOSCCRequiredOnBlock) {
+      // Mark plan with BOSCC style vectorization
+      Plan->markPlanWithBOSCC();
+      // Create BOSCC block layout
+      VPBB = BOSCCPlanner.createBOSCCBlocks();
+      // Create the reciepe to generate required check in guard block
+      VPValue *BlockInMask = RecipeBuilder.createBlockInMask(BB, *Plan);
+      VPBasicBlock *VPGuardBlock = BOSCCPlanner.getVPGuardBlock();
+      auto *BOMRecipe = new VPBranchOnBOSCCGuardRecipe(BlockInMask, &TTI);
+      VPGuardBlock->appendRecipe(BOMRecipe);
+    }
+
     if (VPBB != HeaderVPBB)
-      VPBB->setName(BB->getName());
+      VPBB->setName(BB->getName() + (BOSCCRequiredOnBlock ? ".boscc" : ""));
+
     Builder.setInsertPoint(VPBB);
 
     // Introduce each ingredient into VPlan.
     // TODO: Model and preserve debug intrinsics in VPlan.
+    MapVector<Instruction *, VPBOSCCLiveOutRecipe *> BOSCCLiveOutMap;
+    BOSCCLiveOutMap.clear();
     for (Instruction &I : BB->instructionsWithoutDebug(false)) {
       Instruction *Instr = &I;
 
@@ -8933,6 +9096,10 @@ std::optional<VPlanPtr> LoopVectorizationPlanner::tryToBuildVPlanWithVPRecipes(
       // built for them.
       if (isa<BranchInst>(Instr) || DeadInstructions.count(Instr))
         continue;
+
+      // Check the need for BOSCC LiveOut
+      bool BOSCCLiveOutRequired = BOSCCRequiredOnBlock &&
+                                  BOSCCPlanner.needBOSCCLiveOut(Instr);
 
       SmallVector<VPValue *, 4> Operands;
       auto *Phi = dyn_cast<PHINode>(Instr);
@@ -8981,6 +9148,32 @@ std::optional<VPlanPtr> LoopVectorizationPlanner::tryToBuildVPlanWithVPRecipes(
         Recipe->insertBefore(*HeaderVPBB, HeaderVPBB->getFirstNonPhi());
       } else
         VPBB->appendRecipe(Recipe);
+
+      // Create the BOSCC LiveOuts
+      if (BOSCCLiveOutRequired) {
+        // Create the reciepe to generate required PHI nodes in Join block
+        VPBasicBlock *VPJoinBlock = BOSCCPlanner.getVPJoinBlock();
+        Builder.setInsertPoint(VPJoinBlock);
+        VPValue *ScalarLiveOut = Plan->getVPValueOrAddLiveIn(Instr);
+        auto *LiveOutRecipe = new VPBOSCCLiveOutRecipe(
+            ScalarLiveOut, BOSCCPlanner.getVPGuardBlock(),
+            BOSCCPlanner.getVPVecContinueBlock());
+        VPJoinBlock->appendRecipe(LiveOutRecipe);
+        BOSCCLiveOutMap[Instr] = LiveOutRecipe;
+        Builder.setInsertPoint(VPBB);
+      }
+    }
+
+    // Update the Plan for BOSCC live outs
+    for (auto &Itr : BOSCCLiveOutMap) {
+      Plan->removeVPValueFor(Itr.first);
+      Plan->addVPValue(Itr.first, Itr.second);
+    }
+
+    if (BOSCCRequiredOnBlock) {
+      // Before processing the next block, update the current
+      // vplan block to boscc join block
+      VPBB = BOSCCPlanner.getVPJoinBlock();
     }
 
     VPBlockUtils::insertBlockAfter(new VPBasicBlock(), VPBB);
@@ -9950,7 +10143,7 @@ static bool processLoopInVPlanNativePath(
   // Use the planner for outer loop vectorization.
   // TODO: CM is not used at this point inside the planner. Turn CM into an
   // optional argument if we don't need it in the future.
-  LoopVectorizationPlanner LVP(L, LI, TLI, *TTI, LVL, CM, IAI, PSE, Hints, ORE);
+  LoopVectorizationPlanner LVP(L, LI, DT, TLI, *TTI, LVL, CM, IAI, PSE, Hints, ORE);
 
   // Get user vectorization factor.
   ElementCount UserVF = Hints.getWidth();
@@ -10290,9 +10483,8 @@ bool LoopVectorizePass::processLoop(Loop *L) {
   LoopVectorizationCostModel CM(SEL, L, PSE, LI, &LVL, *TTI, TLI, DB, AC, ORE,
                                 F, &Hints, IAI);
   // Use the planner for vectorization.
-  LoopVectorizationPlanner LVP(L, LI, TLI, *TTI, &LVL, CM, IAI, PSE, Hints,
+  LoopVectorizationPlanner LVP(L, LI, DT, TLI, *TTI, &LVL, CM, IAI, PSE, Hints,
                                ORE);
-
   // Get user vectorization factor and interleave count.
   ElementCount UserVF = Hints.getWidth();
   unsigned UserIC = Hints.getInterleave();
@@ -10677,7 +10869,7 @@ PreservedAnalyses LoopVectorizePass::run(Function &F,
     // vectorization. Until this is addressed, mark these analyses as preserved
     // only for non-VPlan-native path.
     // TODO: Preserve Loop and Dominator analyses for VPlan-native path.
-    if (!EnableVPlanNativePath) {
+    if (!EnableVPlanNativePath && !EnableBOSCCVectorization) {
       PA.preserve<LoopAnalysis>();
       PA.preserve<DominatorTreeAnalysis>();
       PA.preserve<ScalarEvolutionAnalysis>();

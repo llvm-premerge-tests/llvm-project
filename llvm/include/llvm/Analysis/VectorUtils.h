@@ -424,6 +424,12 @@ bool widenShuffleMaskElts(int Scale, ArrayRef<int> Mask,
 void getShuffleMaskWithWidestElts(ArrayRef<int> Mask,
                                   SmallVectorImpl<int> &ScaledMask);
 
+/// Create a mask vector to scalar cast
+/// i.e. if any lane set in mask vector then the casted result
+/// is expected to be non zero
+Value *createVectorToScalarCast(Value *V, IRBuilderBase &Builder,
+                                const TargetTransformInfo *TTI);
+
 /// Splits and processes shuffle mask depending on the number of input and
 /// output registers. The function does 2 main things: 1) splits the
 /// source/destination vectors into real registers; 2) do the mask analysis to
