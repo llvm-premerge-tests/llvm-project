@@ -1,0 +1,10 @@
+! Test -fcuda option for bbc
+! RUN: bbc -fcuda -o - %s | FileCheck %s --check-prefix=DEFAULT-CUDA-VAR
+
+! DEFAULT-CUDA-VAR: {{.*}} = arith.constant 1
+
+program main
+#if _CUDA
+  integer :: var = _CUDA
+#endif
+end program
