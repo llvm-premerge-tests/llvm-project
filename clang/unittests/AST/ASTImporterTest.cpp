@@ -4212,6 +4212,84 @@ TEST_P(ImportFriendClasses, DeclsFromFriendsShouldBeInRedeclChains) {
   EXPECT_TRUE(Imported->getPreviousDecl());
 }
 
+TEST_P(ImportFriendClasses, SkipFriendTemplateDeclaration) {
+  Decl *ToTU = getToTuDecl(
+      R"(
+        namespace __1{
+
+          template<class T, T U>
+          class A;
+
+          template<class T, T U>
+          class A{
+          public:
+            template<class P, P Q>
+            friend class A;
+
+            A(T x):x(x){}
+            
+            void foo(){
+              int i=0;
+              int j=1/i;
+              (void)j;
+            }
+            
+          private:
+            T x;
+          };
+
+      }
+      void bar();
+
+      int main(){
+        bar();
+      }
+      )",
+      Lang_CXX11);
+
+  auto *Fwd = FirstDeclMatcher<ClassTemplateDecl>().match(
+      ToTU, classTemplateDecl(hasName("A")));
+  Decl *FromTU = getTuDecl(
+      R"(
+      namespace __1{
+
+          template<class T, T U>
+          class A;
+
+          template<class T, T U>
+          class A{
+          public:
+            template<class P, P Q>
+            friend class A;
+
+            A(T x):x(x){}
+            
+            void foo(){
+              int i=0;
+              int j=1/i;
+              (void)j;
+            }
+            
+          private:
+            T x;
+          };
+
+        }
+        void bar(){
+          __1::A<int,3> a1(0);
+          a1.foo();
+        }
+      )",
+      Lang_CXX11, "input1.cc");
+  auto *Definition = FirstDeclMatcher<ClassTemplateDecl>().match(
+      FromTU, classTemplateDecl(hasName("A")));
+  auto *Template = Import(Definition, Lang_CXX11);
+  EXPECT_TRUE(Template);
+  auto *TemplateClass = cast<ClassTemplateDecl>(Template);
+  EXPECT_EQ(Fwd->getTemplatedDecl()->getTypeForDecl(),
+            TemplateClass->getTemplatedDecl()->getTypeForDecl());
+}
+
 TEST_P(ImportFriendClasses,
        ImportOfClassTemplateDefinitionShouldConnectToFwdFriend) {
   Decl *ToTU = getToTuDecl(
