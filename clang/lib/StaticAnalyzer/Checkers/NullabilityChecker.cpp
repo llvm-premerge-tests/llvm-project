@@ -942,7 +942,7 @@ static Nullability getReceiverNullability(const ObjCMethodCall &M,
 ProgramStateRef NullabilityChecker::evalAssume(ProgramStateRef State, SVal Cond,
                                                bool Assumption) const {
   PropertyAccessesMapTy PropertyAccesses = State->get<PropertyAccessesMap>();
-  for (auto [PropKey, PropVal] : PropertyAccesses) {
+  for (auto &[PropKey, PropVal] : PropertyAccesses) {
     if (!PropVal.isConstrainedNonnull) {
       ConditionTruthVal IsNonNull = State->isNonNull(PropVal.Value);
       if (IsNonNull.isConstrainedTrue()) {
@@ -1370,7 +1370,7 @@ void NullabilityChecker::printState(raw_ostream &Out, ProgramStateRef State,
   if (!State->get<InvariantViolated>())
     Out << Sep << NL;
 
-  for (auto [Region, State] : B) {
+  for (auto &[Region, State] : B) {
     Out << Region << " : ";
     State.print(Out);
     Out << NL;

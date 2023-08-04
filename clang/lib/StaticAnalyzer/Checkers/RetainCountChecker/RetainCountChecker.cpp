@@ -166,7 +166,7 @@ void RetainCountChecker::checkPostStmt(const BlockExpr *BE,
   const LocationContext *LC = C.getLocationContext();
   MemRegionManager &MemMgr = C.getSValBuilder().getRegionManager();
 
-  for (auto Var : ReferencedVars) {
+  for (auto &Var : ReferencedVars) {
     const VarRegion *VR = Var.getCapturedRegion();
     if (VR->getSuperRegion() == R) {
       VR = MemMgr.getVarRegion(VR->getDecl(), LC);

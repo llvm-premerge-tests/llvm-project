@@ -991,7 +991,7 @@ void StdLibraryFunctionsChecker::RangeConstraint::applyOnWithinRange(
   if (Ranges.empty())
     return;
 
-  for (auto [Start, End] : getRanges()) {
+  for (auto &[Start, End] : getRanges()) {
     const llvm::APSInt &Min = BVF.getValue(Start, ArgT);
     const llvm::APSInt &Max = BVF.getValue(End, ArgT);
     assert(Min <= Max);
@@ -1501,7 +1501,7 @@ bool StdLibraryFunctionsChecker::Signature::matches(
   }
 
   // Check the argument types.
-  for (auto [Idx, ArgTy] : llvm::enumerate(ArgTys)) {
+  for (const auto &[Idx, ArgTy] : llvm::enumerate(ArgTys)) {
     if (isIrrelevant(ArgTy))
       continue;
     QualType FDArgTy =

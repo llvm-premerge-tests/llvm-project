@@ -302,7 +302,7 @@ void RISCVIntrinsicManagerImpl::ConstructRVVIntrinsics(
         if (Record.MaskedPolicyScheme == PolicyScheme::SchemeNone)
           continue;
         // Create masked policy intrinsic.
-        for (auto P : SupportedMaskedPolicies) {
+        for (auto &P : SupportedMaskedPolicies) {
           llvm::SmallVector<PrototypeDescriptor> PolicyPrototype =
               RVVIntrinsic::computeBuiltinTypes(
                   BasicProtoSeq, /*IsMasked=*/true, Record.HasMaskedOffOperand,

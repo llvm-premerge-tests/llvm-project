@@ -57,7 +57,7 @@ UndefCapturedBlockVarChecker::checkPostStmt(const BlockExpr *BE,
   ProgramStateRef state = C.getState();
   auto *R = cast<BlockDataRegion>(C.getSVal(BE).getAsRegion());
 
-  for (auto Var : R->referenced_vars()) {
+  for (auto &Var : R->referenced_vars()) {
     // This VarRegion is the region associated with the block; we need
     // the one associated with the encompassing context.
     const VarRegion *VR = Var.getCapturedRegion();

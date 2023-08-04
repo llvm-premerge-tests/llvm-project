@@ -1193,7 +1193,7 @@ void ExprEngine::VisitLambdaExpr(const LambdaExpr *LE, ExplodedNode *Pred,
 
   // If we created a new MemRegion for the lambda, we should explicitly bind
   // the captures.
-  for (auto const [Idx, FieldForCapture, InitExpr] :
+  for (auto const &[Idx, FieldForCapture, InitExpr] :
        llvm::zip(llvm::seq<unsigned>(0, -1), LE->getLambdaClass()->fields(),
                  LE->capture_inits())) {
     SVal FieldLoc = State->getLValue(FieldForCapture, V);

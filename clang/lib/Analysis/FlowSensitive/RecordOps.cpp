@@ -35,7 +35,7 @@ void clang::dataflow::copyRecord(RecordStorageLocation &Src,
   });
   assert(compatibleTypes);
 
-  for (auto [Field, DstFieldLoc] : Dst.children()) {
+  for (auto &[Field, DstFieldLoc] : Dst.children()) {
     StorageLocation *SrcFieldLoc = Src.getChild(*Field);
 
     assert(Field->getType()->isReferenceType() ||
@@ -83,7 +83,7 @@ bool clang::dataflow::recordsEqual(const RecordStorageLocation &Loc1,
   assert(Loc2.getType().getCanonicalType().getUnqualifiedType() ==
          Loc1.getType().getCanonicalType().getUnqualifiedType());
 
-  for (auto [Field, FieldLoc1] : Loc1.children()) {
+  for (auto &[Field, FieldLoc1] : Loc1.children()) {
     StorageLocation *FieldLoc2 = Loc2.getChild(*Field);
 
     assert(Field->getType()->isReferenceType() ||

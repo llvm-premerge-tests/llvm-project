@@ -211,7 +211,7 @@ void ExprEngine::VisitBlockExpr(const BlockExpr *BE, ExplodedNode *Pred,
     auto ReferencedVars = BDR->referenced_vars();
     auto CI = BD->capture_begin();
     auto CE = BD->capture_end();
-    for (auto Var : ReferencedVars) {
+    for (auto &Var : ReferencedVars) {
       const VarRegion *capturedR = Var.getCapturedRegion();
       const TypedValueRegion *originalR = Var.getOriginalRegion();
 

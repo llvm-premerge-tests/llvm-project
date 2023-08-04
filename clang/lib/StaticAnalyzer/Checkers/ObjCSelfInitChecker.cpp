@@ -362,7 +362,7 @@ void ObjCSelfInitChecker::printState(raw_ostream &Out, ProgramStateRef State,
   }
 
   Out << NL;
-  for (auto [Sym, Flag] : FlagMap) {
+  for (auto &[Sym, Flag] : FlagMap) {
     Out << Sym << " : ";
 
     if (Flag == SelfFlag_None)

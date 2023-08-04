@@ -163,7 +163,7 @@ void SimpleStreamChecker::checkDeadSymbols(SymbolReaper &SymReaper,
   ProgramStateRef State = C.getState();
   SymbolVector LeakedStreams;
   StreamMapTy TrackedStreams = State->get<StreamMap>();
-  for (auto [Sym, StreamStatus] : TrackedStreams) {
+  for (auto &[Sym, StreamStatus] : TrackedStreams) {
     bool IsSymDead = SymReaper.isDead(Sym);
 
     // Collect leaked symbols.

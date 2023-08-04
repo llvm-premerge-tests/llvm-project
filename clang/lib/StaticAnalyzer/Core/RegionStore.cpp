@@ -1089,7 +1089,7 @@ void InvalidateRegionsWorker::VisitCluster(const MemRegion *baseR,
   // BlockDataRegion?  If so, invalidate captured variables that are passed
   // by reference.
   if (const BlockDataRegion *BR = dyn_cast<BlockDataRegion>(baseR)) {
-    for (auto Var : BR->referenced_vars()) {
+    for (auto &Var : BR->referenced_vars()) {
       const VarRegion *VR = Var.getCapturedRegion();
       const VarDecl *VD = VR->getDecl();
       if (VD->hasAttr<BlocksAttr>() || !VD->hasLocalStorage()) {
@@ -2844,7 +2844,7 @@ void RemoveDeadBindingsWorker::VisitBinding(SVal V) {
 
     // All regions captured by a block are also live.
     if (const BlockDataRegion *BR = dyn_cast<BlockDataRegion>(R)) {
-      for (auto Var : BR->referenced_vars())
+      for (auto &Var : BR->referenced_vars())
         AddToWorkList(Var.getCapturedRegion());
     }
   }

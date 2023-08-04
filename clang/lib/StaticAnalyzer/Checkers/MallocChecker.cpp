@@ -2818,7 +2818,7 @@ void MallocChecker::checkDeadSymbols(SymbolReaper &SymReaper,
 
   // Cleanup the Realloc Pairs Map.
   ReallocPairsTy RP = state->get<ReallocPairs>();
-  for (auto [Sym, ReallocPair] : RP) {
+  for (auto &[Sym, ReallocPair] : RP) {
     if (SymReaper.isDead(Sym) || SymReaper.isDead(ReallocPair.ReallocatedSym)) {
       state = state->remove<ReallocPairs>(Sym);
     }
@@ -3078,7 +3078,7 @@ ProgramStateRef MallocChecker::evalAssume(ProgramStateRef state,
   // Realloc returns 0 when reallocation fails, which means that we should
   // restore the state of the pointer being reallocated.
   ReallocPairsTy RP = state->get<ReallocPairs>();
-  for (auto [Sym, ReallocPair] : RP) {
+  for (auto &[Sym, ReallocPair] : RP) {
     // If the symbol is assumed to be NULL, remove it from consideration.
     ConstraintManager &CMgr = state->getConstraintManager();
     ConditionTruthVal AllocFailed = CMgr.isNull(state, Sym);
@@ -3555,7 +3555,7 @@ void MallocChecker::printState(raw_ostream &Out, ProgramStateRef State,
 
   if (!RS.isEmpty()) {
     Out << Sep << "MallocChecker :" << NL;
-    for (auto [Sym, Data] : RS) {
+    for (auto &[Sym, Data] : RS) {
       const RefState *RefS = State->get<RegionState>(Sym);
       AllocationFamily Family = RefS->getAllocationFamily();
       std::optional<MallocChecker::CheckKind> CheckKind =
