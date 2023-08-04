@@ -411,6 +411,11 @@ class Image:
                     )
             if not self.module and self.section_infos:
                 name = os.path.basename(self.path)
+                if not name:
+                    if self.uuid == uuid.UUID(int=0):
+                        return None
+                    else:
+                        return "error: invalid image path with valid UUID (%s) " % uuid_str
                 if obj_dir and os.path.isdir(obj_dir):
                     data = {
                         "triple": target.triple,
