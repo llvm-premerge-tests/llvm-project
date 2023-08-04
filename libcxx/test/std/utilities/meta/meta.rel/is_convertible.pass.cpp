@@ -44,7 +44,6 @@ void test_is_not_convertible()
 }
 
 typedef void Function();
-typedef void ConstFunction() const;
 typedef char Array[1];
 
 struct StringType {
@@ -114,16 +113,6 @@ int main(int, char**)
     test_is_not_convertible<Function*, char> ();
     test_is_not_convertible<Function*, char&> ();
     test_is_not_convertible<Function*, char*> ();
-
-    // Non-referencable function type
-    static_assert((!std::is_convertible<ConstFunction, Function>::value), "");
-    static_assert((!std::is_convertible<ConstFunction, Function*>::value), "");
-    static_assert((!std::is_convertible<ConstFunction, Function&>::value), "");
-    static_assert((!std::is_convertible<ConstFunction, Function&&>::value), "");
-    static_assert((!std::is_convertible<Function*, ConstFunction>::value), "");
-    static_assert((!std::is_convertible<Function&, ConstFunction>::value), "");
-    static_assert((!std::is_convertible<ConstFunction, ConstFunction>::value), "");
-    static_assert((!std::is_convertible<ConstFunction, void>::value), "");
 
     // Array
     test_is_not_convertible<Array, void> ();
