@@ -117,9 +117,12 @@ int main(int, char**)
 
     // Non-referencable function type
     static_assert((!std::is_convertible<ConstFunction, Function>::value), "");
+// This is https://gcc.gnu.org/bugzilla/show_bug.cgi?id=110904
+#ifndef TEST_COMPILER_GCC
     static_assert((!std::is_convertible<ConstFunction, Function*>::value), "");
     static_assert((!std::is_convertible<ConstFunction, Function&>::value), "");
     static_assert((!std::is_convertible<ConstFunction, Function&&>::value), "");
+#endif
     static_assert((!std::is_convertible<Function*, ConstFunction>::value), "");
     static_assert((!std::is_convertible<Function&, ConstFunction>::value), "");
     static_assert((!std::is_convertible<ConstFunction, ConstFunction>::value), "");
