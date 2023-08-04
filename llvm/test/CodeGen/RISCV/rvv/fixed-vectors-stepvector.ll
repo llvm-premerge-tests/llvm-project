@@ -190,10 +190,9 @@ define <2 x i64> @stepvector_v2i64() {
 ; RV32LMULMAX1-LABEL: stepvector_v2i64:
 ; RV32LMULMAX1:       # %bb.0:
 ; RV32LMULMAX1-NEXT:    vsetivli zero, 4, e32, m1, ta, ma
-; RV32LMULMAX1-NEXT:    vmv.v.i v9, 1
+; RV32LMULMAX1-NEXT:    vmv.v.i v0, 4
 ; RV32LMULMAX1-NEXT:    vmv.v.i v8, 0
-; RV32LMULMAX1-NEXT:    vsetivli zero, 3, e32, m1, tu, ma
-; RV32LMULMAX1-NEXT:    vslideup.vi v8, v9, 2
+; RV32LMULMAX1-NEXT:    vmerge.vim v8, v8, 1, v0
 ; RV32LMULMAX1-NEXT:    ret
 ;
 ; RV64LMULMAX1-LABEL: stepvector_v2i64:
@@ -205,10 +204,9 @@ define <2 x i64> @stepvector_v2i64() {
 ; RV32LMULMAX2-LABEL: stepvector_v2i64:
 ; RV32LMULMAX2:       # %bb.0:
 ; RV32LMULMAX2-NEXT:    vsetivli zero, 4, e32, m1, ta, ma
-; RV32LMULMAX2-NEXT:    vmv.v.i v9, 1
+; RV32LMULMAX2-NEXT:    vmv.v.i v0, 4
 ; RV32LMULMAX2-NEXT:    vmv.v.i v8, 0
-; RV32LMULMAX2-NEXT:    vsetivli zero, 3, e32, m1, tu, ma
-; RV32LMULMAX2-NEXT:    vslideup.vi v8, v9, 2
+; RV32LMULMAX2-NEXT:    vmerge.vim v8, v8, 1, v0
 ; RV32LMULMAX2-NEXT:    ret
 ;
 ; RV64LMULMAX2-LABEL: stepvector_v2i64:
@@ -226,14 +224,12 @@ define <4 x i64> @stepvector_v4i64() {
 ; RV32LMULMAX1-LABEL: stepvector_v4i64:
 ; RV32LMULMAX1:       # %bb.0:
 ; RV32LMULMAX1-NEXT:    vsetivli zero, 4, e32, m1, ta, ma
-; RV32LMULMAX1-NEXT:    vmv.v.i v9, 1
-; RV32LMULMAX1-NEXT:    vmv.v.i v8, 0
-; RV32LMULMAX1-NEXT:    vsetivli zero, 3, e32, m1, tu, ma
-; RV32LMULMAX1-NEXT:    vslideup.vi v8, v9, 2
 ; RV32LMULMAX1-NEXT:    lui a0, %hi(.LCPI14_0)
 ; RV32LMULMAX1-NEXT:    addi a0, a0, %lo(.LCPI14_0)
-; RV32LMULMAX1-NEXT:    vsetivli zero, 4, e32, m1, ta, ma
 ; RV32LMULMAX1-NEXT:    vle32.v v9, (a0)
+; RV32LMULMAX1-NEXT:    vmv.v.i v0, 4
+; RV32LMULMAX1-NEXT:    vmv.v.i v8, 0
+; RV32LMULMAX1-NEXT:    vmerge.vim v8, v8, 1, v0
 ; RV32LMULMAX1-NEXT:    ret
 ;
 ; RV64LMULMAX1-LABEL: stepvector_v4i64:
@@ -266,13 +262,8 @@ define <8 x i64> @stepvector_v8i64() {
 ; RV32LMULMAX1-LABEL: stepvector_v8i64:
 ; RV32LMULMAX1:       # %bb.0:
 ; RV32LMULMAX1-NEXT:    vsetivli zero, 4, e32, m1, ta, ma
-; RV32LMULMAX1-NEXT:    vmv.v.i v9, 1
-; RV32LMULMAX1-NEXT:    vmv.v.i v8, 0
-; RV32LMULMAX1-NEXT:    vsetivli zero, 3, e32, m1, tu, ma
-; RV32LMULMAX1-NEXT:    vslideup.vi v8, v9, 2
 ; RV32LMULMAX1-NEXT:    lui a0, %hi(.LCPI15_0)
 ; RV32LMULMAX1-NEXT:    addi a0, a0, %lo(.LCPI15_0)
-; RV32LMULMAX1-NEXT:    vsetivli zero, 4, e32, m1, ta, ma
 ; RV32LMULMAX1-NEXT:    vle32.v v9, (a0)
 ; RV32LMULMAX1-NEXT:    lui a0, %hi(.LCPI15_1)
 ; RV32LMULMAX1-NEXT:    addi a0, a0, %lo(.LCPI15_1)
@@ -280,6 +271,9 @@ define <8 x i64> @stepvector_v8i64() {
 ; RV32LMULMAX1-NEXT:    lui a0, %hi(.LCPI15_2)
 ; RV32LMULMAX1-NEXT:    addi a0, a0, %lo(.LCPI15_2)
 ; RV32LMULMAX1-NEXT:    vle32.v v11, (a0)
+; RV32LMULMAX1-NEXT:    vmv.v.i v0, 4
+; RV32LMULMAX1-NEXT:    vmv.v.i v8, 0
+; RV32LMULMAX1-NEXT:    vmerge.vim v8, v8, 1, v0
 ; RV32LMULMAX1-NEXT:    ret
 ;
 ; RV64LMULMAX1-LABEL: stepvector_v8i64:
@@ -318,13 +312,8 @@ define <16 x i64> @stepvector_v16i64() {
 ; RV32LMULMAX1-LABEL: stepvector_v16i64:
 ; RV32LMULMAX1:       # %bb.0:
 ; RV32LMULMAX1-NEXT:    vsetivli zero, 4, e32, m1, ta, ma
-; RV32LMULMAX1-NEXT:    vmv.v.i v9, 1
-; RV32LMULMAX1-NEXT:    vmv.v.i v8, 0
-; RV32LMULMAX1-NEXT:    vsetivli zero, 3, e32, m1, tu, ma
-; RV32LMULMAX1-NEXT:    vslideup.vi v8, v9, 2
 ; RV32LMULMAX1-NEXT:    lui a0, %hi(.LCPI16_0)
 ; RV32LMULMAX1-NEXT:    addi a0, a0, %lo(.LCPI16_0)
-; RV32LMULMAX1-NEXT:    vsetivli zero, 4, e32, m1, ta, ma
 ; RV32LMULMAX1-NEXT:    vle32.v v9, (a0)
 ; RV32LMULMAX1-NEXT:    lui a0, %hi(.LCPI16_1)
 ; RV32LMULMAX1-NEXT:    addi a0, a0, %lo(.LCPI16_1)
@@ -344,6 +333,9 @@ define <16 x i64> @stepvector_v16i64() {
 ; RV32LMULMAX1-NEXT:    lui a0, %hi(.LCPI16_6)
 ; RV32LMULMAX1-NEXT:    addi a0, a0, %lo(.LCPI16_6)
 ; RV32LMULMAX1-NEXT:    vle32.v v15, (a0)
+; RV32LMULMAX1-NEXT:    vmv.v.i v0, 4
+; RV32LMULMAX1-NEXT:    vmv.v.i v8, 0
+; RV32LMULMAX1-NEXT:    vmerge.vim v8, v8, 1, v0
 ; RV32LMULMAX1-NEXT:    ret
 ;
 ; RV64LMULMAX1-LABEL: stepvector_v16i64:
