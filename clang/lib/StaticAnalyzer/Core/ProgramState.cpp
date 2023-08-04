@@ -627,7 +627,7 @@ bool ScanReachableSymbols::scan(const MemRegion *R) {
 
   // Regions captured by a block are also implicitly reachable.
   if (const BlockDataRegion *BDR = dyn_cast<BlockDataRegion>(R)) {
-    for (auto Var : BDR->referenced_vars()) {
+    for (auto &Var : BDR->referenced_vars()) {
       if (!scan(Var.getCapturedRegion()))
         return false;
     }

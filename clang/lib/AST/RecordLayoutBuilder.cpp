@@ -3725,7 +3725,7 @@ void ASTContext::DumpRecordLayout(const RecordDecl *RD, raw_ostream &OS,
   if (const CXXRecordDecl *CXXRD = dyn_cast<CXXRecordDecl>(RD)) {
     OS << "  BaseOffsets: [";
     const CXXRecordDecl *Base = nullptr;
-    for (auto I : CXXRD->bases()) {
+    for (const auto &I : CXXRD->bases()) {
       if (I.isVirtual())
         continue;
       if (Base)

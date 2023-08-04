@@ -2618,7 +2618,7 @@ void CStringChecker::checkDeadSymbols(SymbolReaper &SR,
     return;
 
   CStringLengthTy::Factory &F = state->get_context<CStringLength>();
-  for (auto [Reg, Len] : Entries) {
+  for (auto &[Reg, Len] : Entries) {
     if (SymbolRef Sym = Len.getAsSymbol()) {
       if (SR.isDead(Sym))
         Entries = F.remove(Entries, Reg);

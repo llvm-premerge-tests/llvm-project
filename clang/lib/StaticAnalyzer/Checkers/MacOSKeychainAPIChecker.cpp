@@ -531,7 +531,7 @@ ProgramStateRef MacOSKeychainAPIChecker::evalAssume(ProgramStateRef State,
   }
 
   if (ReturnSymbol)
-    for (auto [Sym, AllocState] : AMap) {
+    for (auto &[Sym, AllocState] : AMap) {
       if (ReturnSymbol == AllocState.Region)
         State = State->remove<AllocatedData>(Sym);
     }

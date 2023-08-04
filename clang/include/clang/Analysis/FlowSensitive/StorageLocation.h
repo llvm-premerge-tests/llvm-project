@@ -126,7 +126,7 @@ public:
                      << " on StorageLocation " << this << " of type "
                      << getType() << "\n";
         llvm::dbgs() << "Existing children:\n";
-        for ([[maybe_unused]] auto [Field, Loc] : Children) {
+        for ([[maybe_unused]] const auto &[Field, Loc] : Children) {
           llvm::dbgs() << Field->getNameAsString() << "\n";
         }
       }

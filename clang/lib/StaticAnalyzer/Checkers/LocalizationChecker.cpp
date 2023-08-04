@@ -848,7 +848,8 @@ void NonLocalizedStringChecker::checkPreObjCMessage(const ObjCMethodCall &msg,
   if (argumentNumber < 0) { // There was no match in UIMethods
     if (const Decl *D = msg.getDecl()) {
       if (const ObjCMethodDecl *OMD = dyn_cast_or_null<ObjCMethodDecl>(D)) {
-        for (auto [Idx, FormalParam] : llvm::enumerate(OMD->parameters())) {
+        for (const auto &[Idx, FormalParam] :
+             llvm::enumerate(OMD->parameters())) {
           if (isAnnotatedAsTakingLocalized(FormalParam)) {
             argumentNumber = Idx;
             break;

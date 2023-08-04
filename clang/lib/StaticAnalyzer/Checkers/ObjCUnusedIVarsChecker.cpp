@@ -151,7 +151,7 @@ static void checkObjCUnusedIvar(const ObjCImplementationDecl *D,
   Scan(M, D->getDeclContext(), SM.getFileID(D->getLocation()), SM);
 
   // Find ivars that are unused.
-  for (auto [Ivar, State] : M)
+  for (auto &[Ivar, State] : M)
     if (State == Unused) {
       std::string sbuf;
       llvm::raw_string_ostream os(sbuf);

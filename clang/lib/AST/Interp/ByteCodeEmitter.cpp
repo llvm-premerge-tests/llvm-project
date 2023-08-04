@@ -61,7 +61,7 @@ ByteCodeEmitter::compileFunc(const FunctionDecl *FuncDecl) {
 
       MD->getParent()->getCaptureFields(LC, LTC);
 
-      for (auto Cap : LC) {
+      for (const auto &Cap : LC) {
         unsigned Offset = R->getField(Cap.second)->Offset;
         this->LambdaCaptures[Cap.first] = {
             Offset, Cap.second->getType()->isReferenceType()};

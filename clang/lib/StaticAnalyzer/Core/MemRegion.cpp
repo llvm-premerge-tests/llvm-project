@@ -492,7 +492,7 @@ void BlockCodeRegion::dumpToStream(raw_ostream &os) const {
 void BlockDataRegion::dumpToStream(raw_ostream &os) const {
   os << "block_data{" << BC;
   os << "; ";
-  for (auto Var : referenced_vars())
+  for (auto &Var : referenced_vars())
     os << "(" << Var.getCapturedRegion() << "<-" << Var.getOriginalRegion()
        << ") ";
   os << '}';
@@ -966,7 +966,7 @@ getStackOrCaptureRegionForDeclContext(const LocationContext *LC,
     if (const auto *BC = dyn_cast<BlockInvocationContext>(LC)) {
       const auto *BR = static_cast<const BlockDataRegion *>(BC->getData());
       // FIXME: This can be made more efficient.
-      for (auto Var : BR->referenced_vars()) {
+      for (auto &Var : BR->referenced_vars()) {
         const TypedValueRegion *OrigR = Var.getOriginalRegion();
         if (const auto *VR = dyn_cast<VarRegion>(OrigR)) {
           if (VR->getDecl() == VD)
