@@ -175,6 +175,7 @@ namespace {
 /// PrintRawCompoundStmt - Print a compound stmt without indenting the {, and
 /// with no newline after the }.
 void StmtPrinter::PrintRawCompoundStmt(CompoundStmt *Node) {
+  assert(Node && "Compound statement cannot be null");
   OS << "{" << NL;
   PrintFPPragmas(Node);
   for (auto *I : Node->body())
