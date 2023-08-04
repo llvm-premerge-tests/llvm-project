@@ -9,6 +9,7 @@
 #define MLIR_CONVERSION_COMPLEXTOLLVM_COMPLEXTOLLVM_H_
 
 #include "mlir/Conversion/LLVMCommon/StructBuilder.h"
+#include "mlir/Dialect/Complex/IR/Complex.h"
 
 namespace mlir {
 class LLVMTypeConverter;
