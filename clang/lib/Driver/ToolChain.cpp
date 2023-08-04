@@ -1354,6 +1354,11 @@ llvm::opt::DerivedArgList *ToolChain::TranslateOpenMPTargetArgs(
 
   // Handle -Xopenmp-target flags
   for (auto *A : Args) {
+    // pass code objection version to device toolchain
+    // correctly set meta-data in intermediate files
+    if (A->getOption().matches(options::OPT_mcode_object_version_EQ))
+      DAL->append(A);
+
     // Exclude flags which may only apply to the host toolchain.
     // Do not exclude flags when the host triple (AuxTriple)
     // matches the current toolchain triple. If it is not present
