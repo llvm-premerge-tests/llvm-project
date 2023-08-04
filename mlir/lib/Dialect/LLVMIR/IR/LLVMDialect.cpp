@@ -1008,6 +1008,37 @@ MutableOperandRange CallOp::getArgOperandsMutable() {
                              getCalleeOperands().size());
 }
 
+/// Verify that an inlinable callsite of a debug-info-bearing function in a
+/// debug-info-bearing function has a debug location attached to it. This
+/// mirrors a LLVM IR verifier.
+static LogicalResult verifyCallOpDebugInfo(CallOp callOp, LLVMFuncOp callee) {
+  if (callee.isDeclaration())
+    return success();
+  auto parentFunc = callOp->getParentOfType<FunctionOpInterface>();
+  if (!parentFunc)
+    return success();
+
+  auto hasSubprogram = [](Operation *op) {
+    return op->getLoc()
+               ->findInstanceOf<FusedLocWith<LLVM::DISubprogramAttr>>() !=
+           nullptr;
+  };
+  if (!hasSubprogram(parentFunc) || !hasSubprogram(callee))
+    return success();
+  bool containsLLVMDebugLoc = !callOp->getLoc()
+                                   ->walk([](Location l) {
+                                     return isa<UnknownLoc>(l)
+                                                ? WalkResult::interrupt()
+                                                : WalkResult::advance();
+                                   })
+                                   .wasInterrupted();
+  if (!containsLLVMDebugLoc)
+    return callOp.emitError()
+           << "inlinable function call in a function with a DISubprogram "
+              "location must have a debug location";
+  return success();
+}
+
 LogicalResult CallOp::verifySymbolUses(SymbolTableCollection &symbolTable) {
   if (getNumResults() > 1)
     return emitOpError("must have 0 or 1 result");
@@ -1046,6 +1077,8 @@ LogicalResult CallOp::verifySymbolUses(SymbolTableCollection &symbolTable) {
       return emitOpError() << "'" << calleeName.getValue()
                            << "' does not reference a valid LLVM function";
 
+    if (failed(verifyCallOpDebugInfo(*this, fn)))
+      return failure();
     fnType = fn.getFunctionType();
   }
 
