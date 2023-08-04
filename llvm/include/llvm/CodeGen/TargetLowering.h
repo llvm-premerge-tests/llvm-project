@@ -3965,6 +3965,24 @@ public:
       SDValue Op, const APInt &DemandedElts, const SelectionDAG &DAG,
       bool PoisonOnly, unsigned Depth) const;
 
+  // Return true if its desirable to perform the following transform:
+  // (fmul C, (uitofp Pow2))
+  //     -> (bitcast_to_FP (add (bitcast_to_INT C), Log2(Pow2) << mantissa))
+  // (fdiv C, (uitofp Pow2))
+  //     -> (bitcast_to_FP (sub (bitcast_to_INT C), Log2(Pow2) << mantissa))
+  //
+  // This is only queried after we have verified the transform will be bitwise
+  // equals.
+  //
+  // SDNode *N      : The FDiv/FMul node we want to transform.
+  // SDValue FPConst: The Float constant operand in `N`.
+  // SDValue IntPow2: The Integer power of 2 operand in `N`.
+  virtual bool optimizeFMulOrFDivAsShiftAddBitcast(SDNode *N, SDValue FPConst,
+                                                   SDValue IntPow2) const {
+    // Default to avoiding fdiv which is often very expensive.
+    return N->getOpcode() == ISD::FDIV;
+  }
+
   /// Return true if Op can create undef or poison from non-undef & non-poison
   /// operands. The DemandedElts argument limits the check to the requested
   /// vector elements.
