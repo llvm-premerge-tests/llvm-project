@@ -1136,15 +1136,6 @@ using MIRegs = std::pair<MachineInstr *, SmallVector<unsigned, 2>>;
 static void performSink(MachineInstr &MI, MachineBasicBlock &SuccToSinkTo,
                         MachineBasicBlock::iterator InsertPos,
                         ArrayRef<MIRegs> DbgValuesToSink) {
-  // If we cannot find a location to use (merge with), then we erase the debug
-  // location to prevent debug-info driven tools from potentially reporting
-  // wrong location information.
-  if (!SuccToSinkTo.empty() && InsertPos != SuccToSinkTo.end())
-    MI.setDebugLoc(DILocation::getMergedLocation(MI.getDebugLoc(),
-                                                 InsertPos->getDebugLoc()));
-  else
-    MI.setDebugLoc(DebugLoc());
-
   // Move the instruction.
   MachineBasicBlock *ParentBlock = MI.getParent();
   SuccToSinkTo.splice(InsertPos, ParentBlock, MI,
