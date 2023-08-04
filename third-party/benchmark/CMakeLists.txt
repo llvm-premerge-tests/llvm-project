@@ -1,19 +1,7 @@
-cmake_minimum_required (VERSION 3.5.1)
+# Require CMake 3.10. If available, use the policies up to CMake 3.22.
+cmake_minimum_required (VERSION 3.10...3.22)
 
-foreach(p
-    CMP0048 # OK to clear PROJECT_VERSION on project()
-    CMP0054 # CMake 3.1
-    CMP0056 # export EXE_LINKER_FLAGS to try_run
-    CMP0057 # Support no if() IN_LIST operator
-    CMP0063 # Honor visibility properties for all targets
-    CMP0077 # Allow option() overrides in importing projects
-    )
-  if(POLICY ${p})
-    cmake_policy(SET ${p} NEW)
-  endif()
-endforeach()
-
-project (benchmark VERSION 1.6.0 LANGUAGES CXX)
+project (benchmark VERSION 1.8.2 LANGUAGES CXX)
 
 option(BENCHMARK_ENABLE_TESTING "Enable testing of the benchmark library." ON)
 option(BENCHMARK_ENABLE_EXCEPTIONS "Enable the use of exceptions in the benchmark library." ON)
@@ -24,6 +12,9 @@ option(BENCHMARK_FORCE_WERROR "Build Release candidates with -Werror regardless 
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
   # PGC++ maybe reporting false positives.
+  set(BENCHMARK_ENABLE_WERROR OFF)
+endif()
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "NVHPC")
   set(BENCHMARK_ENABLE_WERROR OFF)
 endif()
 if(BENCHMARK_FORCE_WERROR)
@@ -50,7 +41,10 @@ option(BENCHMARK_USE_BUNDLED_GTEST "Use bundled GoogleTest. If disabled, the fin
 
 option(BENCHMARK_ENABLE_LIBPFM "Enable performance counters provided by libpfm" OFF)
 
-set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+# Export only public symbols
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
+
 if(MSVC)
     # As of CMake 3.18, CMAKE_SYSTEM_PROCESSOR is not set properly for MSVC and
     # cross-compilation (e.g. Host=x86_64, target=aarch64) requires using the
@@ -116,23 +110,33 @@ else()
   set(VERSION "${GIT_VERSION}")
 endif()
 # Tell the user what versions we are using
-message(STATUS "Version: ${VERSION}")
+message(STATUS "Google Benchmark version: ${VERSION}")
 
 # The version of the libraries
 set(GENERIC_LIB_VERSION ${VERSION})
 string(SUBSTRING ${VERSION} 0 1 GENERIC_LIB_SOVERSION)
 
 # Import our CMake modules
-include(CheckCXXCompilerFlag)
 include(AddCXXCompilerFlag)
-include(CXXFeatureCheck)
+include(CheckCXXCompilerFlag)
 include(CheckLibraryExists)
+include(CXXFeatureCheck)
 
 check_library_exists(rt shm_open "" HAVE_LIB_RT)
 
 if (BENCHMARK_BUILD_32_BITS)
   add_required_cxx_compiler_flag(-m32)
 endif()
+
+if (MSVC)
+  set(BENCHMARK_CXX_STANDARD 14)
+else()
+  set(BENCHMARK_CXX_STANDARD 11)
+endif()
+
+set(CMAKE_CXX_STANDARD ${BENCHMARK_CXX_STANDARD})
+set(CMAKE_CXX_STANDARD_REQUIRED YES)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 if (MSVC)
   # Turn compiler warnings up to 11
@@ -166,21 +170,14 @@ if (MSVC)
     set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "${CMAKE_EXE_LINKER_FLAGS_MINSIZEREL} /LTCG")
   endif()
 else()
-  # Try and enable C++11. Don't use C++14 because it doesn't work in some
-  # configurations.
-  add_cxx_compiler_flag(-std=c++11)
-  if (NOT HAVE_CXX_FLAG_STD_CXX11)
-    add_cxx_compiler_flag(-std=c++0x)
-  endif()
-
   # Turn compiler warnings up to 11
   add_cxx_compiler_flag(-Wall)
   add_cxx_compiler_flag(-Wextra)
   add_cxx_compiler_flag(-Wshadow)
+  add_cxx_compiler_flag(-Wfloat-equal)
+  add_cxx_compiler_flag(-Wold-style-cast)
   if(BENCHMARK_ENABLE_WERROR)
-      add_cxx_compiler_flag(-Werror RELEASE)
-      add_cxx_compiler_flag(-Werror RELWITHDEBINFO)
-      add_cxx_compiler_flag(-Werror MINSIZEREL)
+      add_cxx_compiler_flag(-Werror)
   endif()
   if (NOT BENCHMARK_ENABLE_TESTING)
     # Disable warning when compiling tests as gtest does not use 'override'.
@@ -201,9 +198,7 @@ else()
   endif()
   # Disable deprecation warnings for release builds (when -Werror is enabled).
   if(BENCHMARK_ENABLE_WERROR)
-      add_cxx_compiler_flag(-Wno-deprecated RELEASE)
-      add_cxx_compiler_flag(-Wno-deprecated RELWITHDEBINFO)
-      add_cxx_compiler_flag(-Wno-deprecated MINSIZEREL)
+      add_cxx_compiler_flag(-Wno-deprecated)
   endif()
   if (NOT BENCHMARK_ENABLE_EXCEPTIONS)
     add_cxx_compiler_flag(-fno-exceptions)
@@ -219,12 +214,12 @@ else()
   add_cxx_compiler_flag(-wd654)
   add_cxx_compiler_flag(-Wthread-safety)
   if (HAVE_CXX_FLAG_WTHREAD_SAFETY)
-    cxx_feature_check(THREAD_SAFETY_ATTRIBUTES)
+    cxx_feature_check(THREAD_SAFETY_ATTRIBUTES "-DINCLUDE_DIRECTORIES=${PROJECT_SOURCE_DIR}/include")
   endif()
 
   # On most UNIX like platforms g++ and clang++ define _GNU_SOURCE as a
   # predefined macro, which turns on all of the wonderful libc extensions.
-  # However g++ doesn't do this in Cygwin so we have to define it ourselfs
+  # However g++ doesn't do this in Cygwin so we have to define it ourselves
   # since we depend on GNU/POSIX/BSD extensions.
   if (CYGWIN)
     add_definitions(-D_GNU_SOURCE=1)
@@ -312,6 +307,7 @@ cxx_feature_check(STEADY_CLOCK)
 # Ensure we have pthreads
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
+cxx_feature_check(PTHREAD_AFFINITY)
 
 if (BENCHMARK_ENABLE_LIBPFM)
   find_package(PFM)

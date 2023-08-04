@@ -70,7 +70,7 @@ int AddComplexityTest(const std::string &test_name,
 void BM_Complexity_O1(benchmark::State &state) {
   for (auto _ : state) {
     for (int i = 0; i < 1024; ++i) {
-      benchmark::DoNotOptimize(&i);
+      benchmark::DoNotOptimize(i);
     }
   }
   state.SetComplexityN(state.range(0));
@@ -109,7 +109,7 @@ ADD_COMPLEXITY_CASES(one_test_name, big_o_1_test_name, rms_o_1_test_name,
 
 std::vector<int> ConstructRandomVector(int64_t size) {
   std::vector<int> v;
-  v.reserve(static_cast<int>(size));
+  v.reserve(static_cast<size_t>(size));
   for (int i = 0; i < size; ++i) {
     v.push_back(static_cast<int>(std::rand() % size));
   }
@@ -121,7 +121,8 @@ void BM_Complexity_O_N(benchmark::State &state) {
   // Test worst case scenario (item not in vector)
   const int64_t item_not_in_vector = state.range(0) * 2;
   for (auto _ : state) {
-    benchmark::DoNotOptimize(std::find(v.begin(), v.end(), item_not_in_vector));
+    auto it = std::find(v.begin(), v.end(), item_not_in_vector);
+    benchmark::DoNotOptimize(it);
   }
   state.SetComplexityN(state.range(0));
 }
@@ -174,7 +175,7 @@ BENCHMARK(BM_Complexity_O_N_log_N)
     ->RangeMultiplier(2)
     ->Range(1 << 10, 1 << 16)
     ->Complexity([](benchmark::IterationCount n) {
-      return kLog2E * n * log(static_cast<double>(n));
+      return kLog2E * static_cast<double>(n) * log(static_cast<double>(n));
     });
 BENCHMARK(BM_Complexity_O_N_log_N)
     ->RangeMultiplier(2)
@@ -204,7 +205,8 @@ ADD_COMPLEXITY_CASES(n_lg_n_test_name, big_o_n_lg_n_test_name,
 void BM_ComplexityCaptureArgs(benchmark::State &state, int n) {
   for (auto _ : state) {
     // This test requires a non-zero CPU time to avoid divide-by-zero
-    benchmark::DoNotOptimize(state.iterations());
+    auto iterations = state.iterations();
+    benchmark::DoNotOptimize(iterations);
   }
   state.SetComplexityN(n);
 }
