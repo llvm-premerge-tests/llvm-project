@@ -7,7 +7,7 @@ program mm
   real x, y
   !DEF: /mm/a ObjectEntity INTEGER(4)
   !DEF: /mm/b ObjectEntity INTEGER(4)
-  !DEF: /mm/c ObjectEntity INTEGER(4)
+  !DEF: /mm/c (AccPresent) ObjectEntity INTEGER(4)
   !DEF: /mm/i ObjectEntity INTEGER(4)
   integer a(10), b(10), c(10), i
   !REF: /mm/b
