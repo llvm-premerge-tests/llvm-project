@@ -385,8 +385,8 @@ void ObjFile::initializeSymbols() {
   pendingIndexes.reserve(numSymbols);
 
   DenseMap<StringRef, uint32_t> prevailingSectionMap;
-  std::vector<const coff_aux_section_definition *> comdatDefs(
-      coffObj->getNumberOfSections() + 1);
+  std::vector<std::pair<DefinedRegular *, const coff_aux_section_definition *>>
+      comdatDefs(coffObj->getNumberOfSections() + 1);
 
   for (uint32_t i = 0; i < numSymbols; ++i) {
     COFFSymbolRef coffSym = check(coffObj->getSymbol(i));
@@ -584,7 +584,8 @@ void ObjFile::handleComdatSelection(
 
 std::optional<Symbol *> ObjFile::createDefined(
     COFFSymbolRef sym,
-    std::vector<const coff_aux_section_definition *> &comdatDefs,
+    std::vector<std::pair<DefinedRegular *,
+                          const coff_aux_section_definition *>> &comdatDefs,
     bool &prevailing) {
   prevailing = false;
   auto getName = [&]() { return check(coffObj->getSymbolName(sym)); };
@@ -623,51 +624,64 @@ std::optional<Symbol *> ObjFile::createDefined(
           " should not refer to non-existent section " + Twine(sectionNumber));
 
   // Comdat handling.
-  // A comdat symbol consists of two symbol table entries.
+  // A comdat symbol consists of two symbol table entries, and a number of
+  // optional 'label' symbols.
   // The first symbol entry has the name of the section (e.g. .text), fixed
   // values for the other fields, and one auxiliary record.
   // The second symbol entry has the name of the comdat symbol, called the
   // "comdat leader".
   // When this function is called for the first symbol entry of a comdat,
   // it sets comdatDefs and returns std::nullopt, and when it's called for the
-  // second symbol entry it reads comdatDefs and then sets it back to nullptr.
+  // second symbol entry it reads comdatDefs.
+  // Any optional label symbols might come after in the symbol table.
 
-  // Handle comdat leader.
-  if (const coff_aux_section_definition *def = comdatDefs[sectionNumber]) {
-    comdatDefs[sectionNumber] = nullptr;
-    DefinedRegular *leader;
-
-    if (sym.isExternal()) {
-      std::tie(leader, prevailing) =
-          ctx.symtab.addComdat(this, getName(), sym.getGeneric());
+  DefinedRegular *leader{};
+  const coff_aux_section_definition *def{};
+  std::tie(leader, def) = comdatDefs[sectionNumber];
+  if (def) {
+    if (leader) {
+      // The leader symbol has already been resolved at this point. We redirect
+      // the label to point to the leader' section.
+      if (sym.isLabel()) {
+        return make<DefinedRegular>(this, /*Name*/ "", /*IsCOMDAT*/ false,
+                                    /*IsExternal*/ false, sym.getGeneric(),
+                                    leader->getChunk());
+      }
     } else {
-      leader = make<DefinedRegular>(this, /*Name*/ "", /*IsCOMDAT*/ false,
-                                    /*IsExternal*/ false, sym.getGeneric());
-      prevailing = true;
-    }
+      // Handle comdat leader.
+      if (sym.isExternal()) {
+        std::tie(leader, prevailing) =
+            ctx.symtab.addComdat(this, getName(), sym.getGeneric());
+      } else {
+        leader = make<DefinedRegular>(this, /*Name*/ "", /*IsCOMDAT*/ false,
+                                      /*IsExternal*/ false, sym.getGeneric());
+        prevailing = true;
+      }
 
-    if (def->Selection < (int)IMAGE_COMDAT_SELECT_NODUPLICATES ||
-        // Intentionally ends at IMAGE_COMDAT_SELECT_LARGEST: link.exe
-        // doesn't understand IMAGE_COMDAT_SELECT_NEWEST either.
-        def->Selection > (int)IMAGE_COMDAT_SELECT_LARGEST) {
-      fatal("unknown comdat type " + std::to_string((int)def->Selection) +
-            " for " + getName() + " in " + toString(this));
-    }
-    COMDATType selection = (COMDATType)def->Selection;
+      if (def->Selection < (int)IMAGE_COMDAT_SELECT_NODUPLICATES ||
+          // Intentionally ends at IMAGE_COMDAT_SELECT_LARGEST: link.exe
+          // doesn't understand IMAGE_COMDAT_SELECT_NEWEST either.
+          def->Selection > (int)IMAGE_COMDAT_SELECT_LARGEST) {
+        fatal("unknown comdat type " + std::to_string((int)def->Selection) +
+              " for " + getName() + " in " + toString(this));
+      }
+      COMDATType selection = (COMDATType)def->Selection;
 
-    if (leader->isCOMDAT)
-      handleComdatSelection(sym, selection, prevailing, leader, def);
+      if (leader->isCOMDAT)
+        handleComdatSelection(sym, selection, prevailing, leader, def);
 
-    if (prevailing) {
-      SectionChunk *c = readSection(sectionNumber, def, getName());
-      sparseChunks[sectionNumber] = c;
-      c->sym = cast<DefinedRegular>(leader);
-      c->selection = selection;
-      cast<DefinedRegular>(leader)->data = &c->repl;
-    } else {
-      sparseChunks[sectionNumber] = nullptr;
+      if (prevailing) {
+        SectionChunk *c = readSection(sectionNumber, def, getName());
+        sparseChunks[sectionNumber] = c;
+        c->sym = cast<DefinedRegular>(leader);
+        c->selection = selection;
+        cast<DefinedRegular>(leader)->data = &c->repl;
+      } else {
+        sparseChunks[sectionNumber] = nullptr;
+      }
+      comdatDefs[sectionNumber] = {leader, def};
+      return leader;
     }
-    return leader;
   }
 
   // Prepare to handle the comdat leader symbol by setting the section's
@@ -675,7 +689,7 @@ std::optional<Symbol *> ObjFile::createDefined(
   if (sparseChunks[sectionNumber] == pendingComdat) {
     if (const coff_aux_section_definition *def = sym.getSectionDefinition()) {
       if (def->Selection != IMAGE_COMDAT_SELECT_ASSOCIATIVE)
-        comdatDefs[sectionNumber] = def;
+        comdatDefs[sectionNumber] = {/*leader=*/nullptr, def};
     }
     return std::nullopt;
   }

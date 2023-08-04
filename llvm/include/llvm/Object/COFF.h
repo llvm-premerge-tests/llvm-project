@@ -378,6 +378,10 @@ public:
     return getStorageClass() == COFF::IMAGE_SYM_CLASS_EXTERNAL;
   }
 
+  bool isLabel() const {
+    return getStorageClass() == COFF::IMAGE_SYM_CLASS_LABEL;
+  }
+
   bool isCommon() const {
     return (isExternal() || isSection()) &&
            getSectionNumber() == COFF::IMAGE_SYM_UNDEFINED && getValue() != 0;

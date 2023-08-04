@@ -261,11 +261,12 @@ private:
                         bool &prevailing, DefinedRegular *leader,
                         const llvm::object::coff_aux_section_definition *def);
 
-  std::optional<Symbol *>
-  createDefined(COFFSymbolRef sym,
-                std::vector<const llvm::object::coff_aux_section_definition *>
-                    &comdatDefs,
-                bool &prevailingComdat);
+  std::optional<Symbol *> createDefined(
+      COFFSymbolRef sym,
+      std::vector<std::pair<DefinedRegular *,
+                            const llvm::object::coff_aux_section_definition *>>
+          &comdatDefs,
+      bool &prevailingComdat);
   Symbol *createRegular(COFFSymbolRef sym);
   Symbol *createUndefined(COFFSymbolRef sym);
 

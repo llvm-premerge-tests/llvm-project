@@ -105,3 +105,12 @@ symbol:
 # RUN: not lld-link /verbose /dll /noentry /nodefaultlib %t.largest.obj %t.one_only.obj 2>&1 | FileCheck --check-prefix=LARGESTONE %s
 # LARGESTONE: lld-link: conflicting comdat type for symbol: 6 in
 # LARGESTONE: lld-link: error: duplicate symbol: symbol
+
+
+# Check a peculiar case where the .text$mn is a COMDAT but not the associated .text$x.
+# This is properly handled by link.exe, but it really looks like a bug in MSVC.
+# See PR62182.
+# RUN: yaml2obj %p/Inputs/comdat-malformed-assoc-a.yaml -o %t.a.obj
+# RUN: yaml2obj %p/Inputs/comdat-malformed-assoc-b.yaml -o %t.b.obj
+# RUN: lld-link %t.a.obj %t.b.obj /entry:a /subsystem:console /force:unresolved 2>&1 | FileCheck --check-prefix=MISSING-ASSOC %s
+# MISSING-ASSOC-NOT: error: relocation against symbol in discarded section:
