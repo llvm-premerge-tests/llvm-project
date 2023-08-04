@@ -518,7 +518,7 @@ RegInterval WaitcntBrackets::getRegInterval(const MachineInstr *MI,
   unsigned Reg = getRegPoint(Op.getReg(), *ST);
 
   if (TRI->isVectorRegister(*MRI, Op.getReg())) {
-    assert(Reg >= Intervals.VGPR.Start && Reg <= Intervals.VGPR.End);
+    assert(Reg >= Intervals.VGPR.Start && Reg < Intervals.VGPR.End);
     Result.Start = Reg - Intervals.VGPR.Start;
     if (TRI->isAGPR(*MRI, Op.getReg()))
       Result.Start += AGPR_OFFSET;
@@ -1839,9 +1839,9 @@ bool SIInsertWaitcnts::runOnMachineFunction(MachineFunction &MF) {
 
   RegPoolIntervals Intervals = {};
   Intervals.VGPR.Start = getRegPoint(AMDGPU::VGPR0, *ST);
-  Intervals.VGPR.End = Intervals.VGPR.Start + NumVGPRsMax - 1;
+  Intervals.VGPR.End = Intervals.VGPR.Start + NumVGPRsMax;
   Intervals.SGPR.Start = getRegPoint(AMDGPU::SGPR0, *ST);
-  Intervals.SGPR.End = Intervals.SGPR.Start + NumSGPRsMax - 1;
+  Intervals.SGPR.End = Intervals.SGPR.Start + NumSGPRsMax;
 
   TrackedWaitcntSet.clear();
   BlockInfos.clear();
