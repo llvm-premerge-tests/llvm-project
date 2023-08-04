@@ -213,6 +213,21 @@ concept helps support advanced use cases such as template instantiations on dema
 automatic language interoperability. It also helps static languages such as C/C++ become
 apt for data science.
 
+Execution Results Handling in Clang-Repl
+========================================
+
+:doc:`ExecutionResultsHandling` features discussed below help extend the Clang-REPL 
+functionality by creating an interface between the execution results of a 
+program and the compiled program.
+
+- The Automatic Printf feature makes it easy to display variable values 
+  during program execution.
+
+- The Value Synthesis feature helps store the execution results 
+  (to be able to bring them back to the compiled program).
+
+- The Pretty Printing feature helps create a temporary dump to display the value
+  and type (pretty print) of the desired data. 
 
 Related Reading
 ===============
