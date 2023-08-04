@@ -11,31 +11,34 @@
 define dso_local signext i32 @test1(ptr %b) local_unnamed_addr  {
 ; CHECK-PWR9-LABEL: test1:
 ; CHECK-PWR9:       # %bb.0: # %entry
+; CHECK-PWR9-NEXT:    addis r4, r2, a@toc@ha
+; CHECK-PWR9-NEXT:    lwa r4, a@toc@l(r4)
+; CHECK-PWR9-NEXT:    cmpld r4, r3
+; CHECK-PWR9-NEXT:    # implicit-def: $r4
+; CHECK-PWR9-NEXT:    beq cr0, .LBB0_2
+; CHECK-PWR9-NEXT:  # %bb.1: # %if.end
+; CHECK-PWR9-NEXT:    extsw r3, r4
+; CHECK-PWR9-NEXT:    blr
+; CHECK-PWR9-NEXT:  .LBB0_2: # %if.then
 ; CHECK-PWR9-NEXT:    mflr r0
 ; CHECK-PWR9-NEXT:    .cfi_def_cfa_offset 48
 ; CHECK-PWR9-NEXT:    .cfi_offset lr, 16
 ; CHECK-PWR9-NEXT:    .cfi_offset r30, -16
 ; CHECK-PWR9-NEXT:    std r30, -16(r1) # 8-byte Folded Spill
 ; CHECK-PWR9-NEXT:    stdu r1, -48(r1)
-; CHECK-PWR9-NEXT:    mr r30, r3
-; CHECK-PWR9-NEXT:    addis r3, r2, a@toc@ha
 ; CHECK-PWR9-NEXT:    std r0, 64(r1)
-; CHECK-PWR9-NEXT:    lwa r3, a@toc@l(r3)
-; CHECK-PWR9-NEXT:    cmpld r3, r30
-; CHECK-PWR9-NEXT:    # implicit-def: $r3
-; CHECK-PWR9-NEXT:    bne cr0, .LBB0_2
-; CHECK-PWR9-NEXT:  # %bb.1: # %if.then
+; CHECK-PWR9-NEXT:    mr r30, r3
 ; CHECK-PWR9-NEXT:    bl callVoid
 ; CHECK-PWR9-NEXT:    nop
 ; CHECK-PWR9-NEXT:    mr r3, r30
 ; CHECK-PWR9-NEXT:    bl callNonVoid
 ; CHECK-PWR9-NEXT:    nop
-; CHECK-PWR9-NEXT:  .LBB0_2: # %if.end
-; CHECK-PWR9-NEXT:    extsw r3, r3
+; CHECK-PWR9-NEXT:    mr r4, r3
 ; CHECK-PWR9-NEXT:    addi r1, r1, 48
 ; CHECK-PWR9-NEXT:    ld r0, 16(r1)
 ; CHECK-PWR9-NEXT:    ld r30, -16(r1) # 8-byte Folded Reload
 ; CHECK-PWR9-NEXT:    mtlr r0
+; CHECK-PWR9-NEXT:    extsw r3, r4
 ; CHECK-PWR9-NEXT:    blr
 ;
 ; CHECK-LABEL: test1:
@@ -49,8 +52,8 @@ define dso_local signext i32 @test1(ptr %b) local_unnamed_addr  {
 ; CHECK-NEXT:    addis r4, r2, a@toc@ha
 ; CHECK-NEXT:    std r30, 112(r1) # 8-byte Folded Spill
 ; CHECK-NEXT:    mr r30, r3
-; CHECK-NEXT:    lwa r4, a@toc@l(r4)
-; CHECK-NEXT:    cmpld r4, r3
+; CHECK-NEXT:    lwa r5, a@toc@l(r4)
+; CHECK-NEXT:    cmpld r5, r3
 ; CHECK-NEXT:    # implicit-def: $r3
 ; CHECK-NEXT:    bne cr0, .LBB0_2
 ; CHECK-NEXT:  # %bb.1: # %if.then
