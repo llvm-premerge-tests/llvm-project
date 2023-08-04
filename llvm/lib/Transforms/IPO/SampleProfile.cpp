@@ -565,6 +565,7 @@ protected:
   void promoteMergeNotInlinedContextSamples(
       MapVector<CallBase *, const FunctionSamples *> NonInlinedCallSites,
       const Function &F);
+  void updateFunctionSamplesPointers(const Function &F);
   std::vector<Function *> buildFunctionOrder(Module &M, LazyCallGraph &CG);
   std::unique_ptr<ProfiledCallGraph> buildProfiledCallGraph(Module &M);
   void generateMDProfMetadata(Function &F);
@@ -1581,6 +1582,7 @@ bool SampleProfileLoader::inlineHotFunctionsWithPriority(
 void SampleProfileLoader::promoteMergeNotInlinedContextSamples(
     MapVector<CallBase *, const FunctionSamples *> NonInlinedCallSites,
     const Function &F) {
+  std::vector<std::pair<Function *, FunctionSamples>> NewFunctionSamples;
   // Accumulate not inlined callsite information into notInlinedSamples
   for (const auto &Pair : NonInlinedCallSites) {
     CallBase *I = Pair.first;
@@ -1619,16 +1621,59 @@ void SampleProfileLoader::promoteMergeNotInlinedContextSamples(
         // Note that we have to do the merge right after processing function.
         // This allows OutlineFS's profile to be used for annotation during
         // top-down processing of functions' annotation.
-        FunctionSamples *OutlineFS = Reader->getOrCreateSamplesFor(*Callee);
-        OutlineFS->merge(*FS, 1);
-        // Set outlined profile to be synthetic to not bias the inliner.
-        OutlineFS->SetContextSynthetic();
+        // We need to handle create new samples later because it can trigger
+        // a rehash invalidating all pointers to FunctionSamples.
+        FunctionSamples *OutlineFS = Reader->getSamplesFor(*Callee);
+        if (OutlineFS != nullptr) {
+          OutlineFS->merge(*FS, 1);
+          // Set outlined profile to be synthetic to not bias the inliner.
+          OutlineFS->SetContextSynthetic();
+        } else
+          NewFunctionSamples.emplace_back(Callee, *FS);
       }
     } else {
       auto pair =
           notInlinedCallInfo.try_emplace(Callee, NotInlinedProfileInfo{0});
       pair.first->second.entryCount += FS->getHeadSamplesEstimate();
     }
+  }
+  for (const auto &Pair : NewFunctionSamples) {
+    FunctionSamples *OutlineFS = Reader->getOrCreateSamplesFor(*Pair.first);
+    OutlineFS->merge(Pair.second, 1);
+    // Set outlined profile to be synthetic to not bias the inliner.
+    OutlineFS->SetContextSynthetic();
+  }
+  // Insertion to the sample profile map may invalidates all pointers to
+  // existing FunctionSamples, so we need to update any fields with them.
+  if (NewFunctionSamples.size() > 0) {
+    updateFunctionSamplesPointers(F);
+  }
+}
+
+/// Update all fields containing a pointer to FunctionSamples, used after the
+/// sample profile map is rehashed because FunctionSamples may be moved.
+void SampleProfileLoader::updateFunctionSamplesPointers(const Function &F) {
+  assert(Reader->profileIsCS() == FunctionSamples::ProfileIsCS);
+  if (Reader->profileIsCS())
+    ContextTracker = std::make_unique<SampleContextTracker>(
+        Reader->getProfiles(), &GUIDToFuncNameMap);
+  if (ReportProfileStaleness || PersistProfileStaleness || SalvageStaleProfile)
+    MatchingManager =
+        std::make_unique<SampleProfileMatcher>(
+          const_cast<Module&>(*F.getParent()), *Reader, ProbeManager.get());
+
+  if (FunctionSamples::ProfileIsCS)
+    Samples = ContextTracker->getBaseSamplesFor(F);
+  else
+    Samples = Reader->getSamplesFor(F);
+  assert(Samples && !Samples->empty());
+  for (auto &DILocation2Sample : DILocation2SampleMap) {
+    auto DIL = DILocation2Sample.first;
+    auto &Sample = DILocation2Sample.second;
+    if (FunctionSamples::ProfileIsCS)
+      Sample = ContextTracker->getContextSamplesFor(DIL);
+    else
+      Sample = Samples->findFunctionSamples(DIL, Reader->getRemapper());
   }
 }
 
