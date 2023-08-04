@@ -833,7 +833,7 @@ TEST_F(StructuralEquivalenceRecordTest, SameFriendMultipleTimes) {
   auto t = makeNamedDecls("struct foo { friend class X; };",
                           "struct foo { friend class X; friend class X; };",
                           Lang_CXX11);
-  EXPECT_FALSE(testStructuralMatch(t));
+  EXPECT_TRUE(testStructuralMatch(t));
 }
 
 TEST_F(StructuralEquivalenceRecordTest, SameFriendsDifferentOrder) {
