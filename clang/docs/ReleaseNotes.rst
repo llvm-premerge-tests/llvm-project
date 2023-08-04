@@ -107,6 +107,10 @@ Bug Fixes in This Version
   instantiated in one module and whose definition is instantiated in another
   module may end up with members associated with the wrong declaration of the
   class, which can result in miscompiles in some cases.
+- Fixed an issue that the conditional access to local variables of the awaiter
+  after leaking the coroutine handle in the await_suspend may be converted to
+  unconditional access incorrectly.
+  (`#56301 <https://github.com/llvm/llvm-project/issues/56301>`_)
 
 Bug Fixes to Compiler Builtins
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
