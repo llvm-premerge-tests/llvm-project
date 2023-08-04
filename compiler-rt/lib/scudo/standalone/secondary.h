@@ -155,10 +155,18 @@ public:
 
   void getStats(ScopedString *Str) {
     ScopedLock L(Mutex);
+    u32 Integral = SuccessfulRetrieves * 100 / CallsToRetrieve;
+    u32 Fractional = (((SuccessfulRetrieves * 100) % CallsToRetrieve) * 100 +
+                      CallsToRetrieve / 2) /
+                     CallsToRetrieve;
     Str->append("Stats: MapAllocatorCache: EntriesCount: %d, "
                 "MaxEntriesCount: %u, MaxEntrySize: %zu\n",
                 EntriesCount, atomic_load_relaxed(&MaxEntriesCount),
                 atomic_load_relaxed(&MaxEntrySize));
+    Str->append("Stats: RetrievalStats: Wasted: %zuK, SuccessRate: %u/%u "
+                "(%u.%02u%%)\n",
+                WastedBytes >> 10, SuccessfulRetrieves, CallsToRetrieve,
+                Integral, Fractional);
     for (CachedBlock Entry : Entries) {
       if (!Entry.isValid())
         continue;
@@ -272,6 +280,7 @@ public:
     uptr HeaderPos = 0;
     {
       ScopedLock L(Mutex);
+      CallsToRetrieve++;
       if (EntriesCount == 0)
         return false;
       for (u32 I = 0; I < MaxCount; I++) {
@@ -292,6 +301,8 @@ public:
         Entry = Entries[I];
         Entries[I].invalidate();
         EntriesCount--;
+        SuccessfulRetrieves++;
+        WastedBytes += HeaderPos - Entry.CommitBase;
         break;
       }
     }
@@ -428,6 +439,9 @@ private:
   u64 OldestTime GUARDED_BY(Mutex) = 0;
   u32 IsFullEvents GUARDED_BY(Mutex) = 0;
   atomic_s32 ReleaseToOsIntervalMs = {};
+  u32 CallsToRetrieve GUARDED_BY(Mutex) = 0;
+  u32 SuccessfulRetrieves GUARDED_BY(Mutex) = 0;
+  uptr WastedBytes GUARDED_BY(Mutex) = 0;
 
   CachedBlock Entries[CacheConfig::EntriesArraySize] GUARDED_BY(Mutex) = {};
   NonZeroLengthArray<CachedBlock, CacheConfig::QuarantineSize>
