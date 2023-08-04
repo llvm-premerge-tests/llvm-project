@@ -176,6 +176,7 @@ void coro::Shape::buildFrom(Function &F) {
   clear(*this);
   SmallVector<CoroFrameInst *, 8> CoroFrames;
   SmallVector<CoroSaveInst *, 2> UnusedCoroSaves;
+  SmallVector<CoroOptBlockerInst *, 8> CoroOptBlockers;
 
   for (Instruction &I : instructions(F)) {
     if (auto II = dyn_cast<IntrinsicInst>(&I)) {
@@ -237,6 +238,9 @@ void coro::Shape::buildFrom(Function &F) {
         CoroBegin = CB;
         break;
       }
+      case Intrinsic::coro_opt_blocker:
+        CoroOptBlockers.push_back(cast<CoroOptBlockerInst>(II));
+        break;
       case Intrinsic::coro_end_async:
       case Intrinsic::coro_end:
         CoroEnds.push_back(cast<AnyCoroEndInst>(II));
@@ -262,6 +266,9 @@ void coro::Shape::buildFrom(Function &F) {
       }
     }
   }
+
+  for (CoroOptBlockerInst *CAAI : CoroOptBlockers)
+    CAAI->eraseFromParent();
 
   // If for some reason, we were not able to find coro.begin, bailout.
   if (!CoroBegin) {

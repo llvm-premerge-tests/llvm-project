@@ -448,6 +448,18 @@ public:
   }
 };
 
+/// This represents the llvm.coro.opt.blocker instruction.
+class LLVM_LIBRARY_VISIBILITY CoroOptBlockerInst : public IntrinsicInst {
+public:
+  // Methods to support type inquiry through isa, cast, and dyn_cast:
+  static bool classof(const IntrinsicInst *I) {
+    return I->getIntrinsicID() == Intrinsic::coro_opt_blocker;
+  }
+  static bool classof(const Value *V) {
+    return isa<IntrinsicInst>(V) && classof(cast<IntrinsicInst>(V));
+  }
+};
+
 /// This represents the llvm.coro.promise instruction.
 class LLVM_LIBRARY_VISIBILITY CoroPromiseInst : public IntrinsicInst {
   enum { FrameArg, AlignArg, FromArg };
