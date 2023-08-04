@@ -2751,3 +2751,99 @@ entry:
   store i32 %result, ptr addrspace(1) undef
   ret void
 }
+
+define hidden void @extract3744(ptr addrspace(1) %in0, ptr addrspace(1) %in1, ptr addrspace(1) %out0) {
+; GFX10-LABEL: extract3744:
+; GFX10:       ; %bb.0:
+; GFX10-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX10-NEXT:    global_load_dword v6, v[0:1], off
+; GFX10-NEXT:    global_load_dword v7, v[2:3], off
+; GFX10-NEXT:    s_waitcnt vmcnt(0)
+; GFX10-NEXT:    v_perm_b32 v0, v6, v7, 0x3070404
+; GFX10-NEXT:    global_store_dword v[4:5], v0, off
+; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX9-LABEL: extract3744:
+; GFX9:       ; %bb.0:
+; GFX9-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX9-NEXT:    global_load_dword v6, v[0:1], off
+; GFX9-NEXT:    global_load_dword v7, v[2:3], off
+; GFX9-NEXT:    s_mov_b32 s4, 0x3070404
+; GFX9-NEXT:    s_waitcnt vmcnt(0)
+; GFX9-NEXT:    v_perm_b32 v0, v6, v7, s4
+; GFX9-NEXT:    global_store_dword v[4:5], v0, off
+; GFX9-NEXT:    s_waitcnt vmcnt(0)
+; GFX9-NEXT:    s_setpc_b64 s[30:31]
+  %vec1 = load <4 x i8>, ptr addrspace(1) %in0, align 4
+  %vec2 = load <4 x i8>, ptr addrspace(1) %in1, align 4
+  %v1e0 = extractelement <4 x i8> %vec1, i64 0
+  %zv1e0 = zext i8 %v1e0 to i32
+  %byte1 = shl i32 %zv1e0, 8
+
+  %v1e3 = extractelement <4 x i8> %vec1, i64 3
+  %zv1e3 = zext i8 %v1e3 to i32
+  %byte2 = shl i32 %zv1e3, 16
+  %v2e3 = extractelement <4 x i8> %vec2, i64 3
+  %zv2e3 = zext i8 %v2e3 to i32
+  %byte3 = shl i32 %zv2e3, 24
+
+  %tmp0 = or i32 %zv1e0, %byte1
+  %tmp1 = or i32 %tmp0, %byte2
+  %res = or i32 %tmp1, %byte3
+  store i32 %res, ptr addrspace(1) %out0, align 4
+  ret void
+}
+
+define hidden void @extract1347_v2i16(ptr addrspace(1) %in0, ptr addrspace(1) %in1, ptr addrspace(1) %out0) {
+; GFX10-LABEL: extract1347_v2i16:
+; GFX10:       ; %bb.0:
+; GFX10-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX10-NEXT:    global_load_dword v6, v[0:1], off
+; GFX10-NEXT:    global_load_dword v7, v[2:3], off
+; GFX10-NEXT:    s_waitcnt vmcnt(0)
+; GFX10-NEXT:    v_perm_b32 v0, v7, v6, 0x1030407
+; GFX10-NEXT:    global_store_dword v[4:5], v0, off
+; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX9-LABEL: extract1347_v2i16:
+; GFX9:       ; %bb.0:
+; GFX9-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX9-NEXT:    global_load_dword v6, v[0:1], off
+; GFX9-NEXT:    global_load_dword v7, v[2:3], off
+; GFX9-NEXT:    s_mov_b32 s4, 0x1030407
+; GFX9-NEXT:    s_waitcnt vmcnt(0)
+; GFX9-NEXT:    v_perm_b32 v0, v7, v6, s4
+; GFX9-NEXT:    global_store_dword v[4:5], v0, off
+; GFX9-NEXT:    s_waitcnt vmcnt(0)
+; GFX9-NEXT:    s_setpc_b64 s[30:31]
+  %vec1 = load <2 x i16>, ptr addrspace(1) %in0, align 4
+  %vec2 = load <2 x i16>, ptr addrspace(1) %in1, align 4
+  %v1e0 = extractelement <2 x i16> %vec1, i64 0
+  %v1e1 = extractelement <2 x i16> %vec1, i64 1
+  %v2e0 = extractelement <2 x i16> %vec2, i64 0
+  %v2e1 = extractelement <2 x i16> %vec2, i64 1
+
+  %b0t0 = and i16 -256, %v2e1
+  %b0t1 = lshr i16 %b0t0, 8
+  %byte0 = zext i16 %b0t1 to i32
+
+  %b1t0 = and i16 255, %v2e0
+  %b1t1 = zext i16 %b1t0 to i32
+  %byte1 = shl i32 %b1t1, 8
+
+  %b2t0 = and i16 -256, %v1e1
+  %b2t1 = lshr i16 %b2t0, 8
+  %b2t2 = zext i16 %b2t1 to i32
+  %byte2 = shl i32 %b2t2, 16
+
+  %b3t0 = and i16 -256, %v1e0
+  %b3t1 = lshr i16 %b3t0, 8
+  %b3t2 = zext i16 %b3t1 to i32
+  %byte3 = shl i32 %b3t2, 24
+
+  %tmp0 = or i32 %byte0, %byte1
+  %tmp1 = or i32 %tmp0, %byte2
+  %res = or i32 %tmp1, %byte3
+  store i32 %res, ptr addrspace(1) %out0, align 4
+  ret void
+}
