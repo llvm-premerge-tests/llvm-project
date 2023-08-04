@@ -3837,10 +3837,12 @@ bool SIInstrInfo::isInlineConstant(const APInt &Imm) const {
 bool SIInstrInfo::isInlineConstant(const MachineOperand &MO,
                                    uint8_t OperandType) const {
   assert(!MO.isReg() && "isInlineConstant called on register operand!");
-  if (!MO.isImm() ||
-      OperandType < AMDGPU::OPERAND_SRC_FIRST ||
-      OperandType > AMDGPU::OPERAND_SRC_LAST)
+  if (!MO.isImm())
     return false;
+
+  if (OperandType < AMDGPU::OPERAND_SRC_FIRST ||
+      OperandType > AMDGPU::OPERAND_SRC_LAST)
+    return true;
 
   // MachineOperand provides no way to tell the true operand size, since it only
   // records a 64-bit value. We need to know the size to determine if a 32-bit
