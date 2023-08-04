@@ -319,6 +319,102 @@ void transform::TakeAssumedBranchOp::getEffects(
 }
 
 //===----------------------------------------------------------------------===//
+// LoopFuseSibling
+//===----------------------------------------------------------------------===//
+
+/// Check if `target` and `source` are siblings.
+///
+/// This is a simple check that just checks if both operations are in the same
+/// block and some checks to ensure that the fused IR does not voilate
+/// dominance.
+static bool isOpSibling(Operation *target, Operation *source) {
+  // Check if both operations are in the same block.
+  if (target->getBlock() != source->getBlock())
+    return false;
+
+  // Check if fusion will voilate dominance. We check that every operand of
+  // `target` dominates `source` and every result of `target` is dominated by
+  // `source`.
+  for (Value operand : target->getOperands()) {
+    // Operand should be strictly before `source` in the block.
+    if (!operand.getDefiningOp()->isBeforeInBlock(source))
+      return false;
+  }
+  for (Operation *user : target->getUsers()) {
+    // User should be strictly after `source` in the block.
+    if (!source->isBeforeInBlock(user))
+      return false;
+  }
+
+  return true;
+}
+
+/// Check if `target` can be fused into `source`.
+///
+/// This is a simple check that just checks if both loops have same
+/// bounds, steps and mapping. This check does not ensure that the side effects
+/// of `target` are independent of `source` or vice-versa. It is the
+/// responsibility of the caller to ensure that.
+static bool isFusionLegal(Operation *target, Operation *source) {
+  if (auto targetOp = dyn_cast<scf::ForallOp>(target)) {
+    if (auto sourceOp = dyn_cast<scf::ForallOp>(source)) {
+      return targetOp.getMixedLowerBound() == sourceOp.getMixedLowerBound() &&
+             targetOp.getMixedUpperBound() == sourceOp.getMixedUpperBound() &&
+             targetOp.getMixedStep() == sourceOp.getMixedStep() &&
+             targetOp.getMapping() == sourceOp.getMapping();
+    }
+    return false;
+  }
+  // TODO: Add fusion for more operations. Currently, we handle only scf.forall.
+  return false;
+}
+
+/// Fuse `target` into `source` assuming they are siblings.
+static Operation *fuseSiblings(Operation *target, Operation *source,
+                               RewriterBase &rewriter) {
+  if (auto targetOp = dyn_cast<scf::ForallOp>(target)) {
+    if (auto sourceOp = dyn_cast<scf::ForallOp>(source))
+      return fuseSiblingForallLoops(targetOp, sourceOp, rewriter);
+    return nullptr;
+  }
+  // TODO: Add fusion for more operations. Currently, we handle only scf.forall.
+  return nullptr;
+}
+
+DiagnosedSilenceableFailure
+transform::LoopFuseSibling::apply(transform::TransformRewriter &rewriter,
+                                  transform::TransformResults &results,
+                                  transform::TransformState &state) {
+  auto targetOps = state.getPayloadOps(getTarget());
+  auto sourceOps = state.getPayloadOps(getSource());
+
+  if (!llvm::hasSingleElement(targetOps) || !llvm::hasSingleElement(sourceOps))
+    return emitDefiniteFailure()
+           << "requires exactly one target handle (got "
+           << llvm::range_size(targetOps) << ") and exactly one "
+           << "source handle (got " << llvm::range_size(sourceOps) << ")";
+
+  Operation *target = *targetOps.begin();
+  Operation *source = *sourceOps.begin();
+
+  // Check if the target and source are siblings.
+  if (!isOpSibling(target, source))
+    return emitSilenceableFailure(target->getLoc())
+           << "operations are not siblings";
+
+  // Check if the target can be fused into source.
+  if (!isFusionLegal(target, source))
+    return emitSilenceableFailure(target->getLoc())
+           << "operations cannot be fused";
+
+  Operation *fusedLoop = fuseSiblings(target, source, rewriter);
+  assert(fusedLoop && "failed to fuse operations");
+
+  results.set(cast<OpResult>(getFusedLoop()), {fusedLoop});
+  return DiagnosedSilenceableFailure::success();
+}
+
+//===----------------------------------------------------------------------===//
 // Transform op registration
 //===----------------------------------------------------------------------===//
 
