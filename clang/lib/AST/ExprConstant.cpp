@@ -2628,6 +2628,16 @@ static llvm::RoundingMode getActiveRoundingMode(EvalInfo &Info, const Expr *E) {
   return RM;
 }
 
+/// Signaling NaNs are invalid inputs to floating point operations.
+static bool checkFloatingPointInput(EvalInfo &Info, const Expr *E,
+                                    const APFloat &Input) {
+  if (!Input.isSignaling())
+    return true;
+
+  Info.CCEDiag(E, diag::note_constexpr_float_nan_input) << E->getSourceRange();
+  return Info.noteUndefinedBehavior();
+}
+
 /// Check if the given evaluation result is allowed for constant evaluation.
 static bool checkFloatingPointResult(EvalInfo &Info, const Expr *E,
                                      APFloat::opStatus St) {
@@ -2904,6 +2914,10 @@ static bool handleIntIntBinOp(EvalInfo &Info, const Expr *E, const APSInt &LHS,
 static bool handleFloatFloatBinOp(EvalInfo &Info, const BinaryOperator *E,
                                   APFloat &LHS, BinaryOperatorKind Opcode,
                                   const APFloat &RHS) {
+  if (!checkFloatingPointInput(Info, E->getLHS(), LHS) ||
+      !checkFloatingPointInput(Info, E->getRHS(), RHS))
+    return false;
+
   llvm::RoundingMode RM = getActiveRoundingMode(Info, E);
   APFloat::opStatus St;
   switch (Opcode) {
@@ -2926,15 +2940,6 @@ static bool handleFloatFloatBinOp(EvalInfo &Info, const BinaryOperator *E,
       Info.CCEDiag(E, diag::note_expr_divide_by_zero);
     St = LHS.divide(RHS, RM);
     break;
-  }
-
-  // [expr.pre]p4:
-  //   If during the evaluation of an expression, the result is not
-  //   mathematically defined [...], the behavior is undefined.
-  // FIXME: C++ rules require us to not conform to IEEE 754 here.
-  if (LHS.isNaN()) {
-    Info.CCEDiag(E, diag::note_constexpr_float_arithmetic) << LHS.isNaN();
-    return Info.noteUndefinedBehavior();
   }
 
   return checkFloatingPointResult(Info, E, St);

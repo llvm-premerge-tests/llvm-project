@@ -79,6 +79,8 @@ def note_constexpr_array_index : Note<"cannot refer to element %0 of "
   "in a constant expression">;
 def note_constexpr_float_arithmetic : Note<
   "floating point arithmetic produces %select{an infinity|a NaN}0">;
+def note_constexpr_float_nan_input : Note<
+  "NaN input to a floating point operation">;
 def note_constexpr_dynamic_rounding : Note<
   "cannot evaluate this expression if rounding mode is dynamic">;
 def note_constexpr_float_arithmetic_strict : Note<

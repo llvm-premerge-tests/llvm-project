@@ -278,9 +278,9 @@ namespace UndefinedBehavior {
     constexpr float f7 = 0.f / 0.f; // expected-error {{constant expression}} expected-note {{division by zero}}
     constexpr float f8 = 1.f / 0.f; // expected-error {{constant expression}} expected-note {{division by zero}}
     constexpr float f9 = 1e308 / 1e-308; // ok, +inf
-    constexpr float f10 = f2 - f2; // expected-error {{constant expression}} expected-note {{produces a NaN}}
-    constexpr float f11 = f2 + f4; // expected-error {{constant expression}} expected-note {{produces a NaN}}
-    constexpr float f12 = f2 / f2; // expected-error {{constant expression}} expected-note {{produces a NaN}}
+    constexpr float f10 = f2 - f2;
+    constexpr float f11 = f2 + f4;
+    constexpr float f12 = f2 / f2;
 #pragma float_control(push)
 #pragma float_control(except, on)
 constexpr float pi = 3.14f;
