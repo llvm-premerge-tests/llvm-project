@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "IncrementalParser.h"
+#include "ExternalSource.h"
 #include "clang/AST/DeclContextInternals.h"
 #include "clang/CodeGen/BackendUtil.h"
 #include "clang/CodeGen/CodeGenAction.h"
@@ -18,7 +19,9 @@
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendAction.h"
 #include "clang/FrontendTool/Utils.h"
+#include "clang/Interpreter/CodeCompletion.h"
 #include "clang/Interpreter/Interpreter.h"
+#include "clang/Lex/PreprocessorOptions.h"
 #include "clang/Parse/Parser.h"
 #include "clang/Sema/Sema.h"
 #include "llvm/Option/ArgList.h"
@@ -115,10 +118,14 @@ public:
 class IncrementalAction : public WrapperFrontendAction {
 private:
   bool IsTerminating = false;
+  std::vector<CodeCompletionResult>& CCResults;
+  const CompilerInstance *ParentCI;
 
 public:
   IncrementalAction(CompilerInstance &CI, llvm::LLVMContext &LLVMCtx,
-                    llvm::Error &Err)
+                    llvm::Error &Err,
+                    const CompilerInstance *ParentCI,
+                    std::vector<CodeCompletionResult>& CCResults)
       : WrapperFrontendAction([&]() {
           llvm::ErrorAsOutParameter EAO(&Err);
           std::unique_ptr<FrontendAction> Act;
@@ -152,21 +159,25 @@ public:
             break;
           }
           return Act;
-        }()) {}
+        }()),
+        CCResults(CCResults), ParentCI(ParentCI){}
   FrontendAction *getWrapped() const { return WrappedAction.get(); }
   TranslationUnitKind getTranslationUnitKind() override {
     return TU_Incremental;
   }
+
   void ExecuteAction() override {
     CompilerInstance &CI = getCompilerInstance();
     assert(CI.hasPreprocessor() && "No PP!");
 
-    // FIXME: Move the truncation aspect of this into Sema, we delayed this till
-    // here so the source manager would be initialized.
-    if (hasCodeCompletionSupport() &&
-        !CI.getFrontendOpts().CodeCompletionAt.FileName.empty())
-      CI.createCodeCompletionConsumer();
+    if (ParentCI) {
+      // in code completion mode,
+      CI.getPreprocessorOpts().SingleFileParseMode = true;
 
+      CI.getLangOpts().SpellChecking = false;
+      CI.getLangOpts().DelayedTemplateParsing = false;
+      CI.setCodeCompletionConsumer(new ReplCompletionConsumer(CCResults));
+    }
     // Use a code completion consumer?
     CodeCompleteConsumer *CompletionConsumer = nullptr;
     if (CI.hasCodeCompletionConsumer())
@@ -174,6 +185,17 @@ public:
 
     Preprocessor &PP = CI.getPreprocessor();
     PP.EnterMainSourceFile();
+
+    if (ParentCI) {
+      ExternalSource *myExternalSource = new ExternalSource(
+          CI.getASTContext(), CI.getFileManager(), ParentCI->getASTContext(),
+          ParentCI->getFileManager());
+      llvm::IntrusiveRefCntPtr<ExternalASTSource> astContextExternalSource(
+          myExternalSource);
+      CI.getASTContext().setExternalSource(astContextExternalSource);
+      CI.getASTContext().getTranslationUnitDecl()->setHasExternalVisibleStorage(
+          true);
+    }
 
     if (!CI.hasSema())
       CI.createSema(getTranslationUnitKind(), CompletionConsumer);
@@ -206,10 +228,12 @@ IncrementalParser::IncrementalParser() {}
 IncrementalParser::IncrementalParser(Interpreter &Interp,
                                      std::unique_ptr<CompilerInstance> Instance,
                                      llvm::LLVMContext &LLVMCtx,
-                                     llvm::Error &Err)
+                                     llvm::Error &Err,
+                                     const CompilerInstance *ParentCI,
+                                     std::vector<CodeCompletionResult>& CCResults)
     : CI(std::move(Instance)) {
   llvm::ErrorAsOutParameter EAO(&Err);
-  Act = std::make_unique<IncrementalAction>(*CI, LLVMCtx, Err);
+  Act = std::make_unique<IncrementalAction>(*CI, LLVMCtx, Err, ParentCI, CCResults);
   if (Err)
     return;
   CI->ExecuteAction(*Act);
@@ -305,22 +329,17 @@ IncrementalParser::ParseOrWrapTopLevelDecl() {
   return LastPTU;
 }
 
-llvm::Expected<PartialTranslationUnit &>
-IncrementalParser::Parse(llvm::StringRef input) {
-  Preprocessor &PP = CI->getPreprocessor();
-  assert(PP.isIncrementalProcessingEnabled() && "Not in incremental mode!?");
-
-  std::ostringstream SourceName;
-  SourceName << "input_line_" << InputCount++;
-
+std::pair<FileID, SourceLocation>
+IncrementalParser::createSourceFile(llvm::StringRef SourceName,
+                                    llvm::StringRef Input) {
   // Create an uninitialized memory buffer, copy code in and append "\n"
-  size_t InputSize = input.size(); // don't include trailing 0
+  size_t InputSize = Input.size(); // don't include trailing 0
   // MemBuffer size should *not* include terminating zero
   std::unique_ptr<llvm::MemoryBuffer> MB(
       llvm::WritableMemoryBuffer::getNewUninitMemBuffer(InputSize + 1,
                                                         SourceName.str()));
   char *MBStart = const_cast<char *>(MB->getBufferStart());
-  memcpy(MBStart, input.data(), InputSize);
+  memcpy(MBStart, Input.data(), InputSize);
   MBStart[InputSize] = '\n';
 
   SourceManager &SM = CI->getSourceManager();
@@ -329,19 +348,56 @@ IncrementalParser::Parse(llvm::StringRef input) {
   // candidates for example
   SourceLocation NewLoc = SM.getLocForStartOfFile(SM.getMainFileID());
 
+
+  const clang::FileEntry *FE = SM.getFileManager().getVirtualFile(
+      SourceName.str(), InputSize, 0 /* mod time*/);
+  SM.overrideFileContents(FE, std::move(MB));
+
   // Create FileID for the current buffer.
-  FileID FID = SM.createFileID(std::move(MB), SrcMgr::C_User, /*LoadedID=*/0,
-                               /*LoadedOffset=*/0, NewLoc);
+  FileID FID = SM.createFileID(FE, NewLoc, SrcMgr::C_User);
+  return {FID, NewLoc};
+}
+
+bool IncrementalParser::isCodeCompletionEnabled(){
+  return !(CI->getFrontendOpts().CodeCompletionAt.FileName.empty());
+}
+
+llvm::Expected<PartialTranslationUnit &>
+IncrementalParser::Parse(llvm::StringRef input) {
+  Preprocessor &PP = CI->getPreprocessor();
+  assert(PP.isIncrementalProcessingEnabled() && "Not in incremental mode!?");
+  std::ostringstream SourceName;
+
+  if (isCodeCompletionEnabled()) {
+    SourceName << CI->getFrontendOpts().CodeCompletionAt.FileName;
+  } else {
+    SourceName << "input_line_" << InputCount++;
+  }
+
+  auto [FID, SrcLoc] = createSourceFile(SourceName.str(), input);
+
+  if (isCodeCompletionEnabled()) {
+    // createCodeCompletionConsumer enables the code completion point, which
+    // must happen after the source file is created.
+    CI->createCodeCompletionConsumer();
+  }
 
   // NewLoc only used for diags.
-  if (PP.EnterSourceFile(FID, /*DirLookup=*/nullptr, NewLoc))
+  if (PP.EnterSourceFile(FID, /*DirLookup=*/nullptr, SrcLoc))
     return llvm::make_error<llvm::StringError>("Parsing failed. "
                                                "Cannot enter source file.",
                                                std::error_code());
 
   auto PTU = ParseOrWrapTopLevelDecl();
-  if (!PTU)
-    return PTU.takeError();
+
+  if (!PTU) {
+    return std::move(PTU.takeError());
+  }
+
+  if (isCodeCompletionEnabled()) {
+    // there is no need to do extra lexing for code completion
+    return PTU;
+  }
 
   if (PP.getLangOpts().DelayedTemplateParsing) {
     // Microsoft-specific:

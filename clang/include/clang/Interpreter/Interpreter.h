@@ -35,6 +35,8 @@ class ThreadSafeContext;
 
 namespace clang {
 
+class CodeCompleteConsumer;
+class CodeCompletionResult;
 class CompilerInstance;
 class IncrementalExecutor;
 class IncrementalParser;
@@ -72,6 +74,14 @@ private:
   llvm::StringRef CudaSDKPath;
 };
 
+const std::string CodeCompletionFileName = "input_line_[Completion]";
+struct CodeCompletionCfg {
+  size_t Col;
+  size_t Line = 1;
+  CompilerInstance *ParentCI = nullptr;
+  std::vector<CodeCompletionResult> &CCResult;
+};
+
 /// Provides top-level interfaces for incremental compilation and execution.
 class Interpreter {
   std::unique_ptr<llvm::orc::ThreadSafeContext> TSCtx;
@@ -81,7 +91,9 @@ class Interpreter {
   // An optional parser for CUDA offloading
   std::unique_ptr<IncrementalParser> DeviceParser;
 
-  Interpreter(std::unique_ptr<CompilerInstance> CI, llvm::Error &Err);
+  Interpreter(std::unique_ptr<CompilerInstance> CI, llvm::Error &Err,
+              std::vector<CodeCompletionResult> &CCResult,
+              const CompilerInstance *ParentCI = nullptr);
 
   llvm::Error CreateExecutor();
   unsigned InitPTUSize = 0;
@@ -93,11 +105,15 @@ class Interpreter {
 
 public:
   ~Interpreter();
+
   static llvm::Expected<std::unique_ptr<Interpreter>>
-  create(std::unique_ptr<CompilerInstance> CI);
+  create(std::unique_ptr<CompilerInstance> CI,
+         std::optional<CodeCompletionCfg> CCCfg = std::nullopt);
+
   static llvm::Expected<std::unique_ptr<Interpreter>>
   createWithCUDA(std::unique_ptr<CompilerInstance> CI,
                  std::unique_ptr<CompilerInstance> DCI);
+
   const ASTContext &getASTContext() const;
   ASTContext &getASTContext();
   const CompilerInstance *getCompilerInstance() const;

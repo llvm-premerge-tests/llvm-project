@@ -15,19 +15,21 @@
 #include "clang/Basic/TargetOptions.h"
 #include "clang/CodeGen/ModuleBuilder.h"
 #include "clang/Frontend/CompilerInstance.h"
+#include "clang/Sema/CodeCompleteConsumer.h"
 
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Target/TargetMachine.h"
 
 namespace clang {
+std::vector<CodeCompletionResult> DummyResult;
 
 IncrementalCUDADeviceParser::IncrementalCUDADeviceParser(
     Interpreter &Interp, std::unique_ptr<CompilerInstance> Instance,
     IncrementalParser &HostParser, llvm::LLVMContext &LLVMCtx,
     llvm::IntrusiveRefCntPtr<llvm::vfs::InMemoryFileSystem> FS,
     llvm::Error &Err)
-    : IncrementalParser(Interp, std::move(Instance), LLVMCtx, Err),
+  : IncrementalParser(Interp, std::move(Instance), LLVMCtx, Err, nullptr, DummyResult),
       HostParser(HostParser), VFS(FS) {
   if (Err)
     return;

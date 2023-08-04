@@ -24,10 +24,11 @@
 #include <memory>
 namespace llvm {
 class LLVMContext;
-}
+} // namespace llvm
 
 namespace clang {
 class ASTConsumer;
+class CodeCompletionResult;
 class CodeGenerator;
 class CompilerInstance;
 class IncrementalAction;
@@ -62,7 +63,9 @@ protected:
 public:
   IncrementalParser(Interpreter &Interp,
                     std::unique_ptr<CompilerInstance> Instance,
-                    llvm::LLVMContext &LLVMCtx, llvm::Error &Err);
+                    llvm::LLVMContext &LLVMCtx, llvm::Error &Err,
+                    const CompilerInstance *ParentCI,
+                    std::vector<CodeCompletionResult>& CCResults);
   virtual ~IncrementalParser();
 
   CompilerInstance *getCI() { return CI.get(); }
@@ -72,7 +75,7 @@ public:
   ///\returns a \c PartialTranslationUnit which holds information about the
   /// \c TranslationUnitDecl and \c llvm::Module corresponding to the input.
   virtual llvm::Expected<PartialTranslationUnit &> Parse(llvm::StringRef Input);
-
+  
   /// Uses the CodeGenModule mangled name cache and avoids recomputing.
   ///\returns the mangled name of a \c GD.
   llvm::StringRef GetMangledName(GlobalDecl GD) const;
@@ -84,7 +87,11 @@ public:
   std::unique_ptr<llvm::Module> GenModule();
 
 private:
+  bool isCodeCompletionEnabled();
   llvm::Expected<PartialTranslationUnit &> ParseOrWrapTopLevelDecl();
+
+  std::pair<FileID, SourceLocation> createSourceFile(llvm::StringRef SourceName,
+                                                     llvm::StringRef Input);
 };
 } // end namespace clang
 

@@ -41,6 +41,7 @@ REPL_EXTERNAL_VISIBILITY void setGlobal(int val) { Global = val; }
 
 namespace {
 using Args = std::vector<const char *>;
+
 static std::unique_ptr<Interpreter>
 createInterpreter(const Args &ExtraArgs = {},
                   DiagnosticConsumer *Client = nullptr) {

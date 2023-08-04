@@ -14,6 +14,7 @@
 #include "clang/Interpreter/Interpreter.h"
 
 #include "DeviceOffload.h"
+#include "ExternalSource.h"
 #include "IncrementalExecutor.h"
 #include "IncrementalParser.h"
 
@@ -33,8 +34,10 @@
 #include "clang/Driver/Tool.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/TextDiagnosticBuffer.h"
+#include "clang/Interpreter/CodeCompletion.h"
 #include "clang/Interpreter/Value.h"
 #include "clang/Lex/PreprocessorOptions.h"
+#include "clang/Sema/CodeCompleteConsumer.h"
 #include "clang/Sema/Lookup.h"
 #include "llvm/ExecutionEngine/JITSymbol.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
@@ -127,7 +130,6 @@ CreateCI(const llvm::opt::ArgStringList &Argv) {
 
   Clang->getFrontendOpts().DisableFree = false;
   Clang->getCodeGenOpts().DisableFree = false;
-
   return std::move(Clang);
 }
 
@@ -228,13 +230,16 @@ IncrementalCompilerBuilder::CreateCudaHost() {
   return IncrementalCompilerBuilder::createCuda(false);
 }
 
-Interpreter::Interpreter(std::unique_ptr<CompilerInstance> CI,
-                         llvm::Error &Err) {
+Interpreter::Interpreter(std::unique_ptr<CompilerInstance> CI, llvm::Error &Err,
+                         std::vector<CodeCompletionResult> &CCResults,
+                         const CompilerInstance *ParentCI) {
   llvm::ErrorAsOutParameter EAO(&Err);
   auto LLVMCtx = std::make_unique<llvm::LLVMContext>();
   TSCtx = std::make_unique<llvm::orc::ThreadSafeContext>(std::move(LLVMCtx));
   IncrParser = std::make_unique<IncrementalParser>(*this, std::move(CI),
-                                                   *TSCtx->getContext(), Err);
+                                                   *TSCtx->getContext(), Err,
+                                                   ParentCI,
+                                                   CCResults);
 }
 
 Interpreter::~Interpreter() {
@@ -269,16 +274,31 @@ const char *const Runtimes = R"(
     }
 )";
 
+std::vector<CodeCompletionResult> DummyRes;
+
 llvm::Expected<std::unique_ptr<Interpreter>>
-Interpreter::create(std::unique_ptr<CompilerInstance> CI) {
+Interpreter::create(std::unique_ptr<CompilerInstance> CI, std::optional<CodeCompletionCfg> CCCfg) {
   llvm::Error Err = llvm::Error::success();
-  auto Interp =
-      std::unique_ptr<Interpreter>(new Interpreter(std::move(CI), Err));
+  std::unique_ptr<Interpreter> Interp;
+  if (CCCfg) {
+    auto& opts = CI->getFrontendOpts();
+    opts.CodeCompletionAt.FileName = CodeCompletionFileName;
+    opts.CodeCompletionAt.Line = CCCfg->Line;
+    opts.CodeCompletionAt.Column = CCCfg->Col;
+    Interp = std::unique_ptr<Interpreter>(
+        new Interpreter(std::move(CI), Err, CCCfg->CCResult, CCCfg->ParentCI));
+  } else {
+    Interp = std::unique_ptr<Interpreter>(
+        new Interpreter(std::move(CI), Err, DummyRes));
+  }
   if (Err)
     return std::move(Err);
-  auto PTU = Interp->Parse(Runtimes);
-  if (!PTU)
-    return PTU.takeError();
+
+  if (!CCCfg) {
+    auto PTU = Interp->Parse(Runtimes);
+    if (!PTU)
+      return PTU.takeError();
+  }
 
   Interp->ValuePrintingInfo.resize(3);
   // FIXME: This is a ugly hack. Undo command checks its availability by looking
@@ -287,6 +307,7 @@ Interpreter::create(std::unique_ptr<CompilerInstance> CI) {
   Interp->InitPTUSize = Interp->IncrParser->getPTUs().size();
   return std::move(Interp);
 }
+
 
 llvm::Expected<std::unique_ptr<Interpreter>>
 Interpreter::createWithCUDA(std::unique_ptr<CompilerInstance> CI,
