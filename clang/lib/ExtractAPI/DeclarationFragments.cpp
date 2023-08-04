@@ -736,6 +736,152 @@ DeclarationFragmentsBuilder::getFragmentsForOverloadedOperator(
 }
 
 DeclarationFragments
+DeclarationFragmentsBuilder::getFragmentsForTemplateParameters(
+    ArrayRef<NamedDecl *> ParameterArray) {
+  DeclarationFragments Fragments;
+  for (unsigned i = 0, end = ParameterArray.size(); i != end; ++i) {
+    if (i)
+      Fragments.append(",", DeclarationFragments::FragmentKind::Text)
+          .appendSpace();
+
+    const auto *TemplateParam =
+        dyn_cast<TemplateTypeParmDecl>(ParameterArray[i]);
+    if (!TemplateParam)
+      continue;
+    if (TemplateParam->hasTypeConstraint())
+      Fragments.append(TemplateParam->getTypeConstraint()
+                           ->getNamedConcept()
+                           ->getName()
+                           .str(),
+                       DeclarationFragments::FragmentKind::TypeIdentifier);
+    else if (TemplateParam->wasDeclaredWithTypename())
+      Fragments.append("typename", DeclarationFragments::FragmentKind::Keyword);
+    else
+      Fragments.append("class", DeclarationFragments::FragmentKind::Keyword);
+
+    if (TemplateParam->isParameterPack())
+      Fragments.append("...", DeclarationFragments::FragmentKind::Text);
+
+    Fragments.appendSpace().append(
+        TemplateParam->getName(),
+        DeclarationFragments::FragmentKind::GenericParameter);
+  }
+  return Fragments;
+}
+
+DeclarationFragments
+DeclarationFragmentsBuilder::getFragmentsForTemplateArguments(
+    const ArrayRef<TemplateArgument> TemplateArguments,
+    const std::optional<ArrayRef<NamedDecl *>> TemplateParameters) {
+  DeclarationFragments Fragments;
+  for (unsigned i = 0, end = TemplateArguments.size(); i != end; ++i) {
+    if (i)
+      Fragments.append(",", DeclarationFragments::FragmentKind::Text)
+          .appendSpace();
+
+    std::string Type = TemplateArguments[i].getAsType().getAsString();
+    std::string Name;
+    std::string ex = Type.substr(0, 14);
+    if (Type.substr(0, 14).compare("type-parameter") == 0) {
+      // The arg is a template parameter from a partial spec.
+      if (TemplateParameters)
+        for (unsigned j = 0; j < TemplateParameters->size(); ++j) {
+          const auto *Parameter =
+              dyn_cast<TemplateTypeParmDecl>((*TemplateParameters)[j]);
+          if (Type.compare("type-parameter-" +
+                           std::to_string(Parameter->getIndex()) +
+                           std::to_string(Parameter->getDepth())))
+            Name = (*TemplateParameters)[j]->getName();
+        }
+    } else
+      Name = Type;
+
+    Fragments.append(Name, DeclarationFragments::FragmentKind::TypeIdentifier);
+    if (TemplateArguments[i].isPackExpansion())
+      Fragments.append("...", DeclarationFragments::FragmentKind::Text);
+  }
+  return Fragments;
+}
+
+DeclarationFragments DeclarationFragmentsBuilder::getFragmentsForConcept(
+    const ConceptDecl *Concept) {
+  DeclarationFragments Fragments;
+  return Fragments
+      .append("template", DeclarationFragments::FragmentKind::Keyword)
+      .append("<", DeclarationFragments::FragmentKind::Text)
+      .append(getFragmentsForTemplateParameters(
+          Concept->getTemplateParameters()->asArray()))
+      .append("> ", DeclarationFragments::FragmentKind::Text)
+      .append("concept", DeclarationFragments::FragmentKind::Keyword)
+      .appendSpace()
+      .append(Concept->getName().str(),
+              DeclarationFragments::FragmentKind::Identifier)
+      .append(";", DeclarationFragments::FragmentKind::Text);
+}
+
+DeclarationFragments
+DeclarationFragmentsBuilder::getFragmentsForRedeclarableTemplate(
+    const RedeclarableTemplateDecl *RedeclarableTemplate) {
+  DeclarationFragments Fragments;
+  Fragments.append("template", DeclarationFragments::FragmentKind::Keyword)
+      .append("<", DeclarationFragments::FragmentKind::Text)
+      .append(getFragmentsForTemplateParameters(
+          RedeclarableTemplate->getTemplateParameters()->asArray()))
+      .append(">", DeclarationFragments::FragmentKind::Text)
+      .appendSpace();
+
+  if (isa<TypeAliasTemplateDecl>(RedeclarableTemplate))
+    Fragments.appendSpace()
+        .append("using", DeclarationFragments::FragmentKind::Keyword)
+        .appendSpace()
+        .append(RedeclarableTemplate->getName(),
+                DeclarationFragments::FragmentKind::Identifier);
+  // the templated records will be resposbible for injecting their templates
+  return Fragments.appendSpace();
+}
+
+DeclarationFragments
+DeclarationFragmentsBuilder::getFragmentsForClassTemplateSpecialization(
+    const ClassTemplateSpecializationDecl *Decl) {
+  DeclarationFragments Fragments;
+  return Fragments
+      .append("template", DeclarationFragments::FragmentKind::Keyword)
+      .append("<", DeclarationFragments::FragmentKind::Text)
+      .append(">", DeclarationFragments::FragmentKind::Text)
+      .appendSpace()
+      .append(DeclarationFragmentsBuilder::getFragmentsForCXXClass(
+          cast<CXXRecordDecl>(Decl)))
+      .pop_back() // there is an extra semicolon now
+      .append("<", DeclarationFragments::FragmentKind::Text)
+      .append(getFragmentsForTemplateArguments(
+          Decl->getTemplateArgs().asArray(), std::nullopt))
+      .append(">", DeclarationFragments::FragmentKind::Text)
+      .append(";", DeclarationFragments::FragmentKind::Text);
+}
+
+DeclarationFragments
+DeclarationFragmentsBuilder::getFragmentsForClassTemplatePartialSpecialization(
+    const ClassTemplatePartialSpecializationDecl *Decl) {
+  DeclarationFragments Fragments;
+  return Fragments
+      .append("template", DeclarationFragments::FragmentKind::Keyword)
+      .append("<", DeclarationFragments::FragmentKind::Text)
+      .append(getFragmentsForTemplateParameters(
+          Decl->getTemplateParameters()->asArray()))
+      .append(">", DeclarationFragments::FragmentKind::Text)
+      .appendSpace()
+      .append(DeclarationFragmentsBuilder::getFragmentsForCXXClass(
+          cast<CXXRecordDecl>(Decl)))
+      .pop_back() // there is an extra semicolon now
+      .append("<", DeclarationFragments::FragmentKind::Text)
+      .append(getFragmentsForTemplateArguments(
+          Decl->getTemplateArgs().asArray(),
+          Decl->getTemplateParameters()->asArray()))
+      .append(">", DeclarationFragments::FragmentKind::Text)
+      .append(";", DeclarationFragments::FragmentKind::Text);
+}
+
+DeclarationFragments
 DeclarationFragmentsBuilder::getFragmentsForMacro(StringRef Name,
                                                   const MacroDirective *MD) {
   DeclarationFragments Fragments;
