@@ -167,7 +167,12 @@ public:
 
   bool Pre(const parser::AccClause::Copyin &x) {
     const auto &objectList{std::get<parser::AccObjectList>(x.v.t)};
-    ResolveAccObjectList(objectList, Symbol::Flag::AccCopyIn);
+    const auto &modifier{std::get<std::optional<parser::AccDataModifier>>(x.v.t)};
+    if (modifier && (*modifier).v == parser::AccDataModifier::Modifier::ReadOnly) {
+      ResolveAccObjectList(objectList, Symbol::Flag::AccCopyInReadOnly);
+    } else {
+      ResolveAccObjectList(objectList, Symbol::Flag::AccCopyIn);
+    }
     return false;
   }
 
@@ -245,10 +250,12 @@ private:
   Symbol::Flags accDataMvtFlags{
       Symbol::Flag::AccDevice, Symbol::Flag::AccHost, Symbol::Flag::AccSelf};
 
-  Symbol::Flags accFlagsRequireMark{Symbol::Flag::AccCreate,
-      Symbol::Flag::AccCopyIn, Symbol::Flag::AccCopy, Symbol::Flag::AccCopyOut,
-      Symbol::Flag::AccDevicePtr, Symbol::Flag::AccDeviceResident,
-      Symbol::Flag::AccLink, Symbol::Flag::AccPresent};
+  Symbol::Flags accFlagsRequireMark{
+      Symbol::Flag::AccCreate, Symbol::Flag::AccCopyIn,
+      Symbol::Flag::AccCopyInReadOnly, Symbol::Flag::AccCopy,
+      Symbol::Flag::AccCopyOut, Symbol::Flag::AccDevicePtr,
+      Symbol::Flag::AccDeviceResident, Symbol::Flag::AccLink,
+      Symbol::Flag::AccPresent};
 
   void PrivatizeAssociatedLoopIndex(const parser::OpenACCLoopConstruct &);
   void ResolveAccObjectList(const parser::AccObjectList &, Symbol::Flag);
