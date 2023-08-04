@@ -85,6 +85,19 @@ def CSE : Pass<"cse"> {
   ];
 }
 
+def RemoveNonLiveValues : Pass<"remove-non-live-values"> {
+  let summary = "Remove non-live values";
+  let description = [{
+    This pass optimizes the IR by removing non-live values. The removal of such
+    values involves removal of extraneous operands, extraneous arguments,
+    extraneous return values, and even extraneous ops, all of which
+    unnecessarily increase the runtime, in theory. The pass relies on the
+    information provided by the liveness analysis utility to accomplish its
+    optimization goal.
+  }];
+  let constructor = "mlir::createRemoveNonLiveValuesPass()";
+}
+
 def PrintIRPass : Pass<"print-ir"> {
   let summary = "Print IR on the debug stream";
   let description = [{
