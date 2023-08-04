@@ -310,22 +310,6 @@ class Extract<int FromBitIndex, int BitMask, bit U>: PatFrag<
                       (sext_inreg (srl node:$src, (i32 FromBitIndex)), i8)))))>;
 
 
-foreach Type = ["I", "U"] in
-  foreach Index = 0-3 in {
-    // Defines patterns that extract each Index'ed 8bit from an unsigned
-    // 32bit scalar value;
-    def Type#Index#"_8bit" : Extract<!shl(Index, 3), 255, !eq (Type, "U")>;
-
-    // Defines multiplication patterns where the multiplication is happening on each
-    // Index'ed 8bit of a 32bit scalar value.
-
-    def Mul#Type#_Elt#Index : PatFrag<
-      (ops node:$src0, node:$src1),
-      (!cast<HasOneUseBinOp>(!if (!eq (Type, "I"), AMDGPUmul_i24_oneuse, AMDGPUmul_u24_oneuse))
-                            (!cast<Extract>(Type#Index#"_8bit") node:$src0),
-                            (!cast<Extract>(Type#Index#"_8bit") node:$src1))>;
-  }
-
 // Different variants of dot8 patterns cause a huge increase in the compile time.
 // Define non-associative/commutative add/mul to prevent permutation in the dot8
 // pattern.
@@ -440,13 +424,6 @@ defm V_DOT8_I32_IU4 : VOP3PDOTIUInst<"v_dot8_i32_iu4", int_amdgcn_sudot8>;
 
 def : UDot2Pat<V_DOT2_U32_U16>;
 def : SDot2Pat<V_DOT2_I32_I16>;
-
-foreach Type = ["U", "I"] in
-  let SubtargetPredicate = !cast<VOP_Pseudo>("V_DOT4_"#Type#"32_"#Type#8).SubtargetPredicate in
-  def : GCNPat <
-    !cast<dag>(!foldl((i32 i32:$src2), [0, 1, 2, 3], lhs, y,
-                      (add_oneuse lhs, (!cast<PatFrag>("Mul"#Type#"_Elt"#y) i32:$src0, i32:$src1)))),
-    (!cast<VOP3P_Pseudo>("V_DOT4_"#Type#"32_"#Type#8) (i32 8), $src0, (i32 8), $src1, (i32 8), $src2, (i1 0))>;
 
 foreach Type = ["U", "I"] in
   let SubtargetPredicate = !cast<VOP_Pseudo>("V_DOT8_"#Type#"32_"#Type#4).SubtargetPredicate in
