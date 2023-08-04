@@ -344,6 +344,22 @@ DemandedFields getDemanded(const MachineInstr &MI,
     Res.MaskPolicy = false;
   }
 
+  // VLMAX does not need tail policy.
+  if (RISCVII::hasVLOp(MI.getDesc().TSFlags)) {
+    RISCVII::VLMUL VLMul = RISCVII::getLMul(MI.getDesc().TSFlags);
+    // Fractional LMULs always require tail policy.
+    if (VLMul < RISCVII::LMUL_RESERVED) {
+      const MachineOperand &VLOp = MI.getOperand(getVLOpNum(MI));
+      if (VLOp.isImm()) {
+        int64_t Imm = VLOp.getImm();
+        if (Imm == RISCV::VLMaxSentinel)
+          Res.TailPolicy = false;
+      } else if (VLOp.getReg() == RISCV::X0) {
+        Res.TailPolicy = false;
+      }
+    }
+  }
+
   // If this is a mask reg operation, it only cares about VLMAX.
   // TODO: Possible extensions to this logic
   // * Probably ok if available VLMax is larger than demanded
