@@ -40,6 +40,8 @@ extern OmpDirectiveSet allDoSimdSet;
 extern OmpDirectiveSet workShareSet;
 extern OmpDirectiveSet taskGeneratingSet;
 extern OmpDirectiveSet nonPartialVarSet;
+extern OmpDirectiveSet loopConstructSet;
+extern OmpDirectiveSet blockConstructSet;
 
 // Directive sets for allowed/not allowed directives to nest inside another
 // particular directive.
