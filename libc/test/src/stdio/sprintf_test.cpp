@@ -859,6 +859,15 @@ TEST_F(LlvmLibcSPrintfTest, FloatHexExpConv) {
 
   written = __llvm_libc::sprintf(buff, "%+-#12.3a % 012.3a", 0.1256, 1256.0);
   ASSERT_STREQ_LEN(written, buff, "+0x1.014p-3   0x1.3a0p+10");
+
+  written = __llvm_libc::sprintf(buff, "%50.50a", 0x1.0p0);
+  ASSERT_STREQ_LEN(written, buff,
+                   "0x1.00000000000000000000000000000000000000000000000000p+0");
+
+  written = __llvm_libc::sprintf(buff, "%58.50a", 0x1.0p0);
+  ASSERT_STREQ_LEN(
+      written, buff,
+      " 0x1.00000000000000000000000000000000000000000000000000p+0");
 }
 
 TEST_F(LlvmLibcSPrintfTest, FloatDecimalConv) {
@@ -1253,6 +1262,23 @@ TEST_F(LlvmLibcSPrintfTest, FloatDecimalConv) {
 
   written = __llvm_libc::sprintf(buff, "%.5f", 1.008e3);
   ASSERT_STREQ_LEN(written, buff, "1008.00000");
+
+  // Found via fuzzing
+
+  written = __llvm_libc::sprintf(buff, "%.9f", 1.9999999999999514);
+  ASSERT_STREQ_LEN(written, buff, "2.000000000");
+
+  written = __llvm_libc::sprintf(buff, "%.238f", 1.131959884853339E-72);
+  ASSERT_STREQ_LEN(
+      written, buff,
+      "0."
+      "000000000000000000000000000000000000000000000000000000000000000000000001"
+      "131959884853339045938639911360973972585316399767392273697826861241937664"
+      "824105639342441431495119762431744054912109728706985341609159156917030486"
+      "5110665559768676757812");
+
+  written = __llvm_libc::sprintf(buff, "%.36f", 9.9e-77);
+  ASSERT_STREQ_LEN(written, buff, "0.000000000000000000000000000000000000");
 
   // Found with the help of Fred Tydeman's tbin2dec test.
   written = __llvm_libc::sprintf(buff, "%.1f", 0x1.1000000000006p+3);
@@ -1837,8 +1863,31 @@ TEST_F(LlvmLibcSPrintfTest, FloatExponentConv) {
   written = __llvm_libc::sprintf(buff, "%.5e", 1.008e3);
   ASSERT_STREQ_LEN(written, buff, "1.00800e+03");
 
-  // Subnormal Precision Tests
+  // Found Via Fuzzing
 
+  written = __llvm_libc::sprintf(buff, "%.0e", 2.5812229360061737E+200);
+  ASSERT_STREQ_LEN(written, buff, "3e+200");
+
+  written = __llvm_libc::sprintf(buff, "%.1e", 9.059E+200);
+  ASSERT_STREQ_LEN(written, buff, "9.1e+200");
+
+  written = __llvm_libc::sprintf(buff, "%.0e", 9.059E+200);
+  ASSERT_STREQ_LEN(written, buff, "9e+200");
+
+  written = __llvm_libc::sprintf(buff, "%.166e", 1.131959884853339E-72);
+  ASSERT_STREQ_LEN(written, buff,
+                   "1."
+                   "13195988485333904593863991136097397258531639976739227369782"
+                   "68612419376648241056393424414314951197624317440549121097287"
+                   "069853416091591569170304865110665559768676757812e-72");
+
+  written = __llvm_libc::sprintf(buff, "%.0e", 9.5);
+  ASSERT_STREQ_LEN(written, buff, "1e+01");
+
+  written = __llvm_libc::sprintf(buff, "%.10e", 1.9999999999890936);
+  ASSERT_STREQ_LEN(written, buff, "2.0000000000e+00");
+
+  // Subnormal Precision Tests
   written = __llvm_libc::sprintf(buff, "%.310e", 0x1.0p-1022);
   ASSERT_STREQ_LEN(
       written, buff,
@@ -2441,8 +2490,17 @@ TEST_F(LlvmLibcSPrintfTest, FloatAutoConv) {
   written = __llvm_libc::sprintf(buff, "%.15g", 22.25);
   ASSERT_STREQ_LEN(written, buff, "22.25");
 
-  // Subnormal Precision Tests
+  // Found via fuzzing
+  written = __llvm_libc::sprintf(buff, "%.1g", 9.059E+200);
+  ASSERT_STREQ_LEN(written, buff, "9e+200");
 
+  written = __llvm_libc::sprintf(buff, "%.2g", 9.059E+200);
+  ASSERT_STREQ_LEN(written, buff, "9.1e+200");
+
+  written = __llvm_libc::sprintf(buff, "%.0g", 9.5);
+  ASSERT_STREQ_LEN(written, buff, "1e+01");
+
+  // Subnormal Precision Tests
   written = __llvm_libc::sprintf(buff, "%.310g", 0x1.0p-1022);
   ASSERT_STREQ_LEN(
       written, buff,
