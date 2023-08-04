@@ -10,7 +10,7 @@
 #define LLVM_LIBC_SRC_SUPPORT_CPP_STRING_H
 
 #include "src/__support/CPP/string_view.h"
-#include "src/__support/integer_to_string.h" // IntegerToString
+#include "src/__support/integer_to_string.h" // IntegerTo
 #include "src/string/memory_utils/inline_memcpy.h"
 #include "src/string/memory_utils/inline_memset.h"
 #include "src/string/string_utils.h" // string_length
@@ -195,10 +195,8 @@ LIBC_INLINE string operator+(const char *lhs, const string &rhs) {
 
 namespace internal {
 template <typename T> string to_dec_string(T value) {
-  char dec_buf[IntegerToString::dec_bufsize<T>()];
-  auto maybe_string_view = IntegerToString::dec(value, dec_buf);
-  const auto &string_view = *maybe_string_view;
-  return string(string_view.data(), string_view.size());
+  const IntegerTo<DecString, T> buffer(value);
+  return static_cast<cpp::string_view>(buffer);
 }
 } // namespace internal
 
