@@ -8604,6 +8604,9 @@ unsigned SIInstrInfo::getInstrLatency(const InstrItineraryData *ItinData,
 InstructionUniformity
 SIInstrInfo::getGenericInstructionUniformity(const MachineInstr &MI) const {
   unsigned opcode = MI.getOpcode();
+  if (AMDGPU::isGenericAtomic(opcode))
+    return InstructionUniformity::NeverUniform;
+
   if (auto *GI = dyn_cast<GIntrinsic>(&MI)) {
     auto IID = GI->getIntrinsicID();
     if (AMDGPU::isIntrinsicSourceOfDivergence(IID))
