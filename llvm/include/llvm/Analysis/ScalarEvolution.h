@@ -798,6 +798,12 @@ public:
   /// evaluation type which can not result in overflow.
   const SCEV *getTripCountFromExitCount(const SCEV *ExitCount);
 
+  /// Returns the upper bound of the loop trip count infered from memory access.
+  /// Can not access bytes starting outside the statically allocated size
+  /// without being immediate UB.
+  /// Returns SCEVCouldNotCompute if the trip count could not be inferred.
+  const SCEV *getConstantMaxTripCountFromMemAccess(const Loop *L);
+
   /// Convert from an "exit count" (i.e. "backedge taken count") to a "trip
   /// count".  A "trip count" is the number of times the header of the loop
   /// will execute if an exit is taken after the specified number of backedges

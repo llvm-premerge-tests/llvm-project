@@ -249,6 +249,11 @@ static cl::opt<bool> UseContextForNoWrapFlagInference(
     cl::desc("Infer nuw/nsw flags using context where suitable"),
     cl::init(true));
 
+static cl::opt<bool> UseMemoryAccessUBForBEInference(
+    "scalar-evolution-infer-max-trip-count-from-memory-access", cl::Hidden,
+    cl::desc("Infer loop max trip count from memory access"),
+    cl::init(false));
+
 //===----------------------------------------------------------------------===//
 //                           SCEV class definitions
 //===----------------------------------------------------------------------===//
@@ -8085,6 +8090,214 @@ static unsigned getConstantTripCount(const SCEVConstant *ExitCount) {
   return ((unsigned)ExitConst->getZExtValue()) + 1;
 }
 
+/// Collect Load/Store instructions that must be executed on each iteration
+/// inside loop \p L .
+static void
+collectExeLoadStoreInsideLoop(const Loop *L, DominatorTree &DT,
+                              SmallVector<Instruction *, 4> &MemInsts) {
+  // It is difficult to tell if the load/store instruction is executed on every
+  // iteration inside an irregular loop.
+  if (!L->isLoopSimplifyForm() || !L->isInnermost())
+    return;
+
+  // FIXME: To make the scene more typical, we only analysis loops that have
+  // one exiting block and that block must be the latch. To make it easier to
+  // capture loops that have memory access and memory access will be executed
+  // on each iteration.
+  const BasicBlock *LoopLatch = L->getLoopLatch();
+  assert(LoopLatch && "See defination of simplify form loop.");
+  if (L->getExitingBlock() != LoopLatch)
+    return;
+
+  for (auto *BB : L->getBlocks()) {
+    // Go here, we can know that Loop is a single exiting and simplified form
+    // loop. Make sure that infer from Memory Operation in those BBs must be
+    // executed in loop. First step, we can make sure that max execution time
+    // of MemAccessBB in loop represents latch max excution time.
+    // Such BB as below should be skipped:
+    //            Entry
+    //              │
+    //        ┌─────▼─────┐
+    //        │Loop Header◄─────┐
+    //        └──┬──────┬─┘     │
+    //           │      │       │
+    //  ┌────────▼──┐ ┌─▼─────┐ │
+    //  │MemAccessBB│ │OtherBB│ │
+    //  └────────┬──┘ └─┬─────┘ │
+    //           │      │       │
+    //         ┌─▼──────▼─┐     │
+    //         │Loop Latch├─────┘
+    //         └────┬─────┘
+    //              ▼
+    //             Exit
+    if (!DT.dominates(BB, LoopLatch))
+      continue;
+
+    for (Instruction &Inst : *BB) {
+      if (isa<LoadInst>(&Inst) || isa<StoreInst>(&Inst))
+        MemInsts.push_back(&Inst);
+    }
+  }
+}
+
+/// Returns true if memory access instruction \p I may be overlapping under
+/// recurrence expression \p Rec which comes from the pointer operand of \p I .
+static bool memReadWriteMaybeOverlapping(Instruction *I,
+                                         const SCEVAddRecExpr *Rec,
+                                         ScalarEvolution *SE) {
+  assert(isa<LoadInst>(I) || isa<StoreInst>(I));
+  const SCEV *AccessSize = SE->getElementSize(I);
+  const SCEV *Step = Rec->getStepRecurrence(*SE);
+  // The unknown situation is regarded as a possible overlap.
+  if (!AccessSize || !Step || !isa<SCEVConstant>(AccessSize) ||
+      !isa<SCEVConstant>(Step))
+    return true;
+
+  ConstantInt *StepC = cast<SCEVConstant>(Step)->getValue();
+  if (StepC->isZero() || StepC->isNegative() ||
+      StepC->getValue().getActiveBits() > 32)
+    return true;
+
+  ConstantInt *AcSizeC = cast<SCEVConstant>(AccessSize)->getValue();
+  // When the accessing size is greater than the step size, then overlap occurs.
+  if (AcSizeC->getValue().getZExtValue() > StepC->getValue().getZExtValue())
+    return true;
+
+  // Notice that pointer start may be narrow wraps arround.
+  const SCEV *PtrStart = Rec->getStart();
+  if (PtrStart != SE->getPointerBase(Rec))
+    return true;
+
+  return false;
+}
+
+/// Returns a SCEV representing the memory size of pointer \p V .
+/// TODO: Memory size of more types can be identified here.
+static const SCEV *getCertainSizeOfMem(const SCEV *V, Type *RTy,
+                                       const DataLayout &DL,
+                                       ScalarEvolution *SE) {
+  const SCEVUnknown *PtrBase = dyn_cast<SCEVUnknown>(V);
+  if (!PtrBase)
+    return nullptr;
+
+  // TODO: Memory which has certain size.
+  AllocaInst *AllocateInst = dyn_cast<AllocaInst>(PtrBase->getValue());
+  if (!AllocateInst)
+    return nullptr;
+
+  // Make sure only handle normal array.
+  auto *Ty = dyn_cast<ArrayType>(AllocateInst->getAllocatedType());
+  auto *ArrSize = dyn_cast<ConstantInt>(AllocateInst->getArraySize());
+  if (!Ty || !ArrSize || !ArrSize->isOne())
+    return nullptr;
+
+  return SE->getConstant(RTy, DL.getTypeAllocSize(Ty));
+}
+
+static const SCEV *howManyItersSelfWrap(const SCEV *V, ScalarEvolution *SE) {
+  if (auto *AddRec = dyn_cast<SCEVAddRecExpr>(V)) {
+    const SCEV *CUpper = SE->getConstant(SE->getUnsignedRangeMax(V));
+    const SCEV *CLower = SE->getConstant(SE->getUnsignedRangeMin(V));
+    const SCEV *Limit = SE->getMinusSCEV(CUpper, CLower);
+    const SCEV *Step = AddRec->getStepRecurrence(*SE);
+    return SE->getUDivCeilSCEV(Limit, Step);
+  }
+  return SE->getCouldNotCompute();
+}
+
+/// Returns the smaller one of the wraps that will occur in the indexes.
+static const SCEV *getSmallCountOfIdxSelfWrap(Value *Ptr, ScalarEvolution *SE) {
+  auto *PtrGEP = dyn_cast<GetElementPtrInst>(Ptr);
+  if (!PtrGEP)
+    return SE->getCouldNotCompute();
+
+  SmallVector<const SCEV *> CountColl;
+  for (Value *Index : PtrGEP->indices()) {
+    Value *V = Index;
+    if (isa<ZExtInst>(V) || isa<SExtInst>(V))
+      V = cast<Instruction>(Index)->getOperand(0);
+    const SCEV *Count = howManyItersSelfWrap(SE->getSCEV(V), SE);
+    if (!isa<SCEVCouldNotCompute>(Count)) {
+      CountColl.push_back(Count);
+    }
+  }
+
+  if (CountColl.empty())
+    return SE->getCouldNotCompute();
+
+  return SE->getUMinFromMismatchedTypes(CountColl);
+}
+
+const SCEV *
+ScalarEvolution::getConstantMaxTripCountFromMemAccess(const Loop *L) {
+  SmallVector<Instruction *, 4> MemInsts;
+  collectExeLoadStoreInsideLoop(L, DT, MemInsts);
+
+  // Collect AddRecExpr that meets the requirements and can be analyzed.
+  SmallPtrSet<const SCEVAddRecExpr *, 2> Exprs;
+  using MapType = DenseMap<const SCEVAddRecExpr *, const SCEVConstant *>;
+  MapType IdxWrapMap;
+  for (Instruction *I : MemInsts) {
+    Value *Ptr = getLoadStorePointerOperand(I);
+    assert(Ptr && "getLoadStorePointerOperand changed.");
+    auto *AddRec = dyn_cast<SCEVAddRecExpr>(getSCEV(Ptr));
+    if (!AddRec || !AddRec->isAffine())
+      continue;
+    
+    auto *IdxWrap = getSmallCountOfIdxSelfWrap(Ptr, this);
+    if (!isa<SCEVConstant>(IdxWrap))
+      continue;
+
+    if (!memReadWriteMaybeOverlapping(I, AddRec, this)) {
+      Exprs.insert(AddRec);
+      IdxWrapMap[AddRec] = cast<SCEVConstant>(IdxWrap);
+    }
+  }
+
+  const DataLayout &DL = getDataLayout();
+  SmallVector<const SCEV *> InferCountColl;
+  for (auto *Rec : Exprs) {
+    const SCEV *PtrBase = getPointerBase(Rec);
+    const SCEV *Step = Rec->getStepRecurrence(*this);
+    const SCEV *MemSize =
+        getCertainSizeOfMem(PtrBase, Step->getType(), DL, this);
+    if (!MemSize)
+      continue;
+
+    // Now we can infer a max execution time by MemLength/StepLength.
+    auto *MaxExeCount = dyn_cast<SCEVConstant>(getUDivCeilSCEV(MemSize, Step));
+    if (!MaxExeCount || MaxExeCount->getAPInt().getActiveBits() > 32)
+      continue;
+
+    // If the loop reaches the maximum number of executions, we can not
+    // access bytes starting outside the statically allocated size without
+    // being immediate UB. But it is allowed to enter loop header one more
+    // time.
+    auto *InferCount = dyn_cast<SCEVConstant>(
+        getAddExpr(MaxExeCount, getOne(MaxExeCount->getType())));
+    // Discard the maximum number of execution times under 32bits.
+    if (!InferCount || InferCount->getAPInt().getActiveBits() > 32)
+      continue;
+
+    // Since gep indices are silently zext to the indexing type, we will have
+    // a narrow gep index which wraps around rather than increasing strictly.
+    // If the maximum number of round trips required by the index is greater
+    // or equal to our inferred value, then the inferred value is acceptable,
+    // otherwise unknown.
+    ConstantInt *WrapVC = IdxWrapMap[Rec]->getValue();
+    ConstantInt *InferVC = InferCount->getValue();
+    if (InferVC->getValue().getZExtValue() > WrapVC->getValue().getZExtValue())
+      continue;
+
+    InferCountColl.push_back(InferCount);
+  }
+
+  if (InferCountColl.empty())
+    return getCouldNotCompute();
+
+  return getUMinFromMismatchedTypes(InferCountColl);
+}
+
 unsigned ScalarEvolution::getSmallConstantTripCount(const Loop *L) {
   auto *ExitCount = dyn_cast<SCEVConstant>(getBackedgeTakenCount(L, Exact));
   return getConstantTripCount(ExitCount);
@@ -8104,7 +8317,17 @@ ScalarEvolution::getSmallConstantTripCount(const Loop *L,
 unsigned ScalarEvolution::getSmallConstantMaxTripCount(const Loop *L) {
   const auto *MaxExitCount =
       dyn_cast<SCEVConstant>(getConstantMaxBackedgeTakenCount(L));
-  return getConstantTripCount(MaxExitCount);
+  unsigned MaxExitCountN = getConstantTripCount(MaxExitCount);
+  if (UseMemoryAccessUBForBEInference) {
+    auto *MaxInferCount = getConstantMaxTripCountFromMemAccess(L);
+    if (auto *InferCount = dyn_cast<SCEVConstant>(MaxInferCount)) {
+      unsigned InferValue = (unsigned)(InferCount->getValue()->getZExtValue());
+      MaxExitCountN = (MaxExitCountN == 0)
+                          ? InferValue
+                          : std::min(MaxExitCountN, InferValue);
+    }
+  }
+  return MaxExitCountN;
 }
 
 unsigned ScalarEvolution::getSmallConstantTripMultiple(const Loop *L) {
@@ -13441,6 +13664,17 @@ static void PrintLoopInfo(raw_ostream &OS, ScalarEvolution *SE,
     L->getHeader()->printAsOperand(OS, /*PrintType=*/false);
     OS << ": ";
     OS << "Trip multiple is " << SE->getSmallConstantTripMultiple(L) << "\n";
+  }
+
+  if (UseMemoryAccessUBForBEInference) {
+    unsigned SmallMaxTrip = SE->getSmallConstantMaxTripCount(L);
+    OS << "Loop ";
+    L->getHeader()->printAsOperand(OS, /*PrintType=*/false);
+    OS << ": ";
+    if (SmallMaxTrip)
+      OS << "Small constant max trip is " << SmallMaxTrip << "\n";
+    else
+      OS << "Small constant max trip couldn't be computed. " << "\n";
   }
 }
 
