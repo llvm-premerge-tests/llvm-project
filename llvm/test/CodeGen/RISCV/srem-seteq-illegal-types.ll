@@ -668,17 +668,18 @@ define void @test_srem_vec(ptr %X) nounwind {
 ; RV32MV-NEXT:    vmv.v.i v10, 1
 ; RV32MV-NEXT:    vmerge.vim v10, v10, -1, v0
 ; RV32MV-NEXT:    vand.vv v8, v8, v10
-; RV32MV-NEXT:    li a0, 2
-; RV32MV-NEXT:    vmv.s.x v10, a0
-; RV32MV-NEXT:    li a0, 1
-; RV32MV-NEXT:    vmv.s.x v12, a0
-; RV32MV-NEXT:    vmv.v.i v14, 0
-; RV32MV-NEXT:    vsetivli zero, 3, e32, m2, tu, ma
-; RV32MV-NEXT:    vslideup.vi v14, v12, 2
-; RV32MV-NEXT:    vsetivli zero, 5, e32, m2, tu, ma
-; RV32MV-NEXT:    vslideup.vi v14, v10, 4
+; RV32MV-NEXT:    vmv.v.i v10, 0
+; RV32MV-NEXT:    vsetivli zero, 1, e8, mf8, ta, ma
+; RV32MV-NEXT:    vmv.v.i v0, 4
+; RV32MV-NEXT:    vsetivli zero, 8, e32, m2, ta, ma
+; RV32MV-NEXT:    vmerge.vim v10, v10, 1, v0
+; RV32MV-NEXT:    li a0, 16
+; RV32MV-NEXT:    vsetivli zero, 1, e8, mf8, ta, ma
+; RV32MV-NEXT:    vmv.v.x v0, a0
+; RV32MV-NEXT:    vsetivli zero, 8, e32, m2, ta, ma
+; RV32MV-NEXT:    vmerge.vim v10, v10, 2, v0
 ; RV32MV-NEXT:    vsetivli zero, 4, e64, m2, ta, ma
-; RV32MV-NEXT:    vmsne.vv v0, v8, v14
+; RV32MV-NEXT:    vmsne.vv v0, v8, v10
 ; RV32MV-NEXT:    vmv.v.i v8, 0
 ; RV32MV-NEXT:    vmerge.vim v8, v8, -1, v0
 ; RV32MV-NEXT:    vsetivli zero, 1, e32, m2, ta, ma
