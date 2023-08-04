@@ -15,7 +15,7 @@
 #include "lldb/lldb-forward.h"
 #include "lldb/lldb-types.h"
 
-#include <mutex>
+#include <shared_mutex>
 #include <string>
 
 namespace lldb_private {
@@ -165,10 +165,12 @@ public:
   void SetCloseOnEOF(bool b) { m_close_on_eof = b; }
 
 protected:
+  size_t WriteUnlocked(const void *src, size_t src_len,
+                       lldb::ConnectionStatus &status, Status *error_ptr);
+
   lldb::ConnectionSP m_connection_sp; ///< The connection that is current in use
                                       ///by this communications class.
-  std::mutex
-      m_write_mutex; ///< Don't let multiple threads write at the same time...
+  mutable std::shared_mutex m_shared_mutex;
   bool m_close_on_eof;
 
   size_t ReadFromConnection(void *dst, size_t dst_len,
