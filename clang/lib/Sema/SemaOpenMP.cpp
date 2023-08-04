@@ -15401,12 +15401,15 @@ static OpenMPDirectiveKind getOpenMPCaptureRegionForClause(
         break;
       }
       [[fallthrough]];
-    case OMPD_target_teams_loop:
     case OMPD_target_teams_distribute_parallel_for:
       // If this clause applies to the nested 'parallel' region, capture within
       // the 'teams' region, otherwise do not capture.
       if (NameModifier == OMPD_unknown || NameModifier == OMPD_parallel)
         CaptureRegion = OMPD_teams;
+      break;
+    case OMPD_target_teams_loop:
+      // This is equivalent to 'target teams distribute parallel for' with
+      // 'if(target:val)'. For this case, there is no capture region.
       break;
     case OMPD_teams_distribute_parallel_for_simd:
       if (OpenMPVersion >= 50 &&
