@@ -176,13 +176,15 @@ public:
     return Solver.isBlockExecutable(BB) && !DeadBlocks.contains(BB);
   }
 
-  Bonus getUserBonus(Instruction *User, Value *Use = nullptr,
-                     Constant *C = nullptr);
+  Bonus getSpecializationBonus(Argument *A, Constant *C);
 
   Bonus getBonusFromPendingPHIs();
 
 private:
   friend class InstVisitor<InstCostVisitor, Constant *>;
+
+  Bonus getUserBonus(Instruction *User, Value *Use = nullptr,
+                     Constant *C = nullptr);
 
   Cost estimateBasicBlocks(SmallVectorImpl<BasicBlock *> &WorkList);
   Cost estimateSwitchInst(SwitchInst &I);
@@ -241,10 +243,6 @@ public:
     return InstCostVisitor(M.getDataLayout(), BFI, TTI, Solver);
   }
 
-  /// Compute a bonus for replacing argument \p A with constant \p C.
-  Bonus getSpecializationBonus(Argument *A, Constant *C,
-                               InstCostVisitor &Visitor);
-
 private:
   Constant *getPromotableAlloca(AllocaInst *Alloca, CallInst *Call);
 
@@ -272,6 +270,9 @@ private:
   /// @return True, if any potential specializations were found
   bool findSpecializations(Function *F, unsigned SpecCost,
                            SmallVectorImpl<Spec> &AllSpecs, SpecMap &SM);
+
+  /// Compute the inlining bonus for replacing argument \p A with constant \p C.
+  unsigned getInliningBonus(Argument *A, Constant *C);
 
   bool isCandidateFunction(Function *F);
 
