@@ -89,6 +89,7 @@ Task bar() {
 // CHECK:         br i1 %{{.+}}, label %[[CASE1_AWAIT_READY:.+]], label %[[CASE1_AWAIT_SUSPEND:.+]]
 // CHECK:       [[CASE1_AWAIT_SUSPEND]]:
 // CHECK-NEXT:    %{{.+}} = call token @llvm.coro.save(ptr null)
+// CHECK-NEXT:    call void @llvm.coro.opt.blocker(
 // CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 8, ptr %[[TMP1:.+]])
 
 // CHECK:    call void @llvm.lifetime.end.p0(i64 8, ptr %[[TMP1]])
@@ -106,6 +107,7 @@ Task bar() {
 // CHECK:         br i1 %{{.+}}, label %[[CASE2_AWAIT_READY:.+]], label %[[CASE2_AWAIT_SUSPEND:.+]]
 // CHECK:       [[CASE2_AWAIT_SUSPEND]]:
 // CHECK-NEXT:    %{{.+}} = call token @llvm.coro.save(ptr null)
+// CHECK-NEXT:    call void @llvm.coro.opt.blocker(
 // CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 8, ptr %[[TMP2:.+]])
 
 // CHECK:    call void @llvm.lifetime.end.p0(i64 8, ptr %[[TMP2]])

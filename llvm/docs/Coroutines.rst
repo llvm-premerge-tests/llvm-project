@@ -1591,6 +1591,40 @@ to the coroutine:
     switch i8 %suspend1, label %suspend [i8 0, label %resume1
                                          i8 1, label %cleanup]
 
+.. _coro.opt.blocker:
+
+'llvm.coro.opt.blocker' Intrinsic
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+::
+
+  declare token @llvm.coro.opt.blocker(ptr <address>)
+
+Overview:
+"""""""""
+
+The '``@llvm.coro.opt.blocker``' leaks the address of a certain variable to
+prevent the variable get optimized out. The '``@llvm.coro.opt.blocker``' marker
+will be erased at the start of CoroSplit. This is useful since the optimizer can't
+know the local variables may be alias with the coroutine handle until CoroSplit pass
+so that some miscompilations may happen.
+
+Arguments:
+""""""""""
+
+The arguments is the address of the certain local variable that we want to block
+optimizations for.
+
+Semantics:
+""""""""""
+
+The local variable referred by '``@llvm.coro.opt.blocker``' won't get optimized out
+before CoroSplit. Note that this doesn't imply such variables must live on the coroutine
+frame. Also note that while every local variables may be alias with the coroutine handle,
+use '``@llvm.coro.opt.blocker``' for every local variables may be an overkill since it'll
+hurt the performance. The frontend can reduce the use of '``@llvm.coro.opt.blocker``' based
+on the rule of the corresponding language specification.
+
 .. _coro.suspend.async:
 
 'llvm.coro.suspend.async' Intrinsic

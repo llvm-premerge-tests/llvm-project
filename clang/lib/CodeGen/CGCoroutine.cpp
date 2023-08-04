@@ -12,9 +12,10 @@
 
 #include "CGCleanup.h"
 #include "CodeGenFunction.h"
-#include "llvm/ADT/ScopeExit.h"
 #include "clang/AST/StmtCXX.h"
 #include "clang/AST/StmtVisitor.h"
+#include "clang/AST/TypeVisitor.h"
+#include "llvm/ADT/ScopeExit.h"
 
 using namespace clang;
 using namespace CodeGen;
@@ -139,6 +140,154 @@ static bool memberCallExpressionCanThrow(const Expr *E) {
   return true;
 }
 
+namespace {
+// We need a TypeVisitor to find the actual awaiter declaration.
+// We can't use (CoroutineSuspendExpr).getCommonExpr()->getType() directly
+// since its type may be AutoType, ElaboratedType, ...
+class AwaiterTypeFinder : public TypeVisitor<AwaiterTypeFinder> {
+  CXXRecordDecl *Result = nullptr;
+
+public:
+  typedef TypeVisitor<AwaiterTypeFinder> Inherited;
+
+  void Visit(const CoroutineSuspendExpr &S) {
+    Visit(S.getCommonExpr()->getType());
+  }
+
+  bool IsRecordEmpty() {
+    assert(Result && "Why can't we find the record type from the common "
+                     "expression of a coroutine suspend expression? "
+                     "Maybe we missed some types or the Sema get something "
+                     "incorrect");
+    return Result->field_empty();
+  }
+
+  // Following off should only be called by Inherited.
+public:
+  void Visit(QualType Type) { Visit(Type.getTypePtr()); }
+
+  void Visit(const Type *T) { Inherited::Visit(T); }
+
+  void VisitDeducedType(const DeducedType *T) { Visit(T->getDeducedType()); }
+
+  void VisitTypedefType(const TypedefType *T) {
+    Visit(T->getDecl()->getUnderlyingType());
+  }
+
+  void VisitElaboratedType(const ElaboratedType *T) {
+    Visit(T->getNamedType());
+  }
+
+  void VisitReferenceType(const ReferenceType *T) {
+    Visit(T->getPointeeType());
+  }
+
+  void VisitTemplateSpecializationType(const TemplateSpecializationType *T) {
+    TemplateName Name = T->getTemplateName();
+    TemplateDecl *TD = Name.getAsTemplateDecl();
+
+    if (!TD)
+      return;
+
+    if (auto *TypedD = dyn_cast<TypeDecl>(TD->getTemplatedDecl()))
+      Visit(TypedD->getTypeForDecl());
+  }
+
+  void VisitSubstTemplateTypeParmType(const SubstTemplateTypeParmType *T) {
+    Visit(T->getReplacementType());
+  }
+
+  void VisitInjectedClassNameType(const InjectedClassNameType *T) {
+    VisitCXXRecordDecl(T->getDecl());
+  }
+
+  void VisitCXXRecordDecl(CXXRecordDecl *Candidate) {
+#ifndef NDEBUG
+    Result = Candidate;
+#else
+    // Double check that the type we found is an awaiter class type.
+    // We only do this in debug mode since:
+    // 1. The Sema should diagnose earlier in such cases. So this may
+    // be a waste of time in most cases.
+    // 2. comparing strings is relatively expensive.
+    bool FoundAwaitReady = false;
+    bool FoundAwaitSuspend = false;
+    bool FoundAwaitResume = false;
+
+    for (CXXMethodDecl *Method : Candidate->methods()) {
+      if (!FoundAwaitReady) {
+        if (Method->getName() == "await_ready") {
+          FoundAwaitReady = true;
+          continue;
+        }
+      }
+
+      if (!FoundAwaitSuspend) {
+        if (Method->getName() == "await_suspend") {
+          FoundAwaitSuspend = true;
+          continue;
+        }
+      }
+
+      if (!FoundAwaitResume) {
+        if (Method->getName() == "await_resume") {
+          FoundAwaitResume = true;
+          continue;
+        }
+      }
+    }
+
+    assert(FoundAwaitReady && FoundAwaitSuspend && FoundAwaitResume);
+    Result = Candidate;
+#endif
+  }
+
+  void VisitRecordType(const RecordType *RT) {
+    assert(isa<CXXRecordDecl>(RT->getDecl()));
+    VisitCXXRecordDecl(cast<CXXRecordDecl>(RT->getDecl()));
+  }
+
+  void VisitType(const Type *T) {}
+};
+} // namespace
+
+/// The middle end can't understand that the relationship between local
+/// variables between local variables with the coroutine handle until CoroSplit
+/// pass. However, there are a lot optimizations before CoroSplit. Luckily, it
+/// is not so bothering since the C++ languages doesn't allow the programmers to
+/// access the coroutine handle except in await_suspend. So it is sufficient to
+/// handle await_suspend specially. Here we emit @llvm.coro.opt.blocker with the
+/// address of the awaiter as the argument so that the optimizer will think the
+/// awaiter is escaped at the suspend point. See
+/// https://github.com/llvm/llvm-project/issues/56301 for the example and the
+/// complete discussion.
+static void EmitCoroOptBlockerForSuspension(CodeGenFunction &CGF,
+                                            CoroutineSuspendExpr const &S,
+                                            CGBuilderTy &Builder) {
+  AwaiterTypeFinder Finder;
+  Finder.Visit(S);
+  // We shouldn't generate the call since it will prevents the compiler to erase
+  // the empty awaiter class.
+  if (Finder.IsRecordEmpty())
+    return;
+
+  // TODO: It would be better to generate the call only if we observed the
+  // coroutine handle is leaked in the await_suspend. It is better to be
+  // implemented by analying the generated IR instead of the AST.
+
+  llvm::Function *CoroOptBlocker =
+      CGF.CGM.getIntrinsic(llvm::Intrinsic::coro_opt_blocker);
+  llvm::Value *Addr = nullptr;
+  if (CodeGenFunction::OpaqueValueMapping::shouldBindAsLValue(
+          S.getOpaqueValue()))
+    Addr =
+        CGF.getOrCreateOpaqueLValueMapping(S.getOpaqueValue()).getPointer(CGF);
+  else
+    Addr = CGF.getOrCreateOpaqueRValueMapping(S.getOpaqueValue())
+               .getAggregatePointer();
+  Builder.CreateCall(CoroOptBlocker, Addr);
+}
+
 // Emit suspend expression which roughly looks like:
 //
 //   auto && x = CommonExpr();
@@ -197,6 +346,8 @@ static LValueOrRValue emitSuspendExpression(CodeGenFunction &CGF, CGCoroData &Co
   llvm::Function *CoroSave = CGF.CGM.getIntrinsic(llvm::Intrinsic::coro_save);
   auto *NullPtr = llvm::ConstantPointerNull::get(CGF.CGM.Int8PtrTy);
   auto *SaveCall = Builder.CreateCall(CoroSave, {NullPtr});
+
+  EmitCoroOptBlockerForSuspension(CGF, S, Builder);
 
   CGF.CurCoro.InSuspendBlock = true;
   auto *SuspendRet = CGF.EmitScalarExpr(S.getSuspendExpr());
