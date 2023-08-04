@@ -12,16 +12,19 @@
 //===----------------------------------------------------------------------===//
 
 #include "VPlanTransforms.h"
-#include "VPlanDominatorTree.h"
 #include "VPRecipeBuilder.h"
 #include "VPlanCFG.h"
+#include "VPlanDominatorTree.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Analysis/IVDescriptors.h"
 #include "llvm/Analysis/VectorUtils.h"
 #include "llvm/IR/Intrinsics.h"
+#include "llvm/IR/PatternMatch.h"
 
 using namespace llvm;
+
+using namespace llvm::PatternMatch;
 
 void VPlanTransforms::VPInstructionsToVPRecipes(
     VPlanPtr &Plan,
@@ -479,6 +482,15 @@ void VPlanTransforms::removeDeadRecipes(VPlan &Plan) {
     // The recipes in the block are processed in reverse order, to catch chains
     // of dead recipes.
     for (VPRecipeBase &R : make_early_inc_range(reverse(*VPBB))) {
+      /// Conditional assume instructions must be dropped if the CFG gets
+      /// flattened.
+      auto *RepR = dyn_cast<VPReplicateRecipe>(&R);
+      if (RepR && RepR->isPredicated() &&
+          match(RepR->getUnderlyingInstr(), m_Intrinsic<Intrinsic::assume>())) {
+        RepR->eraseFromParent();
+        continue;
+      }
+
       if (R.mayHaveSideEffects() || any_of(R.definedValues(), [](VPValue *V) {
             return V->getNumUsers() > 0;
           }))
