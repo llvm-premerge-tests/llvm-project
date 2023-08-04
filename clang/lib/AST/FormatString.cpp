@@ -531,6 +531,9 @@ ArgType::matchesType(ASTContext &C, QualType argTy) const {
     case CPointerTy:
       if (argTy->isVoidPointerType()) {
         return Match;
+      } else if (argTy->isNullPtrType()) {
+        // In C, nullptr matches void*. In C++, nullptr gets promoted to void*.
+        return C.getLangOpts().C2x ? Match : MatchPromotion;
       } if (argTy->isPointerType() || argTy->isObjCObjectPointerType() ||
             argTy->isBlockPointerType() || argTy->isNullPtrType()) {
         return NoMatchPedantic;
