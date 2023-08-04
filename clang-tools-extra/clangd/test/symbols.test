@@ -36,7 +36,7 @@
 # CHECK-NEXT:      {
 # CHECK-NEXT:        "detail": "void ()",
 # CHECK-NEXT:        "kind": 12,
-# CHECK-NEXT:        "name": "foo",
+# CHECK-NEXT:        "name": "foo()",
 # CHECK-NEXT:        "range": {
 # CHECK-NEXT:          "end": {
 # CHECK-NEXT:            "character": {{.*}},
@@ -61,7 +61,7 @@
 # CHECK-NEXT:      {
 # CHECK-NEXT:        "detail": "int ()",
 # CHECK-NEXT:        "kind": 12,
-# CHECK-NEXT:        "name": "main",
+# CHECK-NEXT:        "name": "main()",
 # CHECK-NEXT:        "range": {
 # CHECK-NEXT:          "end": {
 # CHECK-NEXT:            "character": {{.*}},
