@@ -310,4 +310,30 @@ def TakeAssumedBranchOp : Op<Transform_Dialect, "scf.take_assumed_branch", [
   }];
 }
 
+def LoopFuseSibling : Op<Transform_Dialect, "loop.fuse_sibling",
+  [FunctionalStyleTransformOpTrait, MemoryEffectsOpInterface,
+   DeclareOpInterfaceMethods<TransformOpInterface>]> {
+  let summary = "Fuse a loop into another loop, assuming they are independent.";
+
+  let description = [{
+    Fuses the `loop` into the `sibling` assuming they are independent of
+    each other, i.e. neither is an ancestor of another.
+
+    #### Return modes
+
+    Returns a handle to the fused loop.
+    This operation consumes the both the given handles.
+  }];
+
+  let arguments = (ins TransformHandleTypeInterface:$loop,
+                       TransformHandleTypeInterface:$sibling);
+  let results = (outs TransformHandleTypeInterface:$fused_loop);
+  let assemblyFormat = "$loop `into` $sibling attr-dict "
+                       " `:` functional-type(operands, results)";
+
+  let builders = [
+    OpBuilder<(ins "Value":$loop, "Value":$fused_loop)>
+  ];
+}
+
 #endif // SCF_TRANSFORM_OPS

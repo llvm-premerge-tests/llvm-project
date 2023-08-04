@@ -970,3 +970,67 @@ TileLoops mlir::extractFixedOuterLoops(scf::ForOp rootForOp,
 
   return tileLoops;
 }
+
+scf::ForallOp mlir::fuseSiblingForallLoops(scf::ForallOp loop,
+                                           scf::ForallOp sibling) {
+
+  OpBuilder b(sibling);
+
+  // Create fused shared_outs.
+  auto loopSharedOuts = loop.getOutputs();
+  auto siblingSharedOuts = sibling.getOutputs();
+  SmallVector<Value, 4> fusedOuts;
+  fusedOuts.reserve(loopSharedOuts.size() + siblingSharedOuts.size());
+  fusedOuts.append(loopSharedOuts.begin(), loopSharedOuts.end());
+  fusedOuts.append(siblingSharedOuts.begin(), siblingSharedOuts.end());
+
+  // Create a new scf::forall op after the sibling loop.
+  b.setInsertionPointAfter(sibling);
+  auto fusedLoop = b.create<scf::ForallOp>(
+      sibling.getLoc(), sibling.getMixedLowerBound(),
+      sibling.getMixedUpperBound(), sibling.getMixedStep(), fusedOuts,
+      sibling.getMapping());
+
+  // Map control operands.
+  IRMapping fusedMapping;
+  fusedMapping.map(loop.getInductionVars(), fusedLoop.getInductionVars());
+  fusedMapping.map(sibling.getInductionVars(), fusedLoop.getInductionVars());
+
+  // Map shared outs.
+  fusedMapping.map(
+      loop.getOutputBlockArguments(),
+      fusedLoop.getOutputBlockArguments().slice(0, loopSharedOuts.size()));
+  fusedMapping.map(sibling.getOutputBlockArguments(),
+                   fusedLoop.getOutputBlockArguments().slice(
+                       loopSharedOuts.size(), siblingSharedOuts.size()));
+
+  // Append everything except the terminator into the fused operation.
+  b.setInsertionPointToStart(fusedLoop.getBody());
+  for (Operation &op : loop.getLoopBody().begin()->without_terminator())
+    b.clone(op, fusedMapping);
+  for (Operation &op : sibling.getLoopBody().begin()->without_terminator())
+    b.clone(op, fusedMapping);
+
+  // Fuse the old terminator in_parallel ops into the new one.
+  auto loopTerm = loop.getTerminator();
+  auto siblingTerm = sibling.getTerminator();
+  auto fusedTerm = fusedLoop.getTerminator();
+
+  b.setInsertionPointToStart(fusedTerm.getBody());
+  for (Operation &op : loopTerm.getYieldingOps())
+    b.clone(op, fusedMapping);
+  for (Operation &op : siblingTerm.getYieldingOps())
+    b.clone(op, fusedMapping);
+
+  // Replace all uses of the old loops with the fused loop.
+  loop->replaceAllUsesWith(
+      fusedLoop.getResults().slice(0, loopSharedOuts.size()));
+  sibling->replaceAllUsesWith(fusedLoop.getResults().slice(
+      loopSharedOuts.size(), siblingSharedOuts.size()));
+
+  // Erase the old loops.
+  loop->erase();
+  sibling->erase();
+
+  return fusedLoop;
+}

@@ -319,6 +319,78 @@ void transform::TakeAssumedBranchOp::getEffects(
 }
 
 //===----------------------------------------------------------------------===//
+// LoopFuseSibling
+//===----------------------------------------------------------------------===//
+
+/// Check if `op` and `sibling` are siblings i.e. if neither is an ancestor
+/// of the other.
+static bool isOpSibling(Operation *op, Operation *sibling) {
+  return !sibling->isAncestor(op) && !op->isAncestor(sibling);
+}
+
+/// Check if `loop` can be fused into `sibling`. We simply check if the loop
+/// bounds are the same.
+static bool isFusionLegal(Operation *loop, Operation *sibling) {
+  // TODO: Add fusion for more operations. Currently, we handle only scf.forall.
+  if (!isa<scf::ForallOp>(loop) || !isa<scf::ForallOp>(sibling))
+    return false;
+
+  // Check if the loop bounds are the same.
+  auto loopBounds = cast<scf::ForallOp>(loop).getMixedLowerBound();
+  auto siblingBounds = cast<scf::ForallOp>(sibling).getMixedLowerBound();
+
+  // Check if the optional mapping is same.
+  auto loopMapping = cast<scf::ForallOp>(loop).getMapping();
+  auto siblingMapping = cast<scf::ForallOp>(sibling).getMapping();
+
+  return loopBounds == siblingBounds && loopMapping == siblingMapping;
+}
+
+/// Fuse `loop` into `sibling` assuming they are siblings.
+static Operation *fuseSiblings(Operation *loop, Operation *sibling,
+                               RewriterBase &rewriter) {
+  // TODO: Add fusion for more operations. Currently, we handle only scf.forall.
+  if (!isa<scf::ForallOp>(loop) || !isa<scf::ForallOp>(sibling))
+    return nullptr;
+
+  scf::ForallOp loopOp = cast<scf::ForallOp>(loop);
+  scf::ForallOp siblingOp = cast<scf::ForallOp>(sibling);
+  return fuseSiblingForallLoops(loopOp, siblingOp);
+}
+
+DiagnosedSilenceableFailure
+transform::LoopFuseSibling::apply(transform::TransformRewriter &rewriter,
+                                  transform::TransformResults &results,
+                                  transform::TransformState &state) {
+  auto loopOps = state.getPayloadOps(getLoop());
+  auto siblingOps = state.getPayloadOps(getSibling());
+
+  if (!llvm::hasSingleElement(loopOps) || !llvm::hasSingleElement(siblingOps))
+    return emitDefiniteFailure()
+           << "requires exactly one loop handle (got "
+           << llvm::range_size(loopOps) << ") and exactly one "
+           << "sibling handle (got " << llvm::range_size(siblingOps) << ")";
+
+  Operation *loop = *loopOps.begin();
+  Operation *sibling = *siblingOps.begin();
+
+  // Check if the loop and sibling are siblings.
+  if (!isOpSibling(loop, sibling))
+    return emitDefiniteFailure() << "Operations are not siblings";
+
+  // Check if the loop and sibling can be fused.
+  if (!isFusionLegal(loop, sibling))
+    return emitDefiniteFailure() << "Operations cannot be fused";
+
+  Operation *fusedLoop = fuseSiblings(loop, sibling, rewriter);
+  assert(fusedLoop && "failed to fuse operations");
+
+  results.set(cast<OpResult>(getFusedLoop()),
+              SmallVector<Operation *>{fusedLoop});
+  return DiagnosedSilenceableFailure::success();
+}
+
+//===----------------------------------------------------------------------===//
 // Transform op registration
 //===----------------------------------------------------------------------===//
 

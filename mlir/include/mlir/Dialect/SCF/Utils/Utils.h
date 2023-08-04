@@ -185,6 +185,11 @@ Loops tilePerfectlyNested(scf::ForOp rootForOp, ArrayRef<Value> sizes);
 void getPerfectlyNestedLoops(SmallVectorImpl<scf::ForOp> &nestedLoops,
                              scf::ForOp root);
 
+/// Given two scf.forall loops, fuses them into a single loop. Assumes that
+/// the given loops are "siblings", i.e. neither of them is an ancestor of the
+/// other.
+scf::ForallOp fuseSiblingForallLoops(scf::ForallOp loop, scf::ForallOp sibling);
+
 } // namespace mlir
 
 #endif // MLIR_DIALECT_SCF_UTILS_UTILS_H_
