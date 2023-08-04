@@ -6587,4 +6587,47 @@ TEST(APFloatTest, FloatTF32ToFloat) {
   EXPECT_TRUE(std::isnan(QNaN.convertToFloat()));
 }
 
+TEST(APFloatTest, getExactPowerOf2) {
+  for (unsigned I = 0; I != APFloat::S_MaxSemantics + 1; ++I) {
+    auto SemEnum = static_cast<APFloat::Semantics>(I);
+    const fltSemantics &Semantics = APFloat::EnumToSemantics(SemEnum);
+
+    APFloat One(Semantics, "1.0");
+
+    if (I == APFloat::S_PPCDoubleDouble) {
+      // Not implemented
+      EXPECT_EQ(INT_MIN, One.getExactPowerOf2());
+      continue;
+    }
+
+    int MinExp = APFloat::semanticsMinExponent(Semantics);
+    int MaxExp = APFloat::semanticsMaxExponent(Semantics);
+    int Precision = APFloat::semanticsPrecision(Semantics);
+
+    EXPECT_EQ(0, One.getExactPowerOf2());
+    EXPECT_EQ(INT_MIN, APFloat(Semantics, "3.0").getExactPowerOf2());
+    EXPECT_EQ(INT_MIN, APFloat::getZero(Semantics, false).getExactPowerOf2());
+    EXPECT_EQ(INT_MIN, APFloat::getZero(Semantics, true).getExactPowerOf2());
+    EXPECT_EQ(INT_MIN, APFloat::getInf(Semantics).getExactPowerOf2());
+    EXPECT_EQ(INT_MIN, APFloat::getInf(Semantics, true).getExactPowerOf2());
+    EXPECT_EQ(INT_MIN, APFloat::getNaN(Semantics, false).getExactPowerOf2());
+    EXPECT_EQ(INT_MIN, APFloat::getNaN(Semantics, true).getExactPowerOf2());
+
+    EXPECT_EQ(INT_MIN,
+              scalbn(One, MinExp - Precision - 1, APFloat::rmNearestTiesToEven)
+                  .getExactPowerOf2());
+    EXPECT_EQ(INT_MIN,
+              scalbn(One, MinExp - Precision, APFloat::rmNearestTiesToEven)
+                  .getExactPowerOf2());
+
+    EXPECT_EQ(INT_MIN, scalbn(One, MaxExp + 1, APFloat::rmNearestTiesToEven)
+                           .getExactPowerOf2());
+
+    for (int i = MinExp - Precision + 1; i <= MaxExp; ++i) {
+      EXPECT_EQ(
+          i, scalbn(One, i, APFloat::rmNearestTiesToEven).getExactPowerOf2());
+    }
+  }
+}
+
 } // namespace
