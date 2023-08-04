@@ -147,6 +147,10 @@ Changes to LLDB
 * AArch64 Linux targets now provide access to the Thread Local Storage
   register ``tpidr``.
 
+* Methods in SBHostOS related to threads have had their implementations
+  removed. These methods will return a value indicating failure.
+  
+
 Changes to Sanitizers
 ---------------------
 * HWASan now defaults to detecting use-after-scope bugs.
