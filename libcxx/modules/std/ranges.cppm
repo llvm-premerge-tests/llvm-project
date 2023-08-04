@@ -270,6 +270,13 @@ export namespace std {
       using std::ranges::views::zip;
     } // namespace views
 
+    // [range.stride], stride view
+    using std::ranges::stride_view;
+
+    namespace views {
+      using std::ranges::views::stride;
+    }
+
 #if 0
     // [range.zip.transform], zip transform view
     using std::ranges::zip_transform_view;
@@ -311,13 +318,6 @@ export namespace std {
 
     namespace views {
       using std::ranges::views::chunk_by;
-    }
-
-    // [range.stride], stride view
-    using std::ranges::stride_view;
-
-    namespace views {
-      using std::ranges::views::stride;
     }
 
     using std::ranges::cartesian_product_view;
