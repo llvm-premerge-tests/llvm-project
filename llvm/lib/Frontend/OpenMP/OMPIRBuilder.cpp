@@ -4503,7 +4503,13 @@ OpenMPIRBuilder::getOrCreateInternalVariable(Type *Ty, const StringRef &Name,
 Value *OpenMPIRBuilder::getOMPCriticalRegionLock(StringRef CriticalName) {
   std::string Prefix = Twine("gomp_critical_user_", CriticalName).str();
   std::string Name = getNameWithSeparators({Prefix, "var"}, ".", ".");
-  return getOrCreateInternalVariable(KmpCriticalNameTy, Name);
+  llvm::GlobalVariable *G =
+      getOrCreateInternalVariable(KmpCriticalNameTy, Name);
+  llvm::Align PtrAlign =
+      M.getDataLayout().getPointerABIAlignment(G->getAddressSpace());
+  if (PtrAlign > llvm::Align(G->getAlignment()))
+    G->setAlignment(PtrAlign);
+  return G;
 }
 
 Value *OpenMPIRBuilder::getSizeInBytes(Value *BasePtr) {
