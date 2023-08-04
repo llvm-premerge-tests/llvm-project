@@ -1283,9 +1283,9 @@ define void @mulhu_v4i32(ptr %x) {
 ; CHECK-NEXT:    vsub.vv v8, v8, v10
 ; CHECK-NEXT:    vmulhu.vv v8, v8, v9
 ; CHECK-NEXT:    vadd.vv v8, v8, v10
-; CHECK-NEXT:    vmv.v.i v0, 8
 ; CHECK-NEXT:    vmv.v.i v9, 2
-; CHECK-NEXT:    vmerge.vim v9, v9, 1, v0
+; CHECK-NEXT:    li a1, 1
+; CHECK-NEXT:    vslide1down.vx v9, v9, a1
 ; CHECK-NEXT:    vsrl.vv v8, v8, v9
 ; CHECK-NEXT:    vse32.v v8, (a0)
 ; CHECK-NEXT:    ret
@@ -5211,9 +5211,9 @@ define void @mulhu_v8i32(ptr %x) {
 ; LMULMAX1-RV32-NEXT:    vsub.vv v9, v9, v12
 ; LMULMAX1-RV32-NEXT:    vmulhu.vv v9, v9, v10
 ; LMULMAX1-RV32-NEXT:    vadd.vv v9, v9, v12
-; LMULMAX1-RV32-NEXT:    vmv.v.i v0, 8
 ; LMULMAX1-RV32-NEXT:    vmv.v.i v12, 2
-; LMULMAX1-RV32-NEXT:    vmerge.vim v12, v12, 1, v0
+; LMULMAX1-RV32-NEXT:    li a2, 1
+; LMULMAX1-RV32-NEXT:    vslide1down.vx v12, v12, a2
 ; LMULMAX1-RV32-NEXT:    vsrl.vv v9, v9, v12
 ; LMULMAX1-RV32-NEXT:    vmulhu.vv v11, v8, v11
 ; LMULMAX1-RV32-NEXT:    vsub.vv v8, v8, v11

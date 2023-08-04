@@ -693,9 +693,9 @@ define i32 @extractelt_sdiv_v4i32(<4 x i32> %x) {
 ; RV32NOM-LABEL: extractelt_sdiv_v4i32:
 ; RV32NOM:       # %bb.0:
 ; RV32NOM-NEXT:    vsetivli zero, 4, e32, m1, ta, ma
-; RV32NOM-NEXT:    vmv.v.i v0, 8
 ; RV32NOM-NEXT:    vmv.v.i v9, 0
-; RV32NOM-NEXT:    vmerge.vim v9, v9, -1, v0
+; RV32NOM-NEXT:    li a0, -1
+; RV32NOM-NEXT:    vslide1down.vx v9, v9, a0
 ; RV32NOM-NEXT:    lui a0, %hi(.LCPI38_0)
 ; RV32NOM-NEXT:    addi a0, a0, %lo(.LCPI38_0)
 ; RV32NOM-NEXT:    vle32.v v10, (a0)
@@ -728,9 +728,9 @@ define i32 @extractelt_sdiv_v4i32(<4 x i32> %x) {
 ; RV64NOM-LABEL: extractelt_sdiv_v4i32:
 ; RV64NOM:       # %bb.0:
 ; RV64NOM-NEXT:    vsetivli zero, 4, e32, m1, ta, ma
-; RV64NOM-NEXT:    vmv.v.i v0, 8
 ; RV64NOM-NEXT:    vmv.v.i v9, 0
-; RV64NOM-NEXT:    vmerge.vim v9, v9, -1, v0
+; RV64NOM-NEXT:    li a0, -1
+; RV64NOM-NEXT:    vslide1down.vx v9, v9, a0
 ; RV64NOM-NEXT:    lui a0, %hi(.LCPI38_0)
 ; RV64NOM-NEXT:    addi a0, a0, %lo(.LCPI38_0)
 ; RV64NOM-NEXT:    vle32.v v10, (a0)

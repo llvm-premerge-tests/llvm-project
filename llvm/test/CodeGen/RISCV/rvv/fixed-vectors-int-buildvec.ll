@@ -488,9 +488,9 @@ define void @buildvec_vid_step1o2_v4i32(ptr %z0, ptr %z1, ptr %z2, ptr %z3, ptr 
 ; CHECK-NEXT:    vmv.v.i v8, 1
 ; CHECK-NEXT:    vmerge.vim v8, v8, 0, v0
 ; CHECK-NEXT:    vse32.v v8, (a5)
-; CHECK-NEXT:    vmv.v.i v0, 8
 ; CHECK-NEXT:    vmv.v.i v8, 0
-; CHECK-NEXT:    vmerge.vim v8, v8, 1, v0
+; CHECK-NEXT:    li a0, 1
+; CHECK-NEXT:    vslide1down.vx v8, v8, a0
 ; CHECK-NEXT:    vse32.v v8, (a6)
 ; CHECK-NEXT:    ret
   store <4 x i32> <i32 0, i32 0, i32 1, i32 1>, ptr %z0
@@ -521,9 +521,9 @@ define void @buildvec_vid_step1o2_add3_v4i16(ptr %z0, ptr %z1, ptr %z2, ptr %z3,
 ; CHECK-NEXT:    vmv.v.i v0, 2
 ; CHECK-NEXT:    vmv.v.i v8, 4
 ; CHECK-NEXT:    vmerge.vim v8, v8, 3, v0
-; CHECK-NEXT:    vmv.v.i v0, 8
 ; CHECK-NEXT:    vse16.v v8, (a5)
-; CHECK-NEXT:    vmerge.vim v8, v9, 4, v0
+; CHECK-NEXT:    li a0, 4
+; CHECK-NEXT:    vslide1down.vx v8, v9, a0
 ; CHECK-NEXT:    vse16.v v8, (a6)
 ; CHECK-NEXT:    ret
   store <4 x i16> <i16 3, i16 3, i16 4, i16 4>, ptr %z0
