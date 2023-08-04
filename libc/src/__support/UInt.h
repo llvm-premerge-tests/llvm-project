@@ -376,7 +376,7 @@ template <size_t Bits, bool Signed> struct BigInt {
       return remainder;
     }
     if (other == 0) {
-      return nullopt;
+      return {};
     }
 
     BigInt<Bits, Signed> quotient(0);
