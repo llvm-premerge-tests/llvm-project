@@ -895,8 +895,16 @@ llvm::json::Value toJSON(const DocumentSymbol &S) {
                             {"range", S.range},
                             {"selectionRange", S.selectionRange}};
 
-  if (!S.detail.empty())
+  if (!S.detail.empty()) {
+    if (S.kind == SymbolKind::Method || S.kind == SymbolKind::Function) {
+      llvm::StringRef Detail{S.detail};
+      const auto Start = Detail.find_first_of('(');
+      const auto End = Detail.find_last_of(')');
+      const auto Distance = End - Start;
+      Result["name"] = S.name + Detail.substr(Start, Distance).str() + ')';
+    }
     Result["detail"] = S.detail;
+  }
   if (!S.children.empty())
     Result["children"] = S.children;
   if (S.deprecated)
