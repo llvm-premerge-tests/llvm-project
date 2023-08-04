@@ -9,7 +9,9 @@
 #ifndef COMPLEX_BASE
 #define COMPLEX_BASE
 
+include "mlir/IR/EnumAttr.td"
 include "mlir/IR/OpBase.td"
+include "mlir/Dialect/Arith/IR/ArithBase.td"
 
 def Complex_Dialect : Dialect {
   let name = "complex";

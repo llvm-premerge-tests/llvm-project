@@ -14,8 +14,10 @@
 #include "llvm/ADT/TypeSwitch.h"
 
 using namespace mlir;
+using namespace mlir::complex;
 
 #include "mlir/Dialect/Complex/IR/ComplexOpsDialect.cpp.inc"
+#include "mlir/Dialect/Complex/IR/ComplexOpsInterfaces.cpp.inc"
 
 void complex::ComplexDialect::initialize() {
   addOperations<

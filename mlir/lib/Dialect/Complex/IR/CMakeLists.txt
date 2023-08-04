@@ -8,6 +8,7 @@ add_mlir_dialect_library(MLIRComplexDialect
   DEPENDS
   MLIRComplexOpsIncGen
   MLIRComplexAttributesIncGen
+  MLIRComplexOpsInterfacesIncGen
 
   LINK_LIBS PUBLIC
   MLIRArithDialect
