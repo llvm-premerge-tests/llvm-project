@@ -1516,9 +1516,11 @@ bool ClauseProcessor::processCopyin() const {
         const Fortran::parser::OmpObjectList &ompObjectList = copyinClause->v;
         for (const Fortran::parser::OmpObject &ompObject : ompObjectList.v) {
           Fortran::semantics::Symbol *sym = getOmpObjectSymbol(ompObject);
-          if (sym->has<Fortran::semantics::CommonBlockDetails>())
-            TODO(converter.getCurrentLocation(),
-                 "common block in Copyin clause");
+          if (const auto *commonDetails =
+                  sym->detailsIf<Fortran::semantics::CommonBlockDetails>()) {
+            for (const auto &mem : commonDetails->objects())
+              sym = &*mem;
+          }
           if (Fortran::semantics::IsAllocatableOrPointer(sym->GetUltimate()))
             TODO(converter.getCurrentLocation(),
                  "pointer or allocatable variables in Copyin clause");
