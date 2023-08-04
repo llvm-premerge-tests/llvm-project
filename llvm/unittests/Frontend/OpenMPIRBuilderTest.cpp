@@ -2744,7 +2744,14 @@ TEST_F(OpenMPIRBuilderTest, CriticalDirective) {
   PointerType *CriticalNamePtrTy =
       PointerType::getUnqual(ArrayType::get(Type::getInt32Ty(Ctx), 8));
   EXPECT_EQ(CriticalEndCI->getArgOperand(2), CriticalEntryCI->getArgOperand(2));
-  EXPECT_EQ(CriticalEndCI->getArgOperand(2)->getType(), CriticalNamePtrTy);
+  GlobalVariable *GV =
+      dyn_cast<GlobalVariable>(CriticalEndCI->getArgOperand(2));
+  ASSERT_NE(GV, nullptr);
+  EXPECT_EQ(GV->getType(), CriticalNamePtrTy);
+  llvm::Align PtrAlign =
+      M->getDataLayout().getPointerABIAlignment(GV->getAddressSpace());
+  if (PtrAlign.value() > GV->getAlignment())
+    EXPECT_EQ(GV->getAlignment(), PtrAlign.value());
 }
 
 TEST_F(OpenMPIRBuilderTest, OrderedDirectiveDependSource) {

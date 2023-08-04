@@ -4493,7 +4493,11 @@ OpenMPIRBuilder::getOrCreateInternalVariable(Type *Ty, const StringRef &Name,
         M, Ty, /*IsConstant=*/false, GlobalValue::CommonLinkage,
         Constant::getNullValue(Ty), Elem.first(),
         /*InsertBefore=*/nullptr, GlobalValue::NotThreadLocal, AddressSpace);
-    GV->setAlignment(M.getDataLayout().getABITypeAlign(Ty));
+    llvm::Align TypeAlign = M.getDataLayout().getABITypeAlign(Ty);
+    llvm::Align PtrAlign =
+        M.getDataLayout().getPointerABIAlignment(GV->getAddressSpace());
+    TypeAlign = PtrAlign > TypeAlign ? PtrAlign : TypeAlign;
+    GV->setAlignment(TypeAlign);
     Elem.second = GV;
   }
 
