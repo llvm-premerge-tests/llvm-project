@@ -663,9 +663,11 @@ Then, specify additional attributes via mix-ins:
 * ``HelpText`` holds the text that will be printed besides the option name when
   the user requests help (e.g. via ``clang --help``).
 * ``Group`` specifies the "category" of options this option belongs to. This is
-  used by various tools to filter certain options of interest.
+  used by various tools to categorize and sometimes filter options.
 * ``Flags`` may contain a number of "tags" associated with the option. This
-  enables more granular filtering than the ``Group`` attribute.
+  can affect how the option is treated or displayed.
+* ``Vis`` may contain visibility-specific "tags" associated with the option.
+  This lets us filter options for specific tools.
 * ``Alias`` denotes that the option is an alias of another option. This may be
   combined with ``AliasArgs`` that holds the implied value.
 
@@ -674,12 +676,13 @@ Then, specify additional attributes via mix-ins:
     // Options.td
 
     def fpass_plugin_EQ : Joined<["-"], "fpass-plugin=">,
-  +   Group<f_Group>, Flags<[CC1Option]>,
+  +   Group<f_Group>, Vis<[Default, CC1Option]>,
   +   HelpText<"Load pass plugin from a dynamic shared object file.">;
 
-New options are recognized by the Clang driver unless marked with the
-``NoDriverOption`` flag. On the other hand, options intended for the ``-cc1``
-frontend must be explicitly marked with the ``CC1Option`` flag.
+New options are recognized by the Clang driver if ``Vis`` is not specified or
+if it contains ``Default``. Options intended for the ``-cc1`` frontend must be
+explicitly marked with the ``CC1Option`` flag. Flags that specify ``CC1Option``
+but not ``Default`` will only be accessible via ``-cc1``.
 
 Next, parse (or manufacture) the command line arguments in the Clang driver and
 use them to construct the ``-cc1`` job:
@@ -874,7 +877,8 @@ present on command line.
 
 .. code-block:: text
 
-  def fignore_exceptions : Flag<["-"], "fignore-exceptions">, Flags<[CC1Option]>,
+  def fignore_exceptions : Flag<["-"], "fignore-exceptions">,
+    Vis<[Default, CC1Option]>,
     MarshallingInfoFlag<LangOpts<"IgnoreExceptions">>;
 
 **Negative Flag**
@@ -884,7 +888,8 @@ present on command line.
 
 .. code-block:: text
 
-  def fno_verbose_asm : Flag<["-"], "fno-verbose-asm">, Flags<[CC1Option]>,
+  def fno_verbose_asm : Flag<["-"], "fno-verbose-asm">,
+    Vis<[Default, CC1Option]>,
     MarshallingInfoNegativeFlag<CodeGenOpts<"AsmVerbose">>;
 
 **Negative and Positive Flag**
@@ -898,9 +903,9 @@ line.
 
   defm legacy_pass_manager : BoolOption<"f", "legacy-pass-manager",
     CodeGenOpts<"LegacyPassManager">, DefaultFalse,
-    PosFlag<SetTrue, [], "Use the legacy pass manager in LLVM">,
-    NegFlag<SetFalse, [], "Use the new pass manager in LLVM">,
-    BothFlags<[CC1Option]>>;
+    PosFlag<SetTrue, [], [], "Use the legacy pass manager in LLVM">,
+    NegFlag<SetFalse, [], [], "Use the new pass manager in LLVM">,
+    BothFlags<[], [Default, CC1Option]>>;
 
 With most such pair of flags, the ``-cc1`` frontend accepts only the flag that
 changes the default key path value. The Clang driver is responsible for
@@ -912,10 +917,11 @@ full names of both flags. The positive flag would then be named
 ``flegacy-pass-manager`` and the negative ``fno-legacy-pass-manager``.
 ``BoolOption`` also implies the ``-`` prefix for both flags. It's also possible
 to use ``BoolFOption`` that implies the ``"f"`` prefix and ``Group<f_Group>``.
-The ``PosFlag`` and ``NegFlag`` classes hold the associated boolean value, an
-array of elements passed to the ``Flag`` class and the help text. The optional
-``BothFlags`` class holds an array of ``Flag`` elements that are common for both
-the positive and negative flag and their common help text suffix.
+The ``PosFlag`` and ``NegFlag`` classes hold the associated boolean value,
+arrays of elements passed to the ``Flag`` and ``Vis`` classes and the help
+text. The optional ``BothFlags`` class holds arrays of ``Flag`` and ``Vis``
+elements that are common for both the positive and negative flag and their
+common help text suffix.
 
 **String**
 
@@ -924,7 +930,7 @@ the option appears on the command line, the argument value is simply copied.
 
 .. code-block:: text
 
-  def isysroot : JoinedOrSeparate<["-"], "isysroot">, Flags<[CC1Option]>,
+  def isysroot : JoinedOrSeparate<["-"], "isysroot">, Vis<[Default, CC1Option]>,
     MarshallingInfoString<HeaderSearchOpts<"Sysroot">, [{"/"}]>;
 
 **List of Strings**
@@ -935,7 +941,8 @@ vector.
 
 .. code-block:: text
 
-  def frewrite_map_file : Separate<["-"], "frewrite-map-file">, Flags<[CC1Option]>,
+  def frewrite_map_file : Separate<["-"], "frewrite-map-file">,
+    Vis<[Default, CC1Option]>,
     MarshallingInfoStringVector<CodeGenOpts<"RewriteMapFiles">>;
 
 **Integer**
@@ -946,7 +953,8 @@ and the result is assigned to the key path on success.
 
 .. code-block:: text
 
-  def mstack_probe_size : Joined<["-"], "mstack-probe-size=">, Flags<[CC1Option]>,
+  def mstack_probe_size : Joined<["-"], "mstack-probe-size=">,
+    Vis<[Default, CC1Option]>,
     MarshallingInfoInt<CodeGenOpts<"StackProbeSize">, "4096">;
 
 **Enumeration**
@@ -963,7 +971,8 @@ comma-separated string values and elements of the array within
 
 .. code-block:: text
 
-  def mthread_model : Separate<["-"], "mthread-model">, Flags<[CC1Option]>,
+  def mthread_model : Separate<["-"], "mthread-model">,
+    Vis<[Default, CC1Option]>,
     Values<"posix,single">, NormalizedValues<["POSIX", "Single"]>,
     NormalizedValuesScope<"LangOptions::ThreadModelKind">,
     MarshallingInfoEnum<LangOpts<"ThreadModel">, "POSIX">;
@@ -983,7 +992,7 @@ Finally, the command line is parsed according to the primary annotation.
 
 .. code-block:: text
 
-  def fms_extensions : Flag<["-"], "fms-extensions">, Flags<[CC1Option]>,
+  def fms_extensions : Flag<["-"], "fms-extensions">, Vis<[Default, CC1Option]>,
     MarshallingInfoFlag<LangOpts<"MicrosoftExt">>,
     ImpliedByAnyOf<[fms_compatibility.KeyPath], "true">;
 
@@ -994,7 +1003,8 @@ true.
 
 .. code-block:: text
 
-  def fopenmp_enable_irbuilder : Flag<["-"], "fopenmp-enable-irbuilder">, Flags<[CC1Option]>,
+  def fopenmp_enable_irbuilder : Flag<["-"], "fopenmp-enable-irbuilder">,
+    Vis<[Default, CC1Option]>,
     MarshallingInfoFlag<LangOpts<"OpenMPIRBuilder">>,
     ShouldParseIf<fopenmp.KeyPath>;
 

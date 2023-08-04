@@ -22,19 +22,20 @@ enum ClangFlags {
   LinkerInput = (1 << 5),
   NoArgumentUnused = (1 << 6),
   Unsupported = (1 << 7),
-  CoreOption = (1 << 8),
-  CLOption = (1 << 9),
-  CC1Option = (1 << 10),
-  CC1AsOption = (1 << 11),
-  NoDriverOption = (1 << 12),
-  LinkOption = (1 << 13),
-  FlangOption = (1 << 14),
-  FC1Option = (1 << 15),
-  FlangOnlyOption = (1 << 16),
-  DXCOption = (1 << 17),
-  CLDXCOption = (1 << 18),
-  Ignored = (1 << 19),
-  TargetSpecific = (1 << 20),
+  LinkOption = (1 << 8),
+  Ignored = (1 << 9),
+  TargetSpecific = (1 << 10),
+};
+
+/// Flags specifically for clang option visibility.  Must not overlap with
+/// llvm::opt::DriverVisibility.
+enum ClangVisibility {
+  CLOption = (1 << 1),
+  CC1Option = (1 << 2),
+  CC1AsOption = (1 << 3),
+  FlangOption = (1 << 4),
+  FC1Option = (1 << 5),
+  DXCOption = (1 << 6),
 };
 
 enum ID {

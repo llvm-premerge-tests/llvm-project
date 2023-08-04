@@ -154,6 +154,12 @@ Changes to Sanitizers
 Other Changes
 -------------
 
+* The ``Flags`` field of ``llvm::opt::Option`` has been split into ``Flags``
+  and ``Visibility`` to simplify option sharing between clang's drivers.
+  Overloads of ``llvm::opt::OptTable`` that use ``FlagsToInclude`` have been
+  deprecated. A script to help downstream forks update clang's ``Options.td``
+  has been included in ``clang/utils/update_options_td_flags.py``.
+
 External Open Source Projects Using LLVM 15
 ===========================================
 

@@ -159,13 +159,13 @@ struct TransferableCommand {
     if (!OldArgs.empty())
       Cmd.CommandLine.emplace_back(OldArgs.front());
     for (unsigned Pos = 1; Pos < OldArgs.size();) {
+      using namespace llvm::opt;
       using namespace driver::options;
 
       const unsigned OldPos = Pos;
       std::unique_ptr<llvm::opt::Arg> Arg(OptTable.ParseOneArg(
           ArgList, Pos,
-          /* Include */ ClangCLMode ? CoreOption | CLOption | CLDXCOption : 0,
-          /* Exclude */ ClangCLMode ? 0 : CLOption | CLDXCOption));
+          llvm::opt::Visibility(ClangCLMode ? CLOption : Default)));
 
       if (!Arg)
         continue;
