@@ -86,7 +86,7 @@ protected:
 
 private:
   void CreateMemoryRegions();
-  void LoadBinariesViaMetadata();
+  bool LoadBinariesViaMetadata();
   void LoadBinariesViaExhaustiveSearch();
   void LoadBinariesAndSetDYLD();
   void CleanupMemoryRegionPermissions();
