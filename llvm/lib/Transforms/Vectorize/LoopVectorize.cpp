@@ -8734,10 +8734,9 @@ static void addCanonicalIVRecipes(VPlan &Plan, Type *IdxTy, DebugLoc DL,
   // Add a CanonicalIVIncrement{NUW} VPInstruction to increment the scalar
   // IV by VF * UF.
   bool HasNUW = Style == TailFoldingStyle::None;
-  auto *CanonicalIVIncrement =
-      new VPInstruction(HasNUW ? VPInstruction::CanonicalIVIncrementNUW
-                               : VPInstruction::CanonicalIVIncrement,
-                        {CanonicalIVPHI}, DL, "index.next");
+  auto *CanonicalIVIncrement = VPInstruction::createOverflowingBinOp(
+      VPInstruction::CanonicalIVIncrement, {CanonicalIVPHI}, HasNUW, false, DL,
+      "index.next");
   CanonicalIVPHI->addOperand(CanonicalIVIncrement);
 
   VPBasicBlock *EB = TopRegion->getExitingBasicBlock();
@@ -8749,10 +8748,9 @@ static void addCanonicalIVRecipes(VPlan &Plan, Type *IdxTy, DebugLoc DL,
     // We can't use StartV directly in the ActiveLaneMask VPInstruction, since
     // we have to take unrolling into account. Each part needs to start at
     //   Part * VF
-    auto *CanonicalIVIncrementParts =
-        new VPInstruction(HasNUW ? VPInstruction::CanonicalIVIncrementForPartNUW
-                                 : VPInstruction::CanonicalIVIncrementForPart,
-                          {StartV}, DL, "index.part.next");
+    auto *CanonicalIVIncrementParts = VPInstruction::createOverflowingBinOp(
+        VPInstruction::CanonicalIVIncrementForPart, {StartV}, HasNUW, false, DL,
+        "index.part.next");
     VecPreheader->appendRecipe(CanonicalIVIncrementParts);
 
     // Create the ActiveLaneMask instruction using the correct start values.
@@ -8788,10 +8786,9 @@ static void addCanonicalIVRecipes(VPlan &Plan, Type *IdxTy, DebugLoc DL,
     Header->insert(LaneMaskPhi, Header->getFirstNonPhi());
 
     // Create the active lane mask for the next iteration of the loop.
-    CanonicalIVIncrementParts =
-        new VPInstruction(HasNUW ? VPInstruction::CanonicalIVIncrementForPartNUW
-                                 : VPInstruction::CanonicalIVIncrementForPart,
-                          {IncrementValue}, DL);
+    CanonicalIVIncrementParts = VPInstruction::createOverflowingBinOp(
+        VPInstruction::CanonicalIVIncrementForPart, {IncrementValue}, HasNUW,
+        false, DL);
     EB->appendRecipe(CanonicalIVIncrementParts);
 
     auto *ALM = new VPInstruction(VPInstruction::ActiveLaneMask,

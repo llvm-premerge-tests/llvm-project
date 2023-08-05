@@ -831,11 +831,9 @@ public:
     ActiveLaneMask,
     CalculateTripCountMinusVF,
     CanonicalIVIncrement,
-    CanonicalIVIncrementNUW,
-    // The next two are similar to the above, but instead increment the
+    // The next op is similar to the above, but instead increment the
     // canonical IV separately for each unrolled part.
     CanonicalIVIncrementForPart,
-    CanonicalIVIncrementForPartNUW,
     BranchOnCount,
     BranchOnCond
   };
@@ -868,6 +866,12 @@ public:
       : VPInstruction(Opcode, ArrayRef<VPValue *>(Operands), DL, Name) {}
 
   VP_CLASSOF_IMPL(VPDef::VPInstructionSC)
+
+  static VPInstruction *createOverflowingBinOp(unsigned Opcode,
+                                               ArrayRef<VPValue *> Operands,
+                                               bool HasNUW, bool HasNSW,
+                                               DebugLoc DL = {},
+                                               const Twine &Name = "");
 
   static VPInstruction *createFMFOperator(unsigned Opcode,
                                           ArrayRef<VPValue *> Operands,
@@ -937,9 +941,7 @@ public:
     case VPInstruction::ActiveLaneMask:
     case VPInstruction::CalculateTripCountMinusVF:
     case VPInstruction::CanonicalIVIncrement:
-    case VPInstruction::CanonicalIVIncrementNUW:
     case VPInstruction::CanonicalIVIncrementForPart:
-    case VPInstruction::CanonicalIVIncrementForPartNUW:
     case VPInstruction::BranchOnCount:
       return true;
     };
@@ -987,6 +989,9 @@ class VPRecipeWithIRFlags : public VPRecipeBase {
   };
 
 protected:
+  /// Set NoUnsignedWrap and NoSignedWrap flags.
+  void setWrapFlags(bool HasNUW, bool HasNSW);
+
   /// Set the fast-math flags.
   void setFastMathFlags(FastMathFlags FMFNew);
 
@@ -1003,9 +1008,7 @@ public:
                       Instruction &I)
       : VPRecipeWithIRFlags(SC, Operands) {
     if (auto *Op = dyn_cast<OverflowingBinaryOperator>(&I)) {
-      OpType = OperationType::OverflowingBinOp;
-      WrapFlags.HasNUW = Op->hasNoUnsignedWrap();
-      WrapFlags.HasNSW = Op->hasNoSignedWrap();
+      setWrapFlags(Op->hasNoUnsignedWrap(), Op->hasNoSignedWrap());
     } else if (auto *Op = dyn_cast<PossiblyExactOperator>(&I)) {
       OpType = OperationType::PossiblyExactOp;
       ExactFlags.IsExact = Op->isExact();
@@ -1078,6 +1081,12 @@ public:
     assert(OpType == OperationType::GEPOp &&
            "recipe doesn't have inbounds flag");
     return GEPFlags.IsInBounds;
+  }
+
+  bool hasNoUnsignedWrap() const {
+    assert(OpType == OperationType::OverflowingBinOp &&
+           "recipe doesn't have a NUW flag");
+    return WrapFlags.HasNUW;
   }
 
   FastMathFlags getFastMathFlags() const {
