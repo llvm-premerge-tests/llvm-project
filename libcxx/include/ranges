@@ -331,6 +331,17 @@ namespace std::ranges {
   class as_rvalue_view; // since C++23
 
   namespace views { inline constexpr unspecified as_rvalue ) unspecified; } // since C++23
+
+  // [range.stride], stride view
+  template<input_range V>
+    requires view<V>
+  class stride_view;                                                                // freestanding, C++23
+
+  template<class V>
+    constexpr bool enable_borrowed_range<stride_view<V>> =                          // freestanding, C++23
+      enable_borrowed_range<V>;
+
+  namespace views { inline constexpr unspecified stride = unspecified; }            // C++23
 }
 
 namespace std {
@@ -398,6 +409,7 @@ namespace std {
 #include <__ranges/single_view.h>
 #include <__ranges/size.h>
 #include <__ranges/split_view.h>
+#include <__ranges/stride_view.h>
 #include <__ranges/subrange.h>
 #include <__ranges/take_view.h>
 #include <__ranges/take_while_view.h>

@@ -304,5 +304,5 @@
 "`3877 <https://wg21.link/LWG3877>`__","Incorrect constraints on ``const``-qualified monadic overloads for ``std::expected``","February 2023","|Complete|","17.0",""
 "`3878 <https://wg21.link/LWG3878>`__","import ``std;`` should guarantee initialization of standard iostreams objects","February 2023","","",""
 "`3879 <https://wg21.link/LWG3879>`__","``erase_if`` for ``flat_{,multi}set`` is incorrectly specified","February 2023","","",""
-"`3880 <https://wg21.link/LWG3880>`__","Clarify ``operator+=`` complexity for ``{chunk,stride}_view::iterator``","February 2023","","","|ranges|"
+"`3880 <https://wg21.link/LWG3880>`__","Clarify ``operator+=`` complexity for ``{chunk,stride}_view::iterator``","February 2023","|Partial|","","|ranges|"
 "`3881 <https://wg21.link/LWG3881>`__","Incorrect formatting of container adapters backed by ``std::string``","February 2023","|Complete|","17.0","|format|"

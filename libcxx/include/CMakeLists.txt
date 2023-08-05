@@ -640,6 +640,7 @@ set(files
   __ranges/counted.h
   __ranges/dangling.h
   __ranges/data.h
+  __ranges/div_ceil.h
   __ranges/drop_view.h
   __ranges/drop_while_view.h
   __ranges/elements_view.h
@@ -665,6 +666,7 @@ set(files
   __ranges/single_view.h
   __ranges/size.h
   __ranges/split_view.h
+  __ranges/stride_view.h
   __ranges/subrange.h
   __ranges/take_view.h
   __ranges/take_while_view.h

@@ -312,14 +312,14 @@ export namespace std {
     namespace views {
       using std::ranges::views::chunk_by;
     }
-
+#endif
     // [range.stride], stride view
     using std::ranges::stride_view;
 
     namespace views {
       using std::ranges::views::stride;
     }
-
+#if 0
     using std::ranges::cartesian_product_view;
 
     namespace views {
