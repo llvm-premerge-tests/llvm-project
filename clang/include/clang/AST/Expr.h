@@ -1275,7 +1275,9 @@ class DeclRefExpr final
               ExprValueKind VK, NonOdrUseReason NOUR);
 
   /// Construct an empty declaration reference expression.
-  explicit DeclRefExpr(EmptyShell Empty) : Expr(DeclRefExprClass, Empty) {}
+  explicit DeclRefExpr(EmptyShell Empty) : Expr(DeclRefExprClass, Empty) {
+    DeclRefExprBits.CapturedByCopyInLambdaWithExplicitObjectParameter = false;
+  }
 
 public:
   DeclRefExpr(const ASTContext &Ctx, ValueDecl *D,
@@ -1447,6 +1449,16 @@ public:
 
   void setIsImmediateEscalating(bool Set) {
     DeclRefExprBits.IsImmediateEscalating = Set;
+  }
+
+  bool isCapturedByCopyInLambdaWithExplicitObjectParameter() const {
+    return DeclRefExprBits.CapturedByCopyInLambdaWithExplicitObjectParameter;
+  }
+
+  void setCapturedByCopyInLambdaWithExplicitObjectParameter(
+      bool Set, const ASTContext &Context) {
+    DeclRefExprBits.CapturedByCopyInLambdaWithExplicitObjectParameter = Set;
+    setDependence(computeDependence(this, Context));
   }
 
   static bool classof(const Stmt *T) {

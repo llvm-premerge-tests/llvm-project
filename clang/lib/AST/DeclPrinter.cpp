@@ -865,6 +865,12 @@ void DeclPrinter::VisitLabelDecl(LabelDecl *D) {
 void DeclPrinter::VisitVarDecl(VarDecl *D) {
   prettyPrintPragmas(D);
 
+  if (ParmVarDecl *Param = dyn_cast<ParmVarDecl>(D)) {
+    if (Param->isExplicitObjectParameter()) {
+      Out << "this ";
+    }
+  }
+
   QualType T = D->getTypeSourceInfo()
     ? D->getTypeSourceInfo()->getType()
     : D->getASTContext().getUnqualifiedObjCPointerType(D->getType());
