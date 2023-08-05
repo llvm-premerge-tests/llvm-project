@@ -107,6 +107,7 @@ Clang-Tidy Checks
    `bugprone-multi-level-implicit-pointer-conversion <bugprone/multi-level-implicit-pointer-conversion.html>`_,
    `bugprone-multiple-new-in-one-expression <bugprone/multiple-new-in-one-expression.html>`_,
    `bugprone-multiple-statement-macro <bugprone/multiple-statement-macro.html>`_,
+   `bugprone-new-bool-conversion <bugprone/new-bool-conversion.html>`_,
    `bugprone-no-escape <bugprone/no-escape.html>`_,
    `bugprone-non-zero-enum-to-bool-conversion <bugprone/non-zero-enum-to-bool-conversion.html>`_,
    `bugprone-not-null-terminated-result <bugprone/not-null-terminated-result.html>`_, "Yes"

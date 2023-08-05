@@ -129,6 +129,11 @@ New checks
   Detects implicit conversions between pointers of different levels of
   indirection.
 
+- New :doc:`bugprone-new-bool-conversion
+  <clang-tidy/checks/bugprone/new-bool-conversion>` check.
+
+  Detects cases where the result of a new expression is used as a ``bool``.
+
 - New :doc:`bugprone-optional-value-conversion
   <clang-tidy/checks/bugprone/optional-value-conversion>` check.
 
