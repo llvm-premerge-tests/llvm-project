@@ -1560,13 +1560,16 @@ static void emitCommonOMPParallelDirective(
         CGF, ProcBindClause->getProcBindKind(), ProcBindClause->getBeginLoc());
   }
   const Expr *IfCond = nullptr;
-  for (const auto *C : S.getClausesOfKind<OMPIfClause>()) {
-    if (C->getNameModifier() == OMPD_unknown ||
-        C->getNameModifier() == OMPD_parallel) {
-      IfCond = C->getCondition();
-      break;
+  // Any if-clause associated with expansion for 'target teams loop' should
+  // apply to target region only.
+  if (S.getDirectiveKind() != OMPD_target_teams_loop)
+    for (const auto *C : S.getClausesOfKind<OMPIfClause>()) {
+      if (C->getNameModifier() == OMPD_unknown ||
+          C->getNameModifier() == OMPD_parallel) {
+        IfCond = C->getCondition();
+        break;
+      }
     }
-  }
 
   OMPParallelScope Scope(CGF, S);
   llvm::SmallVector<llvm::Value *, 16> CapturedVars;
