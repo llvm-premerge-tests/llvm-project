@@ -48,33 +48,69 @@ private:
   void *MemoryStart;
   void *MemoryPtr;
   size_t MemorySize;
+  size_t TotalSize;
   GenericDeviceTy *Device;
   std::mutex AllocationLock;
 
   RRStatusTy Status;
   bool ReplaySaveOutput;
-  uint64_t DeviceMemorySize;
 
-  // Record/replay pre-allocates the largest possible device memory using the
-  // default kind.
-  // TODO: Expand allocation to include other kinds (device, host, shared) and
-  // possibly use a MemoryManager to track (de-)allocations for
-  // storing/retrieving when recording/replaying.
-  Error preallocateDeviceMemory(uint64_t DeviceMemorySize) {
-    // Pre-allocate memory on device. Starts with 64GB and subtracts in steps
-    // of 1GB until allocation succeeds.
-    const size_t MAX_MEMORY_ALLOCATION = DeviceMemorySize;
+  void *suggestAddress(uint64_t MaxMemoryAllocation){
+    // Get a valid pointer address for this system
+    void *Addr = Device->allocate(1024, /* HstPtr */ nullptr, TARGET_ALLOC_DEFAULT);
+    Device->free(Addr);
+    // Align Address to MaxMemoryAllocation
+    Addr = (void *) (((uintptr_t) Addr + (MaxMemoryAllocation - 1)) & (~(MaxMemoryAllocation - 1)));
+    // Pad Address by MaxMemoryAllocation to guarantee enough space
+    Addr = (void *) ((uintptr_t) Addr - MaxMemoryAllocation);
+    return Addr;
+  }
+
+  Error preAllocateVAMemory(uint64_t MaxMemoryAllocation, void *VAddr){
+    size_t ASize = MaxMemoryAllocation;
+
+    if ( !VAddr && isRecording() ){
+      VAddr = suggestAddress(MaxMemoryAllocation);
+    }
+
+    DP("Request %ld bytes allocated at %p\n", MaxMemoryAllocation, VAddr);
+
+    if ( auto Err = Device->memoryVAMap(&MemoryStart, VAddr, &ASize) )
+      return Err;
+
+    if ( isReplaying() && VAddr != MemoryStart ){
+      return Plugin::error("Record-Replay cannot assign the"
+          "requested recorded address (%p, %p)", VAddr, MemoryStart);
+    }
+
+    INFO(OMP_INFOTYPE_PLUGIN_KERNEL, Device->getDeviceId(),
+       "Allocated %" PRIu64 " bytes at %p for replay.\n", ASize, MemoryStart);
+
+    MemoryPtr = MemoryStart;
+    MemorySize = 0;
+    TotalSize = ASize;
+    return Plugin::success();
+  }
+
+  Error preAllocateHeurustic(uint64_t MaxMemoryAllocation, void *VAddr){
+    const size_t MAX_MEMORY_ALLOCATION = MaxMemoryAllocation;
     constexpr size_t STEP = 1024 * 1024 * 1024ULL;
     MemoryStart = nullptr;
-    for (size_t Try = MAX_MEMORY_ALLOCATION; Try > 0; Try -= STEP) {
+    for (TotalSize = MAX_MEMORY_ALLOCATION; TotalSize> 0; TotalSize -= STEP) {
       MemoryStart =
-          Device->allocate(Try, /* HstPtr */ nullptr, TARGET_ALLOC_DEFAULT);
+          Device->allocate(TotalSize, /* HstPtr */ nullptr, TARGET_ALLOC_DEFAULT);
       if (MemoryStart)
         break;
     }
 
+    INFO(OMP_INFOTYPE_PLUGIN_KERNEL, Device->getDeviceId(),
+       "Allocated %" PRIu64 " bytes at %p for replay.\n", TotalSize, MemoryStart);
+
     if (!MemoryStart)
       return Plugin::error("Allocating record/replay memory");
+
+    if ( VAddr && VAddr != MemoryStart )
+      return Plugin::error("Cannot allocate recorded address");
 
     MemoryPtr = MemoryStart;
     MemorySize = 0;
@@ -82,7 +118,18 @@ private:
     return Plugin::success();
   }
 
-  void dumpDeviceMemory(StringRef Filename) {
+  Error preallocateDeviceMemory(uint64_t DeviceMemorySize, void *ReqVAddr){
+      if ( Device->supportVAManagement() )
+        return preAllocateVAMemory(DeviceMemorySize, ReqVAddr);
+
+      uint64_t DevMemSize;
+      if ( Device->getDeviceMemorySize(DevMemSize) )
+        return Plugin::error("Cannot determine Device Memory Size");
+
+      return preAllocateHeurustic(DevMemSize, ReqVAddr);
+  }
+
+  void dumpDeviceMemory(StringRef Filename){
     ErrorOr<std::unique_ptr<WritableMemoryBuffer>> DeviceMemoryMB =
         WritableMemoryBuffer::getNewUninitMemBuffer(MemorySize);
     if (!DeviceMemoryMB)
@@ -90,6 +137,7 @@ private:
 
     auto Err = Device->dataRetrieve(DeviceMemoryMB.get()->getBufferStart(),
                                     MemoryStart, MemorySize, nullptr);
+
     if (Err)
       report_fatal_error("Error retrieving data for target pointer");
 
@@ -113,8 +161,7 @@ public:
   bool isSaveOutputEnabled() const { return ReplaySaveOutput; }
 
   RecordReplayTy()
-      : Status(RRStatusTy::RRDeactivated), ReplaySaveOutput(false),
-        DeviceMemorySize(-1) {}
+      : Status(RRStatusTy::RRDeactivated), ReplaySaveOutput(false) {}
 
   void saveImage(const char *Name, const DeviceImageTy &Image) {
     SmallString<128> ImageName = {Name, ".image"};
@@ -134,7 +181,7 @@ public:
     OS.close();
   }
 
-  void dumpGlobals(StringRef Filename, DeviceImageTy &Image) {
+  void dumpGlobals(StringRef Filename, DeviceImageTy &Image){
     int32_t Size = 0;
 
     for (auto &OffloadEntry : Image.getOffloadEntryTable()) {
@@ -164,8 +211,9 @@ public:
 
       auto Err = Plugin::success();
       {
-        if (auto Err = Device->dataRetrieve(BufferPtr, OffloadEntry.addr,
-                                            OffloadEntry.size, nullptr))
+        if (auto Err =
+                Device->dataRetrieve(BufferPtr, OffloadEntry.addr,
+                                     OffloadEntry.size, nullptr))
           report_fatal_error("Error retrieving data for global");
       }
       if (Err)
@@ -187,7 +235,7 @@ public:
   void saveKernelInputInfo(const char *Name, DeviceImageTy &Image,
                            void **ArgPtrs, ptrdiff_t *ArgOffsets,
                            int32_t NumArgs, uint64_t NumTeamsClause,
-                           uint32_t ThreadLimitClause, uint64_t LoopTripCount) {
+                           uint32_t ThreadLimitClause, uint64_t LoopTripCount){
     json::Object JsonKernelInfo;
     JsonKernelInfo["Name"] = Name;
     JsonKernelInfo["NumArgs"] = NumArgs;
@@ -196,6 +244,7 @@ public:
     JsonKernelInfo["LoopTripCount"] = LoopTripCount;
     JsonKernelInfo["DeviceMemorySize"] = MemorySize;
     JsonKernelInfo["DeviceId"] = Device->getDeviceId();
+    JsonKernelInfo["BumpAllocVAStart"] = (intptr_t) MemoryStart;
 
     json::Array JsonArgPtrs;
     for (int I = 0; I < NumArgs; ++I)
@@ -239,31 +288,39 @@ public:
     Alloc = MemoryPtr;
     MemoryPtr = (char *)MemoryPtr + AlignedSize;
     MemorySize += AlignedSize;
-    DP("Memory Allocator return " DPxMOD "\n", DPxPTR(Alloc));
+    DP("Memory Allocator return %p \n", Alloc);
     return Alloc;
   }
 
-  Error init(GenericDeviceTy *Device, uint64_t MemSize, RRStatusTy Status,
+  Error init(GenericDeviceTy *Device, uint64_t MemSize, void *VAddr, RRStatusTy Status,
              bool SaveOutput) {
     this->Device = Device;
     this->Status = Status;
-    this->DeviceMemorySize = MemSize;
     this->ReplaySaveOutput = SaveOutput;
 
-    if (auto Err = preallocateDeviceMemory(MemSize))
+    if (auto Err = preallocateDeviceMemory(MemSize, VAddr))
       return Err;
 
     INFO(OMP_INFOTYPE_PLUGIN_KERNEL, Device->getDeviceId(),
          "Record Replay Initialized (%p)"
          " as starting address, %lu Memory Size"
          " and set on status %s\n",
-         MemoryStart, MemSize,
+         MemoryStart, TotalSize,
          Status == RRStatusTy::RRRecording ? "Recording" : "Replaying");
 
     return Plugin::success();
   }
 
-  void deinit() { Device->free(MemoryStart); }
+  void deinit() {
+    if ( Device->supportVAManagement()  ){
+      if ( auto Err = Device->memoryVAUnMap(MemoryStart, TotalSize) ){
+          report_fatal_error("Error on releasing virtual memory space");
+      }
+    }
+    else {
+      Device->free(MemoryStart);
+    }
+  }
 
 } RecordReplay;
 
@@ -1056,6 +1113,19 @@ Error GenericDeviceTy::queryAsync(__tgt_async_info *AsyncInfo) {
   return queryAsyncImpl(*AsyncInfo);
 }
 
+
+Error GenericDeviceTy::memoryVAMap(void **Addr, void *VAddr, size_t *RSize){
+  return Plugin::error("Device does not suppport VA Management");
+}
+
+Error GenericDeviceTy::memoryVAUnMap(void *VAddr, size_t Size){
+  return Plugin::error("Device does not suppport VA Management");
+}
+
+Error GenericDeviceTy::getDeviceMemorySize(uint64_t &DSize) {
+  return Plugin::error("Mising getDeviceMemorySize impelmentation (required by RR-heuristic");
+}
+
 Expected<void *> GenericDeviceTy::dataAlloc(int64_t Size, void *HostPtr,
                                             TargetAllocTy Kind) {
   void *Alloc = nullptr;
@@ -1163,8 +1233,7 @@ Error GenericDeviceTy::launchKernel(void *EntryPtr, void **ArgPtrs,
   if (RecordReplay.isRecording())
     RecordReplay.saveImage(GenericKernel.getName(), GenericKernel.getImage());
 
-  auto Err = GenericKernel.launch(*this, ArgPtrs, ArgOffsets, KernelArgs,
-                                  AsyncInfoWrapper);
+  auto Err = GenericKernel.launch(*this, ArgPtrs, ArgOffsets, KernelArgs, AsyncInfoWrapper);
 
   // 'finalize' here to guarantee next record-replay actions are in-sync
   AsyncInfoWrapper.finalize(Err);
@@ -1425,7 +1494,9 @@ int32_t __tgt_rtl_is_data_exchangable(int32_t SrcDeviceId,
 }
 
 int32_t __tgt_rtl_initialize_record_replay(int32_t DeviceId,
-                                           uint64_t MemorySize, bool isRecord,
+                                           int64_t MemorySize,
+                                           void *VAddr,
+                                           bool isRecord,
                                            bool SaveOutput) {
   GenericPluginTy &Plugin = Plugin::get();
   GenericDeviceTy &Device = Plugin.getDevice(DeviceId);
@@ -1433,7 +1504,7 @@ int32_t __tgt_rtl_initialize_record_replay(int32_t DeviceId,
       isRecord ? RecordReplayTy::RRStatusTy::RRRecording
                : RecordReplayTy::RRStatusTy::RRReplaying;
 
-  if (auto Err = RecordReplay.init(&Device, MemorySize, Status, SaveOutput)) {
+  if (auto Err = RecordReplay.init(&Device, MemorySize, VAddr, Status, SaveOutput)) {
     REPORT("WARNING RR did not intialize RR-properly with %lu bytes"
            "(Error: %s)\n",
            MemorySize, toString(std::move(Err)).data());

@@ -546,6 +546,7 @@ void DeviceTy::init() {
 
     RTL->activate_record_replay(RTLDeviceID,
                                 OMPX_DeviceMemorySize * 1024 * 1024 * 1024,
+                                nullptr,
                                 true, OMPX_ReplaySaveOutput);
   }
 

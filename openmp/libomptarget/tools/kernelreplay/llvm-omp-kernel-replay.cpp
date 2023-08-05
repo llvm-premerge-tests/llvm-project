@@ -88,6 +88,8 @@ int main(int argc, char **argv) {
     TgtArgOffsets.push_back(
         reinterpret_cast<ptrdiff_t>(It.getAsInteger().value()));
 
+  void *BAllocStart = reinterpret_cast<void*>(JsonKernelInfo->getAsObject()->getInteger("BumpAllocVAStart").value());
+
   __tgt_offload_entry KernelEntry = {nullptr, nullptr, 0, 0, 0};
   std::string KernelEntryName = KernelFunc.value().str();
   KernelEntry.name = const_cast<char *>(KernelEntryName.c_str());
@@ -126,7 +128,7 @@ int main(int argc, char **argv) {
 
   __tgt_register_lib(&Desc);
 
-  int Rc = __tgt_activate_record_replay(DeviceId, DeviceMemorySize, false,
+  int Rc = __tgt_activate_record_replay(DeviceId, DeviceMemorySize, BAllocStart, false,
                                         VerifyOpt);
 
   if (Rc != OMP_TGT_SUCCESS) {

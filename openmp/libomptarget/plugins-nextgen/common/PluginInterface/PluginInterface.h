@@ -641,6 +641,16 @@ struct GenericDeviceTy : public DeviceAllocatorTy {
   Error queryAsync(__tgt_async_info *AsyncInfo);
   virtual Error queryAsyncImpl(__tgt_async_info &AsyncInfo) = 0;
 
+  /// Check whether the architecture
+  virtual bool supportVAManagement() const { return false; }
+
+  /// De-allocates device memory and Unmaps the Virtual Addr
+  virtual Error memoryVAUnMap(void *VAddr, size_t Size);
+
+  /// Allocates \p RSize bytes (rounded up to page size) and hints the cuda driver to map it to \p VAddr.
+  /// The obtained address is stored in \p Addr. At return \p RSize contains the actual size
+  virtual Error memoryVAMap(void **Addr, void *VAddr, size_t *RSize);
+
   /// Allocate data on the device or involving the device.
   Expected<void *> dataAlloc(int64_t Size, void *HostPtr, TargetAllocTy Kind);
 
@@ -761,6 +771,8 @@ struct GenericDeviceTy : public DeviceAllocatorTy {
   }
   uint32_t getDynamicMemorySize() const { return OMPX_SharedMemorySize; }
   virtual uint64_t getClockFrequency() const { return CLOCKS_PER_SEC; }
+
+  virtual Error getDeviceMemorySize(uint64_t &DSize);
 
   /// Get target compute unit kind (e.g., sm_80, or gfx908).
   virtual std::string getComputeUnitKind() const { return "unknown"; }

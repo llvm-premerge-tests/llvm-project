@@ -1715,9 +1715,9 @@ int target(ident_t *Loc, DeviceTy &Device, void *HostPtr,
 /// Enables the record replay mechanism by pre-allocating MemorySize
 /// and informing the record-replayer of whether to store the output
 /// in some file.
-int target_activate_rr(DeviceTy &Device, uint64_t MemorySize, bool isRecord,
+int target_activate_rr(DeviceTy &Device, uint64_t MemorySize, void *VAddr, bool isRecord,
                        bool SaveOutput) {
-  return Device.RTL->activate_record_replay(Device.DeviceID, MemorySize,
+  return Device.RTL->activate_record_replay(Device.DeviceID, MemorySize, VAddr,
                                             isRecord, SaveOutput);
 }
 
