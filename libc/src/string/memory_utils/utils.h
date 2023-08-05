@@ -82,8 +82,7 @@ LIBC_INLINE uintptr_t distance_to_next_aligned(const void *ptr) {
 }
 
 // Returns the same pointer but notifies the compiler that it is aligned.
-template <size_t alignment, typename T>
-LIBC_INLINE T *assume_aligned(T *ptr) {
+template <size_t alignment, typename T> LIBC_INLINE T *assume_aligned(T *ptr) {
   return reinterpret_cast<T *>(__builtin_assume_aligned(ptr, alignment));
 }
 
@@ -117,10 +116,10 @@ LIBC_INLINE void memcpy_inline(void *__restrict dst,
 #ifdef LLVM_LIBC_HAS_BUILTIN_MEMCPY_INLINE
   __builtin_memcpy_inline(dst, src, Size);
 #else
-// In memory functions `memcpy_inline` is instantiated several times with
-// different value of the Size parameter. This doesn't play well with GCC's
-// Value Range Analysis that wrongly detects out of bounds accesses. We disable
-// the 'array-bounds' warning for the purpose of this function.
+  // In memory functions `memcpy_inline` is instantiated several times with
+  // different value of the Size parameter. This doesn't play well with GCC's
+  // Value Range Analysis that wrongly detects out of bounds accesses. We
+  // disable the 'array-bounds' warning for the purpose of this function.
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Warray-bounds"
   for (size_t i = 0; i < Size; ++i)
@@ -139,20 +138,21 @@ template <typename T> struct StrictIntegralType {
 
   // Can only be constructed from a T.
   template <typename U, cpp::enable_if_t<cpp::is_same_v<U, T>, bool> = 0>
-  StrictIntegralType(U value) : value(value) {}
+  LIBC_INLINE StrictIntegralType(U value) : value(value) {}
 
   // Allows using the type in an if statement.
-  explicit operator bool() const { return value; }
+  LIBC_INLINE explicit operator bool() const { return value; }
 
   // If type is unsigned (bcmp) we allow bitwise OR operations.
-  StrictIntegralType operator|(const StrictIntegralType &Rhs) const {
+  LIBC_INLINE StrictIntegralType
+  operator|(const StrictIntegralType &Rhs) const {
     static_assert(!cpp::is_signed_v<T>);
     return value | Rhs.value;
   }
 
   // For interation with the C API we allow explicit conversion back to the
   // `int` type.
-  explicit operator int() const {
+  LIBC_INLINE explicit operator int() const {
     // bit_cast makes sure that T and int have the same size.
     return cpp::bit_cast<int>(value);
   }
@@ -362,7 +362,8 @@ void align_to_next_boundary(T1 *__restrict &p1, T2 *__restrict &p2,
 }
 
 template <size_t SIZE> struct AlignHelper {
-  AlignHelper(CPtr ptr) : offset_(distance_to_next_aligned<SIZE>(ptr)) {}
+  LIBC_INLINE AlignHelper(CPtr ptr)
+      : offset_(distance_to_next_aligned<SIZE>(ptr)) {}
 
   LIBC_INLINE bool not_aligned() const { return offset_ != SIZE; }
   LIBC_INLINE uintptr_t offset() const { return offset_; }
