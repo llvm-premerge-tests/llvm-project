@@ -1,4 +1,6 @@
-// RUN: %clang_cc1 -std=c++20 -triple x86_64-unknown-unknown %s -verify
+// RUN: %clang_cc1 -std=c++20 -Wno-c++2b-extensions -triple x86_64-unknown-unknown %s -verify
+// RUN: %clang_cc1 -std=c++2b -triple x86_64-unknown-unknown %s -verify
+
 
 namespace dr2621 { // dr2621: yes
 enum class E { a };
@@ -117,6 +119,13 @@ class X {
 int i0 = f<X>(0);   //expected-error {{no matching function for call to 'f'}}
 }
 
+namespace dr2653 { // dr2653: 16
+  struct Test { void f(this const auto& = Test{}); };
+  // expected-error@-1 {{an explicit object parameter cannot have a default argument}}
+  auto L =[](this const auto& = Test{}){};
+  // expected-error@-1 {{an explicit object parameter cannot have a default argument}}
+}
+
 namespace dr2654 { // dr2654: 16
 void f() {
     int neck, tail;
@@ -149,4 +158,20 @@ static_assert(__is_same(decltype(h), H<char, 4>));  // Not H<const char, 4>
 static_assert(__is_same(decltype(i), I<char, 4>));
 
 J j = { "ghi" };  // expected-error {{no viable constructor or deduction guide}}
+}
+
+namespace dr2687 { // dr2687: 18
+
+struct S{
+    void f(int);
+    static void g(int);
+    void h(this const S&, int);
+};
+
+void test() {
+    (&S::f)(1); //expected-error {{called object type 'void (dr2687::S::*)(int)' is not a function or function pointer}}
+    (&S::g)(1);
+    (&S::h)(S(), 1);
+}
+
 }

@@ -838,7 +838,7 @@ void CXXRecordDecl::addedMember(Decl *D) {
       SMKind |= SMF_CopyAssignment;
 
       const auto *ParamTy =
-          Method->getParamDecl(0)->getType()->getAs<ReferenceType>();
+          Method->getNonObjectParameter(0)->getType()->getAs<ReferenceType>();
       if (!ParamTy || ParamTy->getPointeeType().isConstQualified())
         data().HasDeclaredCopyAssignmentWithConstParam = true;
     }
@@ -2409,6 +2409,19 @@ bool CXXMethodDecl::isUsualDeallocationFunction(
   return Result;
 }
 
+bool CXXMethodDecl::isExplicitObjectMemberFunction() const {
+  // C++2b [dcl.fct]p6:
+  // An explicit object member function is a non-static member
+  // function with an explicit object parameter
+  return !isStatic() && getNumParams() != 0 &&
+         getParamDecl(0)->isExplicitObjectParameter();
+}
+
+bool CXXMethodDecl::isImplicitObjectMemberFunction() const {
+  return !isStatic() &&
+         (getNumParams() == 0 || !getParamDecl(0)->isExplicitObjectParameter());
+}
+
 bool CXXMethodDecl::isCopyAssignmentOperator() const {
   // C++0x [class.copy]p17:
   //  A user-declared copy assignment operator X::operator= is a non-static
@@ -2416,11 +2429,12 @@ bool CXXMethodDecl::isCopyAssignmentOperator() const {
   //  type X, X&, const X&, volatile X& or const volatile X&.
   if (/*operator=*/getOverloadedOperator() != OO_Equal ||
       /*non-static*/ isStatic() ||
-      /*non-template*/getPrimaryTemplate() || getDescribedFunctionTemplate() ||
-      getNumParams() != 1)
+
+      /*non-template*/ getPrimaryTemplate() || getDescribedFunctionTemplate() ||
+      getNumExplicitParams() != 1)
     return false;
 
-  QualType ParamType = getParamDecl(0)->getType();
+  QualType ParamType = getNonObjectParameter(0)->getType();
   if (const auto *Ref = ParamType->getAs<LValueReferenceType>())
     ParamType = Ref->getPointeeType();
 
@@ -2437,10 +2451,10 @@ bool CXXMethodDecl::isMoveAssignmentOperator() const {
   //  X&&, const X&&, volatile X&&, or const volatile X&&.
   if (getOverloadedOperator() != OO_Equal || isStatic() ||
       getPrimaryTemplate() || getDescribedFunctionTemplate() ||
-      getNumParams() != 1)
+      getNumExplicitParams() != 1)
     return false;
 
-  QualType ParamType = getParamDecl(0)->getType();
+  QualType ParamType = getNonObjectParameter(0)->getType();
   if (!ParamType->isRValueReferenceType())
     return false;
   ParamType = ParamType->getPointeeType();
@@ -2485,7 +2499,8 @@ CXXMethodDecl::overridden_methods() const {
 static QualType getThisObjectType(ASTContext &C, const FunctionProtoType *FPT,
                                   const CXXRecordDecl *Decl) {
   QualType ClassTy = C.getTypeDeclType(Decl);
-  return C.getQualifiedType(ClassTy, FPT->getMethodQuals());
+  auto Qualifiers = FPT->getMethodQuals();
+  return C.getQualifiedType(ClassTy, Qualifiers);
 }
 
 QualType CXXMethodDecl::getThisType(const FunctionProtoType *FPT,
@@ -2493,12 +2508,6 @@ QualType CXXMethodDecl::getThisType(const FunctionProtoType *FPT,
   ASTContext &C = Decl->getASTContext();
   QualType ObjectTy = ::getThisObjectType(C, FPT, Decl);
   return C.getPointerType(ObjectTy);
-}
-
-QualType CXXMethodDecl::getThisObjectType(const FunctionProtoType *FPT,
-                                          const CXXRecordDecl *Decl) {
-  ASTContext &C = Decl->getASTContext();
-  return ::getThisObjectType(C, FPT, Decl);
 }
 
 QualType CXXMethodDecl::getThisType() const {
@@ -2512,11 +2521,17 @@ QualType CXXMethodDecl::getThisType() const {
                                     getParent());
 }
 
-QualType CXXMethodDecl::getThisObjectType() const {
-  // Ditto getThisType.
-  assert(isInstance() && "No 'this' for static methods!");
-  return CXXMethodDecl::getThisObjectType(
-      getType()->castAs<FunctionProtoType>(), getParent());
+QualType CXXMethodDecl::getFunctionObjectParameterReferenceType() const {
+  if (isExplicitObjectMemberFunction())
+    return parameters()[0]->getType();
+
+  ASTContext &C = getParentASTContext();
+  const FunctionProtoType *FPT = getType()->castAs<FunctionProtoType>();
+  QualType Type = ::getThisObjectType(C, FPT, getParent());
+  RefQualifierKind RK = FPT->getRefQualifier();
+  if (RK == RefQualifierKind::RQ_RValue)
+    return C.getRValueReferenceType(Type);
+  return C.getLValueReferenceType(Type);
 }
 
 bool CXXMethodDecl::hasInlineBody() const {
