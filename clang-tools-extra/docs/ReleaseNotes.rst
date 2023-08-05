@@ -172,6 +172,10 @@ Changes in existing checks
   <clang-tidy/checks/llvm/namespace-comment>` check to provide fixes for
   ``inline`` namespaces in the same format as :program:`clang-format`.
 
+- Improved the :doc:`readability-identifier-naming
+  <clang-tidy/checks/readability/identifier-naming>` check to emit proper
+  warnings when a type forward declaration precedes its definition.
+
 Removed checks
 ^^^^^^^^^^^^^^
 
