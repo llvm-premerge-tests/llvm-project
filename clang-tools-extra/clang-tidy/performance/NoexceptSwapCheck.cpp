@@ -17,8 +17,26 @@ using namespace clang::ast_matchers;
 namespace clang::tidy::performance {
 
 void NoexceptSwapCheck::registerMatchers(MatchFinder *Finder) {
+
   Finder->addMatcher(
-      functionDecl(unless(isDeleted()), hasName("swap")).bind(BindFuncDeclName),
+      functionDecl(
+          unless(isDeleted()), hasName("swap"),
+          anyOf(
+              cxxMethodDecl(
+                  parameterCountIs(1U),
+                  hasParameter(0,
+                               hasType(qualType(hasCanonicalType(qualType(
+                                   unless(isConstQualified()),
+                                   references(namedDecl().bind("class"))))))),
+                  ofClass(equalsBoundNode("class"))),
+              allOf(unless(cxxMethodDecl()), parameterCountIs(2U),
+                    hasParameter(0, hasType(qualType(hasCanonicalType(
+                                        qualType(unless(isConstQualified()),
+                                                 references(qualType()))
+                                            .bind("type"))))),
+                    hasParameter(1, hasType(qualType(hasCanonicalType(
+                                        qualType(equalsBoundNode("type")))))))))
+          .bind(BindFuncDeclName),
       this);
 }
 
