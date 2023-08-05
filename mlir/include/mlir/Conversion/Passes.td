@@ -11,6 +11,21 @@
 
 include "mlir/Pass/PassBase.td"
 
+
+//===----------------------------------------------------------------------===//
+// ToLLVM
+//===----------------------------------------------------------------------===//
+
+def ConvertToLLVMPass : Pass<"convert-to-llvm"> {
+  let summary = "Convert to LLVM via dialect interfaces found in the input IR";
+  let description = [{
+    This pass scans for operation in the input IR and collects the dialects
+    present. It expects these dialects to implement the
+    `ConvertToLLVMPatternInterface` and create a conversion target to perform
+    the lowering.
+  }];
+}
+
 //===----------------------------------------------------------------------===//
 // AffineToStandard
 //===----------------------------------------------------------------------===//

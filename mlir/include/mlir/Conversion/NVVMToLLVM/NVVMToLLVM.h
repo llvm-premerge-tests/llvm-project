@@ -8,10 +8,11 @@
 #ifndef MLIR_CONVERSION_NVVMTOLLVM_NVVMTOLLVMPASS_H_
 #define MLIR_CONVERSION_NVVMTOLLVM_NVVMTOLLVMPASS_H_
 
+#include "mlir/IR/MLIRContext.h"
 #include <memory>
 
 namespace mlir {
-
+class DialectRegistry;
 class LLVMTypeConverter;
 class RewritePatternSet;
 class Pass;
@@ -20,6 +21,8 @@ class Pass;
 #include "mlir/Conversion/Passes.h.inc"
 
 void populateNVVMToLLVMConversionPatterns(RewritePatternSet &patterns);
+
+void registerConvertNVVMToLLVMInterface(DialectRegistry &registry);
 
 } // namespace mlir
 
