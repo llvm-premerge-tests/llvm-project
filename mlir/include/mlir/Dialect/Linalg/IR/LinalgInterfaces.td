@@ -876,7 +876,7 @@ def LinalgStructuredInterface : OpInterface<"LinalgOp"> {
     }
 
     //========================================================================//
-    // Helper functions to mutate the `operand_segment_sizes` attribute.
+    // Helper functions to mutate the `operandSegmentSizes` attribute.
     // These are useful when cloning and changing operand types.
     //========================================================================//
     void setNumInputs(unsigned num) { setOperandSegmentAt(0, num); }
@@ -885,11 +885,11 @@ def LinalgStructuredInterface : OpInterface<"LinalgOp"> {
     private:
     void setOperandSegmentAt(unsigned idx, unsigned val) {
       auto attr = ::llvm::cast<DenseIntElementsAttr>(
-                      (*this)->getAttr("operand_segment_sizes"));
+                      (*this)->getAttr("operandSegmentSizes"));
       unsigned i = 0;
       auto newAttr = attr.mapValues(IntegerType::get(getContext(), 32),
         [&](const APInt &v) { return (i++ == idx) ? APInt(32, val) : v; });
-      getOperation()->setAttr("operand_segment_sizes", newAttr);
+      getOperation()->setAttr("operandSegmentSizes", newAttr);
     }
   }];
 
