@@ -677,6 +677,9 @@ void Context::collectFunction(GCOVFunction &f, Summary &summary) {
   for (const GCOVBlock &b : f.blocksRange()) {
     if (b.lines.empty())
       continue;
+    if (f.startLine == 0 && f.startColumn == 0 && f.endLine == 0)
+      // skipping automatically-generated functions
+      continue;
     uint32_t maxLineNum = *std::max_element(b.lines.begin(), b.lines.end());
     if (maxLineNum >= si.lines.size())
       si.lines.resize(maxLineNum + 1);
