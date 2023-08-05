@@ -645,6 +645,7 @@ set(files
   __ranges/elements_view.h
   __ranges/empty.h
   __ranges/empty_view.h
+  __ranges/enumerate_view.h
   __ranges/enable_borrowed_range.h
   __ranges/enable_view.h
   __ranges/filter_view.h

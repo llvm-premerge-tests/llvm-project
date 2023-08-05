@@ -326,6 +326,9 @@ export namespace std {
       using std::ranges::views::cartesian_product;
     }
 #endif
+
+    // [range.enumerate]
+    using std::ranges::views::enumerate;
   } // namespace ranges
 
   namespace views = ranges::views;
