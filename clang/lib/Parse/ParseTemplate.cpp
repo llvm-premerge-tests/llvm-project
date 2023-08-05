@@ -127,8 +127,30 @@ Decl *Parser::ParseTemplateDeclarationOrSpecialization(
     // Parse the '<' template-parameter-list '>'
     SourceLocation LAngleLoc, RAngleLoc;
     SmallVector<NamedDecl*, 4> TemplateParams;
+
+    bool SeeFriendKeyWord = false;
+    {
+      SmallVector<NamedDecl *, 4> TemplateParams;
+      SourceLocation LAngleLoc, RAngleLoc;
+      RevertingTentativeParsingAction TPA(*this);
+      MultiParseScope TemplateParamScopesTmp(*this);
+      if (ParseTemplateParameters(TemplateParamScopesTmp,
+                                  CurTemplateDepthTracker.getDepth(),
+                                  TemplateParams, LAngleLoc, RAngleLoc)) {
+        // returns true don't need process
+        // returns false, blowe 'ParseTemplateParameters' will do it after
+        // revert
+      }
+      // skip outmost declaration
+      if (Tok.is(tok::kw_friend) && CurTemplateDepthTracker.getDepth() > 0) {
+        SeeFriendKeyWord = true;
+      }
+    }
+
     if (ParseTemplateParameters(TemplateParamScopes,
-                                CurTemplateDepthTracker.getDepth(),
+                                SeeFriendKeyWord
+                                    ? CurTemplateDepthTracker.getDepth() - 1
+                                    : CurTemplateDepthTracker.getDepth(),
                                 TemplateParams, LAngleLoc, RAngleLoc)) {
       // Skip until the semi-colon or a '}'.
       SkipUntil(tok::r_brace, StopAtSemi | StopBeforeMatch);
