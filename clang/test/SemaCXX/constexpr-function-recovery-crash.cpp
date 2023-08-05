@@ -78,6 +78,9 @@ constexpr void test11() {
 constexpr int test12() { return "wrong"; } // expected-error {{cannot initialize return object of type 'int'}}
 constexpr int force12 = test12();          // expected-error {{must be initialized by a constant}}
 
+constexpr int test13() { do {} while (a < 10); return 0; }   // expected-error {{use of undeclared identifier}}
+static_assert(test13());  // expected-error {{static assertion expression is not an integral constant expression}}
+
 #define TEST_EVALUATE(Name, X)         \
   constexpr int testEvaluate##Name() { \
     X return 0;                        \
