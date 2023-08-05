@@ -707,3 +707,13 @@ public:
 task ImplicitDeclTest(async_obj &a_object) {
   co_await a_object;  // CHECK-MESSAGES-NOT: warning: invalid case style for local variable
 }
+
+// Test scenario when canonical declaration will be a forward declaration
+class class_with_forward_decl;
+// CHECK-MESSAGES: :[[@LINE-1]]:7: warning: invalid case style for class 'class_with_forward_decl' [readability-identifier-naming]
+// CHECK-FIXES: {{^}}class CClassWithForwardDecl;
+// CHECK-FIXES: {{^}}class CClassWithForwardDecl {
+class class_with_forward_decl {
+  int __value;
+};
+

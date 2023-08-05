@@ -1137,14 +1137,10 @@ StyleKind IdentifierNamingCheck::findStyleKind(
   }
 
   if (const auto *Decl = dyn_cast<CXXRecordDecl>(D)) {
-    if (Decl->isAnonymousStructOrUnion())
+    if (Decl->isAnonymousStructOrUnion() || !Decl->hasDefinition())
       return SK_Invalid;
 
-    if (!Decl->getCanonicalDecl()->isThisDeclarationADefinition())
-      return SK_Invalid;
-
-    if (Decl->hasDefinition() && Decl->isAbstract() &&
-        NamingStyles[SK_AbstractClass])
+    if (Decl->isAbstract() && NamingStyles[SK_AbstractClass])
       return SK_AbstractClass;
 
     if (Decl->isStruct() && NamingStyles[SK_Struct])

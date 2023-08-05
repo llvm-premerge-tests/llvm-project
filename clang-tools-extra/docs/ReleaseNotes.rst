@@ -163,6 +163,10 @@ Changes in existing checks
   <clang-tidy/checks/bugprone/reserved-identifier>`, so that it does not warn
   on macros starting with underscore and lowercase letter.
 
+- Improved the :doc:`readability-identifier-naming
+  <clang-tidy/checks/readability/identifier-naming>` check to emit proper
+  warnings when a type forward declaration precedes its definition.
+
 Removed checks
 ^^^^^^^^^^^^^^
 
