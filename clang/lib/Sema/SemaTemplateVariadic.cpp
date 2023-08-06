@@ -1105,6 +1105,7 @@ TemplateArgumentLoc Sema::getTemplateArgumentPackExpansionPattern(
   case TemplateArgument::NullPtr:
   case TemplateArgument::Template:
   case TemplateArgument::Integral:
+  case TemplateArgument::StructuralValue:
   case TemplateArgument::Pack:
   case TemplateArgument::Null:
     return TemplateArgumentLoc();
@@ -1155,6 +1156,7 @@ std::optional<unsigned> Sema::getFullyPackExpandedSize(TemplateArgument Arg) {
   case TemplateArgument::NullPtr:
   case TemplateArgument::TemplateExpansion:
   case TemplateArgument::Integral:
+  case TemplateArgument::StructuralValue:
   case TemplateArgument::Pack:
   case TemplateArgument::Null:
     return std::nullopt;
