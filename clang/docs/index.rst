@@ -93,6 +93,7 @@ Using Clang Tools
    ClangOffloadBundler
    ClangOffloadPackager
    ClangRepl
+   ExecutionResultsHandling
 
 Design Documents
 ================
