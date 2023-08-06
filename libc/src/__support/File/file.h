@@ -72,7 +72,7 @@ public:
   };
 
   // Denotes a file opened in binary mode (which is specified by including
-  // the 'b' character in teh mode string.)
+  // the 'b' character in the mode string.)
   enum class ContentType : ModeFlags {
     BINARY = 0x10,
   };
