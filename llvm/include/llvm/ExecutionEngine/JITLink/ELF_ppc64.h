@@ -35,13 +35,13 @@ createLinkGraphFromELFObject_ppc64(MemoryBufferRef ObjectBuffer);
 Expected<std::unique_ptr<LinkGraph>>
 createLinkGraphFromELFObject_ppc64le(MemoryBufferRef ObjectBuffer);
 
-/// jit-link the given object buffer, which must be a ELF ppc64le object file.
+/// jit-link the given object buffer, which must be an ELF ppc64le object file.
 ///
 /// WARNING: The big-endian backend has not been tested yet.
 void link_ELF_ppc64(std::unique_ptr<LinkGraph> G,
                     std::unique_ptr<JITLinkContext> Ctx);
 
-/// jit-link the given object buffer, which must be a ELF ppc64le object file.
+/// jit-link the given object buffer, which must be an ELF ppc64le object file.
 void link_ELF_ppc64le(std::unique_ptr<LinkGraph> G,
                       std::unique_ptr<JITLinkContext> Ctx);
 

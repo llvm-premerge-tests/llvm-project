@@ -26,7 +26,7 @@ namespace jitlink {
 Expected<std::unique_ptr<LinkGraph>>
 createLinkGraphFromELFObject_x86_64(MemoryBufferRef ObjectBuffer);
 
-/// jit-link the given object buffer, which must be a ELF x86-64 object file.
+/// jit-link the given object buffer, which must be an ELF x86-64 object file.
 void link_ELF_x86_64(std::unique_ptr<LinkGraph> G,
                      std::unique_ptr<JITLinkContext> Ctx);
 

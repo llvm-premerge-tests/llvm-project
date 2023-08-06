@@ -420,7 +420,7 @@ void link_ELF_ppc64(std::unique_ptr<LinkGraph> G,
   if (Ctx->shouldAddDefaultTargetPasses(G->getTargetTriple())) {
     // Construct a JITLinker and run the link function.
 
-    // Add eh-frame passses.
+    // Add eh-frame passes.
     Config.PrePrunePasses.push_back(DWARFRecordSectionSplitter(".eh_frame"));
     Config.PrePrunePasses.push_back(EHFrameEdgeFixer(
         ".eh_frame", G->getPointerSize(), ppc64::Pointer32, ppc64::Pointer64,
@@ -455,13 +455,13 @@ createLinkGraphFromELFObject_ppc64le(MemoryBufferRef ObjectBuffer) {
       std::move(ObjectBuffer));
 }
 
-/// jit-link the given object buffer, which must be a ELF ppc64 object file.
+/// jit-link the given object buffer, which must be an ELF ppc64 object file.
 void link_ELF_ppc64(std::unique_ptr<LinkGraph> G,
                     std::unique_ptr<JITLinkContext> Ctx) {
   return link_ELF_ppc64<support::big>(std::move(G), std::move(Ctx));
 }
 
-/// jit-link the given object buffer, which must be a ELF ppc64le object file.
+/// jit-link the given object buffer, which must be an ELF ppc64le object file.
 void link_ELF_ppc64le(std::unique_ptr<LinkGraph> G,
                       std::unique_ptr<JITLinkContext> Ctx) {
   return link_ELF_ppc64<support::little>(std::move(G), std::move(Ctx));

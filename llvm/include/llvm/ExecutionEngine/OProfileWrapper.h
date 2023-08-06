@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
-// This file defines a OProfileWrapper object that detects if the oprofile
+// This file defines an OProfileWrapper object that detects if the oprofile
 // daemon is running, and provides wrappers for opagent functions used to
 // communicate with the oprofile JIT interface. The dynamic library libopagent
 // does not need to be linked directly as this object lazily loads the library
@@ -111,7 +111,7 @@ private:
   // daemon is running
   bool initialize();
 
-  // Searches /proc for the oprofile daemon and returns true if the process if
+  // Searches /proc for the oprofile daemon and returns true if the process is
   // found, or false otherwise.
   bool checkForOProfileProcEntry();
 

@@ -54,11 +54,11 @@ using ELFNixJITDylibDeinitializerSequence =
 /// Mediates between ELFNix initialization and ExecutionSession state.
 class ELFNixPlatform : public Platform {
 public:
-  /// Try to create a ELFNixPlatform instance, adding the ORC runtime to the
+  /// Try to create an ELFNixPlatform instance, adding the ORC runtime to the
   /// given JITDylib.
   ///
   /// The ORC runtime requires access to a number of symbols in
-  /// libc++. It is up to the caller to ensure that the requried
+  /// libc++. It is up to the caller to ensure that the required
   /// symbols can be referenced by code added to PlatformJD. The
   /// standard way to achieve this is to first attach dynamic library
   /// search generators for either the given process, or for the

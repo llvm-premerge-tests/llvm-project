@@ -28,7 +28,7 @@ namespace jitlink {
 Expected<std::unique_ptr<LinkGraph>>
 createLinkGraphFromELFObject_riscv(MemoryBufferRef ObjectBuffer);
 
-/// jit-link the given object buffer, which must be a ELF riscv object file.
+/// jit-link the given object buffer, which must be an ELF riscv object file.
 void link_ELF_riscv(std::unique_ptr<LinkGraph> G,
                     std::unique_ptr<JITLinkContext> Ctx);
 

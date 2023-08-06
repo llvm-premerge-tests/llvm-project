@@ -28,7 +28,7 @@ namespace jitlink {
 Expected<std::unique_ptr<LinkGraph>>
 createLinkGraphFromELFObject_i386(MemoryBufferRef ObjectBuffer);
 
-/// jit-link the given object buffer, which must be a ELF i386 relocatable
+/// jit-link the given object buffer, which must be an ELF i386 relocatable
 /// object file.
 void link_ELF_i386(std::unique_ptr<LinkGraph> G,
                    std::unique_ptr<JITLinkContext> Ctx);
