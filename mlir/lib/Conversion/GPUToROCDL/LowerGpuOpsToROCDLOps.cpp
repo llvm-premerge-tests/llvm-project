@@ -17,6 +17,7 @@
 #include "mlir/Conversion/AMDGPUToROCDL/AMDGPUToROCDL.h"
 #include "mlir/Conversion/ArithToLLVM/ArithToLLVM.h"
 #include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVM.h"
+#include "mlir/Conversion/GPUToROCDL/GPUToROCDLPass.h"
 #include "mlir/Conversion/LLVMCommon/ConversionTarget.h"
 #include "mlir/Conversion/LLVMCommon/LoweringOptions.h"
 #include "mlir/Conversion/LLVMCommon/Pattern.h"
@@ -24,13 +25,13 @@
 #include "mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h"
 #include "mlir/Conversion/VectorToLLVM/ConvertVectorToLLVM.h"
 #include "mlir/Dialect/ControlFlow/IR/ControlFlow.h"
-#include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/GPU/IR/GPUDialect.h"
 #include "mlir/Dialect/GPU/Transforms/Passes.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/LLVMIR/ROCDLDialect.h"
 #include "mlir/Dialect/Math/IR/Math.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/Vector/IR/VectorOps.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/Pass/Pass.h"
@@ -105,8 +106,8 @@ struct LowerGpuOpsToROCDLOpsPass
     : public impl::ConvertGpuOpsToROCDLOpsBase<LowerGpuOpsToROCDLOpsPass> {
   LowerGpuOpsToROCDLOpsPass() = default;
   LowerGpuOpsToROCDLOpsPass(const std::string &chipset, unsigned indexBitwidth,
-                            bool useBarePtrCallConv,
-                            gpu::amd::Runtime runtime) {
+                            bool useBarePtrCallConv, gpu::amd::Runtime runtime,
+                            bool opSelect, unsigned warpSize) {
     if (this->chipset.getNumOccurrences() == 0)
       this->chipset = chipset;
     if (this->indexBitwidth.getNumOccurrences() == 0)
@@ -115,6 +116,8 @@ struct LowerGpuOpsToROCDLOpsPass
       this->useBarePtrCallConv = useBarePtrCallConv;
     if (this->runtime.getNumOccurrences() == 0)
       this->runtime = runtime;
+    if (this->warpSize.getNumOccurrences() == 0)
+      this->warpSize = warpSize;
   }
 
   void runOnOperation() override {
@@ -189,7 +192,9 @@ struct LowerGpuOpsToROCDLOpsPass
     cf::populateControlFlowToLLVMConversionPatterns(converter, llvmPatterns);
     populateFuncToLLVMConversionPatterns(converter, llvmPatterns);
     populateFinalizeMemRefToLLVMConversionPatterns(converter, llvmPatterns);
-    populateGpuToROCDLConversionPatterns(converter, llvmPatterns, runtime);
+    populateGpuToROCDLConversionPatterns(converter, llvmPatterns, runtime,
+                                         this->chipset, this->opSelect,
+                                         this->warpSize);
     LLVMConversionTarget target(getContext());
     configureGpuToROCDLConversionLegality(target);
     if (failed(applyPartialConversion(m, target, std::move(llvmPatterns))))
@@ -240,10 +245,18 @@ static void populateOpPatterns(LLVMTypeConverter &converter,
   patterns.add<OpToFuncCallLowering<OpTy>>(converter, f32Func, f64Func);
 }
 
-void mlir::populateGpuToROCDLConversionPatterns(
-    LLVMTypeConverter &converter, RewritePatternSet &patterns,
-    mlir::gpu::amd::Runtime runtime) {
+void mlir::populateGpuToROCDLConversionPatterns(LLVMTypeConverter &converter,
+                                                RewritePatternSet &patterns,
+                                                mlir::gpu::amd::Runtime runtime,
+                                                StringRef chipset,
+                                                bool opSelect,
+                                                unsigned warpSize) {
   using mlir::gpu::amd::Runtime;
+
+  // Lowering for MMAMatrixType.
+  converter.addConversion([&](gpu::MMAMatrixType type) -> Type {
+    return amd::convertWMMAToROCDLLLVMType(type);
+  });
 
   populateWithGenerated(patterns);
   patterns
@@ -273,6 +286,10 @@ void mlir::populateGpuToROCDLConversionPatterns(
   }
 
   patterns.add<GPULaneIdOpToROCDL>(converter);
+
+  /// Collect a set of patterns to convert WMMA ops from GPU dialect to NVVM.
+  populateGpuWMMAToROCDLConversionPatterns(converter, patterns, chipset,
+                                           opSelect, warpSize);
 
   populateOpPatterns<math::AbsFOp>(converter, patterns, "__ocml_fabs_f32",
                                    "__ocml_fabs_f64");
@@ -322,7 +339,8 @@ std::unique_ptr<OperationPass<gpu::GPUModuleOp>>
 mlir::createLowerGpuOpsToROCDLOpsPass(const std::string &chipset,
                                       unsigned indexBitwidth,
                                       bool useBarePtrCallConv,
-                                      gpu::amd::Runtime runtime) {
+                                      gpu::amd::Runtime runtime, bool opSelect,
+                                      unsigned warpSize) {
   return std::make_unique<LowerGpuOpsToROCDLOpsPass>(
-      chipset, indexBitwidth, useBarePtrCallConv, runtime);
+      chipset, indexBitwidth, useBarePtrCallConv, runtime, opSelect, warpSize);
 }

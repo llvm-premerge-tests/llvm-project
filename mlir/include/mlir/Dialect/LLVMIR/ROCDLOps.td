@@ -14,6 +14,7 @@
 #define ROCDLIR_OPS
 
 include "mlir/Dialect/LLVMIR/LLVMOpBase.td"
+include "mlir/IR/EnumAttr.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
 //===----------------------------------------------------------------------===//
@@ -210,6 +211,18 @@ class ROCDL_Wmma_IntrOp<string mnemonic, list<Trait> traits = []> :
   Arguments<(ins Variadic<LLVM_Type>:$args)> {
   let assemblyFormat =
     "$args attr-dict `:` functional-type($args, $res)";
+}
+
+def ROCDLWMMAFragA : I32EnumAttrCase<"a", 0>;
+def ROCDLWMMAFragB : I32EnumAttrCase<"b", 1>;
+def ROCDLWMMAFragC : I32EnumAttrCase<"c", 2>;
+
+/// Enum attribute of the different frag types.
+def ROCDLWMMAFrag
+    : I32EnumAttr<"ROCDLWMMAFrag", "ROCDL WMMA frag type",
+                  [ROCDLWMMAFragA, ROCDLWMMAFragB, ROCDLWMMAFragC]> {
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::mlir::ROCDL";
 }
 
 // Available on RDNA3
