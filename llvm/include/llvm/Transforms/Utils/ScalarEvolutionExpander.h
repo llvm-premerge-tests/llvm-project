@@ -249,7 +249,7 @@ public:
   Instruction *getIVIncOperand(Instruction *IncV, Instruction *InsertPos,
                                bool allowScale);
 
-  /// Utility for hoisting \p IncV (with all subexpressions requried for its
+  /// Utility for hoisting \p IncV (with all subexpressions required for its
   /// computation) before \p InsertPos. If \p RecomputePoisonFlags is set, drops
   /// all poison-generating flags from instructions being hoisted and tries to
   /// re-infer them in the new location. It should be used when we are going to

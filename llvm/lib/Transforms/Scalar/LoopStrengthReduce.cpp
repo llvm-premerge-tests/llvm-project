@@ -6272,7 +6272,7 @@ struct SCEVDbgValueBuilder {
   bool createIterCountExpr(const SCEV *S,
                            const SCEVDbgValueBuilder &IterationCount,
                            ScalarEvolution &SE) {
-    // SCEVs for SSA values are most frquently of the form
+    // SCEVs for SSA values are most frequently of the form
     // {start,+,stride}, but sometimes they are ({start,+,stride} + %a + ..).
     // This is because %a is a PHI node that is not the IV. However, these
     // SCEVs have not been observed to result in debuginfo-lossy optimisations,
