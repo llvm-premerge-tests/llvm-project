@@ -228,7 +228,7 @@ public:
   void setReserved() { Unavailable = true; }
   void clearReserved() { Unavailable = false; }
 
-  /// Returs true if this resource is not reserved, and if there are at least
+  /// Returns true if this resource is not reserved, and if there are at least
   /// `NumUnits` available units.
   bool isReady(unsigned NumUnits = 1) const;
 
