@@ -2101,7 +2101,7 @@ int main()
 // CHECK2-NEXT:    [[RESULT:%.*]] = alloca i32, align 4
 // CHECK2-NEXT:    store i32 0, ptr [[RETVAL]], align 4
 // CHECK2-NEXT:    store i32 100, ptr [[SIZE]], align 4
-// CHECK2-NEXT:    [[CALL:%.*]] = call noalias noundef nonnull ptr @_Znaj(i32 noundef 400) #[[ATTR10:[0-9]+]]
+// CHECK2-NEXT:    [[CALL:%.*]] = call noalias nonnull ptr @_Znaj(i32 noundef 400) #[[ATTR10:[0-9]+]]
 // CHECK2-NEXT:    store ptr [[CALL]], ptr [[ARRAY]], align 4
 // CHECK2-NEXT:    store i32 0, ptr [[RESULT]], align 4
 // CHECK2-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[ARRAY]], align 4

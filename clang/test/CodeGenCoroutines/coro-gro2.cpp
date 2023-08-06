@@ -36,7 +36,7 @@ struct coro {
 // Verify that the RVO is applied.
 // CHECK-LABEL: define{{.*}} void @_Z1fi(ptr noalias sret(%struct.coro) align 8 %agg.result, i32 noundef %0)
 coro f(int) {
-// CHECK: %call = call noalias noundef nonnull ptr @_Znwm(
+// CHECK: %call = call noalias nonnull ptr @_Znwm(
 // CHECK-NEXT: br label %[[CoroInit:.*]]
 
 // CHECK: {{.*}}[[CoroInit]]:

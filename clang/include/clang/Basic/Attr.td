@@ -2028,6 +2028,12 @@ def ReturnsNonNull : InheritableAttr {
   let Documentation = [ReturnsNonNullDocs];
 }
 
+def ReturnsMaybeUndef : InheritableAttr {
+  let Spellings = [];
+  let Subjects = SubjectList<[Function]>;
+  let Documentation = [InternalOnly];
+}
+
 def CalledOnce : Attr {
   let Spellings = [Clang<"called_once">];
   let Subjects = SubjectList<[ParmVar]>;

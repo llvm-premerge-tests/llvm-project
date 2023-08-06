@@ -11,7 +11,7 @@ namespace test0 {
   // CHECK:      alloca
   // CHECK-NEXT: getelementptr
   // CHECK-NEXT: store
-  // CHECK-NEXT: [[CALL:%.*]] = call noalias noundef nonnull ptr @_Znwm(
+  // CHECK-NEXT: [[CALL:%.*]] = call noalias nonnull ptr @_Znwm(
   // CHECK-NEXT: call void @llvm.memcpy.p0.p0.i64(
   // CHECK-NEXT: ret
   A *test(A a) {

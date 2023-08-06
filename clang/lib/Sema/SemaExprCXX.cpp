@@ -3161,9 +3161,13 @@ void Sema::DeclareGlobalAllocationFunction(DeclarationName Name,
     Alloc->setVisibleDespiteOwningModule();
 
     if (HasBadAllocExceptionSpec && getLangOpts().NewInfallible &&
-        !getLangOpts().CheckNew)
+        !getLangOpts().CheckNew) {
       Alloc->addAttr(
           ReturnsNonNullAttr::CreateImplicit(Context, Alloc->getLocation()));
+      if (!getLangOpts().CXXExceptions)
+        Alloc->addAttr(ReturnsMaybeUndefAttr::CreateImplicit(
+            Context, Alloc->getLocation()));
+    }
 
     // C++ [basic.stc.dynamic.general]p2:
     //   The library provides default definitions for the global allocation

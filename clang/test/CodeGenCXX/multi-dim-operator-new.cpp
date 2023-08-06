@@ -43,6 +43,6 @@ int main() {
  return 0;
 }
 
-// CHECK: call noalias noundef nonnull ptr @_Znam
-// CHECK: call noalias noundef nonnull ptr @_Znam
-// CHECK: call noalias noundef nonnull ptr @_Znam
+// CHECK: call noalias nonnull ptr @_Znam
+// CHECK: call noalias nonnull ptr @_Znam
+// CHECK: call noalias nonnull ptr @_Znam

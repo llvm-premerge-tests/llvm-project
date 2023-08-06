@@ -2505,7 +2505,8 @@ void CodeGenModule::ConstructAttributeList(StringRef Name,
 
   // Determine if the return type could be partially undef
   if (CodeGenOpts.EnableNoundefAttrs &&
-      HasStrictReturn(*this, RetTy, TargetDecl)) {
+      HasStrictReturn(*this, RetTy, TargetDecl) &&
+      (!TargetDecl || !TargetDecl->hasAttr<ReturnsMaybeUndefAttr>())) {
     if (!RetTy->isVoidType() && RetAI.getKind() != ABIArgInfo::Indirect &&
         DetermineNoUndef(RetTy, getTypes(), DL, RetAI))
       RetAttrs.addAttribute(llvm::Attribute::NoUndef);

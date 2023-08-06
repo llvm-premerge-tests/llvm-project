@@ -58,7 +58,7 @@ extern "C" void f0(global_new_delete_tag) {
 
   // CHECK: [[AllocBB]]:
   // CHECK: %[[SIZE:.+]] = call i64 @llvm.coro.size.i64()
-  // CHECK: %[[MEM:.+]] = call noalias noundef nonnull ptr @_Znwm(i64 noundef %[[SIZE]])
+  // CHECK: %[[MEM:.+]] = call noalias nonnull ptr @_Znwm(i64 noundef %[[SIZE]])
   // CHECK: br label %[[InitBB]]
 
   // CHECK: [[InitBB]]:
@@ -153,7 +153,7 @@ struct std::coroutine_traits<void, promise_matching_global_placement_new_tag, du
 // within the scope of the promise type's class.
 // CHECK-LABEL: f1b(
 extern "C" void f1b(promise_matching_global_placement_new_tag, dummy *) {
-  // CHECK: call noalias noundef nonnull ptr @_Znwm(i64
+  // CHECK: call noalias nonnull ptr @_Znwm(i64
   co_return;
 }
 
@@ -174,7 +174,7 @@ struct std::coroutine_traits<void, promise_delete_tag> {
 extern "C" void f2(promise_delete_tag) {
   // CHECK: %[[ID:.+]] = call token @llvm.coro.id(i32 16
   // CHECK: %[[SIZE:.+]] = call i64 @llvm.coro.size.i64()
-  // CHECK: call noalias noundef nonnull ptr @_Znwm(i64 noundef %[[SIZE]])
+  // CHECK: call noalias nonnull ptr @_Znwm(i64 noundef %[[SIZE]])
 
   // CHECK: %[[FRAME:.+]] = call ptr @llvm.coro.begin(
   // CHECK: %[[MEM:.+]] = call ptr @llvm.coro.free(token %[[ID]], ptr %[[FRAME]])
@@ -199,7 +199,7 @@ struct std::coroutine_traits<void, promise_sized_delete_tag> {
 extern "C" void f3(promise_sized_delete_tag) {
   // CHECK: %[[ID:.+]] = call token @llvm.coro.id(i32 16
   // CHECK: %[[SIZE:.+]] = call i64 @llvm.coro.size.i64()
-  // CHECK: call noalias noundef nonnull ptr @_Znwm(i64 noundef %[[SIZE]])
+  // CHECK: call noalias nonnull ptr @_Znwm(i64 noundef %[[SIZE]])
 
   // CHECK: %[[FRAME:.+]] = call ptr @llvm.coro.begin(
   // CHECK: %[[MEM:.+]] = call ptr @llvm.coro.free(token %[[ID]], ptr %[[FRAME]])
@@ -265,7 +265,7 @@ struct std::coroutine_traits<void, promise_sized_delete_tag2> {
 extern "C" void f5(promise_sized_delete_tag2) {
   // CHECK: %[[ID:.+]] = call token @llvm.coro.id(i32 16
   // CHECK: %[[SIZE:.+]] = call i64 @llvm.coro.size.i64()
-  // CHECK: call noalias noundef nonnull ptr @_Znwm(i64 noundef %[[SIZE]])
+  // CHECK: call noalias nonnull ptr @_Znwm(i64 noundef %[[SIZE]])
 
   // CHECK: %[[FRAME:.+]] = call ptr @llvm.coro.begin(
   // CHECK: %[[MEM:.+]] = call ptr @llvm.coro.free(token %[[ID]], ptr %[[FRAME]])

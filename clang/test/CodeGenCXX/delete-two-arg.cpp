@@ -27,7 +27,7 @@ namespace test2 {
 
   // CHECK: define{{.*}} ptr @_ZN5test24testEv()
   A *test() {
-    // CHECK:      [[NEW:%.*]] = call noalias noundef nonnull ptr @_Znaj(i32 noundef 44)
+    // CHECK:      [[NEW:%.*]] = call noalias nonnull ptr @_Znaj(i32 noundef 44)
     // CHECK-NEXT: store i32 10, ptr [[NEW]]
     // CHECK-NEXT: [[T1:%.*]] = getelementptr inbounds i8, ptr [[NEW]], i32 4
     // CHECK-NEXT: ret ptr [[T1]]
@@ -59,7 +59,7 @@ namespace test3 {
 
   // CHECK-LABEL: define{{.*}} void @_ZN5test34testEv()
   void test() {
-    // CHECK:      [[CALL:%.*]] = call noalias noundef nonnull ptr @_Znaj(i32 noundef 24)
+    // CHECK:      [[CALL:%.*]] = call noalias nonnull ptr @_Znaj(i32 noundef 24)
     // CHECK-NEXT: store i32 5
     (void) new B[5];
   }

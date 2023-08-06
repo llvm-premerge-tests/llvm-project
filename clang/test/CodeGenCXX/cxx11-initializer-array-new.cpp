@@ -7,7 +7,7 @@ struct S { S(); S(int); ~S(); int n; };
 void *p = new S[2][3]{ { 1, 2, 3 }, { 4, 5, 6 } };
 
 // CHECK-LABEL: define
-// CHECK: %[[ALLOC:.*]] = call noalias noundef nonnull ptr @_Znam(i64 noundef 32)
+// CHECK: %[[ALLOC:.*]] = call noalias nonnull ptr @_Znam(i64 noundef 32)
 // CHECK: store i64 6, ptr %[[ALLOC]]
 // CHECK: %[[START_AS_i8:.*]] = getelementptr inbounds i8, ptr %[[ALLOC]], i64 8
 //
@@ -47,7 +47,7 @@ void *q = new S[n][3]{ { 1, 2, 3 }, { 4, 5, 6 } };
 // CHECK: call {{.*}} @llvm.umul.with.overflow.i64(i64 %[[N:.*]], i64 12)
 // CHECK: %[[ELTS:.*]] = mul i64 %[[N]], 3
 // CHECK: call {{.*}} @llvm.uadd.with.overflow.i64(i64 %{{.*}}, i64 8)
-// CHECK: %[[ALLOC:.*]] = call noalias noundef nonnull ptr @_Znam(i64 noundef %{{.*}})
+// CHECK: %[[ALLOC:.*]] = call noalias nonnull ptr @_Znam(i64 noundef %{{.*}})
 //
 // CHECK: store i64 %[[ELTS]], ptr %[[ALLOC]]
 // CHECK: %[[START_AS_i8:.*]] = getelementptr inbounds i8, ptr %[[ALLOC]], i64 8
@@ -106,7 +106,7 @@ void *r = new T[n][3]{ { 1, 2, 3 }, { 4, 5, 6 } };
 // No cookie.
 // CHECK-NOT: @llvm.uadd.with.overflow
 //
-// CHECK: %[[ALLOC:.*]] = call noalias noundef nonnull ptr @_Znam(i64 noundef %{{.*}})
+// CHECK: %[[ALLOC:.*]] = call noalias nonnull ptr @_Znam(i64 noundef %{{.*}})
 //
 //
 // Explicit initializers:

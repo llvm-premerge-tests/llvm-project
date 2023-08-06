@@ -47,22 +47,22 @@ void *operator new[](size_t size, std::align_val_t alignment,
 // declarations should get nobuiltin attributes.
 
 void hot_cold_new() {
-  // CHECK: call noalias noundef nonnull ptr @_Znwm12__hot_cold_t(i64 noundef 1, i8 noundef zeroext 0) [[ATTR_NO_BUILTIN_CALL:#[^ ]*]]
+  // CHECK: call noalias nonnull ptr @_Znwm12__hot_cold_t(i64 noundef 1, i8 noundef zeroext 0) [[ATTR_NO_BUILTIN_CALL:#[^ ]*]]
   operator new(1, (__hot_cold_t)0);
-  // CHECK: call noalias noundef nonnull ptr @_Znwm12__hot_cold_t(i64 noundef 4, i8 noundef zeroext 0) [[ATTR_BUILTIN_CALL:#[^ ]*]]
+  // CHECK: call noalias nonnull ptr @_Znwm12__hot_cold_t(i64 noundef 4, i8 noundef zeroext 0) [[ATTR_BUILTIN_CALL:#[^ ]*]]
   new ((__hot_cold_t)0) int;
 }
 
-// CHECK: declare noundef nonnull ptr @_Znwm12__hot_cold_t(i64 noundef, i8 noundef zeroext) [[ATTR_NOBUILTIN:#[^ ]*]]
+// CHECK: declare nonnull ptr @_Znwm12__hot_cold_t(i64 noundef, i8 noundef zeroext) [[ATTR_NOBUILTIN:#[^ ]*]]
 
 void hot_cold_new_array() {
-  // CHECK: call noalias noundef nonnull ptr @_Znam12__hot_cold_t(i64 noundef 1, i8 noundef zeroext 0) [[ATTR_NO_BUILTIN_CALL:#[^ ]*]]
+  // CHECK: call noalias nonnull ptr @_Znam12__hot_cold_t(i64 noundef 1, i8 noundef zeroext 0) [[ATTR_NO_BUILTIN_CALL:#[^ ]*]]
   operator new[](1, (__hot_cold_t)0);
-  // CHECK: call noalias noundef nonnull ptr @_Znam12__hot_cold_t(i64 noundef 4, i8 noundef zeroext 0) [[ATTR_BUILTIN_CALL:#[^ ]*]]
+  // CHECK: call noalias nonnull ptr @_Znam12__hot_cold_t(i64 noundef 4, i8 noundef zeroext 0) [[ATTR_BUILTIN_CALL:#[^ ]*]]
   new ((__hot_cold_t)0) int[1];
 }
 
-// CHECK: declare noundef nonnull ptr @_Znam12__hot_cold_t(i64 noundef, i8 noundef zeroext) [[ATTR_NOBUILTIN:#[^ ]*]]
+// CHECK: declare nonnull ptr @_Znam12__hot_cold_t(i64 noundef, i8 noundef zeroext) [[ATTR_NOBUILTIN:#[^ ]*]]
 
 void hot_cold_new_nothrow() {
   // CHECK: call noalias noundef ptr @_ZnwmRKSt9nothrow_t12__hot_cold_t(i64 noundef 1, {{.*}} @nothrow, i8 noundef zeroext 0) [[ATTR_NO_BUILTIN_NOTHROW_CALL:#[^ ]*]]
@@ -87,22 +87,22 @@ class alignas(32) alignedstruct {
 };
 
 void hot_cold_new_align() {
-  // CHECK: call noalias noundef nonnull align 32 ptr @_ZnwmSt11align_val_t12__hot_cold_t(i64 noundef 1, i64 noundef 32, i8 noundef zeroext 0) [[ATTR_NO_BUILTIN_CALL:#[^ ]*]]
+  // CHECK: call noalias nonnull align 32 ptr @_ZnwmSt11align_val_t12__hot_cold_t(i64 noundef 1, i64 noundef 32, i8 noundef zeroext 0) [[ATTR_NO_BUILTIN_CALL:#[^ ]*]]
   operator new(1, (std::align_val_t)32, (__hot_cold_t)0);
-  // CHECK: call noalias noundef nonnull align 32 ptr @_ZnwmSt11align_val_t12__hot_cold_t(i64 noundef 32, i64 noundef 32, i8 noundef zeroext 0) [[ATTR_BUILTIN_CALL:#[^ ]*]]
+  // CHECK: call noalias nonnull align 32 ptr @_ZnwmSt11align_val_t12__hot_cold_t(i64 noundef 32, i64 noundef 32, i8 noundef zeroext 0) [[ATTR_BUILTIN_CALL:#[^ ]*]]
   new ((__hot_cold_t)0) alignedstruct;
 }
 
-// CHECK: declare noundef nonnull ptr @_ZnwmSt11align_val_t12__hot_cold_t(i64 noundef, i64 noundef, i8 noundef zeroext) [[ATTR_NOBUILTIN:#[^ ]*]]
+// CHECK: declare nonnull ptr @_ZnwmSt11align_val_t12__hot_cold_t(i64 noundef, i64 noundef, i8 noundef zeroext) [[ATTR_NOBUILTIN:#[^ ]*]]
 
 void hot_cold_new_align_array() {
-  // CHECK: call noalias noundef nonnull align 32 ptr @_ZnamSt11align_val_t12__hot_cold_t(i64 noundef 1, i64 noundef 32, i8 noundef zeroext 0) [[ATTR_NO_BUILTIN_CALL:#[^ ]*]]
+  // CHECK: call noalias nonnull align 32 ptr @_ZnamSt11align_val_t12__hot_cold_t(i64 noundef 1, i64 noundef 32, i8 noundef zeroext 0) [[ATTR_NO_BUILTIN_CALL:#[^ ]*]]
   operator new[](1, (std::align_val_t)32, (__hot_cold_t)0);
-  // CHECK: call noalias noundef nonnull align 32 ptr @_ZnamSt11align_val_t12__hot_cold_t(i64 noundef 32, i64 noundef 32, i8 noundef zeroext 0) [[ATTR_BUILTIN_CALL:#[^ ]*]]
+  // CHECK: call noalias nonnull align 32 ptr @_ZnamSt11align_val_t12__hot_cold_t(i64 noundef 32, i64 noundef 32, i8 noundef zeroext 0) [[ATTR_BUILTIN_CALL:#[^ ]*]]
   new ((__hot_cold_t)0) alignedstruct[1];
 }
 
-// CHECK: declare noundef nonnull ptr @_ZnamSt11align_val_t12__hot_cold_t(i64 noundef, i64 noundef, i8 noundef zeroext) [[ATTR_NOBUILTIN:#[^ ]*]]
+// CHECK: declare nonnull ptr @_ZnamSt11align_val_t12__hot_cold_t(i64 noundef, i64 noundef, i8 noundef zeroext) [[ATTR_NOBUILTIN:#[^ ]*]]
 
 void hot_cold_new_align_nothrow() {
   // CHECK: call noalias noundef align 32 ptr @_ZnwmSt11align_val_tRKSt9nothrow_t12__hot_cold_t(i64 noundef 1, i64 noundef 32, {{.*}} @nothrow, i8 noundef zeroext 0) [[ATTR_NO_BUILTIN_NOTHROW_CALL:#[^ ]*]]

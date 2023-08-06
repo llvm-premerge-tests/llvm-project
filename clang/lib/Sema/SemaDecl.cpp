@@ -16225,8 +16225,16 @@ void Sema::AddKnownFunctionAttributesForReplaceableGlobalAllocationFunction(
   // However, -fcheck-new invalidates this possible assumption, so don't add
   // NonNull when that is enabled.
   if (!IsNothrow && !FD->hasAttr<ReturnsNonNullAttr>() &&
-      !getLangOpts().CheckNew)
+      !getLangOpts().CheckNew) {
     FD->addAttr(ReturnsNonNullAttr::CreateImplicit(Context, FD->getLocation()));
+    // FIXME: The current implementation of `operator new` under -fno-exceptions
+    // invalidates this possible assumption. Add ReturnsMaybeUndefAttr to
+    // preserve the never return null semantics of `operator new`. This ensures
+    // that when `operator new` returns null, it is poison and not UB.
+    if (!getLangOpts().CXXExceptions)
+      FD->addAttr(
+          ReturnsMaybeUndefAttr::CreateImplicit(Context, FD->getLocation()));
+  }
 
   // C++2a [basic.stc.dynamic.allocation]p2:
   //   An allocation function attempts to allocate the requested amount of

@@ -11,8 +11,8 @@ struct B {
   ~B() {}
 };
 
-// AIX32: %call = call noalias noundef nonnull ptr @_Znam(i32 noundef 8)
-// AIX64: %call = call noalias noundef nonnull ptr @_Znam(i64 noundef 8)
+// AIX32: %call = call noalias nonnull ptr @_Znam(i32 noundef 8)
+// AIX64: %call = call noalias nonnull ptr @_Znam(i64 noundef 8)
 B *allocBp() { return new B[0]; }
 
 // AIX-LABEL: delete.notnull:

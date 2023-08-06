@@ -31,7 +31,7 @@ void f() {
 }
 
 void g() {
-  // CHECK: call noalias noundef nonnull ptr @_Znwm(i64 noundef 1)
+  // CHECK: call noalias nonnull ptr @_Znwm(i64 noundef 1)
   // CHECK: call void @_ZN1AC1Ev(
   static A& a = *new A;
 }

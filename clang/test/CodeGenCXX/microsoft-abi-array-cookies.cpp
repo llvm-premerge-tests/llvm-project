@@ -7,7 +7,7 @@ struct ClassWithoutDtor {
 void check_array_no_cookies() {
 // CHECK: define dso_local void @"?check_array_no_cookies@@YAXXZ"() [[NUW:#[0-9]+]]
 
-// CHECK: call noalias noundef nonnull ptr @"??_U@YAPAXI@Z"(i32 noundef 42)
+// CHECK: call noalias nonnull ptr @"??_U@YAPAXI@Z"(i32 noundef 42)
   ClassWithoutDtor *array = new ClassWithoutDtor[42];
 
 // CHECK: call void @"??_V@YAXPAX@Z"(
@@ -24,7 +24,7 @@ void check_array_cookies_simple() {
 // CHECK: define {{.*}} @"?check_array_cookies_simple@@YAXXZ"()
 
   ClassWithDtor *array = new ClassWithDtor[42];
-// CHECK: [[ALLOCATED:%.*]] = call noalias noundef nonnull ptr @"??_U@YAPAXI@Z"(i32 noundef 46)
+// CHECK: [[ALLOCATED:%.*]] = call noalias nonnull ptr @"??_U@YAPAXI@Z"(i32 noundef 46)
 // 46 = 42 + size of cookie (4)
 // CHECK: store i32 42, ptr [[ALLOCATED]]
 // CHECK: [[ARRAY:%.*]] = getelementptr inbounds i8, ptr [[ALLOCATED]], i32 4
@@ -43,7 +43,7 @@ struct __attribute__((aligned(8))) ClassWithAlignment {
 void check_array_cookies_aligned() {
 // CHECK: define {{.*}} @"?check_array_cookies_aligned@@YAXXZ"()
   ClassWithAlignment *array = new ClassWithAlignment[42];
-// CHECK: [[ALLOCATED:%.*]] = call noalias noundef nonnull ptr @"??_U@YAPAXI@Z"(i32 noundef 344)
+// CHECK: [[ALLOCATED:%.*]] = call noalias nonnull ptr @"??_U@YAPAXI@Z"(i32 noundef 344)
 //   344 = 42*8 + size of cookie (8, due to alignment)
 // CHECK: store i32 42, ptr [[ALLOCATED]]
 // CHECK: [[ARRAY:%.*]] = getelementptr inbounds i8, ptr [[ALLOCATED]], i32 8
