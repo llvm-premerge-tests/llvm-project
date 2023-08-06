@@ -175,10 +175,14 @@ bool InstructionSelect::runOnMachineFunction(MachineFunction &MF) {
         // been decided.
         //
         // Propagate that through to the source register.
-        const TargetRegisterClass *DstRC = MRI.getRegClassOrNull(DstReg);
-        if (DstRC)
-          MRI.setRegClass(SrcReg, DstRC);
-        assert(canReplaceReg(DstReg, SrcReg, MRI) &&
+        const auto &DstRBC = MRI.getRegClassOrRegBank(DstReg);
+        if (DstRBC && DstRBC.is<const TargetRegisterClass *>())
+          MRI.setRegClass(SrcReg, DstRBC.get<const TargetRegisterClass *>());
+        assert((canReplaceReg(DstReg, SrcReg, MRI) ||
+                (DstRBC && DstRBC.is<const RegisterBank *>() &&
+                 MRI.getRegClassOrNull(SrcReg) &&
+                 DstRBC.get<const RegisterBank *>()->covers(
+                     *MRI.getRegClassOrNull(SrcReg)))) &&
                "Must be able to replace dst with src!");
         MI.eraseFromParent();
         MRI.replaceRegWith(DstReg, SrcReg);
