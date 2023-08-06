@@ -672,9 +672,8 @@ public:
     // This is a no-op in Version4 (coverage mappings are not affixed to the
     // coverage header).
     const char *MappingBuf = CovBuf;
-    if (Version >= CovMapVersion::Version4 && CoverageSize != 0)
-      return make_error<CoverageMapError>(coveragemap_error::malformed);
-    CovBuf += CoverageSize;
+    if (Version < CovMapVersion::Version4)
+      CovBuf += CoverageSize;
     const char *MappingEnd = CovBuf;
 
     if (CovBuf > CovBufEnd)
@@ -905,9 +904,8 @@ loadTestingFormat(StringRef Data, StringRef CompilationDir) {
       return make_error<CoverageMapError>(coveragemap_error::truncated);
     CoverageRecords = MemoryBuffer::getMemBuffer("");
   } else {
-    uint32_t FilenamesSize =
-        CovHeader->getFilenamesSize<support::endianness::little>();
-    uint32_t CoverageMappingSize = sizeof(CovMapHeader) + FilenamesSize;
+    uint32_t CoverageMappingSize =
+        CovHeader->getCoverageSize<support::endianness::little>();
     CoverageMapping = Data.substr(0, CoverageMappingSize);
     if (CoverageMapping.empty())
       return make_error<CoverageMapError>(coveragemap_error::truncated);

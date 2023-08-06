@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/Object/ObjectFile.h"
+#include "llvm/ProfileData/Coverage/CoverageMapping.h"
 #include "llvm/ProfileData/InstrProf.h"
 #include "llvm/Support/Alignment.h"
 #include "llvm/Support/CommandLine.h"
@@ -18,6 +19,7 @@
 #include <system_error>
 
 using namespace llvm;
+using namespace coverage;
 using namespace object;
 
 int convertForTestingMain(int argc, const char *argv[]) {
@@ -81,9 +83,13 @@ int convertForTestingMain(int argc, const char *argv[]) {
   StringRef CoverageMappingData;
   StringRef CoverageRecordsData;
   StringRef ProfileNamesData;
-  if (Expected<StringRef> E = CoverageMapping.getContents())
+  if (Expected<StringRef> E = CoverageMapping.getContents()) {
     CoverageMappingData = *E;
-  else {
+    if (CoverageMappingData.size() < sizeof(CovMapHeader)) {
+      consumeError(make_error<CoverageMapError>(coveragemap_error::malformed));
+      return 1;
+    }
+  } else {
     consumeError(E.takeError());
     return 1;
   }
@@ -114,7 +120,24 @@ int convertForTestingMain(int argc, const char *argv[]) {
   // Coverage mapping data is expected to have an alignment of 8.
   for (unsigned Pad = offsetToAlignment(OS.tell(), Align(8)); Pad; --Pad)
     OS.write(uint8_t(0));
-  OS << CoverageMappingData;
+
+  auto CovHeader =
+      reinterpret_cast<const CovMapHeader *>(CoverageMappingData.data());
+  if (CovHeader->getVersion<support::endianness::little>() <
+      CovMapVersion::Version4) {
+    OS << CoverageMappingData;
+  } else {
+    // Store the size of CoverageMappingData in the header after Version4
+    // to support multi-source covmapping.
+    CovMapHeader NewCovHeader = *CovHeader;
+    NewCovHeader.CoverageSize =
+        support::endian::byte_swap<uint32_t, support::endianness::little>(
+            CoverageMappingData.size());
+    OS.write(reinterpret_cast<const char *>(&NewCovHeader),
+             sizeof(CovMapHeader));
+    OS << CoverageMappingData.substr(sizeof(CovMapHeader));
+  }
+
   // Coverage records data is expected to have an alignment of 8.
   for (unsigned Pad = offsetToAlignment(OS.tell(), Align(8)); Pad; --Pad)
     OS.write(uint8_t(0));
