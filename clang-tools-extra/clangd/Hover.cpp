@@ -1404,7 +1404,8 @@ std::optional<HoverInfo> getHover(ParsedAST &AST, Position Pos,
 static std::string formatSize(uint64_t SizeInBits) {
   uint64_t Value = SizeInBits % 8 == 0 ? SizeInBits / 8 : SizeInBits;
   const char *Unit = Value != 0 && Value == SizeInBits ? "bit" : "byte";
-  return llvm::formatv("{0} {1}{2}", Value, Unit, Value == 1 ? "" : "s").str();
+  return llvm::formatv("{0} ({0:x}) {1}{2}", Value, Unit, Value == 1 ? "" : "s")
+      .str();
 }
 
 // Offsets are shown in bytes + bits, so offsets of different fields

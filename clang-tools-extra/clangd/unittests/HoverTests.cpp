@@ -3331,7 +3331,7 @@ TEST(Hover, Present) {
           },
           R"(class foo
 
-Size: 10 bytes
+Size: 10 (0xa) bytes
 documentation
 
 template <typename T, typename C = bool> class Foo {})",
@@ -3382,8 +3382,8 @@ template <typename T, typename C = bool> class Foo {})",
 
 Type: type (aka can_type)
 Value = value
-Offset: 12 bytes
-Size: 4 bytes (+4 bytes padding)
+Offset: 12 (0xc) bytes
+Size: 4 (0x4) bytes (+4 (0x4) bytes padding)
 
 // In test::Bar
 def)",
@@ -3404,8 +3404,8 @@ def)",
 
 Type: type (aka can_type)
 Value = value
-Offset: 4 bytes and 3 bits
-Size: 25 bits (+4 bits padding)
+Offset: 4 (0x4) bytes and 3 (0x3) bits
+Size: 25 (0x19) bits (+4 (0x4) bits padding)
 
 // In test::Bar
 def)",
