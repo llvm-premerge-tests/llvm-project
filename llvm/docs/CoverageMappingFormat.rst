@@ -260,7 +260,7 @@ too deeply).
     {
       i32 0,  ; Always 0. In prior versions, the number of affixed function records
       i32 32, ; The length of the string that contains the encoded translation unit filenames
-      i32 0,  ; Always 0. In prior versions, the length of the affixed string that contains the encoded coverage mapping data
+      i32 0,  ; Always 0 and ignored. In prior versions, the length of the affixed string that contains the encoded coverage mapping data
       i32 3,  ; Coverage mapping format version
     },
    [32 x i8] c"..." ; Encoded data (dissected later)
@@ -324,9 +324,9 @@ The coverage mapping header has the following fields:
 
 * The length of the string in the third field of *__llvm_coverage_mapping* that contains the encoded translation unit filenames.
 
-* The length of the string in the third field of *__llvm_coverage_mapping* that contains any encoded coverage mapping data affixed to the coverage header. Always 0, but present for backwards compatibility.
+* The length of the string in the third field of *__llvm_coverage_mapping* that contains any encoded coverage mapping data affixed to the coverage header. Always 0 and ignored, but present for backwards compatibility.
 
-* The format version. The current version is 4 (encoded as a 3).
+* The format version. The current version is 6 (encoded as a 5).
 
 .. _function records:
 
