@@ -213,6 +213,19 @@ concept helps support advanced use cases such as template instantiations on dema
 automatic language interoperability. It also helps static languages such as C/C++ become
 apt for data science.
 
+Execution Results Handling in Clang-Repl
+========================================
+
+:doc:`ExecutionResultsHandling` helps extend the Clang-REPL functionality by
+creating an interface between the execution results of a program and the compiled
+program. Following are its main components:
+
+- Capture Execution Results: This feature helps capture the execution results
+  of a program and bring them back to the compiled program.
+
+- Dump Captured Execution Results: This feature helps create a temporary dump
+  for Value Printing/Automatic Printf, that is, to display the value and type of
+  the captured data.
 
 Related Reading
 ===============
