@@ -938,7 +938,7 @@ public:
 
     Result(Result &&Arg) : InnerAM(std::move(Arg.InnerAM)) {
       // We have to null out the analysis manager in the moved-from state
-      // because we are taking ownership of the responsibilty to clear the
+      // because we are taking ownership of the responsibility to clear the
       // analysis state.
       Arg.InnerAM = nullptr;
     }
@@ -956,7 +956,7 @@ public:
     Result &operator=(Result &&RHS) {
       InnerAM = RHS.InnerAM;
       // We have to null out the analysis manager in the moved-from state
-      // because we are taking ownership of the responsibilty to clear the
+      // because we are taking ownership of the responsibility to clear the
       // analysis state.
       RHS.InnerAM = nullptr;
       return *this;
