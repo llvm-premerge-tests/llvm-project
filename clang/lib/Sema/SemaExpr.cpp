@@ -16692,6 +16692,10 @@ ExprResult Sema::BuildBuiltinOffsetOf(SourceLocation BuiltinLoc,
     if (!MemberDecl) {
       if ((IndirectMemberDecl = R.getAsSingle<IndirectFieldDecl>()))
         MemberDecl = IndirectMemberDecl->getAnonField();
+
+      IdentifierInfo *II = RD->getIdentifier();
+      if (II == OC.U.IdentInfo && OC.isQualifier)
+        continue;
     }
 
     if (!MemberDecl) {
