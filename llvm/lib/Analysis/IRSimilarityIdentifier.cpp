@@ -55,7 +55,7 @@ IRInstructionData::IRInstructionData(Instruction &I, bool Legality,
 void IRInstructionData::initializeInstruction() {
   // We check for whether we have a comparison instruction.  If it is, we
   // find the "less than" version of the predicate for consistency for
-  // comparison instructions throught the program.
+  // comparison instructions throughout the program.
   if (CmpInst *C = dyn_cast<CmpInst>(Inst)) {
     CmpInst::Predicate Predicate = predicateForConsistency(C);
     if (Predicate != C->getPredicate())
