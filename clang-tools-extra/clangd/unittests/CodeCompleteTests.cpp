@@ -532,45 +532,67 @@ TEST(CompletionTest, HeuristicsForMemberFunctionCompletion) {
       struct Foo {
         static int staticMethod();
         int method() const;
+        template <typename T, int U>
+        void generic(T);
+        template <typename T, int U = 3>
+        static T staticGeneric();
         Foo() {
-          this->$keepSnippet^
-          $keepSnippet^
-          Foo::$keepSnippet^
+          this->$canBeCall^
+          $canBeCall^
+          Foo::$canBeCall^
         }
       };
 
       struct Derived : Foo {
         Derived() {
-          Foo::$keepSnippet^
+          Foo::$canBeCall^
         }
       };
 
       struct OtherClass {
         OtherClass() {
           Foo f;
-          f.$keepSnippet^
-          &Foo::$noSnippet^
+          Derived d;
+          f.$canBeCall^
+          ; // Prevent parsing as 'f.f'
+          f.Foo::$canBeCall^
+          &Foo::$canNotBeCall^
+          ;
+          d.Foo::$canBeCall^
         }
       };
 
       int main() {
         Foo f;
-        f.$keepSnippet^
-        &Foo::$noSnippet^
+        Derived d;
+        f.$canBeCall^
+        ; // Prevent parsing as 'f.f'
+        f.Foo::$canBeCall^
+        &Foo::$canNotBeCall^
+        ;
+        d.Foo::$canBeCall^
       }
       )cpp");
   auto TU = TestTU::withCode(Code.code());
 
-  for (const auto &P : Code.points("noSnippet")) {
+  for (const auto &P : Code.points("canNotBeCall")) {
     auto Results = completions(TU, P, /*IndexSymbols*/ {}, Opts);
     EXPECT_THAT(Results.Completions,
                 Contains(AllOf(named("method"), snippetSuffix(""))));
+    EXPECT_THAT(
+        Results.Completions,
+        Contains(AllOf(named("generic"), signature("<typename T, int U>(T)"),
+                       snippetSuffix("<${1:typename T}, ${2:int U}>"))));
   }
 
-  for (const auto &P : Code.points("keepSnippet")) {
+  for (const auto &P : Code.points("canBeCall")) {
     auto Results = completions(TU, P, /*IndexSymbols*/ {}, Opts);
     EXPECT_THAT(Results.Completions,
                 Contains(AllOf(named("method"), snippetSuffix("()"))));
+    EXPECT_THAT(Results.Completions,
+                Contains(AllOf(
+                    named("generic"), signature("<typename T, int U>(T)"),
+                    snippetSuffix("<${1:typename T}, ${2:int U}>(${3:T})"))));
   }
 
   // static method will always keep the snippet
@@ -578,6 +600,10 @@ TEST(CompletionTest, HeuristicsForMemberFunctionCompletion) {
     auto Results = completions(TU, P, /*IndexSymbols*/ {}, Opts);
     EXPECT_THAT(Results.Completions,
                 Contains(AllOf(named("staticMethod"), snippetSuffix("()"))));
+    EXPECT_THAT(
+        Results.Completions,
+        Contains(AllOf(named("staticGeneric"), signature("<typename T>()"),
+                       snippetSuffix("<${1:typename T}>()"))));
   }
 }
 

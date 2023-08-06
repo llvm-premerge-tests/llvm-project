@@ -338,8 +338,11 @@ public:
   ///
   /// \param InBaseClass whether the result was found in a base
   /// class of the searched context.
+  ///
+  /// \param BaseType the type of expression that precedes the "." or "->"
+  /// in a member access expression.
   void AddResult(Result R, DeclContext *CurContext, NamedDecl *Hiding,
-                 bool InBaseClass);
+                 bool InBaseClass, QualType BaseType);
 
   /// Add a new non-declaration result to this result set.
   void AddResult(Result R);
@@ -1262,7 +1265,8 @@ static OverloadCompare compareOverloads(const CXXMethodDecl &Candidate,
 }
 
 void ResultBuilder::AddResult(Result R, DeclContext *CurContext,
-                              NamedDecl *Hiding, bool InBaseClass = false) {
+                              NamedDecl *Hiding, bool InBaseClass = false,
+                              QualType BaseType = QualType()) {
   if (R.Kind != Result::RK_Declaration) {
     // For non-declaration results, just add the result.
     Results.push_back(R);
@@ -1380,11 +1384,13 @@ void ResultBuilder::AddResult(Result R, DeclContext *CurContext,
         OverloadSet.Add(Method, Results.size());
       }
 
-  // When completing a non-static member function (and not via
-  // dot/arrow member access) and we're not inside that class' scope,
-  // it can't be a call.
+  // Decide whether or not a non-static member function can be a call.
   if (CompletionContext.getKind() == clang::CodeCompletionContext::CCC_Symbol) {
-    const auto *Method = dyn_cast<CXXMethodDecl>(R.getDeclaration());
+    const NamedDecl *ND = R.getDeclaration();
+    if (const auto *FuncTmpl = dyn_cast<FunctionTemplateDecl>(ND)) {
+      ND = FuncTmpl->getTemplatedDecl();
+    }
+    const auto *Method = dyn_cast<CXXMethodDecl>(ND);
     if (Method && !Method->isStatic()) {
       // Find the class scope that we're currently in.
       // We could e.g. be inside a lambda, so walk up the DeclContext until we
@@ -1400,10 +1406,24 @@ void ResultBuilder::AddResult(Result R, DeclContext *CurContext,
         return nullptr;
       }();
 
+      // When completing a non-static member function (and not via
+      // dot/arrow member access) and we're not inside that class' scope,
+      // it can't be a call.
       R.FunctionCanBeCall =
           CurrentClassScope &&
           (CurrentClassScope == Method->getParent() ||
            CurrentClassScope->isDerivedFrom(Method->getParent()));
+
+      // If the member access "." or "->" is followed by a qualified Id and the
+      // object type is derived from or the same as that of the Id, then
+      // the candidate functions should be perceived as calls.
+      if (const CXXRecordDecl *MaybeDerived = nullptr;
+          !BaseType.isNull() &&
+          (MaybeDerived = BaseType->getAsCXXRecordDecl())) {
+        auto *MaybeBase = Method->getParent();
+        R.FunctionCanBeCall =
+            MaybeDerived == MaybeBase || MaybeDerived->isDerivedFrom(MaybeBase);
+      }
     }
   }
 
@@ -1679,7 +1699,7 @@ public:
                  bool InBaseClass) override {
     ResultBuilder::Result Result(ND, Results.getBasePriority(ND), nullptr,
                                  false, IsAccessible(ND, Ctx), FixIts);
-    Results.AddResult(Result, InitialLookupCtx, Hiding, InBaseClass);
+    Results.AddResult(Result, InitialLookupCtx, Hiding, InBaseClass, BaseType);
   }
 
   void EnteredContext(DeclContext *Ctx) override {
@@ -3550,10 +3570,12 @@ CodeCompletionString *CodeCompletionResult::createCodeCompletionStringForDecl(
       }
     }
 
-    if (LastDeducibleArgument) {
+    if (LastDeducibleArgument || !FunctionCanBeCall) {
       // Some of the function template arguments cannot be deduced from a
       // function call, so we introduce an explicit template argument list
       // containing all of the arguments up to the first deducible argument.
+      // Or, if this isn't a call, emit all the template arguments
+      // to disambiguate the (potential) overloads.
       Result.AddChunk(CodeCompletionString::CK_LeftAngle);
       AddTemplateParameterChunks(Ctx, Policy, FunTmpl, Result,
                                  LastDeducibleArgument);

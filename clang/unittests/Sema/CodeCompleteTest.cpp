@@ -60,7 +60,10 @@ public:
     for (unsigned I = 0; I < NumResults; ++I) {
       auto R = Results[I];
       if (R.Kind == CodeCompletionResult::RK_Declaration) {
-        if (const auto *FD = llvm::dyn_cast<FunctionDecl>(R.getDeclaration())) {
+        auto *ND = R.getDeclaration();
+        if (auto *Template = llvm::dyn_cast<FunctionTemplateDecl>(ND))
+          ND = Template->getTemplatedDecl();
+        if (const auto *FD = llvm::dyn_cast<FunctionDecl>(ND)) {
           CompletedFunctionDecl D;
           D.Name = FD->getNameAsString();
           D.CanBeCall = R.FunctionCanBeCall;
@@ -191,6 +194,10 @@ TEST(SemaCodeCompleteTest, FunctionCanBeCall) {
     struct Foo {
       static int staticMethod();
       int method() const;
+      template <typename T, int U>
+      void generic(T);
+      template <typename T, int U = 3>
+      static T staticGeneric();
       Foo() {
         this->$canBeCall^
         $canBeCall^
@@ -207,15 +214,25 @@ TEST(SemaCodeCompleteTest, FunctionCanBeCall) {
     struct OtherClass {
       OtherClass() {
         Foo f;
+        Derived d;
         f.$canBeCall^
+        ; // Prevent parsing as 'f.f'
+        f.Foo::$canBeCall^
         &Foo::$cannotBeCall^
+        ;
+        d.Foo::$canBeCall^
       }
     };
 
     int main() {
       Foo f;
+      Derived d;
       f.$canBeCall^
+      ; // Prevent parsing as 'f.f'
+      f.Foo::$canBeCall^
       &Foo::$cannotBeCall^
+      ;
+      d.Foo::$canBeCall^
     }
     )cpp");
 
@@ -223,11 +240,15 @@ TEST(SemaCodeCompleteTest, FunctionCanBeCall) {
     auto Results = CollectCompletedFunctions(Code.code(), P);
     EXPECT_THAT(Results, Contains(AllOf(named("method"), isStatic(false),
                                         canBeCall(true))));
+    EXPECT_THAT(Results, Contains(AllOf(named("generic"), isStatic(false),
+                                        canBeCall(true))));
   }
 
   for (const auto &P : Code.points("cannotBeCall")) {
     auto Results = CollectCompletedFunctions(Code.code(), P);
     EXPECT_THAT(Results, Contains(AllOf(named("method"), isStatic(false),
+                                        canBeCall(false))));
+    EXPECT_THAT(Results, Contains(AllOf(named("generic"), isStatic(false),
                                         canBeCall(false))));
   }
 
@@ -235,6 +256,8 @@ TEST(SemaCodeCompleteTest, FunctionCanBeCall) {
   for (const auto &P : Code.points()) {
     auto Results = CollectCompletedFunctions(Code.code(), P);
     EXPECT_THAT(Results, Contains(AllOf(named("staticMethod"), isStatic(true),
+                                        canBeCall(true))));
+    EXPECT_THAT(Results, Contains(AllOf(named("staticGeneric"), isStatic(true),
                                         canBeCall(true))));
   }
 }

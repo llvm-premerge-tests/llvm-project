@@ -12,6 +12,7 @@
 #include "clang/AST/RawCommentList.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Sema/CodeCompleteConsumer.h"
+#include "llvm/Support/Compiler.h"
 #include "llvm/Support/JSON.h"
 #include <limits>
 #include <utility>
@@ -118,7 +119,8 @@ std::string getDeclComment(const ASTContext &Ctx, const NamedDecl &Decl) {
 void getSignature(const CodeCompletionString &CCS, std::string *Signature,
                   std::string *Snippet,
                   CodeCompletionResult::ResultKind ResultKind,
-                  CXCursorKind CursorKind, std::string *RequiredQualifiers) {
+                  CXCursorKind CursorKind, bool DropFunctionArguments,
+                  std::string *RequiredQualifiers) {
   // Placeholder with this index will be $0 to mark final cursor position.
   // Usually we do not add $0, so the cursor is placed at end of completed text.
   unsigned CursorSnippetArg = std::numeric_limits<unsigned>::max();
@@ -138,6 +140,15 @@ void getSignature(const CodeCompletionString &CCS, std::string *Signature,
   unsigned SnippetArg = 0;
   bool HadObjCArguments = false;
   bool HadInformativeChunks = false;
+
+  // This variable would be discarded directly at the end of this function. We
+  // store part of the chunks of snippets here if DropFunctionArguments is
+  // enabled. This way, the CCS iteration won't be interrupted, and the
+  // Signature for the function would be preserved.
+  // It is preferable if we don't produce the arguments at the clang site. But
+  // that would also lose the signatures, which could sometimes help users to
+  // understand the context.
+  std::string DiscardedSnippet;
   for (const auto &Chunk : CCS) {
     // Informative qualifier chunks only clutter completion results, skip
     // them.
@@ -244,6 +255,10 @@ void getSignature(const CodeCompletionString &CCS, std::string *Signature,
       break;
     case CodeCompletionString::CK_LeftParen:
     case CodeCompletionString::CK_RightParen:
+      if (DropFunctionArguments &&
+          ResultKind == CodeCompletionResult::RK_Declaration)
+        Snippet = &DiscardedSnippet;
+      LLVM_FALLTHROUGH;
     case CodeCompletionString::CK_LeftBracket:
     case CodeCompletionString::CK_RightBracket:
     case CodeCompletionString::CK_LeftBrace:

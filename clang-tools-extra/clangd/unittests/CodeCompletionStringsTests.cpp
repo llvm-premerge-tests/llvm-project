@@ -25,11 +25,13 @@ public:
 protected:
   void computeSignature(const CodeCompletionString &CCS,
                         CodeCompletionResult::ResultKind ResultKind =
-                            CodeCompletionResult::ResultKind::RK_Declaration) {
+                            CodeCompletionResult::ResultKind::RK_Declaration,
+                        bool DropFunctionArguments = false) {
     Signature.clear();
     Snippet.clear();
     getSignature(CCS, &Signature, &Snippet, ResultKind,
                  /*CursorKind=*/CXCursorKind::CXCursor_NotImplemented,
+                 /*DropFunctionArguments=*/DropFunctionArguments,
                  /*RequiredQualifiers=*/nullptr);
   }
 
@@ -154,6 +156,27 @@ TEST_F(CompletionStringTest, SnippetsInPatterns) {
   computeSignature(MakeCCS(),
                    /*ResultKind=*/CodeCompletionResult::ResultKind::RK_Pattern);
   EXPECT_EQ(Snippet, " ${1:name} = $0;");
+}
+
+TEST_F(CompletionStringTest, DropFunctionArguments) {
+  Builder.AddTypedTextChunk("foo");
+  Builder.AddChunk(CodeCompletionString::CK_LeftAngle);
+  Builder.AddPlaceholderChunk("typename T");
+  Builder.AddChunk(CodeCompletionString::CK_Comma);
+  Builder.AddPlaceholderChunk("int U");
+  Builder.AddChunk(CodeCompletionString::CK_RightAngle);
+  Builder.AddChunk(CodeCompletionString::CK_LeftParen);
+  Builder.AddPlaceholderChunk("arg1");
+  Builder.AddChunk(CodeCompletionString::CK_Comma);
+  Builder.AddPlaceholderChunk("arg2");
+  Builder.AddChunk(CodeCompletionString::CK_RightParen);
+
+  computeSignature(
+      *Builder.TakeString(),
+      /*ResultKind=*/CodeCompletionResult::ResultKind::RK_Declaration,
+      /*DropFunctionArguments=*/true);
+  EXPECT_EQ(Signature, "<typename T, int U>(arg1, arg2)");
+  EXPECT_EQ(Snippet, "<${1:typename T}, ${2:int U}>");
 }
 
 TEST_F(CompletionStringTest, IgnoreInformativeQualifier) {
