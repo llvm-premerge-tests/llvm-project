@@ -14,6 +14,11 @@
 
 #include "clang/AST/ODRHash.h"
 
+#include "clang/AST/APValue.h"
+#include "clang/AST/ASTContext.h"
+#include "clang/AST/CharUnits.h"
+#include "clang/AST/Decl.h"
+#include "clang/AST/DeclCXX.h"
 #include "clang/AST/DeclVisitor.h"
 #include "clang/AST/NestedNameSpecifier.h"
 #include "clang/AST/StmtVisitor.h"
@@ -180,6 +185,10 @@ void ODRHash::AddTemplateArgument(TemplateArgument TA) {
       TA.getAsIntegral().Profile(ID);
       break;
     }
+    case TemplateArgument::StructuralValue:
+      AddQualType(TA.getStructuralValueType());
+      AddStructuralValue(TA.getAsStructuralValue());
+      break;
     case TemplateArgument::Template:
     case TemplateArgument::TemplateExpansion:
       AddTemplateName(TA.getAsTemplateOrTemplatePattern());
@@ -1244,4 +1253,61 @@ void ODRHash::AddQualType(QualType T) {
 
 void ODRHash::AddBoolean(bool Value) {
   Bools.push_back(Value);
+}
+
+void ODRHash::AddStructuralValue(const APValue &Value) {
+  ID.AddInteger(Value.getKind());
+
+  // 'APValue::Profile' uses pointer values to make hash for LValue and
+  // MemberPointer, but they differ from one compiler invocation to another.
+  // So, handle them explicitly here.
+
+  switch (Value.getKind()) {
+  case APValue::LValue: {
+    const APValue::LValueBase &Base = Value.getLValueBase();
+    if (!Base) {
+      ID.AddInteger(Value.getLValueOffset().getQuantity());
+      break;
+    }
+
+    assert(Base.is<const ValueDecl *>());
+    AddDecl(Base.get<const ValueDecl *>());
+    ID.AddInteger(Value.getLValueOffset().getQuantity());
+
+    bool OnePastTheEnd = Value.isLValueOnePastTheEnd();
+    if (Value.hasLValuePath()) {
+      QualType TypeSoFar = Base.getType();
+      for (APValue::LValuePathEntry E : Value.getLValuePath()) {
+        if (auto *AT = TypeSoFar->getAsArrayTypeUnsafe()) {
+          if (auto *CAT = dyn_cast<ConstantArrayType>(AT))
+            OnePastTheEnd |= CAT->getSize() == E.getAsArrayIndex();
+          TypeSoFar = AT->getElementType();
+        } else {
+          const Decl *D = E.getAsBaseOrMember().getPointer();
+          if (auto *FD = dyn_cast<FieldDecl>(D)) {
+            if (FD->getParent()->isUnion())
+              ID.AddInteger(FD->getFieldIndex());
+            TypeSoFar = FD->getType();
+          } else {
+            TypeSoFar =
+                D->getASTContext().getRecordType(cast<CXXRecordDecl>(D));
+          }
+        }
+      }
+    }
+    ID.AddInteger((Value.isNullPointer() ? 1 : 0) | (OnePastTheEnd ? 2 : 0) |
+                  (Value.hasLValuePath() ? 4 : 0));
+    break;
+  }
+  case APValue::MemberPointer: {
+    const ValueDecl *D = Value.getMemberPointerDecl();
+    assert(D);
+    AddDecl(D);
+    ID.AddInteger(
+        D->getASTContext().getMemberPointerPathAdjustment(Value).getQuantity());
+    break;
+  }
+  default:
+    Value.Profile(ID);
+  }
 }

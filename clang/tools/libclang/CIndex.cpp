@@ -1574,6 +1574,11 @@ bool CursorVisitor::VisitTemplateArgumentLoc(const TemplateArgumentLoc &TAL) {
       return Visit(MakeCXCursor(E, StmtParent, TU, RegionOfInterest));
     return false;
 
+  case TemplateArgument::StructuralValue:
+    if (Expr *E = TAL.getSourceStructuralValueExpression())
+      return Visit(MakeCXCursor(E, StmtParent, TU, RegionOfInterest));
+    return false;
+
   case TemplateArgument::NullPtr:
     if (Expr *E = TAL.getSourceNullPtrExpression())
       return Visit(MakeCXCursor(E, StmtParent, TU, RegionOfInterest));

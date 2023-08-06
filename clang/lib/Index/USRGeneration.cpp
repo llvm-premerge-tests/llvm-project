@@ -11,6 +11,7 @@
 #include "clang/AST/Attr.h"
 #include "clang/AST/DeclTemplate.h"
 #include "clang/AST/DeclVisitor.h"
+#include "clang/AST/ODRHash.h"
 #include "clang/Basic/FileManager.h"
 #include "clang/Lex/PreprocessingRecord.h"
 #include "llvm/Support/Path.h"
@@ -1034,6 +1035,15 @@ void USRGenerator::VisitTemplateArgument(const TemplateArgument &Arg) {
     VisitType(Arg.getIntegralType());
     Out << Arg.getAsIntegral();
     break;
+
+  case TemplateArgument::StructuralValue: {
+    Out << 'S';
+    VisitType(Arg.getStructuralValueType());
+    ODRHash Hash{};
+    Hash.AddStructuralValue(Arg.getAsStructuralValue());
+    Out << Hash.CalculateHash();
+    break;
+  }
   }
 }
 

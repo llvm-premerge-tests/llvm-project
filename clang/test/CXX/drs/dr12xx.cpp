@@ -138,7 +138,7 @@ namespace dr1295 { // dr1295: 4
 #if __cplusplus <= 201402L
   // expected-error@-2 {{does not refer to any declaration}} expected-note@-3 {{here}}
 #else
-  // expected-error@-4 {{refers to subobject}}
+  // expected-error@-4 {{bind to bit-field in converted constant expression}}
 #endif
 
 #if __cplusplus >= 201103L

@@ -337,6 +337,7 @@ class MicrosoftCXXNameMangler {
 
 public:
   enum QualifierMangleMode { QMM_Drop, QMM_Mangle, QMM_Escape, QMM_Result };
+  enum class TplArgKind { ClassNTTP, StructuralValue };
 
   MicrosoftCXXNameMangler(MicrosoftMangleContextImpl &C, raw_ostream &Out_)
       : Context(C), Out(Out_), Structor(nullptr), StructorType(-1),
@@ -453,7 +454,7 @@ private:
                           const TemplateArgumentList &TemplateArgs);
   void mangleTemplateArg(const TemplateDecl *TD, const TemplateArgument &TA,
                          const NamedDecl *Parm);
-  void mangleTemplateArgValue(QualType T, const APValue &V,
+  void mangleTemplateArgValue(QualType T, const APValue &V, TplArgKind,
                               bool WithScalarType = false);
 
   void mangleObjCProtocol(const ObjCProtocolDecl *PD);
@@ -1089,7 +1090,7 @@ void MicrosoftCXXNameMangler::mangleUnqualifiedName(GlobalDecl GD,
       if (const auto *TPO = dyn_cast<TemplateParamObjectDecl>(ND)) {
         Out << "?__N";
         mangleTemplateArgValue(TPO->getType().getUnqualifiedType(),
-                               TPO->getValue());
+                               TPO->getValue(), TplArgKind::ClassNTTP);
         break;
       }
 
@@ -1605,6 +1606,22 @@ void MicrosoftCXXNameMangler::mangleTemplateArgs(
   }
 }
 
+/// If value V (with type T) represents a decayed pointer to the first element
+/// of an array, return that array.
+static ValueDecl *getAsArrayToPointerDecayedDecl(QualType T, const APValue &V) {
+  // Must be a pointer...
+  if (!T->isPointerType() || !V.isLValue() || !V.hasLValuePath() ||
+      !V.getLValueBase())
+    return nullptr;
+  // ... to element 0 of an array.
+  QualType BaseT = V.getLValueBase().getType();
+  if (!BaseT->isArrayType() || V.getLValuePath().size() != 1 ||
+      V.getLValuePath()[0].getAsArrayIndex() != 0)
+    return nullptr;
+  return const_cast<ValueDecl *>(
+      V.getLValueBase().dyn_cast<const ValueDecl *>());
+}
+
 void MicrosoftCXXNameMangler::mangleTemplateArg(const TemplateDecl *TD,
                                                 const TemplateArgument &TA,
                                                 const NamedDecl *Parm) {
@@ -1670,7 +1687,7 @@ void MicrosoftCXXNameMangler::mangleTemplateArg(const TemplateDecl *TD,
       Out << "$";
       auto *TPO = cast<TemplateParamObjectDecl>(ND);
       mangleTemplateArgValue(TPO->getType().getUnqualifiedType(),
-                             TPO->getValue());
+                             TPO->getValue(), TplArgKind::ClassNTTP);
     } else {
       mangle(ND, "$1?");
     }
@@ -1713,6 +1730,27 @@ void MicrosoftCXXNameMangler::mangleTemplateArg(const TemplateDecl *TD,
                          cast<NonTypeTemplateParmDecl>(Parm), T);
     break;
   }
+  case TemplateArgument::StructuralValue:
+    if (ValueDecl *D = getAsArrayToPointerDecayedDecl(
+            TA.getStructuralValueType(), TA.getAsStructuralValue())) {
+      // Mangle the result of array-to-pointer decay as if it were a reference
+      // to the original declaration, to match MSVC's behavior. This can result
+      // in mangling collisions in some cases!
+      return mangleTemplateArg(
+          TD, TemplateArgument(D, TA.getStructuralValueType()), Parm);
+    }
+    Out << "$";
+    if (cast<NonTypeTemplateParmDecl>(Parm)
+            ->getType()
+            ->getContainedDeducedType()) {
+      Out << "M";
+      mangleType(TA.getNonTypeTemplateArgumentType(), SourceRange(), QMM_Drop);
+    }
+    mangleTemplateArgValue(TA.getStructuralValueType(),
+                           TA.getAsStructuralValue(),
+                           TplArgKind::StructuralValue,
+                           /*WithScalarType=*/false);
+    break;
   case TemplateArgument::Expression:
     mangleExpression(TA.getAsExpr(), cast<NonTypeTemplateParmDecl>(Parm));
     break;
@@ -1755,6 +1793,7 @@ void MicrosoftCXXNameMangler::mangleTemplateArg(const TemplateDecl *TD,
 
 void MicrosoftCXXNameMangler::mangleTemplateArgValue(QualType T,
                                                      const APValue &V,
+                                                     TplArgKind TAK,
                                                      bool WithScalarType) {
   switch (V.getKind()) {
   case APValue::None:
@@ -1807,7 +1846,7 @@ void MicrosoftCXXNameMangler::mangleTemplateArgValue(QualType T,
         break;
       }
     } else {
-      if (T->isPointerType())
+      if (TAK == TplArgKind::ClassNTTP && T->isPointerType())
         Out << "5";
 
       SmallVector<char, 2> EntryTypes;
@@ -1851,12 +1890,12 @@ void MicrosoftCXXNameMangler::mangleTemplateArgValue(QualType T,
       auto *VD = Base.dyn_cast<const ValueDecl*>();
       if (!VD)
         break;
-      Out << "E";
+      Out << (TAK == TplArgKind::ClassNTTP ? 'E' : '1');
       mangle(VD);
 
       for (const std::function<void()> &Mangler : EntryManglers)
         Mangler();
-      if (T->isPointerType())
+      if (TAK == TplArgKind::ClassNTTP && T->isPointerType())
         Out << '@';
     }
 
@@ -1870,11 +1909,18 @@ void MicrosoftCXXNameMangler::mangleTemplateArgValue(QualType T,
     const CXXRecordDecl *RD =
         T->castAs<MemberPointerType>()->getMostRecentCXXRecordDecl();
     const ValueDecl *D = V.getMemberPointerDecl();
-    if (T->isMemberDataPointerType())
-      mangleMemberDataPointerInClassNTTP(RD, D);
-    else
-      mangleMemberFunctionPointerInClassNTTP(RD,
-                                             cast_or_null<CXXMethodDecl>(D));
+    if (TAK == TplArgKind::ClassNTTP) {
+      if (T->isMemberDataPointerType())
+        mangleMemberDataPointerInClassNTTP(RD, D);
+      else
+        mangleMemberFunctionPointerInClassNTTP(RD,
+                                               cast_or_null<CXXMethodDecl>(D));
+    } else {
+      if (T->isMemberDataPointerType())
+        mangleMemberDataPointer(RD, D, "");
+      else
+        mangleMemberFunctionPointer(RD, cast_or_null<CXXMethodDecl>(D), "");
+    }
     return;
   }
 
@@ -1886,11 +1932,11 @@ void MicrosoftCXXNameMangler::mangleTemplateArgValue(QualType T,
 
     unsigned BaseIndex = 0;
     for (const CXXBaseSpecifier &B : RD->bases())
-      mangleTemplateArgValue(B.getType(), V.getStructBase(BaseIndex++));
+      mangleTemplateArgValue(B.getType(), V.getStructBase(BaseIndex++), TAK);
     for (const FieldDecl *FD : RD->fields())
       if (!FD->isUnnamedBitfield())
         mangleTemplateArgValue(FD->getType(),
-                               V.getStructField(FD->getFieldIndex()),
+                               V.getStructField(FD->getFieldIndex()), TAK,
                                /*WithScalarType*/ true);
     Out << '@';
     return;
@@ -1901,7 +1947,7 @@ void MicrosoftCXXNameMangler::mangleTemplateArgValue(QualType T,
     mangleType(T, SourceRange(), QMM_Escape);
     if (const FieldDecl *FD = V.getUnionField()) {
       mangleUnqualifiedName(FD);
-      mangleTemplateArgValue(FD->getType(), V.getUnionValue());
+      mangleTemplateArgValue(FD->getType(), V.getUnionValue(), TAK);
     }
     Out << '@';
     return;
@@ -1933,7 +1979,7 @@ void MicrosoftCXXNameMangler::mangleTemplateArgValue(QualType T,
       const APValue &ElemV = I < V.getArrayInitializedElts()
                                  ? V.getArrayInitializedElt(I)
                                  : V.getArrayFiller();
-      mangleTemplateArgValue(ElemT, ElemV);
+      mangleTemplateArgValue(ElemT, ElemV, TAK);
       Out << '@';
     }
     Out << '@';
@@ -1950,7 +1996,7 @@ void MicrosoftCXXNameMangler::mangleTemplateArgValue(QualType T,
     mangleType(ElemT, SourceRange(), QMM_Escape);
     for (unsigned I = 0, N = V.getVectorLength(); I != N; ++I) {
       const APValue &ElemV = V.getVectorElt(I);
-      mangleTemplateArgValue(ElemT, ElemV);
+      mangleTemplateArgValue(ElemT, ElemV, TAK);
       Out << '@';
     }
     Out << "@@";

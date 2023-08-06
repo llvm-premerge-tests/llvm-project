@@ -5845,6 +5845,15 @@ static ExprResult BuildConvertedConstantExpression(Sema &S, Expr *From,
                                   /*InOverloadResolution=*/false,
                                   /*AllowObjCWritebackConversion=*/false,
                                   /*AllowExplicit=*/false);
+
+  // TryCopyInitialization returns incorrect info for attempts to bind reference
+  // to bit-field due to C++ [over.ics.ref]p4, so check it here.
+  if (From->refersToBitField() && T.getTypePtr()->isReferenceType()) {
+    return S.Diag(From->getBeginLoc(),
+                  diag::err_reference_bind_to_bitfield_in_cce)
+           << From->getSourceRange();
+  }
+
   StandardConversionSequence *SCS = nullptr;
   switch (ICS.getKind()) {
   case ImplicitConversionSequence::StandardConversion:
@@ -5978,7 +5987,9 @@ static ExprResult EvaluateConvertedConstantExpression(
 
     if (Notes.empty()) {
       // It's a constant expression.
-      Expr *E = ConstantExpr::Create(S.Context, Result.get(), Value);
+      Expr *E = Result.get();
+      if (!isa<ConstantExpr>(E))
+        E = ConstantExpr::Create(S.Context, Result.get(), Value);
       if (!PreNarrowingValue.isAbsent())
         Value = std::move(PreNarrowingValue);
       return E;
