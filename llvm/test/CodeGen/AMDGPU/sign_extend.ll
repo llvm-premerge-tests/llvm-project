@@ -253,7 +253,7 @@ define amdgpu_kernel void @s_sext_i1_to_i16(ptr addrspace(1) %out, i32 %a, i32 %
 }
 
 ; This purpose of this test is to make sure the i16 = sign_extend i1 node
-; makes it all the way throught the legalizer/optimizer to make sure
+; makes it all the way through the legalizer/optimizer to make sure
 ; we select this correctly.  In the s_sext_i1_to_i16, the sign_extend node
 ; is optimized to a select very early.
 define amdgpu_kernel void @s_sext_i1_to_i16_with_and(ptr addrspace(1) %out, i32 %a, i32 %b, i32 %c, i32 %d) nounwind {

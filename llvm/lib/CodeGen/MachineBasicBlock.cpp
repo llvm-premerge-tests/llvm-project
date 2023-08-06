@@ -1561,7 +1561,7 @@ void MachineBasicBlock::setSuccProbability(succ_iterator I,
   *getProbabilityIterator(I) = Prob;
 }
 
-/// Return probability iterator corresonding to the I successor iterator
+/// Return probability iterator corresponding to the I successor iterator
 MachineBasicBlock::const_probability_iterator
 MachineBasicBlock::getProbabilityIterator(
     MachineBasicBlock::const_succ_iterator I) const {
@@ -1571,7 +1571,7 @@ MachineBasicBlock::getProbabilityIterator(
   return Probs.begin() + index;
 }
 
-/// Return probability iterator corresonding to the I successor iterator.
+/// Return probability iterator corresponding to the I successor iterator.
 MachineBasicBlock::probability_iterator
 MachineBasicBlock::getProbabilityIterator(MachineBasicBlock::succ_iterator I) {
   assert(Probs.size() == Successors.size() && "Async probability list!");

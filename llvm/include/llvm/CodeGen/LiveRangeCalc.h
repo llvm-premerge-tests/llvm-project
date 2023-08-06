@@ -86,7 +86,7 @@ class LiveRangeCalc {
   ///  2. LiveOut[MBB].second.getNode() == MBB
   ///     The live-out value is defined in MBB.
   ///  3. forall P in preds(MBB): LiveOut[P] == LiveOut[MBB]
-  ///     The live-out value passses through MBB. All predecessors must carry
+  ///     The live-out value passes through MBB. All predecessors must carry
   ///     the same value.
   ///
   /// The domtree node may be null, it can be computed.
