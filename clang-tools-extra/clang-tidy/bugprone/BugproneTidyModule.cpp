@@ -10,6 +10,7 @@
 #include "../ClangTidyModule.h"
 #include "../ClangTidyModuleRegistry.h"
 #include "../cppcoreguidelines/NarrowingConversionsCheck.h"
+#include "AllocationBoolConversionCheck.h"
 #include "ArgumentCommentCheck.h"
 #include "AssertSideEffectCheck.h"
 #include "AssignmentInIfConditionCheck.h"
@@ -91,6 +92,8 @@ namespace bugprone {
 class BugproneModule : public ClangTidyModule {
 public:
   void addCheckFactories(ClangTidyCheckFactories &CheckFactories) override {
+    CheckFactories.registerCheck<AllocationBoolConversionCheck>(
+        "bugprone-allocation-bool-conversion");
     CheckFactories.registerCheck<ArgumentCommentCheck>(
         "bugprone-argument-comment");
     CheckFactories.registerCheck<AssertSideEffectCheck>(

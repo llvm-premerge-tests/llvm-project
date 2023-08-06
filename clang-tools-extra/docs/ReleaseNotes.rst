@@ -116,6 +116,11 @@ Improvements to clang-tidy
 New checks
 ^^^^^^^^^^
 
+- New :doc:`bugprone-allocation-bool-conversion
+  <clang-tidy/checks/bugprone/allocation-bool-conversion>` check.
+
+  Detects cases where the result of a resource allocation is used as a ``bool``.
+
 - New :doc:`bugprone-inc-dec-in-conditions
   <clang-tidy/checks/bugprone/inc-dec-in-conditions>` check.
 
