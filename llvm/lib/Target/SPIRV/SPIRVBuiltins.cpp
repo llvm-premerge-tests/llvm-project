@@ -901,7 +901,7 @@ static bool generateGroupInst(const SPIRV::IncomingCall *Call,
 }
 
 // These queries ask for a single size_t result for a given dimension index, e.g
-// size_t get_global_id(uint dimindex). In SPIR-V, the builtins corresonding to
+// size_t get_global_id(uint dimindex). In SPIR-V, the builtins corresponding to
 // these values are all vec3 types, so we need to extract the correct index or
 // return defaultVal (0 or 1 depending on the query). We also handle extending
 // or tuncating in case size_t does not match the expected result type's

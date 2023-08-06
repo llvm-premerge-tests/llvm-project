@@ -5873,7 +5873,7 @@ bool AArch64InstructionSelector::selectIntrinsicWithSideEffects(
     Register SizeUse = I.getOperand(4).getReg();
 
     // MOPSMemorySetTaggingPseudo has two defs; the intrinsic call has only one.
-    // Therefore an additional virtual register is requried for the updated size
+    // Therefore an additional virtual register is required for the updated size
     // operand. This value is not accessible via the semantics of the intrinsic.
     Register SizeDef = MRI.createGenericVirtualRegister(LLT::scalar(64));
 
