@@ -1,6 +1,16 @@
-# RUN: env LLVM_SYMBOLIZER_OPTS='0 1 --verbose' llvm-symbolizer 2 | FileCheck %s
-# RUN: env LLVM_ADDR2LINE_OPTS='0 1 --verbose' llvm-addr2line 2 | FileCheck %s
+RUN: env LLVM_SYMBOLIZER_OPTS='-e %p/Inputs/discrim --verbose' llvm-symbolizer 0x400590 | FileCheck --check-prefix=SYMB %s
+RUN: env LLVM_ADDR2LINE_OPTS='-e %p/Inputs/discrim --verbose' llvm-addr2line 0x400590 | FileCheck %s
 
-# CHECK:      0
-# CHECK-NEXT: 1
-# CHECK-NEXT: 2
+SYMB:      foo
+SYMB-NEXT: Filename: /tmp{{[\\/]}}discrim.c
+SYMB-NEXT: Function start filename: /tmp{{[\\/]}}discrim.c
+SYMB-NEXT: Function start line: 4
+SYMB-NEXT: Function start address: 0x400590
+SYMB-NEXT: Line: 5
+SYMB-NEXT: Column: 7
+
+CHECK:      Filename: /tmp{{[\\/]}}discrim.c
+CHECK-NEXT: Function start filename: /tmp{{[\\/]}}discrim.c
+CHECK-NEXT: Function start line: 4
+CHECK-NEXT: Line: 5
+CHECK-NEXT: Column: 7

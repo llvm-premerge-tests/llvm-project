@@ -22,7 +22,7 @@ RUN:   | FileCheck %s --check-prefix=LLVM
 
 LLVM: x.c:14:0
 LLVM-EMPTY:
-LLVM-NEXT: some text2
+LLVM-NEXT: ??
 
 GNU: x.c:14
-GNU-NEXT: some text2
+GNU-NEXT: ??
