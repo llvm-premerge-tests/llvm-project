@@ -21,7 +21,7 @@
 ; LOOP: [[LOOP:.LBB[0-9]+_[0-9]+]]:
 ; LOOP-NEXT: s_setreg_imm32_b32 hwreg(HW_REG_TRAPSTS, 8, 1), 0
 ; LOOP-NEXT: ds_gws_init v0 gds
-; LOOP-NEXT: s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; LOOP-NEXT: s_waitcnt expcnt(0) lgkmcnt(0)
 ; LOOP-NEXT: s_getreg_b32 [[GETREG:s[0-9]+]], hwreg(HW_REG_TRAPSTS, 8, 1)
 ; LOOP-NEXT: s_cmp_lg_u32 [[GETREG]], 0
 ; LOOP-NEXT: s_cbranch_scc1 [[LOOP]]
@@ -42,7 +42,7 @@ define amdgpu_kernel void @gws_init_offset0(i32 %val) #0 {
 ; LOOP: [[LOOP:.LBB[0-9]+_[0-9]+]]:
 ; LOOP-NEXT: s_setreg_imm32_b32 hwreg(HW_REG_TRAPSTS, 8, 1), 0
 ; LOOP-NEXT: ds_gws_init v0 offset:63 gds
-; LOOP-NEXT: s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; LOOP-NEXT: s_waitcnt expcnt(0) lgkmcnt(0)
 ; LOOP-NEXT: s_getreg_b32 [[GETREG:s[0-9]+]], hwreg(HW_REG_TRAPSTS, 8, 1)
 ; LOOP-NEXT: s_cmp_lg_u32 [[GETREG]], 0
 ; LOOP-NEXT: s_cbranch_scc1 [[LOOP]]
@@ -146,7 +146,7 @@ define amdgpu_kernel void @gws_init_save_m0_init_constant_offset(i32 %val) #0 {
 ; GCN-LABEL: {{^}}gws_init_lgkmcnt:
 ; NOLOOP: s_mov_b32 m0, 0{{$}}
 ; NOLOOP: ds_gws_init v0 gds{{$}}
-; NOLOOP-NEXT: s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; NOLOOP-NEXT: s_waitcnt expcnt(0) lgkmcnt(0)
 ; NOLOOP-NEXT: s_setpc_b64
 define void @gws_init_lgkmcnt(i32 %val) {
   call void @llvm.amdgcn.ds.gws.init(i32 %val, i32 0)
@@ -158,7 +158,7 @@ define void @gws_init_lgkmcnt(i32 %val) {
 ; NOLOOP: s_waitcnt lgkmcnt(0)
 ; NOLOOP-NOT: s_waitcnt
 ; NOLOOP: ds_gws_init
-; NOLOOP-NEXT: s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; NOLOOP-NEXT: s_waitcnt {{(vmcnt\(0\) )?}}expcnt(0) lgkmcnt(0)
 define amdgpu_kernel void @gws_init_wait_before(i32 %val, ptr addrspace(1) %ptr) #0 {
   store i32 0, ptr addrspace(1) %ptr
   call void @llvm.amdgcn.ds.gws.init(i32 %val, i32 7)

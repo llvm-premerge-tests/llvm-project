@@ -19,7 +19,7 @@
 ; LOOP: [[LOOP:.LBB[0-9]+_[0-9]+]]:
 ; LOOP-NEXT: s_setreg_imm32_b32 hwreg(HW_REG_TRAPSTS, 8, 1), 0
 ; LOOP-NEXT: ds_gws_sema_v gds
-; LOOP-NEXT: s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; LOOP-NEXT: s_waitcnt expcnt(0) lgkmcnt(0)
 ; LOOP-NEXT: s_getreg_b32 [[GETREG:s[0-9]+]], hwreg(HW_REG_TRAPSTS, 8, 1)
 ; LOOP-NEXT: s_cmp_lg_u32 [[GETREG]], 0
 ; LOOP-NEXT: s_cbranch_scc1 [[LOOP]]

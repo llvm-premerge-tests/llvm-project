@@ -179,7 +179,7 @@ body: |
 
 # GCN-LABEL: name: preexisting_waitcnt{{$}}
 # GCN: FLAT_LOAD_DWORD
-# GCN-NEXT: S_WAITCNT 0
+# GCN-NEXT: S_WAITCNT 112
 # GCN-NOT: S_WAITCNT
 name: preexisting_waitcnt
 tracksRegLiveness: true
@@ -238,7 +238,7 @@ body: |
     ; GCN-NEXT: $agpr0 = FLAT_LOAD_DWORD $vgpr2_vgpr3, 0, 0, implicit $exec, implicit $flat_scr
     ; GCN-NEXT: BUNDLE {
     ; GCN-NEXT:   S_NOP 0
-    ; GCN-NEXT:   S_WAITCNT 0
+    ; GCN-NEXT:   S_WAITCNT 112
     ; GCN-NEXT: }
     ; GCN-NEXT: FLAT_STORE_DWORD $vgpr2_vgpr3, $agpr0, 0, 0, implicit $exec, implicit $flat_scr
     $agpr0 = FLAT_LOAD_DWORD $vgpr2_vgpr3, 0, 0, implicit $exec, implicit $flat_scr

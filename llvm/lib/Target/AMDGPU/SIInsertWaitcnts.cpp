@@ -292,6 +292,13 @@ public:
     VgprVmemTypes[GprNo] = 0;
   }
 
+  void setNonKernelFunctionInitialState() {
+    for (InstCounterType Counter : inst_counter_types()) {
+      setScoreUB(Counter, getWaitCountMax(Counter));
+      PendingEvents |= WaitEventMaskForInst[Counter];
+    }
+  }
+
   void print(raw_ostream &);
   void dump() { print(dbgs()); }
 
@@ -886,11 +893,12 @@ bool SIInsertWaitcnts::applyPreexistingWaitcnt(
       if (!TrackedWaitcntSet.count(&II)) {
         unsigned IEnc = II.getOperand(0).getImm();
         AMDGPU::Waitcnt OldWait = AMDGPU::decodeWaitcnt(IV, IEnc);
+        ScoreBrackets.simplifyWaitcnt(OldWait);
         Wait = Wait.combined(OldWait);
       }
 
       // Merge consecutive waitcnt of the same type by erasing multiples.
-      if (!WaitcntInstr) {
+      if (!WaitcntInstr && Wait.hasWaitExceptVsCnt()) {
         WaitcntInstr = &II;
       } else {
         II.eraseFromParent();
@@ -903,10 +911,11 @@ bool SIInsertWaitcnts::applyPreexistingWaitcnt(
       if (!TrackedWaitcntSet.count(&II)) {
         unsigned OldVSCnt =
             TII->getNamedOperand(II, AMDGPU::OpName::simm16)->getImm();
+        ScoreBrackets.simplifyWaitcnt(InstCounterType::VS_CNT, OldVSCnt);
         Wait.VsCnt = std::min(Wait.VsCnt, OldVSCnt);
       }
 
-      if (!WaitcntVsCntInstr) {
+      if (!WaitcntVsCntInstr && Wait.hasWaitVsCnt()) {
         WaitcntVsCntInstr = &II;
       } else {
         II.eraseFromParent();
@@ -1851,6 +1860,11 @@ bool SIInsertWaitcnts::runOnMachineFunction(MachineFunction &MF) {
          I != E && (I->isPHI() || I->isMetaInstruction()); ++I)
       ;
     BuildMI(EntryBB, I, DebugLoc(), TII->get(AMDGPU::S_WAITCNT)).addImm(0);
+
+    auto NonKernelInitialState =
+        std::make_unique<WaitcntBrackets>(ST, Limits, Encoding);
+    NonKernelInitialState->setNonKernelFunctionInitialState();
+    BlockInfos[&EntryBB].Incoming = std::move(NonKernelInitialState);
 
     Modified = true;
   }
