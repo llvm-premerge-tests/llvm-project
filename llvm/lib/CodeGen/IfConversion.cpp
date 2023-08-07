@@ -542,8 +542,7 @@ bool IfConverter::runOnMachineFunction(MachineFunction &MF) {
         LLVM_DEBUG(dbgs() << (RetVal ? "succeeded!" : "failed!") << "\n");
         if (RetVal) {
           if (isFalse) {
-            if (isRev) ++NumTriangleFRev;
-            else       ++NumTriangleFalse;
+            ++NumTriangleFalse;
           } else {
             if (isRev) ++NumTriangleRev;
             else       ++NumTriangle;
