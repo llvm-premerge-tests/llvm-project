@@ -220,6 +220,10 @@ public:
 
   void getPostRAMutations(std::vector<std::unique_ptr<ScheduleDAGMutation>>
                               &Mutations) const override;
+
+  /// Enable use of alias analysis during code generation (during MI
+  /// scheduling, DAGCombine, etc.).
+  bool useAA() const override { return true; }
 };
 } // End llvm namespace
 
