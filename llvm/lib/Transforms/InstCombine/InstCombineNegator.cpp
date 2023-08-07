@@ -236,8 +236,27 @@ std::array<Value *, 2> Negator::getSortedOperandsOfBinOp(Instruction *I) {
     // `sub` is always negatible.
     // However, only do this either if the old `sub` doesn't stick around, or
     // it was subtracting from a constant. Otherwise, this isn't profitable.
-    return Builder.CreateSub(I->getOperand(1), I->getOperand(0),
-                             I->getName() + ".neg");
+    bool Flag = false;
+    if (I->hasOneUse() && I->hasNoSignedWrap()) {
+      // Propagate flag nsw/nuw only when the single use of the I to avoid
+      // affecting other users.
+      auto *User = *I->users().begin();
+      Instruction *UI = dyn_cast<Instruction>(User);
+      if (UI && UI->getOpcode() == Instruction::Sub) {
+        Value *Op0;
+        // Make sure the UI is a negation operand
+        if (match(UI, m_NSWSub(m_Value(Op0), m_Value())) &&
+            match(Op0, m_ZeroInt()) && UI->hasNoSignedWrap()) {
+          Flag = true;
+        }
+      }
+    }
+    auto *BO = Builder.CreateSub(I->getOperand(1), I->getOperand(0),
+                                 I->getName() + ".neg");
+    auto *NewI = dyn_cast<BinaryOperator>(BO);
+    if (Flag && NewI)
+      NewI->setHasNoSignedWrap();
+    return BO;
   }
 
   // Some other cases, while still don't require recursion,
