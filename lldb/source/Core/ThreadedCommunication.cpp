@@ -60,12 +60,6 @@ ThreadedCommunication::~ThreadedCommunication() {
            this, GetBroadcasterName());
 }
 
-void ThreadedCommunication::Clear() {
-  SetReadThreadBytesReceivedCallback(nullptr, nullptr);
-  StopReadThread(nullptr);
-  Communication::Clear();
-}
-
 ConnectionStatus ThreadedCommunication::Disconnect(Status *error_ptr) {
   assert((!m_read_thread_enabled || m_read_thread_did_exit) &&
          "Disconnecting while the read thread is running is racy!");
