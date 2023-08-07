@@ -2190,7 +2190,10 @@ void Generic_GCC::GCCInstallationDetector::init(
     }
 
     // Skip other prefixes once a GCC installation is found.
-    if (Version > VersionZero)
+    // Solaris GCC installations live in separate Prefixes per Version
+    // (/usr/gcc/<Version>) that arrive in directory order, so check all
+    // of them to determine the latest.
+    if (Version > VersionZero && !TargetTriple.isOSSolaris())
       break;
   }
 }
