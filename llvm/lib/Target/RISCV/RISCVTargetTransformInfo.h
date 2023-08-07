@@ -75,6 +75,14 @@ public:
                                       const APInt &Imm, Type *Ty,
                                       TTI::TargetCostKind CostKind);
 
+  /// \name Vector Predication Information
+  /// Whether the target supports the %evl parameter of VP intrinsic efficiently
+  /// in hardware, for the given opcode and type/alignment. (see LLVM Language
+  /// Reference - "Vector Predication Intrinsics",
+  /// https://llvm.org/docs/LangRef.html#vector-predication-intrinsics).
+  bool hasActiveVectorLength(unsigned Opcode, Type *DataType,
+                             Align Alignment) const;
+
   TargetTransformInfo::PopcntSupportKind getPopcntSupport(unsigned TyWidth);
 
   bool shouldExpandReduction(const IntrinsicInst *II) const;

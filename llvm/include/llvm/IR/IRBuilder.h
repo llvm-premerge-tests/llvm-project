@@ -2547,6 +2547,12 @@ public:
 
   Value *createIsFPClass(Value *FPNum, unsigned Test);
 
+  /// Return an all true boolean vector of size and scalability \p NumElts.
+  Value *getTrueVector(ElementCount NumElts) {
+    VectorType *VTy = VectorType::get(Type::getInt1Ty(Context), NumElts);
+    return Constant::getAllOnesValue(VTy);
+  }
+
 private:
   /// Helper function that creates an assume intrinsic call that
   /// represents an alignment assumption on the provided pointer \p PtrValue

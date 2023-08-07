@@ -301,13 +301,26 @@ Value *VPInstruction::generateInstruction(VPTransformState &State,
   }
   case VPInstruction::CanonicalIVIncrement:
   case VPInstruction::CanonicalIVIncrementNUW: {
+    bool HasEVL = getNumOperands() == 2;
+    Value *EVL = HasEVL ? State.get(getOperand(1), Part) : nullptr;
+    assert((!HasEVL || Part == 0) &&
+           "Expected unroll factor 1 for VP vectorization.");
     if (Part == 0) {
       bool IsNUW = getOpcode() == VPInstruction::CanonicalIVIncrementNUW;
       auto *Phi = State.get(getOperand(0), 0);
+      if (HasEVL) {
+        assert(EVL->getType()->getScalarSizeInBits() <=
+                   Phi->getType()->getScalarSizeInBits() &&
+               "EVL type must be smaller than Phi type.");
+        EVL = Builder.CreateIntCast(EVL, Phi->getType(), /*isSigned=*/false);
+        assert(State.UF == 1 &&
+               "Expected unroll factor 1 for VP vectorization.");
+      }
       // The loop step is equal to the vectorization factor (num of SIMD
       // elements) times the unroll factor (num of SIMD instructions).
       Value *Step =
-          createStepForVF(Builder, Phi->getType(), State.VF, State.UF);
+          HasEVL ? EVL
+                 : createStepForVF(Builder, Phi->getType(), State.VF, State.UF);
       return Builder.CreateAdd(Phi, Step, Name, IsNUW, false);
     }
     return State.get(this, 0);
@@ -1123,6 +1136,46 @@ void VPCanonicalIVPHIRecipe::print(raw_ostream &O, const Twine &Indent,
   O << Indent << "EMIT ";
   printAsOperand(O, SlotTracker);
   O << " = CANONICAL-INDUCTION";
+}
+#endif
+
+void VPEVLRecipe::execute(VPTransformState &State) {
+  // Set EVL
+  auto GetSetVL = [=](VPTransformState &State, Value *EVL) {
+    assert(EVL->getType()->isIntegerTy() &&
+           "Requested vector length should be an integer.");
+
+    // TODO: Add support for MaxSafeDist for correct loop emission.
+    Value *VFArg = State.Builder.getInt32(State.VF.getKnownMinValue());
+
+    Value *GVL = State.Builder.CreateIntrinsic(
+        State.Builder.getInt32Ty(), Intrinsic::experimental_get_vector_length,
+        {EVL, VFArg, State.Builder.getInt1(State.VF.isScalable())});
+    return GVL;
+  };
+  // TODO: Restructure this code with an explicit remainder loop, vsetvli can be
+  // outside of the main loop that allows to use interleave or unroll in the
+  // main loop.
+  assert(State.UF < 2 && "Neither unrolling, nor interleaving is supported by "
+                         "predicated vectorization.");
+  for (unsigned Part = 0, UF = State.UF; Part < UF; ++Part) {
+    // Compute TC - IV as the EVL(requested vector length).
+    Value *IV = State.get(getIV(), Part);
+    Value *TripCount = State.get(getVectorTripCount(), Part);
+    Value *EVL = State.Builder.CreateSub(TripCount, IV);
+    Value *SetVL = GetSetVL(State, EVL);
+    State.set(this, SetVL, Part);
+  }
+  State.EVL = this;
+}
+
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+void VPEVLRecipe::print(raw_ostream &O, const Twine &Indent,
+                        VPSlotTracker &SlotTracker) const {
+  O << Indent << "EMIT ";
+  printAsOperand(O, SlotTracker);
+  O << " = EXPLICIT-VECTOR-LENGTH ";
+  printOperands(O, SlotTracker);
 }
 #endif
 

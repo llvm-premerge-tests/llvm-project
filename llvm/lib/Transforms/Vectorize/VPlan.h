@@ -241,6 +241,12 @@ struct VPTransformState {
   ElementCount VF;
   unsigned UF;
 
+  /// If EVL is not nullptr, then EVL must be a valid value set during plan
+  /// creation, possibly a default value = whole vector register length. EVL is
+  /// created only if TTI prefers predicated vectorization, thus if EVL is
+  /// not nullptr it also implies preference for predicated vectorization.
+  VPValue *EVL = nullptr;
+
   /// Hold the indices to generate specific scalar instructions. Null indicates
   /// that all instances are to be generated, using either scalar or vector
   /// instructions.
@@ -2041,6 +2047,35 @@ public:
   /// canonical IV.
   bool isCanonical(InductionDescriptor::InductionKind Kind, VPValue *Start,
                    VPValue *Step, Type *Ty) const;
+};
+
+/// A recipe to generate an Explicit Vector Length (EVL) value to be used with
+/// vector predication intrinsics.
+/// For architectures like RISC-V, which have special instruction to
+/// compute/set an explicit vector length, it relies on an experimental
+/// intrinsic set_vector_length, that can be lowered to architecture specific
+/// instruction(s) to compute EVL.
+struct VPEVLRecipe : public VPRecipeBase, public VPValue {
+  VPEVLRecipe(VPValue *IV, VPValue *TC)
+      : VPRecipeBase(VPDef::VPEVLSC, {IV, TC}), VPValue(this) {}
+  ~VPEVLRecipe() override = default;
+
+  /// Return VPValue representing Induction Variable.
+  VPValue *getIV() const { return getOperand(0); }
+
+  /// Return VPValue representing vector trip count.
+  VPValue *getVectorTripCount() const { return getOperand(1); }
+
+  VP_CLASSOF_IMPL(VPDef::VPEVLSC)
+
+  /// Generate the instructions to compute EVL.
+  void execute(VPTransformState &State) override;
+
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+  /// Print the recipe.
+  void print(raw_ostream &O, const Twine &Indent,
+             VPSlotTracker &SlotTracker) const override;
+#endif
 };
 
 /// A recipe for generating the active lane mask for the vector loop that is
