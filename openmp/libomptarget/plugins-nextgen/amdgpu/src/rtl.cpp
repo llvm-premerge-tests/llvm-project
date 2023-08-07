@@ -253,6 +253,13 @@ struct AMDGPUMemoryPoolTy {
     return Plugin::check(Status, "Error in hsa_amd_agents_allow_access: %s");
   }
 
+  Error zeroInitializeMemory(void *Ptr, size_t Size) {
+    uint64_t Rounded = sizeof(uint32_t) * ((Size + 3) / sizeof(uint32_t));
+    hsa_status_t Status =
+        hsa_amd_memory_fill(Ptr, 0, Rounded / sizeof(uint32_t));
+    return Plugin::check(Status, "Error in hsa_amd_memory_fill: %s");
+  }
+
   /// Get attribute from the memory pool.
   template <typename Ty>
   Error getAttr(hsa_amd_memory_pool_info_t Kind, Ty &Value) const {
@@ -381,6 +388,9 @@ struct AMDGPUDeviceImageTy : public DeviceImageTy {
   /// Get the executable.
   hsa_executable_t getExecutable() const { return Executable; }
 
+  /// Get to Code Object Version of the ELF
+  uint16_t getELFABIVersion() const { return ELFABIVersion; }
+
   /// Find an HSA device symbol by its name on the executable.
   Expected<hsa_executable_symbol_t>
   findDeviceSymbol(GenericDeviceTy &Device, StringRef SymbolName) const;
@@ -401,6 +411,7 @@ private:
   hsa_executable_t Executable;
   hsa_code_object_t CodeObject;
   StringMap<utils::KernelMetaDataTy> KernelInfoMap;
+  uint16_t ELFABIVersion;
 };
 
 /// Class implementing the AMDGPU kernel functionalities which derives from the
@@ -408,8 +419,7 @@ private:
 struct AMDGPUKernelTy : public GenericKernelTy {
   /// Create an AMDGPU kernel with a name and an execution mode.
   AMDGPUKernelTy(const char *Name, OMPTgtExecModeFlags ExecutionMode)
-      : GenericKernelTy(Name, ExecutionMode),
-        ImplicitArgsSize(sizeof(utils::AMDGPUImplicitArgsTy)) {}
+      : GenericKernelTy(Name, ExecutionMode) {}
 
   /// Initialize the AMDGPU kernel.
   Error initImpl(GenericDeviceTy &Device, DeviceImageTy &Image) override {
@@ -450,6 +460,12 @@ struct AMDGPUKernelTy : public GenericKernelTy {
     // TODO: Read the kernel descriptor for the max threads per block. May be
     // read from the image.
 
+    ImplicitArgsSize =
+        (AMDImage.getELFABIVersion() < llvm::ELF::ELFABIVERSION_AMDGPU_HSA_V5)
+            ? utils::COV4_SIZE
+            : utils::COV5_SIZE;
+    DP("ELFABIVersion: %d\n", AMDImage.getELFABIVersion());
+
     // Get additional kernel info read from image
     KernelInfo = AMDImage.getKernelInfo(getName());
     if (!KernelInfo.has_value())
@@ -476,6 +492,10 @@ struct AMDGPUKernelTy : public GenericKernelTy {
   /// Get the HSA kernel object representing the kernel function.
   uint64_t getKernelObject() const { return KernelObject; }
 
+  /// Get the size of implicitargs based on the code object version
+  /// @return 56 for cov4 and 256 for cov5
+  uint32_t getImplicitArgsSize() const { return ImplicitArgsSize; }
+
 private:
   /// The kernel object to execute.
   uint64_t KernelObject;
@@ -486,7 +506,7 @@ private:
   uint32_t PrivateSize;
 
   /// The size of implicit kernel arguments.
-  const uint32_t ImplicitArgsSize;
+  uint32_t ImplicitArgsSize;
 
   /// Additional Info for the AMD GPU Kernel
   std::optional<utils::KernelMetaDataTy> KernelInfo;
@@ -1728,6 +1748,9 @@ struct AMDGPUDeviceTy : public GenericDeviceTy, AMDGenericDeviceTy {
     if (auto Err = initMemoryPools())
       return Err;
 
+    // if (auto Err = preAllocateDeviceMemoryPool())
+    //   return Err;
+
     char GPUName[64];
     if (auto Err = getDeviceAttr(HSA_AGENT_INFO_NAME, GPUName))
       return Err;
@@ -2515,6 +2538,43 @@ struct AMDGPUDeviceTy : public GenericDeviceTy, AMDGenericDeviceTy {
         });
   }
 
+  /// Get the address of pointer to the preallocated device memory pool.
+  void **getPreAllocatedDeviceMemoryPool() {
+    return &PreAllocatedDeviceMemoryPool;
+  }
+
+  /// Allocate and zero initialize a small memory pool from the coarse grained
+  /// device memory of each device.
+  Error preAllocateDeviceMemoryPool() {
+    Error Err = retrieveAllMemoryPools();
+    if (Err)
+      return Plugin::error("Unable to retieve all memmory pools");
+
+    void *DevPtr;
+    for (AMDGPUMemoryPoolTy *MemoryPool : AllMemoryPools) {
+      if (MemoryPool->isCoarseGrained()) {
+        DevPtr = nullptr;
+        size_t PreAllocSize = utils::PER_DEVICE_PREALLOC_SIZE;
+
+        Err = MemoryPool->allocate(PreAllocSize, &DevPtr);
+        if (Err)
+          return Plugin::error("Device memory pool preallocation failed");
+
+        Err = MemoryPool->enableAccess(DevPtr, PreAllocSize, {getAgent()});
+        if (Err)
+          return Plugin::error("Preallocated device memory pool inaccessible");
+
+        Err = MemoryPool->zeroInitializeMemory(DevPtr, PreAllocSize);
+        if (Err)
+          return Plugin::error(
+              "Zero initialization of preallocated device memory pool failed");
+
+        PreAllocatedDeviceMemoryPool = DevPtr;
+      }
+    }
+    return Plugin::success();
+  }
+
 private:
   using AMDGPUEventRef = AMDGPUResourceRef<AMDGPUEventTy>;
   using AMDGPUEventManagerTy = GenericDeviceResourceManagerTy<AMDGPUEventRef>;
@@ -2572,6 +2632,9 @@ private:
 
   /// Reference to the host device.
   AMDHostDeviceTy &HostDevice;
+
+  /// Pointer to the preallocated device memory pool
+  void *PreAllocatedDeviceMemoryPool;
 };
 
 Error AMDGPUDeviceImageTy::loadExecutable(const AMDGPUDeviceTy &Device) {
@@ -2605,8 +2668,8 @@ Error AMDGPUDeviceImageTy::loadExecutable(const AMDGPUDeviceTy &Device) {
   if (Result)
     return Plugin::error("Loaded HSA executable does not validate");
 
-  if (auto Err =
-          utils::readAMDGPUMetaDataFromImage(getMemoryBuffer(), KernelInfoMap))
+  if (auto Err = utils::readAMDGPUMetaDataFromImage(
+          getMemoryBuffer(), KernelInfoMap, ELFABIVersion))
     return Err;
 
   return Plugin::success();
@@ -2947,9 +3010,8 @@ Error AMDGPUKernelTy::launchImpl(GenericDeviceTy &GenericDevice,
   }
 
   // Initialize implicit arguments.
-  utils::AMDGPUImplicitArgsTy *ImplArgs =
-      reinterpret_cast<utils::AMDGPUImplicitArgsTy *>(
-          advanceVoidPtr(AllArgs, KernelArgsSize));
+  uint8_t *ImplArgs =
+      static_cast<uint8_t *>(advanceVoidPtr(AllArgs, KernelArgsSize));
 
   // Initialize the implicit arguments to zero.
   std::memset(ImplArgs, 0, ImplicitArgsSize);
@@ -2970,6 +3032,30 @@ Error AMDGPUKernelTy::launchImpl(GenericDeviceTy &GenericDevice,
   // If this kernel requires an RPC server we attach its pointer to the stream.
   if (GenericDevice.getRPCServer())
     Stream->setRPCServer(GenericDevice.getRPCServer());
+
+  if (getImplicitArgsSize() < utils::COV5_SIZE) {
+    DP("Setting fields of ImplicitArgs for COV4\n");
+  } else {
+    DP("Setting fields of ImplicitArgs for COV5\n");
+    uint16_t GridDims = 1;
+    uint32_t NumThreadsYZ = 1;
+    memcpy(&ImplArgs[utils::COV5_BLOCK_COUNT_X_OFFSET], &NumBlocks,
+           utils::COV5_BLOCK_COUNT_X_SIZE);
+
+    memcpy(&ImplArgs[utils::COV5_GROUP_SIZE_X_OFFSET], &NumThreads,
+           utils::COV5_GROUP_SIZE_X_SIZE);
+    memcpy(&ImplArgs[utils::COV5_GROUP_SIZE_Y_OFFSET], &NumThreadsYZ,
+           utils::COV5_GROUP_SIZE_Y_SIZE);
+    memcpy(&ImplArgs[utils::COV5_GROUP_SIZE_Z_OFFSET], &NumThreadsYZ,
+           utils::COV5_GROUP_SIZE_Z_SIZE);
+
+    memcpy(&ImplArgs[utils::COV5_GRID_DIMS_OFFSET], &GridDims,
+           utils::COV5_GRID_DIMS_SIZE);
+
+    // memcpy(&ImplArgs[utils::COV5_HEAPV1_PTR_OFFSET],
+    //        AMDGPUDevice.getPreAllocatedDeviceMemoryPool(),
+    //        utils::COV5_HEAPV1_PTR_SIZE);
+  }
 
   // Push the kernel launch into the stream.
   return Stream->pushKernelLaunch(*this, AllArgs, NumThreads, NumBlocks,
