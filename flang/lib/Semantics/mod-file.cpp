@@ -880,7 +880,8 @@ void ModFileWriter::PutDirective(llvm::raw_ostream &os, const Symbol &symbol) {
     os << "!$acc declare ";
     if (symbol.test(Symbol::Flag::AccCopy)) {
       os << "copy";
-    } else if (symbol.test(Symbol::Flag::AccCopyIn)) {
+    } else if (symbol.test(Symbol::Flag::AccCopyIn) ||
+        symbol.test(Symbol::Flag::AccCopyInReadOnly)) {
       os << "copyin";
     } else if (symbol.test(Symbol::Flag::AccCopyOut)) {
       os << "copyout";
@@ -895,7 +896,11 @@ void ModFileWriter::PutDirective(llvm::raw_ostream &os, const Symbol &symbol) {
     } else if (symbol.test(Symbol::Flag::AccLink)) {
       os << "link";
     }
-    os << "(" << symbol.name() << ")\n";
+    os << "(";
+    if (symbol.test(Symbol::Flag::AccCopyInReadOnly)) {
+      os << "readonly: ";
+    }
+    os << symbol.name() << ")\n";
   }
 }
 
