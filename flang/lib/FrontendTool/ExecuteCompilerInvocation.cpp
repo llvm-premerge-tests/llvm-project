@@ -27,6 +27,8 @@
 #include "llvm/Option/Option.h"
 #include "llvm/Support/BuryPointer.h"
 #include "llvm/Support/CommandLine.h"
+#include <clang/Basic/Diagnostic.h>
+#include <clang/Basic/DiagnosticFrontend.h>
 
 namespace Fortran::frontend {
 
@@ -165,6 +167,10 @@ bool executeCompilerInvocation(CompilerInstance *flang) {
 
   // Honor color diagnostics.
   flang->getDiagnosticOpts().ShowColors = flang->getFrontendOpts().showColors;
+  flang->getDiagnosticOpts().ShowOptionNames = 1;
+
+  clang::ProcessWarningOptions(flang->getDiagnostics(),
+                               flang->getDiagnosticOpts(), false);
 
   // Create and execute the frontend action.
   std::unique_ptr<FrontendAction> act(createFrontendAction(*flang));
