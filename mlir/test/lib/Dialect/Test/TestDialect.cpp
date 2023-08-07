@@ -1267,6 +1267,22 @@ MutableOperandRange TestCallAndStoreOp::getArgOperandsMutable() {
   return getCalleeOperandsMutable();
 }
 
+CallInterfaceCallable TestCallOnDeviceOp::getCallableForCallee() {
+  return getCallee();
+}
+
+void TestCallOnDeviceOp::setCalleeFromCallable(CallInterfaceCallable callee) {
+  setCalleeAttr(callee.get<SymbolRefAttr>());
+}
+
+Operation::operand_range TestCallOnDeviceOp::getArgOperands() {
+  return getForwardedOperands();
+}
+
+MutableOperandRange TestCallOnDeviceOp::getArgOperandsMutable() {
+  return getForwardedOperandsMutable();
+}
+
 void TestStoreWithARegion::getSuccessorRegions(
     std::optional<unsigned> index, ArrayRef<Attribute> operands,
     SmallVectorImpl<RegionSuccessor> &regions) {
