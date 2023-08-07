@@ -107,11 +107,11 @@ class AlignedBuffer {
   size_t Size = 0;
 
 public:
-  // Note: msan / asan can't handle Alignment > 512.
   static constexpr size_t Alignment = 512;
 
   explicit AlignedBuffer(size_t Size)
-      : Buffer(static_cast<char *>(aligned_alloc(Alignment, Size))),
+      : Buffer(static_cast<char *>(aligned_alloc(
+            Alignment, (Size + Alignment - 1) / Alignment * Alignment))),
         Size(Size) {}
   ~AlignedBuffer() { free(Buffer); }
 
