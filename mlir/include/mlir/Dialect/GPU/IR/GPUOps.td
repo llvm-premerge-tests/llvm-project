@@ -1100,8 +1100,12 @@ def GPU_BinaryOp : GPU_Op<"binary", [Symbol]>, Arguments<(ins
 
     Examples:
     ```
+      // Selects the first object.
       gpu.binary @myobject [#gpu.object<...>, #gpu.object<...>]
+      // Uses the `#foo.my_handler` for handling the binary during translation.
       gpu.binary @myobject <#foo.my_handler> [#gpu.object<...>, #gpu.object<...>]
+      // Selects the object with the `#rocdl.target` target attribute.
+      gpu.binary @myobject <#gpu.select_object<#rocdl.target>> [#gpu.object<...>, #gpu.object<#rocdl.target, ...>]
     ```
   }];
   let builders = [
@@ -1114,7 +1118,7 @@ def GPU_BinaryOp : GPU_Op<"binary", [Symbol]>, Arguments<(ins
   ];
   let skipDefaultBuilders = 1;
   let assemblyFormat = [{
-    $sym_name (`<` $offloadingHandler ^ `>`)? attr-dict $objects
+    $sym_name custom<OffloadingHandler>($offloadingHandler) attr-dict $objects
   }];
 }
 
