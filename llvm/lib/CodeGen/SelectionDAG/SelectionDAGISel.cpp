@@ -2435,6 +2435,13 @@ GetVBR(uint64_t Val, const unsigned char *MatcherTable, unsigned &Idx) {
   return Val;
 }
 
+void SelectionDAGISel::Select_JUMP_TABLE_DEBUG_INFO(SDNode *N) {
+  SDLoc dl(N);
+  CurDAG->SelectNodeTo(N, TargetOpcode::JUMP_TABLE_DEBUG_INFO, MVT::Glue,
+                       CurDAG->getTargetConstant(N->getConstantOperandVal(1),
+                                                 dl, MVT::i64, true));
+}
+
 /// When a match is complete, this method updates uses of interior chain results
 /// to use the new results.
 void SelectionDAGISel::UpdateChains(
@@ -2986,6 +2993,9 @@ void SelectionDAGISel::SelectCodeCommon(SDNode *NodeToMatch,
     return;
   case ISD::PATCHPOINT:
     Select_PATCHPOINT(NodeToMatch);
+    return;
+  case ISD::JUMP_TABLE_DEBUG_INFO:
+    Select_JUMP_TABLE_DEBUG_INFO(NodeToMatch);
     return;
   }
 
