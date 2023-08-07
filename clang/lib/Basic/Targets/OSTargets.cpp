@@ -226,16 +226,6 @@ static void addVisualCDefines(const LangOptions &Opts, MacroBuilder &Builder) {
     }
   }
 
-  if (Opts.MicrosoftExt) {
-    Builder.defineMacro("_MSC_EXTENSIONS");
-
-    if (Opts.CPlusPlus11) {
-      Builder.defineMacro("_RVALUE_REFERENCES_V2_SUPPORTED");
-      Builder.defineMacro("_RVALUE_REFERENCES_SUPPORTED");
-      Builder.defineMacro("_NATIVE_NULLPTR_SUPPORTED");
-    }
-  }
-
   if (!Opts.MSVolatile)
     Builder.defineMacro("_ISO_VOLATILE");
 
@@ -264,6 +254,16 @@ void addWindowsDefines(const llvm::Triple &Triple, const LangOptions &Opts,
   else if (Triple.isKnownWindowsMSVCEnvironment() ||
            (Triple.isWindowsItaniumEnvironment() && Opts.MSVCCompat))
     addVisualCDefines(Opts, Builder);
+
+  if (Opts.MicrosoftExt) {
+    Builder.defineMacro("_MSC_EXTENSIONS");
+
+    if (Opts.CPlusPlus11) {
+      Builder.defineMacro("_RVALUE_REFERENCES_V2_SUPPORTED");
+      Builder.defineMacro("_RVALUE_REFERENCES_SUPPORTED");
+      Builder.defineMacro("_NATIVE_NULLPTR_SUPPORTED");
+    }
+  }
 }
 
 } // namespace targets
