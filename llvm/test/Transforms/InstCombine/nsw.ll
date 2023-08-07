@@ -145,7 +145,7 @@ define <vscale x 2 x i64> @mul_nuw_nsw_shuffle_constant_expr(<vscale x 2 x i8> %
 
 define i32 @neg_sub0_sub_nsw_nsw(i32 %a, i32 %b) {
 ; CHECK-LABEL: @neg_sub0_sub_nsw_nsw(
-; CHECK-NEXT:    [[C_NEG:%.*]] = sub i32 [[B:%.*]], [[A:%.*]]
+; CHECK-NEXT:    [[C_NEG:%.*]] = sub nsw i32 [[B:%.*]], [[A:%.*]]
 ; CHECK-NEXT:    ret i32 [[C_NEG]]
 ;
   %c = sub nsw i32 %a, %b
@@ -181,7 +181,7 @@ define i32 @neg_sub_sub_nsw1(i32 %a, i32 %b) {
 
 define i32 @neg_mul_sub_nsw_nsw(i32 %a, i32 %b) {
 ; CHECK-LABEL: @neg_mul_sub_nsw_nsw(
-; CHECK-NEXT:    [[C_NEG:%.*]] = sub i32 [[B:%.*]], [[A:%.*]]
+; CHECK-NEXT:    [[C_NEG:%.*]] = sub nsw i32 [[B:%.*]], [[A:%.*]]
 ; CHECK-NEXT:    ret i32 [[C_NEG]]
 ;
   %c = sub nsw i32 %a, %b

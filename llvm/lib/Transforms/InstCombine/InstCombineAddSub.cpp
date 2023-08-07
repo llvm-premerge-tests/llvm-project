@@ -2058,8 +2058,18 @@ Instruction *InstCombinerImpl::visitSub(BinaryOperator &I) {
                      m_Select(m_Value(), m_Specific(Op1), m_Specific(&I))) ||
                match(UI, m_Select(m_Value(), m_Specific(&I), m_Specific(Op1)));
       })) {
-    if (Value *NegOp1 = Negator::Negate(IsNegation, Op1, *this))
+    if (Value *NegOp1 = Negator::Negate(IsNegation, Op1, *this)) {
+      auto *InstOp1 = dyn_cast<Instruction>(NegOp1);
+      if (InstOp1 && InstOp1->getOpcode() == Instruction::Sub &&
+          isa<Instruction>(Op1) && IsNegation) {
+        auto *Op1Inst = cast<Instruction>(Op1);
+        if (I.hasNoUnsignedWrap() && Op1Inst->hasNoUnsignedWrap())
+          InstOp1->setHasNoUnsignedWrap();
+        if (I.hasNoSignedWrap() && Op1Inst->hasNoSignedWrap())
+          InstOp1->setHasNoSignedWrap();
+      }
       return BinaryOperator::CreateAdd(NegOp1, Op0);
+    }
   }
   if (IsNegation)
     return TryToNarrowDeduceFlags(); // Should have been handled in Negator!
