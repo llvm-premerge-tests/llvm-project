@@ -1601,6 +1601,69 @@ static bool shouldMergeGEPs(GEPOperator &GEP, GEPOperator &Src) {
   return true;
 }
 
+// Combine two Add/Sub operations of the following structure:
+// (A +/- splat(B)) +/- splat(C) -> A +/- splat(B +/- C)
+// where B and C are splats of VScale multiplied by a number
+Instruction *InstCombinerImpl::foldVScaleSplatAddSub(BinaryOperator &Inst) {
+  if (!isa<VectorType>(Inst.getType()))
+    return nullptr;
+
+  // Matches Value when it is either of:
+  // 1) VScale
+  // 2) A multiplication of a constant and VScale
+  // 3) A shift left of VScale on a constant value
+  auto m_ConstMultipliedVScale =
+      m_CombineOr(m_CombineOr(m_VScale(), m_Mul(m_VScale(), m_Constant())),
+                  m_Shl(m_VScale(), m_Constant()));
+
+  // Splat of the expression from above
+  auto m_SplatVScale =
+      m_Shuffle(m_InsertElt(m_Value(), m_ConstMultipliedVScale, m_ZeroInt()),
+                m_Value(), m_ZeroMask());
+
+  Instruction *SplatB, *SplatC;
+  Value *A, *B, *C;
+  BinaryOperator::BinaryOps NewOpcode1, NewOpcode2;
+
+  if (!match(&Inst,
+             m_c_BinOp(m_c_BinOp(m_Value(A), m_SplatVScale), m_SplatVScale)))
+    return nullptr;
+
+  if (match(&Inst, m_c_Add(m_c_Add(m_Specific(A), m_Instruction(SplatB)),
+                           m_Instruction(SplatC)))) {
+    // (A + splat(B)) + splat(C) -> A + splat(C + B)
+    NewOpcode1 = Instruction::Add;
+    NewOpcode2 = Instruction::Add;
+  } else if (match(&Inst, m_c_Add(m_Sub(m_Specific(A), m_Instruction(SplatB)),
+                                  m_Instruction(SplatC)))) {
+    // (A - splat(B)) + splat(C) -> A - splat(B - C)
+    NewOpcode1 = Instruction::Sub;
+    NewOpcode2 = Instruction::Sub;
+  } else if (match(&Inst, m_Sub(m_c_Add(m_Specific(A), m_Instruction(SplatB)),
+                                m_Instruction(SplatC)))) {
+    // (A + splat(B)) - splat(C) -> A + splat(B - C)
+    NewOpcode1 = Instruction::Sub;
+    NewOpcode2 = Instruction::Add;
+  } else if (match(&Inst, m_Sub(m_Sub(m_Specific(A), m_Instruction(SplatB)),
+                                m_Instruction(SplatC)))) {
+    // (A - splat(B)) - splat(C) -> A - splat(B + C)
+    NewOpcode1 = Instruction::Add;
+    NewOpcode2 = Instruction::Sub;
+  } else {
+    return nullptr;
+  }
+
+  B = getSplatValue(SplatB);
+  C = getSplatValue(SplatC);
+
+  // Combine the two splat operations, create a new vector splat and new
+  // binary operations
+  auto *NewOp = Builder.CreateBinOp(NewOpcode1, B, C);
+  auto EC = cast<VectorType>(Inst.getType())->getElementCount();
+  auto *SplatNewOp = Builder.CreateVectorSplat(EC, NewOp);
+  return BinaryOperator::Create(NewOpcode2, A, SplatNewOp);
+}
+
 Instruction *InstCombinerImpl::foldVectorBinop(BinaryOperator &Inst) {
   if (!isa<VectorType>(Inst.getType()))
     return nullptr;

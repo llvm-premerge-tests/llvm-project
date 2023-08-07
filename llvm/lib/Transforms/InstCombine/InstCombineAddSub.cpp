@@ -1364,6 +1364,9 @@ Instruction *InstCombinerImpl::visitAdd(BinaryOperator &I) {
   if (Instruction *X = foldVectorBinop(I))
     return X;
 
+  if (Instruction *X = foldVScaleSplatAddSub(I))
+    return X;
+
   if (Instruction *Phi = foldBinopWithPhiOperands(I))
     return Phi;
 
@@ -1981,6 +1984,9 @@ Instruction *InstCombinerImpl::visitSub(BinaryOperator &I) {
     return replaceInstUsesWith(I, V);
 
   if (Instruction *X = foldVectorBinop(I))
+    return X;
+
+  if (Instruction *X = foldVScaleSplatAddSub(I))
     return X;
 
   if (Instruction *Phi = foldBinopWithPhiOperands(I))

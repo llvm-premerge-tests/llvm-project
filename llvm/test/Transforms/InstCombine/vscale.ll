@@ -40,6 +40,85 @@ define i64 @free_zext_vscale_shl_i32_to_i64() #0 {
   ret i64 %ext
 }
 
+define <vscale x 2 x i64> @test_add_add_splat_vscale(<vscale x 2 x i64> %A) {
+; CHECK-LABEL: @test_add_add_splat_vscale(
+; CHECK-NEXT:    [[VSCALE:%.*]] = call i64 @llvm.vscale.i64()
+; CHECK-NEXT:    [[TMP1:%.*]] = shl i64 [[VSCALE]], 1
+; CHECK-NEXT:    [[DOTSPLATINSERT:%.*]] = insertelement <vscale x 2 x i64> poison, i64 [[TMP1]], i64 0
+; CHECK-NEXT:    [[DOTSPLAT:%.*]] = shufflevector <vscale x 2 x i64> [[DOTSPLATINSERT]], <vscale x 2 x i64> poison, <vscale x 2 x i32> zeroinitializer
+; CHECK-NEXT:    [[RESULT:%.*]] = add <vscale x 2 x i64> [[DOTSPLAT]], [[A:%.*]]
+; CHECK-NEXT:    ret <vscale x 2 x i64> [[RESULT]]
+;
+  %vscale = call i64 @llvm.vscale.i64()
+  %splatinsert = insertelement <vscale x 2 x i64> poison, i64 %vscale, i64 0
+  %splat = shufflevector <vscale x 2 x i64> %splatinsert, <vscale x 2 x i64> poison, <vscale x 2 x i32> zeroinitializer
+  %nested.operaton = add <vscale x 2 x i64> %A, %splat
+  %result = add <vscale x 2 x i64> %nested.operaton, %splat
+  ret <vscale x 2 x i64> %result
+}
+
+define <vscale x 2 x i64> @test_add_sub_splat_vscale(<vscale x 2 x i64> %A) {
+; CHECK-LABEL: @test_add_sub_splat_vscale(
+; CHECK-NEXT:    [[VSCALE:%.*]] = call i64 @llvm.vscale.i64()
+; CHECK-NEXT:    [[TMP1:%.*]] = shl i64 [[VSCALE]], 1
+; CHECK-NEXT:    [[DOTSPLATINSERT:%.*]] = insertelement <vscale x 2 x i64> poison, i64 [[TMP1]], i64 0
+; CHECK-NEXT:    [[DOTSPLAT:%.*]] = shufflevector <vscale x 2 x i64> [[DOTSPLATINSERT]], <vscale x 2 x i64> poison, <vscale x 2 x i32> zeroinitializer
+; CHECK-NEXT:    [[RESULT:%.*]] = add <vscale x 2 x i64> [[DOTSPLAT]], [[A:%.*]]
+; CHECK-NEXT:    ret <vscale x 2 x i64> [[RESULT]]
+;
+  %vscale = call i64 @llvm.vscale.i64()
+  %splatinsert = insertelement <vscale x 2 x i64> poison, i64 %vscale, i64 0
+  %splat = shufflevector <vscale x 2 x i64> %splatinsert, <vscale x 2 x i64> poison, <vscale x 2 x i32> zeroinitializer
+  %1 = mul i64 %vscale, 3
+  %splatinsert.3 = insertelement <vscale x 2 x i64> poison, i64 %1, i64 0
+  %splat.3 = shufflevector <vscale x 2 x i64> %splatinsert.3, <vscale x 2 x i64> poison, <vscale x 2 x i32> zeroinitializer
+  %nested.operaton = add <vscale x 2 x i64> %A, %splat.3
+  %result = sub <vscale x 2 x i64> %nested.operaton, %splat
+  ret <vscale x 2 x i64> %result
+}
+
+define <vscale x 2 x i64> @test_sub_add_splat_vscale(<vscale x 2 x i64> %A) {
+; CHECK-LABEL: @test_sub_add_splat_vscale(
+; CHECK-NEXT:    [[VSCALE:%.*]] = call i64 @llvm.vscale.i64()
+; CHECK-NEXT:    [[DOTSPLATINSERT_NEG:%.*]] = insertelement <vscale x 2 x i64> poison, i64 [[VSCALE]], i64 0
+; CHECK-NEXT:    [[DOTSPLAT_NEG:%.*]] = shufflevector <vscale x 2 x i64> [[DOTSPLATINSERT_NEG]], <vscale x 2 x i64> poison, <vscale x 2 x i32> zeroinitializer
+; CHECK-NEXT:    [[RESULT:%.*]] = add <vscale x 2 x i64> [[DOTSPLAT_NEG]], [[A:%.*]]
+; CHECK-NEXT:    ret <vscale x 2 x i64> [[RESULT]]
+;
+  %vscale = call i64 @llvm.vscale.i64()
+  %splatinsert = insertelement <vscale x 2 x i64> poison, i64 %vscale, i64 0
+  %splat = shufflevector <vscale x 2 x i64> %splatinsert, <vscale x 2 x i64> poison, <vscale x 2 x i32> zeroinitializer
+  %1 = shl i64 %vscale, 1
+  %splatinsert.2 = insertelement <vscale x 2 x i64> poison, i64 %1, i64 0
+  %splat.2 = shufflevector <vscale x 2 x i64> %splatinsert.2, <vscale x 2 x i64> poison, <vscale x 2 x i32> zeroinitializer
+  %nested.operaton = sub <vscale x 2 x i64> %A, %splat
+  %result = add <vscale x 2 x i64> %nested.operaton, %splat.2
+  ret <vscale x 2 x i64> %result
+}
+
+define <vscale x 2 x i64> @test_sub_sub_splat_vscale(<vscale x 2 x i64> %A) {
+; CHECK-LABEL: @test_sub_sub_splat_vscale(
+; CHECK-NEXT:    [[VSCALE:%.*]] = call i64 @llvm.vscale.i64()
+; CHECK-NEXT:    [[DOTNEG:%.*]] = mul i64 [[VSCALE]], -3
+; CHECK-NEXT:    [[DOTSPLATINSERT_NEG:%.*]] = insertelement <vscale x 2 x i64> poison, i64 [[DOTNEG]], i64 0
+; CHECK-NEXT:    [[DOTSPLAT_NEG:%.*]] = shufflevector <vscale x 2 x i64> [[DOTSPLATINSERT_NEG]], <vscale x 2 x i64> poison, <vscale x 2 x i32> zeroinitializer
+; CHECK-NEXT:    [[RESULT:%.*]] = add <vscale x 2 x i64> [[DOTSPLAT_NEG]], [[A:%.*]]
+; CHECK-NEXT:    ret <vscale x 2 x i64> [[RESULT]]
+;
+  %vscale = call i64 @llvm.vscale.i64()
+  %splatinsert = insertelement <vscale x 2 x i64> poison, i64 %vscale, i64 0
+  %splat = shufflevector <vscale x 2 x i64> %splatinsert, <vscale x 2 x i64> poison, <vscale x 2 x i32> zeroinitializer
+  %1 = shl i64 %vscale, 1
+  %splatinsert.2 = insertelement <vscale x 2 x i64> poison, i64 %1, i64 0
+  %splat.2 = shufflevector <vscale x 2 x i64> %splatinsert.2, <vscale x 2 x i64> poison, <vscale x 2 x i32> zeroinitializer
+  %nested.operaton = sub <vscale x 2 x i64> %A, %splat
+  %result = sub <vscale x 2 x i64> %nested.operaton, %splat.2
+  ret <vscale x 2 x i64> %result
+}
+
 declare i32 @llvm.vscale.i32()
+declare i64 @llvm.vscale.i64()
+
+declare void @use(<vscale x 2 x i64>)
 
 attributes #0 = { vscale_range(1,16) }
