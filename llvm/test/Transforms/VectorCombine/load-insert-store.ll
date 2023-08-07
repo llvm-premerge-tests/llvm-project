@@ -16,6 +16,23 @@ entry:
   ret void
 }
 
+; To verify the case that there are multiple uses of the vector.
+define <16 x i8> @insert_store_multiple_uses(ptr %q, i8 zeroext %s) {
+; CHECK-LABEL: @insert_store_multiple_uses(
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[TMP0:%.*]] = load <16 x i8>, ptr [[Q:%.*]], align 16
+; CHECK-NEXT:    [[VECINS:%.*]] = insertelement <16 x i8> [[TMP0]], i8 [[S:%.*]], i32 3
+; CHECK-NEXT:    [[TMP1:%.*]] = getelementptr inbounds <16 x i8>, ptr [[Q]], i32 0, i32 3
+; CHECK-NEXT:    store i8 [[S]], ptr [[TMP1]], align 1
+; CHECK-NEXT:    ret <16 x i8> [[VECINS]]
+;
+entry:
+  %0 = load <16 x i8>, ptr %q
+  %vecins = insertelement <16 x i8> %0, i8 %s, i32 3
+  store <16 x i8> %vecins, ptr %q, align 16
+  ret <16 x i8> %vecins
+}
+
 define void @insert_store_i16_align1(ptr %q, i16 zeroext %s) {
 ; CHECK-LABEL: @insert_store_i16_align1(
 ; CHECK-NEXT:  entry:
