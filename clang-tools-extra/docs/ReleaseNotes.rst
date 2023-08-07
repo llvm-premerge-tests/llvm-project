@@ -188,6 +188,10 @@ Changes in existing checks
   <clang-tidy/checks/performance/noexcept-swap>` check to enforce a stricter
   match with the swap function signature, eliminating false-positives.
 
+- Improved :doc:`readability-container-size-empty
+  <clang-tidy/checks/readability/container-size-empty>` check to support
+  ``length()`` method as an alternative to ``size()``.
+
 - Improved :doc:`readability-identifier-naming
   <clang-tidy/checks/readability/identifier-naming>` check to emit proper
   warnings when a type forward declaration precedes its definition.
