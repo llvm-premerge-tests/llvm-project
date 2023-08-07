@@ -181,14 +181,7 @@ const double *const_pointer_return() {
   return &p_local1;
 }
 
-double &non_const_ref_return() {
-  double p_local0 = 0.0;
-  // CHECK-MESSAGES: [[@LINE-1]]:3: warning: variable 'p_local0' of type 'double' can be declared 'const'
-  // CHECK-FIXES: double const p_local0
-  double np_local0 = 42.42;
-  return np_local0;
-}
-
+// Also see const-correctness-values.cpp-before-cxx23.cpp for `non_const_ref_return` and `return_non_const_pointer_ref`
 const double &const_ref_return() {
   double p_local0 = 0.0;
   // CHECK-MESSAGES: [[@LINE-1]]:3: warning: variable 'p_local0' of type 'double' can be declared 'const'
@@ -197,11 +190,6 @@ const double &const_ref_return() {
   // CHECK-MESSAGES: [[@LINE-1]]:3: warning: variable 'p_local1' of type 'double' can be declared 'const'
   // CHECK-FIXES: double const p_local1
   return p_local1;
-}
-
-double *&return_non_const_pointer_ref() {
-  double *np_local0 = nullptr;
-  return np_local0;
 }
 
 void overloaded_arguments(const int &in);
