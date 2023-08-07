@@ -25,7 +25,9 @@
 #include "clang/Basic/CharInfo.h"
 #include "clang/Basic/Diagnostic.h"
 #include "clang/Basic/DiagnosticOptions.h"
+#include "clang/Basic/FileEntry.h"
 #include "clang/Basic/FileManager.h"
+#include "clang/Basic/SourceLocation.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Frontend/DiagnosticRenderer.h"
 #include "clang/Lex/Lexer.h"
@@ -740,6 +742,38 @@ struct EqualClangTidyError {
   }
 };
 } // end anonymous namespace
+
+FullSourceLoc getLocation(SourceManager &SourceMgr, StringRef FilePath,
+                          unsigned Offset) {
+  if (FilePath.empty())
+    return FullSourceLoc(SourceLocation(), SourceMgr);
+
+  auto File = SourceMgr.getFileManager().getFile(FilePath);
+  if (!File)
+    return FullSourceLoc(SourceLocation(), SourceMgr);
+
+  FileID ID = SourceMgr.getOrCreateFileID(*File, SrcMgr::C_User);
+
+  return FullSourceLoc(
+      SourceMgr.getLocForStartOfFile(ID).getLocWithOffset(Offset), SourceMgr);
+}
+
+void ClangTidyDiagnosticConsumer::addLineAndColToDiagnostics() {
+  for (ClangTidyError &CTE : Errors) {
+    SourceManager &SM = Context.DiagEngine->getSourceManager();
+
+    for (tooling::DiagnosticMessage &Note : CTE.Notes) {
+      FullSourceLoc NoteLoc = getLocation(SM, Note.FilePath, Note.FileOffset);
+      Note.LineNumber = NoteLoc.getSpellingLineNumber();
+      Note.ColumnNumber = NoteLoc.getSpellingColumnNumber();
+    }
+    tooling::DiagnosticMessage &Message = CTE.Message;
+
+    FullSourceLoc Loc = getLocation(SM, Message.FilePath, Message.FileOffset);
+    Message.LineNumber = Loc.getSpellingLineNumber();
+    Message.ColumnNumber = Loc.getSpellingColumnNumber();
+  }
+}
 
 std::vector<ClangTidyError> ClangTidyDiagnosticConsumer::take() {
   finalizeLastError();

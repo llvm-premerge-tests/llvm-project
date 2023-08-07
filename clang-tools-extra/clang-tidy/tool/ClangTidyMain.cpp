@@ -674,7 +674,7 @@ int clangTidyMain(int argc, const char **argv) {
                            EnableModuleHeadersParsing);
   std::vector<ClangTidyError> Errors =
       runClangTidy(Context, OptionsParser->getCompilations(), PathList, BaseFS,
-                   FixNotes, EnableCheckProfile, ProfilePrefix);
+                   FixNotes, EnableCheckProfile, !ExportFixes.empty(), ProfilePrefix);
   bool FoundErrors = llvm::any_of(Errors, [](const ClangTidyError &E) {
     return E.DiagLevel == ClangTidyError::Error;
   });

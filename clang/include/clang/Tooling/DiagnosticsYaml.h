@@ -40,6 +40,8 @@ template <> struct MappingTraits<clang::tooling::DiagnosticMessage> {
     Io.mapRequired("Message", M.Message);
     Io.mapOptional("FilePath", M.FilePath);
     Io.mapOptional("FileOffset", M.FileOffset);
+    Io.mapOptional("LineNumber", M.LineNumber);
+    Io.mapOptional("ColumnNumber", M.ColumnNumber);
     std::vector<clang::tooling::Replacement> Fixes;
     for (auto &Replacements : M.Fix) {
       llvm::append_range(Fixes, Replacements.second);

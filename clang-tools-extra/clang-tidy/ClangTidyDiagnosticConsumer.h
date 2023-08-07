@@ -290,6 +290,9 @@ public:
   // Retrieve the diagnostics that were captured.
   std::vector<ClangTidyError> take();
 
+  // Add Line and Column data to errors so that it is available when exporting yaml.
+  void addLineAndColToDiagnostics();
+
 private:
   void finalizeLastError();
   void removeIncompatibleErrors();

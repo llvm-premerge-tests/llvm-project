@@ -513,7 +513,7 @@ runClangTidy(clang::tidy::ClangTidyContext &Context,
              const CompilationDatabase &Compilations,
              ArrayRef<std::string> InputFiles,
              llvm::IntrusiveRefCntPtr<llvm::vfs::OverlayFileSystem> BaseFS,
-             bool ApplyAnyFix, bool EnableCheckProfile,
+             bool ApplyAnyFix, bool EnableCheckProfile, bool WillExport,
              llvm::StringRef StoreCheckProfile) {
   ClangTool Tool(Compilations, InputFiles,
                  std::make_shared<PCHContainerOperations>(), BaseFS);
@@ -584,6 +584,11 @@ runClangTidy(clang::tidy::ClangTidyContext &Context,
 
   ActionFactory Factory(Context, std::move(BaseFS));
   Tool.run(&Factory);
+
+  if (WillExport) {
+    // Only compute line and column information if needed for yaml export
+    DiagConsumer.addLineAndColToDiagnostics();
+  }
   return DiagConsumer.take();
 }
 
