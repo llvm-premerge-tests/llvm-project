@@ -2064,8 +2064,8 @@ bool isKnownToBeAPowerOfTwo(const Value *V, bool OrZero, unsigned Depth,
   case Instruction::And:
     // A power of two and'd with anything is a power of two or zero.
     if (OrZero &&
-        (isKnownToBeAPowerOfTwo(I->getOperand(0), /*OrZero*/ true, Depth, Q) ||
-         isKnownToBeAPowerOfTwo(I->getOperand(1), /*OrZero*/ true, Depth, Q)))
+        (isKnownToBeAPowerOfTwo(I->getOperand(1), /*OrZero*/ true, Depth, Q) ||
+         isKnownToBeAPowerOfTwo(I->getOperand(0), /*OrZero*/ true, Depth, Q)))
       return true;
     // X & (-X) is always a power of two or zero.
     if (match(I->getOperand(0), m_Neg(m_Specific(I->getOperand(1)))) ||
@@ -2105,8 +2105,8 @@ bool isKnownToBeAPowerOfTwo(const Value *V, bool OrZero, unsigned Depth,
     return false;
   }
   case Instruction::Select:
-    return isKnownToBeAPowerOfTwo(I->getOperand(1), OrZero, Depth, Q) &&
-           isKnownToBeAPowerOfTwo(I->getOperand(2), OrZero, Depth, Q);
+    return isKnownToBeAPowerOfTwo(I->getOperand(2), OrZero, Depth, Q) &&
+           isKnownToBeAPowerOfTwo(I->getOperand(1), OrZero, Depth, Q);
   case Instruction::PHI: {
     // A PHI node is power of two if all incoming values are power of two, or if
     // it is an induction variable where in each step its value is a power of
