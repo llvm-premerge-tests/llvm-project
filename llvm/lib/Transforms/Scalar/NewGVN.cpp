@@ -1534,9 +1534,7 @@ const Expression *NewGVN::performSymbolicLoadEvaluation(Instruction *I) const {
   if (!MSSA->isLiveOnEntryDef(DefiningAccess)) {
     if (auto *MD = dyn_cast<MemoryDef>(DefiningAccess)) {
       Instruction *DefiningInst = MD->getMemoryInst();
-      // If the defining instruction is not reachable, replace with poison.
-      if (!ReachableBlocks.count(DefiningInst->getParent()))
-        return createConstantExpression(PoisonValue::get(LI->getType()));
+      
       // This will handle stores and memory insts.  We only do if it the
       // defining access has a different type, or it is a pointer produced by
       // certain memory operations that cause the memory to have a fixed value
