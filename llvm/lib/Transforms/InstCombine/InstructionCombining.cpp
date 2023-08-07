@@ -937,6 +937,16 @@ InstCombinerImpl::foldBinOpOfSelectAndCastOfSelectCondition(BinaryOperator &I) {
   return nullptr;
 }
 
+static BinaryOperator *tryInverseOperator(BinaryOperator *Op,
+                                          InstCombiner::BuilderTy &Builder) {
+  // xor (ashr %x, %y), -1 --> ashr (xor %x, -1), %y
+  Value *X, *Y;
+  if (match(Op, m_OneUse(m_Not(m_AShr(m_Value(X), m_Value(Y))))))
+    return BinaryOperator::CreateAShr(Builder.CreateNot(X), Y);
+
+  return nullptr;
+}
+
 Value *InstCombinerImpl::tryFactorizationFolds(BinaryOperator &I) {
   Value *LHS = I.getOperand(0), *RHS = I.getOperand(1);
   BinaryOperator *Op0 = dyn_cast<BinaryOperator>(LHS);
@@ -952,9 +962,51 @@ Value *InstCombinerImpl::tryFactorizationFolds(BinaryOperator &I) {
 
   // The instruction has the form "(A op' B) op (C op' D)".  Try to factorize
   // a common term.
-  if (Op0 && Op1 && LHSOpcode == RHSOpcode)
-    if (Value *V = tryFactorization(I, SQ, Builder, LHSOpcode, A, B, C, D))
-      return V;
+  if (Op0 && Op1) {
+    if (LHSOpcode == RHSOpcode)
+      if (Value *V = tryFactorization(I, SQ, Builder, LHSOpcode, A, B, C, D))
+        return V;
+
+    // Try inverse LHS and RHS operators
+    Value *Result = nullptr;
+    Value *InversedA, *InversedB, *InversedC, *InversedD;
+    Instruction::BinaryOps InversedLHSOpcode, InversedRHSOpcode;
+    BinaryOperator *InversedOp0 = nullptr;
+    BinaryOperator *InversedOp1 = nullptr;
+
+    InversedOp0 = tryInverseOperator(Op0, Builder);
+    if (InversedOp0) {
+      InversedLHSOpcode = getBinOpsForFactorization(TopLevelOpcode, InversedOp0,
+                                                    InversedA, InversedB);
+      if (InversedLHSOpcode == RHSOpcode)
+        Result = tryFactorization(I, SQ, Builder, RHSOpcode, InversedA,
+                                  InversedB, C, D);
+    }
+
+    if (!Result) {
+      InversedOp1 = tryInverseOperator(Op1, Builder);
+      if (InversedOp1) {
+        InversedRHSOpcode = getBinOpsForFactorization(
+            TopLevelOpcode, InversedOp1, InversedC, InversedD);
+        if (LHSOpcode == InversedRHSOpcode)
+          Result = tryFactorization(I, SQ, Builder, LHSOpcode, A, B, InversedC,
+                                    InversedD);
+      }
+    }
+
+    if (!Result && InversedOp0 && InversedOp1 &&
+        InversedLHSOpcode == InversedRHSOpcode)
+      Result = tryFactorization(I, SQ, Builder, InversedLHSOpcode, InversedA,
+                                InversedB, InversedC, InversedD);
+
+    if (InversedOp0)
+      InversedOp0->dropAllReferences();
+    if (InversedOp1)
+      InversedOp1->dropAllReferences();
+
+    if (Result)
+      return Result;
+  }
 
   // The instruction has the form "(A op' B) op (C)".  Try to factorize common
   // term.

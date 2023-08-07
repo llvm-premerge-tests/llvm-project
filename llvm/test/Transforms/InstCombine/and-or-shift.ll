@@ -6,10 +6,9 @@
 define i8 @and_ashr_sub_nsw_x_not_x(i8 %x, i8 %y) {
 ; CHECK-LABEL: @and_ashr_sub_nsw_x_not_x(
 ; CHECK-NEXT:    [[SUB:%.*]] = sub nsw i8 0, [[X:%.*]]
-; CHECK-NEXT:    [[SHR:%.*]] = ashr i8 [[SUB]], [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr i8 [[X]], [[Y]]
-; CHECK-NEXT:    [[SHR1:%.*]] = xor i8 [[NOT_NOT]], -1
-; CHECK-NEXT:    [[AND:%.*]] = and i8 [[SHR]], [[SHR1]]
+; CHECK-NEXT:    [[TMP1:%.*]] = xor i8 [[X]], -1
+; CHECK-NEXT:    [[SHR2:%.*]] = and i8 [[SUB]], [[TMP1]]
+; CHECK-NEXT:    [[AND:%.*]] = ashr i8 [[SHR2]], [[Y:%.*]]
 ; CHECK-NEXT:    ret i8 [[AND]]
 ;
   %sub = sub nsw i8 0, %x
@@ -23,10 +22,9 @@ define i8 @and_ashr_sub_nsw_x_not_x(i8 %x, i8 %y) {
 define i8 @and_ashr_sub_nsw_x_not_x_commuted(i8 %x, i8 %y) {
 ; CHECK-LABEL: @and_ashr_sub_nsw_x_not_x_commuted(
 ; CHECK-NEXT:    [[SUB:%.*]] = sub nsw i8 0, [[X:%.*]]
-; CHECK-NEXT:    [[SHR:%.*]] = ashr i8 [[SUB]], [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr i8 [[X]], [[Y]]
-; CHECK-NEXT:    [[SHR1:%.*]] = xor i8 [[NOT_NOT]], -1
-; CHECK-NEXT:    [[AND:%.*]] = and i8 [[SHR]], [[SHR1]]
+; CHECK-NEXT:    [[TMP1:%.*]] = xor i8 [[X]], -1
+; CHECK-NEXT:    [[SHR2:%.*]] = and i8 [[SUB]], [[TMP1]]
+; CHECK-NEXT:    [[AND:%.*]] = ashr i8 [[SHR2]], [[Y:%.*]]
 ; CHECK-NEXT:    ret i8 [[AND]]
 ;
   %sub = sub nsw i8 0, %x
@@ -72,10 +70,9 @@ define i8 @and_lshr_sub_x_not_x_commuted(i8 %x, i8 %y) {
 define <4 x i8> @and_ashr_sub_nsw_x_not_x_vec(<4 x i8> %x, <4 x i8> %y) {
 ; CHECK-LABEL: @and_ashr_sub_nsw_x_not_x_vec(
 ; CHECK-NEXT:    [[SUB:%.*]] = sub nsw <4 x i8> zeroinitializer, [[X:%.*]]
-; CHECK-NEXT:    [[SHR:%.*]] = ashr <4 x i8> [[SUB]], [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr <4 x i8> [[X]], [[Y]]
-; CHECK-NEXT:    [[SHR1:%.*]] = xor <4 x i8> [[NOT_NOT]], <i8 -1, i8 -1, i8 -1, i8 -1>
-; CHECK-NEXT:    [[AND:%.*]] = and <4 x i8> [[SHR]], [[SHR1]]
+; CHECK-NEXT:    [[TMP1:%.*]] = xor <4 x i8> [[X]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    [[SHR2:%.*]] = and <4 x i8> [[SUB]], [[TMP1]]
+; CHECK-NEXT:    [[AND:%.*]] = ashr <4 x i8> [[SHR2]], [[Y:%.*]]
 ; CHECK-NEXT:    ret <4 x i8> [[AND]]
 ;
   %sub = sub nsw <4 x i8> <i8 0, i8 0, i8 0, i8 0>, %x
@@ -89,10 +86,9 @@ define <4 x i8> @and_ashr_sub_nsw_x_not_x_vec(<4 x i8> %x, <4 x i8> %y) {
 define <4 x i8> @and_ashr_sub_nsw_x_not_x_vec_commuted(<4 x i8> %x, <4 x i8> %y) {
 ; CHECK-LABEL: @and_ashr_sub_nsw_x_not_x_vec_commuted(
 ; CHECK-NEXT:    [[SUB:%.*]] = sub nsw <4 x i8> zeroinitializer, [[X:%.*]]
-; CHECK-NEXT:    [[SHR:%.*]] = ashr <4 x i8> [[SUB]], [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr <4 x i8> [[X]], [[Y]]
-; CHECK-NEXT:    [[SHR1:%.*]] = xor <4 x i8> [[NOT_NOT]], <i8 -1, i8 -1, i8 -1, i8 -1>
-; CHECK-NEXT:    [[AND:%.*]] = and <4 x i8> [[SHR]], [[SHR1]]
+; CHECK-NEXT:    [[TMP1:%.*]] = xor <4 x i8> [[X]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    [[SHR2:%.*]] = and <4 x i8> [[SUB]], [[TMP1]]
+; CHECK-NEXT:    [[AND:%.*]] = ashr <4 x i8> [[SHR2]], [[Y:%.*]]
 ; CHECK-NEXT:    ret <4 x i8> [[AND]]
 ;
   %sub = sub nsw <4 x i8> <i8 0, i8 0, i8 0, i8 0>, %x
@@ -140,10 +136,9 @@ define <4 x i8> @and_lshr_sub_x_not_x_vec_commuted(<4 x i8> %x, <4 x i8> %y) {
 define i8 @or_ashr_sub_nsw_x_not_x(i8 %x, i8 %y) {
 ; CHECK-LABEL: @or_ashr_sub_nsw_x_not_x(
 ; CHECK-NEXT:    [[SUB:%.*]] = sub nsw i8 0, [[X:%.*]]
-; CHECK-NEXT:    [[SHR:%.*]] = ashr i8 [[SUB]], [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr i8 [[X]], [[Y]]
-; CHECK-NEXT:    [[SHR1:%.*]] = xor i8 [[NOT_NOT]], -1
-; CHECK-NEXT:    [[OR:%.*]] = or i8 [[SHR]], [[SHR1]]
+; CHECK-NEXT:    [[TMP1:%.*]] = xor i8 [[X]], -1
+; CHECK-NEXT:    [[SHR2:%.*]] = or i8 [[SUB]], [[TMP1]]
+; CHECK-NEXT:    [[OR:%.*]] = ashr i8 [[SHR2]], [[Y:%.*]]
 ; CHECK-NEXT:    ret i8 [[OR]]
 ;
   %sub = sub nsw i8 0, %x
@@ -157,10 +152,9 @@ define i8 @or_ashr_sub_nsw_x_not_x(i8 %x, i8 %y) {
 define i8 @or_ashr_sub_nsw_x_not_x_commuted(i8 %x, i8 %y) {
 ; CHECK-LABEL: @or_ashr_sub_nsw_x_not_x_commuted(
 ; CHECK-NEXT:    [[SUB:%.*]] = sub nsw i8 0, [[X:%.*]]
-; CHECK-NEXT:    [[SHR:%.*]] = ashr i8 [[SUB]], [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr i8 [[X]], [[Y]]
-; CHECK-NEXT:    [[SHR1:%.*]] = xor i8 [[NOT_NOT]], -1
-; CHECK-NEXT:    [[OR:%.*]] = or i8 [[SHR]], [[SHR1]]
+; CHECK-NEXT:    [[TMP1:%.*]] = xor i8 [[X]], -1
+; CHECK-NEXT:    [[SHR2:%.*]] = or i8 [[SUB]], [[TMP1]]
+; CHECK-NEXT:    [[OR:%.*]] = ashr i8 [[SHR2]], [[Y:%.*]]
 ; CHECK-NEXT:    ret i8 [[OR]]
 ;
   %sub = sub nsw i8 0, %x
@@ -207,10 +201,9 @@ define i8 @or_lshr_sub_x_not_x_commuted(i8 %x, i8 %y) {
 define <4 x i8> @or_ashr_sub_nsw_x_not_x_vec(<4 x i8> %x, <4 x i8> %y) {
 ; CHECK-LABEL: @or_ashr_sub_nsw_x_not_x_vec(
 ; CHECK-NEXT:    [[SUB:%.*]] = sub nsw <4 x i8> zeroinitializer, [[X:%.*]]
-; CHECK-NEXT:    [[SHR:%.*]] = ashr <4 x i8> [[SUB]], [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr <4 x i8> [[X]], [[Y]]
-; CHECK-NEXT:    [[SHR1:%.*]] = xor <4 x i8> [[NOT_NOT]], <i8 -1, i8 -1, i8 -1, i8 -1>
-; CHECK-NEXT:    [[OR:%.*]] = or <4 x i8> [[SHR]], [[SHR1]]
+; CHECK-NEXT:    [[TMP1:%.*]] = xor <4 x i8> [[X]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    [[SHR2:%.*]] = or <4 x i8> [[SUB]], [[TMP1]]
+; CHECK-NEXT:    [[OR:%.*]] = ashr <4 x i8> [[SHR2]], [[Y:%.*]]
 ; CHECK-NEXT:    ret <4 x i8> [[OR]]
 ;
   %sub = sub nsw <4 x i8> <i8 0, i8 0, i8 0, i8 0>, %x
@@ -224,10 +217,9 @@ define <4 x i8> @or_ashr_sub_nsw_x_not_x_vec(<4 x i8> %x, <4 x i8> %y) {
 define <4 x i8> @or_ashr_sub_nsw_x_not_x_vec_commuted(<4 x i8> %x, <4 x i8> %y) {
 ; CHECK-LABEL: @or_ashr_sub_nsw_x_not_x_vec_commuted(
 ; CHECK-NEXT:    [[SUB:%.*]] = sub nsw <4 x i8> zeroinitializer, [[X:%.*]]
-; CHECK-NEXT:    [[SHR:%.*]] = ashr <4 x i8> [[SUB]], [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr <4 x i8> [[X]], [[Y]]
-; CHECK-NEXT:    [[SHR1:%.*]] = xor <4 x i8> [[NOT_NOT]], <i8 -1, i8 -1, i8 -1, i8 -1>
-; CHECK-NEXT:    [[OR:%.*]] = or <4 x i8> [[SHR]], [[SHR1]]
+; CHECK-NEXT:    [[TMP1:%.*]] = xor <4 x i8> [[X]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    [[SHR2:%.*]] = or <4 x i8> [[SUB]], [[TMP1]]
+; CHECK-NEXT:    [[OR:%.*]] = ashr <4 x i8> [[SHR2]], [[Y:%.*]]
 ; CHECK-NEXT:    ret <4 x i8> [[OR]]
 ;
   %sub = sub nsw <4 x i8> <i8 0, i8 0, i8 0, i8 0>, %x
