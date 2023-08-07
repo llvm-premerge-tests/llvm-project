@@ -46,6 +46,7 @@
 // CHECK-NEXT: unix.Malloc
 // CHECK-NEXT: unix.MallocSizeof
 // CHECK-NEXT: unix.MismatchedDeallocator
+// CHECK-NEXT: unix.StdCLibraryFunctions
 // CHECK-NEXT: unix.Vfork
 // CHECK-NEXT: unix.cstring.BadSizeArg
 // CHECK-NEXT: unix.cstring.NullArg

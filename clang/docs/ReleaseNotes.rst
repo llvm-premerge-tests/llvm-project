@@ -238,6 +238,9 @@ libclang
 Static Analyzer
 ---------------
 
+- Move checker ``alpha.unix.StdCLibraryFunctions`` out of the ``alpha`` package
+  to ``unix.StdCLibraryFunctions``.
+
 .. _release-notes-sanitizers:
 
 Sanitizers
