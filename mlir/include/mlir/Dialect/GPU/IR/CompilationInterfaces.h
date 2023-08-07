@@ -15,7 +15,14 @@
 
 #include "mlir/IR/Attributes.h"
 
+namespace llvm {
+class IRBuilderBase;
+}
+
 namespace mlir {
+namespace LLVM {
+class ModuleTranslation;
+}
 namespace gpu {
 /// This class serves as an opaque interface for passing options to the
 /// `TargetAttrInterface` methods. Users of this class must implement the
