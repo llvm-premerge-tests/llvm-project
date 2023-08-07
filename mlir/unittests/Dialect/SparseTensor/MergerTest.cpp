@@ -2,19 +2,11 @@
 #include "llvm/Support/Compiler.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+
 #include <memory>
 
 using namespace mlir;
 using namespace mlir::sparse_tensor;
-
-// Silence 'warning C4002: 'too many arguments for function-liked macro
-//                          invocation'
-// as MSVC handles ##__VA_ARGS__ differently as gcc/clang
-
-#if defined(_MSC_VER) && !defined(__clang__)
-#pragma warning(push)
-#pragma warning(disable : 4002)
-#endif
 
 namespace {
 
@@ -38,25 +30,18 @@ namespace {
   DO(cmpf, TensorExp::Kind::kCmpF)                                             \
   DO(cmpi, TensorExp::Kind::kCmpI)
 
-// TODO: Disjunctive binary operations that need special handling are not
-// included, e.g., Division are not tested (for now) as it need a constant
-// non-zero dividend.
-// ##__VA_ARGS__ handles cases when __VA_ARGS__ is empty.
-#define FOREVERY_COMMON_DISJ_BINOP(TEST, ...)                                  \
-  TEST(addf, ##__VA_ARGS__)                                                    \
-  TEST(addc, ##__VA_ARGS__)                                                    \
-  TEST(addi, ##__VA_ARGS__)                                                    \
-  TEST(xori, ##__VA_ARGS__)                                                    \
-  TEST(ori, ##__VA_ARGS__)
+#define FOREVERY_COMMON_DISJ_BINOP(TEST, EXTRA)                                \
+  TEST(addf, EXTRA)                                                            \
+  TEST(addc, EXTRA)                                                            \
+  TEST(addi, EXTRA)                                                            \
+  TEST(xori, EXTRA)                                                            \
+  TEST(ori, EXTRA)
 
-// TODO: Conjunctive binary operations that need special handling are not
-// included, e.g., substraction yields a different pattern as it is mapped to
-// negate operation.
-#define FOREVERY_COMMON_CONJ_BINOP(TEST, ...)                                  \
-  TEST(mulf, ##__VA_ARGS__)                                                    \
-  TEST(mulc, ##__VA_ARGS__)                                                    \
-  TEST(muli, ##__VA_ARGS__)                                                    \
-  TEST(andi, ##__VA_ARGS__)
+#define FOREVERY_COMMON_CONJ_BINOP(TEST, EXTRA)                                \
+  TEST(mulf, EXTRA)                                                            \
+  TEST(mulc, EXTRA)                                                            \
+  TEST(muli, EXTRA)                                                            \
+  TEST(andi, EXTRA)
 
 #define FOREVERY_PAIR_OF_COMMON_CONJ_DISJ_BINOP(TEST)                          \
   FOREVERY_COMMON_CONJ_BINOP(TEST, addf)                                       \
@@ -87,9 +72,6 @@ struct Pattern;
 /// Since the patterns we need are rather small and short-lived, we use
 /// `Pattern const&` for "pointers" to patterns, rather than using
 /// something more elaborate like `std::shared_ptr<Pattern> const&`.
-/// (But since we use a typedef rather than spelling it out everywhere,
-/// that's easy enough to swap out if we need something more elaborate
-/// in the future.)
 using PatternRef = const Pattern &;
 struct Pattern {
   struct Children {
@@ -109,7 +91,7 @@ struct Pattern {
   };
 
   /// Constructors.
-  /// Rather than using these, please use the readable helper constructor
+  /// Rather than using these, please use the readable builder
   /// functions below to make tests more readable.
   Pattern() : kind(TensorExp::Kind::kSynZero) {}
   Pattern(TensorId tid) : kind(TensorExp::Kind::kTensor), tid(tid) {}
@@ -505,7 +487,7 @@ FOREVERY_PAIR_OF_COMMON_CONJ_CONJ_BINOP(IMPL_MERGER_TEST_CONJ_CONJ_SPARSE_OUT)
 ///   lat( i_00 / tensor_0 )
 ///   lat( i_01 / tensor_1 )
 /// }
-#define IMPL_MERGER_TEST_DISJ(OP)                                              \
+#define IMPL_MERGER_TEST_DISJ(OP, DROP_EXTRA)                                  \
   TEST_F(MergerTest3T1L, vector_##OP) {                                        \
     const auto e = OP##Expr(tensor(0), tensor(1));                             \
     const auto l0 = lid(0);                                                    \
@@ -529,7 +511,7 @@ FOREVERY_PAIR_OF_COMMON_CONJ_CONJ_BINOP(IMPL_MERGER_TEST_CONJ_CONJ_SPARSE_OUT)
     expectLatPointWithinRange(s, 1, 2, p1, loopsToBits({{l0, t1}}), true);     \
   }
 
-FOREVERY_COMMON_DISJ_BINOP(IMPL_MERGER_TEST_DISJ)
+FOREVERY_COMMON_DISJ_BINOP(IMPL_MERGER_TEST_DISJ, "")
 
 #undef IMPL_MERGER_TEST_DISJ
 
@@ -539,7 +521,7 @@ FOREVERY_COMMON_DISJ_BINOP(IMPL_MERGER_TEST_DISJ)
 /// {
 ///   lat( i_00 i_01 / (tensor_0 * tensor_1) )
 /// }
-#define IMPL_MERGER_TEST_CONJ(OP)                                              \
+#define IMPL_MERGER_TEST_CONJ(OP, DROP_EXTRA)                                  \
   TEST_F(MergerTest3T1L, vector_##OP) {                                        \
     const auto e = OP##Expr(tensor(0), tensor(1));                             \
     const auto l0 = lid(0);                                                    \
@@ -559,7 +541,7 @@ FOREVERY_COMMON_DISJ_BINOP(IMPL_MERGER_TEST_DISJ)
                    loopsToBits({{l0, t0}, {l0, t1}}), true);                   \
   }
 
-FOREVERY_COMMON_CONJ_BINOP(IMPL_MERGER_TEST_CONJ)
+FOREVERY_COMMON_CONJ_BINOP(IMPL_MERGER_TEST_CONJ, "")
 
 #undef IMPL_MERGER_TEST_CONJ
 
@@ -708,7 +690,7 @@ FOREVERY_PAIR_OF_COMMON_CONJ_CONJ_BINOP(IMPL_MERGER_TEST_CONJ_CONJ)
 ///
 /// lat( i_00 / sparse_tensor_0 ) should be opted out as it only has dense diff
 /// with lat( i_00 i_01 / (sparse_tensor_0 + dense_tensor_1) ).
-#define IMPL_MERGER_TEST_OPTIMIZED_DISJ(OP)                                    \
+#define IMPL_MERGER_TEST_OPTIMIZED_DISJ(OP, DROP_EXTRA)                        \
   TEST_F(MergerTest3T1LD, vector_opted_##OP) {                                 \
     const auto e = OP##Expr(tensor(0), tensor(1));                             \
     const auto l0 = lid(0);                                                    \
@@ -731,7 +713,7 @@ FOREVERY_PAIR_OF_COMMON_CONJ_CONJ_BINOP(IMPL_MERGER_TEST_CONJ_CONJ)
     expectLatPoint(s, 1, p1, loopsToBits({{l0, t1}}), true);                   \
   }
 
-FOREVERY_COMMON_DISJ_BINOP(IMPL_MERGER_TEST_OPTIMIZED_DISJ)
+FOREVERY_COMMON_DISJ_BINOP(IMPL_MERGER_TEST_OPTIMIZED_DISJ, "")
 
 #undef IMPL_MERGER_TEST_OPTIMIZED_CONJ
 
@@ -746,7 +728,7 @@ FOREVERY_COMMON_DISJ_BINOP(IMPL_MERGER_TEST_OPTIMIZED_DISJ)
 ///   lat( i_00 / (sparse_tensor_0 * dense_tensor_1) )
 /// }
 /// since i_01 is a dense dimension.
-#define IMPL_MERGER_TEST_OPTIMIZED_CONJ(OP)                                    \
+#define IMPL_MERGER_TEST_OPTIMIZED_CONJ(OP, DROP_EXTRA)                        \
   TEST_F(MergerTest3T1LD, vector_opted_##OP) {                                 \
     const auto e = OP##Expr(tensor(0), tensor(1));                             \
     const auto l0 = lid(0);                                                    \
@@ -765,7 +747,7 @@ FOREVERY_COMMON_DISJ_BINOP(IMPL_MERGER_TEST_OPTIMIZED_DISJ)
     expectLatPoint(s, 0, OP##Pattern(p0, p1), loopsToBits({{l0, t0}}), true);  \
   }
 
-FOREVERY_COMMON_CONJ_BINOP(IMPL_MERGER_TEST_OPTIMIZED_CONJ)
+FOREVERY_COMMON_CONJ_BINOP(IMPL_MERGER_TEST_OPTIMIZED_CONJ, "")
 
 /// Vector element-wise comparison (disjunction) of 2 vectors. i.e.;
 ///   a(i) = b(i) + c(i)
@@ -841,10 +823,3 @@ TEST_F(MergerTest3T1LD, vector_cmp) {
 }
 
 #undef IMPL_MERGER_TEST_OPTIMIZED_CONJ
-
-// TODO: mult-dim tests
-
-// restore warning status
-#if defined(_MSC_VER) && !defined(__clang__)
-#pragma warning(pop)
-#endif
