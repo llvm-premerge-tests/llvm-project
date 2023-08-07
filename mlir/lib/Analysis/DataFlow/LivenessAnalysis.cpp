@@ -14,6 +14,7 @@
 #include <mlir/Analysis/DataFlowFramework.h>
 #include <mlir/IR/Operation.h>
 #include <mlir/IR/Value.h>
+#include <mlir/Interfaces/CallInterfaces.h>
 #include <mlir/Interfaces/SideEffectInterfaces.h>
 #include <mlir/Support/LLVM.h>
 
@@ -55,7 +56,7 @@ ChangeResult Liveness::meet(const AbstractSparseLattice &other) {
 /// A value "has memory effects" iff it:
 ///   (1.a) is an operand of an op with memory effects OR
 ///   (1.b) is a non-forwarded branch operand and a block where its op could
-///   take the control has an op with memory effects.
+///   take the control is a callable or has an op with memory effects.
 ///
 /// A value `A` is said to be "used to compute" value `B` iff `B` cannot be
 /// computed in the absence of `A`. Thus, in this implementation, we say that
@@ -90,23 +91,33 @@ void LivenessAnalysis::visitOperation(Operation *op,
 void LivenessAnalysis::visitBranchOperand(OpOperand &operand) {
   // We know (at the moment) and assume (for the future) that `operand` is a
   // non-forwarded branch operand of a `RegionBranchOpInterface`,
-  // `BranchOpInterface`, `RegionBranchTerminatorOpInterface` or return-like op.
+  // `BranchOpInterface`, `RegionBranchTerminatorOpInterface`, return-like op,
+  // or `CallOpInterface`.
   Operation *op = operand.getOwner();
   assert((isa<RegionBranchOpInterface>(op) || isa<BranchOpInterface>(op) ||
           isa<RegionBranchTerminatorOpInterface>(op) ||
-          op->hasTrait<OpTrait::ReturnLike>()) &&
+          op->hasTrait<OpTrait::ReturnLike>() || isa<CallOpInterface>(op)) &&
          "expected the op to be `RegionBranchOpInterface`, "
-         "`BranchOpInterface`, `RegionBranchTerminatorOpInterface`, or "
-         "return-like");
+         "`BranchOpInterface`, `RegionBranchTerminatorOpInterface`, "
+         "return-like, or `CallOpInterface`");
 
   // The lattices of the non-forwarded branch operands don't get updated like
   // the forwarded branch operands or the non-branch operands. Thus they need
   // to be handled separately. This is where we handle them.
 
-  // This marks values of type (1.b) liveness as "live". A non-forwarded
-  // branch operand will be live if a block where its op could take the control
-  // has an op with memory effects.
-  // Populating such blocks in `blocks`.
+  // Marking values of type (1.b) liveness as "live"...
+
+  // Since the block to which a `CallOpInterface` with a non-forwarded branch
+  // operand takes control is callable, we simply mark these operands as live.
+  if (isa<CallOpInterface>(op)) {
+    Liveness *operandLiveness = getLatticeElement(operand.get());
+    propagateIfChanged(operandLiveness, operandLiveness->markLive());
+    return;
+  }
+
+  // A non-forwarded branch operand will be live if a block where its op could
+  // take the control has an op with memory effects. Populating such blocks in
+  // `blocks`.
   SmallVector<Block *, 4> blocks;
   if (isa<RegionBranchOpInterface>(op)) {
     // When the op is a `RegionBranchOpInterface`, like an `scf.for` or an
@@ -151,8 +162,6 @@ void LivenessAnalysis::visitBranchOperand(OpOperand &operand) {
   // Now that we have checked for memory-effecting ops in the blocks of concern,
   // we will simply visit the op with this non-forwarded operand to potentially
   // mark it "live" due to type (1.a/3) liveness.
-  if (operand.getOperandNumber() > 0)
-    return;
   SmallVector<Liveness *, 4> operandLiveness;
   operandLiveness.push_back(getLatticeElement(operand.get()));
   SmallVector<const Liveness *, 4> resultsLiveness;
