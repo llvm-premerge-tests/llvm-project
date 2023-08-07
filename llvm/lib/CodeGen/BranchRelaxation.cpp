@@ -79,6 +79,9 @@ class BranchRelaxation : public MachineFunctionPass {
   };
 
   SmallVector<BasicBlockInfo, 16> BlockInfo;
+  MachineBasicBlock *TrampolineInsertionPoint;
+  SmallDenseSet<std::pair<MachineBasicBlock *, MachineBasicBlock *>>
+      RelaxedUnconditionals;
   std::unique_ptr<RegScavenger> RS;
   LivePhysRegs LiveRegs;
 
@@ -144,7 +147,8 @@ void BranchRelaxation::verify() {
       if (MI.getOpcode() == TargetOpcode::FAULTING_OP)
         continue;
       MachineBasicBlock *DestBB = TII->getBranchDestBlock(MI);
-      assert(isBlockInRange(MI, *DestBB));
+      assert(isBlockInRange(MI, *DestBB) ||
+             RelaxedUnconditionals.contains({&MBB, DestBB}));
     }
   }
 #endif
@@ -167,6 +171,9 @@ void BranchRelaxation::scanFunction() {
   BlockInfo.clear();
   BlockInfo.resize(MF->getNumBlockIDs());
 
+  TrampolineInsertionPoint = nullptr;
+  RelaxedUnconditionals.clear();
+
   // First thing, compute the size of all basic blocks, and see if the function
   // has any inline assembly in it. If so, we have to be conservative about
   // alignment assumptions, as we don't know for sure the size of any
@@ -176,6 +183,15 @@ void BranchRelaxation::scanFunction() {
 
   // Compute block offsets and known bits.
   adjustBlockOffsets(*MF->begin());
+
+  // Place the trampoline insertion point at the end of the hot portion of the
+  // function.
+  for (MachineBasicBlock &MBB : reverse(*MF)) {
+    if (MBB.getSectionID() != MBBSectionID::ColdSectionID) {
+      TrampolineInsertionPoint = &MBB;
+      break;
+    }
+  }
 }
 
 /// computeBlockSize - Compute the size for MBB.
@@ -503,6 +519,8 @@ bool BranchRelaxation::fixupUnconditionalBranch(MachineInstr &MI) {
     BranchBB->sortUniqueLiveIns();
     BranchBB->addSuccessor(DestBB);
     MBB->replaceSuccessor(DestBB, BranchBB);
+    if (TrampolineInsertionPoint == MBB)
+      TrampolineInsertionPoint = BranchBB;
   }
 
   DebugLoc DL = MI.getDebugLoc();
@@ -528,6 +546,24 @@ bool BranchRelaxation::fixupUnconditionalBranch(MachineInstr &MI) {
 
   // If RestoreBB is required, try to place just before DestBB.
   if (!RestoreBB->empty()) {
+    if (MBB->getSectionID() == MBBSectionID::ColdSectionID && MBB &&
+        DestBB->getSectionID() != MBBSectionID::ColdSectionID) {
+      // If the jump is Cold -> Hot, then don't place the restore block in
+      // the middle of the function. Place it at the end.
+      MachineBasicBlock *NewBB = createNewBlockAfter(*TrampolineInsertionPoint);
+      TII->insertUnconditionalBranch(*NewBB, DestBB, DebugLoc());
+      BlockInfo[NewBB->getNumber()].Size = computeBlockSize(*NewBB);
+
+      // New trampolines should be inserted after NewBB
+      TrampolineInsertionPoint = NewBB;
+
+      // Retarget the unconditional branch to the trampoline block
+      BranchBB->replaceSuccessor(DestBB, NewBB);
+      NewBB->addSuccessor(DestBB);
+
+      DestBB = NewBB;
+    }
+
     // TODO: For multiple far branches to the same destination, there are
     // chances that some restore blocks could be shared if they clobber the
     // same registers and share the same restore sequence. So far, those
@@ -557,9 +593,11 @@ bool BranchRelaxation::fixupUnconditionalBranch(MachineInstr &MI) {
     RestoreBB->setSectionID(DestBB->getSectionID());
     RestoreBB->setIsBeginSection(DestBB->isBeginSection());
     DestBB->setIsBeginSection(false);
+    RelaxedUnconditionals.insert({BranchBB, RestoreBB});
   } else {
     // Remove restore block if it's not required.
     MF->erase(RestoreBB);
+    RelaxedUnconditionals.insert({BranchBB, DestBB});
   }
 
   return true;
@@ -585,7 +623,8 @@ bool BranchRelaxation::relaxBranchInstructions() {
       // Unconditional branch destination might be unanalyzable, assume these
       // are OK.
       if (MachineBasicBlock *DestBB = TII->getBranchDestBlock(*Last)) {
-        if (!isBlockInRange(*Last, *DestBB) && !TII->isTailCall(*Last)) {
+        if (!isBlockInRange(*Last, *DestBB) && !TII->isTailCall(*Last) &&
+            !RelaxedUnconditionals.contains({&MBB, DestBB})) {
           fixupUnconditionalBranch(*Last);
           ++NumUnconditionalRelaxed;
           Changed = true;
@@ -665,6 +704,8 @@ bool BranchRelaxation::runOnMachineFunction(MachineFunction &mf) {
   LLVM_DEBUG(dbgs() << "  Basic blocks after relaxation\n\n"; dumpBBs());
 
   BlockInfo.clear();
+  TrampolineInsertionPoint = nullptr;
+  RelaxedUnconditionals.clear();
 
   return MadeChange;
 }
