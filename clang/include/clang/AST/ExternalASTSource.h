@@ -100,6 +100,7 @@ public:
   ///
   /// The default implementation of this method is a no-op.
   virtual Decl *GetExternalDecl(uint32_t ID);
+  virtual Decl *GetLazyTemplateDecl(unsigned Hash);
 
   /// Resolve a selector ID into a selector.
   ///

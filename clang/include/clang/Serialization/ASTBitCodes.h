@@ -701,6 +701,10 @@ enum ASTRecordTypes {
   /// Record code for an unterminated \#pragma clang assume_nonnull begin
   /// recorded in a preamble.
   PP_ASSUME_NONNULL_LOC = 67,
+  
+  /// Record for ODRHash vs DeclIDs
+  ODRHASH_VS_DECL_IDS_ODR = 68,
+  ODRHASH_VS_DECL_IDS_DECLS = 69,
 };
 
 /// Record types used within a source manager block.

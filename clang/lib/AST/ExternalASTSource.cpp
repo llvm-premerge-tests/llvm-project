@@ -72,6 +72,10 @@ Decl *ExternalASTSource::GetExternalDecl(uint32_t ID) {
   return nullptr;
 }
 
+Decl *ExternalASTSource::GetLazyTemplateDecl(unsigned Hash) {
+  return nullptr;
+}
+
 Selector ExternalASTSource::GetExternalSelector(uint32_t ID) {
   return Selector();
 }

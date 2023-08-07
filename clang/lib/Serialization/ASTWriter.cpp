@@ -3173,6 +3173,40 @@ void ASTWriter::WriteFileDeclIDsMap() {
   Stream.EmitRecordWithBlob(AbbrevCode, Record, bytes(FileGroupedDeclIDs));
 }
 
+void ASTWriter::WriteODRHashDeclIDsMap() {
+  using namespace llvm;
+
+  // Join the vectors of DeclIDs from all files.
+  SmallVector<DeclID, 256> ODRHashes;
+  SmallVector<DeclID, 256> ODRHashesDeclIDs;
+  for (auto &ODRHashDeclEntry : ODRHashDeclIDs) {
+    ODRHashes.push_back(ODRHashDeclEntry.second);
+    ODRHashesDeclIDs.push_back(ODRHashDeclEntry.first);
+  }
+
+  {
+    auto Abbrev = std::make_shared<BitCodeAbbrev>();
+    Abbrev->Add(BitCodeAbbrevOp(ODRHASH_VS_DECL_IDS_ODR));
+    Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::Fixed, 32));
+    Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::Blob));
+    unsigned AbbrevCode = Stream.EmitAbbrev(std::move(Abbrev));
+    RecordData::value_type Record[] = {ODRHASH_VS_DECL_IDS_ODR,
+                                       ODRHashes.size()};
+    Stream.EmitRecordWithBlob(AbbrevCode, Record, bytes(ODRHashes));
+  }
+
+  {
+    auto Abbrev = std::make_shared<BitCodeAbbrev>();
+    Abbrev->Add(BitCodeAbbrevOp(ODRHASH_VS_DECL_IDS_DECLS));
+    Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::Fixed, 32));
+    Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::Blob));
+    unsigned AbbrevCode = Stream.EmitAbbrev(std::move(Abbrev));
+    RecordData::value_type Record[] = {ODRHASH_VS_DECL_IDS_DECLS,
+                                       ODRHashesDeclIDs.size()};
+    Stream.EmitRecordWithBlob(AbbrevCode, Record, bytes(ODRHashesDeclIDs));
+  }
+}
+
 void ASTWriter::WriteComments() {
   Stream.EnterSubblock(COMMENTS_BLOCK_ID, 3);
   auto _ = llvm::make_scope_exit([this] { Stream.ExitBlock(); });
@@ -5021,6 +5055,7 @@ ASTFileSignature ASTWriter::WriteASTCore(Sema &SemaRef, StringRef isysroot,
   WriteTypeDeclOffsets();
   if (!DeclUpdatesOffsetsRecord.empty())
     Stream.EmitRecord(DECL_UPDATE_OFFSETS, DeclUpdatesOffsetsRecord);
+  WriteODRHashDeclIDsMap();
   WriteFileDeclIDsMap();
   WriteSourceManagerBlock(Context.getSourceManager(), PP);
   WriteComments();
@@ -5201,12 +5236,31 @@ void ASTWriter::WriteDeclUpdatesBlocks(RecordDataImpl &OffsetsRecord) {
 
       switch (Kind) {
       case UPD_CXX_ADDED_IMPLICIT_MEMBER:
-      case UPD_CXX_ADDED_TEMPLATE_SPECIALIZATION:
       case UPD_CXX_ADDED_ANONYMOUS_NAMESPACE:
         assert(Update.getDecl() && "no decl to add?");
         Record.push_back(GetDeclRef(Update.getDecl()));
         break;
-
+      case UPD_CXX_ADDED_TEMPLATE_SPECIALIZATION: {
+        const Decl *Spec = Update.getDecl();
+        assert(Spec && "no decl to add?");
+        Record.push_back(GetDeclRef(Spec));
+        ArrayRef<TemplateArgument> Args;
+        if (auto *CTSD = dyn_cast<ClassTemplateSpecializationDecl>(Spec))
+          Args = CTSD->getTemplateArgs().asArray();
+        else if (auto *VTSD = dyn_cast<VarTemplateSpecializationDecl>(Spec))
+          Args = VTSD->getTemplateArgs().asArray();
+        else if (auto *FD = dyn_cast<FunctionDecl>(Spec))
+          Args = FD->getTemplateSpecializationArgs()->asArray();
+        assert(Args.size());
+        Record.push_back(TemplateArgumentList::ComputeODRHash(Args));
+        ODRHashDeclIDs[TemplateArgumentList::ComputeODRHash(Args)] =
+            DeclIDs[Spec];
+        bool IsPartialSpecialization
+          = isa<ClassTemplatePartialSpecializationDecl>(Spec) ||
+          isa<VarTemplatePartialSpecializationDecl>(Spec);
+        Record.push_back(IsPartialSpecialization);
+        break;
+      }
       case UPD_CXX_ADDED_FUNCTION_DEFINITION:
       case UPD_CXX_ADDED_VAR_DEFINITION:
         break;
