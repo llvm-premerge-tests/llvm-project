@@ -239,6 +239,13 @@ VPInstruction::VPInstruction(unsigned Opcode,
   assert(isFPMathOp() && "this op can't take fast-math flags");
 }
 
+VPInstruction::VPInstruction(unsigned Opcode,
+                             std::initializer_list<VPValue *> Operands,
+                             WrapFlagsTy WrapFlags, DebugLoc DL,
+                             const Twine &Name)
+    : VPRecipeWithIRFlags(VPDef::VPInstructionSC, Operands, WrapFlags),
+      VPValue(this), Opcode(Opcode), DL(DL), Name(Name.str()) {}
+
 Value *VPInstruction::generateInstruction(VPTransformState &State,
                                           unsigned Part) {
   IRBuilderBase &Builder = State.Builder;
@@ -308,23 +315,19 @@ Value *VPInstruction::generateInstruction(VPTransformState &State,
     Value *Zero = ConstantInt::get(ScalarTC->getType(), 0);
     return Builder.CreateSelect(Cmp, Sub, Zero);
   }
-  case VPInstruction::CanonicalIVIncrement:
-  case VPInstruction::CanonicalIVIncrementNUW: {
+  case VPInstruction::CanonicalIVIncrement: {
     if (Part == 0) {
-      bool IsNUW = getOpcode() == VPInstruction::CanonicalIVIncrementNUW;
       auto *Phi = State.get(getOperand(0), 0);
       // The loop step is equal to the vectorization factor (num of SIMD
       // elements) times the unroll factor (num of SIMD instructions).
       Value *Step =
           createStepForVF(Builder, Phi->getType(), State.VF, State.UF);
-      return Builder.CreateAdd(Phi, Step, Name, IsNUW, false);
+      return Builder.CreateAdd(Phi, Step, Name, hasNoUnsignedWrap(), false);
     }
     return State.get(this, 0);
   }
 
-  case VPInstruction::CanonicalIVIncrementForPart:
-  case VPInstruction::CanonicalIVIncrementForPartNUW: {
-    bool IsNUW = getOpcode() == VPInstruction::CanonicalIVIncrementForPartNUW;
+  case VPInstruction::CanonicalIVIncrementForPart: {
     auto *IV = State.get(getOperand(0), VPIteration(0, 0));
     if (Part == 0)
       return IV;
@@ -332,7 +335,7 @@ Value *VPInstruction::generateInstruction(VPTransformState &State,
     // The canonical IV is incremented by the vectorization factor (num of SIMD
     // elements) times the unroll part.
     Value *Step = createStepForVF(Builder, IV->getType(), State.VF, Part);
-    return Builder.CreateAdd(IV, Step, Name, IsNUW, false);
+    return Builder.CreateAdd(IV, Step, Name, hasNoUnsignedWrap(), false);
   }
   case VPInstruction::BranchOnCond: {
     if (Part != 0)
@@ -442,9 +445,6 @@ void VPInstruction::print(raw_ostream &O, const Twine &Indent,
   case VPInstruction::CanonicalIVIncrement:
     O << "VF * UF + ";
     break;
-  case VPInstruction::CanonicalIVIncrementNUW:
-    O << "VF * UF +(nuw) ";
-    break;
   case VPInstruction::BranchOnCond:
     O << "branch-on-cond";
     break;
@@ -453,9 +453,6 @@ void VPInstruction::print(raw_ostream &O, const Twine &Indent,
     break;
   case VPInstruction::CanonicalIVIncrementForPart:
     O << "VF * Part + ";
-    break;
-  case VPInstruction::CanonicalIVIncrementForPartNUW:
-    O << "VF * Part +(nuw) ";
     break;
   case VPInstruction::BranchOnCount:
     O << "branch-on-count ";
