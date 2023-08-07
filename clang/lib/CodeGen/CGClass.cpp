@@ -10,6 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "ABIInfoImpl.h"
 #include "CGBlocks.h"
 #include "CGCXXABI.h"
 #include "CGDebugInfo.h"
@@ -701,6 +702,9 @@ void CodeGenFunction::EmitInitializerForField(FieldDecl *Field, LValue LHS,
         getOverlapForFieldInit(Field), AggValueSlot::IsNotZeroed,
         // Checks are made by the code that calls constructor.
         AggValueSlot::IsSanitizerChecked);
+    if (Field->hasAttr<NoUniqueAddressAttr>() &&
+        isEmptyRecord(getContext(), FieldType, true))
+      Slot = AggValueSlot::ignored();
     EmitAggExpr(Init, Slot);
     break;
   }
