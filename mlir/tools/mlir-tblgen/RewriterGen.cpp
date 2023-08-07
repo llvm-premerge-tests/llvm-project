@@ -1096,6 +1096,16 @@ void PatternEmitter::emitRewriteLogic() {
     os << "\nrewriter.replaceOp(op0, tblgen_repl_values);\n";
   }
 
+  // Process supplemtary patterns.
+  for (int i = 0, offset = 0; i < pattern.getNumSupplementalPatterns(); ++i) {
+    DagNode resultTree = pattern.getSupplementalPattern(i);
+    offset -= getNodeValueCount(pattern.getResultPattern(i));
+    auto val = handleResultPattern(resultTree, offset, 0);
+    if (resultTree.isNativeCodeCall() &&
+        resultTree.getNumReturnsOfNativeCode() == 0)
+      os << val << ";\n";
+  }
+
   LLVM_DEBUG(llvm::dbgs() << "--- done emitting rewrite logic ---\n");
 }
 
