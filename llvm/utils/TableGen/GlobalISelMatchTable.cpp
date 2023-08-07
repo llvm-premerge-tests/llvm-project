@@ -1938,6 +1938,8 @@ void BuildMIAction::emitActionOpcodes(MatchTable &Table,
         Table << MatchTable::Opcode("GIR_AddImplicitDef")
               << MatchTable::Comment("InsnID") << MatchTable::IntValue(InsnID)
               << MatchTable::NamedValue(Namespace, Def->getName())
+              << MatchTable::Comment("Dead")
+              << MatchTable::IntValue((bool)DeadImplicitDefs.contains(Def))
               << MatchTable::LineBreak;
       }
       for (auto *Use : I->ImplicitUses) {
