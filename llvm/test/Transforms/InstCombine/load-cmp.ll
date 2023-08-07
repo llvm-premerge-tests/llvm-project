@@ -215,10 +215,7 @@ define i1 @test10_struct(i32 %x) {
 
 define i1 @test10_struct_noinbounds(i32 %x) {
 ; CHECK-LABEL: @test10_struct_noinbounds(
-; CHECK-NEXT:    [[P:%.*]] = getelementptr [[FOO:%.*]], ptr @GS, i32 [[X:%.*]], i32 0
-; CHECK-NEXT:    [[Q:%.*]] = load i32, ptr [[P]], align 8
-; CHECK-NEXT:    [[R:%.*]] = icmp eq i32 [[Q]], 9
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 false
 ;
   %p = getelementptr %Foo, ptr @GS, i32 %x, i32 0
   %q = load i32, ptr %p
@@ -252,11 +249,7 @@ define i1 @test10_struct_i64(i64 %x){
 
 define i1 @test10_struct_noinbounds_i16(i16 %x) {
 ; CHECK-LABEL: @test10_struct_noinbounds_i16(
-; CHECK-NEXT:    [[TMP1:%.*]] = sext i16 [[X:%.*]] to i32
-; CHECK-NEXT:    [[P:%.*]] = getelementptr [[FOO:%.*]], ptr @GS, i32 [[TMP1]], i32 0
-; CHECK-NEXT:    [[Q:%.*]] = load i32, ptr [[P]], align 8
-; CHECK-NEXT:    [[R:%.*]] = icmp eq i32 [[Q]], 0
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 false
 ;
   %p = getelementptr %Foo, ptr @GS, i16 %x, i32 0
   %q = load i32, ptr %p
@@ -266,7 +259,8 @@ define i1 @test10_struct_noinbounds_i16(i16 %x) {
 
 define i1 @test10_struct_arr(i32 %x) {
 ; CHECK-LABEL: @test10_struct_arr(
-; CHECK-NEXT:    [[R:%.*]] = icmp ne i32 [[X:%.*]], 1
+; CHECK-NEXT:    [[TMP1:%.*]] = and i32 [[X:%.*]], -3
+; CHECK-NEXT:    [[R:%.*]] = icmp eq i32 [[TMP1]], 0
 ; CHECK-NEXT:    ret i1 [[R]]
 ;
   %p = getelementptr inbounds [4 x %Foo], ptr @GStructArr, i32 0, i32 %x, i32 2
@@ -277,8 +271,8 @@ define i1 @test10_struct_arr(i32 %x) {
 
 define i1 @test10_struct_arr_noinbounds(i32 %x) {
 ; CHECK-LABEL: @test10_struct_arr_noinbounds(
-; CHECK-NEXT:    [[TMP1:%.*]] = and i32 [[X:%.*]], 268435455
-; CHECK-NEXT:    [[R:%.*]] = icmp ne i32 [[TMP1]], 1
+; CHECK-NEXT:    [[TMP1:%.*]] = and i32 [[X:%.*]], 268435453
+; CHECK-NEXT:    [[R:%.*]] = icmp eq i32 [[TMP1]], 0
 ; CHECK-NEXT:    ret i1 [[R]]
 ;
   %p = getelementptr [4 x %Foo], ptr @GStructArr, i32 0, i32 %x, i32 2
@@ -289,7 +283,8 @@ define i1 @test10_struct_arr_noinbounds(i32 %x) {
 
 define i1 @test10_struct_arr_i16(i16 %x) {
 ; CHECK-LABEL: @test10_struct_arr_i16(
-; CHECK-NEXT:    [[R:%.*]] = icmp ne i16 [[X:%.*]], 1
+; CHECK-NEXT:    [[TMP1:%.*]] = and i16 [[X:%.*]], -3
+; CHECK-NEXT:    [[R:%.*]] = icmp eq i16 [[TMP1]], 0
 ; CHECK-NEXT:    ret i1 [[R]]
 ;
   %p = getelementptr inbounds [4 x %Foo], ptr @GStructArr, i16 0, i16 %x, i32 2
@@ -300,8 +295,8 @@ define i1 @test10_struct_arr_i16(i16 %x) {
 
 define i1 @test10_struct_arr_i64(i64 %x) {
 ; CHECK-LABEL: @test10_struct_arr_i64(
-; CHECK-NEXT:    [[TMP1:%.*]] = and i64 [[X:%.*]], 4294967295
-; CHECK-NEXT:    [[R:%.*]] = icmp ne i64 [[TMP1]], 1
+; CHECK-NEXT:    [[TMP1:%.*]] = and i64 [[X:%.*]], 4294967293
+; CHECK-NEXT:    [[R:%.*]] = icmp eq i64 [[TMP1]], 0
 ; CHECK-NEXT:    ret i1 [[R]]
 ;
   %p = getelementptr inbounds [4 x %Foo], ptr @GStructArr, i64 0, i64 %x, i32 2
@@ -313,8 +308,8 @@ define i1 @test10_struct_arr_i64(i64 %x) {
 define i1 @test10_struct_arr_noinbounds_i16(i16 %x) {
 ; CHECK-LABEL: @test10_struct_arr_noinbounds_i16(
 ; CHECK-NEXT:    [[TMP1:%.*]] = sext i16 [[X:%.*]] to i32
-; CHECK-NEXT:    [[TMP2:%.*]] = and i32 [[TMP1]], 268435455
-; CHECK-NEXT:    [[R:%.*]] = icmp ne i32 [[TMP2]], 1
+; CHECK-NEXT:    [[TMP2:%.*]] = and i32 [[TMP1]], 268435453
+; CHECK-NEXT:    [[R:%.*]] = icmp eq i32 [[TMP2]], 0
 ; CHECK-NEXT:    ret i1 [[R]]
 ;
   %p = getelementptr [4 x %Foo], ptr @GStructArr, i32 0, i16 %x, i32 2
@@ -325,8 +320,8 @@ define i1 @test10_struct_arr_noinbounds_i16(i16 %x) {
 
 define i1 @test10_struct_arr_noinbounds_i64(i64 %x) {
 ; CHECK-LABEL: @test10_struct_arr_noinbounds_i64(
-; CHECK-NEXT:    [[TMP1:%.*]] = and i64 [[X:%.*]], 268435455
-; CHECK-NEXT:    [[R:%.*]] = icmp ne i64 [[TMP1]], 1
+; CHECK-NEXT:    [[TMP1:%.*]] = and i64 [[X:%.*]], 268435453
+; CHECK-NEXT:    [[R:%.*]] = icmp eq i64 [[TMP1]], 0
 ; CHECK-NEXT:    ret i1 [[R]]
 ;
   %p = getelementptr [4 x %Foo], ptr @GStructArr, i32 0, i64 %x, i32 2
@@ -338,6 +333,7 @@ define i1 @test10_struct_arr_noinbounds_i64(i64 %x) {
 
 @CG = constant [4 x i32] [i32 1, i32 2, i32 3, i32 4]
 
+; TODO: Fold it globally.
 define i1 @cmp_load_constant_array0(i64 %x){
 ; CHECK-LABEL: @cmp_load_constant_array0(
 ; CHECK-NEXT:  entry:
@@ -346,10 +342,8 @@ define i1 @cmp_load_constant_array0(i64 %x){
 ; CHECK:       case2:
 ; CHECK-NEXT:    ret i1 false
 ; CHECK:       case1:
-; CHECK-NEXT:    [[TMP0:%.*]] = trunc i64 [[X]] to i32
-; CHECK-NEXT:    [[ISOK_PTR:%.*]] = getelementptr inbounds i32, ptr @CG, i32 [[TMP0]]
-; CHECK-NEXT:    [[ISOK:%.*]] = load i32, ptr [[ISOK_PTR]], align 4
-; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp ult i32 [[ISOK]], 3
+; CHECK-NEXT:    [[TMP0:%.*]] = and i64 [[X]], 4294967294
+; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp eq i64 [[TMP0]], 0
 ; CHECK-NEXT:    ret i1 [[COND_INFERRED]]
 ;
 entry:
@@ -374,11 +368,7 @@ define i1 @cmp_load_constant_array1(i64 %x){
 ; CHECK:       case2:
 ; CHECK-NEXT:    ret i1 false
 ; CHECK:       case1:
-; CHECK-NEXT:    [[TMP0:%.*]] = trunc i64 [[X]] to i32
-; CHECK-NEXT:    [[ISOK_PTR:%.*]] = getelementptr inbounds i32, ptr @CG, i32 [[TMP0]]
-; CHECK-NEXT:    [[ISOK:%.*]] = load i32, ptr [[ISOK_PTR]], align 4
-; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp ugt i32 [[ISOK]], 10
-; CHECK-NEXT:    ret i1 [[COND_INFERRED]]
+; CHECK-NEXT:    ret i1 false
 ;
 entry:
   %cond = icmp ult i64 %x, 2
@@ -405,9 +395,10 @@ define i1 @cmp_load_constant_array_messy(i64 %x){
 ; CHECK-NEXT:    ret i1 false
 ; CHECK:       case1:
 ; CHECK-NEXT:    [[TMP0:%.*]] = trunc i64 [[X]] to i32
-; CHECK-NEXT:    [[ISOK_PTR:%.*]] = getelementptr i32, ptr @CG_MESSY, i32 [[TMP0]]
-; CHECK-NEXT:    [[ISOK:%.*]] = load i32, ptr [[ISOK_PTR]], align 4
-; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp slt i32 [[ISOK]], 5
+; CHECK-NEXT:    [[TMP1:%.*]] = and i32 [[TMP0]], 1073741823
+; CHECK-NEXT:    [[TMP2:%.*]] = lshr i32 373, [[TMP1]]
+; CHECK-NEXT:    [[TMP3:%.*]] = and i32 [[TMP2]], 1
+; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp ne i32 [[TMP3]], 0
 ; CHECK-NEXT:    ret i1 [[COND_INFERRED]]
 ;
 entry:
@@ -427,9 +418,10 @@ case1:
 define i1 @cmp_diff_load_constant_array_messy0(i64 %x){
 ; CHECK-LABEL: @cmp_diff_load_constant_array_messy0(
 ; CHECK-NEXT:    [[TMP1:%.*]] = trunc i64 [[X:%.*]] to i32
-; CHECK-NEXT:    [[ISOK_PTR:%.*]] = getelementptr i32, ptr @CG_MESSY, i32 [[TMP1]]
-; CHECK-NEXT:    [[ISOK:%.*]] = load i16, ptr [[ISOK_PTR]], align 4
-; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp slt i16 [[ISOK]], 5
+; CHECK-NEXT:    [[TMP2:%.*]] = and i32 [[TMP1]], 1073741823
+; CHECK-NEXT:    [[TMP3:%.*]] = lshr i32 373, [[TMP2]]
+; CHECK-NEXT:    [[TMP4:%.*]] = and i32 [[TMP3]], 1
+; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp ne i32 [[TMP4]], 0
 ; CHECK-NEXT:    ret i1 [[COND_INFERRED]]
 ;
   %isOK_ptr = getelementptr i32, ptr @CG_MESSY, i64 %x
@@ -440,13 +432,13 @@ define i1 @cmp_diff_load_constant_array_messy0(i64 %x){
 
 define i1 @cmp_diff_load_constant_array_messy1(i64 %x){
 ; CHECK-LABEL: @cmp_diff_load_constant_array_messy1(
-; CHECK-NEXT:    [[TMP1:%.*]] = trunc i64 [[X:%.*]] to i32
-; CHECK-NEXT:    [[ISOK_PTR:%.*]] = getelementptr i6, ptr @CG_MESSY, i32 [[TMP1]]
-; CHECK-NEXT:    [[ISOK:%.*]] = load i16, ptr [[ISOK_PTR]], align 2
-; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp slt i16 [[ISOK]], 5
+; CHECK-NEXT:    [[TMP1:%.*]] = and i64 [[X:%.*]], 4294967295
+; CHECK-NEXT:    [[TMP2:%.*]] = lshr i64 66160388071, [[TMP1]]
+; CHECK-NEXT:    [[TMP3:%.*]] = and i64 [[TMP2]], 1
+; CHECK-NEXT:    [[COND_INFERRED:%.*]] = icmp ne i64 [[TMP3]], 0
 ; CHECK-NEXT:    ret i1 [[COND_INFERRED]]
 ;
-%isOK_ptr = getelementptr i6, ptr @CG_MESSY, i64 %x
+  %isOK_ptr = getelementptr i6, ptr @CG_MESSY, i64 %x
   %isOK = load i16, ptr %isOK_ptr
   %cond_inferred = icmp slt i16 %isOK, 5
   ret i1 %cond_inferred
@@ -479,4 +471,3 @@ case1:
   %cond_inferred = icmp ult i32 %isOK, %y
   ret i1 %cond_inferred
 }
-

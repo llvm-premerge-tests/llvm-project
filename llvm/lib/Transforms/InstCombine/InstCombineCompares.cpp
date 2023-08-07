@@ -12,6 +12,7 @@
 
 #include "InstCombineInternal.h"
 #include "llvm/ADT/APSInt.h"
+#include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/CaptureTracking.h"
@@ -20,10 +21,12 @@
 #include "llvm/Analysis/InstructionSimplify.h"
 #include "llvm/Analysis/VectorUtils.h"
 #include "llvm/IR/ConstantRange.h"
+#include "llvm/IR/Constants.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/PatternMatch.h"
+#include "llvm/Support/Casting.h"
 #include "llvm/Support/KnownBits.h"
 #include "llvm/Transforms/InstCombine/InstCombiner.h"
 
@@ -108,55 +111,34 @@ static bool isSignTest(ICmpInst::Predicate &Pred, const APInt &C) {
 Instruction *InstCombinerImpl::foldCmpLoadFromIndexedGlobal(
     LoadInst *LI, GetElementPtrInst *GEP, GlobalVariable *GV, CmpInst &ICI,
     ConstantInt *AndCst) {
-  if (LI->isVolatile() || LI->getType() != GEP->getResultElementType() ||
-      GV->getValueType() != GEP->getSourceElementType() ||
-      !GV->isConstant() || !GV->hasDefinitiveInitializer())
+  if (LI->isVolatile() || !GV->isConstant() || !GV->hasDefinitiveInitializer())
     return nullptr;
 
   Constant *Init = GV->getInitializer();
-  if (!isa<ConstantArray>(Init) && !isa<ConstantDataArray>(Init))
-    return nullptr;
+  uint64_t DataSize = DL.getTypeAllocSize(Init->getType());
 
-  uint64_t ArrayElementCount = Init->getType()->getArrayNumElements();
   // Don't blow up on huge arrays.
-  if (ArrayElementCount > MaxArraySizeForCombine)
+  if (DataSize > MaxDataSizeForCombine)
     return nullptr;
 
-  // There are many forms of this optimization we can handle, for now, just do
-  // the simple index into a single-dimensional array.
-  //
-  // Require: GEP GV, 0, i {{, constant indices}}
-  if (GEP->getNumOperands() < 3 ||
-      !isa<ConstantInt>(GEP->getOperand(1)) ||
-      !cast<ConstantInt>(GEP->getOperand(1))->isZero() ||
-      isa<Constant>(GEP->getOperand(2)))
+  Type *LoadedTy = LI->getType();
+  uint64_t LoadedTySize = DL.getTypeAllocSize(LoadedTy);
+  uint64_t PtrBitwidth = DL.getIndexSizeInBits(GEP->getPointerAddressSpace());
+  Type *PtrIdxTy = DL.getIndexType(GEP->getType());
+
+  MapVector<Value *, APInt> VariableOffsets;
+  APInt ConstantOffset(PtrBitwidth, 0);
+  GEP->collectOffset(GEP->getModule()->getDataLayout(), PtrBitwidth,
+                     VariableOffsets, ConstantOffset);
+
+  // Restrict to one variable currently.
+  if (VariableOffsets.size() != 1)
     return nullptr;
 
-  // Check that indices after the variable are constants and in-range for the
-  // type they index.  Collect the indices.  This is typically for arrays of
-  // structs.
-  SmallVector<unsigned, 4> LaterIndices;
-
-  Type *EltTy = Init->getType()->getArrayElementType();
-  for (unsigned i = 3, e = GEP->getNumOperands(); i != e; ++i) {
-    ConstantInt *Idx = dyn_cast<ConstantInt>(GEP->getOperand(i));
-    if (!Idx) return nullptr;  // Variable index.
-
-    uint64_t IdxVal = Idx->getZExtValue();
-    if ((unsigned)IdxVal != IdxVal) return nullptr; // Too large array index.
-
-    if (StructType *STy = dyn_cast<StructType>(EltTy))
-      EltTy = STy->getElementType(IdxVal);
-    else if (ArrayType *ATy = dyn_cast<ArrayType>(EltTy)) {
-      if (IdxVal >= ATy->getNumElements()) return nullptr;
-      EltTy = ATy->getElementType();
-    } else {
-      return nullptr; // Unknown type.
-    }
-
-    LaterIndices.push_back(IdxVal);
-  }
-
+  // There are many forms of this optimization we can handle.
+  // Limit to one variable currently.
+  // Possible TODO: Fold: cmp(A[ax + by + ... + C], Rhs) <=> cmp(ax + by + ....
+  // + C, IndexRhs)
   enum { Overdefined = -3, Undefined = -2 };
 
   // Variables for our state machines.
@@ -185,18 +167,35 @@ Instruction *InstCombinerImpl::foldCmpLoadFromIndexedGlobal(
   // the array, this will fully represent all the comparison results.
   uint64_t MagicBitvector = 0;
 
-  // Scan the array and see if one of our patterns matches.
-  Constant *CompareRHS = cast<Constant>(ICI.getOperand(1));
-  for (unsigned i = 0, e = ArrayElementCount; i != e; ++i) {
-    Constant *Elt = Init->getAggregateElement(i);
-    if (!Elt) return nullptr;
+  Value *Idx = nullptr;
 
-    // If this is indexing an array of structures, get the structure element.
-    if (!LaterIndices.empty()) {
-      Elt = ConstantFoldExtractValueInstruction(Elt, LaterIndices);
-      if (!Elt)
-        return nullptr;
-    }
+  // Scan the array and see if one of our patterns matches.
+  Constant *ComparedRHS = cast<Constant>(ICI.getOperand(1));
+  APInt LongestStep = VariableOffsets.front().second;
+  uint64_t LongestStepZExt = LongestStep.getZExtValue();
+  int64_t BeginOffset = ConstantOffset.getSExtValue();
+
+  // Make BeginOffset the smallest offset >= 0
+  if (BeginOffset % LongestStepZExt == 0)
+    BeginOffset = 0;
+  else if (BeginOffset < 0)
+    BeginOffset += (-BeginOffset / LongestStepZExt + 1) * LongestStepZExt;
+  else if (BeginOffset > 0)
+    BeginOffset -= (BeginOffset / LongestStepZExt) * LongestStepZExt;
+
+  uint64_t ElementCountToTraverse = (DataSize - BeginOffset) / LongestStepZExt;
+
+  // Don't traverse too many times.
+  if (ElementCountToTraverse > MaxArraySizeForCombine)
+    return nullptr;
+
+  for (uint64_t i = 0; i < ElementCountToTraverse; ++i) {
+    APInt CurrentOffset(i * LongestStep + BeginOffset);
+    Constant *Elt =
+        ConstantFoldLoadFromConstPtr(GV, LoadedTy, CurrentOffset, DL);
+
+    if (!Elt)
+      return nullptr;
 
     // If the element is masked, handle it.
     if (AndCst) {
@@ -207,21 +206,22 @@ Instruction *InstCombinerImpl::foldCmpLoadFromIndexedGlobal(
 
     // Find out if the comparison would be true or false for the i'th element.
     Constant *C = ConstantFoldCompareInstOperands(ICI.getPredicate(), Elt,
-                                                  CompareRHS, DL, &TLI);
+                                                  ComparedRHS, DL, &TLI);
     // If the result is undef for this element, ignore it.
     if (isa<UndefValue>(C)) {
       // Extend range state machines to cover this element in case there is an
       // undef in the middle of the range.
-      if (TrueRangeEnd == (int)i-1)
+      if (TrueRangeEnd == (int)i - 1)
         TrueRangeEnd = i;
-      if (FalseRangeEnd == (int)i-1)
+      if (FalseRangeEnd == (int)i - 1)
         FalseRangeEnd = i;
       continue;
     }
 
     // If we can't compute the result for any of the elements, we have to give
     // up evaluating the entire conditional.
-    if (!isa<ConstantInt>(C)) return nullptr;
+    if (!isa<ConstantInt>(C))
+      return nullptr;
 
     // Otherwise, we know if the comparison is true or false for this element,
     // update our state machines.
@@ -231,7 +231,7 @@ Instruction *InstCombinerImpl::foldCmpLoadFromIndexedGlobal(
     if (IsTrueForElt) {
       // Update the TrueElement state machine.
       if (FirstTrueElement == Undefined)
-        FirstTrueElement = TrueRangeEnd = i;  // First true element.
+        FirstTrueElement = TrueRangeEnd = i; // First true element.
       else {
         // Update double-compare state machine.
         if (SecondTrueElement == Undefined)
@@ -240,7 +240,7 @@ Instruction *InstCombinerImpl::foldCmpLoadFromIndexedGlobal(
           SecondTrueElement = Overdefined;
 
         // Update range state machine.
-        if (TrueRangeEnd == (int)i-1)
+        if (TrueRangeEnd == (int)i - 1)
           TrueRangeEnd = i;
         else
           TrueRangeEnd = Overdefined;
@@ -257,7 +257,7 @@ Instruction *InstCombinerImpl::foldCmpLoadFromIndexedGlobal(
           SecondFalseElement = Overdefined;
 
         // Update range state machine.
-        if (FalseRangeEnd == (int)i-1)
+        if (FalseRangeEnd == (int)i - 1)
           FalseRangeEnd = i;
         else
           FalseRangeEnd = Overdefined;
@@ -267,7 +267,6 @@ Instruction *InstCombinerImpl::foldCmpLoadFromIndexedGlobal(
     // If this element is in range, update our magic bitvector.
     if (i < 64 && IsTrueForElt)
       MagicBitvector |= 1ULL << i;
-
     // If all of our states become overdefined, bail out early.  Since the
     // predicate is expensive, only check it every 8 elements.  This is only
     // really useful for really huge arrays.
@@ -279,40 +278,62 @@ Instruction *InstCombinerImpl::foldCmpLoadFromIndexedGlobal(
 
   // Now that we've scanned the entire array, emit our new comparison(s).  We
   // order the state machines in complexity of the generated code.
-  Value *Idx = GEP->getOperand(2);
 
-  // If the index is larger than the pointer offset size of the target, truncate
-  // the index down like the GEP would do implicitly.  We don't have to do this
-  // for an inbounds GEP because the index can't be out of range.
-  if (!GEP->isInBounds()) {
-    Type *PtrIdxTy = DL.getIndexType(GEP->getType());
-    unsigned OffsetSize = PtrIdxTy->getIntegerBitWidth();
-    if (Idx->getType()->getPrimitiveSizeInBits().getFixedValue() > OffsetSize)
-      Idx = Builder.CreateTrunc(Idx, PtrIdxTy);
-  }
-
-  // If inbounds keyword is not present, Idx * ElementSize can overflow.
-  // Let's assume that ElementSize is 2 and the wanted value is at offset 0.
+  // If inbounds keyword is not present, Idx * LongestStep can overflow.
+  // Let's assume that LongestStep is 2 and the wanted value is at offset 0.
   // Then, there are two possible values for Idx to match offset 0:
   // 0x00..00, 0x80..00.
   // Emitting 'icmp eq Idx, 0' isn't correct in this case because the
   // comparison is false if Idx was 0x80..00.
   // We need to erase the highest countTrailingZeros(ElementSize) bits of Idx.
-  unsigned ElementSize =
-      DL.getTypeAllocSize(Init->getType()->getArrayElementType());
   auto MaskIdx = [&](Value *Idx) {
-    if (!GEP->isInBounds() && llvm::countr_zero(ElementSize) != 0) {
+    if (!GEP->isInBounds() && llvm::countr_zero(LongestStepZExt) != 0) {
       Value *Mask = ConstantInt::get(Idx->getType(), -1);
-      Mask = Builder.CreateLShr(Mask, llvm::countr_zero(ElementSize));
+      Mask = Builder.CreateLShr(Mask, llvm::countr_zero(LongestStepZExt));
       Idx = Builder.CreateAnd(Idx, Mask);
     }
+    return Idx;
+  };
+
+  // Build the index expression lazily.
+  auto GenerateIndexIfNull = [&](Value *CurIdx) {
+    if (CurIdx)
+      return CurIdx;
+
+    // Initial bias for index. For example, when we fold C[x + 3] into
+    // x < 2, we actually regard it as x < 5 - 3
+    Value *Idx =
+        ConstantInt::get(PtrIdxTy->getContext(),
+                         (BeginOffset - ConstantOffset).sdiv(LongestStepZExt));
+    for (auto [Var, Coefficient] : VariableOffsets) {
+      uint64_t VarBitWidth = Var->getType()->getScalarSizeInBits();
+      uint64_t IdxBitWidth = Idx->getType()->getScalarSizeInBits();
+      Type *WiderType =
+          VarBitWidth > IdxBitWidth ? Var->getType() : Idx->getType();
+
+      Var = Builder.CreateSExtOrTrunc(Var, WiderType);
+      Idx = Builder.CreateSExtOrTrunc(Idx, WiderType);
+      APInt MinCoeffi = Coefficient.sdiv(LongestStep)
+                            .sextOrTrunc(WiderType->getScalarSizeInBits());
+      Value *Mul =
+          Builder.CreateMul(Var, ConstantInt::get(WiderType, MinCoeffi));
+      Idx = Builder.CreateAdd(Idx, Mul);
+    }
+
+    // If the index is larger than the pointer offset size of the target,
+    // truncate the index down like the GEP would do implicitly.  We don't have
+    // to do this for an inbounds GEP because the index can't be out of range.
+    if (!GEP->isInBounds() &&
+        Idx->getType()->getScalarSizeInBits() > PtrBitwidth)
+      Idx = Builder.CreateTrunc(Idx, PtrIdxTy);
+
     return Idx;
   };
 
   // If the comparison is only true for one or two elements, emit direct
   // comparisons.
   if (SecondTrueElement != Overdefined) {
-    Idx = MaskIdx(Idx);
+    Idx = MaskIdx(GenerateIndexIfNull(Idx));
     // None true -> false.
     if (FirstTrueElement == Undefined)
       return replaceInstUsesWith(ICI, Builder.getFalse());
@@ -333,7 +354,7 @@ Instruction *InstCombinerImpl::foldCmpLoadFromIndexedGlobal(
   // If the comparison is only false for one or two elements, emit direct
   // comparisons.
   if (SecondFalseElement != Overdefined) {
-    Idx = MaskIdx(Idx);
+    Idx = MaskIdx(GenerateIndexIfNull(Idx));
     // None false -> true.
     if (FirstFalseElement == Undefined)
       return replaceInstUsesWith(ICI, Builder.getTrue());
@@ -346,7 +367,8 @@ Instruction *InstCombinerImpl::foldCmpLoadFromIndexedGlobal(
 
     // False for two elements -> 'i != 47 & i != 72'.
     Value *C1 = Builder.CreateICmpNE(Idx, FirstFalseIdx);
-    Value *SecondFalseIdx = ConstantInt::get(Idx->getType(),SecondFalseElement);
+    Value *SecondFalseIdx =
+        ConstantInt::get(Idx->getType(), SecondFalseElement);
     Value *C2 = Builder.CreateICmpNE(Idx, SecondFalseIdx);
     return BinaryOperator::CreateAnd(C1, C2);
   }
@@ -355,7 +377,7 @@ Instruction *InstCombinerImpl::foldCmpLoadFromIndexedGlobal(
   // where it is true, emit the range check.
   if (TrueRangeEnd != Overdefined) {
     assert(TrueRangeEnd != FirstTrueElement && "Should emit single compare");
-    Idx = MaskIdx(Idx);
+    Idx = MaskIdx(GenerateIndexIfNull(Idx));
 
     // Generate (i-FirstTrue) <u (TrueRangeEnd-FirstTrue+1).
     if (FirstTrueElement) {
@@ -363,23 +385,23 @@ Instruction *InstCombinerImpl::foldCmpLoadFromIndexedGlobal(
       Idx = Builder.CreateAdd(Idx, Offs);
     }
 
-    Value *End = ConstantInt::get(Idx->getType(),
-                                  TrueRangeEnd-FirstTrueElement+1);
+    Value *End =
+        ConstantInt::get(PtrIdxTy, TrueRangeEnd - FirstTrueElement + 1);
     return new ICmpInst(ICmpInst::ICMP_ULT, Idx, End);
   }
 
   // False range check.
   if (FalseRangeEnd != Overdefined) {
     assert(FalseRangeEnd != FirstFalseElement && "Should emit single compare");
-    Idx = MaskIdx(Idx);
+    Idx = MaskIdx(GenerateIndexIfNull(Idx));
     // Generate (i-FirstFalse) >u (FalseRangeEnd-FirstFalse).
     if (FirstFalseElement) {
       Value *Offs = ConstantInt::get(Idx->getType(), -FirstFalseElement);
       Idx = Builder.CreateAdd(Idx, Offs);
     }
 
-    Value *End = ConstantInt::get(Idx->getType(),
-                                  FalseRangeEnd-FirstFalseElement);
+    Value *End =
+        ConstantInt::get(Idx->getType(), FalseRangeEnd - FirstFalseElement);
     return new ICmpInst(ICmpInst::ICMP_UGT, Idx, End);
   }
 
@@ -392,13 +414,15 @@ Instruction *InstCombinerImpl::foldCmpLoadFromIndexedGlobal(
     // Look for an appropriate type:
     // - The type of Idx if the magic fits
     // - The smallest fitting legal type
-    if (ArrayElementCount <= Idx->getType()->getIntegerBitWidth())
-      Ty = Idx->getType();
+
+    if (ElementCountToTraverse <= PtrIdxTy->getIntegerBitWidth())
+      Ty = PtrIdxTy;
     else
-      Ty = DL.getSmallestLegalIntType(Init->getContext(), ArrayElementCount);
+      Ty = DL.getSmallestLegalIntType(Init->getContext(),
+                                      ElementCountToTraverse);
 
     if (Ty) {
-      Idx = MaskIdx(Idx);
+      Idx = MaskIdx(GenerateIndexIfNull(Idx));
       Value *V = Builder.CreateIntCast(Idx, Ty, false);
       V = Builder.CreateLShr(ConstantInt::get(Ty, MagicBitvector), V);
       V = Builder.CreateAnd(ConstantInt::get(Ty, 1), V);

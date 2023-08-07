@@ -4332,6 +4332,8 @@ static bool combineInstructionsOverFunction(
     InstCombinerImpl IC(Worklist, Builder, F.hasMinSize(), AA, AC, TLI, TTI, DT,
                         ORE, BFI, PSI, DL, LI);
     IC.MaxArraySizeForCombine = MaxArraySize;
+    IC.MaxDataSizeForCombine = MaxArraySize * 8;
+
     bool MadeChangeInThisIteration = IC.prepareWorklist(F, RPOT);
     MadeChangeInThisIteration |= IC.run();
     if (!MadeChangeInThisIteration)
