@@ -6,7 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file defines interfaces for GPU target attributes.
+// This file defines interfaces for GPU compilation attributes.
 //
 //===----------------------------------------------------------------------===//
 
@@ -47,5 +47,52 @@ def GPUTargetArrayAttr : TypedArrayAttrBase<GPUTargetAttrInterface,
 
 def GPUNonEmptyTargetArrayAttr :
   ConfinedAttr<GPUTargetArrayAttr, [ArrayMinCount<1>]>;
+
+//===----------------------------------------------------------------------===//
+// GPU offloading LLVM translation handler attribute interface.
+//===----------------------------------------------------------------------===//
+
+def GPUOffloadingLLVMTranslationAttrInterface :
+    AttrInterface<"OffloadingLLVMTranslationAttrInterface"> {
+  let description = [{
+    Interface for GPU offloading LLVM translation attributes. Attributes
+    implementing this interface manage the interaction between GPU offloading
+    operations and host IR.
+  }];
+  let cppNamespace = "::mlir::gpu";
+  let methods = [
+    InterfaceMethod<[{
+        Translates a `gpu.binary` Op into a sequence of LLVM IR target-specific
+        instructions, embedding the binary into a host LLVM module.
+
+        The LLVM translation mechanism invokes this function when translating a
+        `gpu.binary`.
+
+        The first argument has to be a GPU binary operation.
+        If the function fails at any point, it must return `failure`.
+      }],
+      "LogicalResult", "embedBinary",
+      (ins "Operation*":$binaryOp, "llvm::IRBuilderBase&":$hostBuilder,
+           "LLVM::ModuleTranslation&":$hostModuleTranslation)
+    >,
+    InterfaceMethod<[{
+        Translates a `gpu.launch_func` op into a sequence of LLVM IR
+        target-specific instructions, resulting in a kernel launch on host IR.
+
+        The LLVM translation mechanism invokes this function when translating a
+        `gpu.launch_func` operation; it searches the appropriate binary and uses
+        its offloading handler.
+
+        The first two arguments must be GPU launch and binary operations,
+        respectively. If the function fails at any point, it must return
+        `failure`.
+      }],
+      "LogicalResult", "launchKernel",
+      (ins "Operation*":$launchFunc, "Operation*":$binaryOp,
+           "llvm::IRBuilderBase&":$hostBuilder,
+           "LLVM::ModuleTranslation&":$hostModuleTranslation)
+    >
+  ];
+}
 
 #endif // GPU_COMPILATIONATTRINTERFACES
