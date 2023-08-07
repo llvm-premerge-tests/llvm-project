@@ -73,3 +73,8 @@ int test5(void) {
   return __builtin_offsetof(Array, array[*(int*)0]); // expected-warning{{indirection of non-volatile null pointer}} expected-note{{__builtin_trap}}
 }
 
+// https://github.com/llvm/llvm-project/issues/64154
+struct X2 { int a; };
+int x2[__builtin_offsetof(struct X2, X2::a) == 0 ? 1 : -1];
+int x3[__builtin_offsetof(struct X2, X2::X2) == 0 ? 1 : -1]; // expected-error{{no member named 'X2'}}
+

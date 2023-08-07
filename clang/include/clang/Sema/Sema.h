@@ -6036,6 +6036,7 @@ public:
   struct OffsetOfComponent {
     SourceLocation LocStart, LocEnd;
     bool isBrackets;  // true if [expr], false if .ident
+    bool isQualifier;
     union {
       IdentifierInfo *IdentInfo;
       Expr *E;

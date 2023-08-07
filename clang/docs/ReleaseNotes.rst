@@ -56,6 +56,7 @@ sections with improvements to Clang's support for those languages.
 
 C++ Language Changes
 --------------------
+- Improved `__builtin_offsetof` support, allowing qualified name in member designator.
 
 C++20 Feature Support
 ^^^^^^^^^^^^^^^^^^^^^
