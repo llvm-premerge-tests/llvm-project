@@ -215,6 +215,7 @@ define void @print_replicate_predicated_phi(i64 %n, ptr %x) {
 ; CHECK-NEXT:   WIDEN-INDUCTION %i = phi 0, %i.next, ir<1>
 ; CHECK-NEXT:   vp<[[STEPS:%.+]]> = SCALAR-STEPS vp<[[CAN_IV]]>, ir<1>
 ; CHECK-NEXT:   WIDEN ir<%cmp> = icmp ult ir<%i>, ir<5>
+; CHECK-NEXT:   EMIT vp<[[NOT:%.+]]> = not ir<%cmp>
 ; CHECK-NEXT: Successor(s): pred.udiv
 ; CHECK-EMPTY:
 ; CHECK-NEXT: <xVFxUF> pred.udiv: {
@@ -233,7 +234,6 @@ define void @print_replicate_predicated_phi(i64 %n, ptr %x) {
 ; CHECK-NEXT: Successor(s): if.then.0
 ; CHECK-EMPTY:
 ; CHECK-NEXT: if.then.0:
-; CHECK-NEXT:   EMIT vp<[[NOT:%.+]]> = not ir<%cmp>
 ; CHECK-NEXT:   BLEND %d = ir<0>/vp<[[NOT]]> vp<[[PRED]]>/ir<%cmp>
 ; CHECK-NEXT:   CLONE ir<%idx> = getelementptr ir<%x>, vp<[[STEPS]]>
 ; CHECK-NEXT:   WIDEN store ir<%idx>, ir<%d>
@@ -410,9 +410,11 @@ define void @debug_loc_vpinstruction(ptr nocapture %asd, ptr nocapture %bsd) !db
 ; CHECK-NEXT:    WIDEN ir<%lsd> = load ir<%isd>
 ; CHECK-NEXT:    WIDEN ir<%psd> = add nuw nsw ir<%lsd>, ir<23>
 ; CHECK-NEXT:    WIDEN ir<%cmp1> = icmp slt ir<%lsd>, ir<100>
-; CHECK-NEXT:    WIDEN ir<%cmp2> = icmp sge ir<%lsd>, ir<200>
 ; CHECK-NEXT:    EMIT vp<[[NOT1:%.+]]> = not ir<%cmp1>, !dbg /tmp/s.c:5:3
+; CHECK-NEXT:    WIDEN ir<%cmp2> = icmp sge ir<%lsd>, ir<200>
 ; CHECK-NEXT:    EMIT vp<[[SEL1:%.+]]> = select vp<[[NOT1]]> ir<%cmp2> ir<false>, !dbg /tmp/s.c:5:21
+; CHECK-NEXT:    EMIT vp<[[NOT2:%.+]]> = not ir<%cmp2>
+; CHECK-NEXT:    EMIT vp<[[SEL2:%.+]]> = select vp<[[NOT1]]> vp<[[NOT2]]> ir<false>
 ; CHECK-NEXT:    EMIT vp<[[OR1:%.+]]> = or vp<[[SEL1]]> ir<%cmp1>
 ; CHECK-NEXT:  Successor(s): pred.sdiv
 ; CHECK-EMPTY:
@@ -432,8 +434,6 @@ define void @debug_loc_vpinstruction(ptr nocapture %asd, ptr nocapture %bsd) !db
 ; CHECK-NEXT:  Successor(s): if.then.0
 ; CHECK-EMPTY:
 ; CHECK-NEXT:  if.then.0:
-; CHECK-NEXT:    EMIT vp<[[NOT2:%.+]]> = not ir<%cmp2>
-; CHECK-NEXT:    EMIT vp<[[SEL2:%.+]]> = select vp<[[NOT1]]> vp<[[NOT2]]> ir<false>
 ; CHECK-NEXT:    BLEND %ysd.0 = vp<[[PHI]]>/vp<[[OR1]]> ir<%psd>/vp<[[SEL2]]>
 ; CHECK-NEXT:    WIDEN store ir<%isd>, ir<%ysd.0>
 ; CHECK-NEXT:    EMIT vp<[[CAN_IV_NEXT:%.+]]> = VF * UF +(nuw) vp<[[CAN_IV]]>
@@ -694,6 +694,7 @@ define void @print_call_flags(ptr readonly %src, ptr noalias %dest, i64 %n) {
 ; CHECK-NEXT:   CLONE ir<%ld.addr> = getelementptr inbounds ir<%src>, vp<%2>
 ; CHECK-NEXT:   WIDEN ir<%ld.value> = load ir<%ld.addr>
 ; CHECK-NEXT:   WIDEN ir<%ifcond> = fcmp oeq ir<%ld.value>, ir<5.000000e+00>
+; CHECK-NEXT:   EMIT vp<%6> = not ir<%ifcond>
 ; CHECK-NEXT:  Successor(s): pred.call
 ; CHECK-EMPTY:
 ; CHECK-NEXT:  <xVFxUF> pred.call: {
@@ -707,16 +708,15 @@ define void @print_call_flags(ptr readonly %src, ptr noalias %dest, i64 %n) {
 ; CHECK-NEXT:    Successor(s): pred.call.continue
 ; CHECK-EMPTY:
 ; CHECK-NEXT:    pred.call.continue:
-; CHECK-NEXT:      PHI-PREDICATED-INSTRUCTION vp<%8> = ir<%foo.ret.1>
-; CHECK-NEXT:      PHI-PREDICATED-INSTRUCTION vp<%9> = ir<%foo.ret.2>
+; CHECK-NEXT:      PHI-PREDICATED-INSTRUCTION vp<%9> = ir<%foo.ret.1>
+; CHECK-NEXT:      PHI-PREDICATED-INSTRUCTION vp<%10> = ir<%foo.ret.2>
 ; CHECK-NEXT:    No successors
 ; CHECK-NEXT:  }
 ; CHECK-NEXT:  Successor(s): if.then.1
 ; CHECK-EMPTY:
 ; CHECK-NEXT:  if.then.1:
-; CHECK-NEXT:    WIDEN ir<%fadd> = fadd vp<%8>, vp<%9>
-; CHECK-NEXT:    EMIT vp<%11> = not ir<%ifcond>
-; CHECK-NEXT:    BLEND %st.value = ir<%ld.value>/vp<%11> ir<%fadd>/ir<%ifcond>
+; CHECK-NEXT:    WIDEN ir<%fadd> = fadd vp<%9>, vp<%10>
+; CHECK-NEXT:    BLEND %st.value = ir<%ld.value>/vp<%6> ir<%fadd>/ir<%ifcond>
 ; CHECK-NEXT:    CLONE ir<%st.addr> = getelementptr inbounds ir<%dest>, vp<%2>
 ; CHECK-NEXT:    WIDEN store ir<%st.addr>, ir<%st.value>
 ; CHECK-NEXT:   EMIT vp<[[CAN_IV_NEXT:%.+]]> = VF * UF +(nuw) vp<[[CAN_IV]]>

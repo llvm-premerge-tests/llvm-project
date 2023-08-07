@@ -178,6 +178,8 @@ public:
 
     ~InsertPointGuard() { Builder.restoreIP(VPInsertPoint(Block, Point)); }
   };
+
+  DenseMap<BasicBlock *, VPBasicBlock *> BB2VPBB;
 };
 
 /// TODO: The following VectorizationFactor was pulled out of
