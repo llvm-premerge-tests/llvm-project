@@ -35,6 +35,7 @@
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/CodeGen/Passes.h"
+#include "llvm/CodeGen/TargetInstrInfo.h"
 #include "llvm/IR/Function.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Support/CommandLine.h"
@@ -108,6 +109,12 @@ static bool isColdBlock(const MachineBasicBlock &MBB,
                         const MachineBlockFrequencyInfo *MBFI,
                         ProfileSummaryInfo *PSI) {
   std::optional<uint64_t> Count = MBFI->getBlockProfileCount(&MBB);
+
+  // Temporary hack to cope with AArch64's jump table encoding
+  const TargetInstrInfo &TII = *MBB.getParent()->getSubtarget().getInstrInfo();
+  if (!TII.isMBBSafeToSplitToCold(MBB))
+    return false;
+
   // For instrumentation profiles and sample profiles, we use different ways
   // to judge whether a block is cold and should be split.
   if (PSI->hasInstrumentationProfile() || PSI->hasCSInstrumentationProfile()) {

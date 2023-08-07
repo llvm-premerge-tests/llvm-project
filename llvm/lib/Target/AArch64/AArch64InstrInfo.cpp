@@ -8368,6 +8368,38 @@ describeORRLoadedValue(const MachineInstr &MI, Register DescribedReg,
   return std::nullopt;
 }
 
+bool AArch64InstrInfo::isMBBSafeToSplitToCold(
+    const MachineBasicBlock &MBB) const {
+  // Because jump tables are label-relative instead of table-relative, they all
+  // must be in the same section or else relocation fixup handling will throw a
+  // fit.
+  auto isJumpTableLookup = [](const MachineInstr &MI) {
+    switch (MI.getOpcode()) {
+    case TargetOpcode::G_BRJT:
+    case AArch64::JumpTableDest32:
+    case AArch64::JumpTableDest16:
+    case AArch64::JumpTableDest8:
+      return true;
+    default:
+      return false;
+    }
+  };
+  auto containsJumpTableLookup = [&](const MachineBasicBlock &MBB) {
+    return llvm::any_of(MBB, isJumpTableLookup);
+  };
+
+  auto isInJumpTable = [&](const MachineJumpTableEntry &JTE) {
+    return llvm::find(JTE.MBBs, &MBB) != JTE.MBBs.end();
+  };
+  auto isJumpTableTarget = [&](const MachineBasicBlock &MBB) {
+    const MachineJumpTableInfo *MJTI = MBB.getParent()->getJumpTableInfo();
+    return MJTI != nullptr &&
+           llvm::any_of(MJTI->getJumpTables(), isInJumpTable);
+  };
+
+  return !containsJumpTableLookup(MBB) && !isJumpTableTarget(MBB);
+}
+
 std::optional<ParamLoadedValue>
 AArch64InstrInfo::describeLoadedValue(const MachineInstr &MI,
                                       Register Reg) const {
