@@ -449,7 +449,9 @@ define i64 @fcvt_l_bf16(bfloat %a) nounwind {
 ; RV32ID:       # %bb.0:
 ; RV32ID-NEXT:    addi sp, sp, -16
 ; RV32ID-NEXT:    sw ra, 12(sp) # 4-byte Folded Spill
-; RV32ID-NEXT:    call __extendhfsf2@plt
+; RV32ID-NEXT:    fmv.x.w a0, fa0
+; RV32ID-NEXT:    slli a0, a0, 16
+; RV32ID-NEXT:    fmv.w.x fa0, a0
 ; RV32ID-NEXT:    call __fixsfdi@plt
 ; RV32ID-NEXT:    lw ra, 12(sp) # 4-byte Folded Reload
 ; RV32ID-NEXT:    addi sp, sp, 16
@@ -641,7 +643,9 @@ define i64 @fcvt_lu_bf16(bfloat %a) nounwind {
 ; RV32ID:       # %bb.0:
 ; RV32ID-NEXT:    addi sp, sp, -16
 ; RV32ID-NEXT:    sw ra, 12(sp) # 4-byte Folded Spill
-; RV32ID-NEXT:    call __extendhfsf2@plt
+; RV32ID-NEXT:    fmv.x.w a0, fa0
+; RV32ID-NEXT:    slli a0, a0, 16
+; RV32ID-NEXT:    fmv.w.x fa0, a0
 ; RV32ID-NEXT:    call __fixunssfdi@plt
 ; RV32ID-NEXT:    lw ra, 12(sp) # 4-byte Folded Reload
 ; RV32ID-NEXT:    addi sp, sp, 16
