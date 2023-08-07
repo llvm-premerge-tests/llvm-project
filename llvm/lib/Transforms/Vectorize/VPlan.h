@@ -838,6 +838,8 @@ class VPRecipeWithIRFlags : public VPRecipeBase {
     char AllowReciprocal : 1;
     char AllowContract : 1;
     char ApproxFunc : 1;
+
+    FastMathFlagsTy(const FastMathFlags &FMF);
   };
 
   OperationType OpType;
@@ -874,16 +876,15 @@ public:
       GEPFlags.IsInBounds = GEP->isInBounds();
     } else if (auto *Op = dyn_cast<FPMathOperator>(&I)) {
       OpType = OperationType::FPMathOp;
-      FastMathFlags FMF = Op->getFastMathFlags();
-      FMFs.AllowReassoc = FMF.allowReassoc();
-      FMFs.NoNaNs = FMF.noNaNs();
-      FMFs.NoInfs = FMF.noInfs();
-      FMFs.NoSignedZeros = FMF.noSignedZeros();
-      FMFs.AllowReciprocal = FMF.allowReciprocal();
-      FMFs.AllowContract = FMF.allowContract();
-      FMFs.ApproxFunc = FMF.approxFunc();
+      FMFs = Op->getFastMathFlags();
     }
   }
+
+  template <typename IterT>
+  VPRecipeWithIRFlags(const unsigned char SC, IterT Operands,
+                      FastMathFlags FMFs)
+      : VPRecipeBase(SC, Operands), OpType(OperationType::FPMathOp),
+        FMFs(FMFs) {}
 
   static inline bool classof(const VPRecipeBase *R) {
     return R->getVPDefID() == VPRecipeBase::VPWidenSC ||
@@ -959,7 +960,7 @@ public:
 /// While as any Recipe it may generate a sequence of IR instructions when
 /// executed, these instructions would always form a single-def expression as
 /// the VPInstruction is also a single def-use vertex.
-class VPInstruction : public VPRecipeBase, public VPValue {
+class VPInstruction : public VPRecipeWithIRFlags, public VPValue {
   friend class VPlanSlp;
 
 public:
@@ -987,7 +988,6 @@ public:
 private:
   typedef unsigned char OpcodeTy;
   OpcodeTy Opcode;
-  FastMathFlags FMF;
   DebugLoc DL;
 
   /// An optional name that can be used for the generated IR instruction.
@@ -999,18 +999,25 @@ private:
   /// one.
   Value *generateInstruction(VPTransformState &State, unsigned Part);
 
+  /// Return true if the VPInstruction is a floating point math operation, i.e.
+  /// has fast-math flags.
+  bool isFPMathOp() const;
+
 protected:
   void setUnderlyingInstr(Instruction *I) { setUnderlyingValue(I); }
 
 public:
   VPInstruction(unsigned Opcode, ArrayRef<VPValue *> Operands, DebugLoc DL,
                 const Twine &Name = "")
-      : VPRecipeBase(VPDef::VPInstructionSC, Operands), VPValue(this),
+      : VPRecipeWithIRFlags(VPDef::VPInstructionSC, Operands), VPValue(this),
         Opcode(Opcode), DL(DL), Name(Name.str()) {}
 
   VPInstruction(unsigned Opcode, std::initializer_list<VPValue *> Operands,
                 DebugLoc DL = {}, const Twine &Name = "")
       : VPInstruction(Opcode, ArrayRef<VPValue *>(Operands), DL, Name) {}
+
+  VPInstruction(unsigned Opcode, std::initializer_list<VPValue *> Operands,
+                FastMathFlags FMFs, DebugLoc DL = {}, const Twine &Name = "");
 
   VP_CLASSOF_IMPL(VPDef::VPInstructionSC)
 
@@ -1064,9 +1071,6 @@ public:
       return true;
     }
   }
-
-  /// Set the fast-math flags.
-  void setFastMathFlags(FastMathFlags FMFNew);
 
   /// Returns true if the recipe only uses the first lane of operand \p Op.
   bool onlyFirstLaneUsed(const VPValue *Op) const override {
