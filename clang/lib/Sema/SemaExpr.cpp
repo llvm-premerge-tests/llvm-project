@@ -16663,6 +16663,9 @@ ExprResult Sema::BuildBuiltinOffsetOf(SourceLocation BuiltinLoc,
                        << CurrentType);
     RecordDecl *RD = RC->getDecl();
 
+    if (OC.isQualifier && RD->getIdentifier() == OC.U.IdentInfo)
+      continue;
+
     // C++ [lib.support.types]p5:
     //   The macro offsetof accepts a restricted set of type arguments in this
     //   International Standard. type shall be a POD structure or a POD union

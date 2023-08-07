@@ -2641,10 +2641,13 @@ ExprResult Parser::ParseBuiltinPrimaryExpression() {
 
     // FIXME: This loop leaks the index expressions on error.
     while (true) {
-      if (Tok.is(tok::period)) {
+      if (Tok.is(tok::period) || Tok.is(tok::coloncolon)) {
         // offsetof-member-designator: offsetof-member-designator '.' identifier
+        if (Tok.is(tok::coloncolon))
+          Comps.back().isQualifier = true;
         Comps.push_back(Sema::OffsetOfComponent());
         Comps.back().isBrackets = false;
+        Comps.back().isQualifier = false;
         Comps.back().LocStart = ConsumeToken();
 
         if (Tok.isNot(tok::identifier)) {
@@ -2661,6 +2664,7 @@ ExprResult Parser::ParseBuiltinPrimaryExpression() {
         // offsetof-member-designator: offsetof-member-design '[' expression ']'
         Comps.push_back(Sema::OffsetOfComponent());
         Comps.back().isBrackets = true;
+        Comps.back().isQualifier = false;
         BalancedDelimiterTracker ST(*this, tok::l_square);
         ST.consumeOpen();
         Comps.back().LocStart = ST.getOpenLocation();
