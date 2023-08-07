@@ -1762,6 +1762,15 @@ static void AddAttributesFromFunctionProtoType(ASTContext &Ctx,
   if (!isUnresolvedExceptionSpec(FPT->getExceptionSpecType()) &&
       FPT->isNothrow())
     FuncAttrs.addAttribute(llvm::Attribute::NoUnwind);
+
+  if (FPT->getAArch64SMEAttributes() & FunctionType::SME_PStateSMEnabledMask)
+    FuncAttrs.addAttribute("aarch64_pstate_sm_enabled");
+  if (FPT->getAArch64SMEAttributes() & FunctionType::SME_PStateSMCompatibleMask)
+    FuncAttrs.addAttribute("aarch64_pstate_sm_compatible");
+  if (FPT->getAArch64SMEAttributes() & FunctionType::SME_PStateZASharedMask)
+    FuncAttrs.addAttribute("aarch64_pstate_za_shared");
+  if (FPT->getAArch64SMEAttributes() & FunctionType::SME_PStateZAPreservedMask)
+    FuncAttrs.addAttribute("aarch64_pstate_za_preserved");
 }
 
 static void AddAttributesFromAssumes(llvm::AttrBuilder &FuncAttrs,
@@ -2402,6 +2411,12 @@ void CodeGenModule::ConstructAttributeList(StringRef Name,
                                llvm::toStringRef(CodeGenOpts.UniformWGSize));
       }
     }
+
+    if (TargetDecl->hasAttr<ArmLocallyStreamingAttr>())
+      FuncAttrs.addAttribute("aarch64_pstate_sm_body");
+
+    if (TargetDecl->hasAttr<ArmNewZAAttr>())
+      FuncAttrs.addAttribute("aarch64_pstate_za_new");
   }
 
   // Attach "no-builtins" attributes to:
