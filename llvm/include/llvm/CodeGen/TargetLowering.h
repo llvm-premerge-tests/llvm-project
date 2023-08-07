@@ -213,7 +213,7 @@ public:
     TypeSplitVector,     // Split this vector into two of half the size.
     TypeWidenVector,     // This vector should be widened into a larger vector.
     TypePromoteFloat,    // Replace this float with a larger one.
-    TypeSoftPromoteHalf, // Soften half to i16 and use float to do arithmetic.
+    TypeSoftPromoteHalf, // Soften half/bf16 to i16 and use float to do arithmetic.
     TypeScalarizeScalableVector, // This action is explicitly left unimplemented.
                                  // While it is theoretically possible to
                                  // legalize operations on scalable types with a
