@@ -7,8 +7,10 @@ add_mlir_translation_library(MLIRGPUToLLVMIRTranslation
 
   LINK_LIBS PUBLIC
   MLIRIR
-  MLIRGPUDialect
   MLIRLLVMDialect
   MLIRSupport
   MLIRTargetLLVMIRExport
+
+  PRIVATE
+  MLIRGPUDialect
   )
