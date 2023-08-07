@@ -871,7 +871,9 @@ AArch64LegalizerInfo::AArch64LegalizerInfo(const AArch64Subtarget &ST)
   getActionDefinitionsBuilder({G_UADDSAT, G_USUBSAT})
       .lowerIf([=](const LegalityQuery &Q) { return Q.Types[0].isScalar(); });
 
-  getActionDefinitionsBuilder({G_FSHL, G_FSHR}).lower();
+  getActionDefinitionsBuilder({G_FSHL, G_FSHR})
+      .customFor({{s32, s32}, {s32, s64}, {s64, s64}})
+      .lower();
 
   getActionDefinitionsBuilder(G_ROTR)
       .legalFor({{s32, s64}, {s64, s64}})
@@ -974,6 +976,9 @@ bool AArch64LegalizerInfo::legalizeCustom(LegalizerHelper &Helper,
   case TargetOpcode::G_SBFX:
   case TargetOpcode::G_UBFX:
     return legalizeBitfieldExtract(MI, MRI, Helper);
+  case TargetOpcode::G_FSHL:
+  case TargetOpcode::G_FSHR:
+    return legalizeFunnelShift(MI, MRI, MIRBuilder, Observer, Helper);
   case TargetOpcode::G_ROTR:
     return legalizeRotate(MI, MRI, Helper);
   case TargetOpcode::G_CTPOP:
@@ -992,6 +997,61 @@ bool AArch64LegalizerInfo::legalizeCustom(LegalizerHelper &Helper,
   }
 
   llvm_unreachable("expected switch to return");
+}
+
+bool AArch64LegalizerInfo::legalizeFunnelShift(MachineInstr &MI,
+                                               MachineRegisterInfo &MRI,
+                                               MachineIRBuilder &MIRBuilder,
+                                               GISelChangeObserver &Observer,
+                                               LegalizerHelper &Helper) const {
+  assert(MI.getOpcode() == TargetOpcode::G_FSHL ||
+         MI.getOpcode() == TargetOpcode::G_FSHR);
+
+  // Keep as G_FSHR if shift amount is a G_CONSTANT, else use generic
+  // lowering
+  Register ShiftNo = MI.getOperand(3).getReg();
+  LLT ShiftTy = MRI.getType(ShiftNo);
+  auto VRegAndVal = getIConstantVRegValWithLookThrough(ShiftNo, MRI);
+  if (!VRegAndVal)
+    return (Helper.lowerFunnelShiftAsShifts(MI) ==
+            LegalizerHelper::LegalizeResult::Legalized);
+
+  // Adjust shift amount according to Opcode (FSHL/FSHR)
+  // Convert FSHL to FSHR
+  int64_t BitWidth = ShiftTy.getSizeInBits();
+  APInt Amount(64,
+               MI.getOpcode() == TargetOpcode::G_FSHL
+                   ? BitWidth - VRegAndVal->Value.getSExtValue()
+                   : VRegAndVal->Value.getSExtValue(),
+               true);
+
+  // If the instruction is G_FSHR, has a 64-bit G_CONSTANT for shift amount
+  // in the range of 0 <-> BitWidth, it is legal
+  if (ShiftTy.getSizeInBits() == 64 && MI.getOpcode() == TargetOpcode::G_FSHR &&
+      Amount.ult(BitWidth) && Amount.uge(0)) {
+    return true;
+  }
+
+  // Modulo the shift amount by the bit width
+  Amount = Amount.urem(BitWidth);
+
+  // Cast the ShiftNumber to a 64-bit type
+  auto Cast64 = MIRBuilder.buildConstant(LLT::scalar(64), Amount);
+
+  if (MI.getOpcode() == TargetOpcode::G_FSHR) {
+    Observer.changingInstr(MI);
+    MI.getOperand(3).setReg(Cast64.getReg(0));
+    Observer.changedInstr(MI);
+  }
+  // If Opcode is FSHL, remove the FSHL instruction and create a FSHR
+  // instruction
+  else if (MI.getOpcode() == TargetOpcode::G_FSHL) {
+    MIRBuilder.buildInstr(TargetOpcode::G_FSHR, {MI.getOperand(0).getReg()},
+                          {MI.getOperand(1).getReg(), MI.getOperand(2).getReg(),
+                           Cast64.getReg(0)});
+    MI.eraseFromParent();
+  }
+  return true;
 }
 
 bool AArch64LegalizerInfo::legalizeRotate(MachineInstr &MI,

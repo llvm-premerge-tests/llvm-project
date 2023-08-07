@@ -383,6 +383,14 @@ def right_identity_zero: GICombineRule<
   (apply [{ Helper.replaceSingleDefInstWithOperand(*${root}, 1); }])
 >;
 
+// Fold x op 0 -> x
+def fourth_identity_zero: GICombineRule<
+  (defs root:$root),
+  (match (wip_match_opcode G_FSHR):$root,
+    [{ return Helper.matchConstantOp(${root}->getOperand(3), 0); }]),
+  (apply [{ Helper.replaceSingleDefInstWithOperand(*${root}, 2); }])
+>;
+
 // Fold x op 1 -> x
 def right_identity_one: GICombineRule<
   (defs root:$root),
@@ -1081,6 +1089,7 @@ def undef_combines : GICombineGroup<[undef_to_fp_zero, undef_to_int_zero,
                                      insert_extract_vec_elt_out_of_bounds]>;
 
 def identity_combines : GICombineGroup<[select_same_val, right_identity_zero,
+                                        fourth_identity_zero,
                                         binop_same_val, binop_left_to_zero,
                                         binop_right_to_zero, p2i_to_i2p,
                                         i2p_to_p2i, anyext_trunc_fold,
