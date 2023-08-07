@@ -48,7 +48,7 @@ if.end:
   ret ptr %p.0
 }
 
-; CHECK:       w0 = *(u32 *)(r2 + 0)
-; CHECK:       w0 = *(u32 *)(r2 + 4)
+; CHECK:       r0 = *(u32 *)(r2 + 0)
+; CHECK:       r0 = *(u32 *)(r2 + 4)
 ; CHECK-NOT:   r[[#]] = w[[#]]
 ; CHECK:       exit

@@ -105,10 +105,17 @@ bool BPFMIPeephole::isCopyFrom32Def(MachineInstr *CopyMI)
   if (!Reg.isVirtual())
     return false;
 
+  MachineInstr *DefInsn = MRI->getVRegDef(Reg);
+
+  // 8/16/32-bit loads have GPRRegclass but there is no need to
+  // zero-extend values coming from such loads.
+  if (DefInsn->getOpcode() == BPF::LDB || DefInsn->getOpcode() == BPF::LDH ||
+      DefInsn->getOpcode() == BPF::LDW)
+    return true;
+
   if (MRI->getRegClass(Reg) == &BPF::GPRRegClass)
     return false;
 
-  MachineInstr *DefInsn = MRI->getVRegDef(Reg);
   if (!isInsnFrom32Def(DefInsn))
     return false;
 
@@ -644,13 +651,13 @@ public:
 static bool TruncSizeCompatible(int TruncSize, unsigned opcode)
 {
   if (TruncSize == 1)
-    return opcode == BPF::LDB || opcode == BPF::LDB32;
+    return opcode == BPF::LDB;
 
   if (TruncSize == 2)
-    return opcode == BPF::LDH || opcode == BPF::LDH32;
+    return opcode == BPF::LDH;
 
   if (TruncSize == 4)
-    return opcode == BPF::LDW || opcode == BPF::LDW32;
+    return opcode == BPF::LDW;
 
   return false;
 }
