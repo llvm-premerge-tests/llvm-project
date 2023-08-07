@@ -2707,6 +2707,10 @@ void CheckHelper::CheckBindC(const Symbol &symbol) {
       WarnIfNotInModuleFile(symbol.name(),
           "An interoperable procedure with an OPTIONAL dummy argument might not be portable"_port_en_US);
     }
+    if (IsDescriptor(symbol) && symbol.attrs().test(Attr::CONTIGUOUS)) {
+      messages_.Say(symbol.name(),
+          "An interoperable object must not be CONTIGUOUS"_err_en_US);
+    }
   } else if (const auto *proc{symbol.detailsIf<ProcEntityDetails>()}) {
     if (!proc->procInterface() ||
         !proc->procInterface()->attrs().test(Attr::BIND_C)) {
