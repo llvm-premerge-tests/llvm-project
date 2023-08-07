@@ -784,12 +784,35 @@ bool hasWholeProgramVisibility(bool WholeProgramVisibilityEnabledInLTO) {
          !DisableWholeProgramVisibility;
 }
 
+bool SkipUpdateDueToValidation(
+    GlobalVariable &GV, function_ref<bool(StringRef)> IsVisibleToRegularObj) {
+  SmallVector<MDNode *, 2> Types;
+  GV.getMetadata(LLVMContext::MD_type, Types);
+
+  for (auto Type : Types) {
+    if (auto *TypeID = dyn_cast<MDString>(Type->getOperand(1).get())) {
+      StringRef typeID = TypeID->getString();
+      // TypeID for member function pointer type is an internal construct
+      // and won't exist in IsVisibleToRegularObj. The full TypeID will
+      // will be present and participate in invalidation
+      if (typeID.ends_with(".virtual"))
+        continue;
+      if (IsVisibleToRegularObj(typeID))
+        return true;
+    }
+  }
+
+  return false;
+}
+
 /// If whole program visibility asserted, then upgrade all public vcall
 /// visibility metadata on vtable definitions to linkage unit visibility in
 /// Module IR (for regular or hybrid LTO).
 void updateVCallVisibilityInModule(
     Module &M, bool WholeProgramVisibilityEnabledInLTO,
-    const DenseSet<GlobalValue::GUID> &DynamicExportSymbols) {
+    const DenseSet<GlobalValue::GUID> &DynamicExportSymbols,
+    bool ValidateAllVtablesHaveTypeInfos,
+    function_ref<bool(StringRef)> IsVisibleToRegularObj) {
   if (!hasWholeProgramVisibility(WholeProgramVisibilityEnabledInLTO))
     return;
   for (GlobalVariable &GV : M.globals()) {
@@ -800,7 +823,11 @@ void updateVCallVisibilityInModule(
         GV.getVCallVisibility() == GlobalObject::VCallVisibilityPublic &&
         // Don't upgrade the visibility for symbols exported to the dynamic
         // linker, as we have no information on their eventual use.
-        !DynamicExportSymbols.count(GV.getGUID()))
+        !DynamicExportSymbols.count(GV.getGUID()) &&
+        // Don't upgrade the visibility for symbols if validation is on
+        // and their types are visible to regular object files
+        !(ValidateAllVtablesHaveTypeInfos &&
+          SkipUpdateDueToValidation(GV, IsVisibleToRegularObj)))
       GV.setVCallVisibilityMetadata(GlobalObject::VCallVisibilityLinkageUnit);
   }
 }
@@ -832,12 +859,34 @@ void updatePublicTypeTestCalls(Module &M,
   }
 }
 
+/// Based on typeID string, get all associated vtable GUIDS that are
+/// visible to regular objects.
+void getVisibleToRegularObjVtableGUIDs(
+    ModuleSummaryIndex &Index,
+    DenseSet<GlobalValue::GUID> &VisibleToRegularObjSymbols,
+    function_ref<bool(StringRef)> IsVisibleToRegularObj) {
+  for (const auto &typeID : Index.typeIdCompatibleVtableMap()) {
+    // TypeID for member function pointer type is an internal construct
+    // and won't exist in IsVisibleToRegularObj. The full TypeID will
+    // will be present and participate in invalidation
+    if (StringRef(typeID.first).ends_with(".virtual"))
+      continue;
+
+    if (IsVisibleToRegularObj(typeID.first)) {
+      for (const TypeIdOffsetVtableInfo &P : typeID.second) {
+        VisibleToRegularObjSymbols.insert(P.VTableVI.getGUID());
+      }
+    }
+  }
+}
+
 /// If whole program visibility asserted, then upgrade all public vcall
 /// visibility metadata on vtable definition summaries to linkage unit
 /// visibility in Module summary index (for ThinLTO).
 void updateVCallVisibilityInIndex(
     ModuleSummaryIndex &Index, bool WholeProgramVisibilityEnabledInLTO,
-    const DenseSet<GlobalValue::GUID> &DynamicExportSymbols) {
+    const DenseSet<GlobalValue::GUID> &DynamicExportSymbols,
+    const DenseSet<GlobalValue::GUID> &VisibleToRegularObjSymbols) {
   if (!hasWholeProgramVisibility(WholeProgramVisibilityEnabledInLTO))
     return;
   for (auto &P : Index) {
@@ -849,6 +898,11 @@ void updateVCallVisibilityInIndex(
       auto *GVar = dyn_cast<GlobalVarSummary>(S.get());
       if (!GVar ||
           GVar->getVCallVisibility() != GlobalObject::VCallVisibilityPublic)
+        continue;
+      // With validation enabled, we want to exclude symbols populated in
+      // VisibleToRegularObjSymbols. However, locals are also captured because
+      // of the current implementation so don't exclude them.
+      if (VisibleToRegularObjSymbols.count(P.first))
         continue;
       GVar->setVCallVisibility(GlobalObject::VCallVisibilityLinkageUnit);
     }
@@ -1045,8 +1099,8 @@ bool DevirtModule::tryFindVirtualCallTargets(
 }
 
 bool DevirtIndex::tryFindVirtualCallTargets(
-    std::vector<ValueInfo> &TargetsForSlot, const TypeIdCompatibleVtableInfo TIdInfo,
-    uint64_t ByteOffset) {
+    std::vector<ValueInfo> &TargetsForSlot,
+    const TypeIdCompatibleVtableInfo TIdInfo, uint64_t ByteOffset) {
   for (const TypeIdOffsetVtableInfo &P : TIdInfo) {
     // Find a representative copy of the vtable initializer.
     // We can have multiple available_externally, linkonce_odr and weak_odr
