@@ -5,6 +5,9 @@ target triple = "aarch64-unknown-linux-gnu"
 
 ; NOTE: The existing TLI mappings are not used since the -replace-with-veclib pass is broken for scalable vectors.
 
+;.
+; CHECK: @[[LLVM_COMPILER_USED:[a-zA-Z0-9_$"\\.-]+]] = appending global [2 x ptr] [ptr @_ZGVsMxvv_fmod, ptr @_ZGVsMxvv_fmodf], section "llvm.metadata"
+;.
 define <vscale x 2 x double> @llvm_ceil_vscale_f64(<vscale x 2 x double> %in) {
 ; CHECK-LABEL: @llvm_ceil_vscale_f64(
 ; CHECK-NEXT:    [[TMP1:%.*]] = call fast <vscale x 2 x double> @llvm.ceil.nxv2f64(<vscale x 2 x double> [[IN:%.*]])
@@ -363,6 +366,26 @@ define <vscale x 4 x float> @llvm_trunc_vscale_f32(<vscale x 4 x float> %in) {
 ;
   %1 = call fast <vscale x 4 x float> @llvm.trunc.nxv4f32(<vscale x 4 x float> %in)
   ret <vscale x 4 x float> %1
+}
+
+; NOTE: TLI mapping for FREM instruction.
+
+define <vscale x 2 x double> @frem_vscale_f64(<vscale x 2 x double> %in1, <vscale x 2 x double> %in2) {
+; CHECK-LABEL: @frem_vscale_f64(
+; CHECK-NEXT:    [[TMP1:%.*]] = call fast <vscale x 2 x double> @_ZGVsMxvv_fmod(<vscale x 2 x double> [[IN1:%.*]], <vscale x 2 x double> [[IN2:%.*]], <vscale x 2 x i1> shufflevector (<vscale x 2 x i1> insertelement (<vscale x 2 x i1> poison, i1 true, i64 0), <vscale x 2 x i1> poison, <vscale x 2 x i32> zeroinitializer))
+; CHECK-NEXT:    ret <vscale x 2 x double> [[TMP1]]
+;
+  %out = frem fast <vscale x 2 x double> %in1, %in2
+  ret <vscale x 2 x double> %out
+}
+
+define <vscale x 4 x float> @frem_vscale_f32(<vscale x 4 x float> %in1, <vscale x 4 x float> %in2) {
+; CHECK-LABEL: @frem_vscale_f32(
+; CHECK-NEXT:    [[TMP1:%.*]] = call fast <vscale x 4 x float> @_ZGVsMxvv_fmodf(<vscale x 4 x float> [[IN1:%.*]], <vscale x 4 x float> [[IN2:%.*]], <vscale x 4 x i1> shufflevector (<vscale x 4 x i1> insertelement (<vscale x 4 x i1> poison, i1 true, i64 0), <vscale x 4 x i1> poison, <vscale x 4 x i32> zeroinitializer))
+; CHECK-NEXT:    ret <vscale x 4 x float> [[TMP1]]
+;
+  %out = frem fast <vscale x 4 x float> %in1, %in2
+  ret <vscale x 4 x float> %out
 }
 
 declare <vscale x 2 x double> @llvm.ceil.nxv2f64(<vscale x 2 x double>)
