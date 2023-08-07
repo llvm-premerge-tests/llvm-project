@@ -262,6 +262,8 @@ def UseNegativeImmediates
 
 def UseScalarIncVL : Predicate<"Subtarget->useScalarIncVL()">;
 
+def UseLD1R : Predicate<"!Subtarget->avoidLD1R()">;
+
 def IsNeonAvailable : Predicate<"Subtarget->isNeonAvailable()">;
 
 def AArch64LocalRecover : SDNode<"ISD::LOCAL_RECOVER",
