@@ -38,23 +38,44 @@ STATISTIC(NumTLIFuncDeclAdded,
 STATISTIC(NumFuncUsedAdded,
           "Number of functions added to `llvm.compiler.used`");
 
-static bool replaceWithTLIFunction(CallInst &CI, const StringRef TLIName) {
-  Module *M = CI.getModule();
-
-  Function *OldFunc = CI.getCalledFunction();
+static bool replaceWithTLIFunction(Instruction &I, const StringRef TLIName,
+                                   bool Masked = false) {
+  Module *M = I.getModule();
+  CallInst *CI = dyn_cast<CallInst>(&I);
 
   // Check if the vector library function is already declared in this module,
   // otherwise insert it.
   Function *TLIFunc = M->getFunction(TLIName);
+  StringRef OldName =
+      CI ? CI->getCalledFunction()->getName() : I.getOpcodeName();
+  ElementCount NumElements =
+      CI ? ElementCount::getFixed(0)
+         : (dyn_cast<ScalableVectorType>(I.getType()))->getElementCount();
   if (!TLIFunc) {
-    TLIFunc = Function::Create(OldFunc->getFunctionType(),
-                               Function::ExternalLinkage, TLIName, *M);
-    TLIFunc->copyAttributesFrom(OldFunc);
-
+    if (CI) {
+      // Intrinsics handling.
+      Function *OldFunc = CI->getCalledFunction();
+      FunctionType *OldFuncTy = OldFunc->getFunctionType();
+      TLIFunc =
+          Function::Create(OldFuncTy, Function::ExternalLinkage, TLIName, *M);
+      TLIFunc->copyAttributesFrom(OldFunc);
+      assert(OldFuncTy == TLIFunc->getFunctionType() &&
+             "Expecting function types to be identical");
+    } else {
+      // FRem handling.
+      assert(I.getOpcode() == Instruction::FRem &&
+             "Must be a FRem instruction.");
+      Type *RetTy = I.getType();
+      SmallVector<Type *> Tys = {RetTy, RetTy};
+      if (Masked)
+        Tys.push_back(
+            VectorType::get(Type::getInt1Ty(M->getContext()), NumElements));
+      TLIFunc = Function::Create(FunctionType::get(RetTy, Tys, false),
+                                 Function::ExternalLinkage, TLIName, *M);
+    }
     LLVM_DEBUG(dbgs() << DEBUG_TYPE << ": Added vector library function `"
                       << TLIName << "` of type `" << *(TLIFunc->getType())
                       << "` to module.\n");
-
     ++NumTLIFuncDeclAdded;
 
     // Add the freshly created function to llvm.compiler.used,
@@ -65,28 +86,69 @@ static bool replaceWithTLIFunction(CallInst &CI, const StringRef TLIName) {
                       << "` to `@llvm.compiler.used`.\n");
     ++NumFuncUsedAdded;
   }
-
-  // Replace the call to the vector intrinsic with a call
+  // Replace the call to the FRem instruction/vector intrinsic with a call
   // to the corresponding function from the vector library.
-  IRBuilder<> IRBuilder(&CI);
-  SmallVector<Value *> Args(CI.args());
-  // Preserve the operand bundles.
-  SmallVector<OperandBundleDef, 1> OpBundles;
-  CI.getOperandBundlesAsDefs(OpBundles);
-  CallInst *Replacement = IRBuilder.CreateCall(TLIFunc, Args, OpBundles);
-  assert(OldFunc->getFunctionType() == TLIFunc->getFunctionType() &&
-         "Expecting function types to be identical");
-  CI.replaceAllUsesWith(Replacement);
+  IRBuilder<> IRBuilder(&I);
+  CallInst *Replacement = nullptr;
+  if (CI) {
+    // Intrinsics handling.
+    SmallVector<Value *> Args(CI->args());
+    // Preserve the operand bundles.
+    SmallVector<OperandBundleDef, 1> OpBundles;
+    CI->getOperandBundlesAsDefs(OpBundles);
+    Replacement = IRBuilder.CreateCall(TLIFunc, Args, OpBundles);
+  } else {
+    // FRem handling.
+    SmallVector<Value *> Args(I.operand_values());
+    if (Masked)
+      Args.push_back(IRBuilder.getAllOnesMask(NumElements));
+    Replacement = IRBuilder.CreateCall(TLIFunc, Args);
+  }
+  I.replaceAllUsesWith(Replacement);
   if (isa<FPMathOperator>(Replacement)) {
     // Preserve fast math flags for FP math.
-    Replacement->copyFastMathFlags(&CI);
+    Replacement->copyFastMathFlags(&I);
   }
-
-  LLVM_DEBUG(dbgs() << DEBUG_TYPE << ": Replaced call to `"
-                    << OldFunc->getName() << "` with call to `" << TLIName
-                    << "`.\n");
+  LLVM_DEBUG(dbgs() << DEBUG_TYPE << ": Replaced call to `" << OldName
+                    << "` with call to `" << TLIName << "`.\n");
   ++NumCallsReplaced;
   return true;
+}
+
+static bool replaceFremWithCallToVeclib(const TargetLibraryInfo &TLI,
+                                        Instruction &I) {
+  auto *VectorArgTy = dyn_cast<ScalableVectorType>(I.getType());
+  // We have TLI mappings for FRem on scalable vectors only.
+  if (!VectorArgTy)
+    return false;
+  ElementCount NumElements = VectorArgTy->getElementCount();
+  auto *ElementType = VectorArgTy->getElementType();
+  StringRef ScalarName;
+  if (ElementType->isFloatTy())
+    ScalarName = TLI.getName(LibFunc_fmodf);
+  else if (ElementType->isDoubleTy())
+    ScalarName = TLI.getName(LibFunc_fmod);
+  else
+    return false;
+  LLVM_DEBUG(dbgs() << DEBUG_TYPE << ": Looking up TLI mapping for `"
+                    << ScalarName << "` and vector width " << NumElements
+                    << ".\n");
+  StringRef TLIName = TLI.getVectorizedFunction(ScalarName, NumElements);
+  if (!TLIName.empty()) {
+    LLVM_DEBUG(dbgs() << DEBUG_TYPE << ": Found unmasked TLI function `"
+                      << TLIName << "`.\n");
+    return replaceWithTLIFunction(I, TLIName);
+  }
+  TLIName = TLI.getVectorizedFunction(ScalarName, NumElements, true);
+  if (!TLIName.empty()) {
+    LLVM_DEBUG(dbgs() << DEBUG_TYPE << ": Found masked TLI function `"
+                      << TLIName << "`.\n");
+    return replaceWithTLIFunction(I, TLIName, /*Masked*/ true);
+  }
+  LLVM_DEBUG(dbgs() << DEBUG_TYPE
+                    << ": Did not find suitable vectorized version of `"
+                    << ScalarName << "`.\n");
+  return false;
 }
 
 static bool replaceWithCallToVeclib(const TargetLibraryInfo &TLI,
@@ -100,7 +162,6 @@ static bool replaceWithCallToVeclib(const TargetLibraryInfo &TLI,
     // Replacement is only performed for intrinsic functions
     return false;
   }
-
   // Convert vector arguments to scalar type and check that
   // all vector operands have identical vector width.
   ElementCount VF = ElementCount::getFixed(0);
@@ -175,19 +236,26 @@ static bool replaceWithCallToVeclib(const TargetLibraryInfo &TLI,
 
 static bool runImpl(const TargetLibraryInfo &TLI, Function &F) {
   bool Changed = false;
-  SmallVector<CallInst *> ReplacedCalls;
+  SmallVector<Instruction *> ReplacedCalls;
   for (auto &I : instructions(F)) {
     if (auto *CI = dyn_cast<CallInst>(&I)) {
       if (replaceWithCallToVeclib(TLI, *CI)) {
-        ReplacedCalls.push_back(CI);
+        ReplacedCalls.push_back(&I);
+        Changed = true;
+      }
+    } else if (I.getOpcode() == Instruction::FRem) {
+      // If there is a suitable TLI mapping for FRem instruction,
+      // replace the instruction.
+      if (replaceFremWithCallToVeclib(TLI, I)) {
+        ReplacedCalls.push_back(&I);
         Changed = true;
       }
     }
   }
-  // Erase the calls to the intrinsics that have been replaced
-  // with calls to the vector library.
-  for (auto *CI : ReplacedCalls) {
-    CI->eraseFromParent();
+  // Erase the calls to the intrinsics and the FRem instructions that have been
+  // replaced with calls to the vector library.
+  for (auto *I : ReplacedCalls) {
+    I->eraseFromParent();
   }
   return Changed;
 }

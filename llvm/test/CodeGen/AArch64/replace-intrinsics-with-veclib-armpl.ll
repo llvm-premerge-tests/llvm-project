@@ -15,7 +15,7 @@ declare <vscale x 2 x double> @llvm.cos.nxv2f64(<vscale x 2 x double>)
 declare <vscale x 4 x float> @llvm.cos.nxv4f32(<vscale x 4 x float>)
 
 ;.
-; CHECK: @[[LLVM_COMPILER_USED:[a-zA-Z0-9_$"\\.-]+]] = appending global [14 x ptr] [ptr @armpl_vcosq_f64, ptr @armpl_vcosq_f32, ptr @armpl_vsinq_f64, ptr @armpl_vsinq_f32, ptr @armpl_vexpq_f64, ptr @armpl_vexpq_f32, ptr @armpl_vexp2q_f64, ptr @armpl_vexp2q_f32, ptr @armpl_vlogq_f64, ptr @armpl_vlogq_f32, ptr @armpl_vlog2q_f64, ptr @armpl_vlog2q_f32, ptr @armpl_vlog10q_f64, ptr @armpl_vlog10q_f32], section "llvm.metadata"
+; CHECK: @[[LLVM_COMPILER_USED:[a-zA-Z0-9_$"\\.-]+]] = appending global [16 x ptr] [ptr @armpl_vcosq_f64, ptr @armpl_vcosq_f32, ptr @armpl_vsinq_f64, ptr @armpl_vsinq_f32, ptr @armpl_vexpq_f64, ptr @armpl_vexpq_f32, ptr @armpl_vexp2q_f64, ptr @armpl_vexp2q_f32, ptr @armpl_svfmod_f64_x, ptr @armpl_svfmod_f32_x, ptr @armpl_vlogq_f64, ptr @armpl_vlogq_f32, ptr @armpl_vlog2q_f64, ptr @armpl_vlog2q_f32, ptr @armpl_vlog10q_f64, ptr @armpl_vlog10q_f32], section "llvm.metadata"
 ;.
 define <2 x double> @llvm_cos_f64(<2 x double> %in) {
 ; CHECK-LABEL: define <2 x double> @llvm_cos_f64
@@ -190,6 +190,28 @@ define <vscale x 4 x float> @llvm_exp2_vscale_f32(<vscale x 4 x float> %in) #0 {
 ;
   %1 = call fast <vscale x 4 x float> @llvm.exp2.nxv4f32(<vscale x 4 x float> %in)
   ret <vscale x 4 x float> %1
+}
+
+; NOTE: TLI mappings for FREM instruction.
+
+define <vscale x 2 x double> @llvm_frem_vscale_f64(<vscale x 2 x double> %in1, <vscale x 2 x double> %in2) #0 {
+; CHECK-LABEL: define <vscale x 2 x double> @llvm_frem_vscale_f64
+; CHECK-SAME: (<vscale x 2 x double> [[IN1:%.*]], <vscale x 2 x double> [[IN2:%.*]]) #[[ATTR1]] {
+; CHECK-NEXT:    [[TMP1:%.*]] = call fast <vscale x 2 x double> @armpl_svfmod_f64_x(<vscale x 2 x double> [[IN1]], <vscale x 2 x double> [[IN2]], <vscale x 2 x i1> shufflevector (<vscale x 2 x i1> insertelement (<vscale x 2 x i1> poison, i1 true, i64 0), <vscale x 2 x i1> poison, <vscale x 2 x i32> zeroinitializer))
+; CHECK-NEXT:    ret <vscale x 2 x double> [[TMP1]]
+;
+  %out = frem fast <vscale x 2 x double> %in1, %in2
+  ret <vscale x 2 x double> %out
+}
+
+define <vscale x 4 x float> @llvm_frem_vscale_f32(<vscale x 4 x float> %in1, <vscale x 4 x float> %in2)  #0 {
+; CHECK-LABEL: define <vscale x 4 x float> @llvm_frem_vscale_f32
+; CHECK-SAME: (<vscale x 4 x float> [[IN1:%.*]], <vscale x 4 x float> [[IN2:%.*]]) #[[ATTR1]] {
+; CHECK-NEXT:    [[TMP1:%.*]] = call fast <vscale x 4 x float> @armpl_svfmod_f32_x(<vscale x 4 x float> [[IN1]], <vscale x 4 x float> [[IN2]], <vscale x 4 x i1> shufflevector (<vscale x 4 x i1> insertelement (<vscale x 4 x i1> poison, i1 true, i64 0), <vscale x 4 x i1> poison, <vscale x 4 x i32> zeroinitializer))
+; CHECK-NEXT:    ret <vscale x 4 x float> [[TMP1]]
+;
+  %out = frem fast <vscale x 4 x float> %in1, %in2
+  ret <vscale x 4 x float> %out
 }
 
 
