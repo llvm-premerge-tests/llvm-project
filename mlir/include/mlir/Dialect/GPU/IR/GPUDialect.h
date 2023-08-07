@@ -180,6 +180,10 @@ public:
 using SparseDnTensorHandleType = SparseHandleType<SparseHandleKind::DnTensor>;
 using SparseSpMatHandleType = SparseHandleType<SparseHandleKind::SpMat>;
 
+/// Registers offloading LLVM translation interfaces. TODO: Remove this
+/// function.
+void registerOffloadingLLVMTranslationInterfacesExternalModels(
+    mlir::DialectRegistry &registry);
 } // namespace gpu
 } // namespace mlir
 
