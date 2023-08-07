@@ -192,6 +192,90 @@ define <4 x i32> @insert_subvector_vp_add_v4i32_v8i32(<4 x i32> %v1, <8 x i32> %
   ret <4 x i32> %v5
 }
 
+define <4 x i8> @insert_subvector_add_mf8(<4 x i8> %v1, <2 x i8> %a, <2 x i8> %b) {
+; CHECK-LABEL: insert_subvector_add_mf8:
+; CHECK:       # %bb.0:
+; CHECK-NEXT:    vsetivli zero, 2, e8, mf8, ta, ma
+; CHECK-NEXT:    vadd.vv v9, v9, v10
+; CHECK-NEXT:    vsetivli zero, 2, e8, mf4, tu, ma
+; CHECK-NEXT:    vmv.v.v v8, v9
+; CHECK-NEXT:    ret
+  %v2 = add <2 x i8> %a, %b
+  %v3 = shufflevector <2 x i8> %v2, <2 x i8> poison, <4 x i32> <i32 0, i32 1, i32 undef, i32 undef>
+  %v4 = shufflevector <4 x i8> %v3, <4 x i8> %v1, <4 x i32> <i32 0, i32 1, i32 6, i32 7>
+  ret <4 x i8> %v4
+}
+
+define <4 x i16> @insert_subvector_add_mf4(<4 x i16> %v1, <2 x i16> %a, <2 x i16> %b) {
+; CHECK-LABEL: insert_subvector_add_mf4:
+; CHECK:       # %bb.0:
+; CHECK-NEXT:    vsetivli zero, 2, e16, mf4, ta, ma
+; CHECK-NEXT:    vadd.vv v9, v9, v10
+; CHECK-NEXT:    vsetivli zero, 2, e16, mf2, tu, ma
+; CHECK-NEXT:    vmv.v.v v8, v9
+; CHECK-NEXT:    ret
+  %v2 = add <2 x i16> %a, %b
+  %v3 = shufflevector <2 x i16> %v2, <2 x i16> poison, <4 x i32> <i32 0, i32 1, i32 undef, i32 undef>
+  %v4 = shufflevector <4 x i16> %v3, <4 x i16> %v1, <4 x i32> <i32 0, i32 1, i32 6, i32 7>
+  ret <4 x i16> %v4
+}
+
+define <4 x i32> @insert_subvector_add_mf2(<4 x i32> %v1, <2 x i32> %a, <2 x i32> %b) {
+; CHECK-LABEL: insert_subvector_add_mf2:
+; CHECK:       # %bb.0:
+; CHECK-NEXT:    vsetivli zero, 2, e32, mf2, ta, ma
+; CHECK-NEXT:    vadd.vv v9, v9, v10
+; CHECK-NEXT:    vsetivli zero, 2, e32, m1, tu, ma
+; CHECK-NEXT:    vmv.v.v v8, v9
+; CHECK-NEXT:    ret
+  %v2 = add <2 x i32> %a, %b
+  %v3 = shufflevector <2 x i32> %v2, <2 x i32> poison, <4 x i32> <i32 0, i32 1, i32 undef, i32 undef>
+  %v4 = shufflevector <4 x i32> %v3, <4 x i32> %v1, <4 x i32> <i32 0, i32 1, i32 6, i32 7>
+  ret <4 x i32> %v4
+}
+
+define <8 x i32> @insert_subvector_add_m1(<8 x i32> %v1, <4 x i32> %a, <4 x i32> %b) {
+; CHECK-LABEL: insert_subvector_add_m1:
+; CHECK:       # %bb.0:
+; CHECK-NEXT:    vsetivli zero, 4, e32, m1, ta, ma
+; CHECK-NEXT:    vadd.vv v10, v10, v11
+; CHECK-NEXT:    vsetivli zero, 4, e32, m2, tu, ma
+; CHECK-NEXT:    vmv.v.v v8, v10
+; CHECK-NEXT:    ret
+  %v2 = add <4 x i32> %a, %b
+  %v3 = shufflevector <4 x i32> %v2, <4 x i32> poison, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 undef, i32 undef, i32 undef, i32 undef>
+  %v4 = shufflevector <8 x i32> %v3, <8 x i32> %v1, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 12, i32 13, i32 14, i32 15>
+  ret <8 x i32> %v4
+}
+
+define <16 x i32> @insert_subvector_add_m2(<16 x i32> %v1, <8 x i32> %a, <8 x i32> %b) {
+; CHECK-LABEL: insert_subvector_add_m2:
+; CHECK:       # %bb.0:
+; CHECK-NEXT:    vsetivli zero, 8, e32, m2, ta, ma
+; CHECK-NEXT:    vadd.vv v12, v12, v14
+; CHECK-NEXT:    vsetivli zero, 8, e32, m4, tu, ma
+; CHECK-NEXT:    vmv.v.v v8, v12
+; CHECK-NEXT:    ret
+  %v2 = add <8 x i32> %a, %b
+  %v3 = shufflevector <8 x i32> %v2, <8 x i32> poison, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef>
+  %v4 = shufflevector <16 x i32> %v3, <16 x i32> %v1, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 24, i32 25, i32 26, i32 27, i32 28, i32 29, i32 30, i32 31>
+  ret <16 x i32> %v4
+}
+
+define <32 x i32> @insert_subvector_add_m4(<32 x i32> %v1, <16 x i32> %a, <16 x i32> %b) {
+; CHECK-LABEL: insert_subvector_add_m4:
+; CHECK:       # %bb.0:
+; CHECK-NEXT:    vsetivli zero, 16, e32, m4, ta, ma
+; CHECK-NEXT:    vadd.vv v16, v16, v20
+; CHECK-NEXT:    vsetivli zero, 16, e32, m8, tu, ma
+; CHECK-NEXT:    vmv.v.v v8, v16
+; CHECK-NEXT:    ret
+  %v2 = add <16 x i32> %a, %b
+  %v3 = shufflevector <16 x i32> %v2, <16 x i32> poison, <32 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef, i32 undef>
+  %v4 = shufflevector <32 x i32> %v3, <32 x i32> %v1, <32 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15, i32 48, i32 49, i32 50, i32 51, i32 52, i32 53, i32 54, i32 55, i32 56, i32 57, i32 58, i32 59, i32 60, i32 61, i32 62, i32 63>
+  ret <32 x i32> %v4
+}
+
 ; %v2 depends on the chain of %v1, so make sure the peephole optimisation
 ; doesn't introduce a loop in the DAG
 define <4 x i32> @insert_subvector_dag_loop(ptr %p, ptr %q) {
