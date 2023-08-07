@@ -192,6 +192,10 @@ Changes in existing checks
   <clang-tidy/checks/readability/identifier-naming>` check to emit proper
   warnings when a type forward declaration precedes its definition.
 
+- Improved :doc:`readability-static-accessed-through-instance
+  <clang-tidy/checks/readability/static-accessed-through-instance>` check to
+  identify calls to static member functions with out-of-class inline definitions.
+
 Removed checks
 ^^^^^^^^^^^^^^
 
