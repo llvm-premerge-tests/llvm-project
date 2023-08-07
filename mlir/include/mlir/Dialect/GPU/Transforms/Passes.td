@@ -37,4 +37,21 @@ def GpuMapParallelLoopsPass
   let dependentDialects = ["mlir::gpu::GPUDialect"];
 }
 
+def GpuModuleToBinaryPass
+    : Pass<"gpu-module-to-binary", ""> {
+  let summary = "Transforms a GPU module into a GPU binary.";
+  let options = [
+    Option<"offloadingHandler", "handler", "Attribute", "nullptr",
+           "Offloading handler to be attached to the resulting binary op.">,
+    Option<"toolkitPath", "toolkit", "std::string", [{""}],
+           "Toolkit path.">,
+    ListOption<"linkFiles", "l", "std::string",
+           "Extra files to link to.">,
+    Option<"cmdOptions", "opts", "std::string", [{""}],
+           "Command line options to pass to the tools.">,
+    Option<"compilationTarget", "format", "std::string", [{"bin"}],
+           "The target representation of the compilation process.">
+  ];
+}
+
 #endif // MLIR_DIALECT_GPU_PASSES
