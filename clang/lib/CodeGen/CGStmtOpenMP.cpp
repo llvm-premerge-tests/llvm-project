@@ -1560,13 +1560,27 @@ static void emitCommonOMPParallelDirective(
         CGF, ProcBindClause->getProcBindKind(), ProcBindClause->getBeginLoc());
   }
   const Expr *IfCond = nullptr;
-  for (const auto *C : S.getClausesOfKind<OMPIfClause>()) {
-    if (C->getNameModifier() == OMPD_unknown ||
-        C->getNameModifier() == OMPD_parallel) {
-      IfCond = C->getCondition();
-      break;
+  // OpenMP 5.2 [3.4, if Clause, Semantics, 15-18]
+  // For combined or composite constructs, the if clause only applies to
+  // the semantics of the construct named in the directive-name-modifier.
+  // For a combined or composite construct, if no directive-name-modifier
+  // is specified then the if clause applies to all constituent constructs
+  // to which an if clause can apply.
+  //
+  // If we are here with a 'target teams loop' then we are emitting the
+  // 'parallel' region of the 'target teams distribute parallel for'
+  // emitted in place of the 'target teams loop'. Based on the specification
+  // noted above, an if-clause associated with a 'target teams loop', be it
+  // 'if(val)' or an 'if(target:val)', will apply only to 'target' and not
+  // the 'parallel' of the 'target teams distribute parallel for'.
+  if (S.getDirectiveKind() != OMPD_target_teams_loop)
+    for (const auto *C : S.getClausesOfKind<OMPIfClause>()) {
+      if (C->getNameModifier() == OMPD_unknown ||
+          C->getNameModifier() == OMPD_parallel) {
+        IfCond = C->getCondition();
+        break;
+      }
     }
-  }
 
   OMPParallelScope Scope(CGF, S);
   llvm::SmallVector<llvm::Value *, 16> CapturedVars;
