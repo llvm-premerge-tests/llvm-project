@@ -13,16 +13,18 @@ define void @test(i64 %p0, i64 %p1, i64 %p2, i64 %p3) {
 ; CHECK-NEXT:    [[TMP6:%.*]] = sdiv <4 x i64> [[TMP3]], [[TMP3]]
 ; CHECK-NEXT:    [[TMP7:%.*]] = sub <4 x i64> [[TMP5]], [[TMP6]]
 ; CHECK-NEXT:    [[TMP8:%.*]] = shl <4 x i64> [[TMP4]], [[TMP7]]
-; CHECK-NEXT:    [[TMP9:%.*]] = shufflevector <4 x i64> [[TMP4]], <4 x i64> [[TMP5]], <4 x i32> <i32 0, i32 4, i32 poison, i32 4>
-; CHECK-NEXT:    [[TMP10:%.*]] = shufflevector <4 x i64> [[TMP9]], <4 x i64> [[TMP6]], <4 x i32> <i32 0, i32 1, i32 4, i32 3>
-; CHECK-NEXT:    [[TMP11:%.*]] = shufflevector <4 x i64> [[TMP4]], <4 x i64> [[TMP5]], <4 x i32> <i32 1, i32 5, i32 poison, i32 5>
-; CHECK-NEXT:    [[TMP12:%.*]] = shufflevector <4 x i64> [[TMP11]], <4 x i64> [[TMP6]], <4 x i32> <i32 0, i32 1, i32 5, i32 3>
-; CHECK-NEXT:    [[TMP13:%.*]] = or <4 x i64> [[TMP10]], [[TMP12]]
-; CHECK-NEXT:    [[TMP14:%.*]] = trunc <4 x i64> [[TMP13]] to <4 x i32>
+; CHECK-NEXT:    [[TMP9:%.*]] = shufflevector <4 x i64> [[TMP4]], <4 x i64> [[TMP5]], <4 x i32> <i32 0, i32 4, i32 poison, i32 poison>
+; CHECK-NEXT:    [[TMP10:%.*]] = shufflevector <4 x i64> [[TMP6]], <4 x i64> [[TMP5]], <4 x i32> <i32 poison, i32 poison, i32 0, i32 4>
+; CHECK-NEXT:    [[TMP11:%.*]] = shufflevector <4 x i64> [[TMP9]], <4 x i64> [[TMP10]], <4 x i32> <i32 0, i32 1, i32 6, i32 7>
+; CHECK-NEXT:    [[TMP12:%.*]] = shufflevector <4 x i64> [[TMP4]], <4 x i64> [[TMP5]], <4 x i32> <i32 1, i32 5, i32 poison, i32 poison>
+; CHECK-NEXT:    [[TMP13:%.*]] = shufflevector <4 x i64> [[TMP6]], <4 x i64> [[TMP5]], <4 x i32> <i32 poison, i32 poison, i32 1, i32 5>
+; CHECK-NEXT:    [[TMP14:%.*]] = shufflevector <4 x i64> [[TMP12]], <4 x i64> [[TMP13]], <4 x i32> <i32 0, i32 1, i32 6, i32 7>
+; CHECK-NEXT:    [[TMP15:%.*]] = or <4 x i64> [[TMP11]], [[TMP14]]
+; CHECK-NEXT:    [[TMP16:%.*]] = trunc <4 x i64> [[TMP15]] to <4 x i32>
 ; CHECK-NEXT:    br label [[BB:%.*]]
 ; CHECK:       bb:
-; CHECK-NEXT:    [[TMP15:%.*]] = phi <4 x i32> [ [[TMP16:%.*]], [[BB]] ], [ [[TMP14]], [[ENTRY:%.*]] ]
-; CHECK-NEXT:    [[TMP16]] = trunc <4 x i64> [[TMP8]] to <4 x i32>
+; CHECK-NEXT:    [[TMP17:%.*]] = phi <4 x i32> [ [[TMP18:%.*]], [[BB]] ], [ [[TMP16]], [[ENTRY:%.*]] ]
+; CHECK-NEXT:    [[TMP18]] = trunc <4 x i64> [[TMP8]] to <4 x i32>
 ; CHECK-NEXT:    br label [[BB]]
 ;
 entry:
