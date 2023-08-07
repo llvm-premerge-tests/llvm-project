@@ -1267,3 +1267,37 @@ define <vscale x 4 x float> @fadd_sel_fmul_no_contract_s(<vscale x 4 x float> %a
   %fadd = fadd nsz <vscale x 4 x float> %a, %sel
   ret <vscale x 4 x float> %fadd
 }
+
+; Make sure to select the correct destination operand and avoid choosing z0 mindlessly.
+define <vscale x 8 x half> @fadd_sel_fmul_h_different_arg_order(<vscale x 8 x i1> %pred, <vscale x 8 x half> %m1, <vscale x 8 x half> %m2, <vscale x 8 x half> %acc) {
+; CHECK-LABEL: fadd_sel_fmul_h_different_arg_order:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    fmad z0.h, p0/m, z1.h, z2.h
+; CHECK-NEXT:    ret
+  %mul = fmul contract <vscale x 8 x half> %m1, %m2
+  %masked.mul = select <vscale x 8 x i1> %pred, <vscale x 8 x half> %mul, <vscale x 8 x half> zeroinitializer
+  %add = fadd nsz contract <vscale x 8 x half> %acc, %masked.mul
+  ret <vscale x 8 x half> %add
+}
+
+define <vscale x 4 x float> @fadd_sel_fmul_s_different_arg_order(<vscale x 4 x i1> %pred, <vscale x 4 x float> %m1, <vscale x 4 x float> %m2, <vscale x 4 x float> %acc) {
+; CHECK-LABEL: fadd_sel_fmul_s_different_arg_order:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    fmad z0.s, p0/m, z1.s, z2.s
+; CHECK-NEXT:    ret
+  %mul = fmul contract <vscale x 4 x float> %m1, %m2
+  %masked.mul = select <vscale x 4 x i1> %pred, <vscale x 4 x float> %mul, <vscale x 4 x float> zeroinitializer
+  %add = fadd nsz contract <vscale x 4 x float> %acc, %masked.mul
+  ret <vscale x 4 x float> %add
+}
+
+define <vscale x 2 x double> @fadd_sel_fmul_d_different_arg_order(<vscale x 2 x i1> %pred, <vscale x 2 x double> %m1, <vscale x 2 x double> %m2, <vscale x 2 x double> %acc) {
+; CHECK-LABEL: fadd_sel_fmul_d_different_arg_order:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    fmad z0.d, p0/m, z1.d, z2.d
+; CHECK-NEXT:    ret
+  %mul = fmul contract <vscale x 2 x double> %m1, %m2
+  %masked.mul = select <vscale x 2 x i1> %pred, <vscale x 2 x double> %mul, <vscale x 2 x double> zeroinitializer
+  %add = fadd nsz contract <vscale x 2 x double> %acc, %masked.mul
+  ret <vscale x 2 x double> %add
+}
