@@ -192,6 +192,10 @@ Changes in existing checks
   <clang-tidy/checks/readability/identifier-naming>` check to emit proper
   warnings when a type forward declaration precedes its definition.
 
+- Improved :doc:`readability-redundant-member-init
+  <clang-tidy/checks/readability/redundant-member-init>` check to support
+  in-class initializers.
+
 Removed checks
 ^^^^^^^^^^^^^^
 
