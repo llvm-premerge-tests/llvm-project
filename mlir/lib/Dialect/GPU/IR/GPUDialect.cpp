@@ -208,6 +208,7 @@ void GPUDialect::initialize() {
 #include "mlir/Dialect/GPU/IR/GPUOpsAttributes.cpp.inc"
       >();
   addInterfaces<GPUInlinerInterface>();
+  declarePromisedInterface<OffloadingLLVMTranslationAttrInterface>();
 }
 
 static std::string getSparseHandleKeyword(SparseHandleKind kind) {
@@ -1645,7 +1646,13 @@ void BinaryOp::build(OpBuilder &builder, OperationState &result, StringRef name,
   result.attributes.push_back(builder.getNamedAttr(
       SymbolTable::getSymbolAttrName(), builder.getStringAttr(name)));
   properties.objects = objects;
-  properties.offloadingHandler = offloadingHandler;
+  if (offloadingHandler) {
+    properties.offloadingHandler = offloadingHandler;
+  } else {
+    auto offloadingHandler = builder.getAttr<SelectObjectAttr>(nullptr);
+    properties.offloadingHandler =
+        dyn_cast<OffloadingLLVMTranslationAttrInterface>(offloadingHandler);
+  }
 }
 
 void BinaryOp::build(OpBuilder &builder, OperationState &result, StringRef name,
@@ -1653,6 +1660,25 @@ void BinaryOp::build(OpBuilder &builder, OperationState &result, StringRef name,
                      ArrayRef<Attribute> objects) {
   build(builder, result, name, offloadingHandler,
         objects.size() > 0 ? builder.getArrayAttr(objects) : ArrayAttr());
+}
+
+static ParseResult parseOffloadingHandler(OpAsmParser &parser,
+                                          Attribute &offloadingHandler) {
+  if (succeeded(parser.parseOptionalLess())) {
+    if (parser.parseAttribute(offloadingHandler))
+      return failure();
+    if (parser.parseGreater())
+      return failure();
+  }
+  if (!offloadingHandler)
+    offloadingHandler = parser.getBuilder().getAttr<SelectObjectAttr>(nullptr);
+  return success();
+}
+
+static void printOffloadingHandler(OpAsmPrinter &printer, Operation *op,
+                                   Attribute offloadingHandler) {
+  if (offloadingHandler != SelectObjectAttr::get(op->getContext(), nullptr))
+    printer << '<' << offloadingHandler << '>';
 }
 
 //===----------------------------------------------------------------------===//
@@ -1924,6 +1950,27 @@ struct SimplifyDimOfAllocOp : public OpRewritePattern<memref::DimOp> {
 void AllocOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
   results.add<SimplifyDimOfAllocOp>(context);
+}
+
+//===----------------------------------------------------------------------===//
+// GPU select object attribute
+//===----------------------------------------------------------------------===//
+
+LogicalResult
+gpu::SelectObjectAttr::verify(function_ref<InFlightDiagnostic()> emitError,
+                              Attribute target) {
+  // Check `target`, it can be null, an integer attr or a GPU Target attribute.
+  if (target) {
+    if (auto intAttr = mlir::dyn_cast<IntegerAttr>(target)) {
+      if (intAttr.getInt() < 0) {
+        return emitError() << "The object index must be positive.";
+      }
+    } else if (!(::mlir::isa<TargetAttrInterface>(target))) {
+      return emitError()
+             << "The target attribute must be a GPU Target attribute.";
+    }
+  }
+  return success();
 }
 
 //===----------------------------------------------------------------------===//

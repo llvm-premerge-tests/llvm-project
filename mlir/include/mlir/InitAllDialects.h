@@ -155,6 +155,7 @@ inline void registerAllDialects(DialectRegistry &registry) {
   bufferization::func_ext::registerBufferizableOpInterfaceExternalModels(
       registry);
   builtin::registerCastOpInterfaceExternalModels(registry);
+  gpu::registerOffloadingLLVMTranslationInterfacesExternalModels(registry);
   linalg::registerBufferizableOpInterfaceExternalModels(registry);
   linalg::registerTilingInterfaceExternalModels(registry);
   linalg::registerValueBoundsOpInterfaceExternalModels(registry);
