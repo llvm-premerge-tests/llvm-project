@@ -1606,7 +1606,8 @@ NewGVN::ExprResult NewGVN::performSymbolicCallEvaluation(Instruction *I) const {
       if (II->getIntrinsicID() == Intrinsic::ssa_copy)
         if (auto Res = performSymbolicPredicateInfoEvaluation(II))
           return Res;
-      return ExprResult::some(createVariableOrConstant(ReturnedValue));
+      return ExprResult::some(
+          createVariableOrConstant(lookupOperandLeader(ReturnedValue)));
     }
   }
 
