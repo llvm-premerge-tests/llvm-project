@@ -6928,6 +6928,24 @@ SDValue RISCVTargetLowering::lowerINSERT_VECTOR_ELT(SDValue Op,
         return Vec;
       return convertFromScalableVector(VecVT, Vec, DAG, Subtarget);
     }
+    // IF our index is small enough that the mask for the vmerge would require
+    // only the vmv.v.i form, then we can perform the insert in two instructions:
+    //   vmv.v.i v0, <mask-constant>
+    //   vmerge vd, <vec>, <val>, v0
+    // This avoids the need for the vector temporary, and may let us fold the
+    // inserted value if it's a constant. TODO: This could be extended to larger
+    // indices, non-constant indices, or scalable vectors by using vmseq (vid, idx).
+    if (isa<ConstantSDNode>(Idx) && cast<ConstantSDNode>(Idx)->getZExtValue() <= 4 &&
+        VecVT.isFixedLengthVector()) {
+      SmallVector<SDValue> Ops;
+      for (uint64_t i = 0; i < VecVT.getVectorNumElements(); i++)
+        Ops.push_back(DAG.getConstant(i == cast<ConstantSDNode>(Idx)->getZExtValue(), DL, XLenVT));
+      MVT SelMaskTy = VecVT.changeVectorElementType(MVT::i1);
+      return DAG.getNode(ISD::VSELECT, DL, VecVT,
+                         DAG.getBuildVector(SelMaskTy, DL, Ops),
+                         DAG.getSplatBuildVector(VecVT, DL, Val),
+                         convertFromScalableVector(VecVT, Vec, DAG, Subtarget));
+    }
     ValInVec = lowerScalarInsert(Val, VL, ContainerVT, DL, DAG, Subtarget);
   } else {
     // On RV32, i64-element vectors must be specially handled to place the

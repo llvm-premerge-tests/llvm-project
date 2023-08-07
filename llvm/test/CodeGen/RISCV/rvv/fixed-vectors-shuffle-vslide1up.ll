@@ -302,12 +302,12 @@ define <4 x i8> @vslide1up_4xi8_inverted(<4 x i8> %v, i8 %b) {
 define <2 x double> @vslide1up_2xf64_as_rotate(<2 x double> %v, double %b) {
 ; CHECK-LABEL: vslide1up_2xf64_as_rotate:
 ; CHECK:       # %bb.0:
+; CHECK-NEXT:    vsetivli zero, 1, e8, mf8, ta, ma
+; CHECK-NEXT:    vmv.v.i v0, 2
 ; CHECK-NEXT:    vsetivli zero, 2, e64, m1, ta, ma
-; CHECK-NEXT:    vfmv.s.f v9, fa0
+; CHECK-NEXT:    vfmerge.vfm v9, v8, fa0, v0
+; CHECK-NEXT:    vslidedown.vi v8, v9, 1
 ; CHECK-NEXT:    vslideup.vi v8, v9, 1
-; CHECK-NEXT:    vslidedown.vi v9, v8, 1
-; CHECK-NEXT:    vslideup.vi v9, v8, 1
-; CHECK-NEXT:    vmv.v.v v8, v9
 ; CHECK-NEXT:    ret
   %v1 = insertelement <2 x double> %v, double %b, i64 1
   %v2 = shufflevector <2 x double> %v1, <2 x double> poison, <2 x i32> <i32 1, i32 0>
@@ -317,12 +317,12 @@ define <2 x double> @vslide1up_2xf64_as_rotate(<2 x double> %v, double %b) {
 define <4 x i8> @vslide1up_4xi8_as_rotate(<4 x i8> %v, i8 %b) {
 ; CHECK-LABEL: vslide1up_4xi8_as_rotate:
 ; CHECK:       # %bb.0:
+; CHECK-NEXT:    vsetivli zero, 1, e8, mf8, ta, ma
+; CHECK-NEXT:    vmv.v.i v0, 8
 ; CHECK-NEXT:    vsetivli zero, 4, e8, mf4, ta, ma
-; CHECK-NEXT:    vmv.s.x v9, a0
-; CHECK-NEXT:    vslideup.vi v8, v9, 3
-; CHECK-NEXT:    vslidedown.vi v9, v8, 3
-; CHECK-NEXT:    vslideup.vi v9, v8, 1
-; CHECK-NEXT:    vmv1r.v v8, v9
+; CHECK-NEXT:    vmerge.vxm v9, v8, a0, v0
+; CHECK-NEXT:    vslidedown.vi v8, v9, 3
+; CHECK-NEXT:    vslideup.vi v8, v9, 1
 ; CHECK-NEXT:    ret
   %v1 = insertelement <4 x i8> %v, i8 %b, i64 3
   %v2 = shufflevector <4 x i8> %v1, <4 x i8> poison, <4 x i32> <i32 3, i32 0, i32 1, i32 2>

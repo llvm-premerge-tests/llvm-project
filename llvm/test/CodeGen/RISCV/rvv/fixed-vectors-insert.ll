@@ -17,9 +17,10 @@ define <4 x i64> @insertelt_v4i64(<4 x i64> %a, i64 %y) {
 ;
 ; RV64-LABEL: insertelt_v4i64:
 ; RV64:       # %bb.0:
+; RV64-NEXT:    vsetivli zero, 1, e8, mf8, ta, ma
+; RV64-NEXT:    vmv.v.i v0, 8
 ; RV64-NEXT:    vsetivli zero, 4, e64, m2, ta, ma
-; RV64-NEXT:    vmv.s.x v10, a0
-; RV64-NEXT:    vslideup.vi v8, v10, 3
+; RV64-NEXT:    vmerge.vxm v8, v8, a0, v0
 ; RV64-NEXT:    ret
   %b = insertelement <4 x i64> %a, i64 %y, i32 3
   ret <4 x i64> %b
