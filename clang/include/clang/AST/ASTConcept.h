@@ -14,7 +14,9 @@
 #ifndef LLVM_CLANG_AST_ASTCONCEPT_H
 #define LLVM_CLANG_AST_ASTCONCEPT_H
 
+#include "clang/AST/Decl.h"
 #include "clang/AST/Expr.h"
+#include "clang/AST/PrettyPrinter.h"
 #include "clang/Basic/SourceLocation.h"
 #include "llvm/ADT/PointerUnion.h"
 #include "llvm/ADT/SmallVector.h"
@@ -146,6 +148,15 @@ public:
   ConceptReference()
       : FoundDecl(nullptr), NamedConcept(nullptr), ArgsAsWritten(nullptr) {}
 
+  static ConceptReference *
+  Create(const ASTContext &C, NestedNameSpecifierLoc NNS,
+         SourceLocation TemplateKWLoc, DeclarationNameInfo ConceptNameInfo,
+         NamedDecl *FoundDecl, ConceptDecl *NamedConcept,
+         const ASTTemplateArgumentListInfo *ArgsAsWritten) {
+    return new (C) ConceptReference(NNS, TemplateKWLoc, ConceptNameInfo,
+                                    FoundDecl, NamedConcept, ArgsAsWritten);
+  }
+
   const NestedNameSpecifierLoc &getNestedNameSpecifierLoc() const {
     return NestedNameSpec;
   }
@@ -175,22 +186,19 @@ public:
   bool hasExplicitTemplateArgs() const {
     return ArgsAsWritten != nullptr;
   }
+
+  void print(llvm::raw_ostream &OS, PrintingPolicy Policy) const;
 };
 
-class TypeConstraint : public ConceptReference {
+class TypeConstraint {
   /// \brief The immediately-declared constraint expression introduced by this
   /// type-constraint.
   Expr *ImmediatelyDeclaredConstraint = nullptr;
+  ConceptReference *CR;
 
 public:
-  TypeConstraint(NestedNameSpecifierLoc NNS,
-                 DeclarationNameInfo ConceptNameInfo, NamedDecl *FoundDecl,
-                 ConceptDecl *NamedConcept,
-                 const ASTTemplateArgumentListInfo *ArgsAsWritten,
-                 Expr *ImmediatelyDeclaredConstraint) :
-      ConceptReference(NNS, /*TemplateKWLoc=*/SourceLocation(), ConceptNameInfo,
-                       FoundDecl, NamedConcept, ArgsAsWritten),
-      ImmediatelyDeclaredConstraint(ImmediatelyDeclaredConstraint) {}
+  TypeConstraint(ConceptReference *CR, Expr *ImmediatelyDeclaredConstraint)
+      : ImmediatelyDeclaredConstraint(ImmediatelyDeclaredConstraint), CR(CR) {}
 
   /// \brief Get the immediately-declared constraint expression introduced by
   /// this type-constraint, that is - the constraint expression that is added to
@@ -199,7 +207,35 @@ public:
     return ImmediatelyDeclaredConstraint;
   }
 
-  void print(llvm::raw_ostream &OS, PrintingPolicy Policy) const;
+  ConceptReference *getConceptReference() const { return CR; }
+
+  // FIXME: Instead of using these concept related functions the callers should
+  // directly work with the corresponding ConceptReference.
+  ConceptDecl *getNamedConcept() const { return CR->getNamedConcept(); }
+
+  SourceLocation getConceptNameLoc() const { return CR->getConceptNameLoc(); }
+
+  bool hasExplicitTemplateArgs() const { return CR->hasExplicitTemplateArgs(); }
+
+  const ASTTemplateArgumentListInfo *getTemplateArgsAsWritten() const {
+    return CR->getTemplateArgsAsWritten();
+  }
+
+  SourceLocation getTemplateKWLoc() const { return CR->getTemplateKWLoc(); }
+
+  NamedDecl *getFoundDecl() const { return CR->getFoundDecl(); }
+
+  const NestedNameSpecifierLoc &getNestedNameSpecifierLoc() const {
+    return CR->getNestedNameSpecifierLoc();
+  }
+
+  const DeclarationNameInfo &getConceptNameInfo() const {
+    return CR->getConceptNameInfo();
+  }
+
+  void print(llvm::raw_ostream &OS, PrintingPolicy Policy) const {
+    CR->print(OS, Policy);
+  }
 };
 
 } // clang

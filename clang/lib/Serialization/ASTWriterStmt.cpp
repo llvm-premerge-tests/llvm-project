@@ -437,13 +437,8 @@ addSubstitutionDiagnostic(
 void ASTStmtWriter::VisitConceptSpecializationExpr(
         ConceptSpecializationExpr *E) {
   VisitExpr(E);
-  Record.AddNestedNameSpecifierLoc(E->getNestedNameSpecifierLoc());
-  Record.AddSourceLocation(E->getTemplateKWLoc());
-  Record.AddDeclarationNameInfo(E->getConceptNameInfo());
-  Record.AddDeclRef(E->getNamedConcept());
-  Record.AddDeclRef(E->getFoundDecl());
   Record.AddDeclRef(E->getSpecializationDecl());
-  Record.AddASTTemplateArgumentListInfo(E->getTemplateArgsAsWritten());
+  Record.AddConceptReference(E->getConceptReference());
   if (!E->isValueDependent())
     addConstraintSatisfaction(Record, E->getSatisfaction());
 

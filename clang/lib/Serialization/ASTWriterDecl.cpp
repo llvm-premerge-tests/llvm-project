@@ -1774,12 +1774,7 @@ void ASTDeclWriter::VisitTemplateTypeParmDecl(TemplateTypeParmDecl *D) {
   const TypeConstraint *TC = D->getTypeConstraint();
   Record.push_back(TC != nullptr);
   if (TC) {
-    Record.AddNestedNameSpecifierLoc(TC->getNestedNameSpecifierLoc());
-    Record.AddDeclarationNameInfo(TC->getConceptNameInfo());
-    Record.AddDeclRef(TC->getNamedConcept());
-    Record.push_back(TC->getTemplateArgsAsWritten() != nullptr);
-    if (TC->getTemplateArgsAsWritten())
-      Record.AddASTTemplateArgumentListInfo(TC->getTemplateArgsAsWritten());
+    Record.AddConceptReference(TC->getConceptReference());
     Record.AddStmt(TC->getImmediatelyDeclaredConstraint());
     Record.push_back(D->isExpandedParameterPack());
     if (D->isExpandedParameterPack())

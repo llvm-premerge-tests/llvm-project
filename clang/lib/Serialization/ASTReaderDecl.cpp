@@ -2620,15 +2620,10 @@ void ASTDeclReader::VisitTemplateTypeParmDecl(TemplateTypeParmDecl *D) {
   D->setDeclaredWithTypename(Record.readInt());
 
   if (Record.readBool()) {
-    NestedNameSpecifierLoc NNS = Record.readNestedNameSpecifierLoc();
-    DeclarationNameInfo DN = Record.readDeclarationNameInfo();
-    ConceptDecl *NamedConcept = Record.readDeclAs<ConceptDecl>();
-    const ASTTemplateArgumentListInfo *ArgsAsWritten = nullptr;
-    if (Record.readBool())
-        ArgsAsWritten = Record.readASTTemplateArgumentListInfo();
+    auto *CR = Record.readConceptReference();
     Expr *ImmediatelyDeclaredConstraint = Record.readExpr();
-    D->setTypeConstraint(NNS, DN, /*FoundDecl=*/nullptr, NamedConcept,
-                         ArgsAsWritten, ImmediatelyDeclaredConstraint);
+
+    D->setTypeConstraint(CR, ImmediatelyDeclaredConstraint);
     if ((D->ExpandedParameterPack = Record.readInt()))
       D->NumExpanded = Record.readInt();
   }
