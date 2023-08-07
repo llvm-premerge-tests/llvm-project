@@ -41,10 +41,7 @@ define i16 @ctpop_x_and_negx(i16 %x) {
 
 define i8 @ctpop_x_nz_and_negx(i8 %x) {
 ; CHECK-LABEL: @ctpop_x_nz_and_negx(
-; CHECK-NEXT:    [[X1:%.*]] = or i8 [[X:%.*]], 1
-; CHECK-NEXT:    [[V0:%.*]] = sub i8 0, [[X1]]
-; CHECK-NEXT:    [[V1:%.*]] = and i8 [[X1]], [[V0]]
-; CHECK-NEXT:    ret i8 [[V1]]
+; CHECK-NEXT:    ret i8 1
 ;
   %x1 = or i8 %x, 1
   %v0 = sub i8 0, %x1
@@ -78,10 +75,7 @@ define i16 @ctpop_imin_plus1_lshr(i16 %x) {
 
 define i32 @ctpop_2_shl_nz(i32 %x) {
 ; CHECK-LABEL: @ctpop_2_shl_nz(
-; CHECK-NEXT:    [[XA30:%.*]] = and i32 30, [[X:%.*]]
-; CHECK-NEXT:    [[V:%.*]] = shl i32 2, [[XA30]]
-; CHECK-NEXT:    [[CNT:%.*]] = call i32 @llvm.ctpop.i32(i32 [[V]])
-; CHECK-NEXT:    ret i32 [[CNT]]
+; CHECK-NEXT:    ret i32 1
 ;
   %xa30 = and i32 30, %x
   %v = shl i32 2, %xa30
@@ -179,10 +173,7 @@ define <2 x i32> @ctpop_lshr_intmin_intmin_plus1_vec_nz(<2 x i32> %x) {
 
 define <2 x i32> @ctpop_shl2_1_vec_nz(<2 x i32> %x) {
 ; CHECK-LABEL: @ctpop_shl2_1_vec_nz(
-; CHECK-NEXT:    [[AND:%.*]] = and <2 x i32> [[X:%.*]], <i32 15, i32 15>
-; CHECK-NEXT:    [[SHL:%.*]] = shl <2 x i32> <i32 2, i32 1>, [[AND]]
-; CHECK-NEXT:    [[CNT:%.*]] = call <2 x i32> @llvm.ctpop.v2i32(<2 x i32> [[SHL]])
-; CHECK-NEXT:    ret <2 x i32> [[CNT]]
+; CHECK-NEXT:    ret <2 x i32> <i32 1, i32 1>
 ;
   %and = and <2 x i32> %x, <i32 15 ,i32 15>
   %shl = shl <2 x i32> <i32 2 ,i32 1>, %and
