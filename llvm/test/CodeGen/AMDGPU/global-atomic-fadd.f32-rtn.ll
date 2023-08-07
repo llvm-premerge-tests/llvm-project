@@ -16,6 +16,7 @@ define amdgpu_ps float @global_atomic_fadd_f32_rtn_intrinsic(ptr addrspace(1) %p
   ; GFX90A_GFX940-NEXT:   [[GLOBAL_ATOMIC_ADD_F32_RTN:%[0-9]+]]:vgpr_32 = GLOBAL_ATOMIC_ADD_F32_RTN killed [[COPY3]], [[COPY]], 0, 1, implicit $exec :: (volatile dereferenceable load store (s32) on %ir.ptr, addrspace 1)
   ; GFX90A_GFX940-NEXT:   $vgpr0 = COPY [[GLOBAL_ATOMIC_ADD_F32_RTN]]
   ; GFX90A_GFX940-NEXT:   SI_RETURN_TO_EPILOG $vgpr0
+  ;
   ; GFX11-LABEL: name: global_atomic_fadd_f32_rtn_intrinsic
   ; GFX11: bb.0 (%ir-block.0):
   ; GFX11-NEXT:   liveins: $vgpr0, $vgpr1, $vgpr2
@@ -45,6 +46,7 @@ define amdgpu_ps float @global_atomic_fadd_f32_saddr_rtn_intrinsic(ptr addrspace
   ; GFX90A_GFX940-NEXT:   [[GLOBAL_ATOMIC_ADD_F32_SADDR_RTN:%[0-9]+]]:vgpr_32 = GLOBAL_ATOMIC_ADD_F32_SADDR_RTN killed [[V_MOV_B32_e32_]], [[COPY]], killed [[REG_SEQUENCE]], 0, 1, implicit $exec :: (volatile dereferenceable load store (s32) on %ir.ptr, addrspace 1)
   ; GFX90A_GFX940-NEXT:   $vgpr0 = COPY [[GLOBAL_ATOMIC_ADD_F32_SADDR_RTN]]
   ; GFX90A_GFX940-NEXT:   SI_RETURN_TO_EPILOG $vgpr0
+  ;
   ; GFX11-LABEL: name: global_atomic_fadd_f32_saddr_rtn_intrinsic
   ; GFX11: bb.0 (%ir-block.0):
   ; GFX11-NEXT:   liveins: $sgpr0, $sgpr1, $vgpr0
@@ -74,6 +76,7 @@ define amdgpu_ps float @global_atomic_fadd_f32_rtn_flat_intrinsic(ptr addrspace(
   ; GFX90A_GFX940-NEXT:   [[GLOBAL_ATOMIC_ADD_F32_RTN:%[0-9]+]]:vgpr_32 = GLOBAL_ATOMIC_ADD_F32_RTN killed [[COPY3]], [[COPY]], 0, 1, implicit $exec :: (volatile dereferenceable load store (s32) on %ir.ptr, addrspace 1)
   ; GFX90A_GFX940-NEXT:   $vgpr0 = COPY [[GLOBAL_ATOMIC_ADD_F32_RTN]]
   ; GFX90A_GFX940-NEXT:   SI_RETURN_TO_EPILOG $vgpr0
+  ;
   ; GFX11-LABEL: name: global_atomic_fadd_f32_rtn_flat_intrinsic
   ; GFX11: bb.0 (%ir-block.0):
   ; GFX11-NEXT:   liveins: $vgpr0, $vgpr1, $vgpr2
@@ -103,6 +106,7 @@ define amdgpu_ps float @global_atomic_fadd_f32_saddr_rtn_flat_intrinsic(ptr addr
   ; GFX90A_GFX940-NEXT:   [[GLOBAL_ATOMIC_ADD_F32_SADDR_RTN:%[0-9]+]]:vgpr_32 = GLOBAL_ATOMIC_ADD_F32_SADDR_RTN killed [[V_MOV_B32_e32_]], [[COPY]], killed [[REG_SEQUENCE]], 0, 1, implicit $exec :: (volatile dereferenceable load store (s32) on %ir.ptr, addrspace 1)
   ; GFX90A_GFX940-NEXT:   $vgpr0 = COPY [[GLOBAL_ATOMIC_ADD_F32_SADDR_RTN]]
   ; GFX90A_GFX940-NEXT:   SI_RETURN_TO_EPILOG $vgpr0
+  ;
   ; GFX11-LABEL: name: global_atomic_fadd_f32_saddr_rtn_flat_intrinsic
   ; GFX11: bb.0 (%ir-block.0):
   ; GFX11-NEXT:   liveins: $sgpr0, $sgpr1, $vgpr0
@@ -132,6 +136,7 @@ define amdgpu_ps float @global_atomic_fadd_f32_rtn_atomicrmw(ptr addrspace(1) %p
   ; GFX90A_GFX940-NEXT:   [[GLOBAL_ATOMIC_ADD_F32_RTN:%[0-9]+]]:vgpr_32 = GLOBAL_ATOMIC_ADD_F32_RTN killed [[COPY3]], [[COPY]], 0, 1, implicit $exec :: (load store syncscope("wavefront") monotonic (s32) on %ir.ptr, addrspace 1)
   ; GFX90A_GFX940-NEXT:   $vgpr0 = COPY [[GLOBAL_ATOMIC_ADD_F32_RTN]]
   ; GFX90A_GFX940-NEXT:   SI_RETURN_TO_EPILOG $vgpr0
+  ;
   ; GFX11-LABEL: name: global_atomic_fadd_f32_rtn_atomicrmw
   ; GFX11: bb.0 (%ir-block.0):
   ; GFX11-NEXT:   liveins: $vgpr0, $vgpr1, $vgpr2
@@ -196,7 +201,7 @@ define amdgpu_ps float @global_atomic_fadd_f32_saddr_rtn_atomicrmw(ptr addrspace
   ; GFX11-NEXT:   [[SI_IF1:%[0-9]+]]:sreg_32 = SI_IF killed [[V_CMP_EQ_U32_e64_]], %bb.4, implicit-def dead $exec, implicit-def dead $scc, implicit $exec
   ; GFX11-NEXT:   S_BRANCH %bb.2
   ; GFX11-NEXT: {{  $}}
-  ; GFX11-NEXT: bb.2 (%ir-block.52):
+  ; GFX11-NEXT: bb.2 (%ir-block.42):
   ; GFX11-NEXT:   successors: %bb.4(0x80000000)
   ; GFX11-NEXT: {{  $}}
   ; GFX11-NEXT:   [[V_MOV_B32_e32_1:%[0-9]+]]:vgpr_32 = V_MOV_B32_e32 0, implicit $exec
@@ -211,7 +216,7 @@ define amdgpu_ps float @global_atomic_fadd_f32_saddr_rtn_atomicrmw(ptr addrspace
   ; GFX11-NEXT:   SI_END_CF [[SI_IF]], implicit-def dead $exec, implicit-def dead $scc, implicit $exec
   ; GFX11-NEXT:   S_BRANCH %bb.5
   ; GFX11-NEXT: {{  $}}
-  ; GFX11-NEXT: bb.4 (%ir-block.55):
+  ; GFX11-NEXT: bb.4 (%ir-block.45):
   ; GFX11-NEXT:   successors: %bb.3(0x80000000)
   ; GFX11-NEXT: {{  $}}
   ; GFX11-NEXT:   [[PHI1:%[0-9]+]]:vgpr_32 = PHI [[DEF1]], %bb.1, [[GLOBAL_ATOMIC_ADD_F32_SADDR_RTN]], %bb.2
@@ -221,7 +226,7 @@ define amdgpu_ps float @global_atomic_fadd_f32_saddr_rtn_atomicrmw(ptr addrspace
   ; GFX11-NEXT:   [[V_ADD_F32_e64_5:%[0-9]+]]:vgpr_32 = nofpexcept V_ADD_F32_e64 0, killed [[V_READFIRSTLANE_B32_]], 0, killed %42, 0, 0, implicit $mode, implicit $exec
   ; GFX11-NEXT:   S_BRANCH %bb.3
   ; GFX11-NEXT: {{  $}}
-  ; GFX11-NEXT: bb.5 (%ir-block.63):
+  ; GFX11-NEXT: bb.5 (%ir-block.53):
   ; GFX11-NEXT:   $vgpr0 = COPY [[PHI]]
   ; GFX11-NEXT:   SI_RETURN_TO_EPILOG $vgpr0
   %ret = atomicrmw fadd ptr addrspace(1) %ptr, float %data syncscope("wavefront") monotonic
