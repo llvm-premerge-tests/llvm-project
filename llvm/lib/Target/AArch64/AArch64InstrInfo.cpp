@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "AArch64InstrInfo.h"
+#include "AArch64FrameLowering.h"
 #include "AArch64MachineFunctionInfo.h"
 #include "AArch64Subtarget.h"
 #include "MCTargetDesc/AArch64AddressingModes.h"
@@ -7996,63 +7997,23 @@ void AArch64InstrInfo::fixupPostOutline(MachineBasicBlock &MBB) const {
 static void signOutlinedFunction(MachineFunction &MF, MachineBasicBlock &MBB,
                                  bool ShouldSignReturnAddr,
                                  bool ShouldSignReturnAddrWithBKey) {
-  if (ShouldSignReturnAddr) {
-    MachineBasicBlock::iterator MBBPAC = MBB.begin();
-    MachineBasicBlock::iterator MBBAUT = MBB.getFirstTerminator();
-    const AArch64Subtarget &Subtarget = MF.getSubtarget<AArch64Subtarget>();
-    const TargetInstrInfo *TII = Subtarget.getInstrInfo();
-    DebugLoc DL;
+  if (!ShouldSignReturnAddr)
+    return;
 
-    if (MBBAUT != MBB.end())
-      DL = MBBAUT->getDebugLoc();
+  MachineBasicBlock::iterator MBBAUT = MBB.getFirstTerminator();
+  const AArch64Subtarget &Subtarget = MF.getSubtarget<AArch64Subtarget>();
 
-    // At the very beginning of the basic block we insert the following
-    // depending on the key type
-    //
-    // a_key:                   b_key:
-    //    PACIASP                   EMITBKEY
-    //    CFI_INSTRUCTION           PACIBSP
-    //                              CFI_INSTRUCTION
-    if (ShouldSignReturnAddrWithBKey) {
-      BuildMI(MBB, MBBPAC, DebugLoc(), TII->get(AArch64::EMITBKEY))
-          .setMIFlag(MachineInstr::FrameSetup);
-    }
+  // FIXME Handle NeedsWinCFI
+  bool EmitCFI = MF.getInfo<AArch64FunctionInfo>()->needsDwarfUnwindInfo(MF);
+  AArch64FrameLowering::signLR(MF, MBB, MBB.begin(),
+                               ShouldSignReturnAddrWithBKey, EmitCFI,
+                               /*NeedsWinCFI=*/false, /*HasWinCFI=*/nullptr);
 
-    BuildMI(MBB, MBBPAC, DebugLoc(),
-            TII->get(ShouldSignReturnAddrWithBKey ? AArch64::PACIBSP
-                                                  : AArch64::PACIASP))
-        .setMIFlag(MachineInstr::FrameSetup);
-
-    if (MF.getInfo<AArch64FunctionInfo>()->needsDwarfUnwindInfo(MF)) {
-      unsigned CFIIndex =
-          MF.addFrameInst(MCCFIInstruction::createNegateRAState(nullptr));
-      BuildMI(MBB, MBBPAC, DebugLoc(), TII->get(AArch64::CFI_INSTRUCTION))
-          .addCFIIndex(CFIIndex)
-          .setMIFlags(MachineInstr::FrameSetup);
-    }
-
-    // If v8.3a features are available we can replace a RET instruction by
-    // RETAA or RETAB and omit the AUT instructions. In this case the
-    // DW_CFA_AARCH64_negate_ra_state can't be emitted.
-    if (Subtarget.hasPAuth() && MBBAUT != MBB.end() &&
-        MBBAUT->getOpcode() == AArch64::RET) {
-      BuildMI(MBB, MBBAUT, DL,
-              TII->get(ShouldSignReturnAddrWithBKey ? AArch64::RETAB
-                                                    : AArch64::RETAA))
-          .copyImplicitOps(*MBBAUT);
-      MBB.erase(MBBAUT);
-    } else {
-      BuildMI(MBB, MBBAUT, DL,
-              TII->get(ShouldSignReturnAddrWithBKey ? AArch64::AUTIBSP
-                                                    : AArch64::AUTIASP))
-          .setMIFlag(MachineInstr::FrameDestroy);
-      unsigned CFIIndexAuth =
-          MF.addFrameInst(MCCFIInstruction::createNegateRAState(nullptr));
-      BuildMI(MBB, MBBAUT, DL, TII->get(TargetOpcode::CFI_INSTRUCTION))
-          .addCFIIndex(CFIIndexAuth)
-          .setMIFlags(MachineInstr::FrameDestroy);
-    }
-  }
+  bool EmitCombined = Subtarget.hasPAuth() && MBBAUT != MBB.end() &&
+                      MBBAUT->getOpcode() == AArch64::RET;
+  AArch64FrameLowering::authenticateLR(
+      MF, MBB, EmitCombined, ShouldSignReturnAddrWithBKey,
+      /*NeedsWinCFI=*/false, /*HasWinCFI=*/nullptr);
 }
 
 void AArch64InstrInfo::buildOutlinedFrame(

@@ -30,6 +30,14 @@ public:
   eliminateCallFramePseudoInstr(MachineFunction &MF, MachineBasicBlock &MBB,
                                 MachineBasicBlock::iterator I) const override;
 
+  static void signLR(MachineFunction &MF, MachineBasicBlock &MBB,
+                     MachineBasicBlock::iterator MBBI, bool UseBKey,
+                     bool EmitCFI, bool NeedsWinCFI, bool *HasWinCFI);
+
+  static void authenticateLR(MachineFunction &MF, MachineBasicBlock &MBB,
+                             bool EmitCombined, bool UseBKey, bool NeedsWinCFI,
+                             bool *HasWinCFI);
+
   /// emitProlog/emitEpilog - These methods insert prolog and epilog code into
   /// the function.
   void emitPrologue(MachineFunction &MF, MachineBasicBlock &MBB) const override;
