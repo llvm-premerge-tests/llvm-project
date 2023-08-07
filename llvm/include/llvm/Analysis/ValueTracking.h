@@ -221,6 +221,178 @@ unsigned ComputeMaxSignificantBits(const Value *Op, const DataLayout &DL,
 Intrinsic::ID getIntrinsicForCallSite(const CallBase &CB,
                                       const TargetLibraryInfo *TLI);
 
+/// Track the known range for the exponent of a floating-point value.
+struct KnownExponentRange {
+  using ExponentType = APFloat::ExponentType;
+
+  /// The semantic minimimum exponent value (i.e. the most conservative choice
+  /// is the exponent of the smallest denormal)
+  ExponentType MinExp = APFloat::IEK_NaN;
+
+  /// The maximum exponent value, ignoring infinities and NaNs.
+  ExponentType MaxExpFiniteOnly = APFloat::IEK_Inf - 1;
+
+  /// The maximum exponent value, which include infinities and NaNs. This may
+  /// differ from MaxExpFiniteOnly in cases involving mixed fast math flag usage
+  /// and conversions.
+  ExponentType MaxExp = APFloat::IEK_Inf;
+
+  /// Construct an KnownExponentRange with no knowledge.
+  constexpr KnownExponentRange() = default;
+
+  /// Construct a KnownExponentRange with the provided finite range.
+  constexpr KnownExponentRange(std::pair<ExponentType, ExponentType> Pair)
+      : MinExp(Pair.first), MaxExpFiniteOnly(Pair.second) {}
+
+  /// Construct a KnownExponentRange with a finite range from \p Min to \p
+  /// MaxFiniteOnly. \p Max
+  constexpr KnownExponentRange(ExponentType Min, ExponentType MaxFiniteOnly,
+                               ExponentType Max = APFloat::IEK_Inf)
+      : MinExp(Min), MaxExpFiniteOnly(MaxFiniteOnly), MaxExp(Max) {
+    assert(MaxFiniteOnly <= Max);
+  }
+
+  /// Get an KnownexponentRange for a constant value.
+  KnownExponentRange(const APFloat &Val) {
+    ExponentType ExpVal = ilogb(Val);
+    if (ExpVal == APFloat::IEK_Zero)
+      ExpVal = 0;
+    else if (ExpVal == APFloat::IEK_NaN)
+      ExpVal = APFloat::IEK_Inf;
+    MinExp = MaxExp = MaxExpFiniteOnly = ExpVal;
+
+    if (ExpVal == APFloat::IEK_Inf) {
+      // If we encounter a constant infinity, keep tracking the possible finite
+      // only range. This value may still be used in an assume finite context.
+      // Use the minimum value so anything else we union with wins.
+      MaxExpFiniteOnly = APFloat::IEK_NaN;
+    }
+  }
+
+  /// Get a KnownExponentRange with the bounds for the floating-point type.
+  KnownExponentRange(const fltSemantics &Semantics) {
+    std::tie(MinExp, MaxExpFiniteOnly) =
+        APFloat::semanticsExponentRange(Semantics);
+  }
+
+  /// Get a KnownExponentRange from \p Min to \p Max that assumes the result
+  /// cannot be infinite or NaN.
+  static constexpr KnownExponentRange getFiniteOnly(ExponentType Min,
+                                                    ExponentType Max) {
+    assert(Max != APFloat::IEK_Inf);
+    return KnownExponentRange(Min, Max, Max);
+  }
+
+  /// Get an KnownExponentRange for a literal 0.
+  static KnownExponentRange getZero() {
+    return KnownExponentRange(0, 0, 0);
+  }
+
+  /// Get an KnownExponentRange for a literal infinity.
+  static KnownExponentRange getInf() {
+    return KnownExponentRange(APFloat::IEK_Inf, APFloat::IEK_NaN,
+                              APFloat::IEK_Inf);
+  }
+
+  /// Get an KnownExponentRange for a literal nan.
+  static KnownExponentRange getNaN() {
+    return getInf();
+  }
+
+  /// Get an KnownExponentRange for a value with an unknown exponent range, but
+  /// cannot be an infinity or NaN.
+  static KnownExponentRange getUnknownFinite() {
+    return KnownExponentRange(APFloat::IEK_NaN, APFloat::IEK_Inf - 1,
+                              APFloat::IEK_Inf - 1);
+  }
+
+  // Get a union identity value.
+  static KnownExponentRange getEmpty() {
+    return KnownExponentRange(APFloat::IEK_Inf, APFloat::IEK_NaN,
+                              APFloat::IEK_NaN);
+  }
+
+  /// Return true if this cannot be an infinity or NaN.
+  constexpr bool isFinite() const {
+    return MaxExp == MaxExpFiniteOnly && MaxExp != APFloat::IEK_Inf;
+  }
+
+  /// Return true if this has no usable knowledge.
+  constexpr bool isUnknown() const {
+    return MinExp == APFloat::IEK_NaN;
+  }
+
+  /// Return true if the range is unknown, but the value cannot be an infinity
+  /// or NaN.
+  constexpr bool isUnknownFinite() const {
+    return isUnknown() && isFinite();
+  }
+
+  ExponentType getMinExp() const {
+    return MinExp;
+  }
+
+  ExponentType getMaxExp(bool FiniteOnly) const {
+    return FiniteOnly ? MaxExpFiniteOnly : MaxExp;
+  }
+
+  /// Assume the range cannot include an infinity or NaN.
+  void knownFiniteOnly() {
+    // Even if we don't know the exponent we may find it can't be infinity.
+    if (MaxExpFiniteOnly == APFloat::IEK_Inf)
+      --MaxExpFiniteOnly;
+    MaxExp = MaxExpFiniteOnly;
+  }
+
+  /// Apply FastMathFlags from \p FMFSource and return this.
+  KnownExponentRange &applyFlags(const SimplifyQuery &Q,
+                                 const Instruction *FMFSource);
+
+  /// Perform range union.
+  KnownExponentRange &operator|=(KnownExponentRange RHS) {
+    MinExp = std::min(MinExp, RHS.MinExp);
+    MaxExpFiniteOnly = std::max(MaxExpFiniteOnly, RHS.MaxExpFiniteOnly);
+    MaxExp = std::max(std::max(MaxExp, MaxExpFiniteOnly), RHS.MaxExp);
+    return *this;
+  }
+
+  constexpr bool operator==(KnownExponentRange RHS) const {
+    return MinExp == RHS.MinExp && MaxExp == RHS.MaxExp &&
+           MaxExpFiniteOnly == RHS.MaxExpFiniteOnly;
+  }
+};
+
+constexpr KnownExponentRange operator|(KnownExponentRange LHS,
+                                       KnownExponentRange RHS) {
+  LHS |= RHS;
+  return LHS;
+}
+
+/// Compute the known exponent range for a floating-point value. If nothing
+/// useful could be determined for the value range,
+/// KnownExponentRange::isUnknown() will be true. The exponent range will be the
+/// full range implied by the the type's fltSemantics. If the finite range is
+/// unknown, but it's know this cannot be an infinity,
+/// KnownExponentRange::isFinite() and KnownExponentRange::isUnknown() will be
+/// true.
+KnownExponentRange computeKnownExponentRange(const Value *V,
+                                             const APInt &DemandedElts,
+                                             unsigned Depth,
+                                             const SimplifyQuery &Q);
+KnownExponentRange computeKnownExponentRange(const Value *V, unsigned Depth,
+                                             const SimplifyQuery &Q);
+
+KnownExponentRange computeKnownExponentRange(
+    const Value *V, const APInt &DemandedElts, const DataLayout &DL,
+    unsigned Depth = 0, const TargetLibraryInfo *TLI = nullptr,
+    AssumptionCache *AC = nullptr, const Instruction *CxtI = nullptr,
+    const DominatorTree *DT = nullptr, bool UseInstrInfo = true);
+KnownExponentRange computeKnownExponentRange(
+    const Value *V, const DataLayout &DL, unsigned Depth = 0,
+    const TargetLibraryInfo *TLI = nullptr, AssumptionCache *AC = nullptr,
+    const Instruction *CxtI = nullptr, const DominatorTree *DT = nullptr,
+    bool UseInstrInfo = true);
+
 /// Returns a pair of values, which if passed to llvm.is.fpclass, returns the
 /// same result as an fcmp with the given operands.
 ///

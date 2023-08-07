@@ -4199,6 +4199,189 @@ static FPClassTest computeKnownFPClassFromAssumes(const Value *V,
   return KnownFromAssume;
 }
 
+KnownExponentRange &
+KnownExponentRange::applyFlags(const SimplifyQuery &Q,
+                               const Instruction *FMFSource) {
+  if (!Q.IIQ.UseInstrInfo)
+    return *this;
+
+  FastMathFlags FMF = cast<FPMathOperator>(FMFSource)->getFastMathFlags();
+  if (FMF.noNaNs() && FMF.noInfs())
+    knownFiniteOnly();
+  return *this;
+}
+
+/// Compute the known exponent range for a floating-point value.
+KnownExponentRange llvm::computeKnownExponentRange(const Value *V,
+                                                   const APInt &DemandedElts,
+                                                   unsigned Depth,
+                                                   const SimplifyQuery &Q) {
+  if (!DemandedElts) {
+    // No demanded elts, better to assume we don't know anything.
+    return KnownExponentRange();
+  }
+
+  if (auto *CFP = dyn_cast<ConstantFP>(V))
+    return KnownExponentRange(CFP->getValueAPF());
+
+  auto *VFVTy = dyn_cast<FixedVectorType>(V->getType());
+  const Constant *CV = dyn_cast<Constant>(V);
+  if (VFVTy && CV) {
+    KnownExponentRange Known = KnownExponentRange::getEmpty();
+    const unsigned NumElts = VFVTy->getNumElements();
+    for (unsigned i = 0; i != NumElts; ++i) {
+      if (!DemandedElts[i])
+        continue;
+      auto *CElt = dyn_cast_or_null<ConstantFP>(CV->getAggregateElement(i));
+      if (!CElt)
+        return KnownExponentRange();
+      Known |= KnownExponentRange(CElt->getValueAPF());
+    }
+
+    return Known;
+  }
+
+  if (isa<ConstantAggregateZero>(V))
+    return KnownExponentRange::getZero();
+
+  // All recursive calls that increase depth must come after this.
+  if (Depth == MaxAnalysisRecursionDepth)
+    return KnownExponentRange();
+
+  const Instruction *Op = dyn_cast<Instruction>(V);
+  if (!Op)
+    return KnownExponentRange();
+
+  switch (Op->getOpcode()) {
+  case Instruction::FNeg:
+    return computeKnownExponentRange(Op->getOperand(0), DemandedElts, Depth + 1,
+                                     Q)
+        .applyFlags(Q, Op);
+  case Instruction::Freeze:
+    return computeKnownExponentRange(Op->getOperand(0), DemandedElts, Depth + 1,
+                                     Q);
+  case Instruction::Select: {
+    KnownExponentRange KnownRHS = computeKnownExponentRange(
+        Op->getOperand(2), DemandedElts, Depth + 1, Q);
+    if (KnownRHS.isUnknown())
+      return KnownRHS.applyFlags(Q, Op);
+
+    KnownExponentRange KnownLHS = computeKnownExponentRange(
+        Op->getOperand(1), DemandedElts, Depth + 1, Q);
+    KnownLHS |= KnownRHS;
+    return KnownLHS.applyFlags(Q, Op);
+  }
+  case Instruction::FPExt: {
+    const Value *Src = Op->getOperand(0);
+    KnownExponentRange KnownSrc =
+        computeKnownExponentRange(Src, DemandedElts, Depth + 1, Q);
+    if (KnownSrc.isUnknown())
+      return KnownExponentRange(
+          Src->getType()->getScalarType()->getFltSemantics());
+    return KnownSrc;
+  }
+  case Instruction::Call: {
+    const CallInst *CI = cast<CallInst>(Op);
+    const Intrinsic::ID IID = CI->getIntrinsicID();
+    switch (IID) {
+    case Intrinsic::fabs:
+    case Intrinsic::copysign:
+    case Intrinsic::arithmetic_fence:
+      return computeKnownExponentRange(CI->getArgOperand(0), DemandedElts,
+                                       Depth + 1, Q)
+          .applyFlags(Q, CI);
+    case Intrinsic::canonicalize:
+      // TODO: Can raise minimum exponent if denormals are flushed.
+      return computeKnownExponentRange(CI->getArgOperand(0), DemandedElts,
+                                       Depth + 1, Q)
+          .applyFlags(Q, CI);
+    case Intrinsic::ldexp:
+      // TODO: Known source range plus known exponent of second argument.
+    case Intrinsic::experimental_constrained_fpext:
+      // TODO: Same as fpext
+      break;
+    case Intrinsic::floor:
+    case Intrinsic::ceil:
+    case Intrinsic::trunc:
+    case Intrinsic::rint:
+    case Intrinsic::nearbyint:
+    case Intrinsic::round:
+    case Intrinsic::roundeven:
+      // TODO: Rounding-to-integer cases
+
+    case Intrinsic::minnum:
+    case Intrinsic::maxnum:
+    case Intrinsic::minimum:
+    case Intrinsic::maximum:
+      // TODO: Treat like select
+
+    default:
+      break;
+    }
+    break;
+  }
+  case Instruction::ExtractValue: {
+    const ExtractValueInst *Extract = cast<ExtractValueInst>(Op);
+    ArrayRef<unsigned> Indices = Extract->getIndices();
+    const Value *Src = Extract->getAggregateOperand();
+    if (isa<StructType>(Src->getType()) && Indices.size() == 1 &&
+        Indices[0] == 0) {
+      if (const auto *CI = dyn_cast<CallInst>(Src)) {
+        switch (CI->getIntrinsicID()) {
+        case Intrinsic::frexp:
+          return KnownExponentRange(-1, 1);
+        default:
+          break;
+        }
+      }
+    }
+
+    break;
+  }
+  case Instruction::SIToFP:
+  case Instruction::UIToFP:
+    // TODO: Check from known range of integer.
+    break;
+  case Instruction::ExtractElement:
+  case Instruction::InsertElement:
+  case Instruction::ShuffleVector:
+    // TODO: Handle vectors
+    break;
+  case Instruction::PHI:
+    // TODO:
+    break;
+  default:
+    break;
+  }
+
+  // TODO: Increase minimum exponent range if computeKnownFPClass says it can't
+  // be denormal.
+
+  return KnownExponentRange();
+}
+
+KnownExponentRange llvm::computeKnownExponentRange(
+    const Value *V, const APInt &DemandedElts, const DataLayout &DL,
+    unsigned Depth, const TargetLibraryInfo *TLI, AssumptionCache *AC,
+    const Instruction *CxtI, const DominatorTree *DT, bool UseInstrInfo) {
+  return computeKnownExponentRange(
+      V, DemandedElts, Depth,
+      SimplifyQuery(DL, TLI, DT, AC, safeCxtI(V, CxtI), UseInstrInfo));
+}
+
+KnownExponentRange
+llvm::computeKnownExponentRange(const Value *V, const DataLayout &DL,
+                                unsigned Depth, const TargetLibraryInfo *TLI,
+                                AssumptionCache *AC, const Instruction *CxtI,
+                                const DominatorTree *DT, bool UseInstrInfo) {
+  auto *FVTy = dyn_cast<FixedVectorType>(V->getType());
+  APInt DemandedElts =
+      FVTy ? APInt::getAllOnes(FVTy->getNumElements()) : APInt(1, 1);
+  return computeKnownExponentRange(
+      V, DemandedElts, Depth,
+      SimplifyQuery(DL, TLI, DT, AC, safeCxtI(V, CxtI), UseInstrInfo));
+}
+
 void computeKnownFPClass(const Value *V, const APInt &DemandedElts,
                          FPClassTest InterestedClasses, KnownFPClass &Known,
                          unsigned Depth, const SimplifyQuery &Q);

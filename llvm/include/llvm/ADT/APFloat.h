@@ -273,7 +273,19 @@ struct APFloatBase {
   };
 
   static unsigned int semanticsPrecision(const fltSemantics &);
+
+  // Return the encoded, unbiased mininimum exponent.
   static ExponentType semanticsMinExponent(const fltSemantics &);
+
+  // Return the semantically meaningful mininimum exponent (i.e. the exponent of
+  // the smallest denormal).
+  static ExponentType semanticsMinExponentValue(const fltSemantics &);
+
+  // Return the semantic exponent range (i.e. the exponent of the smallest
+  // denormal, and the exponent of the largest normal.
+  static std::pair<ExponentType, ExponentType>
+  semanticsExponentRange(const fltSemantics &);
+
   static ExponentType semanticsMaxExponent(const fltSemantics &);
   static unsigned int semanticsSizeInBits(const fltSemantics &);
   static unsigned int semanticsIntSizeInBits(const fltSemantics&, bool);

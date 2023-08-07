@@ -126,6 +126,8 @@ protected:
     EXPECT_EQ(SignBitKnown, Known.SignBit);
   }
 };
+
+class ComputeKnownExponentRangeTest : public ValueTrackingTest {};
 }
 
 TEST_F(MatchSelectPatternTest, SimpleFMin) {
@@ -1962,6 +1964,470 @@ TEST_F(ComputeKnownFPClassTest, SqrtNszSignBit) {
               NoUseInstrInfoNSZNoNan.KnownFPClasses);
     EXPECT_EQ(std::nullopt, NoUseInstrInfoNSZNoNan.SignBit);
   }
+}
+
+TEST_F(ComputeKnownExponentRangeTest, SelectConstantFPScalar) {
+  parseAssembly("define float @test(i1 %cond) {\n"
+                "  %A = select i1 %cond, float 0.0, float -0.0\n"
+                "  %A2 = select i1 %cond, float 1.0, float 2.0\n"
+                "  %A3 = select i1 %cond, float -42.0, float 2.0\n"
+                "  %A4 = select i1 %cond, float 16.0, float 0.0\n"
+                "  %A5 = select i1 %cond, float 0.0, float 0.25\n"
+                "  %A6 = select i1 %cond, float poison, float 2.0\n"
+                "  %A7 = select i1 %cond, float 2.0, float poison\n"
+                "  ret float %A\n"
+                "}\n");
+
+  {
+    KnownExponentRange AResult =
+        computeKnownExponentRange(A, M->getDataLayout());
+    EXPECT_EQ(KnownExponentRange::getFiniteOnly(0, 0), AResult);
+    EXPECT_TRUE(AResult.isFinite());
+    EXPECT_FALSE(AResult.isUnknown());
+    EXPECT_FALSE(AResult.isUnknownFinite());
+    EXPECT_EQ(0, AResult.getMinExp());
+    EXPECT_EQ(0, AResult.getMaxExp(true));
+    EXPECT_EQ(0, AResult.getMaxExp(false));
+  }
+
+  EXPECT_EQ(KnownExponentRange::getFiniteOnly(0, 1),
+            computeKnownExponentRange(A2, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange::getFiniteOnly(1, 5),
+            computeKnownExponentRange(A3, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange::getFiniteOnly(0, 4),
+            computeKnownExponentRange(A4, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange::getFiniteOnly(-2, 0),
+            computeKnownExponentRange(A5, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(),
+            computeKnownExponentRange(A6, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(),
+            computeKnownExponentRange(A7, M->getDataLayout()));
+}
+
+TEST_F(ComputeKnownExponentRangeTest, SelectFlags) {
+  parseAssembly(
+      "define float @test(i1 %cond, float %unknown0, float %unknown1) {\n"
+      "  %A = select i1 %cond, float %unknown0, float %unknown1\n"
+      "  %A2 = select nnan i1 %cond, float %unknown0, float %unknown1\n"
+      "  %A3 = select ninf i1 %cond, float %unknown0, float %unknown1\n"
+      "  %A4 = select nnan ninf i1 %cond, float %unknown0, float %unknown1\n"
+      "  %A5 = select nnan ninf i1 %cond, float %unknown0, float 1.0\n"
+      "  %A6 = select nnan ninf i1 %cond, float 1.0, float %unknown0\n"
+      "  ret float %A\n"
+      "}\n");
+  KnownExponentRange AResult = computeKnownExponentRange(A, M->getDataLayout());
+  EXPECT_TRUE(AResult.isUnknown());
+  EXPECT_FALSE(AResult.isUnknownFinite());
+  EXPECT_FALSE(AResult.isFinite());
+  EXPECT_EQ(KnownExponentRange(), AResult);
+
+  EXPECT_EQ(AResult, computeKnownExponentRange(A2, M->getDataLayout()));
+  EXPECT_EQ(AResult, computeKnownExponentRange(A3, M->getDataLayout()));
+
+  KnownExponentRange A4Result =
+      computeKnownExponentRange(A4, M->getDataLayout());
+  EXPECT_TRUE(A4Result.isFinite());
+  EXPECT_TRUE(A4Result.isUnknownFinite());
+  EXPECT_TRUE(A4Result.isUnknown());
+  EXPECT_EQ(KnownExponentRange::getUnknownFinite(), A4Result);
+
+  EXPECT_EQ(A4Result, computeKnownExponentRange(A5, M->getDataLayout()));
+  EXPECT_EQ(A4Result, computeKnownExponentRange(A6, M->getDataLayout()));
+
+  // Check UseInstrInfo=false ignores the flags
+
+  EXPECT_EQ(KnownExponentRange(),
+            computeKnownExponentRange(A4, M->getDataLayout(), 0, nullptr,
+                                      nullptr, nullptr, nullptr,
+                                      /*UseInstrInfo=*/false));
+  EXPECT_EQ(KnownExponentRange(),
+            computeKnownExponentRange(A5, M->getDataLayout(), 0, nullptr,
+                                      nullptr, nullptr, nullptr,
+                                      /*UseInstrInfo=*/false));
+  EXPECT_EQ(KnownExponentRange(),
+            computeKnownExponentRange(A6, M->getDataLayout(), 0, nullptr,
+                                      nullptr, nullptr, nullptr,
+                                      /*UseInstrInfo=*/false));
+}
+
+TEST_F(ComputeKnownExponentRangeTest, SelectConstantFPScalarLimits) {
+  parseAssembly("define float @test(i1 %cond) {\n"
+                "  %A = select i1 %cond, float 0x36A0000000000000, float "
+                "0xB6A0000000000000\n"
+                "  %A2 = select i1 %cond, float 0x381FFFFFE0000000, float "
+                "0xB81FFFFFE0000000\n"
+                "  %A3 = select i1 %cond, float 0x3810000000000000, float "
+                "0xB810000000000000\n"
+                "  %A4 = select i1 %cond, float 0x47EFFFFFE0000000, float "
+                "0xC7EFFFFFE0000000\n"
+                "  %A5 = select i1 %cond, float 0x7FF0000000000000, float "
+                "0xFFF0000000000000\n"
+                "  %A6 = select i1 %cond, float 0x7FF8000000000000, float "
+                "0xFFF8000000000000\n"
+                "  %A7 = select i1 %cond, float 0x7FF4000000000000, float "
+                "0xFFF4000000000000\n"
+                "  ret float %A\n"
+                "}\n");
+
+  // Smallest denormal
+  EXPECT_EQ(KnownExponentRange::getFiniteOnly(-149, -149),
+            computeKnownExponentRange(A, M->getDataLayout()));
+
+  // Largest denormal
+  EXPECT_EQ(KnownExponentRange::getFiniteOnly(-126, -126),
+            computeKnownExponentRange(A2, M->getDataLayout()));
+
+  // Smallest normal
+  EXPECT_EQ(KnownExponentRange::getFiniteOnly(-126, -126),
+            computeKnownExponentRange(A3, M->getDataLayout()));
+
+  // Largest normal
+  EXPECT_EQ(KnownExponentRange::getFiniteOnly(127, 127),
+            computeKnownExponentRange(A4, M->getDataLayout()));
+
+  // Infinity
+  EXPECT_EQ(KnownExponentRange::getInf(),
+            computeKnownExponentRange(A5, M->getDataLayout()));
+
+  // qnan
+  EXPECT_EQ(KnownExponentRange::getNaN(),
+            computeKnownExponentRange(A6, M->getDataLayout()));
+
+  // snan
+  EXPECT_EQ(KnownExponentRange::getNaN(),
+            computeKnownExponentRange(A7, M->getDataLayout()));
+}
+
+TEST_F(ComputeKnownExponentRangeTest, SelectConstantFPVector) {
+  parseAssembly("define <2 x float> @test(i1 %cond) {\n"
+                "  %A = select i1 %cond, <2 x float> zeroinitializer, <2 x "
+                "float> <float -0.0, float -0.0>\n"
+                "  %A2 = select i1 %cond, <2 x float> <float 1.0, float 1.0>, "
+                "<2 x float> <float 2.0, float 3.0>\n"
+                "  %A3 = select i1 %cond, <2 x float> <float -42.0, float "
+                "-128.0>, <2 x float> <float 2.0, float 4.0>\n"
+                "  %A4 = select i1 %cond, <2 x float> <float -16.0, float "
+                "16.0>, <2 x float> zeroinitializer\n"
+                "  %A5 = select i1 %cond, <2 x float> zeroinitializer, <2 x "
+                "float> <float 0.25, float 0.25>\n"
+                "  %A6 = select i1 %cond, <2 x float> zeroinitializer, <2 x "
+                "float> <float 0.25, float poison>\n"
+                "  %A7 = select i1 %cond, <2 x float> <float poison, float "
+                "4.0>, <2 x float> <float 0.25, float 0.0>\n"
+                "  ret <2 x float> %A\n"
+                "}\n");
+
+  {
+    KnownExponentRange AResult =
+        computeKnownExponentRange(A, M->getDataLayout());
+    EXPECT_EQ(KnownExponentRange::getFiniteOnly(0, 0), AResult);
+    EXPECT_TRUE(AResult.isFinite());
+    EXPECT_FALSE(AResult.isUnknown());
+    EXPECT_FALSE(AResult.isUnknownFinite());
+  }
+
+  EXPECT_EQ(KnownExponentRange::getFiniteOnly(0, 1),
+            computeKnownExponentRange(A2, M->getDataLayout()));
+
+  {
+    KnownExponentRange A3Result =
+        computeKnownExponentRange(A3, M->getDataLayout());
+    EXPECT_EQ(KnownExponentRange::getFiniteOnly(1, 7), A3Result);
+    EXPECT_EQ(1, A3Result.getMinExp());
+    EXPECT_EQ(7, A3Result.getMaxExp(true));
+    EXPECT_EQ(7, A3Result.getMaxExp(false));
+  }
+
+  EXPECT_EQ(KnownExponentRange::getFiniteOnly(0, 4),
+            computeKnownExponentRange(A4, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange::getFiniteOnly(-2, 0),
+            computeKnownExponentRange(A5, M->getDataLayout()));
+  {
+    KnownExponentRange A6Result =
+        computeKnownExponentRange(A6, M->getDataLayout());
+    EXPECT_TRUE(A6Result.isUnknown());
+    EXPECT_FALSE(A6Result.isFinite());
+    EXPECT_FALSE(A6Result.isUnknownFinite());
+    EXPECT_EQ(KnownExponentRange(), A6Result);
+  }
+
+  {
+    KnownExponentRange A7Result =
+        computeKnownExponentRange(A7, M->getDataLayout());
+    EXPECT_TRUE(A7Result.isUnknown());
+    EXPECT_FALSE(A7Result.isFinite());
+    EXPECT_FALSE(A7Result.isUnknownFinite());
+    EXPECT_EQ(KnownExponentRange(), A7Result);
+  }
+}
+
+TEST_F(ComputeKnownExponentRangeTest, SelectConstantFPVector2) {
+  parseAssembly(
+      "define <2 x float> @test(i1 %cond) {\n"
+      "  %A = select i1 %cond, <2 x float> <float 2.0, float 4.0>, <2 x float> "
+      "<float 0x7FF8000000000000, float 0.25>\n"
+      "  %A2 = select i1 %cond, <2 x float> <float 0x7FF8000000000000, float "
+      "8.0>, <2 x float> <float 16.0, float 8.0>\n"
+      "  %A3 = select i1 %cond, <2 x float> <float 0x7FF8000000000000, float "
+      "-0.0>, <2 x float> zeroinitializer\n"
+      "  %A4 = select i1 %cond, <2 x float> <float -2.0, float 4.0>, <2 x "
+      "float> <float 2.0, float 0x7FF8000000000000>\n"
+      "  ret <2 x float> %A\n"
+      "}\n");
+
+  KnownExponentRange AResult = computeKnownExponentRange(A, M->getDataLayout());
+  EXPECT_FALSE(AResult.isUnknown());
+  EXPECT_FALSE(AResult.isUnknownFinite());
+  EXPECT_FALSE(AResult.isFinite());
+
+  EXPECT_EQ(KnownExponentRange(-2, 2, APFloat::IEK_Inf), AResult);
+  EXPECT_EQ(KnownExponentRange(3, 4, APFloat::IEK_Inf),
+            computeKnownExponentRange(A2, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(0, 0, APFloat::IEK_Inf),
+            computeKnownExponentRange(A3, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(1, 2, APFloat::IEK_Inf),
+            computeKnownExponentRange(A4, M->getDataLayout()));
+}
+
+TEST_F(ComputeKnownExponentRangeTest, SelectConstantFPScalableVector) {
+  parseAssembly("define <vscale x 2 x float> @test(i1 %cond, <vscale x 2 x "
+                "float> %arg) {\n"
+                "  %A = select i1 %cond, <vscale x 2 x float> zeroinitializer, "
+                "<vscale x 2 x float> %arg\n"
+                "  %A2 = select i1 %cond, <vscale x 2 x float> %arg, <vscale x "
+                "2 x float> zeroinitializer\n"
+                "  %A3 = select i1 %cond, <vscale x 2 x float> "
+                "zeroinitializer, <vscale x 2 x float> poison\n"
+                "  %A4 = select i1 %cond, <vscale x 2 x float> "
+                "zeroinitializer, <vscale x 2 x float> zeroinitializer\n"
+                "  %A5 = select nnan ninf i1 %cond, <vscale x 2 x float> %arg, "
+                "<vscale x 2 x float> zeroinitializer\n"
+                "  %A6 = select nnan i1 %cond, <vscale x 2 x float> %arg, "
+                "<vscale x 2 x float> zeroinitializer\n"
+                "  %A7 = select ninf i1 %cond, <vscale x 2 x float> %arg, "
+                "<vscale x 2 x float> zeroinitializer\n"
+                "  ret <vscale x 2 x float> %A\n"
+                "}\n");
+
+  EXPECT_EQ(KnownExponentRange(),
+            computeKnownExponentRange(A, M->getDataLayout()));
+
+  KnownExponentRange A2Result =
+      computeKnownExponentRange(A2, M->getDataLayout());
+  EXPECT_FALSE(A2Result.isFinite());
+  EXPECT_TRUE(A2Result.isUnknown());
+
+  EXPECT_EQ(KnownExponentRange(), A2Result);
+  EXPECT_EQ(KnownExponentRange(),
+            computeKnownExponentRange(A3, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange::getFiniteOnly(0, 0),
+            computeKnownExponentRange(A4, M->getDataLayout()));
+
+  KnownExponentRange A5Result =
+      computeKnownExponentRange(A5, M->getDataLayout());
+  EXPECT_TRUE(A5Result.isFinite());
+  EXPECT_TRUE(A5Result.isUnknown());
+  EXPECT_TRUE(A5Result.isUnknownFinite());
+  EXPECT_EQ(KnownExponentRange::getUnknownFinite(), A5Result);
+
+  EXPECT_EQ(KnownExponentRange(),
+            computeKnownExponentRange(A6, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(),
+            computeKnownExponentRange(A7, M->getDataLayout()));
+}
+
+TEST_F(ComputeKnownExponentRangeTest, FPExt) {
+  parseAssembly(
+      "define float @test(half %src.f16, float %src.f32, bfloat %src.bf16, <2 "
+      "x half> %src.v2f16, half nofpclass(inf nan) %src.f16.finite) {\n"
+      "  %A = fpext half %src.f16 to float\n"
+      "  %A2 = fpext half %src.f16 to double\n"
+      "  %A3 = fpext float %src.f32 to double\n"
+      "  %A4 = fpext bfloat %src.bf16 to float\n"
+      "  %A5 = fpext bfloat %src.bf16 to double\n"
+      "  %A6 = fpext <2 x half> %src.v2f16 to <2 x float>\n"
+      "  %A7 = fpext half %src.f16.finite to float\n"
+      "  ret float %A\n"
+      "}\n");
+
+  {
+    KnownExponentRange AResult =
+        computeKnownExponentRange(A, M->getDataLayout());
+    EXPECT_EQ(KnownExponentRange(-24, 15), AResult);
+    EXPECT_EQ(-24, AResult.getMinExp());
+    EXPECT_EQ(15, AResult.getMaxExp(true));
+    EXPECT_EQ(APFloat::IEK_Inf, AResult.getMaxExp(false));
+  }
+
+  EXPECT_EQ(KnownExponentRange(-24, 15),
+            computeKnownExponentRange(A2, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(-149, 127),
+            computeKnownExponentRange(A3, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(-133, 127),
+            computeKnownExponentRange(A4, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(-133, 127),
+            computeKnownExponentRange(A5, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(-24, 15),
+            computeKnownExponentRange(A6, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(-24, 15), // TODO: Could detect finite only
+            computeKnownExponentRange(A7, M->getDataLayout()));
+}
+
+TEST_F(ComputeKnownExponentRangeTest, SimpleIntrinsics) {
+  parseAssembly(
+      "declare float @llvm.fabs.f32(float)\n"
+      "declare float @llvm.arithmetic.fence.f32(float)\n"
+      "declare float @llvm.copysign.f32(float, float)\n"
+      "define float @test(half %src.f16, float %arg1) {\n"
+      "  %A = fpext half %src.f16 to float\n"
+      "  %A2 = call float @llvm.fabs.f32(float %A)\n"
+      "  %A3 = call float @llvm.arithmetic.fence.f32(float %A)\n"
+      "  %A4 = call float @llvm.copysign.f32(float %A, float %arg1)\n"
+      "  %A5 = call nnan ninf float @llvm.copysign.f32(float %A, float %arg1)\n"
+      "  %A6 = call nnan ninf float @llvm.fabs.f32(float %A)\n"
+      "  %A7 = call nnan ninf float @llvm.arithmetic.fence.f32(float %A)\n"
+      "  ret float %A\n"
+      "}\n");
+
+  EXPECT_EQ(KnownExponentRange(-24, 15),
+            computeKnownExponentRange(A, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(-24, 15),
+            computeKnownExponentRange(A2, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(-24, 15),
+            computeKnownExponentRange(A3, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(-24, 15),
+            computeKnownExponentRange(A4, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange::getFiniteOnly(-24, 15),
+            computeKnownExponentRange(A5, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange::getFiniteOnly(-24, 15),
+            computeKnownExponentRange(A6, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange::getFiniteOnly(-24, 15),
+            computeKnownExponentRange(A7, M->getDataLayout()));
+
+  // Check UseInstrInfo=false ignores the flags
+  EXPECT_EQ(KnownExponentRange(-24, 15),
+            computeKnownExponentRange(A5, M->getDataLayout(), 0, nullptr,
+                                      nullptr, nullptr, nullptr,
+                                      /*UseInstrInfo=*/false));
+  EXPECT_EQ(KnownExponentRange(-24, 15),
+            computeKnownExponentRange(A6, M->getDataLayout(), 0, nullptr,
+                                      nullptr, nullptr, nullptr,
+                                      /*UseInstrInfo=*/false));
+  EXPECT_EQ(KnownExponentRange(-24, 15),
+            computeKnownExponentRange(A7, M->getDataLayout(), 0, nullptr,
+                                      nullptr, nullptr, nullptr,
+                                      /*UseInstrInfo=*/false));
+}
+
+TEST_F(ComputeKnownExponentRangeTest, Canonicalize) {
+  parseAssembly(
+      "declare float @llvm.canonicalize.f32(float)\n"
+      "define float @test(half %src.f16, float %arg1) {\n"
+      "  %A = fpext half %src.f16 to float\n"
+      "  %A2 = call float @llvm.canonicalize.f32(float %A)\n"
+      "  %A3 = call nnan ninf float @llvm.canonicalize.f32(float %A)\n"
+      "  ret float %A\n"
+      "}\n");
+
+  EXPECT_EQ(KnownExponentRange(-24, 15),
+            computeKnownExponentRange(A, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(-24, 15),
+            computeKnownExponentRange(A2, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange::getFiniteOnly(-24, 15),
+            computeKnownExponentRange(A3, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(-24, 15),
+            computeKnownExponentRange(A3, M->getDataLayout(), 0, nullptr,
+                                      nullptr, nullptr, nullptr,
+                                      /*UseInstrInfo=*/false));
+}
+
+TEST_F(ComputeKnownExponentRangeTest, UnaryOps) {
+  parseAssembly("define float @test(half %src.f16, float %src.f32) {\n"
+                "  %A = fpext half %src.f16 to float\n"
+                "  %A2 = freeze float %A\n"
+                "  %A3 = freeze float %src.f32\n"
+                "  %A4 = fneg float %A\n"
+                "  %A5 = fneg float %src.f32\n"
+                "  %A6 = fneg nnan ninf float %src.f32\n"
+                "  %A7 = fneg nnan ninf float %A\n"
+                "  ret float %A\n"
+                "}\n");
+
+  EXPECT_EQ(KnownExponentRange(-24, 15),
+            computeKnownExponentRange(A, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(-24, 15),
+            computeKnownExponentRange(A2, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(),
+            computeKnownExponentRange(A3, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(-24, 15),
+            computeKnownExponentRange(A4, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(),
+            computeKnownExponentRange(A5, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange::getUnknownFinite(),
+            computeKnownExponentRange(A6, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange::getFiniteOnly(-24, 15),
+            computeKnownExponentRange(A7, M->getDataLayout()));
+
+  EXPECT_EQ(KnownExponentRange(-24, 15),
+            computeKnownExponentRange(A7, M->getDataLayout(), 0, nullptr,
+                                      nullptr, nullptr, nullptr,
+                                      /*UseInstrInfo=*/false));
+}
+
+TEST_F(ComputeKnownExponentRangeTest, Frexp) {
+  parseAssembly(
+      "declare { float, i32 } @llvm.frexp.f32.i32(float)\n"
+      "declare { double, i32 } @llvm.frexp.f64.i32(double)\n"
+      "declare { <2 x float>, <2 x i32> } @llvm.frexp.v2f32.v2i32(<2 x "
+      "float>)\n"
+      "declare { <2 x double>, <2 x i32> } @llvm.frexp.v2f64.v2i32(<2 x "
+      "double>)\n"
+      "define float @test(float %arg.f32, double %arg.f64, <2 x float> "
+      "%arg.v2f32, <2 x double> %arg.v2f64) {\n"
+      "  %frexp.f32.i32 = call { float, i32 } @llvm.frexp.f32.i32(float "
+      "%arg.f32)\n"
+      "  %A = extractvalue { float, i32 } %frexp.f32.i32, 0\n"
+      "  %frexp.f64.i32 = call { double, i32 } @llvm.frexp.f64.i32(double "
+      "%arg.f64)\n"
+      "  %A2 = extractvalue { double, i32 } %frexp.f64.i32, 0\n"
+      "  %frexp.v2f32.v2i32 = call { <2 x float>, <2 x i32> } "
+      "@llvm.frexp.v2f32.v2i32(<2 x float> %arg.v2f32)\n"
+      "  %A3 = extractvalue { <2 x float>, <2 x i32> } %frexp.v2f32.v2i32, 0\n"
+      "  %frexp.v2f64.v2i32 = call { <2 x double>, <2 x i32> } "
+      "@llvm.frexp.v2f64.v2i32(<2 x double> %arg.v2f64)\n"
+      "  %A4 = extractvalue { <2 x double>, <2 x i32> } %frexp.v2f64.v2i32, 0\n"
+      "  ret float %A\n"
+      "}\n");
+
+  EXPECT_EQ(KnownExponentRange(-1, 1),
+            computeKnownExponentRange(A, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(-1, 1),
+            computeKnownExponentRange(A2, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(-1, 1),
+            computeKnownExponentRange(A3, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(-1, 1),
+            computeKnownExponentRange(A4, M->getDataLayout()));
+}
+
+TEST_F(ComputeKnownExponentRangeTest, ExtractValue) {
+  parseAssembly("define float @test({float, float} %arg0, [2 x float] %arg1, "
+                "i1 %cond) {\n"
+                "  %A = extractvalue { float, float } %arg0, 1\n"
+                "  %A2 = extractvalue [2 x float ] %arg1, 1\n"
+                "  %A3 = extractvalue { <2 x float>, i32 } zeroinitializer, 0\n"
+                "  %A4 = extractvalue [4 x float] zeroinitializer, 0\n"
+                "  ret float %A\n"
+                "}\n");
+
+  // TODO: Better handle arbitrary extracts.
+  EXPECT_EQ(KnownExponentRange(),
+            computeKnownExponentRange(A, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(),
+            computeKnownExponentRange(A2, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(),
+            computeKnownExponentRange(A3, M->getDataLayout()));
+  EXPECT_EQ(KnownExponentRange(),
+            computeKnownExponentRange(A4, M->getDataLayout()));
 }
 
 TEST_F(ValueTrackingTest, isNonZeroRecurrence) {

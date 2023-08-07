@@ -300,6 +300,18 @@ APFloatBase::ExponentType
 APFloatBase::semanticsMinExponent(const fltSemantics &semantics) {
   return semantics.minExponent;
 }
+
+APFloatBase::ExponentType
+APFloatBase::semanticsMinExponentValue(const fltSemantics &semantics) {
+  return semantics.minExponent - semantics.precision + 1;
+}
+
+std::pair<APFloatBase::ExponentType, APFloatBase::ExponentType>
+APFloatBase::semanticsExponentRange(const fltSemantics &semantics) {
+  return {semanticsMinExponentValue(semantics),
+          semanticsMaxExponent(semantics)};
+}
+
 unsigned int APFloatBase::semanticsSizeInBits(const fltSemantics &semantics) {
   return semantics.sizeInBits;
 }
