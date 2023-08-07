@@ -6578,7 +6578,7 @@ Requirements on Development Tools - Engineering Specification Documentation
   }];
 }
 
-def ArmStreamingDocs : Documentation {
+def ArmSmeStreamingDocs : Documentation {
   let Category = DocCatType;
   let Content = [{
 .. Note:: This attribute has not been implemented yet, but once it is
@@ -6594,6 +6594,8 @@ It applies to function types and specifies that the function has a
   set to 1)
 
 * the function must return in streaming mode
+
+* the function does not have a K&R-style unprototyped function type.
 
 See `Procedure Call Standard for the Arm® 64-bit Architecture (AArch64)
 <https://github.com/ARM-software/abi-aa>`_ for more details about
