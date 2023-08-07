@@ -165,6 +165,7 @@ RegistryMaps::RegistryMaps() {
   REGISTER_MATCHER(castExpr);
   REGISTER_MATCHER(characterLiteral);
   REGISTER_MATCHER(chooseExpr);
+  REGISTER_MATCHER(convertVectorExpr);
   REGISTER_MATCHER(classTemplateDecl);
   REGISTER_MATCHER(classTemplatePartialSpecializationDecl);
   REGISTER_MATCHER(classTemplateSpecializationDecl);
