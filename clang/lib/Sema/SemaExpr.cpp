@@ -936,9 +936,9 @@ Sema::VarArgKind Sema::isValidVarArgType(const QualType &Ty) {
     //   enumeration, pointer, pointer to member, or class type, the program
     //   is ill-formed.
     //
-    // Since we've already performed array-to-pointer and function-to-pointer
-    // decay, the only such type in C++ is cv void. This also handles
-    // initializer lists as variadic arguments.
+    // Since we've already performed null pointer conversion, array-to-pointer
+    // decay and function-to-pointer decay, the only such type in C++ is cv
+    // void. This also handles initializer lists as variadic arguments.
     if (Ty->isVoidType())
       return VAK_Invalid;
 
@@ -1058,6 +1058,18 @@ ExprResult Sema::DefaultVariadicArgumentPromotion(Expr *E, VariadicCallType CT,
     maybeExtendBlockObject(ExprRes);
 
   E = ExprRes.get();
+
+  // C2x 6.5.2.2p6:
+  //   The integer promotions are performed on each trailing argument, and
+  //   trailing arguments that have type float are promoted to double. These are
+  //   called the default argument promotions. No other conversions are
+  //   performed implicitly.
+
+  // C++ [expr.call]p7, per DR722:
+  //   An argument that has (possibly cv-qualified) type std::nullptr_t is
+  //   converted to void* ([conv.ptr]).
+  if (E->getType()->isNullPtrType() && getLangOpts().CPlusPlus)
+    E = ImpCastExprToType(E, Context.VoidPtrTy, CK_NullToPointer).get();
 
   // Diagnostics regarding non-POD argument types are
   // emitted along with format string checking in Sema::CheckFunctionCall().
@@ -17302,8 +17314,13 @@ ExprResult Sema::BuildVAArgExpr(SourceLocation BuiltinLoc,
           PromoteType = QualType();
       }
     }
-    if (TInfo->getType()->isSpecificBuiltinType(BuiltinType::Float))
+    if (TInfo->getType()->isSpecificBuiltinType(BuiltinType::Float) ||
+        TInfo->getType()->isSpecificBuiltinType(BuiltinType::Half))
       PromoteType = Context.DoubleTy;
+    if (TInfo->getType()->isNullPtrType() && getLangOpts().CPlusPlus)
+      PromoteType = Context.VoidPtrTy;
+    if (TInfo->getType()->isArrayType())
+      PromoteType = Context.getArrayDecayedType(TInfo->getType());
     if (!PromoteType.isNull())
       DiagRuntimeBehavior(TInfo->getTypeLoc().getBeginLoc(), E,
                   PDiag(diag::warn_second_parameter_to_va_arg_never_compatible)

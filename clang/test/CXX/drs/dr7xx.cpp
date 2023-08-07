@@ -53,6 +53,15 @@ namespace dr712 { // dr712: partial
 #endif
 }
 
+namespace dr722 { // dr722: 18
+#if __cplusplus >= 201103L
+  int x = __builtin_printf("%p", nullptr);
+  void f(__builtin_va_list args) {
+    __builtin_va_arg(args, decltype(nullptr)); // expected-warning {{second argument to 'va_arg' is of promotable type 'decltype(nullptr)' (aka 'std::nullptr_t'); this va_arg has undefined behavior because arguments will be promoted to 'void *'}}
+  }
+#endif
+}
+
 namespace dr727 { // dr727: partial
   struct A {
     template<typename T> struct C; // expected-note 6{{here}}
