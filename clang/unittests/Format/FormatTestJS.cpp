@@ -1505,6 +1505,74 @@ TEST_F(FormatTestJS, TryCatch) {
 TEST_F(FormatTestJS, StringLiteralConcatenation) {
   verifyFormat("var literal = 'hello ' +\n"
                "    'world';");
+
+  // Long strings should be broken.
+  verifyFormat("var literal =\n"
+               "    'xxxxxxxx ' +\n"
+               "    'xxxxxxxx';",
+               "var literal = 'xxxxxxxx xxxxxxxx';",
+               getGoogleJSStyleWithColumns(17));
+  verifyFormat("var literal =\n"
+               "    'xxxxxxxx ' +\n"
+               "    'xxxxxxxx';",
+               "var literal = 'xxxxxxxx xxxxxxxx';",
+               getGoogleJSStyleWithColumns(18));
+  verifyFormat("var literal =\n"
+               "    'xxxxxxxx' +\n"
+               "    ' xxxxxxxx';",
+               "var literal = 'xxxxxxxx xxxxxxxx';",
+               getGoogleJSStyleWithColumns(16));
+  // The quotes should be correct.
+  for (char OriginalQuote : {'\'', '"'}) {
+    auto VerifyQuotes = [=](FormatStyle::JavaScriptQuoteStyle StyleQuote,
+                            char TargetQuote) {
+      auto Style = getGoogleJSStyleWithColumns(17);
+      Style.JavaScriptQuotes = StyleQuote;
+      SmallString<48> Target{"var literal =\n"
+                             "    \"xxxxxxxx \" +\n"
+                             "    \"xxxxxxxx\";"};
+      SmallString<34> Original{"var literal = \"xxxxxxxx xxxxxxxx\";"};
+      std::replace(Target.begin(), Target.end(), '"', TargetQuote);
+      std::replace(Original.begin(), Original.end(), '"', OriginalQuote);
+      verifyFormat(Target, Original, Style);
+    };
+    VerifyQuotes(FormatStyle::JSQS_Leave, OriginalQuote);
+    VerifyQuotes(FormatStyle::JSQS_Single, '\'');
+    VerifyQuotes(FormatStyle::JSQS_Double, '"');
+  }
+  // Parentheses should be added when necessary.
+  verifyFormat("var literal =\n"
+               "    ('xxxxxxxx ' +\n"
+               "     'xxxxxx')[0];",
+               "var literal = 'xxxxxxxx xxxxxx'[0];",
+               getGoogleJSStyleWithColumns(18));
+  auto Style = getGoogleJSStyleWithColumns(20);
+  Style.SpacesInParens = FormatStyle::SIPO_Custom;
+  Style.SpacesInParensOptions.Other = true;
+  verifyFormat("var literal =\n"
+               "    ( 'xxxxxxxx ' +\n"
+               "      'xxxxxx' )[0];",
+               "var literal = 'xxxxxxxx xxxxxx'[0];", Style);
+  // FIXME: When the part before the string literal is shorter than the
+  // continuation indentation, and the option AlignAfterOpenBracket is set to
+  // AlwaysBreak which is the default for the Google style, the unbroken string
+  // does not get to a new line while the broken string does due to the added
+  // parentheses. The formatter does not do it in one pass.
+  EXPECT_EQ(
+      "x = ('xxxxxxxx ' +\n"
+      "     'xxxxxx')[0];",
+      format("x = 'xxxxxxxx xxxxxx'[0];", getGoogleJSStyleWithColumns(18)));
+  verifyFormat("x =\n"
+               "    ('xxxxxxxx ' +\n"
+               "     'xxxxxx')[0];",
+               getGoogleJSStyleWithColumns(18));
+  // Breaking of template strings ans regular expressions is not implemented.
+  verifyFormat("var literal =\n"
+               "    `xxxxxxxx xxxxxxxx`;",
+               getGoogleJSStyleWithColumns(18));
+  verifyFormat("var literal =\n"
+               "    /xxxxxxxx xxxxxxxx/;",
+               getGoogleJSStyleWithColumns(18));
 }
 
 TEST_F(FormatTestJS, RegexLiteralClassification) {
