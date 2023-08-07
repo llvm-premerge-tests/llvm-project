@@ -9,27 +9,28 @@
 #ifndef _LIBCPP___ALGORITHM_LEXICOGRAPHICAL_COMPARE_THREE_WAY_H
 #define _LIBCPP___ALGORITHM_LEXICOGRAPHICAL_COMPARE_THREE_WAY_H
 
-#include <__algorithm/min.h>
-#include <__algorithm/three_way_comp_ref_type.h>
-#include <__compare/compare_three_way.h>
-#include <__compare/ordering.h>
-#include <__concepts/arithmetic.h>
 #include <__config>
-#include <__iterator/iterator_traits.h>
-#include <__type_traits/common_type.h>
-#include <__type_traits/is_copy_constructible.h>
-#include <__utility/move.h>
+#if _LIBCPP_STD_VER >= 20
 
-#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#  pragma GCC system_header
-#endif
+#  include <__algorithm/min.h>
+#  include <__algorithm/three_way_comp_ref_type.h>
+#  include <__compare/compare_three_way.h>
+#  include <__compare/ordering.h>
+#  include <__concepts/arithmetic.h>
+#  include <__config>
+#  include <__iterator/iterator_traits.h>
+#  include <__type_traits/common_type.h>
+#  include <__type_traits/is_copy_constructible.h>
+#  include <__utility/move.h>
+
+#  if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
+#    pragma GCC system_header
+#  endif
 
 _LIBCPP_PUSH_MACROS
 #include <__undef_macros>
 
 _LIBCPP_BEGIN_NAMESPACE_STD
-
-#if _LIBCPP_STD_VER >= 20
 
 // Fast path for random access iterators which computes the number of loop iterations up-front and
 // then skips the iterator comparisons inside the loop.
@@ -116,10 +117,9 @@ _LIBCPP_NODISCARD_EXT _LIBCPP_HIDE_FROM_ABI constexpr auto lexicographical_compa
       std::move(__first1), std::move(__last1), std::move(__first2), std::move(__last2), std::compare_three_way());
 }
 
-#endif // _LIBCPP_STD_VER >= 20
-
 _LIBCPP_END_NAMESPACE_STD
 
 _LIBCPP_POP_MACROS
 
+#endif // _LIBCPP_STD_VER >= 20
 #endif // _LIBCPP___ALGORITHM_LEXICOGRAPHICAL_COMPARE_THREE_WAY_H

@@ -149,10 +149,6 @@ codecvt string
 codecvt type_traits
 codecvt typeinfo
 codecvt version
-compare cmath
-compare cstddef
-compare cstdint
-compare limits
 compare type_traits
 compare version
 complex cmath
@@ -212,7 +208,6 @@ deque iterator
 deque limits
 deque new
 deque stdexcept
-deque tuple
 deque type_traits
 deque typeinfo
 deque version
@@ -331,8 +326,6 @@ forward_list iosfwd
 forward_list iterator
 forward_list limits
 forward_list new
-forward_list stdexcept
-forward_list tuple
 forward_list type_traits
 forward_list typeinfo
 forward_list version
@@ -475,8 +468,6 @@ list iosfwd
 list iterator
 list limits
 list new
-list stdexcept
-list tuple
 list type_traits
 list typeinfo
 list version
@@ -547,11 +538,7 @@ memory utility
 memory version
 memory_resource cstddef
 memory_resource cstdint
-memory_resource limits
 memory_resource mutex
-memory_resource new
-memory_resource stdexcept
-memory_resource tuple
 memory_resource version
 mutex atomic
 mutex cerrno
@@ -759,7 +746,6 @@ set limits
 set new
 set optional
 set stdexcept
-set tuple
 set type_traits
 set version
 shared_mutex cerrno
@@ -778,7 +764,6 @@ span array
 span concepts
 span cstddef
 span functional
-span initializer_list
 span iterator
 span limits
 span type_traits
@@ -805,8 +790,12 @@ stdexcept iosfwd
 stop_token atomic
 stop_token cstddef
 stop_token cstdint
+stop_token cstring
+stop_token ctime
 stop_token limits
+stop_token ratio
 stop_token thread
+stop_token type_traits
 stop_token version
 streambuf cstdint
 streambuf ios
@@ -829,7 +818,6 @@ string limits
 string new
 string stdexcept
 string string_view
-string tuple
 string type_traits
 string typeinfo
 string utility
@@ -940,8 +928,6 @@ unordered_set iterator
 unordered_set limits
 unordered_set new
 unordered_set optional
-unordered_set stdexcept
-unordered_set tuple
 unordered_set type_traits
 unordered_set version
 utility compare
@@ -979,9 +965,7 @@ variant typeinfo
 variant utility
 variant version
 vector algorithm
-vector array
 vector atomic
-vector cerrno
 vector climits
 vector compare
 vector concepts
@@ -993,12 +977,8 @@ vector cwchar
 vector initializer_list
 vector iosfwd
 vector limits
-vector locale
 vector new
 vector stdexcept
-vector string
-vector string_view
-vector tuple
 vector type_traits
 vector typeinfo
 vector utility

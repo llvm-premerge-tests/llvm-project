@@ -149,10 +149,6 @@ codecvt string
 codecvt type_traits
 codecvt typeinfo
 codecvt version
-compare cmath
-compare cstddef
-compare cstdint
-compare limits
 compare type_traits
 compare version
 complex cmath
@@ -778,7 +774,6 @@ span array
 span concepts
 span cstddef
 span functional
-span initializer_list
 span iterator
 span limits
 span type_traits
@@ -805,8 +800,12 @@ stdexcept iosfwd
 stop_token atomic
 stop_token cstddef
 stop_token cstdint
+stop_token cstring
+stop_token ctime
 stop_token limits
+stop_token ratio
 stop_token thread
+stop_token type_traits
 stop_token version
 streambuf cstdint
 streambuf ios
@@ -979,9 +978,7 @@ variant typeinfo
 variant utility
 variant version
 vector algorithm
-vector array
 vector atomic
-vector cerrno
 vector climits
 vector compare
 vector concepts
@@ -993,11 +990,8 @@ vector cwchar
 vector initializer_list
 vector iosfwd
 vector limits
-vector locale
 vector new
 vector stdexcept
-vector string
-vector string_view
 vector tuple
 vector type_traits
 vector typeinfo

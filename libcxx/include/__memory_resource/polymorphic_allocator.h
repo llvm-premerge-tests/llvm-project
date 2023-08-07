@@ -9,25 +9,25 @@
 #ifndef _LIBCPP___MEMORY_RESOURCE_POLYMORPHIC_ALLOCATOR_H
 #define _LIBCPP___MEMORY_RESOURCE_POLYMORPHIC_ALLOCATOR_H
 
-#include <__assert>
-#include <__availability>
 #include <__config>
-#include <__memory_resource/memory_resource.h>
-#include <__utility/exception_guard.h>
-#include <cstddef>
-#include <limits>
-#include <new>
-#include <stdexcept>
-#include <tuple>
+#if _LIBCPP_STD_VER >= 17
 
-#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#  pragma GCC system_header
-#endif
+#  include <__assert>
+#  include <__availability>
+#  include <__memory_resource/memory_resource.h>
+#  include <__utility/exception_guard.h>
+#  include <cstddef>
+#  include <limits>
+#  include <new>
+#  include <stdexcept>
+#  include <tuple>
+
+#  if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
+#    pragma GCC system_header
+#  endif
 
 _LIBCPP_PUSH_MACROS
 #include <__undef_macros>
-
-#if _LIBCPP_STD_VER >= 17
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -222,8 +222,8 @@ operator!=(const polymorphic_allocator<_Tp>& __lhs, const polymorphic_allocator<
 
 _LIBCPP_END_NAMESPACE_STD
 
-#endif // _LIBCPP_STD_VER >= 17
-
 _LIBCPP_POP_MACROS
+
+#endif // _LIBCPP_STD_VER >= 17
 
 #endif // _LIBCPP___MEMORY_RESOURCE_POLYMORPHIC_ALLOCATOR_H

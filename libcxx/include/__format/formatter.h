@@ -10,17 +10,17 @@
 #ifndef _LIBCPP___FORMAT_FORMATTER_H
 #define _LIBCPP___FORMAT_FORMATTER_H
 
-#include <__availability>
 #include <__config>
-#include <__format/format_fwd.h>
+#if _LIBCPP_STD_VER >= 20
 
-#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#  pragma GCC system_header
-#endif
+#  include <__availability>
+#  include <__format/format_fwd.h>
+
+#  if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
+#    pragma GCC system_header
+#  endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
-
-#if _LIBCPP_STD_VER >= 20
 
 /// The default formatter template.
 ///
@@ -47,8 +47,8 @@ _LIBCPP_HIDE_FROM_ABI constexpr void __set_debug_format(_Tp& __formatter) {
 }
 
 #  endif // _LIBCPP_STD_VER >= 23
-#endif   // _LIBCPP_STD_VER >= 20
 
 _LIBCPP_END_NAMESPACE_STD
 
+#endif // _LIBCPP_STD_VER >= 20
 #endif // _LIBCPP___FORMAT_FORMATTER_H

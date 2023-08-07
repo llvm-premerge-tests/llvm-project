@@ -10,28 +10,28 @@
 #ifndef _LIBCPP___FORMAT_FORMATTER_BOOL_H
 #define _LIBCPP___FORMAT_FORMATTER_BOOL_H
 
-#include <__algorithm/copy.h>
-#include <__assert>
-#include <__availability>
 #include <__config>
-#include <__format/concepts.h>
-#include <__format/format_parse_context.h>
-#include <__format/formatter.h>
-#include <__format/formatter_integral.h>
-#include <__format/parser_std_format_spec.h>
-#include <__utility/unreachable.h>
+#if _LIBCPP_STD_VER >= 20
 
-#ifndef _LIBCPP_HAS_NO_LOCALIZATION
-#  include <locale>
-#endif
+#  include <__algorithm/copy.h>
+#  include <__assert>
+#  include <__availability>
+#  include <__format/concepts.h>
+#  include <__format/format_parse_context.h>
+#  include <__format/formatter.h>
+#  include <__format/formatter_integral.h>
+#  include <__format/parser_std_format_spec.h>
+#  include <__utility/unreachable.h>
 
-#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#  pragma GCC system_header
-#endif
+#  ifndef _LIBCPP_HAS_NO_LOCALIZATION
+#    include <locale>
+#  endif
+
+#  if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
+#    pragma GCC system_header
+#  endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
-
-#if _LIBCPP_STD_VER >= 20
 
 template <__fmt_char_type _CharT>
 struct _LIBCPP_TEMPLATE_VIS formatter<bool, _CharT> {
@@ -70,8 +70,8 @@ public:
   __format_spec::__parser<_CharT> __parser_;
 };
 
-#endif //_LIBCPP_STD_VER >= 20
-
 _LIBCPP_END_NAMESPACE_STD
+
+#endif //_LIBCPP_STD_VER >= 20
 
 #endif // _LIBCPP___FORMAT_FORMATTER_BOOL_H
