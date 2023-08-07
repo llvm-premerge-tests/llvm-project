@@ -99,13 +99,13 @@ static cl::opt<unsigned>
                              "check for viability of negation sinking."));
 
 Negator::Negator(LLVMContext &C, const DataLayout &DL_, AssumptionCache &AC_,
-                 const DominatorTree &DT_, bool IsTrulyNegation_)
+                 const DominatorTree &DT_, bool IsTrulyNegation_, bool HasNSW_)
     : Builder(C, TargetFolder(DL_),
               IRBuilderCallbackInserter([&](Instruction *I) {
                 ++NegatorNumInstructionsCreatedTotal;
                 NewInstructions.push_back(I);
               })),
-      DL(DL_), AC(AC_), DT(DT_), IsTrulyNegation(IsTrulyNegation_) {}
+      DL(DL_), AC(AC_), DT(DT_), IsTrulyNegation(IsTrulyNegation_), HasNSW(HasNSW_) {}
 
 #if LLVM_ENABLE_STATS
 Negator::~Negator() {
@@ -236,8 +236,18 @@ std::array<Value *, 2> Negator::getSortedOperandsOfBinOp(Instruction *I) {
     // `sub` is always negatible.
     // However, only do this either if the old `sub` doesn't stick around, or
     // it was subtracting from a constant. Otherwise, this isn't profitable.
-    return Builder.CreateSub(I->getOperand(1), I->getOperand(0),
-                             I->getName() + ".neg");
+    bool Flag = false;
+    if (I->hasOneUse() && I->hasNoSignedWrap() && IsTrulyNegation && HasNSW) {
+      // Propagate flag nsw only when the single use of the I to avoid
+      // affecting other users.
+      Flag = true;
+    }
+    auto *BO = Builder.CreateSub(I->getOperand(1), I->getOperand(0),
+                                 I->getName() + ".neg");
+    auto *NewI = dyn_cast<BinaryOperator>(BO);
+    if (Flag && NewI)
+      NewI->setHasNoSignedWrap();
+    return BO;
   }
 
   // Some other cases, while still don't require recursion,
@@ -525,7 +535,7 @@ std::array<Value *, 2> Negator::getSortedOperandsOfBinOp(Instruction *I) {
   return std::make_pair(ArrayRef<Instruction *>(NewInstructions), Negated);
 }
 
-[[nodiscard]] Value *Negator::Negate(bool LHSIsZero, Value *Root,
+[[nodiscard]] Value *Negator::Negate(bool LHSIsZero, bool HasNSW, Value *Root,
                                      InstCombinerImpl &IC) {
   ++NegatorTotalNegationsAttempted;
   LLVM_DEBUG(dbgs() << "Negator: attempting to sink negation into " << *Root
@@ -535,7 +545,7 @@ std::array<Value *, 2> Negator::getSortedOperandsOfBinOp(Instruction *I) {
     return nullptr;
 
   Negator N(Root->getContext(), IC.getDataLayout(), IC.getAssumptionCache(),
-            IC.getDominatorTree(), LHSIsZero);
+            IC.getDominatorTree(), LHSIsZero, HasNSW);
   std::optional<Result> Res = N.run(Root);
   if (!Res) { // Negation failed.
     LLVM_DEBUG(dbgs() << "Negator: failed to sink negation into " << *Root

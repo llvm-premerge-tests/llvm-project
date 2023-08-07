@@ -693,11 +693,12 @@ class Negator final {
   const DominatorTree &DT;
 
   const bool IsTrulyNegation;
+  const bool HasNSW;
 
   SmallDenseMap<Value *, Value *> NegationsCache;
 
   Negator(LLVMContext &C, const DataLayout &DL, AssumptionCache &AC,
-          const DominatorTree &DT, bool IsTrulyNegation);
+          const DominatorTree &DT, bool IsTrulyNegation, bool HasNSW);
 
 #if LLVM_ENABLE_STATS
   unsigned NumValuesVisitedInThisNegator = 0;
@@ -725,7 +726,7 @@ class Negator final {
 public:
   /// Attempt to negate \p Root. Retuns nullptr if negation can't be performed,
   /// otherwise returns negated value.
-  [[nodiscard]] static Value *Negate(bool LHSIsZero, Value *Root,
+  [[nodiscard]] static Value *Negate(bool LHSIsZero, bool HasNSW, Value *Root,
                                      InstCombinerImpl &IC);
 };
 
