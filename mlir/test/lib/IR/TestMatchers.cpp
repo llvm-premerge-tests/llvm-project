@@ -150,9 +150,12 @@ void test2(FunctionOpInterface f) {
 
 void test3(FunctionOpInterface f) {
   arith::FastMathFlagsAttr fastMathAttr;
+  arith::MulFOp mulFOp;
   auto p = m_Op<arith::MulFOp>(m_Any(),
                                m_Op<arith::AddFOp>(m_Any(), m_Op("test.name")));
   auto p1 = m_Attr("fastmath", &fastMathAttr);
+  auto p2 = m_AllOf(p, p1);
+  auto p3 = m_AnyOpOfType<arith::MulFOp>(mulFOp);
 
   // Last operation that is not the terminator.
   Operation *lastOp = f.getFunctionBody().front().back().getPrevNode();
@@ -161,6 +164,12 @@ void test3(FunctionOpInterface f) {
   if (p1.match(lastOp))
     llvm::outs() << "Pattern m_Attr(\"fastmath\") matched and bound value to: "
                  << fastMathAttr.getValue() << "\n";
+  if (p2.match(lastOp->getResult(0)))
+    llvm::outs() << "Pattern allOf{mul(*, add(*, m_Op(\"test.name\"))), "
+                    "m_Attr(\"fastmath\")} matched\n";
+  if (p3.match(lastOp))
+    llvm::outs() << "Pattern mul(*, *) matched and captured operation: "
+                 << mulFOp << "\n";
 }
 
 void TestMatchers::runOnOperation() {

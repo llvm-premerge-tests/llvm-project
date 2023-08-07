@@ -213,8 +213,8 @@ template <typename MatcherClass>
 std::enable_if_t<llvm::is_detected<detail::has_operation_or_value_matcher_t,
                                    MatcherClass, Value>::value,
                  bool>
-matchOperandOrValueAtIndex(Operation *op, unsigned idx, MatcherClass &matcher) {
-  return matcher.match(op->getOperand(idx));
+matchOperationOrValue(Value val, MatcherClass &matcher) {
+  return matcher.match(val);
 }
 
 /// Statically switch to an Operation matcher.
@@ -222,8 +222,8 @@ template <typename MatcherClass>
 std::enable_if_t<llvm::is_detected<detail::has_operation_or_value_matcher_t,
                                    MatcherClass, Operation *>::value,
                  bool>
-matchOperandOrValueAtIndex(Operation *op, unsigned idx, MatcherClass &matcher) {
-  if (auto *defOp = op->getOperand(idx).getDefiningOp())
+matchOperationOrValue(Value val, MatcherClass &matcher) {
+  if (auto *defOp = val.getDefiningOp())
     return matcher.match(defOp);
   return false;
 }
@@ -240,6 +240,21 @@ struct AnyCapturedValueMatcher {
   bool match(Value op) const {
     *what = op;
     return true;
+  }
+};
+
+/// Terminal matcher, returns true when operation type matches and binds
+/// operation, otherwise returns false.
+template <typename OpTy>
+struct AnyCapturedOperationMatcher {
+  OpTy &what;
+  AnyCapturedOperationMatcher(OpTy &what) : what(what) {}
+  bool match(Operation *op) {
+    if (isa<OpTy>(op)) {
+      what = cast<OpTy>(op);
+      return true;
+    }
+    return false;
   }
 };
 
@@ -274,11 +289,27 @@ struct RecursivePatternMatcher {
       return false;
     bool res = true;
     enumerate(operandMatchers, [&](size_t index, auto &matcher) {
-      res &= matchOperandOrValueAtIndex(op, index, matcher);
+      res &= matchOperationOrValue(op->getOperand(index), matcher);
     });
     return res;
   }
   std::tuple<OperandMatchers...> operandMatchers;
+};
+
+/// All patterns have to match. Child patterns may either match on values of
+/// operations, but this patten always has to be applied to values.
+template <typename... Patterns>
+struct AllOfPatternMatcher {
+  AllOfPatternMatcher(Patterns... patterns) : patterns(patterns...) {}
+
+  bool match(Value op) {
+    bool res = true;
+    enumerate(patterns, [&](size_t index, auto &pattern) {
+      res &= matchOperationOrValue(op, pattern);
+    });
+    return res;
+  }
+  std::tuple<Patterns...> patterns;
 };
 
 } // namespace detail
@@ -373,6 +404,13 @@ inline detail::op_matcher<OpClass> m_Op() {
   return detail::op_matcher<OpClass>();
 }
 
+/// Matches the given OpClass like `m_Op()`, but binds the matched operation to
+/// the argument.
+template <typename OpClass>
+inline auto m_AnyOpOfType(OpClass &op) {
+  return detail::AnyCapturedOperationMatcher<OpClass>(op);
+}
+
 /// Entry point for matching a pattern over a Value.
 template <typename Pattern>
 inline bool matchPattern(Value value, const Pattern &pattern) {
@@ -405,6 +443,13 @@ m_ConstantInt(IntegerAttr::ValueType *bind_value) {
 template <typename OpType, typename... Matchers>
 auto m_Op(Matchers... matchers) {
   return detail::RecursivePatternMatcher<OpType, Matchers...>(matchers...);
+}
+
+/// All of the matchers have to be successful. May only be applied to Values,
+/// not Operations.
+template <typename... Matchers>
+auto m_AllOf(Matchers... matchers) {
+  return detail::AllOfPatternMatcher<Matchers...>(matchers...);
 }
 
 namespace matchers {

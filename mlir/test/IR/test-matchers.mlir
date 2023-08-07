@@ -52,3 +52,5 @@ func.func @test3(%a: f32) -> f32 {
 // CHECK-LABEL: test3
 //       CHECK:   Pattern mul(*, add(*, m_Op("test.name"))) matched
 //       CHECK:   Pattern m_Attr("fastmath") matched and bound value to: fast
+//       CHECK:   Pattern allOf{mul(*, add(*, m_Op("test.name"))), m_Attr("fastmath")} matched
+//       CHECK:   Pattern mul(*, *) matched and captured operation: %{{.*}} = arith.mulf %{{.*}}, %{{.*}} fastmath<fast> : f32
