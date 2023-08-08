@@ -123,6 +123,12 @@ Improvements to Clang's diagnostics
   template-specialization function calls.
 - Clang contexpr evaluator now displays notes as well as an error when a constructor
   of a base class is not called in the constructor of its derived class.
+- Clang now diagnoses wider cases of tautological use of consteval if or
+  ``std::is_constant_evaluated``. This also suppresses some false positives.
+  (`#43760: <https://github.com/llvm/llvm-project/issues/43760>`_)
+  (`#51567: <https://github.com/llvm/llvm-project/issues/51567>`_)
+- Clang now diagnoses narrowing implicit conversions on variable initializers in immediate
+  function context and on constexpr variable template initializers.
 
 Bug Fixes in This Version
 -------------------------

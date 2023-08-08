@@ -1424,6 +1424,8 @@ void Sema::ActOnStartOfLambdaDefinition(LambdaIntroducer &Intro,
   PushExpressionEvaluationContext(
       LSI->CallOperator->isConsteval()
           ? ExpressionEvaluationContext::ImmediateFunctionContext
+      : isConstantEvaluated()
+          ? ExpressionEvaluationContext::ConstantEvaluated
           : ExpressionEvaluationContext::PotentiallyEvaluated);
   ExprEvalContexts.back().InImmediateFunctionContext =
       LSI->CallOperator->isConsteval();
