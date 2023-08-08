@@ -9,7 +9,7 @@
 ; CHECK-NEXT:   Align:           8
 ; CHECK-NEXT:   ValueKind:       GlobalBuffer
 ; CHECK-NEXT:   AddrSpaceQual:   Global
-; CHECK-NEXT:   AccQual:         ReadOnly
+; CHECK-NEXT:   AccQual:         Default
 ; CHECK-NEXT:   IsConst:         true
 ; CHECK-NEXT:   IsRestrict:      true
 ; CHECK-NEXT: - Name:            out

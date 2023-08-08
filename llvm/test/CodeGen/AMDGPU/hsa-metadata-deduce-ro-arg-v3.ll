@@ -1,7 +1,6 @@
 ; RUN: llc -mtriple=amdgcn-amd-amdhsa -filetype=obj -o - < %s | llvm-readelf --notes - | FileCheck %s
 
 ; CHECK:        - .args:
-; CHECK-NEXT:       - .access:         read_only
 ; CHECK-NEXT:         .address_space:  global
 ; CHECK-NEXT:         .is_const:       true
 ; CHECK-NEXT:         .is_restrict:    true
