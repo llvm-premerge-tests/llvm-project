@@ -144,6 +144,14 @@ libc_support_library(
 )
 
 libc_support_library(
+    name = "__support_cpp_algorithm",
+    hdrs = ["src/__support/CPP/algorithm.h"],
+    deps = [
+        ":libc_root",
+    ],
+)
+
+libc_support_library(
     name = "__support_cpp_array",
     hdrs = ["src/__support/CPP/array.h"],
     deps = [
