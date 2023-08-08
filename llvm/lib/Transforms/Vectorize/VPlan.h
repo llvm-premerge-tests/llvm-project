@@ -792,6 +792,20 @@ public:
   bool mayReadOrWriteMemory() const {
     return mayReadFromMemory() || mayWriteToMemory();
   }
+
+  /// Returns the number of operands excluding mask operands, which must be the
+  /// last operand. Must be overwritten by sub-classes with mask operands.
+  virtual unsigned getNumNonMaskOperands() const { return getNumOperands(); }
+
+  /// Returns true if the recipe is masked.
+  bool isMasked() const { return getNumOperands() != getNumNonMaskOperands(); }
+
+  /// Return the mask used by this recipe. Note that a full mask is represented
+  /// by a nullptr.
+  VPValue *getMask() const {
+    // Mask is optional and therefore the last operand.
+    return isMasked() ? getOperand(getNumOperands() - 1) : nullptr;
+  }
 };
 
 // Helper macro to define common classof implementations for recipes.
@@ -1681,13 +1695,6 @@ public:
     return getOperand(0); // Address is the 1st, mandatory operand.
   }
 
-  /// Return the mask used by this recipe. Note that a full mask is represented
-  /// by a nullptr.
-  VPValue *getMask() const {
-    // Mask is optional and therefore the last, currently 2nd operand.
-    return HasMask ? getOperand(getNumOperands() - 1) : nullptr;
-  }
-
   /// Return the VPValues stored by this interleave group. If it is a load
   /// interleave group, return an empty ArrayRef.
   ArrayRef<VPValue *> getStoredValues() const {
@@ -1719,6 +1726,11 @@ public:
     assert(is_contained(operands(), Op) &&
            "Op must be an operand of the recipe");
     return Op == getAddr() && !llvm::is_contained(getStoredValues(), Op);
+  }
+
+  /// Returns the number of operands excluding mask operands.
+  unsigned getNumNonMaskOperands() const override {
+    return HasMask ? getNumOperands() - 1 : getNumOperands();
   }
 };
 
@@ -1823,10 +1835,9 @@ public:
   /// in a vector.
   bool shouldPack() const;
 
-  /// Return the mask of a predicated VPReplicateRecipe.
-  VPValue *getMask() {
-    assert(isPredicated() && "Trying to get the mask of a unpredicated recipe");
-    return getOperand(getNumOperands() - 1);
+  /// Returns the number of operands excluding mask operands.
+  unsigned getNumNonMaskOperands() const override {
+    return isPredicated() ? getNumOperands() - 1 : getNumOperands();
   }
 };
 
@@ -1926,10 +1937,6 @@ class VPWidenMemoryInstructionRecipe : public VPRecipeBase {
     addOperand(Mask);
   }
 
-  bool isMasked() const {
-    return isStore() ? getNumOperands() == 3 : getNumOperands() == 2;
-  }
-
 public:
   VPWidenMemoryInstructionRecipe(LoadInst &Load, VPValue *Addr, VPValue *Mask,
                                  bool Consecutive, bool Reverse)
@@ -1954,13 +1961,6 @@ public:
   /// Return the address accessed by this recipe.
   VPValue *getAddr() const {
     return getOperand(0); // Address is the 1st, mandatory operand.
-  }
-
-  /// Return the mask used by this recipe. Note that a full mask is represented
-  /// by a nullptr.
-  VPValue *getMask() const {
-    // Mask is optional and therefore the last operand.
-    return isMasked() ? getOperand(getNumOperands() - 1) : nullptr;
   }
 
   /// Returns true if this recipe is a store.
@@ -2001,6 +2001,9 @@ public:
   }
 
   Instruction &getIngredient() const { return Ingredient; }
+
+  /// Returns the number of operands excluding mask operands.
+  unsigned getNumNonMaskOperands() const override { return isStore() ? 2 : 1; }
 };
 
 /// Recipe to expand a SCEV expression.
