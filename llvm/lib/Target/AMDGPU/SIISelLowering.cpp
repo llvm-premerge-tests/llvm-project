@@ -14085,7 +14085,8 @@ SITargetLowering::shouldExpandAtomicRMWInIR(AtomicRMWInst *RMW) const {
       SSID == SyncScope::System ||
       SSID == RMW->getContext().getOrInsertSyncScopeID("one-as");
 
-  switch (RMW->getOperation()) {
+  auto Op = RMW->getOperation();
+  switch (Op) {
   case AtomicRMWInst::FAdd: {
     Type *Ty = RMW->getType();
 
@@ -14160,18 +14161,28 @@ SITargetLowering::shouldExpandAtomicRMWInIR(AtomicRMWInst *RMW) const {
 
     return AtomicExpansionKind::CmpXChg;
   }
+  case AtomicRMWInst::Xchg:
+  case AtomicRMWInst::Add:
+    // PCIe supports add and xchg for system atomics.
+    break;
+  case AtomicRMWInst::Sub:
+  case AtomicRMWInst::And:
+  case AtomicRMWInst::Or:
+  case AtomicRMWInst::Xor:
+  case AtomicRMWInst::Max:
+  case AtomicRMWInst::Min:
+  case AtomicRMWInst::UMax:
+  case AtomicRMWInst::UMin:
   case AtomicRMWInst::FMin:
   case AtomicRMWInst::FMax:
-  case AtomicRMWInst::Min:
-  case AtomicRMWInst::Max:
-  case AtomicRMWInst::UMin:
-  case AtomicRMWInst::UMax: {
+  case AtomicRMWInst::UIncWrap:
+  case AtomicRMWInst::UDecWrap: {
     if (AMDGPU::isFlatGlobalAddrSpace(AS)) {
-      if (RMW->getType()->isFloatTy() &&
+      if (AtomicRMWInst::isFPOperation(Op) &&
           unsafeFPAtomicsDisabled(RMW->getFunction()))
         return AtomicExpansionKind::CmpXChg;
 
-      // Always expand system scope min/max atomics.
+      // Always expand system scope atomics.
       if (HasSystemScope)
         return AtomicExpansionKind::CmpXChg;
     }
