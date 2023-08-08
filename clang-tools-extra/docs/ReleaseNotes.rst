@@ -196,6 +196,10 @@ Changes in existing checks
   <clang-tidy/checks/readability/identifier-naming>` check to emit proper
   warnings when a type forward declaration precedes its definition.
 
+- Fixed a bug in :doc:`performance-faster-string-find
+  <performance-faster-string-find>` which generated incorrect fixes by not
+  escaping single quotes properly.
+
 Removed checks
 ^^^^^^^^^^^^^^
 
