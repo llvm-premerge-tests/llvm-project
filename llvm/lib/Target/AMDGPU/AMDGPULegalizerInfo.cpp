@@ -5884,7 +5884,7 @@ bool AMDGPULegalizerInfo::legalizeImageIntrinsic(
   const unsigned HasPartialNSA = ST.hasPartialNSAEncoding();
 
   if (IsA16 || IsG16) {
-    if (Intr->NumVAddrs > 1) {
+    if (Intr->NumVAddrs >= 1) {
       SmallVector<Register, 4> PackedRegs;
 
       packImage16bitOpsToDwords(B, MI, PackedRegs, ArgOffset, Intr, IsA16,
