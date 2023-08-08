@@ -8,15 +8,24 @@
 
 #include "llvm/ExecutionEngine/Orc/IndirectionUtils.h"
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/ExecutionEngine/JITLink/JITLink.h"
+#include "llvm/ExecutionEngine/JITLink/JITLinkMemoryManager.h"
 #include "llvm/ExecutionEngine/JITLink/x86_64.h"
+#include "llvm/ExecutionEngine/JITSymbol.h"
+#include "llvm/ExecutionEngine/Orc/Core.h"
 #include "llvm/ExecutionEngine/Orc/OrcABISupport.h"
+#include "llvm/ExecutionEngine/Orc/Shared/ExecutorSymbolDef.h"
+#include "llvm/ExecutionEngine/Orc/Shared/MemoryFlags.h"
+#include "llvm/ExecutionEngine/Orc/Shared/TargetProcessControlTypes.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/MC/MCDisassembler/MCDisassembler.h"
 #include "llvm/MC/MCInstrAnalysis.h"
 #include "llvm/Support/Format.h"
+#include "llvm/Support/MathExtras.h"
 #include "llvm/TargetParser/Triple.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include <sstream>
+#include <utility>
 
 #define DEBUG_TYPE "orc"
 
@@ -61,6 +70,151 @@ namespace orc {
 
 TrampolinePool::~TrampolinePool() = default;
 void IndirectStubsManager::anchor() {}
+
+void RedirectionManager::anchor() {}
+
+Error JITLinkRedirectionManager::createRedirectableSymbols(
+    const SymbolAddrMap &InitialDests) {
+  std::unique_lock<std::mutex> Lock(Mutex);
+  if (GetNumAvailableStubs() < InitialDests.size())
+    if (auto Err = grow(InitialDests.size() - GetNumAvailableStubs()))
+      return Err;
+
+  SymbolMap NewSymbolDefs;
+  for (auto &[K, V] : InitialDests) {
+    StubHandle StubID = AvailbleStubs.back();
+    if (SymbolToStubs.count(K))
+      return make_error<StringError>(
+          "Tried to create duplicate redirectable symbols",
+          inconvertibleErrorCode());
+    SymbolToStubs[K] = StubID;
+    NewSymbolDefs[K] = JumpStubs[StubID];
+    AvailbleStubs.pop_back();
+  }
+
+  if (auto Err = JD.define(absoluteSymbols(NewSymbolDefs)))
+    return Err;
+
+  if (auto Err = redirectInner(InitialDests))
+    return Err;
+
+  return Error::success();
+}
+
+Error JITLinkRedirectionManager::releaseRedirectableSymbols(
+    const SymbolNameSet &Symbols) {
+  std::unique_lock<std::mutex> Lock(Mutex);
+  for (auto &K : Symbols) {
+    if (!SymbolToStubs.count(K))
+      return make_error<StringError>(
+          "Tried to remove non-existent redirectalbe symbol",
+          inconvertibleErrorCode());
+    AvailbleStubs.push_back(SymbolToStubs.at(K));
+    SymbolToStubs.erase(K);
+  }
+
+  if (auto Err = JD.remove(Symbols))
+    return Err;
+
+  return Error::success();
+}
+
+Error JITLinkRedirectionManager::redirect(const SymbolAddrMap &NewDests) {
+  std::unique_lock<std::mutex> Lock(Mutex);
+  return redirectInner(NewDests);
+}
+
+Error JITLinkRedirectionManager::redirectInner(const SymbolAddrMap &NewDests) {
+  std::vector<std::pair<ExecutorAddr, ExecutorAddr>> PtrWrites;
+  for (auto &[K, V] : NewDests) {
+    if (!SymbolToStubs.count(K))
+      return make_error<StringError>(
+          "Tried to redirect non-existent redirectalbe symbol",
+          inconvertibleErrorCode());
+    StubHandle StubID = SymbolToStubs.at(K);
+    PtrWrites.push_back({StubPointers[StubID].getAddress(), V.getAddress()});
+  }
+
+  if (ES.getTargetTriple().isArch64Bit()) {
+    std::vector<tpctypes::UInt64Write> NativeWrites;
+    for (auto &[Ptr, Target] : PtrWrites)
+      NativeWrites.push_back(tpctypes::UInt64Write(Ptr, Target.getValue()));
+    if (auto Err =
+            ES.getExecutorProcessControl().getMemoryAccess().writeUInt64s(
+                NativeWrites))
+      return Err;
+  } else {
+    assert(DL.getPointerSize() == 4 && "Unsupported pointer size");
+    std::vector<tpctypes::UInt32Write> NativeWrites;
+    for (auto &[Ptr, Target] : PtrWrites)
+      NativeWrites.push_back(tpctypes::UInt32Write(Ptr, Target.getValue()));
+    if (auto Err =
+            ES.getExecutorProcessControl().getMemoryAccess().writeUInt32s(
+                NativeWrites))
+      return Err;
+  }
+  return Error::success();
+}
+
+Error JITLinkRedirectionManager::grow(unsigned Need) {
+  unsigned OldSize = JumpStubs.size();
+  unsigned NumNewStubs = alignTo(Need, StubBlockSize);
+  unsigned NewSize = OldSize + NumNewStubs;
+
+  JumpStubs.resize(NewSize);
+  StubPointers.resize(NewSize);
+  AvailbleStubs.reserve(NewSize);
+
+  SymbolLookupSet LookupSymbols;
+  DenseMap<SymbolStringPtr, ExecutorSymbolDef *> NewDefsMap;
+
+  Triple TT = ES.getTargetTriple();
+  auto G = std::make_unique<jitlink::LinkGraph>(
+      "<INDIRECT STUBS>", TT, TT.isArch64Bit() ? 8 : 4,
+      TT.isLittleEndian() ? support::little : support::big,
+      jitlink::getGenericEdgeKindName);
+  auto &PointerSection =
+      G->createSection(StubPtrTableName, MemProt::Write | MemProt::Read);
+  auto &StubsSection =
+      G->createSection(JumpStubTableName, MemProt::Exec | MemProt::Read);
+
+  for (size_t I = OldSize; I < NewSize; I++) {
+    auto Pointer = AnonymousPtrCreator(*G, PointerSection, nullptr, 0);
+    if (auto Err = Pointer.takeError())
+      return Err;
+
+    StringRef PtrSymName = StubPtrSymbolName(I);
+    Pointer->setName(PtrSymName);
+    Pointer->setScope(jitlink::Scope::Default);
+    LookupSymbols.add(ES.intern(PtrSymName));
+    NewDefsMap[ES.intern(PtrSymName)] = &StubPointers[I];
+
+    auto Stub = PtrJumpStubCreator(*G, StubsSection, *Pointer);
+    if (auto Err = Stub.takeError())
+      return Err;
+
+    StringRef JumpStubSymName = JumpStubSymbolName(I);
+    Stub->setName(JumpStubSymName);
+    Stub->setScope(jitlink::Scope::Default);
+    LookupSymbols.add(ES.intern(JumpStubSymName));
+    NewDefsMap[ES.intern(JumpStubSymName)] = &JumpStubs[I];
+  }
+
+  if (auto Err = ObjLinkingLayer.add(JD, std::move(G)))
+    return Err;
+
+  auto LookupResult = ES.lookup(makeJITDylibSearchOrder(&JD), LookupSymbols);
+  if (auto Err = LookupResult.takeError())
+    return Err;
+
+  for (auto &[K, V] : *LookupResult)
+    *NewDefsMap.at(K) = V;
+
+  for (size_t I = OldSize; I < NewSize; I++)
+    AvailbleStubs.push_back(I);
+
+  return Error::success();
+}
 
 Expected<ExecutorAddr>
 JITCompileCallbackManager::getCompileCallback(CompileFunction Compile) {
@@ -251,9 +405,9 @@ Constant* createIRTypedAddress(FunctionType &FT, ExecutorAddr Addr) {
 
 GlobalVariable* createImplPointer(PointerType &PT, Module &M,
                                   const Twine &Name, Constant *Initializer) {
-  auto IP = new GlobalVariable(M, &PT, false, GlobalValue::ExternalLinkage,
-                               Initializer, Name, nullptr,
-                               GlobalValue::NotThreadLocal, 0, true);
+  auto *IP = new GlobalVariable(M, &PT, false, GlobalValue::ExternalLinkage,
+                                Initializer, Name, nullptr,
+                                GlobalValue::NotThreadLocal, 0, true);
   IP->setVisibility(GlobalValue::HiddenVisibility);
   return IP;
 }
@@ -316,7 +470,7 @@ Function* cloneFunctionDecl(Module &Dst, const Function &F,
 
   if (VMap) {
     (*VMap)[&F] = NewF;
-    auto NewArgI = NewF->arg_begin();
+    auto *NewArgI = NewF->arg_begin();
     for (auto ArgI = F.arg_begin(), ArgE = F.arg_end(); ArgI != ArgE;
          ++ArgI, ++NewArgI)
       (*VMap)[&*ArgI] = &*NewArgI;
@@ -364,7 +518,7 @@ Error addFunctionPointerRelocationsToCurrentSymbol(jitlink::Symbol &Sym,
   auto &B = Sym.getBlock();
   assert(!B.isZeroFill() && "expected content block");
   auto SymAddress = Sym.getAddress();
-  auto SymStartInBlock =
+  auto *SymStartInBlock =
       (const uint8_t *)B.getContent().data() + Sym.getOffset();
   auto SymSize = Sym.getSize() ? Sym.getSize() : B.getSize() - Sym.getOffset();
   auto Content = ArrayRef(SymStartInBlock, SymSize);
