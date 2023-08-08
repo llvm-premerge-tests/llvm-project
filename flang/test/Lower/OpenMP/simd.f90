@@ -164,3 +164,37 @@ integer :: A(n,n)
   end do
   !$OMP END SIMD
 end subroutine
+
+!CHECK: func.func @_QPsimdloop_aligned_cptr(%[[ARG_A:.*]]: !fir.ref
+!CHECK-SAME: <!fir.type<_QM__fortran_builtinsT__builtin_c_ptr
+!CHECK-SAME: {__address:i64}>> {fir.bindc_name = "a"}) {
+subroutine simdloop_aligned_cptr( A)
+  use iso_c_binding
+  integer :: i
+  type (c_ptr) :: A
+!CHECK: omp.simdloop aligned(%[[ARG_A]] : !fir.ref
+!CHECK-SAME: <!fir.type<_QM__fortran_builtinsT__builtin_c_ptr{__address:i64}>>
+!CHECK-SAME: -> 256 : i64)
+  !$OMP SIMD ALIGNED(A:256)
+  do i = 1, 10
+    call c_test_call(A)
+  end do
+  !$OMP END SIMD
+end subroutine
+
+!CHECK-LABEL: func @_QPsimdloop_aligned_allocatable
+subroutine simdloop_aligned_allocatable()
+  integer :: i
+  integer, allocatable :: A(:)
+  allocate(A(10))
+!CHECK: %[[A_PTR:.*]] = fir.alloca !fir.box<!fir.heap<!fir.array<?xi32>>> {bindc_name = "a",
+!CHECK-SAME: uniq_name = "_QFsimdloop_aligned_allocatableEa"}
+!CHECK: %[[A_PTR_LOAD:.*]] = fir.load %[[A_PTR]] : !fir.ref<!fir.box<!fir.heap<!fir.array<?xi32>>>>
+!CHECK: %[[A_ALIGNED:.*]] = fir.box_addr %[[A_PTR_LOAD]]  : (!fir.box<!fir.heap<!fir.array<?xi32>>>)
+!CHECK-SAME: -> !fir.heap<!fir.array<?xi32>>
+!CHECK: omp.simdloop aligned(%[[A_ALIGNED]] : !fir.heap<!fir.array<?xi32>> -> 256 : i64)
+  !$OMP SIMD ALIGNED(A:256)
+  do i = 1, 10
+    A(i) = i
+  end do
+end subroutine

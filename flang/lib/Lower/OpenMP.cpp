@@ -24,6 +24,7 @@
 #include "flang/Semantics/tools.h"
 #include "mlir/Dialect/OpenMP/OpenMPDialect.h"
 #include "llvm/Frontend/OpenMP/OMPConstants.h"
+#include "llvm/Frontend/OpenMP/OMPIRBuilder.h"
 
 using DeclareTargetCapturePair =
     std::pair<mlir::omp::DeclareTargetCaptureClause,
@@ -477,6 +478,10 @@ public:
       : converter(converter), clauses(clauses) {}
 
   // 'Unique' clauses: They can appear at most once in the clause list.
+  bool processAligned(mlir::Location currentLocation,
+                      Fortran::semantics::SemanticsContext &semanticsContext,
+                      llvm::SmallVector<mlir::Value> &alignVars,
+                      llvm::SmallVector<mlir::Attribute> &alignmentValues);
   bool
   processCollapse(mlir::Location currentLocation,
                   Fortran::lower::pft::Evaluation &eval,
@@ -1183,9 +1188,106 @@ addUseDeviceClause(Fortran::lower::AbstractConverter &converter,
   }
 }
 
+/// Convert MLIR OpenMP target features attribute into
+/// map<string: feature_name, bool is_feature_enabled >
+static llvm::StringMap<bool> getTargetFeatures(mlir::ModuleOp module) {
+  llvm::StringMap<bool> featuresMap;
+  llvm::SmallVector<llvm::StringRef> targetFeaturesVec;
+  llvm::StringRef targetFeaturesStr;
+  auto targetInterface =
+      llvm::dyn_cast<mlir::omp::OffloadModuleInterface>(module.getOperation());
+  if (!targetInterface) {
+    return featuresMap;
+  }
+  auto targetAttr = targetInterface.getTarget();
+  if (!targetAttr)
+    return featuresMap;
+  targetFeaturesStr = targetAttr.getTargetFeatures();
+  targetFeaturesStr.split(targetFeaturesVec, ",");
+  for (auto &feature : targetFeaturesVec) {
+    if (feature.empty())
+      continue;
+    llvm::StringRef featureKeyString = feature.substr(1);
+    featuresMap[featureKeyString] = (feature[0] == '+');
+  }
+
+  return featuresMap;
+}
+
 //===----------------------------------------------------------------------===//
 // ClauseProcessor unique clauses
 //===----------------------------------------------------------------------===//
+
+bool ClauseProcessor::processAligned(
+    mlir::Location currentLocation,
+    Fortran::semantics::SemanticsContext &semanticsContext,
+    llvm::SmallVector<mlir::Value> &alignVars,
+    llvm::SmallVector<mlir::Attribute> &alignmentValues) {
+  auto *alignedClause = findUniqueClause<ClauseTy::Aligned>();
+  if (!alignedClause)
+    return false;
+  const Fortran::parser::OmpAlignedClause &ompAlignClause = alignedClause->v;
+  mlir::IntegerAttr alignmentValueAttr;
+  fir::FirOpBuilder &builder = converter.getFirOpBuilder();
+  Fortran::lower::StatementContext stmtCtx;
+  const Fortran::parser::OmpObjectList &ompObjectList =
+      std::get<Fortran::parser::OmpObjectList>(ompAlignClause.t);
+
+  const auto &alignmentValueParserExpr =
+      std::get<std::optional<Fortran::parser::ScalarIntConstantExpr>>(
+          ompAlignClause.t);
+  if (alignmentValueParserExpr) {
+    // Use alignment value specified in the input Fortran code
+    const auto &alignmentValueExpr =
+        Fortran::semantics::GetExpr(alignmentValueParserExpr);
+    const std::optional<std::int64_t> alignment =
+        Fortran::evaluate::ToInt64(*alignmentValueExpr);
+
+    alignmentValueAttr = builder.getI64IntegerAttr(*alignment);
+  } else {
+    // Get target features string stored in MLIR module and generate map where
+    // the key corresponds to given feature and bool value describes if given
+    // feature is enabled
+    llvm::StringMap<bool> featuresMap = getTargetFeatures(builder.getModule());
+
+    const llvm::Triple &triple = fir::getTargetTriple(builder.getModule());
+    // Calculate the default alignment for given target
+    int64_t defaultOpenMPSimdAlignment =
+        llvm::OpenMPIRBuilder::getOpenMPDefaultSimdAlign(triple, featuresMap);
+    alignmentValueAttr = builder.getI64IntegerAttr(defaultOpenMPSimdAlignment);
+  }
+
+  for (const Fortran::parser::OmpObject &ompItem : ompObjectList.v) {
+    const Fortran::parser::Designator *sym = nullptr;
+    std::visit(Fortran::common::visitors{
+                   [&](const Fortran::parser::Designator &designator) {
+                     sym = &designator;
+                   },
+                   [&](const Fortran::parser::Name &name) {
+                     // Common block is represented in OmpObject as Name.
+                     // According to OpenMP 5.2 spec (5.11) common block
+                     // is not allowed as an aligned item. Flang parser checks
+                     // if given aligned item is common block. That's why we
+                     // skip common blocks in MLIR lowering
+                   }},
+               ompItem.u);
+
+    if (!sym)
+      continue;
+
+    // The default alignment for some targets is equal to 0.
+    // Do not generate alignment assumption if alignment is equal to 0.
+    if (alignmentValueAttr.getInt() <= 0)
+      continue;
+
+    mlir::Value alignedItem = fir::getBase(converter.genExprAddr(
+        *(Fortran::semantics::AnalyzeExpr(semanticsContext, *sym)), stmtCtx,
+        &currentLocation));
+    alignVars.push_back(alignedItem);
+    alignmentValues.push_back(alignmentValueAttr);
+  }
+  return true;
+}
 
 bool ClauseProcessor::processCollapse(
     mlir::Location currentLocation, Fortran::lower::pft::Evaluation &eval,
@@ -2314,7 +2416,8 @@ createCombinedParallelOp(Fortran::lower::AbstractConverter &converter,
 
 static void genOMP(Fortran::lower::AbstractConverter &converter,
                    Fortran::lower::pft::Evaluation &eval,
-                   const Fortran::parser::OpenMPLoopConstruct &loopConstruct) {
+                   const Fortran::parser::OpenMPLoopConstruct &loopConstruct,
+                   Fortran::semantics::SemanticsContext &semanticsContext) {
   fir::FirOpBuilder &firOpBuilder = converter.getFirOpBuilder();
   llvm::SmallVector<mlir::Value> lowerBound, upperBound, step, linearVars,
       linearStepVars, reductionVars, alignedVars, nontemporalVars;
@@ -2325,7 +2428,7 @@ static void genOMP(Fortran::lower::AbstractConverter &converter,
   mlir::omp::ScheduleModifierAttr scheduleModClauseOperand;
   mlir::UnitAttr nowaitClauseOperand, scheduleSimdClauseOperand;
   mlir::IntegerAttr simdlenClauseOperand, safelenClauseOperand;
-  llvm::SmallVector<mlir::Attribute> reductionDeclSymbols;
+  llvm::SmallVector<mlir::Attribute> reductionDeclSymbols, alignmentValues;
   Fortran::lower::StatementContext stmtCtx;
   std::size_t loopVarTypeSize;
   llvm::SmallVector<const Fortran::semantics::Symbol *> iv;
@@ -2354,6 +2457,8 @@ static void genOMP(Fortran::lower::AbstractConverter &converter,
   ClauseProcessor cp(converter, loopOpClauseList);
   cp.processCollapse(currentLocation, eval, lowerBound, upperBound, step, iv,
                      loopVarTypeSize);
+  cp.processAligned(currentLocation, semanticsContext, alignedVars,
+                    alignmentValues);
   cp.processScheduleChunk(stmtCtx, scheduleChunkClauseOperand);
   cp.processIf(stmtCtx,
                Fortran::parser::OmpIfClause::DirectiveNameModifier::Simd,
@@ -2380,8 +2485,11 @@ static void genOMP(Fortran::lower::AbstractConverter &converter,
     mlir::TypeRange resultType;
     auto simdLoopOp = firOpBuilder.create<mlir::omp::SimdLoopOp>(
         currentLocation, resultType, lowerBound, upperBound, step, alignedVars,
-        /*alignment_values=*/nullptr, ifClauseOperand, nontemporalVars,
-        orderClauseOperand, simdlenClauseOperand, safelenClauseOperand,
+        alignmentValues.empty()
+            ? nullptr
+            : mlir::ArrayAttr::get(firOpBuilder.getContext(), alignmentValues),
+        ifClauseOperand, nontemporalVars, orderClauseOperand,
+        simdlenClauseOperand, safelenClauseOperand,
         /*inclusive=*/firOpBuilder.getUnitAttr());
     createBodyOfOp<mlir::omp::SimdLoopOp>(
         simdLoopOp, converter, currentLocation, eval, &loopOpClauseList, iv,
@@ -3237,7 +3345,8 @@ void Fortran::lower::genOpenMPTerminator(fir::FirOpBuilder &builder,
 void Fortran::lower::genOpenMPConstruct(
     Fortran::lower::AbstractConverter &converter,
     Fortran::lower::pft::Evaluation &eval,
-    const Fortran::parser::OpenMPConstruct &ompConstruct) {
+    const Fortran::parser::OpenMPConstruct &ompConstruct,
+    Fortran::semantics::SemanticsContext &semanticsContext) {
   std::visit(
       common::visitors{
           [&](const Fortran::parser::OpenMPStandaloneConstruct
@@ -3252,7 +3361,7 @@ void Fortran::lower::genOpenMPConstruct(
             genOMP(converter, eval, sectionConstruct);
           },
           [&](const Fortran::parser::OpenMPLoopConstruct &loopConstruct) {
-            genOMP(converter, eval, loopConstruct);
+            genOMP(converter, eval, loopConstruct, semanticsContext);
           },
           [&](const Fortran::parser::OpenMPDeclarativeAllocate
                   &execAllocConstruct) {

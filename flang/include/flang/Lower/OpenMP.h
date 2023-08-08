@@ -34,6 +34,10 @@ struct OmpEndLoopDirective;
 struct OmpClauseList;
 } // namespace parser
 
+namespace semantics {
+class SemanticsContext;
+}
+
 namespace lower {
 
 class AbstractConverter;
@@ -48,7 +52,8 @@ void genOpenMPTerminator(fir::FirOpBuilder &, mlir::Operation *,
                          mlir::Location);
 
 void genOpenMPConstruct(AbstractConverter &, pft::Evaluation &,
-                        const parser::OpenMPConstruct &);
+                        const parser::OpenMPConstruct &,
+                        Fortran::semantics::SemanticsContext &);
 void genOpenMPDeclarativeConstruct(AbstractConverter &, pft::Evaluation &,
                                    const parser::OpenMPDeclarativeConstruct &);
 int64_t getCollapseValue(const Fortran::parser::OmpClauseList &clauseList);
