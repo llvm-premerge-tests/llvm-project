@@ -21,5 +21,29 @@
         ! CHECK: cas [%i0], %l6, %o2   ! encoding: [0xd5,0xe6,0x10,0x16]
         cas [%i0], %l6, %o2
 
+        ! CHECK: casl [%i0], %l6, %o2   ! encoding: [0xd5,0xe6,0x11,0x16]
+        casl [%i0], %l6, %o2
+
+        ! CHECK: casa [%i0] 128, %l6, %o2   ! encoding: [0xd5,0xe6,0x10,0x16]
+        casa [%i0] 0x80, %l6, %o2
+
+        ! CHECK: casa [%i0] 128, %l6, %o2   ! encoding: [0xd5,0xe6,0x10,0x16]
+        casa [%i0] (0x40+0x40), %l6, %o2
+
+        ! CHECK: casa [%i0] %asi, %l6, %o2   ! encoding: [0xd5,0xe6,0x20,0x16]
+        casa [%i0] %asi, %l6, %o2
+
         ! CHECK: casx [%i0], %l6, %o2  ! encoding: [0xd5,0xf6,0x10,0x16]
         casx [%i0], %l6, %o2
+
+        ! CHECK: casxl [%i0], %l6, %o2  ! encoding: [0xd5,0xf6,0x11,0x16]
+        casxl [%i0], %l6, %o2
+
+        ! CHECK: casxa [%i0] 128, %l6, %o2   ! encoding: [0xd5,0xf6,0x10,0x16]
+        casxa [%i0] 0x80, %l6, %o2
+
+        ! CHECK: casxa [%i0] 128, %l6, %o2   ! encoding: [0xd5,0xf6,0x10,0x16]
+        casxa [%i0] (0x40+0x40), %l6, %o2
+
+        ! CHECK: casxa [%i0] %asi, %l6, %o2   ! encoding: [0xd5,0xf6,0x20,0x16]
+        casxa [%i0] %asi, %l6, %o2
