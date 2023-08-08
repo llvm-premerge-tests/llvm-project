@@ -78,21 +78,20 @@ File::GetStreamOpenModeFromOptions(File::OpenOptions options) {
 }
 
 Expected<File::OpenOptions> File::GetOptionsFromMode(llvm::StringRef mode) {
-  OpenOptions opts =
-      llvm::StringSwitch<OpenOptions>(mode)
-          .Cases("r", "rb", eOpenOptionReadOnly)
-          .Cases("w", "wb", eOpenOptionWriteOnly)
-          .Cases("a", "ab",
-                 eOpenOptionWriteOnly | eOpenOptionAppend |
-                 eOpenOptionCanCreate)
-          .Cases("r+", "rb+", "r+b", eOpenOptionReadWrite)
-          .Cases("w+", "wb+", "w+b",
-                 eOpenOptionReadWrite | eOpenOptionCanCreate |
-                 eOpenOptionTruncate)
-          .Cases("a+", "ab+", "a+b",
-                 eOpenOptionReadWrite | eOpenOptionAppend |
-                     eOpenOptionCanCreate)
-          .Default(eOpenOptionInvalid);
+  OpenOptions opts = llvm::StringSwitch<OpenOptions>(mode)
+                         .Cases("r", "rb", eOpenOptionReadOnly)
+                         .Cases("w", "wb", eOpenOptionWriteOnly)
+                         .Cases("a", "ab",
+                                eOpenOptionWriteOnly | eOpenOptionAppend |
+                                    eOpenOptionCanCreate)
+                         .Cases("r+", "rb+", "r+b", eOpenOptionReadWrite)
+                         .Cases("w+", "wb+", "w+b",
+                                eOpenOptionReadWrite | eOpenOptionCanCreate |
+                                    eOpenOptionTruncate)
+                         .Cases("a+", "ab+", "a+b",
+                                eOpenOptionReadWrite | eOpenOptionAppend |
+                                    eOpenOptionCanCreate)
+                         .Default(eOpenOptionInvalid);
   if (opts != eOpenOptionInvalid)
     return opts;
   return llvm::createStringError(
@@ -219,7 +218,8 @@ size_t File::Printf(const char *format, ...) {
 size_t File::PrintfVarArg(const char *format, va_list args) {
   llvm::SmallString<0> s;
   if (VASprintf(s, format, args)) {
-    size_t written = s.size();;
+    size_t written = s.size();
+    ;
     Write(s.data(), written);
     return written;
   }
@@ -247,15 +247,20 @@ uint32_t File::GetPermissions(Status &error) const {
   return file_stats.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
 }
 
+bool NativeFile::IsValid() const {
+  return DescriptorIsValid() || StreamIsValid();
+}
+
 Expected<File::OpenOptions> NativeFile::GetOptions() const { return m_options; }
 
 int NativeFile::GetDescriptor() const {
-  if (DescriptorIsValid())
+  if (ValueGuard descriptor_guard = DescriptorIsValid()) {
     return m_descriptor;
+  }
 
   // Don't open the file descriptor if we don't need to, just get it from the
   // stream if we have one.
-  if (StreamIsValid()) {
+  if (ValueGuard stream_guard = StreamIsValid()) {
 #if defined(_WIN32)
     return _fileno(m_stream);
 #else
@@ -272,8 +277,9 @@ IOObject::WaitableHandle NativeFile::GetWaitableHandle() {
 }
 
 FILE *NativeFile::GetStream() {
-  if (!StreamIsValid()) {
-    if (DescriptorIsValid()) {
+  ValueGuard stream_guard = StreamIsValid();
+  if (!stream_guard) {
+    if (ValueGuard descriptor_guard = DescriptorIsValid()) {
       auto mode = GetStreamOpenModeFromOptions(m_options);
       if (!mode)
         llvm::consumeError(mode.takeError());
@@ -307,30 +313,39 @@ FILE *NativeFile::GetStream() {
 
 Status NativeFile::Close() {
   Status error;
-  if (StreamIsValid()) {
-    if (m_own_stream) {
-      if (::fclose(m_stream) == EOF)
-        error.SetErrorToErrno();
-    } else {
-      File::OpenOptions rw =
-          m_options & (File::eOpenOptionReadOnly | File::eOpenOptionWriteOnly |
-                       File::eOpenOptionReadWrite);
 
-      if (rw == eOpenOptionWriteOnly || rw == eOpenOptionReadWrite) {
-        if (::fflush(m_stream) == EOF)
+  {
+    ValueGuard stream_guard = StreamIsValid();
+    if (stream_guard) {
+      if (m_own_stream) {
+        if (::fclose(m_stream) == EOF)
           error.SetErrorToErrno();
+      } else {
+        File::OpenOptions rw = m_options & (File::eOpenOptionReadOnly |
+                                            File::eOpenOptionWriteOnly |
+                                            File::eOpenOptionReadWrite);
+
+        if (rw == eOpenOptionWriteOnly || rw == eOpenOptionReadWrite) {
+          if (::fflush(m_stream) == EOF)
+            error.SetErrorToErrno();
+        }
       }
     }
+    m_stream = kInvalidStream;
+    m_own_stream = false;
   }
-  if (DescriptorIsValid() && m_own_descriptor) {
-    if (::close(m_descriptor) != 0)
-      error.SetErrorToErrno();
+
+  {
+    ValueGuard descriptor_guard = DescriptorIsValid();
+    if (descriptor_guard && m_own_descriptor) {
+      if (::close(m_descriptor) != 0)
+        error.SetErrorToErrno();
+    }
+    m_descriptor = kInvalidDescriptor;
+    m_own_descriptor = false;
   }
-  m_descriptor = kInvalidDescriptor;
-  m_stream = kInvalidStream;
+
   m_options = OpenOptions(0);
-  m_own_stream = false;
-  m_own_descriptor = false;
   m_is_interactive = eLazyBoolCalculate;
   m_is_real_terminal = eLazyBoolCalculate;
   return error;
@@ -374,7 +389,7 @@ Status NativeFile::GetFileSpec(FileSpec &file_spec) const {
 
 off_t NativeFile::SeekFromStart(off_t offset, Status *error_ptr) {
   off_t result = 0;
-  if (DescriptorIsValid()) {
+  if (ValueGuard descriptor_guard = DescriptorIsValid()) {
     result = ::lseek(m_descriptor, offset, SEEK_SET);
 
     if (error_ptr) {
@@ -383,7 +398,7 @@ off_t NativeFile::SeekFromStart(off_t offset, Status *error_ptr) {
       else
         error_ptr->Clear();
     }
-  } else if (StreamIsValid()) {
+  } else if (ValueGuard stream_guard = StreamIsValid()) {
     result = ::fseek(m_stream, offset, SEEK_SET);
 
     if (error_ptr) {
@@ -400,7 +415,7 @@ off_t NativeFile::SeekFromStart(off_t offset, Status *error_ptr) {
 
 off_t NativeFile::SeekFromCurrent(off_t offset, Status *error_ptr) {
   off_t result = -1;
-  if (DescriptorIsValid()) {
+  if (ValueGuard descriptor_guard = DescriptorIsValid()) {
     result = ::lseek(m_descriptor, offset, SEEK_CUR);
 
     if (error_ptr) {
@@ -409,7 +424,7 @@ off_t NativeFile::SeekFromCurrent(off_t offset, Status *error_ptr) {
       else
         error_ptr->Clear();
     }
-  } else if (StreamIsValid()) {
+  } else if (ValueGuard stream_guard = StreamIsValid()) {
     result = ::fseek(m_stream, offset, SEEK_CUR);
 
     if (error_ptr) {
@@ -426,7 +441,7 @@ off_t NativeFile::SeekFromCurrent(off_t offset, Status *error_ptr) {
 
 off_t NativeFile::SeekFromEnd(off_t offset, Status *error_ptr) {
   off_t result = -1;
-  if (DescriptorIsValid()) {
+  if (ValueGuard descriptor_guard = DescriptorIsValid()) {
     result = ::lseek(m_descriptor, offset, SEEK_END);
 
     if (error_ptr) {
@@ -435,7 +450,7 @@ off_t NativeFile::SeekFromEnd(off_t offset, Status *error_ptr) {
       else
         error_ptr->Clear();
     }
-  } else if (StreamIsValid()) {
+  } else if (ValueGuard stream_guard = StreamIsValid()) {
     result = ::fseek(m_stream, offset, SEEK_END);
 
     if (error_ptr) {
@@ -452,18 +467,23 @@ off_t NativeFile::SeekFromEnd(off_t offset, Status *error_ptr) {
 
 Status NativeFile::Flush() {
   Status error;
-  if (StreamIsValid()) {
+  if (ValueGuard stream_guard = StreamIsValid()) {
     if (llvm::sys::RetryAfterSignal(EOF, ::fflush, m_stream) == EOF)
       error.SetErrorToErrno();
-  } else if (!DescriptorIsValid()) {
-    error.SetErrorString("invalid file handle");
+    return error;
+  }
+
+  {
+    ValueGuard descriptor_guard = DescriptorIsValid();
+    if (!descriptor_guard)
+      error.SetErrorString("invalid file handle");
   }
   return error;
 }
 
 Status NativeFile::Sync() {
   Status error;
-  if (DescriptorIsValid()) {
+  if (ValueGuard descriptor_guard = DescriptorIsValid()) {
 #ifdef _WIN32
     int err = FlushFileBuffers((HANDLE)_get_osfhandle(m_descriptor));
     if (err == 0)
@@ -518,14 +538,15 @@ Status NativeFile::Read(void *buf, size_t &num_bytes) {
 #endif
 
   ssize_t bytes_read = -1;
-  if (DescriptorIsValid()) {
-    bytes_read = llvm::sys::RetryAfterSignal(-1, ::read, m_descriptor, buf, num_bytes);
+  if (ValueGuard descriptor_guard = DescriptorIsValid()) {
+    bytes_read =
+        llvm::sys::RetryAfterSignal(-1, ::read, m_descriptor, buf, num_bytes);
     if (bytes_read == -1) {
       error.SetErrorToErrno();
       num_bytes = 0;
     } else
       num_bytes = bytes_read;
-  } else if (StreamIsValid()) {
+  } else if (ValueGuard file_lock = StreamIsValid()) {
     bytes_read = ::fread(buf, 1, num_bytes, m_stream);
 
     if (bytes_read == 0) {
@@ -577,7 +598,7 @@ Status NativeFile::Write(const void *buf, size_t &num_bytes) {
 #endif
 
   ssize_t bytes_written = -1;
-  if (DescriptorIsValid()) {
+  if (ValueGuard descriptor_guard = DescriptorIsValid()) {
     bytes_written =
         llvm::sys::RetryAfterSignal(-1, ::write, m_descriptor, buf, num_bytes);
     if (bytes_written == -1) {
@@ -585,7 +606,7 @@ Status NativeFile::Write(const void *buf, size_t &num_bytes) {
       num_bytes = 0;
     } else
       num_bytes = bytes_written;
-  } else if (StreamIsValid()) {
+  } else if (ValueGuard stream_guard = StreamIsValid()) {
     bytes_written = ::fwrite(buf, 1, num_bytes, m_stream);
 
     if (bytes_written == 0) {
@@ -596,7 +617,6 @@ Status NativeFile::Write(const void *buf, size_t &num_bytes) {
       num_bytes = 0;
     } else
       num_bytes = bytes_written;
-
   } else {
     num_bytes = 0;
     error.SetErrorString("invalid file handle");
@@ -701,8 +721,8 @@ Status NativeFile::Write(const void *buf, size_t &num_bytes, off_t &offset) {
   int fd = GetDescriptor();
   if (fd != kInvalidDescriptor) {
 #ifndef _WIN32
-    ssize_t bytes_written =
-        llvm::sys::RetryAfterSignal(-1, ::pwrite, m_descriptor, buf, num_bytes, offset);
+    ssize_t bytes_written = llvm::sys::RetryAfterSignal(
+        -1, ::pwrite, m_descriptor, buf, num_bytes, offset);
     if (bytes_written < 0) {
       num_bytes = 0;
       error.SetErrorToErrno();
