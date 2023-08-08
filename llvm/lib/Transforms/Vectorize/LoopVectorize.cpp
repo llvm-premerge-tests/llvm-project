@@ -9532,12 +9532,12 @@ void VPReductionRecipe::execute(VPTransformState &State) {
     Value *NewVecOp = State.get(getVecOp(), Part);
     if (VPValue *Cond = getCondOp()) {
       Value *NewCond = State.get(Cond, Part);
-      VectorType *VecTy = cast<VectorType>(NewVecOp->getType());
-      Value *Iden = RdxDesc->getRecurrenceIdentity(
-          Kind, VecTy->getElementType(), RdxDesc->getFastMathFlags());
-      Value *IdenVec =
-          State.Builder.CreateVectorSplat(VecTy->getElementCount(), Iden);
-      Value *Select = State.Builder.CreateSelect(NewCond, NewVecOp, IdenVec);
+      Type *ScalarTy = NewVecOp->getType()->getScalarType();
+      Value *Iden = RdxDesc->getRecurrenceIdentity(Kind, ScalarTy,
+                                                   RdxDesc->getFastMathFlags());
+      if (State.VF.isVector())
+        Iden = State.Builder.CreateVectorSplat(State.VF, Iden);
+      Value *Select = State.Builder.CreateSelect(NewCond, NewVecOp, Iden);
       NewVecOp = Select;
     }
     Value *NewRed;
