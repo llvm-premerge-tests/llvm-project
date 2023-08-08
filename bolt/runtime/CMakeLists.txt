@@ -27,8 +27,8 @@ set(BOLT_RT_FLAGS
   -fno-exceptions
   -fno-rtti
   -fno-stack-protector
-  -mno-sse
-  -fPIC)
+  -fPIC
+  -mgeneral-regs-only)
 
 # Don't let the compiler think it can create calls to standard libs
 target_compile_options(bolt_rt_instr PRIVATE ${BOLT_RT_FLAGS})
