@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os
 from builtins import range
@@ -832,6 +832,11 @@ feature_test_macros = [
             "values": {"c++23": 202106},
             "headers": ["algorithm"],
             "unimplemented": True,
+        },
+        {
+            "name": "__cpp_lib_ranges_stride",
+            "values": {"c++23": 202207},
+            "headers": ["ranges"],
         },
         {
             "name": "__cpp_lib_ranges_to_container",
