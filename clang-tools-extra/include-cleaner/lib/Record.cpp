@@ -12,6 +12,7 @@
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/DeclGroup.h"
 #include "clang/Basic/FileEntry.h"
+#include "clang/Basic/FileManager.h"
 #include "clang/Basic/LLVM.h"
 #include "clang/Basic/SourceLocation.h"
 #include "clang/Basic/SourceManager.h"
@@ -24,16 +25,21 @@
 #include "clang/Tooling/Inclusions/HeaderAnalysis.h"
 #include "clang/Tooling/Inclusions/StandardLibrary.h"
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
+#include "llvm/ADT/iterator_range.h"
 #include "llvm/Support/Allocator.h"
 #include "llvm/Support/Error.h"
+#include "llvm/Support/FileSystem/UniqueID.h"
 #include "llvm/Support/StringSaver.h"
 #include <algorithm>
 #include <assert.h>
 #include <memory>
 #include <optional>
+#include <set>
 #include <utility>
 #include <vector>
 
@@ -387,24 +393,44 @@ llvm::StringRef PragmaIncludes::getPublic(const FileEntry *F) const {
   return It->getSecond();
 }
 
+template <typename Iter>
 static llvm::SmallVector<const FileEntry *>
-toFileEntries(llvm::ArrayRef<StringRef> FileNames, FileManager &FM) {
+toFileEntries(Iter FileNamesBegin, Iter FileNamesEnd, FileManager &FM) {
   llvm::SmallVector<const FileEntry *> Results;
 
-  for (auto FName : FileNames) {
+  for (auto FNameIt = FileNamesBegin; FNameIt != FileNamesEnd; ++FNameIt) {
     // FIMXE: log the failing cases?
-    if (auto FE = expectedToOptional(FM.getFileRef(FName)))
+    if (auto FE = expectedToOptional(FM.getFileRef(*FNameIt)))
       Results.push_back(*FE);
   }
   return Results;
 }
+
+void collectExportersRecursively(
+    llvm::DenseMap<llvm::sys::fs::UniqueID,
+                   llvm::SmallVector</*FileEntry::getName()*/ llvm::StringRef>>
+        IWYUExportBy,
+    const llvm::sys::fs::UniqueID &UID, std::set<const FileEntry *> &Result,
+    FileManager &FM) {
+  auto It = IWYUExportBy.find(UID);
+  if (It == IWYUExportBy.end())
+    return;
+  auto Exporters =
+      toFileEntries(It->getSecond().begin(), It->getSecond().end(), FM);
+  for (const auto &E : Exporters) {
+    Result.insert(E);
+    collectExportersRecursively(IWYUExportBy, E->getUniqueID(), Result, FM);
+  }
+}
+
 llvm::SmallVector<const FileEntry *>
 PragmaIncludes::getExporters(const FileEntry *File, FileManager &FM) const {
-  auto It = IWYUExportBy.find(File->getUniqueID());
-  if (It == IWYUExportBy.end())
-    return {};
-
-  return toFileEntries(It->getSecond(), FM);
+  std::set<const FileEntry *> UniqueExporters;
+  collectExportersRecursively(IWYUExportBy, File->getUniqueID(),
+                              UniqueExporters, FM);
+  llvm::SmallVector<const FileEntry *> Exporters{UniqueExporters.begin(),
+                                                 UniqueExporters.end()};
+  return Exporters;
 }
 llvm::SmallVector<const FileEntry *>
 PragmaIncludes::getExporters(tooling::stdlib::Header StdHeader,
@@ -412,7 +438,7 @@ PragmaIncludes::getExporters(tooling::stdlib::Header StdHeader,
   auto It = StdIWYUExportBy.find(StdHeader);
   if (It == StdIWYUExportBy.end())
     return {};
-  return toFileEntries(It->getSecond(), FM);
+  return toFileEntries(It->getSecond().begin(), It->getSecond().end(), FM);
 }
 
 bool PragmaIncludes::isSelfContained(const FileEntry *FE) const {
