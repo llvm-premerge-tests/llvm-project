@@ -1148,12 +1148,6 @@ void VPValue::printAsOperand(raw_ostream &OS, VPSlotTracker &Tracker) const {
   else
     OS << "vp<%" << Tracker.getSlot(this) << ">";
 }
-
-void VPUser::printOperands(raw_ostream &O, VPSlotTracker &SlotTracker) const {
-  interleaveComma(operands(), O, [&O, &SlotTracker](VPValue *Op) {
-    Op->printAsOperand(O, SlotTracker);
-  });
-}
 #endif
 
 void VPInterleavedAccessInfo::visitRegion(VPRegionBlock *Region,

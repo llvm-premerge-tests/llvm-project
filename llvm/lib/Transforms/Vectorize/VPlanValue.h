@@ -215,11 +215,6 @@ private:
   VPUserID ID;
 
 protected:
-#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
-  /// Print the operands to \p O.
-  void printOperands(raw_ostream &O, VPSlotTracker &SlotTracker) const;
-#endif
-
   VPUser(ArrayRef<VPValue *> Operands, VPUserID ID) : ID(ID) {
     for (VPValue *Operand : Operands)
       addOperand(Operand);

@@ -806,6 +806,16 @@ public:
     // Mask is optional and therefore the last operand.
     return isMasked() ? getOperand(getNumOperands() - 1) : nullptr;
   }
+
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+  /// Print the operands to \p O.
+  void printOperands(raw_ostream &O, VPSlotTracker &SlotTracker) const;
+#endif
+
+  const_operand_range operands_without_mask() const {
+    auto End = isMasked() ? op_end() - 1 : op_end();
+    return const_operand_range(op_begin(), End);
+  }
 };
 
 // Helper macro to define common classof implementations for recipes.

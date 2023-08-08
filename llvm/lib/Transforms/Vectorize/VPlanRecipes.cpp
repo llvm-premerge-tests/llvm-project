@@ -216,6 +216,20 @@ void VPRecipeBase::moveBefore(VPBasicBlock &BB,
   insertBefore(BB, I);
 }
 
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+void VPRecipeBase::printOperands(raw_ostream &O,
+                                 VPSlotTracker &SlotTracker) const {
+  interleaveComma(operands_without_mask(), O, [&O, &SlotTracker](VPValue *Op) {
+    Op->printAsOperand(O, SlotTracker);
+  });
+  if (isMasked()) {
+    O << " (mask ";
+    getMask()->printAsOperand(O, SlotTracker);
+    O << ")";
+  }
+}
+#endif
+
 FastMathFlags VPRecipeWithIRFlags::getFastMathFlags() const {
   assert(OpType == OperationType::FPMathOp &&
          "recipe doesn't have fast math flags");
