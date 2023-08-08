@@ -7957,6 +7957,7 @@ cc_library(
         ":ArithDialect",
         ":ArithToLLVM",
         ":ArithToSPIRV",
+        ":ArithTransformOps",
         ":ArithTransforms",
         ":ArithValueBoundsOpInterfaceImpl",
         ":ArmNeonDialect",
@@ -11025,6 +11026,57 @@ cc_library(
         ":ValueBoundsOpInterface",
         ":VectorDialect",
         "//llvm:Support",
+    ],
+)
+
+td_library(
+    name = "ArithTransformOpsTdFiles",
+    srcs = [
+        "include/mlir/Dialect/Arith/TransformOps/ArithTransformOps.td",
+    ],
+    includes = ["include"],
+    deps = [
+        ":TransformDialectTdFiles",
+    ],
+)
+
+gentbl_cc_library(
+    name = "ArithTransformOpsIncGen",
+    strip_include_prefix = "include",
+    tbl_outs = [
+        (
+            ["-gen-op-decls"],
+            "include/mlir/Dialect/Arith/TransformOps/ArithTransformOps.h.inc",
+        ),
+        (
+            ["-gen-op-defs"],
+            "include/mlir/Dialect/Arith/TransformOps/ArithTransformOps.cpp.inc",
+        ),
+    ],
+    tblgen = ":mlir-tblgen",
+    td_file = "include/mlir/Dialect/Arith/TransformOps/ArithTransformOps.td",
+    deps = [
+        ":ArithTransformOpsTdFiles",
+    ],
+)
+
+cc_library(
+    name = "ArithTransformOps",
+    srcs = [
+        "lib/Dialect/Arith/TransformOps/ArithTransformOps.cpp",
+    ],
+    hdrs = [
+        "include/mlir/Dialect/Arith/TransformOps/ArithTransformOps.h",
+    ],
+    includes = ["include"],
+    deps = [
+        ":ArithDialect",
+        ":ArithToLLVM",
+        ":ArithTransformOpsIncGen",
+        ":IR",
+        ":LLVMCommonConversion",
+        ":LLVMDialect",
+        ":TransformDialect",
     ],
 )
 
