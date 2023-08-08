@@ -287,6 +287,8 @@ public:
       CallsToRetrieve++;
       if (EntriesCount == 0)
         return false;
+      u32 OptimalFitIndex = 0;
+      uptr MinDiff = UINTPTR_MAX;
       for (u32 I = 0; I < MaxCount; I++) {
         if (!Entries[I].isValid())
           continue;
@@ -294,19 +296,39 @@ public:
         const uptr CommitSize = Entries[I].CommitSize;
         const uptr AllocPos =
             roundDown(CommitBase + CommitSize - Size, Alignment);
-        HeaderPos = AllocPos - HeadersSize;
-        if (HeaderPos > CommitBase + CommitSize)
+        const uptr TempHeaderPos = AllocPos - HeadersSize;
+        if (TempHeaderPos > CommitBase + CommitSize)
           continue;
-        if (HeaderPos < CommitBase ||
+        if (TempHeaderPos < CommitBase ||
             AllocPos > CommitBase + PageSize * MaxUnusedCachePages) {
           continue;
         }
         Found = true;
-        Entry = Entries[I];
-        Entries[I].invalidate();
+        const uptr Diff = TempHeaderPos - CommitBase;
+        // immediately use a cached block if it's size is close enough to the
+        // requested size.
+        // 10% of the requested size proved to be the optimal choice for
+        // retrieving cached blocks after testing several options.
+        const uptr MaxAllowedWastedBytes =
+            (CommitBase + CommitSize - TempHeaderPos) / 10;
+        if (Diff <= MaxAllowedWastedBytes) {
+          OptimalFitIndex = I;
+          HeaderPos = TempHeaderPos;
+          break;
+        }
+        // keep track of the smallest cached block
+        // that is greater than (AllocSize + HeaderSize)
+        if (Diff > MinDiff)
+          continue;
+        OptimalFitIndex = I;
+        MinDiff = Diff;
+        HeaderPos = TempHeaderPos;
+      }
+      if (Found) {
+        Entry = Entries[OptimalFitIndex];
+        Entries[OptimalFitIndex].invalidate();
         EntriesCount--;
         SuccessfulRetrieves++;
-        break;
       }
     }
     if (!Found)
