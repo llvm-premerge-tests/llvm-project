@@ -37,6 +37,7 @@ public:
   void emitBytes(StringRef Data) override;
   void emitFill(const MCExpr &NumBytes, uint64_t FillValue, SMLoc Loc) override;
   void emitValueImpl(const MCExpr *Value, unsigned Size, SMLoc Loc) override;
+  void emitULEB128Value(const MCExpr *Value) override;
 };
 
 namespace llvm {

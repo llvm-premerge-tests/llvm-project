@@ -98,6 +98,9 @@ RISCVAsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
 
       {"fixup_riscv_set_6b", 2, 6, 0},
       {"fixup_riscv_sub_6b", 2, 6, 0},
+
+      {"fixup_riscv_set_uleb128", 0, 0, 0},
+      {"fixup_riscv_sub_uleb128", 0, 0, 0},
   };
   static_assert((std::size(Infos)) == RISCV::NumTargetFixupKinds,
                 "Not all fixup kinds added to Infos array");
@@ -416,11 +419,14 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
   case RISCV::fixup_riscv_sub_32:
   case RISCV::fixup_riscv_add_64:
   case RISCV::fixup_riscv_sub_64:
+  case RISCV::fixup_riscv_set_uleb128:
+  case RISCV::fixup_riscv_sub_uleb128:
   case FK_Data_1:
   case FK_Data_2:
   case FK_Data_4:
   case FK_Data_8:
   case FK_Data_6b:
+  case FK_Data_uleb128:
     return Value;
   case RISCV::fixup_riscv_set_6b:
     return Value & 0x03;
@@ -604,6 +610,10 @@ bool RISCVAsmBackend::handleAddSubRelocations(const MCAsmLayout &Layout,
   case llvm::FK_Data_8:
     TA = ELF::R_RISCV_ADD64;
     TB = ELF::R_RISCV_SUB64;
+    break;
+  case llvm::FK_Data_uleb128:
+    TA = ELF::R_RISCV_SET_ULEB128;
+    TB = ELF::R_RISCV_SUB_ULEB128;
     break;
   default:
     llvm_unreachable("unsupported fixup size");
