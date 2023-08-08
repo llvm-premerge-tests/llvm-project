@@ -24,6 +24,11 @@
 #include <cstring>
 
 using namespace llvm;
+
+extern cl::opt<bool> EnableDetailedFunctionProperties;
+extern cl::opt<bool> BigBasicBlockInstructionThreshold;
+extern cl::opt<bool> MediumBasicBlockInstrutionThreshold;
+
 namespace {
 
 class FunctionPropertiesAnalysisTest : public testing::Test {
@@ -117,6 +122,20 @@ define internal i32 @top() {
   EXPECT_EQ(BranchesFeatures.StoreInstCount, 0);
   EXPECT_EQ(BranchesFeatures.MaxLoopDepth, 0);
   EXPECT_EQ(BranchesFeatures.TopLevelLoopCount, 0);
+
+  EnableDetailedFunctionProperties.setValue(true);
+  FunctionPropertiesInfo DetailedBranchesFeatures = buildFPI(*BranchesFunction);
+  EXPECT_EQ(DetailedBranchesFeatures.BasicBlocksWithSingleSuccessor, 2);
+  EXPECT_EQ(DetailedBranchesFeatures.BasicBlocksWithTwoSuccessors, 1);
+  EXPECT_EQ(DetailedBranchesFeatures.BasicBlocksWithMoreThanTwoSuccessors, 0);
+  EXPECT_EQ(DetailedBranchesFeatures.BasicBlocksWithSinglePredecessor, 2);
+  EXPECT_EQ(DetailedBranchesFeatures.BasicBlocksWithTwoPredecessors, 1);
+  EXPECT_EQ(DetailedBranchesFeatures.BasicBlocksWithMoreThanTwoPredecessors, 0);
+  EXPECT_EQ(DetailedBranchesFeatures.CastInstructionCount, 0);
+  EXPECT_EQ(DetailedBranchesFeatures.FloatingPointInstructionCount, 0);
+  EXPECT_EQ(DetailedBranchesFeatures.IntegerInstructionCount, 4);
+  EXPECT_EQ(DetailedBranchesFeatures.IntegerConstantCount, 1);
+  EXPECT_EQ(DetailedBranchesFeatures.FloatingPointConstantCount, 0);
 }
 
 TEST_F(FunctionPropertiesAnalysisTest, InlineSameBBSimple) {
