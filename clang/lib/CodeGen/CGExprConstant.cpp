@@ -1387,6 +1387,13 @@ public:
     return nullptr;
   }
 
+  llvm::Constant *VisitUnaryNot(UnaryOperator *U, QualType T) {
+    if (llvm::Constant *C = Visit(U->getSubExpr(), T))
+      if (auto *CI = dyn_cast<llvm::ConstantInt>(C))
+        return llvm::ConstantInt::get(CGM.getLLVMContext(), ~CI->getValue());
+    return nullptr;
+  }
+
   // Utility methods
   llvm::Type *ConvertType(QualType T) {
     return CGM.getTypes().ConvertType(T);
