@@ -37,6 +37,12 @@ struct PassManagerOptions {
                                "Print IR before specified passes"};
   PassNameCLParser printAfter{"mlir-print-ir-after",
                               "Print IR after specified passes"};
+  llvm::cl::opt<unsigned> printElided{
+      "mlir-print-ir-elided",
+      llvm::cl::desc(
+          "When printing IR for print-ir-[before|after]{-all},"
+          "elide attributes larger than this given limit "
+          "(like mlir-elide-elementsattrs-if-larger but just for print-ir-*)")};
   llvm::cl::opt<bool> printBeforeAll{
       "mlir-print-ir-before-all", llvm::cl::desc("Print IR before each pass"),
       llvm::cl::init(false)};
@@ -119,10 +125,15 @@ void PassManagerOptions::addPrinterInstrumentation(PassManager &pm) {
   if (!shouldPrintBeforePass && !shouldPrintAfterPass)
     return;
 
+  auto opPrintingFlags = OpPrintingFlags();
+  if (printElided.getNumOccurrences()) {
+    opPrintingFlags.elideLargeElementsAttrs(printElided);
+  }
+
   // Otherwise, add the IR printing instrumentation.
   pm.enableIRPrinting(shouldPrintBeforePass, shouldPrintAfterPass,
                       printModuleScope, printAfterChange, printAfterFailure,
-                      llvm::errs());
+                      llvm::errs(), opPrintingFlags);
 }
 
 void mlir::registerPassManagerCLOptions() {
