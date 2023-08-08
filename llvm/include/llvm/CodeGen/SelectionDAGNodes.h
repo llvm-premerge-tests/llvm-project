@@ -1568,6 +1568,27 @@ public:
     return 0;
   }
 
+  /// Checks if the shuffle is a rotation of the first operand, e.g:
+  ///
+  /// shuffle %a:v8i8, %b:v8i8, <1, 0, 3, 2, 5, 4, 7, 6>
+  ///
+  /// could be expressed as
+  ///
+  /// rotl (bitcast %a):v4i16, 8
+  ///
+  /// If it can be expressed as a rotation, returns the type that should be used
+  /// for the rotation and the number of bits to rotate by.
+  std::optional<std::pair<EVT, unsigned>> isBitRotate() {
+    EVT VT = getValueType(0);
+    ArrayRef<int> Mask = getMask();
+    return isBitRotate(VT.getScalarSizeInBits(), Mask, 2, Mask.size());
+  }
+
+  static std::optional<std::pair<EVT, unsigned>> isBitRotate(int EltSizeInBits,
+                                                             ArrayRef<int> Mask,
+                                                             int MinSubElts,
+                                                             int MaxSubElts);
+
   static bool isSplatMask(const int *Mask, EVT VT);
 
   /// Change values in a shuffle permute mask assuming
