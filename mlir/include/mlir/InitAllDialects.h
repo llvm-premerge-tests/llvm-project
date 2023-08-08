@@ -21,6 +21,7 @@
 #include "mlir/Dialect/Affine/TransformOps/AffineTransformOps.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Arith/IR/ValueBoundsOpInterfaceImpl.h"
+#include "mlir/Dialect/Arith/TransformOps/ArithTransformOps.h"
 #include "mlir/Dialect/Arith/Transforms/BufferizableOpInterfaceImpl.h"
 #include "mlir/Dialect/ArmNeon/ArmNeonDialect.h"
 #include "mlir/Dialect/ArmSME/IR/ArmSME.h"
@@ -136,6 +137,7 @@ inline void registerAllDialects(DialectRegistry &registry) {
   // clang-format on
 
   // Register all dialect extensions.
+  arith::registerTransformDialectExtension(registry);
   affine::registerTransformDialectExtension(registry);
   bufferization::registerTransformDialectExtension(registry);
   gpu::registerTransformDialectExtension(registry);
