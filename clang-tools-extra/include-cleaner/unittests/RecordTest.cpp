@@ -439,6 +439,25 @@ TEST_F(PragmaIncludeTest, IWYUExport) {
       PI.getExporters(SM.getFileEntryForID(SM.getMainFileID()), FM).empty());
 }
 
+TEST_F(PragmaIncludeTest, IWYUTransitiveExport) {
+  Inputs.Code = R"cpp(
+    #include "export1.h"
+  )cpp";
+  Inputs.ExtraFiles["export1.h"] = R"cpp(
+    #include "export2.h" // IWYU pragma: export
+  )cpp";
+  Inputs.ExtraFiles["export2.h"] = R"cpp(
+    #include "provider.h" // IWYU pragma: export
+  )cpp";
+  Inputs.ExtraFiles["provider.h"] = "";
+  TestAST Processed = build();
+  auto &FM = Processed.fileManager();
+
+  EXPECT_THAT(PI.getExporters(FM.getFile("provider.h").get(), FM),
+              testing::UnorderedElementsAre(FileNamed("export1.h"),
+                                            FileNamed("export2.h")));
+}
+
 TEST_F(PragmaIncludeTest, IWYUExportForStandardHeaders) {
   Inputs.Code = R"cpp(
     #include "export.h"
@@ -484,9 +503,11 @@ TEST_F(PragmaIncludeTest, IWYUExportBlock) {
               testing::UnorderedElementsAre(FileNamed("export1.h"),
                                             FileNamed("normal.h")));
   EXPECT_THAT(PI.getExporters(FM.getFile("private2.h").get(), FM),
-              testing::UnorderedElementsAre(FileNamed("export1.h")));
+              testing::UnorderedElementsAre(FileNamed("export1.h"),
+                                            FileNamed("normal.h")));
   EXPECT_THAT(PI.getExporters(FM.getFile("private3.h").get(), FM),
-              testing::UnorderedElementsAre(FileNamed("export1.h")));
+              testing::UnorderedElementsAre(FileNamed("export1.h"),
+                                            FileNamed("normal.h")));
 
   EXPECT_TRUE(PI.getExporters(FM.getFile("foo.h").get(), FM).empty());
   EXPECT_TRUE(PI.getExporters(FM.getFile("bar.h").get(), FM).empty());

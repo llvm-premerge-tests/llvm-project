@@ -23,8 +23,11 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Casting.h"
+#include "llvm/Support/Error.h"
 #include "llvm/Support/ErrorHandling.h"
+#include <algorithm>
 #include <optional>
+#include <set>
 #include <utility>
 
 namespace clang::include_cleaner {
@@ -188,17 +191,24 @@ llvm::SmallVector<Hinted<Header>> findHeaders(const SymbolLocation &Loc,
     if (!PI)
       return {{FE, Hints::PublicHeader | Hints::OriginHeader}};
     bool IsOrigin = true;
+    std::set<const FileEntry *> Exporters;
     while (FE) {
       Results.emplace_back(FE,
                            isPublicHeader(FE, *PI) |
                                (IsOrigin ? Hints::OriginHeader : Hints::None));
-      // FIXME: compute transitive exporter headers.
-      for (const auto *Export : PI->getExporters(FE, SM.getFileManager()))
+      for (const auto *Export : PI->getExporters(FE, SM.getFileManager())) {
+        Exporters.insert(Export);
         Results.emplace_back(Export, isPublicHeader(Export, *PI));
+      }
 
       if (auto Verbatim = PI->getPublic(FE); !Verbatim.empty()) {
-        Results.emplace_back(Verbatim,
-                             Hints::PublicHeader | Hints::PreferredHeader);
+        Hints Hint = Hints::PublicHeader;
+        auto FE =
+                expectedToOptional(SM.getFileManager().getFileRef(Verbatim));
+        if (!FE || std::find(Exporters.begin(), Exporters.end(), FE) ==
+              Exporters.end())
+          Hint |= Hints::PreferredHeader;
+        Results.emplace_back(Verbatim, Hint);
         break;
       }
       if (PI->isSelfContained(FE) || FID == SM.getMainFileID())
