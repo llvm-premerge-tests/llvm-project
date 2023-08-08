@@ -106,24 +106,33 @@ def ASR31 : SparcCtrlReg<31, "ASR31">;
 def PSR : SparcCtrlReg<0, "PSR">;
 def WIM : SparcCtrlReg<0, "WIM">;
 def TBR : SparcCtrlReg<0, "TBR">;
-// PC on the other hand is only available for SparcV9.
-def PC : SparcCtrlReg<5, "PC">;
 
-def TPC : SparcCtrlReg<0, "TPC">;
-def TNPC : SparcCtrlReg<1, "TNPC">;
-def TSTATE : SparcCtrlReg<2, "TSTATE">;
-def TT : SparcCtrlReg<3, "TT">;
-def TICK : SparcCtrlReg<4, "TICK">;
-def TBA : SparcCtrlReg<5, "TBA">;
-def PSTATE : SparcCtrlReg<6, "PSTATE">;
-def TL : SparcCtrlReg<7, "TL">;
-def PIL : SparcCtrlReg<8, "PIL">;
-def CWP : SparcCtrlReg<9, "CWP">;
-def CANSAVE : SparcCtrlReg<10, "CANSAVE">;
+// The rest of the state registers on the other hand is only available for SparcV9.
+// Unprivileged V9 state registers
+def CCR        : SparcCtrlReg<2, "CCR">;
+def ASI        : SparcCtrlReg<3, "ASI">;
+def PC         : SparcCtrlReg<5, "PC">;
+def FPRS       : SparcCtrlReg<6, "FPRS">;
+// %tick can be read by both privileged and unprivileged instructions,
+// but can only be written by privileged instructions.
+def TICK       : SparcCtrlReg<4, "TICK">;
+// Privileged V9 state registers
+def TPC        : SparcCtrlReg<0, "TPC">;
+def TNPC       : SparcCtrlReg<1, "TNPC">;
+def TSTATE     : SparcCtrlReg<2, "TSTATE">;
+def TT         : SparcCtrlReg<3, "TT">;
+def TBA        : SparcCtrlReg<5, "TBA">;
+def PSTATE     : SparcCtrlReg<6, "PSTATE">;
+def TL         : SparcCtrlReg<7, "TL">;
+def PIL        : SparcCtrlReg<8, "PIL">;
+def CWP        : SparcCtrlReg<9, "CWP">;
+def CANSAVE    : SparcCtrlReg<10, "CANSAVE">;
 def CANRESTORE : SparcCtrlReg<11, "CANRESTORE">;
-def CLEANWIN : SparcCtrlReg<12, "CLEANWIN">;
-def OTHERWIN : SparcCtrlReg<13, "OTHERWIN">;
-def WSTATE : SparcCtrlReg<14, "WSTATE">;
+def CLEANWIN   : SparcCtrlReg<12, "CLEANWIN">;
+def OTHERWIN   : SparcCtrlReg<13, "OTHERWIN">;
+def WSTATE     : SparcCtrlReg<14, "WSTATE">;
+def GL         : SparcCtrlReg<16, "GL">;
+def VER        : SparcCtrlReg<31, "VER">;
 
 // Integer registers
 def G0 : Ri< 0, "G0">, DwarfRegNum<[0]> {
@@ -362,7 +371,8 @@ def FCCRegs : RegisterClass<"SP", [i1], 1, (sequence "FCC%u", 0, 3)>;
 let isAllocatable = 0 in {
   // Ancillary state registers
   def ASRRegs : RegisterClass<"SP", [i32], 32,
-                              (add Y, (sequence "ASR%u", 1, 31))>;
+                              (add Y, CCR, ASI, TICK, PC, FPRS,
+                               (sequence "ASR%u", 1, 31))>;
 
   // This register class should not be used to hold i64 values.
   def CoprocRegs : RegisterClass<"SP", [i32], 32,
@@ -379,5 +389,4 @@ let isAllocatable = 0 in {
 // Privileged Registers
 def PRRegs : RegisterClass<"SP", [i64], 64,
     (add TPC, TNPC, TSTATE, TT, TICK, TBA, PSTATE, TL, PIL, CWP,
-         CANSAVE, CANRESTORE, CLEANWIN, OTHERWIN, WSTATE)>;
-
+         CANSAVE, CANRESTORE, CLEANWIN, OTHERWIN, WSTATE, GL, VER)>;

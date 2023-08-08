@@ -1221,9 +1221,6 @@ SparcAsmParser::parseSparcAsmOperand(std::unique_ptr<SparcOperand> &Op,
       case Sparc::TBR:
         Op = SparcOperand::CreateToken("%tbr", S);
         break;
-      case Sparc::PC:
-        Op = SparcOperand::CreateToken("%pc", S);
-        break;
       case Sparc::ICC:
         if (name == "xcc")
           Op = SparcOperand::CreateToken("%xcc", S);
@@ -1322,7 +1319,7 @@ bool SparcAsmParser::matchRegisterName(const AsmToken &Tok, MCRegister &RegNo,
 
     // %fprs is an alias of %asr6.
     if (name.equals("fprs")) {
-      RegNo = ASRRegs[6];
+      RegNo = Sparc::FPRS;
       RegKind = SparcOperand::rk_Special;
       return true;
     }
@@ -1527,6 +1524,26 @@ bool SparcAsmParser::matchRegisterName(const AsmToken &Tok, MCRegister &RegNo,
     }
     if (name.equals("pc")) {
       RegNo = Sparc::PC;
+      RegKind = SparcOperand::rk_Special;
+      return true;
+    }
+    if (name.equals("asi")) {
+      RegNo = Sparc::ASI;
+      RegKind = SparcOperand::rk_Special;
+      return true;
+    }
+    if (name.equals("ccr")) {
+      RegNo = Sparc::CCR;
+      RegKind = SparcOperand::rk_Special;
+      return true;
+    }
+    if (name.equals("gl")) {
+      RegNo = Sparc::GL;
+      RegKind = SparcOperand::rk_Special;
+      return true;
+    }
+    if (name.equals("ver")) {
+      RegNo = Sparc::VER;
       RegKind = SparcOperand::rk_Special;
       return true;
     }
