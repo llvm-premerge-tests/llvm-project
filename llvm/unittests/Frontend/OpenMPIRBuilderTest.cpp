@@ -594,6 +594,7 @@ TEST_F(OpenMPIRBuilderTest, DbgLoc) {
 TEST_F(OpenMPIRBuilderTest, ParallelSimple) {
   using InsertPointTy = OpenMPIRBuilder::InsertPointTy;
   OpenMPIRBuilder OMPBuilder(*M);
+  OMPBuilder.Config.IsTargetDevice = false;
   OMPBuilder.initialize();
   F->setName("func");
   IRBuilder<> Builder(BB);
@@ -699,6 +700,7 @@ TEST_F(OpenMPIRBuilderTest, ParallelSimple) {
 TEST_F(OpenMPIRBuilderTest, ParallelNested) {
   using InsertPointTy = OpenMPIRBuilder::InsertPointTy;
   OpenMPIRBuilder OMPBuilder(*M);
+  OMPBuilder.Config.IsTargetDevice = false;
   OMPBuilder.initialize();
   F->setName("func");
   IRBuilder<> Builder(BB);
@@ -793,6 +795,7 @@ TEST_F(OpenMPIRBuilderTest, ParallelNested) {
 TEST_F(OpenMPIRBuilderTest, ParallelNested2Inner) {
   using InsertPointTy = OpenMPIRBuilder::InsertPointTy;
   OpenMPIRBuilder OMPBuilder(*M);
+  OMPBuilder.Config.IsTargetDevice = false;
   OMPBuilder.initialize();
   F->setName("func");
   IRBuilder<> Builder(BB);
@@ -902,6 +905,7 @@ TEST_F(OpenMPIRBuilderTest, ParallelNested2Inner) {
 TEST_F(OpenMPIRBuilderTest, ParallelIfCond) {
   using InsertPointTy = OpenMPIRBuilder::InsertPointTy;
   OpenMPIRBuilder OMPBuilder(*M);
+  OMPBuilder.Config.IsTargetDevice = false;
   OMPBuilder.initialize();
   F->setName("func");
   IRBuilder<> Builder(BB);
@@ -1006,6 +1010,7 @@ TEST_F(OpenMPIRBuilderTest, ParallelIfCond) {
 TEST_F(OpenMPIRBuilderTest, ParallelCancelBarrier) {
   using InsertPointTy = OpenMPIRBuilder::InsertPointTy;
   OpenMPIRBuilder OMPBuilder(*M);
+  OMPBuilder.Config.IsTargetDevice = false;
   OMPBuilder.initialize();
   F->setName("func");
   IRBuilder<> Builder(BB);
@@ -1119,6 +1124,7 @@ TEST_F(OpenMPIRBuilderTest, ParallelCancelBarrier) {
 
 TEST_F(OpenMPIRBuilderTest, ParallelForwardAsPointers) {
   OpenMPIRBuilder OMPBuilder(*M);
+  OMPBuilder.Config.IsTargetDevice = false;
   OMPBuilder.initialize();
   F->setName("func");
   IRBuilder<> Builder(BB);
@@ -4123,6 +4129,7 @@ xorAtomicReduction(OpenMPIRBuilder::InsertPointTy IP, Type *Ty, Value *LHS,
 TEST_F(OpenMPIRBuilderTest, CreateReductions) {
   using InsertPointTy = OpenMPIRBuilder::InsertPointTy;
   OpenMPIRBuilder OMPBuilder(*M);
+  OMPBuilder.Config.IsTargetDevice = false;
   OMPBuilder.initialize();
   F->setName("func");
   IRBuilder<> Builder(BB);
@@ -4355,6 +4362,7 @@ TEST_F(OpenMPIRBuilderTest, CreateReductions) {
 TEST_F(OpenMPIRBuilderTest, CreateTwoReductions) {
   using InsertPointTy = OpenMPIRBuilder::InsertPointTy;
   OpenMPIRBuilder OMPBuilder(*M);
+  OMPBuilder.Config.IsTargetDevice = false;
   OMPBuilder.initialize();
   F->setName("func");
   IRBuilder<> Builder(BB);

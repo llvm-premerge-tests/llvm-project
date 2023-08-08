@@ -549,6 +549,14 @@ public:
   using LoopBodyGenCallbackTy =
       function_ref<void(InsertPointTy CodeGenIP, Value *IndVar)>;
 
+  /// Callback type for target workshare body code generation.
+  ///
+  /// \param CodeGenIP The insertion point to place the body code which should
+  ///                  form a single-entry-single-exit (SESE) region.
+  /// \param IndVar    The induction variable value for the loop iteration.
+  using TargetWorkshareBodyGenCallbackTy =
+      function_ref<void(InsertPointTy CodeGenIP, Value *IndVar)>;
+
   /// Callback type for variable privatization (think copy & default
   /// constructor).
   ///
@@ -950,6 +958,18 @@ private:
   /// \param NamePrefix Optional name prefix for if.then if.else blocks.
   void createIfVersion(CanonicalLoopInfo *Loop, Value *IfCond,
                        ValueToValueMapTy &VMap, const Twine &NamePrefix = "");
+
+  IRBuilder<>::InsertPoint
+  createParallelHost(const LocationDescription &Loc, InsertPointTy AllocaIP,
+                     BodyGenCallbackTy BodyGenCB, PrivatizeCallbackTy PrivCB,
+                     FinalizeCallbackTy FiniCB, Value *IfCondition,
+                     Value *NumThreads, omp::ProcBindKind ProcBind,
+                     bool IsCancellable);
+  IRBuilder<>::InsertPoint createParallelTargetDevice(
+      const LocationDescription &Loc, InsertPointTy AllocaIP,
+      BodyGenCallbackTy BodyGenCB, PrivatizeCallbackTy PrivCB,
+      FinalizeCallbackTy FiniCB, Value *IfCondition, Value *NumThreads,
+      omp::ProcBindKind ProcBind, bool IsCancellable);
 
 public:
   /// Modifies the canonical loop to be a workshare loop.
@@ -1440,6 +1460,10 @@ public:
   /// Helper that contains information about regions we need to outline
   /// during finalization.
   struct OutlineInfo {
+    std::string Suffix;
+    omp::Directive OMPD;
+    bool IsCancellable;
+
     using PostOutlineCBTy = std::function<void(Function &)>;
     PostOutlineCBTy PostOutlineCB;
     BasicBlock *EntryBB, *ExitBB, *OuterAllocaBB;
@@ -1463,6 +1487,13 @@ public:
 
   /// Add a new region that will be outlined later.
   void addOutlineInfo(OutlineInfo &&OI) { OutlineInfos.emplace_back(OI); }
+
+  void prepareOutlineRegion(OutlineInfo &OI, BodyGenCallbackTy BodyGenCB,
+                            PrivatizeCallbackTy PrivCB,
+                            FinalizeCallbackTy FiniCB,
+                            InsertPointTy InnerAllocaIP,
+                            InsertPointTy CodeGenIP, BasicBlock &FiniBB,
+                            Value *PrivTID);
 
   /// An ordered map of auto-generated variables to their unique names.
   /// It stores variables with the following names: 1) ".gomp_critical_user_" +
@@ -1998,6 +2029,21 @@ public:
   ///
   /// \param Loc The insert and source location description.
   void createTargetDeinit(const LocationDescription &Loc);
+
+  /// Create a runtime call for a target/device workshare loop (for, distribute,
+  /// distrbute [parallel] for).
+  ///
+  /// \param Loc The insert and source location description.
+  /// \param OMPD Directive that was used.
+  /// \param BodyGenCB Callback that will generate the loop body SESE-region.
+  /// \param PrivCB Callback to copy a given variable (think copy constructor).
+  /// \param FiniCB Callback to finalize variable copies.
+  /// \param NumThreads The evaluated 'num_threads' clause expression, if any.
+  void createTargetWorkshareLoop(const LocationDescription &Loc,
+                                 omp::Directive OMPD,
+                                 TargetWorkshareBodyGenCallbackTy BodyGenCB,
+                                 PrivatizeCallbackTy PrivCB,
+                                 FinalizeCallbackTy FiniCB, Value *NumThreads);
 
   ///}
 
