@@ -1387,6 +1387,64 @@ public:
     return nullptr;
   }
 
+  llvm::Constant *VisitBinaryOperator(BinaryOperator *B, QualType T) {
+    // Can we attempt to handle this opcode?
+    switch (B->getOpcode()) {
+    default:
+      return nullptr;
+    case BO_And:
+    case BO_Xor:
+    case BO_Or:
+    case BO_EQ:
+    case BO_NE:
+      break;
+    }
+
+    // Constant evaluate LHS
+    Expr *LHS = B->getLHS();
+    llvm::Constant *LHSC = Visit(LHS, T);
+
+    // Only handle integers for now.
+    if (!LHSC || !isa<llvm::ConstantInt>(LHSC))
+      return nullptr;
+
+    // Constant evaluate RHS
+    Expr *RHS = B->getRHS();
+    llvm::Constant *RHSC = Visit(RHS, T);
+
+    // Only handle integers for now.
+    if (!RHSC || !isa<llvm::ConstantInt>(RHSC))
+      return nullptr;
+
+    const llvm::APInt &R = cast<llvm::ConstantInt>(RHSC)->getValue();
+    const llvm::APInt &L = cast<llvm::ConstantInt>(LHSC)->getValue();
+    llvm::APInt Ret;
+
+    // Fold
+    switch (B->getOpcode()) {
+    default:
+      // Should have return earlier.
+      llvm_unreachable("unhandled BinaryOperator kind");
+    case BO_And:
+      Ret = L & R;
+      break;
+    case BO_Xor:
+      Ret = L ^ R;
+      break;
+    case BO_Or:
+      Ret = L | R;
+      break;
+    case BO_EQ:
+      Ret = L == R;
+      break;
+    case BO_NE:
+      Ret = L != R;
+      break;
+    }
+
+    return llvm::ConstantInt::get(CGM.getLLVMContext(), Ret);
+  }
+
   // Utility methods
   llvm::Type *ConvertType(QualType T) {
     return CGM.getTypes().ConvertType(T);
