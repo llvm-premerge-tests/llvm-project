@@ -1070,7 +1070,7 @@ mlir::LogicalResult fir::CoordinateOp::verify() {
         return emitOpError("cannot find coordinate with unknown extents");
     }
     if (!(fir::isa_aggregate(eleTy) || fir::isa_complex(eleTy) ||
-          fir::isa_char_string(eleTy)))
+          fir::isa_char_string(eleTy) || eleTy.isInteger(8)))
       return emitOpError("cannot apply to this element type");
   }
   auto eleTy = fir::dyn_cast_ptrOrBoxEleTy(refTy);
@@ -1119,6 +1119,8 @@ mlir::LogicalResult fir::CoordinateOp::verify() {
         return mlir::success();
       } else if (auto t = eleTy.dyn_cast<fir::RecordType>()) {
         // FIXME: This is the same as the tuple case.
+        return mlir::success();
+      } else if (eleTy.isInteger(8)) {
         return mlir::success();
       } else if (auto t = eleTy.dyn_cast<fir::ComplexType>()) {
         eleTy = t.getElementType();
