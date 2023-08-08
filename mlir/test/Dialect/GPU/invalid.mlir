@@ -637,6 +637,6 @@ module {
 // -----
 
 module {
-  // expected-error @+1 {{custom op 'gpu.binary' invalid kind of attribute specified}}
+  // expected-error @+1 {{'gpu.binary' op attribute 'offloadingHandler' failed to satisfy constraint: OffloadingLLVMTranslationAttrInterface instance}}
   gpu.binary @binary <1> [#gpu.object<#nvvm.target, "">]
 }
