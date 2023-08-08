@@ -674,7 +674,6 @@ set(files
   __ranges/views.h
   __ranges/zip_view.h
   __split_buffer
-  __std_clang_module
   __std_mbstate_t.h
   __stop_token/atomic_unique_lock.h
   __stop_token/intrusive_list_view.h
@@ -1052,6 +1051,17 @@ foreach(f ${files})
     COMMENT "Copying CXX header ${f}")
   list(APPEND _all_includes "${dst}")
 endforeach()
+
+add_custom_command(
+  OUTPUT "${LIBCXX_GENERATED_INCLUDE_DIR}/__std_clang_module"
+         # Run this command on every build in case a public header was added or removed.
+         "${LIBCXX_GENERATED_INCLUDE_DIR}/__std_clang_module_run_every_build"
+  COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/generate_std_clang_module_header.py"
+          --libcxx-python-module "${CMAKE_CURRENT_SOURCE_DIR}/../utils"
+          --libcxx-include-directory "${LIBCXX_GENERATED_INCLUDE_DIR}"
+  COMMENT "Generating CXX header __std_clang_module")
+list(APPEND _all_includes "${LIBCXX_GENERATED_INCLUDE_DIR}/__std_clang_module"
+                          "${LIBCXX_GENERATED_INCLUDE_DIR}/__std_clang_module_run_every_build")
 
 add_custom_target(generate-cxx-headers ALL DEPENDS ${_all_includes})
 
