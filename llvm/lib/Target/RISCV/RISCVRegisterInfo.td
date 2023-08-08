@@ -174,6 +174,10 @@ def PGPR : RegisterClass<"RISCV", [XLenVT], 32, (add
   let RegInfos = XLenRI;
 }
 
+def GPRRA : RegisterClass<"RISCV", [XLenVT], 32, (add X1, X5)> {
+  let RegInfos = XLenRI;
+}
+
 // Floating point registers
 let RegAltNameIndices = [ABIRegAltName] in {
   def F0_H  : RISCVReg16<0, "f0", ["ft0"]>, DwarfRegNum<[32]>;
@@ -595,3 +599,6 @@ foreach m = LMULList in {
 // Special registers
 def FFLAGS : RISCVReg<0, "fflags">;
 def FRM    : RISCVReg<0, "frm">;
+
+// Shadow Stack register
+def SSP    : RISCVReg<0, "ssp">;
