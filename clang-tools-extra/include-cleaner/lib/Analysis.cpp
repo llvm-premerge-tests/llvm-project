@@ -40,6 +40,15 @@ void walkUsed(llvm::ArrayRef<Decl *> ASTRoots,
   tooling::stdlib::Recognizer Recognizer;
   for (auto *Root : ASTRoots) {
     walkAST(*Root, [&](SourceLocation Loc, NamedDecl &ND, RefType RT) {
+      // If the symbol is spelled as a token paste, it spelling location points
+      // to <scratch space> file which is not a real file. We fallback to use
+      // the expansion location, this herustic is based on the assumption that
+      // most of token pastings are formed with the macro arguement, and it can
+      // allow us to detect uses of symbol defined by the common macro like
+      // `ABSL_FLAG`.
+      if (SM.isWrittenInScratchSpace(SM.getSpellingLoc(Loc)))
+        Loc = SM.getExpansionLoc(Loc);
+
       auto FID = SM.getFileID(SM.getSpellingLoc(Loc));
       if (FID != SM.getMainFileID() && FID != SM.getPreambleFileID())
         return;

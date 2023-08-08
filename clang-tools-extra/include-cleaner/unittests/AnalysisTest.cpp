@@ -197,6 +197,31 @@ TEST_F(WalkUsedTest, MacroRefs) {
           Pair(Code.point("4"), UnorderedElementsAre(MainFile))));
 }
 
+TEST_F(WalkUsedTest, TokenPasting) {
+  llvm::Annotations Code(R"cpp(
+    #define DEFINE_FLAG(name) int FLAG_##name = 0;
+    #define MY_FLAG(name) DEFINE_FLAG(MY_##name)
+
+    #define PASTED_TOKEN X##2
+
+    $1^DEFINE_FLAG(abc);
+    $2^MY_FLAG(abc);
+
+    int $3^TPASTED_TOKEN = 3;
+  )cpp");
+  Inputs.Code = Code.code();
+
+  TestAST AST(Inputs);
+  auto &SM = AST.sourceManager();
+  auto MainFile = Header(SM.getFileEntryForID(SM.getMainFileID()));
+
+  EXPECT_THAT(offsetToProviders(AST, SM),
+              UnorderedElementsAre(
+                  Pair(Code.point("1"), UnorderedElementsAre(MainFile)),
+                  Pair(Code.point("2"), UnorderedElementsAre(MainFile)),
+                  Pair(Code.point("3"), UnorderedElementsAre(MainFile))));
+}
+
 class AnalyzeTest : public testing::Test {
 protected:
   TestInputs Inputs;

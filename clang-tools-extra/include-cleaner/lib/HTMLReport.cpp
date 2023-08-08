@@ -519,6 +519,9 @@ void writeHTMLReport(FileID File, const include_cleaner::Includes &Includes,
   const auto& SM = Ctx.getSourceManager();
   for (Decl *Root : Roots)
     walkAST(*Root, [&](SourceLocation Loc, const NamedDecl &D, RefType T) {
+      if (SM.isWrittenInScratchSpace( SM.getSpellingLoc(Loc)))
+        Loc = SM.getExpansionLoc(Loc);
+
       if(!SM.isWrittenInMainFile(SM.getSpellingLoc(Loc)))
         return;
       R.addRef(SymbolReference{D, Loc, T});
