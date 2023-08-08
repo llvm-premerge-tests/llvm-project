@@ -54,6 +54,18 @@ APISet::addGlobalVar(StringRef Name, StringRef USR, PresumedLoc Loc,
                            Fragments, SubHeading, IsFromSystemHeader);
 }
 
+GlobalVariableTemplateRecord *APISet::addGlobalVariableTemplate(
+    StringRef Name, StringRef USR, PresumedLoc Loc,
+    AvailabilitySet Availability, LinkageInfo Linkage,
+    const DocComment &Comment, DeclarationFragments Declaration,
+    DeclarationFragments SubHeading, Template Template,
+    bool IsFromSystemHeader) {
+  return addTopLevelRecord(USRBasedLookupTable, GlobalVariableTemplates, USR,
+                           Name, Loc, std::move(Availability), Linkage, Comment,
+                           Declaration, SubHeading, Template,
+                           IsFromSystemHeader);
+}
+
 GlobalFunctionRecord *APISet::addGlobalFunction(
     StringRef Name, StringRef USR, PresumedLoc Loc,
     AvailabilitySet Availabilities, LinkageInfo Linkage,
@@ -189,6 +201,30 @@ ClassTemplatePartialSpecRecord *APISet::addClassTemplatePartialSpec(
                            ClassTemplatePartialSpecializations, USR, Name, Loc,
                            std::move(Availability), Comment, Declaration,
                            SubHeading, Template, IsFromSystemHeader);
+}
+
+GlobalVariableTemplateSpecRecord *APISet::addGlobalVariableTemplateSpec(
+    StringRef Name, StringRef USR, PresumedLoc Loc,
+    AvailabilitySet Availability, LinkageInfo Linkage,
+    const DocComment &Comment, DeclarationFragments Declaration,
+    DeclarationFragments SubHeading, bool IsFromSystemHeader) {
+  return addTopLevelRecord(USRBasedLookupTable,
+                           GlobalVariableTemplateSpecializations, USR, Name,
+                           Loc, std::move(Availability), Linkage, Comment,
+                           Declaration, SubHeading, IsFromSystemHeader);
+}
+
+GlobalVariableTemplatePartialSpecRecord *
+APISet::addGlobalVariableTemplatePartialSpec(
+    StringRef Name, StringRef USR, PresumedLoc Loc,
+    AvailabilitySet Availability, LinkageInfo Linkage,
+    const DocComment &Comment, DeclarationFragments Declaration,
+    DeclarationFragments SubHeading, Template Template,
+    bool IsFromSystemHeader) {
+  return addTopLevelRecord(
+      USRBasedLookupTable, GlobalVariableTemplatePartialSpecializations, USR,
+      Name, Loc, std::move(Availability), Linkage, Comment, Declaration,
+      SubHeading, Template, IsFromSystemHeader);
 }
 
 ConceptRecord *APISet::addConcept(StringRef Name, StringRef USR,
