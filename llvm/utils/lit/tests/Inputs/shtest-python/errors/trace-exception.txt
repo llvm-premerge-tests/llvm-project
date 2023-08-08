@@ -1,0 +1,35 @@
+# Check that the execution trace is correct when a PYTHON directive raises an
+# exception.  Specifically, make sure the exception is written at the end of the
+# associated stderr and doesn't prevent prior stdout and stderr from appearing.
+# Also, make sure non-directive lines mixed in with the PYTHON directives
+# doesn't throw off the line numbers in the python traceback.
+
+# PYTHON: import sys                                        #LN_START
+
+# Non-directive lines might be used for formatting or comments like this one.
+# PYTHON: print("PYTHON writes to stdout")
+# PYTHON: print("PYTHON writes to stderr", file=sys.stderr)
+#
+#
+# PYTHON: def fn():
+# PYTHON:     raise Exception("fail")
+#
+# PYTHON: fn()                                              #LN_END
+
+#       CHECK:Command Output (stdout):
+#  CHECK-NEXT:--
+#  CHECK-NEXT:# executed '{{PYTHON}}:' directive from line [[#LN_START: @LINE - 14]] to [[#LN_END: @LINE - 4]]
+#  CHECK-NEXT:# .---stdout from '{{PYTHON}}:' directive from line [[#LN_START]] to [[#LN_END]]
+#  CHECK-NEXT:# | PYTHON writes to stdout
+#  CHECK-NEXT:# `-----------------------------
+#  CHECK-NEXT:# .---stderr from '{{PYTHON}}:' directive from line [[#LN_START]] to [[#LN_END]]
+#  CHECK-NEXT:# | PYTHON writes to stderr
+#  CHECK-NEXT:# | Traceback{{.*}}:
+#  CHECK-NEXT:# |   File "<lit test>", line [[#LN_END]], in <module>
+#  CHECK-NEXT:# |   File "<lit test>", line [[#LN_END - 2]], in fn
+#  CHECK-NEXT:# | Exception: fail
+#  CHECK-NEXT:# `-----------------------------
+# CHECK-EMPTY:
+#  CHECK-NEXT:--
+
+# CHECK:  Failed: 1

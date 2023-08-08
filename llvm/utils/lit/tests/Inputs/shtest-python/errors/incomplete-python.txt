@@ -1,0 +1,17 @@
+# Incomplete python code is a special error case that some tools for compiling
+# python (e.g., code.compile_command) leave to the caller.  Whether or not lit
+# uses such tools now, make sure lit doesn't start to miss this case.
+
+# PYTHON: if True: #LN
+
+#       CHECK:Command Output (stdout):
+#  CHECK-NEXT:--
+#  CHECK-NEXT:# error compiling '{{PYTHON}}:' directive at line [[#LN: @LINE - 4]]:
+#  CHECK-NEXT:#   File "<lit test>", line [[#LN]]
+#  CHECK-NEXT:# {{ *}}if True: #LN
+#  CHECK-NEXT:# {{ *}}^
+#  CHECK-NEXT:# {{.*Error.*}}
+# CHECK-EMPTY:
+#  CHECK-NEXT:--
+
+# CHECK:  Unresolved: 1

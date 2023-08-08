@@ -1,0 +1,8 @@
+# PYTHON: 3 + \
+# PYTHON: 4 *  \
+# PYTHON:5
+
+#      CHECK:'{{PYTHON}}:' directive continuation line has indentation that is inconsistent with previous lines
+# CHECK-NEXT:in {{PYTHON}}: directive on test line 3
+
+# CHECK:  Unresolved: 1

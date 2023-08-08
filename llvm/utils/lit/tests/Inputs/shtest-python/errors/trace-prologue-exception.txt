@@ -1,0 +1,26 @@
+# Check that the execution trace is correct when config.prologue raises an
+# exception.  Specifically, make sure the exception is written at the end of the
+# associated stderr and doesn't prevent prior stdout and stderr from
+# config.prologue from appearing.  However, no PYTHON directive should execute
+# or produce any output.
+
+# PYTHON: print("PYTHON writes to stdout")                  #LN
+# PYTHON: print("PYTHON writes to stderr", file=sys.stderr) #LN + 2
+#
+#      CHECK:Command Output (stdout):
+# CHECK-NEXT:--
+#  CHECK-NEXT:# executed config.prologue='[[PROLOGUE:.*/lit.prologue.py]]'
+#  CHECK-NEXT:# .---stdout from config.prologue='[[PROLOGUE]]'
+#  CHECK-NEXT:# | config.prologue writes to stdout
+#  CHECK-NEXT:# `-----------------------------
+#  CHECK-NEXT:# .---stderr from config.prologue='[[PROLOGUE]]'
+#  CHECK-NEXT:# | config.prologue writes to stderr
+#  CHECK-NEXT:# | Traceback{{.*}}:
+#  CHECK-NEXT:# |   File "[[PROLOGUE]]", line [[#LOC_LN:]], in <module>
+#  CHECK-NEXT:# |     raise Exception({{.*}})
+#  CHECK-NEXT:# | Exception: exception in config.prologue at line [[#LOC_LN]]
+#  CHECK-NEXT:# `-----------------------------
+# CHECK-EMPTY:
+#  CHECK-NEXT:--
+
+# CHECK:  Failed: 1

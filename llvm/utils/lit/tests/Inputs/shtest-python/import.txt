@@ -1,0 +1,48 @@
+# For safety, lit doesn't automatically add %S to sys.path.
+#
+# PYTHON: try:
+# PYTHON:     import exampleModule
+# PYTHON: except ModuleNotFoundError:
+# PYTHON:     pass
+# PYTHON: else:
+# PYTHON:     raise Exception("error: sys.path already contains %S")
+
+# Adding %S to sys.path is easy enough from a PYTHON directive.
+#
+# PYTHON: import sys
+# PYTHON: sys.path.append(lit.expand('%S'))
+# PYTHON: import exampleModule
+
+# lit doesn't automatically expose the 'lit' object to an imported module, which
+# might have nothing to do with lit.
+#
+# PYTHON: try:
+# PYTHON:     exampleModule.helloWorldFromLitRun()
+# PYTHON: except AttributeError:
+# PYTHON:     pass
+# PYTHON: else:
+# PYTHON:     raise Exception("error: imported module already sees 'lit'")
+
+# Every function in an imported module could be written to accept the 'lit'
+# object as a parameter, but it seems easier to just expose it once via a PYTHON
+# directive as follows.
+#
+# PYTHON: exampleModule.lit = lit
+# PYTHON: exampleModule.helloWorldFromLitRun()
+# PYTHON: exampleModule.goodbyeWorldFromLitRun()
+#
+# CHECK:# | # | hello world from lit.run at {{.*}}
+# CHECK:# | # | goodbye world from lit.run at {{.*}}
+
+# In summary, here's the boilerplate to set up use of exampleModule in a single
+# test:
+#
+#   import sys
+#   sys.path.append(lit.expand('%S'))
+#   import exampleModule
+#   exampleModule.lit = lit
+#
+# If you have to do this in every test in a test suite, it's easier to use
+# config.prologue.  See the test ./prologue.txt for an example.
+
+# CHECK:  Passed: 1
