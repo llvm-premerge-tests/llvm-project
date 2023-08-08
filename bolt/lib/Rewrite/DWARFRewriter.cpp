@@ -1112,7 +1112,8 @@ void DWARFRewriter::updateUnitDebugInfo(
               assert(EntryAddress && "Address is not found.");
               assert(Index <= std::numeric_limits<uint32_t>::max() &&
                      "Invalid Operand Index.");
-              if (Expr.getCode() == dwarf::DW_OP_addrx) {
+              if (Expr.getCode() == dwarf::DW_OP_addrx ||
+                  Expr.getCode() == dwarf::DW_OP_GNU_addr_index) {
                 const uint32_t Index = AddrWriter->getIndexFromAddress(
                     EntryAddress->Address, Unit);
                 // update Index for DW_AT_location. The Size field is not stored
@@ -1123,25 +1124,13 @@ void DWARFRewriter::updateUnitDebugInfo(
 
                 DIEBldr.addValue(NewAttr, static_cast<dwarf::Attribute>(0),
                                  dwarf::DW_FORM_data1,
-                                 DIEInteger(dwarf::DW_OP_addrx));
+                                 DIEInteger(Expr.getCode()));
                 NewExprSize += 1;
                 for (uint8_t Byte : Tmp) {
                   DIEBldr.addValue(NewAttr, static_cast<dwarf::Attribute>(0),
                                    dwarf::DW_FORM_data1, DIEInteger(Byte));
                   NewExprSize += 1;
                 }
-              } else {
-                // TODO: Re-do this as DWARF5.
-                auto Itr = AttrLocValList->values().begin();
-                std::advance(Itr, PrevOffset);
-                uint32_t CopyNum = CurEndOffset - PrevOffset;
-                NewExprSize += CopyNum;
-                while (CopyNum--) {
-                  DIEBldr.addValue(NewAttr, *Itr);
-                  std::advance(Itr, 1);
-                }
-                AddrWriter->addIndexAddress(EntryAddress->Address,
-                                            static_cast<uint32_t>(Index), Unit);
               }
               PrevOffset = CurEndOffset;
             }
