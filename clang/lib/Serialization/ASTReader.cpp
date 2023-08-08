@@ -3889,8 +3889,36 @@ llvm::Error ASTReader::ReadASTBlock(ModuleFile &F,
       for (unsigned I = 0, N = Record.size(); I != N; ++I)
         DeclsToCheckForDeferredDiags.insert(getGlobalDeclID(F, Record[I]));
       break;
+
+    case ODRHASH_VS_DECL_IDS_ODR:
+      for (unsigned I = 0, N = Record.size(); I != N; ++I)
+        ODRHashes.push_back(Record[I]);
+      if (ODRHashesDeclIDsVec.size()) {
+        assert(ODRHashesDeclIDsVec.size() == ODRHashes.size() &&
+               "The sizes of ODRHash vector and declIDs vector should be the "
+               "same");
+        for (std::size_t i = 0; i < ODRHashes.size(); i++)
+          ODRHashDeclIDs[ODRHashes[i]] = ODRHashesDeclIDsVec[i];
+      }
+      break;
+    
+    case ODRHASH_VS_DECL_IDS_DECLS:
+      for (unsigned I = 0, N = Record.size(); I != N; ++I)
+        ODRHashesDeclIDsVec.push_back(getGlobalDeclID(F, Record[I]));
+      if (ODRHashes.size()) {
+        assert(ODRHashesDeclIDsVec.size() == ODRHashes.size() &&
+               "The sizes of ODRHash vector and declIDs vector should be the "
+               "same");
+        for (std::size_t i = 0; i < ODRHashes.size(); i++)
+          ODRHashDeclIDs[ODRHashes[i]] = ODRHashesDeclIDsVec[i];
+      }
+      break;
     }
   }
+}
+
+Decl *ASTReader::GetLazyTemplateDecl(unsigned Hash){
+  return GetDecl(ODRHashDeclIDs[Hash]);
 }
 
 void ASTReader::ReadModuleOffsetMap(ModuleFile &F) const {
@@ -7398,14 +7426,23 @@ void ASTReader::CompleteRedeclChain(const Decl *D) {
     }
   }
 
-  if (auto *CTSD = dyn_cast<ClassTemplateSpecializationDecl>(D))
-    CTSD->getSpecializedTemplate()->LoadLazySpecializations();
-  if (auto *VTSD = dyn_cast<VarTemplateSpecializationDecl>(D))
-    VTSD->getSpecializedTemplate()->LoadLazySpecializations();
-  if (auto *FD = dyn_cast<FunctionDecl>(D)) {
-    if (auto *Template = FD->getPrimaryTemplate())
-      Template->LoadLazySpecializations();
+  RedeclarableTemplateDecl *Template = nullptr;
+  ArrayRef<TemplateArgument> Args;
+  if (auto *CTSD = dyn_cast<ClassTemplateSpecializationDecl>(D)) {
+    Template = CTSD->getSpecializedTemplate();
+    Args = CTSD->getTemplateArgs().asArray();
+  } else if (auto *VTSD = dyn_cast<VarTemplateSpecializationDecl>(D)) {
+    Template = VTSD->getSpecializedTemplate();
+    Args = VTSD->getTemplateArgs().asArray();
+  } else if (auto *FD = dyn_cast<FunctionDecl>(D)) {
+    if (auto *Tmplt = FD->getPrimaryTemplate()) {
+      Template = Tmplt;
+      Args = FD->getTemplateSpecializationArgs()->asArray();
+    }
   }
+
+  if (Template)
+    Template->loadLazySpecializationsImpl(Args);
 }
 
 CXXCtorInitializer **

@@ -224,6 +224,9 @@ private:
   /// that it contains.
   FileDeclIDsTy FileDeclIDs;
 
+  /// Map to store Template Args ODRHash vs the declIDs
+  llvm::DenseMap<unsigned long, uint32_t> ODRHashDeclIDs;
+
   void associateDeclWithFile(const Decl *D, serialization::DeclID);
 
   /// The first ID number we can use for our own types.
@@ -523,6 +526,7 @@ private:
   uint64_t WriteDeclContextVisibleBlock(ASTContext &Context, DeclContext *DC);
   void WriteTypeDeclOffsets();
   void WriteFileDeclIDsMap();
+  void WriteODRHashDeclIDsMap();
   void WriteComments();
   void WriteSelectors(Sema &SemaRef);
   void WriteReferencedSelectorsPool(Sema &SemaRef);
