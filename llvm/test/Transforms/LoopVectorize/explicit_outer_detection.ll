@@ -117,13 +117,11 @@ for.end15:                                        ; preds = %outer.inc, %entry
 }
 
 ; Case 3: Annotated outer loop WITH vector width and interleave information
-; doesn't have to be collected.
+; has to be collected.
 
 ; CHECK-LABEL: case3
-; CHECK-NOT: LV: Loop hints: force=enabled
-; CHECK-NOT: LV: We can vectorize this outer loop!
-; CHECK: LV: Loop hints: force=?
-; CHECK: LV: Found a loop: inner.body
+; CHECK: LV: Loop hints: force=enabled width=4 interleave=2
+; CHECK: LV: We can vectorize this outer loop!
 
 define void @case3(ptr nocapture %a, ptr nocapture readonly %b, i32 %N, i32 %M) local_unnamed_addr {
 entry:
