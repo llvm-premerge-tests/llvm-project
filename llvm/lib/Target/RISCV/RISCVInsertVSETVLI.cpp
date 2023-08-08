@@ -108,6 +108,34 @@ static bool isVSlideInstr(const MachineInstr &MI) {
   }
 }
 
+static bool isCompressInstr(const MachineInstr &MI) {
+  return getRVVMCOpcode(MI.getOpcode()) == RISCV::VCOMPRESS_VM;
+}
+
+static bool isReductionInstr(const MachineInstr &MI) {
+  switch (getRVVMCOpcode(MI.getOpcode())) {
+  default:
+    return false;
+  case RISCV::VREDSUM_VS:
+  case RISCV::VREDMAXU_VS:
+  case RISCV::VREDMAX_VS:
+  case RISCV::VREDMINU_VS:
+  case RISCV::VREDMIN_VS:
+  case RISCV::VREDAND_VS:
+  case RISCV::VREDOR_VS:
+  case RISCV::VREDXOR_VS:
+  case RISCV::VWREDSUMU_VS:
+  case RISCV::VWREDSUM_VS:
+  case RISCV::VFREDOSUM_VS:
+  case RISCV::VFREDUSUM_VS:
+  case RISCV::VFREDMIN_VS:
+  case RISCV::VFREDMAX_VS:
+  case RISCV::VFWREDOSUM_VS:
+  case RISCV::VFWREDUSUM_VS:
+    return true;
+  }
+}
+
 /// Get the EEW for a load or store instruction.  Return std::nullopt if MI is
 /// not a load or store which ignores SEW.
 static std::optional<unsigned> getEEWForLoadStore(const MachineInstr &MI) {
@@ -786,6 +814,12 @@ static VSETVLIInfo computeInfoForInstr(const MachineInstr &MI, uint64_t TSFlags,
     assert(SEW == EEW && "Initial SEW doesn't match expected EEW");
   }
 #endif
+  // If the instruction has no tail elements, use tail agnostic.
+  if (!isScalarMoveInstr(MI) && !isReductionInstr(MI) && !isCompressInstr(MI) &&
+      InstrInfo.hasAVLReg() && InstrInfo.getAVLReg() == RISCV::X0 &&
+      VLMul < RISCVII::LMUL_RESERVED)
+    TailAgnostic = true;
+
   InstrInfo.setVTYPE(VLMul, SEW, TailAgnostic, MaskAgnostic);
 
   return InstrInfo;
@@ -933,6 +967,26 @@ bool RISCVInsertVSETVLI::needVSETVLI(const MachineInstr &MI,
     Used.LMUL = false;
     Used.TailPolicy = false;
   }
+
+  // For most instructions, tail element is defined as:
+  // tail(x) = (vl <= x < max(VLMAX,VLEN/SEW))
+  // So if the avl is VLMAX, and LMUL is not fractional, there is no tail
+  // element, so it doesn't need tail policy.
+  if (!isScalarMoveInstr(MI) && !isReductionInstr(MI) && !isCompressInstr(MI))
+    if (RISCVII::hasVLOp(MI.getDesc().TSFlags)) {
+      RISCVII::VLMUL VLMul = RISCVII::getLMul(MI.getDesc().TSFlags);
+      // Fractional LMULs always require tail policy.
+      if (VLMul < RISCVII::LMUL_RESERVED) {
+        const MachineOperand &VLOp = MI.getOperand(getVLOpNum(MI));
+        if (VLOp.isImm()) {
+          int64_t Imm = VLOp.getImm();
+          if (Imm == RISCV::VLMaxSentinel)
+            Used.TailPolicy = false;
+        } else if (VLOp.getReg() == RISCV::X0) {
+          Used.TailPolicy = false;
+        }
+      }
+    }
 
   // A tail undefined vmv.v.i/x or vfmv.v.f with VL=1 can be treated in the same
   // semantically as vmv.s.x.  This is particularly useful since we don't have an
