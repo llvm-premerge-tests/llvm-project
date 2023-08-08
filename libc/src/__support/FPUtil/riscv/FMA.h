@@ -13,7 +13,7 @@
 #include "src/__support/macros/properties/architectures.h"
 #include "src/__support/macros/properties/cpu_features.h" // LIBC_TARGET_CPU_HAS_FMA
 
-#if !defined(LIBC_TARGET_ARCH_IS_RISCV64)
+#if !defined(LIBC_TARGET_ARCH_IS_ANY_RISCV)
 #error "Invalid include"
 #endif
 

@@ -21,6 +21,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -38,6 +39,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -55,6 +57,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -72,6 +75,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -89,6 +93,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -106,6 +111,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -123,6 +129,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -140,6 +147,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -157,6 +165,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -174,6 +183,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -191,6 +201,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -208,6 +219,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -225,6 +237,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -242,6 +255,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -261,6 +275,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -291,6 +306,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -308,6 +324,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -325,6 +342,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -342,6 +360,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -359,6 +378,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -376,6 +396,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -393,6 +414,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -410,6 +432,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )
 
 add_fp_unittest(
@@ -427,4 +450,5 @@ add_fp_unittest(
     libc.src.__support.FPUtil.fp_bits
   LINK_LIBRARIES
     -lpthread
+    -latomic
 )

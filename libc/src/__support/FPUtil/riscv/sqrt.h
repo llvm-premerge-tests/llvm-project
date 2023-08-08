@@ -12,7 +12,7 @@
 #include "src/__support/common.h"
 #include "src/__support/macros/properties/architectures.h"
 
-#if !defined(LIBC_TARGET_ARCH_IS_RISCV64)
+#if !defined(LIBC_TARGET_ARCH_IS_ANY_RISCV)
 #error "Invalid include"
 #endif
 
