@@ -354,7 +354,7 @@ struct DeclContextLookupTable;
 /// which will provide access to the contents of the AST files.
 ///
 /// The AST reader provides lazy de-serialization of declarations, as
-/// required when traversing the AST. Only those AST nodes that are
+/// required when traversing the AST. Only those AST nodes thresettingat are
 /// actually required will be de-serialized.
 class ASTReader
   : public ExternalPreprocessorSource,
@@ -583,6 +583,15 @@ private:
 
   /// Map from a FileID to the file-level declarations that it contains.
   llvm::DenseMap<FileID, FileDeclsInfo> FileDeclIDs;
+  
+  /// Map from an ODRHash of template arguments to the DeclIDs
+  llvm::DenseMap<unsigned long, uint32_t> ODRHashDeclIDs;
+
+  /// Vectors to store ODRHashes of template specialization args
+  llvm::SmallVector<unsigned long, 256> ODRHashes;
+
+  /// Vectors to store DeclIDs of template specialization args
+  llvm::SmallVector<uint32_t, 256> ODRHashesDeclIDsVec;
 
   /// An array of lexical contents of a declaration context, as a sequence of
   /// Decl::Kind, DeclID pairs.
@@ -1902,6 +1911,8 @@ public:
   /// building a new declaration.
   Decl *GetDecl(serialization::DeclID ID);
   Decl *GetExternalDecl(uint32_t ID) override;
+
+  Decl *GetLazyTemplateDecl(unsigned Hash) override;
 
   /// Resolve a declaration ID into a declaration. Return 0 if it's not
   /// been loaded yet.
