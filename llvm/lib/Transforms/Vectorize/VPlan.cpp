@@ -214,25 +214,25 @@ VPBasicBlock::iterator VPBasicBlock::getFirstNonPhi() {
 }
 
 Value *VPTransformState::get(VPValue *Def, const VPIteration &Instance) {
-  if (Def->isLiveIn())
-    return Def->getLiveInIRValue();
-
   if (hasScalarValue(Def, Instance)) {
     return Data
         .PerPartScalars[Def][Instance.Part][Instance.Lane.mapToCacheIndex(VF)];
   }
 
-  assert(hasVectorValue(Def, Instance.Part));
-  auto *VecPart = Data.PerPartOutput[Def][Instance.Part];
-  if (!VecPart->getType()->isVectorTy()) {
-    assert(Instance.Lane.isFirstLane() && "cannot get lane > 0 for scalar");
-    return VecPart;
+  if (hasVectorValue(Def, Instance.Part)) {
+    auto *VecPart = Data.PerPartOutput[Def][Instance.Part];
+    if (!VecPart->getType()->isVectorTy()) {
+      assert(Instance.Lane.isFirstLane() && "cannot get lane > 0 for scalar");
+      return VecPart;
+    }
+    // TODO: Cache created scalar values.
+    Value *Lane = Instance.Lane.getAsRuntimeExpr(Builder, VF);
+    auto *Extract = Builder.CreateExtractElement(VecPart, Lane);
+    // set(Def, Extract, Instance);
+    return Extract;
   }
-  // TODO: Cache created scalar values.
-  Value *Lane = Instance.Lane.getAsRuntimeExpr(Builder, VF);
-  auto *Extract = Builder.CreateExtractElement(VecPart, Lane);
-  // set(Def, Extract, Instance);
-  return Extract;
+
+  return Def->getLiveInIRValue();
 }
 
 Value *VPTransformState::get(VPValue *Def, unsigned Part) {

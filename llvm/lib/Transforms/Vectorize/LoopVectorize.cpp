@@ -8754,11 +8754,21 @@ static void addCanonicalIVRecipes(VPlan &Plan, Type *IdxTy, DebugLoc DL,
       // When avoiding a runtime check, the active.lane.mask inside the loop
       // uses a modified trip count and the induction variable increment is
       // done after the active.lane.mask intrinsic is called.
-      auto *TCMinusVF =
-          new VPInstruction(VPInstruction::CalculateTripCountMinusVF, {TC}, DL);
-      VecPreheader->appendRecipe(TCMinusVF);
+
+      auto *Sub = new VPInstruction(Instruction::Sub,
+                                    {TC, &Plan.getRuntimeVFxUF()}, DL);
+      auto *Cmp = new VPInstruction(VPInstruction::ICmpUGT,
+                                    {TC, &Plan.getRuntimeVFxUF()}, DL);
+      auto *Select = new VPInstruction(
+          Instruction::Select,
+          {Cmp, Sub, Plan.getVPValueOrAddLiveIn(ConstantInt::get(IdxTy, 0))},
+          DL);
+
+      VecPreheader->appendRecipe(Sub);
+      VecPreheader->appendRecipe(Cmp);
+      VecPreheader->appendRecipe(Select);
       IncrementValue = CanonicalIVPHI;
-      TripCount = TCMinusVF;
+      TripCount = Select;
     } else {
       // When the loop is guarded by a runtime overflow check for the loop
       // induction variable increment by VF, we can increment the value before

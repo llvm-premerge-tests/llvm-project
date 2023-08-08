@@ -993,10 +993,10 @@ public:
                                       // values of a first-order recurrence.
     Not,
     ICmpULE,
+    ICmpUGT,
     SLPLoad,
     SLPStore,
     ActiveLaneMask,
-    CalculateTripCountMinusVF,
     CanonicalIVIncrement,
     // The next op is similar to the above, but instead increment the
     // canonical IV separately for each unrolled part.
@@ -1104,7 +1104,6 @@ public:
     default:
       return false;
     case VPInstruction::ActiveLaneMask:
-    case VPInstruction::CalculateTripCountMinusVF:
     case VPInstruction::CanonicalIVIncrement:
     case VPInstruction::CanonicalIVIncrementForPart:
     case VPInstruction::BranchOnCount:

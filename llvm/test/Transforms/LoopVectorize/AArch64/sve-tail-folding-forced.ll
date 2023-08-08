@@ -17,8 +17,10 @@ target triple = "aarch64-unknown-linux-gnu"
 ; VPLANS-NEXT: No successors
 ; VPLANS-EMPTY:
 ; VPLANS-NEXT: vector.ph:
-; VPLANS-NEXT:   EMIT vp<[[VF:%[0-9]+]]> = VF * Part + ir<0>
-; VPLANS-NEXT:   EMIT vp<[[NEWTC:%[0-9]+]]> = TC > VF ? TC - VF : 0 vp<[[TC]]>
+; VPLANS-NEXT:   EMIT vp<[[VF:%[0-9]+]]> = VF * Part +  ir<0>
+; VPLANS-NEXT:   EMIT vp<[[SUB:%[0-9]+]]> = sub vp<[[TC]]>, <badref>
+; VPLANS-NEXT:   EMIT vp<[[CMP:%[0-9]+]]> = icmp ugt vp<[[TC]]>, <badref>
+; VPLANS-NEXT:   EMIT vp<[[NEWTC:%[0-9]+]]> = select vp<[[CMP]]>, vp<[[SUB]]>, ir<0>
 ; VPLANS-NEXT:   EMIT vp<[[LANEMASK_ENTRY:%[0-9]+]]> = active lane mask vp<[[VF]]>, vp<[[TC]]>
 ; VPLANS-NEXT: Successor(s): vector loop
 ; VPLANS-EMPTY:
