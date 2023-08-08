@@ -302,10 +302,7 @@ Value *VPInstruction::generateInstruction(VPTransformState &State,
   case VPInstruction::CanonicalIVIncrement: {
     if (Part == 0) {
       auto *Phi = State.get(getOperand(0), 0);
-      // The loop step is equal to the vectorization factor (num of SIMD
-      // elements) times the unroll factor (num of SIMD instructions).
-      Value *Step =
-          createStepForVF(Builder, Phi->getType(), State.VF, State.UF);
+      Value *Step = State.get(getOperand(1), 0);
       return Builder.CreateAdd(Phi, Step, Name, hasNoUnsignedWrap(),
                                hasNoSignedWrap());
     }
@@ -421,7 +418,7 @@ void VPInstruction::print(raw_ostream &O, const Twine &Indent,
     O << "first-order splice";
     break;
   case VPInstruction::CanonicalIVIncrement:
-    O << "VF * UF +";
+    O << "iv increment";
     break;
   case VPInstruction::BranchOnCond:
     O << "branch-on-cond";
