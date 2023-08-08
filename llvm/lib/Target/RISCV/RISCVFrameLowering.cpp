@@ -27,6 +27,12 @@
 
 using namespace llvm;
 
+static cl::opt<bool>
+    CompressStackInst("riscv-compress-stack-inst", cl::Hidden,
+                      cl::desc("Compress stack related instructions"
+                               " by splitting or reordering stack layout"),
+                      cl::init(false));
+
 static const Register AllPopRegs[] = {
     RISCV::X1,  RISCV::X8,  RISCV::X9,  RISCV::X18, RISCV::X19,
     RISCV::X20, RISCV::X21, RISCV::X22, RISCV::X23, RISCV::X24,
@@ -1297,6 +1303,18 @@ RISCVFrameLowering::getFirstSPAdjustAmount(const MachineFunction &MF) const {
   // split the SP adjustment in this case.
   if (RVFI->getLibCallStackSize() || RVFI->getRVPushStackSize())
     return 0;
+
+  // Make stack ld/st and fld/fst are easier to be compressed.
+  if (CompressStackInst && STI.hasStdExtC()) {
+    if (STI.getXLen() == 32 && StackSize > 256 && (CSI.size() > 0)) {
+      // c.lwsp rd, offset[7:2]  2^(6 + 2)
+      return 256;
+
+    } else if (STI.getXLen() == 64 && StackSize > 512 && (CSI.size() > 0)) {
+      // c.ldsp rd, offset[8:3](x2) 2^(6 + 3)
+      return 512;
+    }
+  }
 
   // Return the FirstSPAdjustAmount if the StackSize can not fit in a signed
   // 12-bit and there exists a callee-saved register needing to be pushed.
