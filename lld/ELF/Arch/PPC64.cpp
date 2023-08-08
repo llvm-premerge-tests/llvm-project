@@ -1220,8 +1220,8 @@ void PPC64::relocate(uint8_t *loc, const Relocation &rel, uint64_t val) const {
   case R_PPC64_ADDR14: {
     checkAlignment(loc, val, 4, rel);
     // Preserve the AA/LK bits in the branch instruction
-    uint8_t aalk = loc[3];
-    write16(loc + 2, (aalk & 3) | (val & 0xfffc));
+    uint8_t aalk = loc[config->isLE ? 0 : 3];
+    write16(config->isLE ? loc : loc + 2, (aalk & 3) | (val & 0xfffc));
     break;
   }
   case R_PPC64_ADDR16:
