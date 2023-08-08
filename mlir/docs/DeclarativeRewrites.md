@@ -646,6 +646,28 @@ correspond to multiple actual values.
 
 [TODO]
 
+#### Matching fixed number of sub-operands as a variadic operand
+
+The `variadic` directive matches a fixed number of sub-operands as a variadic
+operand.  For example, given a `concatenate` op with a variadic `inputs`
+operand, we can match a `concatenate` op with 2 actual inputs with the
+following pattern:
+
+```tablegen
+def ConcatenateOp : Op<"concatenate"> {
+    let arguments = (ins
+      Variadic<AnyTensor>:$inputs,
+    );
+
+    let results = (ins
+      AnyTensor:$output
+    );
+}
+
+def : Pat<(ConcatenateOp (variadic $input0, $input1)),
+          (SomeOtherOp $input0, $input1)>;
+```
+
 ### Supplying additional constraints
 
 Constraints can be placed on op arguments when matching. But sometimes we need

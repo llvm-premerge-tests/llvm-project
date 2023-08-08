@@ -189,6 +189,9 @@ public:
   // Returns whether this DAG is an `either` specifier.
   bool isEither() const;
 
+  // Returns whether this DAG is an `variadic` specifier.
+  bool isVariadic() const;
+
   // Returns true if this DAG node is an operation.
   bool isOperation() const;
 
@@ -270,7 +273,22 @@ public:
 
     // DagNode and DagLeaf are accessed by value which means it can't be used as
     // identifier here. Use an opaque pointer type instead.
-    using DagAndConstant = std::pair<const void *, int>;
+    struct DagAndConstant {
+      const void *dag;
+      int operandIndexOrNumValues;
+      int rangeIndex;
+
+      DagAndConstant(const void *dag, int operandIndexOrNumValues,
+                     int rangeIndex)
+          : dag(dag), operandIndexOrNumValues(operandIndexOrNumValues),
+            rangeIndex(rangeIndex) {}
+
+      bool operator==(const DagAndConstant &rhs) const {
+        return dag == rhs.dag &&
+               operandIndexOrNumValues == rhs.operandIndexOrNumValues &&
+               rangeIndex == rhs.rangeIndex;
+      }
+    };
 
     // What kind of entity this symbol represents:
     // * Attr: op attribute
@@ -288,14 +306,16 @@ public:
 
     // Static methods for creating SymbolInfo.
     static SymbolInfo getAttr(const Operator *op, int index) {
-      return SymbolInfo(op, Kind::Attr, DagAndConstant(nullptr, index));
+      return SymbolInfo(op, Kind::Attr, DagAndConstant(nullptr, index, -1));
     }
     static SymbolInfo getAttr() {
       return SymbolInfo(nullptr, Kind::Attr, std::nullopt);
     }
-    static SymbolInfo getOperand(DagNode node, const Operator *op, int index) {
-      return SymbolInfo(op, Kind::Operand,
-                        DagAndConstant(node.getAsOpaquePointer(), index));
+    static SymbolInfo getOperand(DagNode node, const Operator *op,
+                                 int operandIndex, int rangeIndex = -1) {
+      return SymbolInfo(
+          op, Kind::Operand,
+          DagAndConstant(node.getAsOpaquePointer(), operandIndex, rangeIndex));
     }
     static SymbolInfo getResult(const Operator *op) {
       return SymbolInfo(op, Kind::Result, std::nullopt);
@@ -305,7 +325,7 @@ public:
     }
     static SymbolInfo getMultipleValues(int numValues) {
       return SymbolInfo(nullptr, Kind::MultipleValues,
-                        DagAndConstant(nullptr, numValues));
+                        DagAndConstant(nullptr, numValues, -1));
     }
 
     // Returns the number of static values this symbol corresponds to.
@@ -333,10 +353,10 @@ public:
                                const char *separator) const;
 
     // The argument index (for `Attr` and `Operand` only)
-    int getArgIndex() const { return (*dagAndConstant).second; }
+    int getArgIndex() const { return dagAndConstant->operandIndexOrNumValues; }
 
     // The number of values in the MultipleValue
-    int getSize() const { return (*dagAndConstant).second; }
+    int getSize() const { return dagAndConstant->operandIndexOrNumValues; }
 
     const Operator *op; // The op where the bound entity belongs
     Kind kind;          // The kind of the bound entity
@@ -367,7 +387,7 @@ public:
   // Binds the given `symbol` to the `argIndex`-th argument to the given `op`.
   // Returns false if `symbol` is already bound and symbols are not operands.
   bool bindOpArgument(DagNode node, StringRef symbol, const Operator &op,
-                      int argIndex);
+                      int argIndex, int rangeIndex = -1);
 
   // Binds the given `symbol` to the results the given `op`. Returns false if
   // `symbol` is already bound.
@@ -397,7 +417,8 @@ public:
   // Returns an iterator to the information of the given symbol named as `key`,
   // with index `argIndex` for operator `op`.
   const_iterator findBoundSymbol(StringRef key, DagNode node,
-                                 const Operator &op, int argIndex) const;
+                                 const Operator &op, int argIndex,
+                                 int rangeIndex = -1) const;
   const_iterator findBoundSymbol(StringRef key,
                                  const SymbolInfo &symbolInfo) const;
 
