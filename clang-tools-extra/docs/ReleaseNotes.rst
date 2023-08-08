@@ -180,6 +180,10 @@ Changes in existing checks
   <clang-tidy/checks/llvm/namespace-comment>` check to provide fixes for
   ``inline`` namespaces in the same format as :program:`clang-format`.
 
+- Improved :doc:`misc-redundant-expression
+  <clang-tidy/checks/misc/redundant-expression>` check to ignore
+  false-positives in unevaluated context (e.g., ``decltype``).
+
 - Improved :doc:`modernize-loop-convert
   <clang-tidy/checks/modernize/loop-convert>` to support for-loops with
   iterators initialized by free functions like ``begin``, ``end``, or ``size``.
