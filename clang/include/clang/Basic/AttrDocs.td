@@ -1191,6 +1191,61 @@ Query for this attribute with ``__has_attribute(overloadable)``.
   }];
 }
 
+def OwnershipDocs : Documentation {
+  let Category = DocCatFunction;
+  let Heading = "ownership_holds, ownership_returns, ownership_takes";
+  let Content = [{
+These attributes help the static analyzer understand custom ownership management
+functions. None of these affect the generated binary in any way, they are only
+meant to assist the Clang Static Analyzer. You can use these annotations if your
+code uses wrapper functions around ``malloc`` or ``free``, or uses functions
+that take over ownership altogether.
+
+Each annotation has two parameters: the first is the type of allocator used to
+allocate the memory (the only accepted value currently is ``malloc``, but
+we intend to recognize ``new`` in the future). We use this to check whether the
+correct deallocator is used. The second is an integer value, described below.
+
+.. code-block:: c
+
+  void __attribute((ownership_takes(malloc, 1))) my_free(void *);
+  void *__attribute((ownership_returns(malloc, 1))) my_malloc(size_t);
+  void __attribute((ownership_holds(malloc, 1))) my_hold(void *);
+
+``onwership_returns``: Functions with this annotation return dynamic memory.
+The second annotation parameter is the size of the returned memory in bytes.
+
+``ownership_takes``: Functions with this annotation deallocate one of the
+function parameters. The second annotation parameter is the index of the
+function parameter to deallocate.
+
+``ownership_holds``: Functions with this annotation take over the ownership of
+one of the parameters. The static analyzer doesn't assume it to be deallocated
+immediately, but assumes that it will be before the end of the program. The
+second annotation parameter is the index of the function parameter to take hold
+of. Indexing starts at 1, so the first parameter's index is 1. The implicit this
+parameter is not supported at this time.
+
+.. code-block:: c
+
+  void foobar() {
+    int *p = my_malloc(sizeof(int));
+  } // warn: Memory leak
+
+  void foo() {
+    int *p = my_malloc(sizeof(int));
+    my_free(p);
+    free(p); // warn: Attempt to free released memory
+  }
+
+  void bar() {
+    int *p = my_malloc(sizeof(int));
+    my_hold(p);
+    *p = 4; // no warn: Pointer is not released
+  } // no warn: Ownership is transferred and assumed to have not escaped
+  }];
+}
+
 def ObjCMethodFamilyDocs : Documentation {
   let Category = DocCatFunction;
   let Content = [{

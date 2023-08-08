@@ -148,6 +148,14 @@ int * af5(void) {
   return p; // no-warning
 }
 
+// Test ownership_holds -- we expect the ownership to be taken over, and a
+// result assume that the memory will not leak, but also not released yet.
+void af6(void) {
+  int *p = my_malloc(12);
+  my_hold(p);
+  *p = 4; // no-warn: memory is not released yet
+} // no-warn: assume my_hold takes care of releasing the memory
+
 
 
 // This case tests that storing malloc'ed memory to a static variable which is
