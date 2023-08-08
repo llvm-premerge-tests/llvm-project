@@ -881,6 +881,10 @@ private:
     B->appendAutomaticObjDtor(VD, S, cfg->getBumpVectorContext());
   }
 
+  void appendCleanupFunction(CFGBlock *B, VarDecl *VD) {
+    B->appendCleanupFunction(VD, cfg->getBumpVectorContext());
+  }
+
   void appendLifetimeEnds(CFGBlock *B, VarDecl *VD, Stmt *S) {
     B->appendLifetimeEnds(VD, S, cfg->getBumpVectorContext());
   }
@@ -1321,7 +1325,8 @@ private:
     return {};
   }
 
-  bool hasTrivialDestructor(VarDecl *VD);
+  bool hasTrivialDestructor(VarDecl *VD) const;
+  bool needsAutomaticDestruction(const VarDecl *VD) const;
 };
 
 } // namespace
@@ -1840,32 +1845,39 @@ void CFGBuilder::addAutomaticObjDestruction(LocalScope::const_iterator B,
   DeclsNonTrivial.reserve(B.distance(E));
 
   for (VarDecl* D : llvm::make_range(B, E))
-    if (!hasTrivialDestructor(D))
+    if (needsAutomaticDestruction(D))
       DeclsNonTrivial.push_back(D);
 
   for (VarDecl *VD : llvm::reverse(DeclsNonTrivial)) {
+    QualType Ty = VD->getType();
+
+    bool IsCXXRecordType = (Ty->getAsCXXRecordDecl() != nullptr);
     if (BuildOpts.AddImplicitDtors) {
       // If this destructor is marked as a no-return destructor, we need to
       // create a new block for the destructor which does not have as a
       // successor anything built thus far: control won't flow out of this
       // block.
-      QualType Ty = VD->getType();
       if (Ty->isReferenceType())
         Ty = getReferenceInitTemporaryType(VD->getInit());
       Ty = Context->getBaseElementType(Ty);
 
-      if (Ty->getAsCXXRecordDecl()->isAnyDestructorNoReturn())
+      if (IsCXXRecordType &&
+          Ty->getAsCXXRecordDecl()->isAnyDestructorNoReturn())
         Block = createNoReturnBlock();
     }
 
     autoCreateBlock();
+
+    bool HasCleanupAttr = VD->hasAttr<CleanupAttr>();
 
     // Add LifetimeEnd after automatic obj with non-trivial destructors,
     // as they end their lifetime when the destructor returns. For trivial
     // objects, we end lifetime with scope end.
     if (BuildOpts.AddLifetime)
       appendLifetimeEnds(Block, VD, S);
-    if (BuildOpts.AddImplicitDtors)
+    if (HasCleanupAttr)
+      appendCleanupFunction(Block, VD);
+    if (BuildOpts.AddImplicitDtors && !hasTrivialDestructor(VD))
       appendAutomaticObjDtor(Block, VD, S);
   }
 }
@@ -2070,7 +2082,12 @@ LocalScope* CFGBuilder::addLocalScopeForDeclStmt(DeclStmt *DS,
   return Scope;
 }
 
-bool CFGBuilder::hasTrivialDestructor(VarDecl *VD) {
+bool CFGBuilder::needsAutomaticDestruction(const VarDecl *VD) const {
+  return !hasTrivialDestructor(const_cast<VarDecl *>(VD)) ||
+         VD->hasAttr<CleanupAttr>();
+}
+
+bool CFGBuilder::hasTrivialDestructor(VarDecl *VD) const {
   // Check for const references bound to temporary. Set type to pointee.
   QualType QT = VD->getType();
   if (QT->isReferenceType()) {
@@ -2124,7 +2141,7 @@ LocalScope* CFGBuilder::addLocalScopeForVarDecl(VarDecl *VD,
     return Scope;
 
   if (!BuildOpts.AddLifetime && !BuildOpts.AddScopes &&
-      hasTrivialDestructor(VD)) {
+      !needsAutomaticDestruction(VD)) {
     assert(BuildOpts.AddImplicitDtors);
     return Scope;
   }
@@ -5262,8 +5279,9 @@ CFGImplicitDtor::getDestructorDecl(ASTContext &astContext) const {
     case CFGElement::CXXRecordTypedCall:
     case CFGElement::ScopeBegin:
     case CFGElement::ScopeEnd:
-      llvm_unreachable("getDestructorDecl should only be used with "
-                       "ImplicitDtors");
+    case CFGElement::CleanupFunction:
+    llvm_unreachable("getDestructorDecl should only be used with "
+                     "ImplicitDtors");
     case CFGElement::AutomaticObjectDtor: {
       const VarDecl *var = castAs<CFGAutomaticObjDtor>().getVarDecl();
       QualType ty = var->getType();
@@ -5802,6 +5820,12 @@ static void print_elem(raw_ostream &OS, StmtPrinterHelper &Helper,
     OS << ".~";
     T.getUnqualifiedType().print(OS, PrintingPolicy(Helper.getLangOpts()));
     OS << "() (Implicit destructor)\n";
+    break;
+  }
+
+  case CFGElement::Kind::CleanupFunction: {
+    OS << "CleanupFunction ("
+       << E.castAs<CFGCleanupFunction>().getFunctionDecl()->getName() << ")\n";
     break;
   }
 
