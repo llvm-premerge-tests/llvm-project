@@ -13,3 +13,10 @@ constexpr int I = 12;
 constexpr const int *P = &I;
 constexpr long L = (long)P;
 // CHECK: constexpr-source-ranges.cpp:14:20:{14:20-14:27}
+
+namespace overflow {
+// CHECK:      :{[[@LINE+1]]:9-[[@LINE+1]]:29}: warning: overflow
+int x = -1 + __INT_MAX__ + 2 + 3;
+// CHECK:      :{[[@LINE+1]]:9-[[@LINE+1]]:19}: warning: overflow
+int a = -(1 << 31) + 1;
+}
