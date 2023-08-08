@@ -30,6 +30,8 @@ template <typename T, T v> struct integral_constant {
 using true_type = cpp::integral_constant<bool, true>;
 using false_type = cpp::integral_constant<bool, false>;
 
+template <bool V> using bool_constant = integral_constant<bool, V>;
+
 template <class T>
 struct is_trivially_copyable
     : public integral_constant<bool, __is_trivially_copyable(T)> {};
@@ -54,13 +56,15 @@ template <typename T> struct remove_cv<volatile T> : type_identity<T> {};
 template <typename T> struct remove_cv<const volatile T> : type_identity<T> {};
 template <typename T> using remove_cv_t = typename remove_cv<T>::type;
 
+template <typename T> struct remove_const : type_identity<T> {};
+template <typename T> struct remove_const<const T> : type_identity<T> {};
+template <typename T> using remove_const_t = typename remove_const<T>::type;
+
 template <typename T> struct remove_reference : type_identity<T> {};
 template <typename T> struct remove_reference<T &> : type_identity<T> {};
 template <typename T> struct remove_reference<T &&> : type_identity<T> {};
 template <typename T>
 using remove_reference_t = typename remove_reference<T>::type;
-
-template <typename T> struct add_rvalue_reference : type_identity<T &&> {};
 
 template <typename T> struct remove_cvref {
   using type = remove_cv_t<remove_reference_t<T>>;
@@ -191,6 +195,22 @@ struct conditional<false, T, F> : type_identity<F> {};
 template <bool B, typename T, typename F>
 using conditional_t = typename conditional<B, T, F>::type;
 
+template <typename...> struct __and_;
+
+template <> struct __and_<> : public true_type {};
+
+template <typename T1> struct __and_<T1> : public T1 {};
+
+template <typename T1, typename T2>
+struct __and_<T1, T2> : public conditional_t<T1::value, T2, T1> {};
+
+template <typename T1, typename T2, typename T3, typename... Tn>
+struct __and_<T1, T2, T3, Tn...>
+    : public conditional_t<T1::value, __and_<T2, T3, Tn...>, T1> {};
+
+template <typename T>
+struct __not_ : public integral_constant<bool, !T::value> {};
+
 template <typename T>
 struct is_void : is_same<void, typename remove_cv<T>::type> {};
 template <typename T>
@@ -213,6 +233,29 @@ constexpr bool
     is_convertible_v<F, T,
                      details::void_t<decltype(details::convertible_to_helper<T>(
                          declval<F>()))>> = true;
+
+template <typename T, typename... Args>
+struct is_constructible
+    : public integral_constant<bool, __is_constructible(T, Args...)> {};
+
+template <typename T, typename... Args>
+inline constexpr bool is_constructible_v = __is_constructible(T, Args...);
+
+template <typename T1, typename T2>
+struct is_convertible
+    : public integral_constant<bool, __is_convertible(T1, T2)> {};
+
+template <typename T>
+struct is_trivially_destructible
+    : public integral_constant<bool, __is_trivially_destructible(T)> {};
+
+template <typename T>
+inline constexpr bool is_trivially_destructible_v =
+    is_trivially_destructible<T>::value;
+
+template <typename T> struct is_reference : bool_constant<__is_reference(T)> {};
+
+template <typename T> inline constexpr bool is_reference_v = __is_reference(T);
 
 } // namespace cpp
 } // namespace __llvm_libc

@@ -43,14 +43,13 @@ TEST(LlvmLibcOptionalTest, Tests) {
   // For this test case, the destructor increments the pointed-to value.
   int holding = 1;
   optional<Contrived> Complicated(&holding);
-  // Destructor was run once as part of copying the object.
+  ASSERT_EQ(holding, 1);
+  // Destructor was run once as part of destruction.
+  Complicated.reset();
   ASSERT_EQ(holding, 2);
-  // Destructor was run a second time as part of destruction.
+  // Destructor was not run a second time as the object is already destroyed.
   Complicated.reset();
-  ASSERT_EQ(holding, 3);
-  // Destructor was not run a third time as the object is already destroyed.
-  Complicated.reset();
-  ASSERT_EQ(holding, 3);
+  ASSERT_EQ(holding, 2);
 
   // Test that assigning an optional to another works when set
   optional<int> Trivial3(12);
