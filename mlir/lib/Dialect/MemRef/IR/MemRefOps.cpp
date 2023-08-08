@@ -22,6 +22,7 @@
 #include "mlir/Interfaces/ViewLikeInterface.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallBitVector.h"
+#include "llvm/Support/Casting.h"
 
 using namespace mlir;
 using namespace mlir::memref;
@@ -360,17 +361,83 @@ struct SimplifyDeadAlloc : public OpRewritePattern<T> {
     return success();
   }
 };
+
+/// Fold casted alloc/alloca operations so they will have the destination's
+/// type, and the memref.cast will not be needed. This is allowed if the cast
+/// does not lose information, of rank and size. In some cases the allocated
+/// buffer type cannot change, for example if it is used by a func.call. Thus
+/// the pattern is limited to alloc/alloca ops that are used by ops from the
+/// memref dialect.
+template <typename T>
+struct SimplifyCastedAlloc : public OpRewritePattern<T> {
+  using OpRewritePattern<T>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(T alloc,
+                                PatternRewriter &rewriter) const override {
+    // Valid users are ops of memref dialect. CastOps are allowed only if
+    // their result type has static shape, strides and offsets.
+    auto isValidUser = [&](Operation *op) -> bool {
+      Dialect *memrefDialect = alloc->getDialect();
+      if (op->getDialect() != memrefDialect)
+        return false;
+      auto castUser = dyn_cast<CastOp>(op);
+      if (!castUser)
+        return true;
+      auto dstBaseMemRefType =
+          castUser.getDest().getType().cast<BaseMemRefType>();
+      if (!dstBaseMemRefType.hasRank())
+        return false;
+      if (!dstBaseMemRefType.hasStaticShape())
+        return false;
+      auto dstMemRefType = dstBaseMemRefType.cast<MemRefType>();
+      auto [strides, offset] = getStridesAndOffset(dstMemRefType);
+      return offset != ShapedType::kDynamic &&
+             !llvm::is_contained(strides, ShapedType::kDynamic);
+    };
+
+    // All memref.cast should have the same type, which will be the alloc's new
+    // type.
+    MemRefType dstType;
+    for (auto user : alloc->getUsers()) {
+      if (!isValidUser(user))
+        return failure();
+      auto castUser = dyn_cast<CastOp>(user);
+      if (!castUser)
+        continue;
+      MemRefType currDstType =
+          castUser.getDest().getType().template cast<MemRefType>();
+      if (!dstType)
+        dstType = currDstType;
+      else if (dstType != currDstType)
+        return failure();
+    }
+
+    // If no cast operations were found, the pattern fails.
+    if (!dstType)
+      return failure();
+
+    // If the alloc type should not change, the pattern fails.
+    if (alloc.getMemref().getType().template cast<MemRefType>() == dstType)
+      return failure();
+
+    rewriter.replaceOpWithNewOp<T>(alloc, dstType, alloc.getDynamicSizes(),
+                                   alloc.getSymbolOperands(),
+                                   alloc.getAlignmentAttr());
+    return success();
+  }
+};
 } // namespace
 
 void AllocOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
-  results.add<SimplifyAllocConst<AllocOp>, SimplifyDeadAlloc<AllocOp>>(context);
+  results.add<SimplifyAllocConst<AllocOp>, SimplifyDeadAlloc<AllocOp>,
+              SimplifyCastedAlloc<AllocOp>>(context);
 }
 
 void AllocaOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
-  results.add<SimplifyAllocConst<AllocaOp>, SimplifyDeadAlloc<AllocaOp>>(
-      context);
+  results.add<SimplifyAllocConst<AllocaOp>, SimplifyDeadAlloc<AllocaOp>,
+              SimplifyCastedAlloc<AllocaOp>>(context);
 }
 
 //===----------------------------------------------------------------------===//

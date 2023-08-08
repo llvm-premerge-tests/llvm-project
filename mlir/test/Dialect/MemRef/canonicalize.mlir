@@ -940,3 +940,95 @@ func.func private @ub_negative_alloc_size() -> memref<?x?x?xi1> {
   %alloc = memref.alloc(%c15, %c-2, %idx1) : memref<?x?x?xi1>
   return %alloc : memref<?x?x?xi1>
 }
+
+// -----
+
+// CHECK-LABEL:   func @fold_casted_alloc
+// CHECK:           %[[alloc:.*]] = memref.alloc() : memref<1x15x30x256xsi8, #map>
+// CHECK-NOT:       memref.cast
+
+#map = affine_map<(d0, d1, d2, d3) -> (d0 * 115200 + d1 * 7680 + d2 * 256 + d3)>
+func.func @fold_casted_alloc(%arg0: memref<1x15x30x256xsi8, #map>) -> (memref<1x15x30x256xsi8, #map>, memref<1x256x15x30xsi8, strided<[115200, 1, 7680, 256]>>) {
+  %alloc = memref.alloc() : memref<1x15x30x256xsi8>
+  memref.copy %arg0, %alloc : memref<1x15x30x256xsi8, #map> to memref<1x15x30x256xsi8>
+  %cast = memref.cast %alloc : memref<1x15x30x256xsi8> to memref<1x15x30x256xsi8, #map>
+  %transpose = memref.transpose %alloc (d0, d1, d2, d3) -> (d0, d3, d1, d2) : memref<1x15x30x256xsi8> to memref<1x256x15x30xsi8, strided<[115200, 1, 7680, 256]>>
+  return %cast, %transpose : memref<1x15x30x256xsi8, #map>, memref<1x256x15x30xsi8, strided<[115200, 1, 7680, 256]>>
+}
+
+// -----
+
+// CHECK-LABEL:   func @uncasted_alloc_is_unchanged
+// CHECK:           %[[alloc:.*]] = memref.alloc() : memref<1x15x30x256xsi8>
+
+#map = affine_map<(d0, d1, d2, d3) -> (d0 * 115200 + d1 * 7680 + d2 * 256 + d3)>
+func.func @uncasted_alloc_is_unchanged(%arg0: memref<1x15x30x256xsi8, #map>) -> (memref<1x256x15x30xsi8, strided<[115200, 1, 7680, 256]>>) {
+  %alloc = memref.alloc() : memref<1x15x30x256xsi8>
+  memref.copy %arg0, %alloc : memref<1x15x30x256xsi8, #map> to memref<1x15x30x256xsi8>
+  %transpose = memref.transpose %alloc (d0, d1, d2, d3) -> (d0, d3, d1, d2) : memref<1x15x30x256xsi8> to memref<1x256x15x30xsi8, strided<[115200, 1, 7680, 256]>>
+  return %transpose : memref<1x256x15x30xsi8, strided<[115200, 1, 7680, 256]>>
+}
+
+// -----
+
+// CHECK-LABEL:   func @non_memref_dialect_users
+// CHECK:           %[[alloc:.*]] = memref.alloc() : memref<1x15x30x256xsi8>
+// CHECK:           memref.cast
+
+#map = affine_map<(d0, d1, d2, d3) -> (d0 * 115200 + d1 * 7680 + d2 * 256 + d3)>
+func.func @non_memref_dialect_users() -> (memref<1x15x30x256xsi8, #map>, memref<1x15x30x256xsi8>) {
+  %alloc = memref.alloc() : memref<1x15x30x256xsi8>
+  %other_dialect_op = "my.op"(%alloc) : (memref<1x15x30x256xsi8>) -> (memref<1x15x30x256xsi8>)
+  %cast = memref.cast %alloc : memref<1x15x30x256xsi8> to memref<1x15x30x256xsi8, #map>
+  return %cast, %other_dialect_op : memref<1x15x30x256xsi8, #map>, memref<1x15x30x256xsi8>
+}
+
+// -----
+
+// CHECK-LABEL:   func @alloc_casted_to_dynamic_shape
+// CHECK:           %[[alloc:.*]] = memref.alloc() : memref<1x15x30x256xsi8>
+// CHECK:           memref.cast
+
+func.func @alloc_casted_to_dynamic_shape() -> (memref<?x15x30x256xsi8>) {
+  %alloc = memref.alloc() : memref<1x15x30x256xsi8>
+  %cast = memref.cast %alloc : memref<1x15x30x256xsi8> to memref<?x15x30x256xsi8>
+  return %cast : memref<?x15x30x256xsi8>
+}
+
+// -----
+
+// CHECK-LABEL:   func @alloc_casted_to_dynamic_stride
+// CHECK:           %[[alloc:.*]] = memref.alloc() : memref<1x15x30x256xsi8, strided<[115200, 1, 7680, 256]>>
+// CHECK:           memref.cast
+
+func.func @alloc_casted_to_dynamic_stride() -> (memref<1x15x30x256xsi8, strided<[?, 1, 7680, 256]>>) {
+  %alloc = memref.alloc() : memref<1x15x30x256xsi8, strided<[115200, 1, 7680, 256]>>
+  %cast = memref.cast %alloc : memref<1x15x30x256xsi8, strided<[115200, 1, 7680, 256]>> to memref<1x15x30x256xsi8, strided<[?, 1, 7680, 256]>>
+  return %cast : memref<1x15x30x256xsi8, strided<[?, 1, 7680, 256]>>
+}
+
+// -----
+
+// CHECK-LABEL:   func @casted_alloc_conflicts
+// CHECK:           %[[alloc:.*]] = memref.alloc() : memref<1x15x30x256xsi8>
+// CHECK:           memref.cast
+// CHECK:           memref.cast
+
+#map = affine_map<(d0, d1, d2, d3) -> (d0 * 115200 + d1 * 7680 + d2 * 256 + d3)>
+func.func @casted_alloc_conflicts() -> (memref<1x15x30x256xsi8, #map>, memref<?x15x30x256xsi8, #map>) {
+  %alloc = memref.alloc() : memref<1x15x30x256xsi8>
+  %cast = memref.cast %alloc : memref<1x15x30x256xsi8> to memref<1x15x30x256xsi8, #map>
+  %cast_0 = memref.cast %alloc : memref<1x15x30x256xsi8> to memref<?x15x30x256xsi8, #map>
+  return %cast, %cast_0 : memref<1x15x30x256xsi8, #map>, memref<?x15x30x256xsi8, #map>
+}
+// -----
+
+// CHECK-LABEL:   func @unranked_casted_alloc
+// CHECK:           %[[alloc:.*]] = memref.alloc() : memref<1x15x30x256xsi8>
+// CHECK:           memref.cast
+
+func.func @unranked_casted_alloc() -> (memref<*xsi8>) {
+  %alloc = memref.alloc() : memref<1x15x30x256xsi8>
+  %cast = memref.cast %alloc : memref<1x15x30x256xsi8> to memref<*xsi8>
+  return %cast : memref<*xsi8>
+}
