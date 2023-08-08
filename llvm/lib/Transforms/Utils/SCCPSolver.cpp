@@ -1600,12 +1600,8 @@ void SCCPInstVisitor::visitLoadInst(LoadInst &I) {
     Constant *Ptr = getConstant(PtrVal, I.getOperand(0)->getType());
 
     // load null is undefined.
-    if (isa<ConstantPointerNull>(Ptr)) {
-      if (NullPointerIsDefined(I.getFunction(), I.getPointerAddressSpace()))
-        return (void)markOverdefined(IV, &I);
-      else
-        return;
-    }
+    if (isa<ConstantPointerNull>(Ptr))
+      return (void)markOverdefined(IV, &I);
 
     // Transform load (constant global) into the value loaded.
     if (auto *GV = dyn_cast<GlobalVariable>(Ptr)) {
