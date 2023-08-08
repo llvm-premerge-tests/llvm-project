@@ -56,6 +56,13 @@ namespace {
         : Out(Out), Policy(Policy), Context(Context), Indentation(Indentation),
           PrintInstantiation(PrintInstantiation) {}
 
+    enum class AttrLocation {
+      Unspecified,
+      BeforeDecl,
+      AfterDecl,
+      Ignore,
+    };
+
     void VisitDeclContext(DeclContext *DC, bool Indent = true);
 
     void VisitTranslationUnitDecl(TranslationUnitDecl *D);
@@ -117,7 +124,9 @@ namespace {
                                 const TemplateParameterList *Params);
     void printTemplateArguments(llvm::ArrayRef<TemplateArgumentLoc> Args,
                                 const TemplateParameterList *Params);
-    void prettyPrintAttributes(Decl *D);
+    AttrLocation getAttrLocation(Decl *D, Attr *A);
+    void prettyPrintAttributes(Decl *D,
+                               AttrLocation AL = AttrLocation::Unspecified);
     void prettyPrintPragmas(Decl *D);
     void printDeclType(QualType T, StringRef DeclName, bool Pack = false);
   };
@@ -234,14 +243,45 @@ raw_ostream& DeclPrinter::Indent(unsigned Indentation) {
   return Out;
 }
 
-void DeclPrinter::prettyPrintAttributes(Decl *D) {
+DeclPrinter::AttrLocation DeclPrinter::getAttrLocation(Decl *D, Attr *A) {
+  if (A->isInherited() || A->isImplicit())
+    return AttrLocation::Ignore;
+
+  if (auto *FD = dyn_cast<FunctionDecl>(D)) {
+    switch (A->getKind()) {
+    case attr::AsmLabel:
+    case attr::Final:
+    case attr::Override:
+      return AttrLocation::AfterDecl;
+
+    default:
+      break;
+    }
+
+    auto V = A->getVariety();
+    // C2x/C++11-style attributes must appear before the declarator.
+    if (V == Attr::Variety::CXX11 || V == Attr::Variety::C2x)
+      return AttrLocation::BeforeDecl;
+
+    if (FD->doesThisDeclarationHaveABody()) {
+      return AttrLocation::BeforeDecl;
+    } else {
+      return AttrLocation::AfterDecl;
+    }
+  } else {
+    return AttrLocation::Unspecified;
+  }
+}
+
+void DeclPrinter::prettyPrintAttributes(Decl *D, AttrLocation AL) {
   if (Policy.PolishForDeclaration)
     return;
 
   if (D->hasAttrs()) {
     AttrVec &Attrs = D->getAttrs();
+    bool PrintAttr = false;
     for (auto *A : Attrs) {
-      if (A->isInherited() || A->isImplicit())
+      if (getAttrLocation(D, A) != AL)
         continue;
       switch (A->getKind()) {
 #define ATTR(X)
@@ -252,7 +292,11 @@ void DeclPrinter::prettyPrintAttributes(Decl *D) {
         A->printPretty(Out, Policy);
         break;
       }
+      PrintAttr = true;
     }
+
+    if (PrintAttr && AL == AttrLocation::BeforeDecl)
+      Out << " ";
   }
 }
 
@@ -613,6 +657,9 @@ void DeclPrinter::VisitFunctionDecl(FunctionDecl *D) {
       printTemplateParameters(D->getTemplateParameterList(I));
   }
 
+  // [[...]] attributes must be printed before static, inline, virtual, etc.
+  prettyPrintAttributes(D, AttrLocation::BeforeDecl);
+
   CXXConstructorDecl *CDecl = dyn_cast<CXXConstructorDecl>(D);
   CXXConversionDecl *ConversionDecl = dyn_cast<CXXConversionDecl>(D);
   CXXDeductionGuideDecl *GuideDecl = dyn_cast<CXXDeductionGuideDecl>(D);
@@ -774,7 +821,7 @@ void DeclPrinter::VisitFunctionDecl(FunctionDecl *D) {
     Ty.print(Out, Policy, Proto);
   }
 
-  prettyPrintAttributes(D);
+  prettyPrintAttributes(D, AttrLocation::AfterDecl);
 
   if (D->isPure())
     Out << " = 0";
