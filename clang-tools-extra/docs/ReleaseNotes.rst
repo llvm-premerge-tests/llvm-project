@@ -163,6 +163,9 @@ Changes in existing checks
   <clang-tidy/checks/bugprone/reserved-identifier>`, so that it does not warn
   on macros starting with underscore and lowercase letter.
 
+- Misc-include-cleaner check has option `DeduplicateFindings` to output one
+  finding per occurence of a symbol.
+
 Removed checks
 ^^^^^^^^^^^^^^
 
