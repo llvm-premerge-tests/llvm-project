@@ -15,6 +15,7 @@
 #include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCInst.h"
+#include "llvm/MC/MCInstBuilder.h"
 #include "llvm/MC/MCInstrInfo.h"
 #include "llvm/MC/MCObjectFileInfo.h"
 #include "llvm/MC/MCParser/MCAsmLexer.h"
@@ -118,6 +119,9 @@ class SparcAsmParser : public MCTargetAsmParser {
 
   bool expandSET(MCInst &Inst, SMLoc IDLoc,
                  SmallVectorImpl<MCInst> &Instructions);
+
+  bool expandSETX(MCInst &Inst, SMLoc IDLoc,
+                  SmallVectorImpl<MCInst> &Instructions);
 
   SMLoc getLoc() const { return getParser().getTok().getLoc(); }
 
@@ -643,6 +647,80 @@ bool SparcAsmParser::expandSET(MCInst &Inst, SMLoc IDLoc,
   return false;
 }
 
+bool SparcAsmParser::expandSETX(MCInst &Inst, SMLoc IDLoc,
+                                SmallVectorImpl<MCInst> &Instructions) {
+  MCOperand MCRegOp = Inst.getOperand(0);
+  MCOperand MCValOp = Inst.getOperand(1);
+  MCOperand MCTmpOp = Inst.getOperand(2);
+  assert(MCRegOp.isReg() && MCTmpOp.isReg());
+  assert(MCValOp.isImm() || MCValOp.isExpr());
+
+  if (!is64Bit())
+    return Error(IDLoc, "setx is only available in 64-bit mode");
+
+  // the imm operand can be either an expression or an immediate.
+  bool IsImm = MCValOp.isImm();
+  int64_t ImmValue = IsImm ? MCValOp.getImm() : 0;
+
+  // Small positive immediates effectively becomes a `set`.
+  if (IsImm && isUInt<32>(ImmValue))
+    return expandSET(Inst, IDLoc, Instructions);
+
+  // Small negative immediates can be expressed directly as a single `or`.
+  bool IsSmallNegative = ImmValue >= -4096 && ImmValue < 0;
+  if (IsImm && IsSmallNegative) {
+    Instructions.push_back(MCInstBuilder(SP::ORri)
+                               .addReg(MCRegOp.getReg())
+                               .addReg(Sparc::G0)
+                               .addImm(ImmValue));
+    return false;
+  }
+
+  // All other cases simply expand to a fixed sequence.
+  const MCExpr *ValExpr = IsImm ? MCConstantExpr::create(ImmValue, getContext())
+                                : MCValOp.getExpr();
+
+  // sethi %hh(val), tmp
+  Instructions.push_back(
+      MCInstBuilder(SP::SETHIi)
+          .addReg(MCTmpOp.getReg())
+          .addExpr(adjustPICRelocation(SparcMCExpr::VK_Sparc_HH, ValExpr)));
+
+  // sethi %hi(val), rd
+  Instructions.push_back(
+      MCInstBuilder(SP::SETHIi)
+          .addReg(MCRegOp.getReg())
+          .addExpr(adjustPICRelocation(SparcMCExpr::VK_Sparc_HI, ValExpr)));
+
+  // or    tmp, %hm(val), tmp
+  Instructions.push_back(
+      MCInstBuilder(SP::ORri)
+          .addReg(MCTmpOp.getReg())
+          .addReg(MCTmpOp.getReg())
+          .addExpr(adjustPICRelocation(SparcMCExpr::VK_Sparc_HM, ValExpr)));
+
+  // or    rd, %lo(val), rd
+  Instructions.push_back(
+      MCInstBuilder(SP::ORri)
+          .addReg(MCRegOp.getReg())
+          .addReg(MCRegOp.getReg())
+          .addExpr(adjustPICRelocation(SparcMCExpr::VK_Sparc_LO, ValExpr)));
+
+  // sllx  tmp, 32, tmp
+  Instructions.push_back(MCInstBuilder(SP::SLLXri)
+                             .addReg(MCTmpOp.getReg())
+                             .addReg(MCTmpOp.getReg())
+                             .addImm(32));
+
+  // or    tmp, rd, rd
+  Instructions.push_back(MCInstBuilder(SP::ORrr)
+                             .addReg(MCRegOp.getReg())
+                             .addReg(MCTmpOp.getReg())
+                             .addReg(MCRegOp.getReg()));
+
+  return false;
+}
+
 bool SparcAsmParser::MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
                                              OperandVector &Operands,
                                              MCStreamer &Out,
@@ -661,6 +739,10 @@ bool SparcAsmParser::MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
       break;
     case SP::SET:
       if (expandSET(Inst, IDLoc, Instructions))
+        return true;
+      break;
+    case SP::SETX:
+      if (expandSETX(Inst, IDLoc, Instructions))
         return true;
       break;
     }
