@@ -4002,6 +4002,57 @@ cc_library(
     ],
 )
 
+td_library(
+    name = "ControlFlowTransformOpsTdFiles",
+    srcs = [
+        "include/mlir/Dialect/ControlFlow/TransformOps/ControlFlowTransformOps.td",
+    ],
+    includes = ["include"],
+    deps = [
+        ":TransformDialectTdFiles",
+    ],
+)
+
+gentbl_cc_library(
+    name = "ControlFlowTransformOpsIncGen",
+    strip_include_prefix = "include",
+    tbl_outs = [
+        (
+            ["-gen-op-decls"],
+            "include/mlir/Dialect/ControlFlow/TransformOps/ControlFlowTransformOps.h.inc",
+        ),
+        (
+            ["-gen-op-defs"],
+            "include/mlir/Dialect/ControlFlow/TransformOps/ControlFlowTransformOps.cpp.inc",
+        ),
+    ],
+    tblgen = ":mlir-tblgen",
+    td_file = "include/mlir/Dialect/ControlFlow/TransformOps/ControlFlowTransformOps.td",
+    deps = [
+        ":ControlFlowTransformOpsTdFiles",
+    ],
+)
+
+cc_library(
+    name = "ControlFlowTransformOps",
+    srcs = [
+        "lib/Dialect/ControlFlow/TransformOps/ControlFlowTransformOps.cpp",
+    ],
+    hdrs = [
+        "include/mlir/Dialect/ControlFlow/TransformOps/ControlFlowTransformOps.h",
+    ],
+    includes = ["include"],
+    deps = [
+        ":ControlFlowDialect",
+        ":ControlFlowToLLVM",
+        ":ControlFlowTransformOpsIncGen",
+        ":IR",
+        ":LLVMCommonConversion",
+        ":LLVMDialect",
+        ":TransformDialect",
+    ],
+)
+
 cc_library(
     name = "FuncDialect",
     srcs = glob(
@@ -7978,6 +8029,7 @@ cc_library(
         ":ComplexToLibm",
         ":ComplexToSPIRV",
         ":ControlFlowDialect",
+        ":ControlFlowTransformOps",
         ":ConversionPasses",
         ":DLTIDialect",
         ":EmitCDialect",

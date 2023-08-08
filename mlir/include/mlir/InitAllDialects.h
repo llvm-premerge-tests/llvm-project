@@ -32,6 +32,7 @@
 #include "mlir/Dialect/Bufferization/Transforms/FuncBufferizableOpInterfaceImpl.h"
 #include "mlir/Dialect/Complex/IR/Complex.h"
 #include "mlir/Dialect/ControlFlow/IR/ControlFlow.h"
+#include "mlir/Dialect/ControlFlow/TransformOps/ControlFlowTransformOps.h"
 #include "mlir/Dialect/DLTI/DLTI.h"
 #include "mlir/Dialect/EmitC/IR/EmitC.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
@@ -140,6 +141,7 @@ inline void registerAllDialects(DialectRegistry &registry) {
   arith::registerTransformDialectExtension(registry);
   affine::registerTransformDialectExtension(registry);
   bufferization::registerTransformDialectExtension(registry);
+  cf::registerTransformDialectExtension(registry);
   gpu::registerTransformDialectExtension(registry);
   linalg::registerTransformDialectExtension(registry);
   memref::registerTransformDialectExtension(registry);
