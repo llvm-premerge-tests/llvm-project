@@ -1782,6 +1782,10 @@ void TextNodeDumper::VisitFieldDecl(const FieldDecl *D) {
 
 void TextNodeDumper::VisitVarDecl(const VarDecl *D) {
   dumpName(D);
+  if (const auto *P = dyn_cast<const ParmVarDecl>(D);
+      P && P->isExplicitObjectParameter())
+    OS << " this";
+
   dumpType(D->getType());
   StorageClass SC = D->getStorageClass();
   if (SC != SC_None)
