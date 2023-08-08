@@ -10437,6 +10437,25 @@ calculateSrcByte(const SDValue Op, uint64_t DestByte, uint64_t SrcIndex = 0,
     return calculateSrcByte(Op->getOperand(0), DestByte, SrcIndex, Depth + 1);
   }
 
+  case ISD::SIGN_EXTEND:
+  case ISD::ZERO_EXTEND:
+  case ISD::SIGN_EXTEND_INREG: {
+    SDValue NarrowOp = Op->getOperand(0);
+    auto NarrowVT = NarrowOp.getValueType();
+    if (Op->getOpcode() == ISD::SIGN_EXTEND_INREG) {
+      auto *VTSign = cast<VTSDNode>(Op->getOperand(1));
+      NarrowVT = VTSign->getVT();
+    }
+    if (!NarrowVT.isByteSized())
+      return std::nullopt;
+    uint64_t NarrowByteWidth = NarrowVT.getStoreSize();
+
+    if (SrcIndex >= NarrowByteWidth)
+      return std::nullopt;
+    return calculateSrcByte(Op->getOperand(0), DestByte, SrcIndex, Depth + 1);
+  }
+
+  case ISD::SRA:
   case ISD::SRL: {
     auto ShiftOp = dyn_cast<ConstantSDNode>(Op->getOperand(1));
     if (!ShiftOp)
@@ -10476,7 +10495,8 @@ calculateByteProvider(const SDValue &Op, unsigned Index, unsigned Depth,
   unsigned BitWidth = Op.getScalarValueSizeInBits();
   if (BitWidth % 8 != 0)
     return std::nullopt;
-  assert(Index < BitWidth / 8 && "invalid index requested");
+  if (Index > BitWidth / 8 - 1)
+    return std::nullopt;
 
   switch (Op.getOpcode()) {
   case ISD::OR: {
@@ -10519,6 +10539,7 @@ calculateByteProvider(const SDValue &Op, unsigned Index, unsigned Depth,
     return calculateSrcByte(Op->getOperand(0), StartingIndex, Index);
   }
 
+  case ISD::SRA:
   case ISD::SRL: {
     auto ShiftOp = dyn_cast<ConstantSDNode>(Op->getOperand(1));
     if (!ShiftOp)
@@ -10565,9 +10586,18 @@ calculateByteProvider(const SDValue &Op, unsigned Index, unsigned Depth,
   }
   case ISD::ANY_EXTEND:
   case ISD::SIGN_EXTEND:
-  case ISD::ZERO_EXTEND: {
+  case ISD::ZERO_EXTEND:
+  case ISD::SIGN_EXTEND_INREG:
+  case ISD::AssertZext:
+  case ISD::AssertSext: {
     SDValue NarrowOp = Op->getOperand(0);
-    unsigned NarrowBitWidth = NarrowOp.getScalarValueSizeInBits();
+    unsigned NarrowBitWidth = NarrowOp.getValueSizeInBits();
+    if (Op->getOpcode() == ISD::SIGN_EXTEND_INREG ||
+        Op->getOpcode() == ISD::AssertZext ||
+        Op->getOpcode() == ISD::AssertSext) {
+      auto *VTSign = cast<VTSDNode>(Op->getOperand(1));
+      NarrowBitWidth = VTSign->getVT().getSizeInBits();
+    }
     if (NarrowBitWidth % 8 != 0)
       return std::nullopt;
     uint64_t NarrowByteWidth = NarrowBitWidth / 8;
@@ -10581,10 +10611,7 @@ calculateByteProvider(const SDValue &Op, unsigned Index, unsigned Depth,
   }
 
   case ISD::TRUNCATE: {
-    unsigned NarrowBitWidth = Op.getScalarValueSizeInBits();
-    if (NarrowBitWidth % 8 != 0)
-      return std::nullopt;
-    uint64_t NarrowByteWidth = NarrowBitWidth / 8;
+    uint64_t NarrowByteWidth = BitWidth / 8;
 
     if (NarrowByteWidth >= Index) {
       return calculateByteProvider(Op.getOperand(0), Index, Depth + 1,
@@ -10595,10 +10622,6 @@ calculateByteProvider(const SDValue &Op, unsigned Index, unsigned Depth,
   }
 
   case ISD::CopyFromReg: {
-    auto BitWidth = Op.getScalarValueSizeInBits();
-    if (BitWidth % 8)
-      llvm_unreachable("Invalid type in CopyFromReg");
-
     if (BitWidth / 8 > Index)
       return calculateSrcByte(Op, StartingIndex, Index);
 
@@ -10632,6 +10655,23 @@ calculateByteProvider(const SDValue &Op, unsigned Index, unsigned Depth,
   case ISD::BSWAP:
     return calculateByteProvider(Op->getOperand(0), BitWidth / 8 - Index - 1,
                                  Depth + 1, StartingIndex);
+
+  case ISD::EXTRACT_VECTOR_ELT: {
+    auto IdxOp = dyn_cast<ConstantSDNode>(Op->getOperand(1));
+    if (!IdxOp)
+      return std::nullopt;
+    auto VecIdx = IdxOp->getZExtValue();
+    auto ScalarSize = Op.getScalarValueSizeInBits();
+    if (ScalarSize != 32) {
+      if ((VecIdx + 1) * ScalarSize > 32)
+        return std::nullopt;
+      Index = ScalarSize == 8 ? VecIdx : VecIdx * 2 + Index;
+    }
+
+    return calculateSrcByte(ScalarSize == 32 ? Op : Op.getOperand(0),
+                            StartingIndex, Index);
+  }
+
   default: {
     return std::nullopt;
   }
@@ -10833,9 +10873,8 @@ SDValue SITargetLowering::performOrCombine(SDNode *N,
         std::optional<ByteProvider<SDValue>> P =
             calculateByteProvider(SDValue(N, 0), i, 0, /*StartingIndex = */ i);
         // TODO support constantZero
-        if (!P || P->isConstantZero()) {
+        if (!P || P->isConstantZero())
           return SDValue();
-        }
 
         PermNodes.push_back(*P);
       }
@@ -10871,7 +10910,7 @@ SDValue SITargetLowering::performOrCombine(SDNode *N,
                                               : *PermNodes[FirstSrc].Src;
 
       // Check that we are not just extracting the bytes in order from an op
-      if (Op == OtherOp) {
+      if (Op == OtherOp && Op.getValueSizeInBits() == 32) {
         int Low16 = PermMask & 0xffff;
         int Hi16 = (PermMask & 0xffff0000) >> 16;
 
@@ -10880,13 +10919,24 @@ SDValue SITargetLowering::performOrCombine(SDNode *N,
 
         // The perm op would really just produce Op. So combine into Op
         if (WellFormedLow && WellFormedHi)
-          return Op;
+          return Op.getValueType().isVector()
+                     ? DAG.getBitcast(MVT::getIntegerVT(32), Op)
+                     : Op;
       }
 
       if (hasNon16BitAccesses(PermMask, Op, OtherOp)) {
         SDLoc DL(N);
         assert(Op.getValueType().isByteSized() &&
                OtherOp.getValueType().isByteSized());
+
+        if (Op.getValueType().isVector()) {
+          Op = DAG.getBitcast(MVT::getIntegerVT(Op.getValueSizeInBits()), Op);
+        }
+        if (OtherOp.getValueType().isVector()) {
+          OtherOp = DAG.getBitcast(
+              MVT::getIntegerVT(OtherOp.getValueSizeInBits()), OtherOp);
+        }
+
         if (Op.getValueSizeInBits() < 32)
           // If the ultimate src is less than 32 bits, then we will only be
           // using bytes 0: Op.getValueSizeInBytes() - 1 in the or.
@@ -10896,7 +10946,7 @@ SDValue SITargetLowering::performOrCombine(SDNode *N,
           Op = DAG.getNode(ISD::ANY_EXTEND, DL, MVT::i32, Op);
 
         if (OtherOp.getValueSizeInBits() < 32)
-          OtherOp = DAG.getNode(ISD::ZERO_EXTEND, DL, MVT::i32, Op);
+          OtherOp = DAG.getNode(ISD::ANY_EXTEND, DL, MVT::i32, OtherOp);
 
         return DAG.getNode(AMDGPUISD::PERM, DL, MVT::i32, Op, OtherOp,
                            DAG.getConstant(PermMask, DL, MVT::i32));
