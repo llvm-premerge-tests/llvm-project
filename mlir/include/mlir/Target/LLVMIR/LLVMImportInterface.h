@@ -22,6 +22,7 @@
 #include "mlir/Support/LogicalResult.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/Support/FormatVariadic.h"
 
 namespace llvm {
@@ -52,6 +53,14 @@ public:
     return failure();
   }
 
+  /// Hook for derived dialect interfaces to implement the delayed import of
+  /// intrinsics into MLIR.
+  virtual LogicalResult
+  convertDelayedIntrinsic(OpBuilder &builder, llvm::CallInst *inst,
+                          LLVM::ModuleImport &moduleImport) const {
+    return failure();
+  }
+
   /// Hook for derived dialect interfaces to implement the import of metadata
   /// into MLIR. Attaches the converted metadata kind and node to the provided
   /// operation.
@@ -65,6 +74,14 @@ public:
   /// As every LLVM IR intrinsic has a unique integer identifier, the function
   /// returns the list of supported intrinsic identifiers.
   virtual ArrayRef<unsigned> getSupportedIntrinsics() const { return {}; }
+
+  /// Hook for derived dialect interfaces to publish the supported intrinsics
+  /// that should be imported after all instructions of a function were
+  /// imported. As every LLVM IR intrinsic has a unique integer identifier, the
+  /// function returns the list of supported intrinsic identifiers.
+  virtual ArrayRef<unsigned> getSupportedDelayedIntrinsics() const {
+    return {};
+  }
 
   /// Hook for derived dialect interfaces to publish the supported metadata
   /// kinds. As every metadata kind has a unique integer identifier, the
@@ -103,6 +120,10 @@ public:
       // Add a mapping for all supported intrinsic identifiers.
       for (unsigned id : iface.getSupportedIntrinsics())
         intrinsicToDialect[id] = iface.getDialect();
+      // Add a mapping for all supported intrinsic identifiers whose conversion
+      // should be delayed.
+      for (unsigned id : iface.getSupportedDelayedIntrinsics())
+        delayedIntrinsicToDialect[id] = iface.getDialect();
       // Add a mapping for all supported metadata kinds.
       for (unsigned kind : iface.getSupportedMetadata())
         metadataToDialect[kind].push_back(iface.getDialect());
@@ -126,10 +147,41 @@ public:
     return iface->convertIntrinsic(builder, inst, moduleImport);
   }
 
+  /// Converts the LLVM intrinsic to an MLIR operation assuming all other
+  /// instructions in the function were already converted. Returns failure, if
+  /// no conversion exists.
+  LogicalResult
+  convertDelayedIntrinsic(OpBuilder &builder, llvm::CallInst *inst,
+                          LLVM::ModuleImport &moduleImport) const {
+    // Lookup the dialect interface for the given intrinsic.
+    Dialect *dialect = delayedIntrinsicToDialect.lookup(inst->getIntrinsicID());
+    if (!dialect)
+      return failure();
+
+    // Dispatch the conversion to the dialect interface.
+    const LLVMImportDialectInterface *iface = getInterfaceFor(dialect);
+    assert(iface && "expected to find a dialect interface");
+    return iface->convertDelayedIntrinsic(builder, inst, moduleImport);
+  }
+
   /// Returns true if the given LLVM IR intrinsic is convertible to an MLIR
   /// operation.
   bool isConvertibleIntrinsic(llvm::Intrinsic::ID id) {
     return intrinsicToDialect.count(id);
+  }
+
+  /// Returns true if the given LLVM IR intrinsic's conversion should be
+  /// delayed.
+  bool isDelayedConvertibleIntrinsic(llvm::Intrinsic::ID id) {
+    return delayedIntrinsicToDialect.count(id);
+  }
+
+  /// Returns true if `inst` is an intrinsic and its conversion should be
+  /// delayed.
+  bool isDelayedConvertibleIntrinsic(const llvm::Instruction *inst) {
+    auto *intrinsic = dyn_cast<llvm::IntrinsicInst>(inst);
+    return intrinsic &&
+           isDelayedConvertibleIntrinsic(intrinsic->getIntrinsicID());
   }
 
   /// Attaches the given LLVM metadata to the imported operation if a conversion
@@ -166,6 +218,7 @@ public:
 
 private:
   DenseMap<unsigned, Dialect *> intrinsicToDialect;
+  DenseMap<unsigned, Dialect *> delayedIntrinsicToDialect;
   DenseMap<unsigned, SmallVector<Dialect *, 1>> metadataToDialect;
 };
 

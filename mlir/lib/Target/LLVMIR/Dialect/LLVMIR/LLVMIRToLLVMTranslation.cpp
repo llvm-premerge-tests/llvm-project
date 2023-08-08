@@ -50,6 +50,14 @@ static ArrayRef<unsigned> getSupportedIntrinsicsImpl() {
   return convertibleIntrinsics;
 }
 
+/// Returns the list of LLVM IR intrinsic identifiers that can be converted to
+/// MLIR LLVM dialect after the function they are part of is converted.
+static ArrayRef<unsigned> getSupportedDelayedIntrinsicsImpl() {
+  static const SmallVector<unsigned> convertibleDelayedIntrinsics = {
+      llvm::Intrinsic::dbg_declare, llvm::Intrinsic::dbg_value};
+  return convertibleDelayedIntrinsics;
+}
+
 /// Converts the LLVM intrinsic to an MLIR LLVM dialect operation if a
 /// conversion exits. Returns failure otherwise.
 static LogicalResult convertIntrinsicImpl(OpBuilder &odsBuilder,
@@ -66,6 +74,62 @@ static LogicalResult convertIntrinsicImpl(OpBuilder &odsBuilder,
   }
 
   return failure();
+}
+
+/// Converts the LLVM intrinsic to an MLIR LLVM dialect operation after all
+/// other instructions in the function were converted. Returns failure if no
+/// conversion exists.
+static LogicalResult
+convertDelayedIntrinsicImpl(OpBuilder &odsBuilder, llvm::CallInst *inst,
+                            LLVM::ModuleImport &moduleImport) {
+  auto *dbgIntr = dyn_cast<llvm::DbgVariableIntrinsic>(inst);
+  if (!dbgIntr)
+    return failure();
+  // Drop debug intrinsics with a non-empty debug expression.
+  // TODO: Support debug intrinsics that evaluate a debug expression.
+  if (dbgIntr->hasArgList() || dbgIntr->getExpression()->getNumElements() != 0)
+    return success();
+  FailureOr<Value> argOperand =
+      moduleImport.convertMetadataValue(dbgIntr->getArgOperand(0));
+  if (failed(argOperand))
+    return failure();
+
+  // Ensure that the debug instrinsic is inserted right after its operand is
+  // defined. Otherwise, the operand might not necessarily dominate the
+  // intrinsic. If the defining operation is a terminator, insert the intrinsic
+  // into a successor block that is dominated by the terminator.
+  OpBuilder::InsertionGuard guard(odsBuilder);
+  if (Operation *op = argOperand->getDefiningOp();
+      op && op->hasTrait<OpTrait::IsTerminator>()) {
+    // Find a successor that has only a single predecessor, to ensure it is
+    // dominated by this terminator.
+    auto it = llvm::find_if(op->getSuccessors(), [&](Block *successor) {
+      return successor->getUniquePredecessor();
+    });
+    // If no successor is dominated, this intrinisc cannot be converted.
+    if (it == op->getSuccessors().end())
+      return success();
+    // Set insertion point before the terminator, to avoid inserting something
+    // before landingpads.
+    odsBuilder.setInsertionPoint((*it)->getTerminator());
+  } else {
+    odsBuilder.setInsertionPointAfterValue(*argOperand);
+  }
+  Location loc = moduleImport.translateLoc(dbgIntr->getDebugLoc());
+  DILocalVariableAttr localVariableAttr =
+      moduleImport.matchLocalVariableAttr(dbgIntr->getArgOperand(1));
+  return llvm::TypeSwitch<llvm::DbgVariableIntrinsic *, LogicalResult>(dbgIntr)
+      .Case([&](llvm::DbgDeclareInst *t) {
+        odsBuilder.create<LLVM::DbgDeclareOp>(loc, *argOperand,
+                                              localVariableAttr);
+        return success();
+      })
+      .Case([&](llvm::DbgValueInst *dbgValue) {
+        odsBuilder.create<LLVM::DbgValueOp>(loc, *argOperand,
+                                            localVariableAttr);
+        return success();
+      })
+      .Default([](auto) { return failure(); });
 }
 
 /// Returns the list of LLVM IR metadata kinds that are convertible to MLIR LLVM
@@ -241,6 +305,15 @@ public:
     return convertIntrinsicImpl(builder, inst, moduleImport);
   }
 
+  /// Converts the LLVM intrinsic to an MLIR LLVM dialect operation, assuming
+  /// that all other instructions in the function containing the intrinsics were
+  /// already converted. Returns failure, if no conversion exists.
+  LogicalResult
+  convertDelayedIntrinsic(OpBuilder &builder, llvm::CallInst *inst,
+                          LLVM::ModuleImport &moduleImport) const final {
+    return convertDelayedIntrinsicImpl(builder, inst, moduleImport);
+  }
+
   /// Attaches the given LLVM metadata to the imported operation if a conversion
   /// to an LLVM dialect attribute exists and succeeds. Returns failure
   /// otherwise.
@@ -269,6 +342,10 @@ public:
   /// MLIR LLVM dialect intrinsics.
   ArrayRef<unsigned> getSupportedIntrinsics() const final {
     return getSupportedIntrinsicsImpl();
+  }
+
+  ArrayRef<unsigned> getSupportedDelayedIntrinsics() const final {
+    return getSupportedDelayedIntrinsicsImpl();
   }
 
   /// Returns the list of LLVM IR metadata kinds that are convertible to MLIR

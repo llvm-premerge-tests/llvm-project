@@ -1490,14 +1490,11 @@ LogicalResult ModuleImport::processInstruction(llvm::Instruction *inst) {
   // FIXME: Support uses of SubtargetData.
   // FIXME: Add support for call / operand attributes.
   // FIXME: Add support for the indirectbr, cleanupret, catchret, catchswitch,
-  // callbr, vaarg, landingpad, catchpad, cleanuppad instructions.
+  // callbr, vaarg, catchpad, cleanuppad instructions.
 
   // Convert LLVM intrinsics calls to MLIR intrinsics.
-  if (auto *callInst = dyn_cast<llvm::CallInst>(inst)) {
-    llvm::Function *callee = callInst->getCalledFunction();
-    if (callee && callee->isIntrinsic())
-      return convertIntrinsic(callInst);
-  }
+  if (auto *intrinsic = dyn_cast<llvm::IntrinsicInst>(inst))
+    return convertIntrinsic(intrinsic);
 
   // Convert all remaining LLVM instructions to MLIR operations.
   return convertInstruction(inst);
@@ -1736,18 +1733,44 @@ LogicalResult ModuleImport::processFunction(llvm::Function *func) {
   // value once a block is translated.
   SetVector<llvm::BasicBlock *> blocks = getTopologicallySortedBlocks(func);
   setConstantInsertionPointToStart(lookupBlock(blocks.front()));
-  for (llvm::BasicBlock *bb : blocks) {
-    if (failed(processBasicBlock(bb, lookupBlock(bb))))
+  SmallVector<llvm::CallInst *> delayedIntrinsics;
+  for (llvm::BasicBlock *bb : blocks)
+    if (failed(processBasicBlock(bb, lookupBlock(bb), delayedIntrinsics)))
       return failure();
-  }
+
+  // Process the intrinsics that require a delayed conversion after everything
+  // else was converted.
+  if (failed(processDelayedIntrinsics(delayedIntrinsics)))
+    return failure();
 
   return success();
 }
 
-LogicalResult ModuleImport::processBasicBlock(llvm::BasicBlock *bb,
-                                              Block *block) {
+LogicalResult ModuleImport::processDelayedIntrinsics(
+    SmallVector<llvm::CallInst *> &delayedIntrinsics) {
+  for (llvm::CallInst *intrCall : delayedIntrinsics) {
+    if (failed(iface.convertDelayedIntrinsic(builder, intrCall, *this)))
+      return failure();
+    if (Operation *op = lookupOperation(intrCall)) {
+      setNonDebugMetadataAttrs(intrCall, op);
+    } else if (emitExpensiveWarnings) {
+      Location loc = debugImporter->translateLoc(intrCall->getDebugLoc());
+      emitWarning(loc) << "dropped intrinsic: " << diag(*intrCall);
+    }
+  }
+  return success();
+}
+
+LogicalResult ModuleImport::processBasicBlock(
+    llvm::BasicBlock *bb, Block *block,
+    SmallVector<llvm::CallInst *> &delayedIntrinsics) {
   builder.setInsertionPointToStart(block);
   for (llvm::Instruction &inst : *bb) {
+    if (iface.isDelayedConvertibleIntrinsic(&inst)) {
+      // Collect all intrinsics whose conversion should be delayed.
+      delayedIntrinsics.push_back(cast<llvm::CallInst>(&inst));
+      continue;
+    }
     if (failed(processInstruction(&inst)))
       return failure();
 

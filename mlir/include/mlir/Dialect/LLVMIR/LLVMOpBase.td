@@ -304,6 +304,9 @@ class LLVM_MemAccessOpBase<string mnemonic, list<Trait> traits = []> :
 // "aliasAttrs" list contains the arguments required by the access group and
 // alias analysis interfaces. Derived intrinsics should append the "aliasAttrs"
 // to their argument list if they set one of the flags.
+// If the `delayedImport` bit is set to 1, the intrinsic's `mlirBuilder` will
+// be ignored and the intrinsic needs to be manually added to the delayed
+// intrinsic import.
 class LLVM_IntrOpBase<Dialect dialect, string opName, string enumName,
                       list<int> overloadedResults, list<int> overloadedOperands,
                       list<Trait> traits, int numResults,
@@ -362,6 +365,7 @@ class LLVM_IntrOpBase<Dialect dialect, string opName, string enumName,
     }] # !if(!gt(requiresFastmath, 0),
       "moduleImport.setFastmathFlagsAttr(inst, op);", "")
     # !if(!gt(numResults, 0), "$res = op;", "$_op = op;");
+  bit delayedImport = 0;
 }
 
 // Base class for LLVM intrinsic operations, should not be used directly. Places
