@@ -275,7 +275,8 @@ InstructionCost RISCVTTIImpl::getShuffleCost(TTI::ShuffleKind Kind,
                                              TTI::TargetCostKind CostKind,
                                              int Index, VectorType *SubTp,
                                              ArrayRef<const Value *> Args) {
-  Kind = improveShuffleKindFromMask(Kind, Mask);
+  Kind = improveShuffleKindFromMask(Kind, Mask, Tp->getElementType(), Index,
+                                    SubTp);
 
   std::pair<InstructionCost, MVT> LT = getTypeLegalizationCost(Tp);
 
@@ -338,6 +339,35 @@ InstructionCost RISCVTTIImpl::getShuffleCost(TTI::ShuffleKind Kind,
           InstructionCost IndexCost = getConstantPoolLoadCost(IdxTy, CostKind);
           InstructionCost MaskCost = getConstantPoolLoadCost(MaskTy, CostKind);
           return 2 * IndexCost + 2 * getVRGatherVVCost(LT.second) + MaskCost;
+        }
+      }
+      break;
+    }
+    case TTI::SK_Select: {
+      // We are going to permute multiple sources and the result will be in
+      // multiple destinations. Providing an accurate cost only for splits where
+      // the element type remains the same.
+      if (LT.first.isValid() && LT.first != 1 &&
+          LT.second.isFixedLengthVector() &&
+          LT.second.getVectorElementType().getSizeInBits() ==
+              Tp->getElementType()->getPrimitiveSizeInBits() &&
+          LT.second.getVectorNumElements() <
+              cast<FixedVectorType>(Tp)->getNumElements()) {
+        unsigned NumRegs = *LT.first.getValue();
+        unsigned VF = cast<FixedVectorType>(Tp)->getNumElements();
+        unsigned SubVF = (VF + NumRegs - 1) / NumRegs;
+        auto *SubVecTy = FixedVectorType::get(Tp->getElementType(), SubVF);
+
+        InstructionCost Cost = 0;
+        for (int I = 0, Sz = (VF + NumRegs - 1) / NumRegs; I < Sz; ++I) {
+          SmallVector<int> SubMask(SubVF, PoisonMaskElem);
+          transform(
+              Mask.slice(I * SubVF, I == Sz - 1 ? Mask.size() % SubVF : SubVF),
+              SubMask.begin(),
+              [&](int I) { return ((I / VF == 0) ? 0 : 1) * SubVF + I % VF; });
+          Cost += getShuffleCost(TTI::SK_PermuteTwoSrc, SubVecTy, SubMask,
+                                 CostKind, 0, nullptr);
+          return Cost;
         }
       }
       break;
