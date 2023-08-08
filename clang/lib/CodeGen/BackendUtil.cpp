@@ -77,6 +77,7 @@
 #include "llvm/Transforms/Scalar/EarlyCSE.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Scalar/JumpThreading.h"
+#include "llvm/Transforms/StdPar/StdPar.h"
 #include "llvm/Transforms/Utils/Debugify.h"
 #include "llvm/Transforms/Utils/EntryExitInstrumenter.h"
 #include "llvm/Transforms/Utils/ModuleUtils.h"
@@ -1091,6 +1092,16 @@ void EmitAssemblyHelper::RunOptimizationPipeline(
                                uint32_t(CodeGenOpts.EnableSplitLTOUnit));
     if (CodeGenOpts.UnifiedLTO && !TheModule->getModuleFlag("UnifiedLTO"))
       TheModule->addModuleFlag(Module::Error, "UnifiedLTO", uint32_t(1));
+  }
+
+  if (LangOpts.HIPStdPar) {
+    if (LangOpts.CUDAIsDevice) {
+      if (!TargetTriple.isAMDGCN())
+        MPM.addPass(StdParAcceleratorCodeSelectionPass());
+    }
+    else if (LangOpts.HIPStdParInterposeAlloc) {
+      MPM.addPass(StdParAllocationInterpositionPass());
+    }
   }
 
   // Now that we have all of the passes ready, run them.
