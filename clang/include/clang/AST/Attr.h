@@ -84,6 +84,20 @@ public:
   }
   const char *getSpelling() const;
 
+  enum class Variety {
+    None,
+    GNU,          // __attribute__((...))
+    Declspec,     // __declspec(...)
+    Microsoft,    // [...]
+    CXX11,        // [[...]]
+    C2x,          // [[...]]
+    Keyword,      // e.g. _Noreturn, final, __fastcall, etc.
+    Pragma,       // #pragma ...
+    HLSLSemantic, // :...
+  };
+
+  Variety getVariety() const;
+
   SourceLocation getLocation() const { return getRange().getBegin(); }
 
   bool isInherited() const { return Inherited; }
