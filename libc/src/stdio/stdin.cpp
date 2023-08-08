@@ -6,8 +6,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "src/__support/File/file.h"
+#include "src/__support/macros/attributes.h"
 
 #include <stdio.h>
 
-extern "C" FILE *stdin;
+#ifdef LIBC_TARGET_ARCH_IS_GPU
+static struct {
+} stub;
+namespace __llvm_libc {
+FILE *stdin = reinterpret_cast<FILE *>(&stub);
+}
+extern "C" FILE *stdin = reinterpret_cast<FILE *>(&stub);
+#endif
