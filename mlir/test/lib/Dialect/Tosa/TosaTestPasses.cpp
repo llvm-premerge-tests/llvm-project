@@ -169,7 +169,7 @@ ConvertTosaConv2DOp::matchAndRewrite(Operation *op,
       op->getLoc(), outputType, newTosaConv2DOp.getResult(),
       rewriter.getI32IntegerAttr(0), rewriter.getI32IntegerAttr(outputZp),
       rewriter.getDenseI32ArrayAttr({multiplier}),
-      rewriter.getDenseI32ArrayAttr({shift}), rewriter.getBoolAttr(true),
+      rewriter.getDenseI8ArrayAttr({shift}), rewriter.getBoolAttr(true),
       rewriter.getBoolAttr(true), rewriter.getBoolAttr(false));
 
   rewriter.replaceOp(op, {newTosaRescaleOp.getResult()});
