@@ -929,6 +929,73 @@ struct NVGPUTmaAsyncLoadOpLowering
     return success();
   }
 };
+struct NVGPUGenerateGmmaDescriptorLowering
+    : public ConvertOpToLLVMPattern<nvgpu::GenerateGmmaDescriptorOp> {
+  using ConvertOpToLLVMPattern<
+      nvgpu::GenerateGmmaDescriptorOp>::ConvertOpToLLVMPattern;
+
+  LogicalResult
+  matchAndRewrite(nvgpu::GenerateGmmaDescriptorOp op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    Location loc = op->getLoc();
+
+    nvgpu::TensorMapSwizzleKind shmemLayout =
+        op.getTensorMap().getType().getSwizzle();
+
+    MemRefType memrefType = op.getTensor().getType();
+    int64_t sizeH = memrefType.getDimSize(0);
+    // Note: currently only 128b swizzling is supported. Also not sure what to
+    // put without swizzling
+    unsigned swizzleSize =
+        (shmemLayout == nvgpu::TensorMapSwizzleKind::SWIZZLE_128B)  ? 128
+        : (shmemLayout == nvgpu::TensorMapSwizzleKind::SWIZZLE_64B) ? 64
+        : (shmemLayout == nvgpu::TensorMapSwizzleKind::SWIZZLE_32B) ? 32
+                                                                    : 1;
+
+    SmallVector<Value> extractedValue = getTypeConverter()->promoteOperands(
+        op->getLoc(), {op.getTensor()}, {adaptor.getTensor()}, rewriter);
+    if (extractedValue.empty())
+      return failure();
+
+    auto ti64 = rewriter.getIntegerType(64);
+    auto makeConst = [&](int32_t index) -> Value {
+      return rewriter.create<LLVM::ConstantOp>(
+          loc, ti64, rewriter.getI64IntegerAttr(index));
+    };
+    auto shiftLeft = [&](Value value, unsigned shift) -> Value {
+      return rewriter.create<LLVM::ShlOp>(loc, ti64, value, makeConst(shift));
+    };
+    auto shiftRight = [&](Value value, unsigned shift) -> Value {
+      return rewriter.create<LLVM::LShrOp>(loc, ti64, value, makeConst(shift));
+    };
+    auto makeOr = [&](Value lhs, Value rhs) -> Value {
+      return rewriter.create<LLVM::OrOp>(loc, ti64, lhs, rhs);
+    };
+
+    // Trim bits and get only 14 bits
+    Value basePtr = extractedValue.front();
+    Value ptri64 = rewriter.create<LLVM::PtrToIntOp>(loc, ti64, basePtr);
+    Value startAdress = shiftRight(shiftLeft(ptri64, 46), 50);
+    // Note: not sure this calculation is always correct.
+    Value strideDim = shiftRight(shiftLeft(makeConst(swizzleSize), 3), 4);
+    Value leadingDim = shiftRight(makeConst(swizzleSize * sizeH), 4);
+
+    Value descZero = makeConst(0);
+    // [62,64)  layout type
+    Value desc1 = makeOr(descZero, shiftLeft(makeConst(int(shmemLayout)), 62));
+    // [32,46)  stride
+    Value desc2 = makeOr(desc1, shiftLeft(strideDim, 32));
+    // [16,30)  leading dimension
+    Value desc3 = makeOr(desc2, shiftLeft(leadingDim, 16));
+    // [49,52)  base_offset
+    Value desc4 = makeOr(desc3, shiftLeft(makeConst(0), 49));
+    // [0,14)   start_address
+    Value desc = makeOr(desc4, startAdress);
+
+    rewriter.replaceOp(op, desc);
+    return success();
+  }
+};
 
 static Value makeI64Const(RewriterBase &rewriter, Operation *op,
                           int32_t index) {
@@ -1059,6 +1126,7 @@ void mlir::populateNVGPUToNVVMConversionPatterns(LLVMTypeConverter &converter,
       NVGPUTmaCreateDescriptorOpLowering,    // nvgpu.tma.create.descriptor
       NVGPUMBarrierArriveExpectTxLowering,   // nvgpu.mbarrier.arrive.expect_tx
       NVGPUTmaAsyncLoadOpLowering,           // nvgpu.tma.async.load
+      NVGPUGenerateGmmaDescriptorLowering,   // nvgpu.wgmma.generate.descriptor
       MmaSyncOptoNVVM, MmaLdMatrixOpToNVVM, NVGPUAsyncCopyLowering,
       NVGPUAsyncCreateGroupLowering, NVGPUAsyncWaitLowering,
       NVGPUMmaSparseSyncLowering>(converter);

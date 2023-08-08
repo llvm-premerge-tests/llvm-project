@@ -1,4 +1,4 @@
-// RUN: mlir-opt --convert-nvgpu-to-nvvm='use-opaque-pointers=1' --split-input-file %s | FileCheck %s
+// RUN: mlir-opt --convert-nvgpu-to-nvvm='use-opaque-pointers=1' --split-input-file -cse -canonicalize %s | FileCheck %s
 
 // CHECK-LABEL: @m16n8k16_fp16
 func.func @m16n8k16_fp16(%arg0: vector<4x2xf16>, %arg1: vector<2x2xf16>, %arg2: vector<2x2xf16>) -> vector<2x2xf16> {
@@ -646,4 +646,49 @@ func.func @create_tensor_map(%devicePtr2d : memref<64x128xf32>, %devicePtr1d : m
   // CHECK : llvm.call @mgpuTensorMapEncodeTiledMemref
   %tensorMap1d = nvgpu.tma.create.descriptor %devicePtr1d_unranked box[%crd1] : memref<*xf32> -> !tensorMap1d
   func.return
+}
+
+// -----
+
+!tensorMap = !nvgpu.tensormap.descriptor<tensor = memref<128x64xf16,3>, swizzle = swizzle_128b, l2promo=none, oob=zero, interleave=none>
+memref.global "private" @dynamicShmem : memref<0xf16,3>
+func.func @create_wgmma_descriptor(%tensorMap : !tensorMap) -> i64{
+  %dynamicMem = memref.get_global @dynamicShmem : memref<0xf16, 3>
+  %lhsShmem = memref.reinterpret_cast %dynamicMem to offset: [0], sizes: [128,64], strides: [64,1] : memref<0xf16, 3> to memref<128x64xf16,3>
+  // CHECK: %[[S0:.+]] = memref.get_global @dynamicShmem : memref<0xf16, 3>
+  // CHECK: %[[R0:.+]] = memref.reinterpret_cast %[[S0]] to offset: [0], sizes: [128, 64], strides: [64, 1] : memref<0xf16, 3> to memref<128x64xf16, 3>
+  // CHECK: %[[S1:.+]] = builtin.unrealized_conversion_cast %[[R0]] : memref<128x64xf16, 3> to !llvm.struct<(ptr<3>, ptr<3>, i64, array<2 x i64>, array<2 x i64>)>
+  // CHECK: %[[S2:.+]] = llvm.extractvalue %[[S1]][0] : !llvm.struct<(ptr<3>, ptr<3>, i64, array<2 x i64>, array<2 x i64>)>
+  // CHECK: %[[PTR:.+]] = llvm.ptrtoint %[[S2]] : !llvm.ptr<3> to i64
+  // CHECK: %[[S10:.+]] = llvm.mlir.constant(46 : i64) : i64
+  // CHECK: %[[S11:.+]] = llvm.shl %[[PTR]], %[[S10]]  : i64
+  // CHECK: %[[S12:.+]] = llvm.mlir.constant(50 : i64) : i64
+  // CHECK: %[[S13:.+]] = llvm.lshr %[[S11]], %[[S12]]  : i64
+  // CHECK: %[[S14:.+]] = llvm.mlir.constant(128 : i64) : i64
+  // CHECK: %[[S15:.+]] = llvm.mlir.constant(3 : i64) : i64
+  // CHECK: %[[S16:.+]] = llvm.shl %[[S14]], %[[S15]]  : i64
+  // CHECK: %[[S17:.+]] = llvm.mlir.constant(4 : i64) : i64
+  // CHECK: %[[S18:.+]] = llvm.lshr %[[S16]], %[[S17]]  : i64
+  // CHECK: %[[S19:.+]] = llvm.mlir.constant(16384 : i64) : i64
+  // CHECK: %[[S20:.+]] = llvm.mlir.constant(4 : i64) : i64
+  // CHECK: %[[S21:.+]] = llvm.lshr %[[S19]], %[[S20]]  : i64
+  // CHECK: %[[S22:.+]] = llvm.mlir.constant(0 : i64) : i64
+  // CHECK: %[[S23:.+]] = llvm.mlir.constant(3 : i64) : i64
+  // CHECK: %[[S24:.+]] = llvm.mlir.constant(62 : i64) : i64
+  // CHECK: %[[S25:.+]] = llvm.shl %[[S23]], %[[S24]]  : i64
+  // CHECK: %[[S26:.+]] = llvm.or %[[S22]], %[[S25]]  : i64
+  // CHECK: %[[S27:.+]] = llvm.mlir.constant(32 : i64) : i64
+  // CHECK: %[[S28:.+]] = llvm.shl %[[S18]], %[[S27]]  : i64
+  // CHECK: %[[S29:.+]] = llvm.or %[[S26]], %[[S28]]  : i64
+  // CHECK: %[[S30:.+]] = llvm.mlir.constant(16 : i64) : i64
+  // CHECK: %[[S31:.+]] = llvm.shl %[[S21]], %[[S30]]  : i64
+  // CHECK: %[[S32:.+]] = llvm.or %[[S29]], %[[S31]]  : i64
+  // CHECK: %[[S33:.+]] = llvm.mlir.constant(0 : i64) : i64
+  // CHECK: %[[S34:.+]] = llvm.mlir.constant(49 : i64) : i64
+  // CHECK: %[[S35:.+]] = llvm.shl %[[S33]], %[[S34]]  : i64
+  // CHECK: %[[S36:.+]] = llvm.or %[[S32]], %[[S35]]  : i64
+  // CHECK: %[[DESC:.+]] = llvm.or %[[S36]], %[[S13]]  : i64
+  // CHECK: return %[[DESC]] : i64
+  %descA = nvgpu.wgmma.generate.descriptor %lhsShmem, %tensorMap : memref<128x64xf16,3>, !tensorMap
+  func.return %descA : i64
 }
