@@ -7337,6 +7337,7 @@ bool SimplifyCFGOpt::simplifyOnce(BasicBlock *BB) {
 }
 
 bool SimplifyCFGOpt::run(BasicBlock *BB) {
+  return false;
   bool Changed = false;
 
   // Repeated simplify BB as long as resimplification is requested.
