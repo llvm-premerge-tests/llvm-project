@@ -219,9 +219,8 @@ llvm::Value *CodeGenFunction::EmitObjCCollectionLiteral(const Expr *E,
 
   // Generate a reference to the class pointer, which will be the receiver.
   Selector Sel = MethodWithObjects->getSelector();
-  QualType ResultType = E->getType();
-  const ObjCObjectPointerType *InterfacePointerType
-    = ResultType->getAsObjCInterfacePointerType();
+  const ObjCObjectPointerType *InterfacePointerType =
+      cast<ObjCObjectPointerType>(E->getType());
   ObjCInterfaceDecl *Class
     = InterfacePointerType->getObjectType()->getInterface();
   CGObjCRuntime &Runtime = CGM.getObjCRuntime();
