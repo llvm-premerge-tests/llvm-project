@@ -250,6 +250,11 @@ static cl::opt<bool> DisableSelectOptimize(
     "disable-select-optimize", cl::init(true), cl::Hidden,
     cl::desc("Disable the select-optimization pass from running"));
 
+/// Enable garbage-collecting empty basic blocks.
+static cl::opt<bool> EnableGCEmptyBlocks(
+    "enable-gc-empty-blocks", cl::init(false), cl::Hidden,
+    cl::desc("Enable garbage-collecting empty blocks"));
+
 /// Allow standard passes to be disabled by command line options. This supports
 /// simple binary flags that either suppress the pass or do nothing.
 /// i.e. -disable-mypass=false has no effect.
@@ -1245,6 +1250,9 @@ void TargetPassConfig::addMachinePasses() {
       addPass(createMachineOutlinerPass(RunOnAllFunctions));
   }
 
+  if (EnableGCEmptyBlocks)
+    addPass(llvm::createGCEmptyBasicBlocksPass());
+
   if (EnableFSDiscriminator)
     addPass(createMIRAddFSDiscriminatorsPass(
         sampleprof::FSDiscriminatorPass::PassLast));
@@ -1258,7 +1266,7 @@ void TargetPassConfig::addMachinePasses() {
       addPass(llvm::createBasicBlockSectionsProfileReaderPass(
           TM->getBBSectionsFuncListBuf()));
     }
-    addPass(llvm::createBasicBlockSectionsPass());
+   addPass(llvm::createBasicBlockSectionsPass());
   } else if (TM->Options.EnableMachineFunctionSplitter ||
              EnableMachineFunctionSplitter) {
     const std::string ProfileFile = getFSProfileFile(TM);
