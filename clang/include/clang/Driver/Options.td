@@ -1149,6 +1149,26 @@ def rocm_path_EQ : Joined<["--"], "rocm-path=">, Group<hip_Group>,
 def hip_path_EQ : Joined<["--"], "hip-path=">, Group<hip_Group>,
   HelpText<"HIP runtime installation path, used for finding HIP version and adding HIP include path.">;
 def rocm_device_lib_path_EQ : Joined<["--"], "rocm-device-lib-path=">, Group<hip_Group>,
+// TODO: use MarshallingInfo here
+def stdpar_path_EQ : Joined<["--"], "stdpar-path=">, Group<i_Group>,
+  HelpText<
+    "HIP Standard Parallel Algorithm Acceleration library path, used for "
+    "finding and implicitly including the library header.">;
+def stdpar_thrust_path_EQ : Joined<["--"], "stdpar-thrust-path=">,
+  Group<i_Group>,
+  HelpText<
+    "rocThrust path, required by the HIP Standard Parallel Algorithm "
+    "Acceleration library, used to implicitly include the rocThrust library.">;
+def stdpar_prim_path_EQ : Joined<["--"], "stdpar-prim-path=">,
+  Group<i_Group>,
+  HelpText<
+    "rocPrim path, required by the HIP Standard Parallel Algorithm "
+    "Acceleration library, used to implicitly include the rocPrim library.">;
+def amdgpu_arch_tool_EQ : Joined<["--"], "amdgpu-arch-tool=">, Group<i_Group>,
+  HelpText<"Tool used for detecting AMD GPU arch in the system.">;
+def nvptx_arch_tool_EQ : Joined<["--"], "nvptx-arch-tool=">, Group<i_Group>,
+  HelpText<"Tool used for detecting NVIDIA GPU arch in the system.">;
+def rocm_device_lib_path_EQ : Joined<["--"], "rocm-device-lib-path=">, Group<Link_Group>,
   HelpText<"ROCm device library path. Alternative to rocm-path.">;
 def : Joined<["--"], "hip-device-lib-path=">, Alias<rocm_device_lib_path_EQ>;
 def hip_device_lib_EQ : Joined<["--"], "hip-device-lib=">, Group<hip_Group>,
@@ -4674,6 +4694,18 @@ Flags<[NoXarchOption,CC1Option,FlangOption,FC1Option]>,
   HelpText<"Treat subsequent input files as having type <language>">,
   MetaVarName<"<language>">;
 def y : Joined<["-"], "y">;
+
+// TODO: we may want to alias this to -x hip
+def stdpar : Flag<["-", "--"], "stdpar">, Flags<[CoreOption, CC1Option]>,
+  Group<CompileOnly_Group>,
+  HelpText<"Enable HIP acceleration for standard parallel algorithms">,
+  MarshallingInfoFlag<LangOpts<"HIPStdPar">>;
+def stdpar_interpose_alloc : Flag<["-", "--"], "stdpar-interpose-alloc">,
+  Flags<[CoreOption, CC1Option]>,
+  Group<CompileOnly_Group>,
+  HelpText<"Replace all memory allocation / deallocation calls with "
+           "hipManagedMalloc / hipFree equivalents.">,
+  MarshallingInfoFlag<LangOpts<"HIPStdParInterposeAlloc">>;
 
 defm integrated_as : BoolFOption<"integrated-as",
   CodeGenOpts<"DisableIntegratedAS">, DefaultFalse,
