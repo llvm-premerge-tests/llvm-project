@@ -62,9 +62,9 @@ LLVM_LIBC_FUNCTION(float, tanhf, (float x)) {
     int idx = static_cast<int>(sign);
 
     if (LIBC_UNLIKELY(xbits.is_inf()))
-      return SIGNS[idx][0];
+      return static_cast<float>(SIGNS[idx][0]);
 
-    return SIGNS[idx][0] + SIGNS[idx][1];
+    return static_cast<float>(SIGNS[idx][0] + SIGNS[idx][1]);
   }
 
   // Range reduction: e^(2x) = 2^(hi + mid) * e^lo
