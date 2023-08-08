@@ -1,0 +1,242 @@
+# The execution trace is captured as stdout under the header "Command Output
+# (stdout)".  This test uses lit's internal shell, which doesn't use the header
+# "Command Output (stderr)".  (When using an external shell, stderr from shell
+# commands is handled differently.)
+#
+#      CHECK:Command Output (stdout):
+# CHECK-NEXT:--
+
+# Execution traces behave as follows.  First, a comment is added to indicate the
+# start of execution of each of the following, and that comment is followed by a
+# header for all captured stdout and a separate header for all captured stderr,
+# if any:
+#
+# - config.prologue.
+# - PYTHON directive block (includes any consecutive PYTHON directives).
+# - lit.run call.  Its trace appears in the stdout of the associated
+#   config.prologue or PYTHON directive block.  Its starting comment includes
+#   locations from the entire call stack up to but not including code in lit's
+#   implementation.
+# - RUN directive (plus line continuations).  Those are checked in detail in
+#   other tests.
+# - Each shell command.  Its trace appears in the stdout of the associated
+#   lit.run call or RUN directive.
+#
+# Execution traces when python code fails in some what are checked in
+# ./errors/trace-*.txt.
+
+# Check the execution trace details described above for config.prologue.
+#
+#  CHECK-NEXT:# executed config.prologue='[[PROLOGUE_FILE:.*/lit.prologue.py]]'
+#  CHECK-NEXT:# .---stdout from config.prologue='[[PROLOGUE_FILE]]'
+#  CHECK-NEXT:# | config.prologue writes to stdout
+#  CHECK-NEXT:# | # lit.run called from [[PROLOGUE_FILE]]:[[#]]
+#  CHECK-NEXT:# | true
+#  CHECK-NEXT:# | # executed command: true
+#  CHECK-NEXT:# | # lit.run called from [[PROLOGUE_FILE]]:[[#LOC_LN:]]
+#  CHECK-NEXT:# | echo config.prologue lit.run writes to stdout at line [[#LOC_LN]]
+#  CHECK-NEXT:# | # executed command: echo config.prologue lit.run writes to stdout at line [[#LOC_LN]]
+#  CHECK-NEXT:# | # .---command stdout------------
+#  CHECK-NEXT:# | # | config.prologue lit.run writes to stdout at line [[#LOC_LN]]
+#  CHECK-NEXT:# | # `-----------------------------
+#  CHECK-NEXT:# | # lit.run called from [[PROLOGUE_FILE]]:[[#LOC_LN:]]
+#  CHECK-NEXT:# | {{.*/python.*}} {{.*}}/write-to-stderr.py && echo at line [[#LOC_LN]]
+#  CHECK-NEXT:# | # executed command: {{.*/python.*}} {{.*}}/write-to-stderr.py
+#  CHECK-NEXT:# | # .---command stderr------------
+#  CHECK-NEXT:# | # | a line on stderr
+#  CHECK-NEXT:# | # `-----------------------------
+#  CHECK-NEXT:# | # executed command: echo at line [[#LOC_LN]]
+#  CHECK-NEXT:# | # .---command stdout------------
+#  CHECK-NEXT:# | # | at line [[#LOC_LN]]
+#  CHECK-NEXT:# | # `-----------------------------
+#  CHECK-NEXT:# | # lit.run called from [[PROLOGUE_FILE]]:[[#LOC_LN:]]
+#  CHECK-NEXT:# | {{.*/python.*}} {{.*}}/write-to-stdout-and-stderr.py && echo at line [[#LOC_LN]]
+#  CHECK-NEXT:# | # executed command: {{.*/python.*}} {{.*}}/write-to-stdout-and-stderr.py
+#  CHECK-NEXT:# | # .---command stdout------------
+#  CHECK-NEXT:# | # | a line on stdout
+#  CHECK-NEXT:# | # `-----------------------------
+#  CHECK-NEXT:# | # .---command stderr------------
+#  CHECK-NEXT:# | # | a line on stderr
+#  CHECK-NEXT:# | # `-----------------------------
+#  CHECK-NEXT:# | # executed command: echo at line [[#LOC_LN]]
+#  CHECK-NEXT:# | # .---command stdout------------
+#  CHECK-NEXT:# | # | at line [[#LOC_LN]]
+#  CHECK-NEXT:# | # `-----------------------------
+#  CHECK-NEXT:# | # lit.run called from [[PROLOGUE_FILE]]:[[#LOC_LN:]]
+#  CHECK-NEXT:# | #         called from [[PROLOGUE_FILE]]:[[#LOC_LN + 2]]
+#  CHECK-NEXT:# | #         called from [[PROLOGUE_FILE]]:[[#LOC_LN + 3]]
+#  CHECK-NEXT:# | echo config.prologue lit.run from func at line [[#LOC_LN]]
+#  CHECK-NEXT:# | # executed command: echo config.prologue lit.run from func at line [[#LOC_LN]]
+#  CHECK-NEXT:# | # .---command stdout------------
+#  CHECK-NEXT:# | # | config.prologue lit.run from func at line [[#LOC_LN]]
+#  CHECK-NEXT:# | # `-----------------------------
+#  CHECK-NEXT:# | # lit.run called from [[LOC_FILE:[^:]*]]:[[#LOC_LN:]]
+#  CHECK-NEXT:# | #         called from [[PROLOGUE_FILE]]:[[#]]
+#  CHECK-NEXT:# | echo hello world from lit.run at [[LOC_FILE]]:[[#LOC_LN]]
+#  CHECK-NEXT:# | # executed command: echo hello world from lit.run at [[LOC_FILE]]:[[#LOC_LN]]
+#  CHECK-NEXT:# | # .---command stdout------------
+#  CHECK-NEXT:# | # | hello world from lit.run at [[LOC_FILE]]:[[#LOC_LN]]
+#  CHECK-NEXT:# | # `-----------------------------
+#  CHECK-NEXT:# `-----------------------------
+#  CHECK-NEXT:# .---stderr from config.prologue='[[PROLOGUE_FILE]]'
+#  CHECK-NEXT:# | config.prologue writes to stderr
+#  CHECK-NEXT:# `-----------------------------
+
+# Repeat the above execution trace checks but now for a PYTHON directive block.
+#
+# Thus, this test checks the case when the first RUN or PYTHON directive is a
+# PYTHON directive.  ./prologue.txt checks the case when it's a RUN directive.
+#
+# PYTHON: import sys                                            #LN_PYTHON
+# PYTHON: print("PYTHON writes to stdout")                      #LN_PYTHON + 1
+# PYTHON: print("PYTHON writes to stderr", file=sys.stderr)     #LN_PYTHON + 2
+# PYTHON: lit.run("true")                                       #LN_PYTHON + 3
+# PYTHON: lit.run("echo PYTHON lit.run writes to stdout")       #LN_PYTHON + 4
+# PYTHON: lit.run("%{python} %S/write-to-stderr.py")            #LN_PYTHON + 5
+# PYTHON: lit.run("%{python} %S/write-to-stdout-and-stderr.py") #LN_PYTHON + 6
+# PYTHON: def localFnA():                                       #LN_PYTHON + 7
+# PYTHON:     lit.run("echo lit.run from func")                 #LN_PYTHON + 8
+# PYTHON: def localFnB():                                       #LN_PYTHON + 9
+# PYTHON:     localFnA()                                        #LN_PYTHON + 10
+# PYTHON: localFnB()                                            #LN_PYTHON + 11
+# PYTHON: exampleModule.helloWorldFromLitRun()                  #LN_PYTHON + 12
+#
+#  CHECK-NEXT:# executed '{{PYTHON}}:' directive from line [[#LN_PYTHON : @LINE - 14]] to [[# @LINE - 2]]
+#  CHECK-NEXT:# .---stdout from '{{PYTHON}}:' directive from line [[#LN_PYTHON]] to [[#LN_PYTHON + 12]]
+#  CHECK-NEXT:# | PYTHON writes to stdout
+#  CHECK-NEXT:# | # lit.run called from <lit test>:[[#LN_PYTHON + 3]]
+#  CHECK-NEXT:# | true
+#  CHECK-NEXT:# | # executed command: true
+#  CHECK-NEXT:# | # lit.run called from <lit test>:[[#LN_PYTHON + 4]]
+#  CHECK-NEXT:# | echo PYTHON lit.run writes to stdout
+#  CHECK-NEXT:# | # executed command: echo PYTHON lit.run writes to stdout
+#  CHECK-NEXT:# | # .---command stdout------------
+#  CHECK-NEXT:# | # | PYTHON lit.run writes to stdout
+#  CHECK-NEXT:# | # `-----------------------------
+#  CHECK-NEXT:# | # lit.run called from <lit test>:[[#LN_PYTHON + 5]]
+#  CHECK-NEXT:# | {{.*/python.*}} {{.*}}/write-to-stderr.py
+#  CHECK-NEXT:# | # executed command: {{.*/python.*}} {{.*}}/write-to-stderr.py
+#  CHECK-NEXT:# | # .---command stderr------------
+#  CHECK-NEXT:# | # | a line on stderr
+#  CHECK-NEXT:# | # `-----------------------------
+#  CHECK-NEXT:# | # lit.run called from <lit test>:[[#LN_PYTHON + 6]]
+#  CHECK-NEXT:# | {{.*/python.*}} {{.*}}/write-to-stdout-and-stderr.py
+#  CHECK-NEXT:# | # executed command: {{.*/python.*}} {{.*}}/write-to-stdout-and-stderr.py
+#  CHECK-NEXT:# | # .---command stdout------------
+#  CHECK-NEXT:# | # | a line on stdout
+#  CHECK-NEXT:# | # `-----------------------------
+#  CHECK-NEXT:# | # .---command stderr------------
+#  CHECK-NEXT:# | # | a line on stderr
+#  CHECK-NEXT:# | # `-----------------------------
+#  CHECK-NEXT:# | # lit.run called from <lit test>:[[#LN_PYTHON + 8]]
+#  CHECK-NEXT:# | #         called from <lit test>:[[#LN_PYTHON + 10]]
+#  CHECK-NEXT:# | #         called from <lit test>:[[#LN_PYTHON + 11]]
+#  CHECK-NEXT:# | echo lit.run from func
+#  CHECK-NEXT:# | # executed command: echo lit.run from func
+#  CHECK-NEXT:# | # .---command stdout------------
+#  CHECK-NEXT:# | # | lit.run from func
+#  CHECK-NEXT:# | # `-----------------------------
+#  CHECK-NEXT:# | # lit.run called from [[LOC_FILE:[^:]*]]:[[#LOC_LN:]]
+#  CHECK-NEXT:# | #         called from <lit test>:[[#LN_PYTHON + 12]]
+#  CHECK-NEXT:# | echo hello world from lit.run at [[LOC_FILE]]:[[#LOC_LN]]
+#  CHECK-NEXT:# | # executed command: echo hello world from lit.run at [[LOC_FILE]]:[[#LOC_LN]]
+#  CHECK-NEXT:# | # .---command stdout------------
+#  CHECK-NEXT:# | # | hello world from lit.run at [[LOC_FILE]]:[[#LOC_LN]]
+#  CHECK-NEXT:# | # `-----------------------------
+#  CHECK-NEXT:# `-----------------------------
+#  CHECK-NEXT:# .---stderr from '{{PYTHON}}:' directive from line [[#LN_PYTHON]] to [[#LN_PYTHON + 12]]
+#  CHECK-NEXT:# | PYTHON writes to stderr
+#  CHECK-NEXT:# `-----------------------------
+
+# This splits apart a PYTHON directive block.  That facilitates writing this
+# test, but it also checks that lit produces separate comments for separate
+# PYTHON directive blocks.
+#
+#         RUN: true
+#  CHECK-NEXT:# {{RUN}}: at line [[# @LINE - 1]]
+#  CHECK-NEXT:true
+#  CHECK-NEXT:# executed command: true
+
+# If there's only stdout from a PYTHON directive block, it should not print the
+# stderr header.  This is also checks the trace when the block contains only one
+# PYTHON directive.
+#
+# PYTHON: print("PYTHON writes only to stdout")
+#
+#  CHECK-NEXT:# executed '{{PYTHON}}:' directive at line [[#LN_PYTHON_STDOUT: @LINE - 2]]
+#  CHECK-NEXT:# .---stdout from '{{PYTHON}}:' directive at line [[#LN_PYTHON_STDOUT]]
+#  CHECK-NEXT:# | PYTHON writes only to stdout
+#  CHECK-NEXT:# `-----------------------------
+
+# Split PYTHON directive blocks so we can check the trace separately.
+#
+#         RUN: true
+#  CHECK-NEXT:# {{RUN}}: at line [[# @LINE - 1]]
+#  CHECK-NEXT:true
+#  CHECK-NEXT:# executed command: true
+
+# If there's only stderr from a PYTHON directive block, it should not print the
+# stdout header.
+#
+# PYTHON: print("PYTHON writes only to stderr", file=sys.stderr)
+#
+#  CHECK-NEXT:# executed '{{PYTHON}}:' directive at line [[#LN_PYTHON_STDERR: @LINE - 2]]
+#  CHECK-NEXT:# .---stderr from '{{PYTHON}}:' directive at line [[#LN_PYTHON_STDERR]]
+#  CHECK-NEXT:# | PYTHON writes only to stderr
+#  CHECK-NEXT:# `-----------------------------
+
+# Split PYTHON directive blocks so we can check the trace separately.
+#
+#         RUN: true
+#  CHECK-NEXT:# {{RUN}}: at line [[# @LINE - 1]]
+#  CHECK-NEXT:true
+#  CHECK-NEXT:# executed command: true
+
+# If there's no stdout or stderr, it shouldn't print either header.
+#
+# PYTHON: pass
+#
+#  CHECK-NEXT:# executed '{{PYTHON}}:' directive at line [[#LN_PYTHON_STDERR: @LINE - 2]]
+
+# Split PYTHON directive blocks so we can check the trace separately.
+#
+#         RUN: true
+#  CHECK-NEXT:# {{RUN}}: at line [[# @LINE - 1]]
+#  CHECK-NEXT:true
+#  CHECK-NEXT:# executed command: true
+
+# Check that reported line numbers are correct when a PYTHON directive block has
+# non-directive lines mixed in.
+#
+# PYTHON: lit.run("true") # LN_PYTHON_SEP_START
+
+# PYTHON: lit.run("true")
+# non-blank line
+# PYTHON: lit.run("true")
+#         non-blank line
+#
+# non-blank line
+# PYTHON: lit.run("true") # LN_PYTHON_SEP_END
+#
+#  CHECK-NEXT:# executed '{{PYTHON}}:' directive from line [[#LN_PYTHON_SEP_START: @LINE - 10]] to [[#LN_PYTHON_SEP_END: @LINE - 2]]
+#  CHECK-NEXT:# .---stdout from '{{PYTHON}}:' directive from line [[#LN_PYTHON_SEP_START]] to [[#LN_PYTHON_SEP_END]]
+#  CHECK-NEXT:# | # lit.run called from <lit test>:[[#LN_PYTHON_SEP_START]]
+#  CHECK-NEXT:# | true
+#  CHECK-NEXT:# | # executed command: true
+#  CHECK-NEXT:# | # lit.run called from <lit test>:[[#LN_PYTHON_SEP_START + 2]]
+#  CHECK-NEXT:# | true
+#  CHECK-NEXT:# | # executed command: true
+#  CHECK-NEXT:# | # lit.run called from <lit test>:[[#LN_PYTHON_SEP_START + 4]]
+#  CHECK-NEXT:# | true
+#  CHECK-NEXT:# | # executed command: true
+#  CHECK-NEXT:# | # lit.run called from <lit test>:[[#LN_PYTHON_SEP_START + 8]]
+#  CHECK-NEXT:# | true
+#  CHECK-NEXT:# | # executed command: true
+#  CHECK-NEXT:# `-----------------------------
+
+# End of "Command Output (stdout)".
+#
+# CHECK-EMPTY:
+#  CHECK-NEXT:--
+
+# CHECK:  Passed: 1

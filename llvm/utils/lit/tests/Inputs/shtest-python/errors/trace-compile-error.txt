@@ -1,0 +1,38 @@
+# Check that the execution trace is correct when a PYTHON directive fails to
+# compile.  Specifically, make sure the exception is written at the end of the
+# execution trace and doesn't prevent stdout and stderr from prior RUN
+# directives and python code from appearing.
+
+# PYTHON: import sys                                        #LN
+# PYTHON: print("PYTHON writes to stdout")                  #LN + 1
+# PYTHON: print("PYTHON writes to stderr", file=sys.stderr) #LN + 2
+#    RUN: %{python} %S/../write-to-stdout-and-stderr.py
+# PYTHON: +
+
+#       CHECK:Command Output (stdout):
+#  CHECK-NEXT:--
+#  CHECK-NEXT:# executed '{{PYTHON}}:' directive from line [[#LN : @LINE - 8]] to [[# @LINE - 6]]
+#  CHECK-NEXT:# .---stdout from '{{PYTHON}}:' directive from line [[#LN]] to [[#LN + 2]]
+#  CHECK-NEXT:# | PYTHON writes to stdout
+#  CHECK-NEXT:# `-----------------------------
+#  CHECK-NEXT:# .---stderr from '{{PYTHON}}:' directive from line [[#LN]] to [[#LN + 2]]
+#  CHECK-NEXT:# | PYTHON writes to stderr
+#  CHECK-NEXT:# `-----------------------------
+#  CHECK-NEXT:# {{RUN}}: at line [[#LN + 3]]
+#  CHECK-NEXT:{{.*/python.*}} {{.*}}/write-to-stdout-and-stderr.py
+#  CHECK-NEXT:# executed command: {{.*/python.*}} {{.*}}/write-to-stdout-and-stderr.py
+#  CHECK-NEXT:# .---command stdout------------
+#  CHECK-NEXT:# | a line on stdout
+#  CHECK-NEXT:# `-----------------------------
+#  CHECK-NEXT:# .---command stderr------------
+#  CHECK-NEXT:# | a line on stderr
+#  CHECK-NEXT:# `-----------------------------
+#  CHECK-NEXT:# error compiling '{{PYTHON}}:' directive at line [[#LN + 4]]:
+#  CHECK-NEXT:#   File "<lit test>", line [[#LN + 4]]
+#  CHECK-NEXT:# {{ *}}+
+#  CHECK-NEXT:# {{ *}}^
+#  CHECK-NEXT:# {{.*Error.*}}
+# CHECK-EMPTY:
+#  CHECK-NEXT:--
+
+# CHECK:  Unresolved: 1

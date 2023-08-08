@@ -1,0 +1,18 @@
+# PYTHON:  3 +   \
+# PYTHON:    4 * \
+# PYTHON:    / 5
+
+# Some versions of python (e.g., 3.8.0) botch the indentation on line
+# continuations, so we accept any indentation there for now.
+
+#       CHECK:Command Output (stdout):
+#  CHECK-NEXT:--
+#  CHECK-NEXT:# error compiling '{{PYTHON}}:' directive from line 1 to 3:
+#  CHECK-NEXT:#   File "<lit test>", line 3
+#       CHECK:# {{ *}}/ 5
+#  CHECK-NEXT:# {{ *}}^
+#  CHECK-NEXT:# {{.*Error.*}}
+# CHECK-EMPTY:
+#  CHECK-NEXT:--
+
+# CHECK:  Unresolved: 1

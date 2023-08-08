@@ -219,9 +219,16 @@ specifies which files to look in for tests. Any directory that contains
 only directories does not need the ``lit.local.cfg`` file. Read the :doc:`Lit
 documentation <CommandGuide/lit>` for more information.
 
-Each test file must contain lines starting with "RUN:" that tell :program:`lit`
-how to run it. If there are no RUN lines, :program:`lit` will issue an error
-while running a test.
+Each test file must contain lines with "RUN:" or "PYTHON:" that tell
+:program:`lit` how to run it, as described in the following sections. If there
+are no such lines, :program:`lit` will issue an error while running a test.
+
+Put related tests into a single file rather than having a separate file per
+test. Check if there are files already covering your feature and consider
+adding your code there instead of creating a new file.
+
+RUN lines
+---------
 
 RUN lines are specified in the comments of the test program using the
 keyword ``RUN`` followed by a colon, and lastly the command (pipeline)
@@ -271,9 +278,205 @@ The recommended way to examine output to figure out if the test passes is using
 the :doc:`FileCheck tool <CommandGuide/FileCheck>`. *[The usage of grep in RUN
 lines is deprecated - please do not send or commit patches that use it.]*
 
-Put related tests into a single file rather than having a separate file per
-test. Check if there are files already covering your feature and consider
-adding your code there instead of creating a new file.
+PYTHON lines
+------------
+
+While RUN lines are great for specifying LLVM tool command lines, its simple
+shell-like functionality can prove insufficient for some testing logic. For such
+cases, PYTHON lines offer the full power of python scripting, including loops,
+functions, and modules, as illustrated in the examples below.
+
+**lit.run(cmd):**
+
+In order to move a RUN line into, for example, a python control structure like a
+loop, you must convert it to a ``lit.run(cmd)`` call in a PYTHON line. For
+example:
+
+.. code-block:: llvm
+
+    ; PYTHON: for triple in ("x86_64-apple-darwin10.6.0", "x86_64-unknown-linux-gnu"):
+    ; PYTHON:     lit.run(f"""
+    ; PYTHON:         %clang_cc1 -verify -fopenmp -fopenmp-version=51
+    ; PYTHON:                    -triple {triple} -emit-llvm -o - %s |
+    ; PYTHON:           FileCheck %s
+    ; PYTHON:     """)
+
+``cmd`` in ``PYTHON: lit.run(cmd)`` behaves very much like it does in ``RUN:
+cmd``. That is, :program:`lit` performs the same substitutions, parses the same
+shell-like syntax, and then executes the resulting commands. Of course, a
+difference is that python string syntax must be followed in PYTHON lines. For
+example, in a python f-string, a :program:`lit` substitution like ``%{foo}``
+must be escaped as ``%{{foo}}``.
+
+**Python functions:**
+
+The ability to write loops in PYTHON lines makes it easy to fall into the trap
+of creating long loop nests to achieve test coverage for all points in a large
+problem space. Especially given that :program:`lit` serially executes all
+commands in a single test file (:program:`lit` parallelism is only across test
+files), this approach can produce very slow tests. Unless full coverage is
+critical, it might be better to specify only a cross-section of such a problem
+space. Python functions can be useful for this purpose. For example, we might
+extend the above example with SIMD testing but choose to do so for only one
+triple:
+
+.. code-block:: llvm
+
+    ; PYTHON: def check(cflags, fcprefix):
+    ; PYTHON:     lit.run(f"""
+    ; PYTHON:         %clang_cc1 -verify -fopenmp -fopenmp-version=51
+    ; PYTHON:                    {cflags} -emit-llvm -o - %s |
+    ; PYTHON:           FileCheck -check-prefix={fcprefix} %s
+    ; PYTHON:     """)
+    ; PYTHON:
+    ; PYTHON: check("-triple x86_64-apple-darwin10.6.0 -fopenmp-simd", "SIMD")
+    ; PYTHON: check("-triple x86_64-apple-darwin10.6.0", "NO-SIMD")
+    ; PYTHON: check("x86_64-unknown-linux-gnu", "NO-SIMD")
+
+**Python symbol scope:**
+
+The above example defines a new python symbol, the function ``check``. As in a
+python script, symbols defined in a PYTHON line are visible in all later PYTHON
+lines in the same test file. They are not visible in other test files, which is
+especially important given that :program:`lit` test file execution order is
+usually non-deterministic.
+
+**Importing python modules:**
+
+You might decide that some python symbols need to be shared across a set of test
+files. As usual in python, you can define such symbols in a python module (but
+see `config.prologue`_ below for an alternative approach if you need to do share
+them across an entire test directory). For example, if the module file
+``exampleModule.py`` is located in the same directory as your test files, you
+can import it as follows:
+
+.. code-block:: llvm
+
+    ; PYTHON: import sys
+    ; PYTHON: sys.path.append(lit.expand("%S"))
+    ; PYTHON: import exampleModule
+
+**lit.expand(text):**
+
+``lit.expand(text)`` performs the same substitutions that :program:`lit`
+performs in RUN lines and in `lit.run(cmd)`. In the above example, it retrieves
+the value of :program:`lit`'s ``%S`` substitution, which is the test case's
+source directory, so that ``exampleModule.py`` can be located.
+
+**Exposing the lit object to an imported module:**
+
+As usual in python, an imported module does not automatically have access to
+symbols in the scope of the importer. In the above example, ``exampleModule.py``
+does not have access to the ``lit`` object. However, it needs access if it
+defines the ``check`` function above.
+
+One solution is to declare ``lit`` within the module and then assign it in a
+PYTHON line. For example, the contents of ``exampleModule.py`` would be as
+follows:
+
+.. code-block:: python
+
+    lit = None
+
+    def check(cflags, fcprefix):
+        lit.run(f"""
+            %clang_cc1 -verify -fopenmp -fopenmp-version=51
+                       {cflags} -emit-llvm -o - %s |
+              FileCheck -check-prefix={fcprefix} %s
+        """)
+
+Then your test's PYTHON lines would import ``exampleModule.py`` as follows:
+
+.. code-block:: llvm
+
+    ; PYTHON: import sys
+    ; PYTHON: sys.path.append(lit.expand("%S"))
+    ; PYTHON: import exampleModule
+    ; PYTHON: exampleModule.lit = lit
+
+.. _config.prologue:
+
+**config.prologue:**
+
+If ``exampleModule.py`` is needed in every test file in a test directory, the
+above import code might be cumbersome to repeat and maintain as a prologue in
+them all, especially if it evolves over time to include other modules or to
+perform some additional initialization.
+
+To avoid this problem, you can set ``config.prologue`` in a lit configuration
+file. Its value must be the name of a python file, whose contents :program:`lit`
+handles as if they appear in PYTHON lines at the start of every test file. Thus,
+any python symbols it defines are seen throughout every test file, and it has
+access to the ``lit`` object. For example, you might decide to rename
+``exampleModule.py`` to something like ``lit.prologue.py``, set
+``config.prologue`` to that file, and thus avoid writing the code for importing
+a module and exposing the ``lit`` object.
+
+**lit.has(feature):**
+
+To determine if ``feature`` appears in ``config.available_features`` (see
+`Constraining test execution`_ and `%if` under `Substitutions`_), you can call
+`lit.has(feature)`.
+
+**Mixing PYTHON lines and other directives:**
+
+It is fine to mix RUN lines and PYTHON lines in the same test file.
+:program:`lit` executes them in the order in which they appear. A possible way
+for them to interact is via temporary files (e.g., see ``%t`` in
+`Substitutions`_).
+
+It is also fine to mix PYTHON lines with DEFINE and REDEFINE lines, which assign
+:program:`lit` substitutions (see `Test-specific substitutions`_).
+`lit.expand(text)` and `lit.run(cmd)` will see the latest substitution values
+just as RUN lines do.
+
+The ability to mix PYTHON lines with other directives is helpful for at least
+two reasons. First, it facilitates extending existing test files with PYTHON
+lines without having to replace all RUN, DEFINE, and REDEFINE lines. Second,
+even for new tests, when a simple ``RUN: cmd`` would be sufficient, it is
+probably best not to complicate it with python syntax by converting it to
+``PYTHON: lit.run(cmd)``.
+
+**Python blocks and indentation:**
+
+:program:`lit` parses and executes all consecutive PYTHON lines as a single
+PYTHON block. For :program:`lit`, consecutive just means there are no other
+:program:`lit` directives (e.g., RUN lines) in between, but :program:`lit`
+discards other lines as inert text. The python code in a PYTHON block must be
+syntactically complete. For example, a PYTHON block cannot end with ``PYTHON: if
+cond:`` no matter what appears at the start of the next PYTHON block.
+
+Any whitespace immediately after ``PYTHON:`` on the initial line of a PYTHON
+block must also appear immediately after ``PYTHON:`` on all non-initial lines in
+the block. :program:`lit` trims that whitespace from every line before passing
+it to the python interpreter. Thus, non-initial lines can contain additional
+indentation according to the rules of python syntax.
+
+**Calling python from RUN lines:**
+
+In some test suites, you might find techniques for calling python code
+from a RUN line rather than from a PYTHON line.  In particular, they
+might call the python interpreter (usually specified via a ``%python``
+or ``%{python}`` :program:`lit` substitution) on an external python
+file.  Some test suites might use the ``split-file`` utility (see
+`Extra files`_ below) to embed that python file directly into the test
+if the python code is sufficiently concise and does not need to be
+reused across multiple tests.
+
+A disadvantage of such techniques is that they do not have access to
+the ``lit`` object exposed to PYTHON lines.  For example, to move a
+shell command from a RUN line into a control structure like a loop or
+function without using ``lit.run(cmd)`` as in the examples above, the
+test author can instead pass the shell command to python's own
+``subprocess.run`` function.  To make any required :program:`lit`
+substitutions available, they can pass them as command-line arguments
+on the python interpreter RUN line, keeping in mind that substitutions
+are sometimes complex and that proper shell quoting must be applied.
+It is the test author's job to decide how to capture stdout, stderr,
+exit status, etc. from the shell command and present them for
+debugging when the test fails.  In contrast, ``lit.run(cmd)`` called
+from a PYTHON line handles all these issues already in a manner that
+is consistent with its handling of RUN lines.
 
 Generating assertions in regression tests
 -----------------------------------------
@@ -788,6 +991,9 @@ Additional substitutions can be defined as follows:
   ``DEFINE:`` and ``REDEFINE:`` directives, described in detail below.  So that
   they have no effect on other test files, these directives modify a copy of the
   substitution list that is produced by lit configuration files.
+- While simple substitution definitions can be useful for avoiding repeated
+  code, complex substitution relationships can be hard to understand and
+  maintain.  Consider using python functions instead (see `PYTHON lines`_).
 
 For example, the following directives can be inserted into a test file to define
 ``%{cflags}`` and ``%{fcflags}`` substitutions with empty initial values, which

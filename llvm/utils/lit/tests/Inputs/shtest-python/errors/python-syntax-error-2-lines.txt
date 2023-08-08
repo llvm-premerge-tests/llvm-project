@@ -1,0 +1,14 @@
+# PYTHON:3 +   \
+# PYTHON:  * 4
+
+#       CHECK:Command Output (stdout):
+#  CHECK-NEXT:--
+#  CHECK-NEXT:# error compiling '{{PYTHON}}:' directive from line 1 to 2:
+#  CHECK-NEXT:#   File "<lit test>", line 2
+#       CHECK:# {{ *}}* 4
+#  CHECK-NEXT:# {{ *}}^
+#  CHECK-NEXT:# {{.*Error.*}}
+# CHECK-EMPTY:
+#  CHECK-NEXT:--
+
+# CHECK:  Unresolved: 1
