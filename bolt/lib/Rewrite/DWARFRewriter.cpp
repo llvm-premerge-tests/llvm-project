@@ -66,6 +66,26 @@ static void printDie(const DWARFDie &DIE) {
   DumpOpts.ShowChildren = false;
   DIE.dump(dbgs(), 0, DumpOpts);
 }
+LLVM_ATTRIBUTE_UNUSED
+static void printDie(DWARFUnit &DU, uint64_t DIEOffset) {
+  uint64_t OriginalOffsets = DIEOffset;
+  uint64_t NextCUOffset = DU.getNextUnitOffset();
+  DWARFDataExtractor DebugInfoData = DU.getDebugInfoExtractor();
+  DWARFDebugInfoEntry DIEEntry;
+  if (DIEEntry.extractFast(DU, &DIEOffset, DebugInfoData, NextCUOffset, 0)) {
+    if (const DWARFAbbreviationDeclaration *AbbrDecl =
+            DIEEntry.getAbbreviationDeclarationPtr()) {
+      DWARFDie DDie(&DU, &DIEEntry);
+      printDie(DDie);
+    } else {
+      dbgs() << "Failed to extract abbreviation for"
+             << Twine::utohexstr(OriginalOffsets) << "\n";
+    }
+  } else {
+    dbgs() << "Failed to extract DIE for " << Twine::utohexstr(OriginalOffsets)
+           << " \n";
+  }
+}
 
 namespace llvm {
 namespace bolt {
