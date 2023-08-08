@@ -50,6 +50,7 @@ add_mlir_dialect_library(MLIRGPUTransforms
   Transforms/GlobalIdRewriter.cpp
   Transforms/KernelOutlining.cpp
   Transforms/MemoryPromotion.cpp
+  Transforms/ModuleToBinary.cpp
   Transforms/ParallelLoopMapper.cpp
   Transforms/ShuffleRewriter.cpp
   Transforms/SerializeToBlob.cpp
