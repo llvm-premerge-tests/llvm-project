@@ -887,6 +887,19 @@ void VPBlendRecipe::execute(VPTransformState &State) {
   // optimizations will clean it up.
 
   unsigned NumIncoming = getNumIncomingValues();
+  unsigned StartInValIdx = 0;
+
+  // We might have single edge PHIs (blocks)
+  if (NumIncoming > 1) {
+    // Find an incoming value whose mask is only used by the blend. By seeding
+    // the blend with this value it's mask is not used and can be deadcoded.
+    for (unsigned In = 0; In < NumIncoming; ++In) {
+      if (getMask(In)->getNumUsers() == 1) {
+        StartInValIdx = In;
+        break;
+      }
+    }
+  }
 
   // Generate a sequence of selects of the form:
   // SELECT(Mask3, In3,
@@ -895,21 +908,24 @@ void VPBlendRecipe::execute(VPTransformState &State) {
   //                      In0)))
   // Note that Mask0 is never used: lanes for which no path reaches this phi and
   // are essentially undef are taken from In0.
- VectorParts Entry(State.UF);
+  VectorParts Entry(State.UF);
+
+  // Initialize with the incoming value whose mask can be esily deadcoded.
+  for (unsigned Part = 0; Part < State.UF; ++Part) {
+    Entry[Part] = State.get(getIncomingValue(StartInValIdx), Part);
+  }
+
   for (unsigned In = 0; In < NumIncoming; ++In) {
+    if (In == StartInValIdx)
+      continue;
+
     for (unsigned Part = 0; Part < State.UF; ++Part) {
-      // We might have single edge PHIs (blocks) - use an identity
-      // 'select' for the first PHI operand.
       Value *In0 = State.get(getIncomingValue(In), Part);
-      if (In == 0)
-        Entry[Part] = In0; // Initialize with the first incoming value.
-      else {
-        // Select between the current value and the previous incoming edge
-        // based on the incoming mask.
-        Value *Cond = State.get(getMask(In), Part);
-        Entry[Part] =
-            State.Builder.CreateSelect(Cond, In0, Entry[Part], "predphi");
-      }
+      // Select between the current value and the previous incoming edge
+      // based on the incoming mask.
+      Value *Cond = State.get(getMask(In), Part);
+      Entry[Part] =
+          State.Builder.CreateSelect(Cond, In0, Entry[Part], "predphi");
     }
   }
   for (unsigned Part = 0; Part < State.UF; ++Part)
