@@ -13,8 +13,11 @@
 #include <__type_traits/is_arithmetic.h>
 #include <__type_traits/is_const.h>
 #include <__type_traits/is_constant_evaluated.h>
+#include <__type_traits/is_convertible.h>
 #include <__type_traits/is_same.h>
+#include <__type_traits/is_unsigned.h>
 #include <__type_traits/is_volatile.h>
+#include <__utility/declval.h>
 #include <cstdint>
 #include <limits>
 
@@ -53,6 +56,19 @@ template <class _Tp>
 _LIBCPP_HIDE_FROM_ABI auto constexpr __set_all_bits(bool __v) {
   return __v ? (numeric_limits<decltype(__choose_mask_type<_Tp>())>::max()) : 0;
 }
+
+template <class _From, class _To, class = void>
+struct __is_value_preserving_convertible : std::false_type {};
+
+template <class _From, class _To>
+struct __is_value_preserving_convertible<_From, _To, decltype(static_cast<_To>(std::declval<_From>()))>
+    : std::true_type {};
+
+template <class _Tp, class _Up>
+constexpr bool __can_broadcast_v =
+    (__is_vectorizable_v<_Up> && __is_value_preserving_convertible<_Up, _Tp>::value) ||
+    (!__is_vectorizable_v<_Up> && is_convertible_v<_Up, _Tp>) || is_same_v<_Up, int> ||
+    (is_same_v<_Up, unsigned int> && is_unsigned_v<_Tp>);
 
 } // namespace parallelism_v2
 _LIBCPP_END_NAMESPACE_EXPERIMENTAL
