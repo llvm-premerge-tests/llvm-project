@@ -97,5 +97,31 @@ RISCVLegalizerInfo::RISCVLegalizerInfo(const RISCVSubtarget &ST) {
       .clampScalar(0, XLenLLT, XLenLLT)
       .clampScalar(1, XLenLLT, XLenLLT);
 
+  if (ST.hasStdExtM() || ST.hasStdExtZmmul()) {
+    getActionDefinitionsBuilder(G_MUL)
+        .legalFor({XLenLLT})
+        .widenScalarToNextPow2(0)
+        .clampScalar(0, XLenLLT, XLenLLT);
+
+    getActionDefinitionsBuilder({G_SMULO, G_UMULO})
+        .widenScalarToNextPow2(0)
+        .clampScalar(0, XLenLLT, XLenLLT)
+        .lower();
+
+    getActionDefinitionsBuilder({G_SMULH, G_UMULH}).legalFor({XLenLLT}).lower();
+  } else {
+    getActionDefinitionsBuilder(G_MUL)
+        .libcallFor({XLenLLT})
+        .widenScalarToNextPow2(0)
+        .clampScalar(0, XLenLLT, XLenLLT);
+
+    getActionDefinitionsBuilder({G_SMULO, G_UMULO})
+        .widenScalarToNextPow2(0)
+        .clampScalar(0, XLenLLT, XLenLLT)
+        .lower();
+
+    getActionDefinitionsBuilder({G_SMULH, G_UMULH}).lowerFor({XLenLLT});
+  }
+
   getLegacyLegalizerInfo().computeTables();
 }
