@@ -958,6 +958,16 @@ bool PresburgerRelation::hasOnlyDivLocals() const {
   });
 }
 
+PresburgerRelation PresburgerRelation::simplify() {
+  PresburgerRelation rel = PresburgerRelation(getSpace());
+  for (IntegerRelation &disjunct : disjuncts) {
+    disjunct.simplify();
+    if (!disjunct.isPlainEmpty())
+      rel.unionInPlace(disjunct);
+  }
+  return rel;
+}
+
 void PresburgerRelation::print(raw_ostream &os) const {
   os << "Number of Disjuncts: " << getNumDisjuncts() << "\n";
   for (const IntegerRelation &disjunct : disjuncts) {
