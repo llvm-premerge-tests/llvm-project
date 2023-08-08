@@ -5,6 +5,7 @@
 ; RUN: llc -mtriple=x86_64-linux-gnux32 -global-isel -verify-machineinstrs                       < %s -o - | FileCheck %s --check-prefix=X32ABI
 
 @g_int = dso_local global i32 0, align 4
+@g_int_stub = global i32 0, align 4
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local ptr @test_global_ptrv() #3 {
@@ -62,3 +63,55 @@ entry:
   ret i32 %0
 }
 
+define dso_local ptr @test_global_stub_ptrv() #3 {
+; X64-LABEL: test_global_stub_ptrv:
+; X64:       # %bb.0:
+; X64-NEXT:    movq g_int_stub@GOTPCREL(%rip), %rax
+; X64-NEXT:    retq
+;
+; X64_DARWIN_PIC-LABEL: test_global_stub_ptrv:
+; X64_DARWIN_PIC:       ## %bb.0:
+; X64_DARWIN_PIC-NEXT:    leaq _g_int_stub(%rip), %rax
+; X64_DARWIN_PIC-NEXT:    retq
+;
+; X32-LABEL: test_global_stub_ptrv:
+; X32:       # %bb.0:
+; X32-NEXT:    leal g_int_stub, %eax
+; X32-NEXT:    retl
+;
+; X32ABI-LABEL: test_global_stub_ptrv:
+; X32ABI:       # %bb.0:
+; X32ABI-NEXT:    movl g_int_stub@GOTPCREL(%rip), %eax
+; X32ABI-NEXT:    movl %eax, %eax
+; X32ABI-NEXT:    retq
+  ret ptr @g_int_stub
+}
+
+define dso_local i32 @test_global_stub_valv() #3 {
+; X64-LABEL: test_global_stub_valv:
+; X64:       # %bb.0: # %entry
+; X64-NEXT:    movq g_int_stub@GOTPCREL(%rip), %rax
+; X64-NEXT:    movl (%rax), %eax
+; X64-NEXT:    retq
+;
+; X64_DARWIN_PIC-LABEL: test_global_stub_valv:
+; X64_DARWIN_PIC:       ## %bb.0: ## %entry
+; X64_DARWIN_PIC-NEXT:    leaq _g_int_stub(%rip), %rax
+; X64_DARWIN_PIC-NEXT:    movl (%rax), %eax
+; X64_DARWIN_PIC-NEXT:    retq
+;
+; X32-LABEL: test_global_stub_valv:
+; X32:       # %bb.0: # %entry
+; X32-NEXT:    leal g_int_stub, %eax
+; X32-NEXT:    movl (%eax), %eax
+; X32-NEXT:    retl
+;
+; X32ABI-LABEL: test_global_stub_valv:
+; X32ABI:       # %bb.0: # %entry
+; X32ABI-NEXT:    movl g_int_stub@GOTPCREL(%rip), %eax
+; X32ABI-NEXT:    movl (%eax), %eax
+; X32ABI-NEXT:    retq
+entry:
+  %0 = load i32, ptr @g_int_stub, align 4
+  ret i32 %0
+}

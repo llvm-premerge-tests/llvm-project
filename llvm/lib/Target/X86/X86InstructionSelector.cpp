@@ -648,9 +648,29 @@ bool X86InstructionSelector::selectGlobalValue(MachineInstr &I,
   AM.GV = GV;
   AM.GVOpFlags = STI.classifyGlobalReference(GV);
 
-  // TODO: The ABI requires an extra load. not supported yet.
-  if (isGlobalStubReference(AM.GVOpFlags))
-    return false;
+  if (isGlobalStubReference(AM.GVOpFlags)) {
+    unsigned Opc = 0;
+    X86AddressMode StubAM;
+    StubAM.Base.Reg = AM.Base.Reg;
+    StubAM.GV = GV;
+    StubAM.GVOpFlags = AM.GVOpFlags;
+    if (STI.getTargetLowering()->getPointerTy(MF.getDataLayout()) == MVT::i64) {
+      Opc = X86::MOV64rm;
+    } else {
+      Opc = X86::MOV32rm;
+    }
+
+    if (STI.isPICStyleRIPRel() || AM.GVOpFlags == X86II::MO_GOTPCREL ||
+        AM.GVOpFlags == X86II::MO_GOTPCREL_NORELAX)
+      StubAM.Base.Reg = X86::RIP;
+
+    I.setDesc(TII.get(Opc));
+    MachineInstrBuilder MIB(MF, I);
+
+    I.removeOperand(1);
+    addFullAddress(MIB, StubAM);
+    return constrainSelectedInstRegOperands(I, TII, TRI, RBI);
+  }
 
   // TODO: This reference is relative to the pic base. not supported yet.
   if (isGlobalRelativeToPICBase(AM.GVOpFlags))
