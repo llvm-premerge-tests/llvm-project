@@ -1534,6 +1534,21 @@ void PPCAsmPrinter::emitInstruction(const MachineInstr *MI) {
     EmitToStreamer(*OutStreamer, MCInstBuilder(PPC::EnforceIEIO));
     return;
   }
+  case PPC::ADDI8: {
+    // Handle assembly printing for -maix-small-local-exec-tls on AIX (64-bit).
+    // The faster non-TOC based local-exec sequence is represented by the
+    // hasAIXSmallLocalExecTLS() subtarget feature and the MO_TPREL_FLAG
+    // target flag.
+    const MachineOperand &MO = MI->getOperand(2);
+    if (Subtarget->hasAIXSmallLocalExecTLS() &&
+        (MO.getTargetFlags() & PPCII::MO_TPREL_FLAG)) {
+      LowerPPCMachineInstrToMCInst(MI, TmpInst, *this);
+      TmpInst.setOpcode(PPC::LA8);
+      EmitToStreamer(*OutStreamer, TmpInst);
+      return;
+    }
+    break;
+  }
   }
 
   LowerPPCMachineInstrToMCInst(MI, TmpInst, *this);

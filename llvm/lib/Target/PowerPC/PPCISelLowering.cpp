@@ -144,6 +144,11 @@ static SDValue widenVec(SelectionDAG &DAG, SDValue Vec, const SDLoc &dl);
 
 static const char AIXSSPCanaryWordName[] = "__ssp_canary_word";
 
+// A faster local-exec TLS access sequence (enabled with the
+// -maix-small-local-exec-tls option) can be produced for TLS variables with a
+// max size of slightly under 32KB.
+constexpr uint64_t AIXTLSUpperDisplacement = 32752;
+
 // FIXME: Remove this once the bug has been fixed!
 extern cl::opt<bool> ANDIGlueBug;
 
@@ -3324,6 +3329,7 @@ SDValue PPCTargetLowering::LowerGlobalTLSAddressAIX(SDValue Op,
   const GlobalValue *GV = GA->getGlobal();
   EVT PtrVT = getPointerTy(DAG.getDataLayout());
   bool Is64Bit = Subtarget.isPPC64();
+  bool HasAIXSmallLocalExecTLS = Subtarget.hasAIXSmallLocalExecTLS();
   TLSModel::Model Model = getTargetMachine().getTLSModel(GV);
 
   if (Model == TLSModel::LocalExec) {
@@ -3331,7 +3337,7 @@ SDValue PPCTargetLowering::LowerGlobalTLSAddressAIX(SDValue Op,
         DAG.getTargetGlobalAddress(GV, dl, PtrVT, 0, PPCII::MO_TPREL_FLAG);
     SDValue VariableOffset = getTOCEntry(DAG, dl, VariableOffsetTGA);
     SDValue TLSReg;
-    if (Is64Bit)
+    if (Is64Bit) {
       // For local-exec on AIX (64-bit), the sequence that is generated involves
       // a load of the variable offset (from the TOC), followed by an add of the
       // loaded variable offset to R13 (the thread pointer).
@@ -3339,7 +3345,28 @@ SDValue PPCTargetLowering::LowerGlobalTLSAddressAIX(SDValue Op,
       //    ld reg1,var[TC](2)
       //    add reg2, reg1, r13     // r13 contains the thread pointer
       TLSReg = DAG.getRegister(PPC::X13, MVT::i64);
-    else
+
+      // Produce a faster access sequence for local-exec TLS variables where
+      // the offset from the TLS base is encoded as an immediate operand.
+      //
+      // In order to utilize a faster local-exec access sequence (enabled by the
+      // -maix-small-local-exec-tls option), the size of the TLS variable that
+      // is being considered for the faster sequence needs to be roughly
+      // under 32KB (represented by AIXTLSUpperDisplacement). The size needs
+      // to be slightly less than 32KB due to additional overhead.
+      //
+      // Additionally, the faster sequence is only considered when the
+      // GlobalValue is adequately sized and is not empty. This is to prevent
+      // generating the sequence for cases like when an extern struct or an
+      // unbounded array is present.
+      Type *GVType = GV->getValueType();
+      if (GVType->isSized() && !GVType->isEmptyTy()) {
+        uint64_t GVTypeSize =
+            GV->getParent()->getDataLayout().getTypeAllocSize(GVType);
+        if (HasAIXSmallLocalExecTLS && (GVTypeSize < AIXTLSUpperDisplacement))
+          return DAG.getNode(PPCISD::Lo, dl, PtrVT, VariableOffsetTGA, TLSReg);
+      }
+    } else {
       // For local-exec on AIX (32-bit), the sequence that is generated involves
       // loading the variable offset from the TOC, generating a call to
       // .__get_tpointer to get the thread pointer (which will be in R3), and
@@ -3348,6 +3375,13 @@ SDValue PPCTargetLowering::LowerGlobalTLSAddressAIX(SDValue Op,
       //    bla .__get_tpointer
       //    add reg2, reg1, r3
       TLSReg = DAG.getNode(PPCISD::GET_TPOINTER, dl, PtrVT);
+
+      // We do not implement the 32-bit version of the faster access sequence
+      // for local-exec that is controlled by -maix-small-local-exec-tls.
+      if (HasAIXSmallLocalExecTLS)
+        report_fatal_error("The small-local-exec TLS access sequence is "
+                           "currently only supported on AIX (64-bit mode).");
+    }
     return DAG.getNode(PPCISD::ADD_TLS, dl, PtrVT, TLSReg, VariableOffset);
   }
 

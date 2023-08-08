@@ -31,26 +31,19 @@ using namespace llvm;
 
 static MCSymbol *GetSymbolFromOperand(const MachineOperand &MO,
                                       AsmPrinter &AP) {
-  const TargetMachine &TM = AP.TM;
-  Mangler &Mang = TM.getObjFileLowering()->getMangler();
-  const DataLayout &DL = AP.getDataLayout();
-  MCContext &Ctx = AP.OutContext;
-
-  SmallString<128> Name;
-  if (!MO.isGlobal()) {
-    assert(MO.isSymbol() && "Isn't a symbol reference");
-    Mangler::getNameWithPrefix(Name, MO.getSymbolName(), DL);
-  } else {
+  if (MO.isGlobal()) {
     const GlobalValue *GV = MO.getGlobal();
-    if (const GlobalVariable *GVar = dyn_cast<GlobalVariable>(GV))
-      if (GVar->hasAttribute("toc-data"))
-        return TM.getSymbol(GV);
-
-    TM.getNameWithPrefix(Name, GV, Mang);
+    return AP.getSymbol(GV);
   }
 
-  MCSymbol *Sym = Ctx.getOrCreateSymbol(Name);
+  assert(MO.isSymbol() && "Isn't a symbol reference");
 
+  SmallString<128> Name;
+  const DataLayout &DL = AP.getDataLayout();
+  Mangler::getNameWithPrefix(Name, MO.getSymbolName(), DL);
+
+  MCContext &Ctx = AP.OutContext;
+  MCSymbol *Sym = Ctx.getOrCreateSymbol(Name);
   return Sym;
 }
 
@@ -84,6 +77,8 @@ static MCOperand GetSymbolRef(const MachineOperand &MO, const MCSymbol *Symbol,
       break;
   }
 
+  const TargetMachine &TM = Printer.TM;
+
   if (MO.getTargetFlags() == PPCII::MO_PLT)
     RefKind = MCSymbolRefExpr::VK_PLT;
   else if (MO.getTargetFlags() == PPCII::MO_PCREL_FLAG)
@@ -98,12 +93,18 @@ static MCOperand GetSymbolRef(const MachineOperand &MO, const MCSymbol *Symbol,
     RefKind = MCSymbolRefExpr::VK_PPC_GOT_TLSLD_PCREL;
   else if (MO.getTargetFlags() == PPCII::MO_GOT_TPREL_PCREL_FLAG)
     RefKind = MCSymbolRefExpr::VK_PPC_GOT_TPREL_PCREL;
+  else if (MO.getTargetFlags() == PPCII::MO_TPREL_FLAG) {
+    assert(MO.isGlobal() && "Only expecting a global MachineOperand here!\n");
+    TLSModel::Model Model = TM.getTLSModel(MO.getGlobal());
+    assert(Model == TLSModel::LocalExec &&
+           "Only expecting local-exec accesses!");
+    RefKind = MCSymbolRefExpr::VK_PPC_AIX_TLSLE;
+  }
 
   const MachineInstr *MI = MO.getParent();
   const MachineFunction *MF = MI->getMF();
   const Module *M = MF->getFunction().getParent();
   const PPCSubtarget *Subtarget = &(MF->getSubtarget<PPCSubtarget>());
-  const TargetMachine &TM = Printer.TM;
 
   unsigned MIOpcode = MI->getOpcode();
   assert((Subtarget->isUsingPCRelativeCalls() || MIOpcode != PPC::BL8_NOTOC) &&
