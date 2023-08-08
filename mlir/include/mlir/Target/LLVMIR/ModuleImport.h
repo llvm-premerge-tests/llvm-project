@@ -19,6 +19,7 @@
 #include "mlir/Target/LLVMIR/Import.h"
 #include "mlir/Target/LLVMIR/LLVMImportInterface.h"
 #include "mlir/Target/LLVMIR/TypeFromLLVM.h"
+#include "llvm/ADT/SmallVector.h"
 
 namespace llvm {
 class BasicBlock;
@@ -225,8 +226,16 @@ private:
   LogicalResult convertGlobalCtorsAndDtors(llvm::GlobalVariable *globalVar);
   /// Returns personality of `func` as a FlatSymbolRefAttr.
   FlatSymbolRefAttr getPersonalityAsAttr(llvm::Function *func);
-  /// Imports `bb` into `block`, which must be initially empty.
-  LogicalResult processBasicBlock(llvm::BasicBlock *bb, Block *block);
+  /// Imports `bb` into `block`, which must be initially empty. Additionally,
+  /// collects all intrinsic instructions, whose conversion should be delayed,
+  /// and adds them to `delayedIntrinsics`.
+  LogicalResult
+  processBasicBlock(llvm::BasicBlock *bb, Block *block,
+                    SmallVector<llvm::CallInst *> &delayedIntrinsics);
+  /// Converts all intrinsics in `delayedIntrinsics`. Assumes that the function
+  /// that these intrinsics are part of was already fully converted to MLIR.
+  LogicalResult
+  processDelayedIntrinsics(SmallVector<llvm::CallInst *> &delayedIntrinsics);
   /// Converts an LLVM intrinsic to an MLIR LLVM dialect operation if an MLIR
   /// counterpart exists. Otherwise, returns failure.
   LogicalResult convertIntrinsic(llvm::CallInst *inst);

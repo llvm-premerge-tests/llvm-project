@@ -311,6 +311,10 @@ static bool emitIntrMLIRBuilders(const RecordKeeper &recordKeeper,
   };
   for (const Record *def :
        recordKeeper.getAllDerivedDefinitions("LLVM_IntrOpBase")) {
+    // Intrinsics whose import should be delayed do not need the emission of an
+    // mlirBuilder.
+    if (def->getValueAsBit("delayedImport"))
+      continue;
     if (failed(emitOneMLIRBuilder(*def, os, emitIntrCond)))
       return true;
   }
@@ -566,8 +570,13 @@ static void emitOneIntrinsic(const Record &record, raw_ostream &os) {
 static bool emitConvertibleIntrinsics(const RecordKeeper &recordKeeper,
                                       raw_ostream &os) {
   for (const Record *def :
-       recordKeeper.getAllDerivedDefinitions("LLVM_IntrOpBase"))
+       recordKeeper.getAllDerivedDefinitions("LLVM_IntrOpBase")) {
+    // Intrinsics with a a delayed import are not convertible by the normal
+    // intrinsic conversion, so skip them.
+    if (def->getValueAsBit("delayedImport"))
+      continue;
     emitOneIntrinsic(*def, os);
+  }
 
   return false;
 }
