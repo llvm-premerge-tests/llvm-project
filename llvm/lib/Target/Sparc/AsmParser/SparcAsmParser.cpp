@@ -87,6 +87,8 @@ class SparcAsmParser : public MCTargetAsmParser {
 
   OperandMatchResultTy parseMembarTag(OperandVector &Operands);
 
+  OperandMatchResultTy parseASITag(OperandVector &Operands);
+
   template <TailRelocKind Kind>
   OperandMatchResultTy parseTailRelocSym(OperandVector &Operands);
 
@@ -237,7 +239,8 @@ private:
     k_Register,
     k_Immediate,
     k_MemoryReg,
-    k_MemoryImm
+    k_MemoryImm,
+    k_ASITag
   } Kind;
 
   SMLoc StartLoc, EndLoc;
@@ -267,6 +270,7 @@ private:
     struct RegOp Reg;
     struct ImmOp Imm;
     struct MemOp Mem;
+    unsigned ASI;
   };
 
 public:
@@ -279,6 +283,7 @@ public:
   bool isMEMrr() const { return Kind == k_MemoryReg; }
   bool isMEMri() const { return Kind == k_MemoryImm; }
   bool isMembarTag() const { return Kind == k_Immediate; }
+  bool isASITag() const { return Kind == k_ASITag; }
   bool isTailRelocSym() const { return Kind == k_Immediate; }
 
   bool isCallTarget() const {
@@ -358,6 +363,11 @@ public:
     return Mem.Off;
   }
 
+  unsigned getASITag() const {
+    assert((Kind == k_ASITag) && "Invalid access!");
+    return ASI;
+  }
+
   /// getStartLoc - Get the location of the first token of this operand.
   SMLoc getStartLoc() const override {
     return StartLoc;
@@ -378,6 +388,9 @@ public:
       OS << "Mem: " << getMemBase()
          << "+" << *getMemOff()
          << "\n"; break;
+    case k_ASITag:
+      OS << "ASI tag: " << getASITag() << "\n";
+      break;
     }
   }
 
@@ -429,6 +442,11 @@ public:
     addExpr(Inst, Expr);
   }
 
+  void addASITagOperands(MCInst &Inst, unsigned N) const {
+    assert(N == 1 && "Invalid number of operands!");
+    Inst.addOperand(MCOperand::createImm(getASITag()));
+  }
+
   void addMembarTagOperands(MCInst &Inst, unsigned N) const {
     assert(N == 1 && "Invalid number of operands!");
     const MCExpr *Expr = getImm();
@@ -468,6 +486,15 @@ public:
                                                  SMLoc E) {
     auto Op = std::make_unique<SparcOperand>(k_Immediate);
     Op->Imm.Val = Val;
+    Op->StartLoc = S;
+    Op->EndLoc = E;
+    return Op;
+  }
+
+  static std::unique_ptr<SparcOperand> CreateASITag(unsigned Val, SMLoc S,
+                                                    SMLoc E) {
+    auto Op = std::make_unique<SparcOperand>(k_ASITag);
+    Op->ASI = Val;
     Op->StartLoc = S;
     Op->EndLoc = E;
     return Op;
@@ -1081,6 +1108,27 @@ OperandMatchResultTy SparcAsmParser::parseMembarTag(OperandVector &Operands) {
   return MatchOperand_Success;
 }
 
+OperandMatchResultTy SparcAsmParser::parseASITag(OperandVector &Operands) {
+  SMLoc S = Parser.getTok().getLoc();
+  SMLoc E = Parser.getTok().getEndLoc();
+  int64_t ASIVal = 0;
+
+  std::unique_ptr<SparcOperand> Mask;
+  if (parseSparcAsmOperand(Mask) != MatchOperand_Success) {
+    Error(S, "malformed ASI tag");
+    return MatchOperand_ParseFail;
+  }
+
+  if (!Mask->isImm() || !Mask->getImm()->evaluateAsAbsolute(ASIVal) ||
+      ASIVal < 0 || ASIVal > 255) {
+    Error(S, "invalid ASI number, must be between 0 and 255");
+    return MatchOperand_ParseFail;
+  }
+
+  Operands.push_back(SparcOperand::CreateASITag(ASIVal, S, E));
+  return MatchOperand_Success;
+}
+
 OperandMatchResultTy SparcAsmParser::parseCallTarget(OperandVector &Operands) {
   SMLoc S = Parser.getTok().getLoc();
   SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
@@ -1155,13 +1203,38 @@ SparcAsmParser::parseOperand(OperandVector &Operands, StringRef Mnemonic) {
     Parser.Lex(); // Eat the ]
 
     // Parse an optional address-space identifier after the address.
-    if (getLexer().is(AsmToken::Integer)) {
+    // This will be either the %asi register or an immediate constant
+    // expression.
+    if (getLexer().is(AsmToken::Percent)) {
       std::unique_ptr<SparcOperand> Op;
-      ResTy = parseSparcAsmOperand(Op, false);
-      if (ResTy != MatchOperand_Success || !Op)
-        return MatchOperand_ParseFail;
-      Operands.push_back(std::move(Op));
+      if (parseSparcAsmOperand(Op) == MatchOperand_Success && Op &&
+          Op->isReg() && Op->getReg() == Sparc::ASI) {
+        // Here we patch the MEM operand from [base + %g0] into [base + 0]
+        // as memory operations with ASI tag stored in %asi register needs
+        // to use immediate offset.
+        SparcOperand &OldMemOp = (SparcOperand &)*Operands[Operands.size() - 2];
+        if (OldMemOp.isMEMrr()) {
+          if (OldMemOp.getMemOffsetReg() != Sparc::G0)
+            return MatchOperand_ParseFail;
+          Operands[Operands.size() - 2] = SparcOperand::MorphToMEMri(
+              OldMemOp.getMemBase(),
+              SparcOperand::CreateImm(MCConstantExpr::create(0, getContext()),
+                                      OldMemOp.getStartLoc(),
+                                      OldMemOp.getEndLoc()));
+        }
+        // In this context, we convert the register operand into
+        // a plain "%asi" token since the register access is already
+        // implicit in the instruction definition and encoding.
+        // See LoadASI/StoreASI in SparcInstrInfo.td.
+        Operands.push_back(
+            SparcOperand::CreateToken("%asi", Parser.getTok().getLoc()));
+        return MatchOperand_Success;
+      }
+      return MatchOperand_ParseFail;
     }
+
+    if (getLexer().is(AsmToken::Integer) || getLexer().is(AsmToken::LParen))
+      return parseASITag(Operands);
     return MatchOperand_Success;
   }
 

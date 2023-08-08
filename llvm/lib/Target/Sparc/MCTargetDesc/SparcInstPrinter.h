@@ -51,6 +51,8 @@ public:
                    raw_ostream &OS);
   void printMembarTag(const MCInst *MI, int opNum, const MCSubtargetInfo &STI,
                       raw_ostream &O);
+  void printASITag(const MCInst *MI, int opNum, const MCSubtargetInfo &STI,
+                   raw_ostream &O);
 };
 } // end namespace llvm
 
