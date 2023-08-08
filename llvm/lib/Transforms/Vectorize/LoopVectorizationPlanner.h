@@ -25,10 +25,13 @@
 #define LLVM_TRANSFORMS_VECTORIZE_LOOPVECTORIZATIONPLANNER_H
 
 #include "VPlan.h"
+#include "VPlanPatternMatch.h"
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/Support/InstructionCost.h"
 
 namespace llvm {
+
+using namespace PatternMatch;
 
 class LoopInfo;
 class LoopVectorizationLegality;
@@ -149,6 +152,9 @@ public:
 
   VPValue *createOr(VPValue *LHS, VPValue *RHS, DebugLoc DL,
                     const Twine &Name = "") {
+    if (VPValue *V = simplifyOr(LHS, RHS))
+      return V;
+
     return createInstruction(Instruction::BinaryOps::Or, {LHS, RHS}, DL, Name);
   }
 
@@ -156,6 +162,21 @@ public:
                         DebugLoc DL, const Twine &Name = "") {
     return createNaryOp(Instruction::Select, {Cond, TrueVal, FalseVal}, DL,
                         Name);
+  }
+
+  //===--------------------------------------------------------------------===//
+  // VPInstruction simplifiers.
+  //===--------------------------------------------------------------------===//
+
+  VPValue *simplifyOr(VPValue *LHS, VPValue *RHS) const {
+    VPValue *A, *B;
+
+    // (A && B) || (A && !B) ==> A
+    if (match(LHS, vp_LogicalAnd(vp_Value(A), vp_Value(B))) &&
+        match(RHS, vp_c_LogicalAnd(vp_Specific(A), vp_Not(vp_Specific(B)))))
+      return A;
+
+    return nullptr;
   }
 
   //===--------------------------------------------------------------------===//
