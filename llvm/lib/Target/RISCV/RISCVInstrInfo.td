@@ -302,21 +302,34 @@ def simm13_lsb0 : Operand<OtherVT> {
 class UImm20Operand : Operand<XLenVT> {
   let EncoderMethod = "getImmOpValue";
   let DecoderMethod = "decodeUImmOperand<20>";
+  let OperandType = "OPERAND_UIMM20";
+  let OperandNamespace = "RISCVOp";
+}
+
+class UImm20OperandMaybeSym : UImm20Operand {
   let MCOperandPredicate = [{
     int64_t Imm;
     if (MCOp.evaluateAsConstantImm(Imm))
       return isUInt<20>(Imm);
     return MCOp.isBareSymbolRef();
   }];
-  let OperandType = "OPERAND_UIMM20";
-  let OperandNamespace = "RISCVOp";
 }
 
-def uimm20_lui : UImm20Operand {
+def uimm20_lui : UImm20OperandMaybeSym {
   let ParserMatchClass = UImmAsmOperand<20, "LUI">;
 }
-def uimm20_auipc : UImm20Operand {
+def uimm20_auipc : UImm20OperandMaybeSym {
   let ParserMatchClass = UImmAsmOperand<20, "AUIPC">;
+}
+
+def uimm20 : UImm20Operand {
+  let ParserMatchClass = UImmAsmOperand<20>;
+  let MCOperandPredicate = [{
+    int64_t Imm;
+    if (!MCOp.evaluateAsConstantImm(Imm))
+      return false;
+    return isUInt<20>(Imm);
+  }];
 }
 
 def Simm21Lsb0JALAsmOperand : SImmAsmOperand<21, "Lsb0JAL"> {
@@ -648,6 +661,10 @@ def JALR : RVInstI<0b000, OPC_JALR, (outs GPR:$rd),
                    "jalr", "$rd, ${imm12}(${rs1})">,
            Sched<[WriteJalr, ReadJalr]>;
 } // hasSideEffects = 0, mayLoad = 0, mayStore = 0
+
+let Predicates = [HasStdExtZicfilp] in {
+def : InstAlias<"lpad $imm20", (AUIPC X0, uimm20:$imm20)>;
+}
 
 def BEQ  : BranchCC_rri<0b000, "beq">;
 def BNE  : BranchCC_rri<0b001, "bne">;
