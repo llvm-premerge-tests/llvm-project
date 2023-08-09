@@ -18,6 +18,7 @@
 #include "llvm/ExecutionEngine/Orc/Shared/ExecutorAddress.h"
 #include "llvm/Support/ARMBuildAttributes.h"
 #include "llvm/Support/Error.h"
+#include <cstdint>
 
 namespace llvm {
 namespace jitlink {
@@ -144,6 +145,16 @@ struct HalfWords {
 ///   RegMask     - Mask with all bits set that encode the register
 ///
 template <EdgeKind_aarch32 Kind> struct FixupInfo {};
+
+template <> struct FixupInfo<Arm_Call> {
+  static constexpr uint32_t Opcode = 0x0a000000; 
+  static constexpr uint32_t OpcodeMask = 0x0e000000;
+  static constexpr uint32_t ImmMask = 0x00ffffff;
+  static constexpr uint32_t Unconditional = 0xe0000000;
+  static constexpr uint32_t CondMask = 0xe0000000; //excluding BLX bit
+  static constexpr uint32_t BitH = 0x01000000;
+  static constexpr uint32_t BitBlx = 0x10000000;
+};
 
 template <> struct FixupInfo<Thumb_Jump24> {
   static constexpr HalfWords Opcode{0xf000, 0x8000};
