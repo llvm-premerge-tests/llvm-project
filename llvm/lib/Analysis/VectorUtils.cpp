@@ -28,6 +28,8 @@
 
 #define DEBUG_TYPE "vectorutils"
 
+const char VerboseDebug[] = DEBUG_TYPE "-verbose";
+
 using namespace llvm;
 using namespace llvm::PatternMatch;
 
@@ -1410,6 +1412,16 @@ void InterleavedAccessInfo::analyzeInterleaving(
         break;
       }
   }
+  // Print out all load and store groups
+  DEBUG_WITH_TYPE(VerboseDebug, {
+      dbgs() << "Interleaved Groups\n";
+  for (InterleaveGroup<Instruction> *IG : getInterleaveGroups()) {
+    dbgs() << "Group with members: "<< "\n";
+    for (auto *I : IG->getMembers()) {
+      dbgs() << *I << "\n";
+    }    
+  }
+  });
 }
 
 void InterleavedAccessInfo::invalidateGroupsRequiringScalarEpilogue() {

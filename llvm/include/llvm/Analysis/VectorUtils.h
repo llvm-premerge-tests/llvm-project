@@ -651,6 +651,12 @@ public:
   uint32_t getFactor() const { return Factor; }
   Align getAlign() const { return Alignment; }
   uint32_t getNumMembers() const { return Members.size(); }
+  SmallVector<InstTy *> getMembers() const {
+    SmallVector<InstTy *> Mems;
+    for (auto &It : Members)
+      Mems.push_back(It.second);
+    return Mems;
+  }
 
   /// Try to insert a new member \p Instr with index \p Index and
   /// alignment \p NewAlign. The index is related to the leader and it could be
