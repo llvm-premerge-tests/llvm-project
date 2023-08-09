@@ -325,6 +325,8 @@ public:
   std::optional<RegImmPair> isAddImmediate(const MachineInstr &MI,
                                            Register Reg) const override;
 
+  bool isMBBSafeToSplitToCold(const MachineBasicBlock &MBB) const override;
+
   std::optional<ParamLoadedValue>
   describeLoadedValue(const MachineInstr &MI, Register Reg) const override;
 
