@@ -118,17 +118,16 @@ bool llvm::parseWidenableBranch(User *U, Use *&C,Use *&WC,
 
 template <typename CallbackType>
 static void parseCondition(Value *Condition, CallbackType Callback) {
-  SmallVector<Value *, 4> Worklist(1, Condition);
+  SmallVector<Value *> Worklist = {Condition};
   SmallPtrSet<Value *, 4> Visited;
-  Visited.insert(Condition);
   do {
     Value *Check = Worklist.pop_back_val();
+    if (!Visited.insert(Check).second)
+      continue;
     Value *LHS, *RHS;
     if (match(Check, m_And(m_Value(LHS), m_Value(RHS)))) {
-      if (Visited.insert(LHS).second)
-        Worklist.push_back(LHS);
-      if (Visited.insert(RHS).second)
-        Worklist.push_back(RHS);
+      Worklist.push_back(LHS);
+      Worklist.push_back(RHS);
       continue;
     }
     Callback(Check);
