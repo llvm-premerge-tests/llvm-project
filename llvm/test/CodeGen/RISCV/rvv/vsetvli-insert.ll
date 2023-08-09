@@ -579,6 +579,32 @@ entry:
   ret <vscale x 1 x double> %2
 }
 
+define <vscale x 1 x i64> @test21(<vscale x 1 x i64> %a, <vscale x 1 x i64> %b, <vscale x 1 x i1> %mask) nounwind {
+; CHECK-LABEL: test21:
+; CHECK:       # %bb.0: # %entry
+; CHECK-NEXT:    vsetvli a0, zero, e64, m1, ta, mu
+; CHECK-NEXT:    vadd.vv v8, v8, v8, v0.t
+; CHECK-NEXT:    vadd.vv v9, v9, v8, v0.t
+; CHECK-NEXT:    vmv.v.v v8, v9
+; CHECK-NEXT:    ret
+entry:
+  %x = call <vscale x 1 x i64> @llvm.riscv.vadd.mask.nxv1i64.nxv1i64(
+    <vscale x 1 x i64> %a,
+    <vscale x 1 x i64> %a,
+    <vscale x 1 x i64> %a,
+    <vscale x 1 x i1> %mask,
+    i64 -1,
+    i64 0)
+  %y = call <vscale x 1 x i64> @llvm.riscv.vadd.mask.nxv1i64.nxv1i64(
+    <vscale x 1 x i64> %b,
+    <vscale x 1 x i64> %b,
+    <vscale x 1 x i64> %x,
+    <vscale x 1 x i1> %mask,
+    i64 -1,
+    i64 1)
+  ret <vscale x 1 x i64> %y
+}
+
 ; This used to fail the machine verifier due to the vsetvli being removed
 ; while the add was still using it.
 define i64 @bad_removal(<2 x i64> %arg) {
