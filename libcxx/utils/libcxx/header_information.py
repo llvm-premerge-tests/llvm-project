@@ -15,10 +15,8 @@ lit_header_restrictions = {
     "coroutine": "// UNSUPPORTED: c++03, c++11, c++14, c++17",
     "cwchar": "// UNSUPPORTED: no-wide-characters",
     "cwctype": "// UNSUPPORTED: no-wide-characters",
-    "experimental/algorithm": "// UNSUPPORTED: c++03",
     "experimental/deque": "// UNSUPPORTED: c++03",
     "experimental/forward_list": "// UNSUPPORTED: c++03",
-    "experimental/functional": "// UNSUPPORTED: c++03",
     "experimental/iterator": "// UNSUPPORTED: c++03",
     "experimental/list": "// UNSUPPORTED: c++03",
     "experimental/map": "// UNSUPPORTED: c++03",
@@ -57,6 +55,24 @@ lit_header_restrictions = {
     "thread": "// UNSUPPORTED: no-threads, c++03",
     "wchar.h": "// UNSUPPORTED: no-wide-characters",
     "wctype.h": "// UNSUPPORTED: no-wide-characters",
+}
+
+header_include_requirements = {
+    # headers with #error directives
+    ("_LIBCPP_HAS_NO_ATOMIC_HEADER",): ("atomic",
+    # transitive includers of the above headers
+                                        "stdatomic.h"),
+    # headers with #error directives
+    ("_LIBCPP_HAS_NO_LOCALIZATION",): ("ios", "locale.h",
+    # transitive includers of the above headers
+                                       "clocale", "codecvt", "experimental/regex", "fstream", "iomanip", "iostream", "istream",
+                                       "locale", "ostream", "regex", "sstream", "streambuf", "strstream"),
+    # headers with #error directives
+    ("_LIBCPP_HAS_NO_THREADS",): ("barrier", "future", "latch", "semaphore", "shared_mutex", "stop_token", "thread"),
+    # headers with #error directives
+    ("_LIBCPP_HAS_NO_WIDE_CHARACTERS",): ("wchar.h", "wctype.h",
+    # transitive includers of the above headers
+                                          "cwchar", "cwctype")
 }
 
 # This table was produced manually, by grepping the TeX source of the Standard's
@@ -109,10 +125,11 @@ def is_header(file):
         not file.is_dir()
         and not file.name == "module.modulemap.in"
         and not file.name == "CMakeLists.txt"
+        and not file.name == "generate_std_clang_module_header.py"
         and file.name != "libcxx.imp"
     )
 
-libcxx_root = pathlib.Path(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+libcxx_root = pathlib.Path(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 include = pathlib.Path(os.path.join(libcxx_root, "include"))
 test = pathlib.Path(os.path.join(libcxx_root, "test"))
 assert libcxx_root.exists()
