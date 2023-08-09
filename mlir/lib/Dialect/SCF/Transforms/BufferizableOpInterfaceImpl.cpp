@@ -498,9 +498,8 @@ struct ForOpInterface
         yieldValues.push_back(value);
         continue;
       }
-      FailureOr<Value> alloc =
-          allocateTensorForShapedValue(rewriter, yieldOp.getLoc(), value,
-                                       /*escape=*/true, state.getOptions());
+      FailureOr<Value> alloc = allocateTensorForShapedValue(
+          rewriter, yieldOp.getLoc(), value, state.getOptions());
       if (failed(alloc))
         return failure();
       yieldValues.push_back(*alloc);
@@ -604,7 +603,7 @@ struct ForOpInterface
                                const AnalysisState &state) const {
     const auto &options =
         static_cast<const OneShotBufferizationOptions &>(state.getOptions());
-    if (options.allowReturnAllocs)
+    if (options.allowReturnAllocsFromLoops)
       return success();
 
     auto forOp = cast<scf::ForOp>(op);
@@ -742,9 +741,8 @@ struct WhileOpInterface
         beforeYieldValues.push_back(value);
         continue;
       }
-      FailureOr<Value> alloc =
-          allocateTensorForShapedValue(rewriter, conditionOp.getLoc(), value,
-                                       /*escape=*/true, state.getOptions());
+      FailureOr<Value> alloc = allocateTensorForShapedValue(
+          rewriter, conditionOp.getLoc(), value, state.getOptions());
       if (failed(alloc))
         return failure();
       beforeYieldValues.push_back(*alloc);
@@ -897,7 +895,7 @@ struct WhileOpInterface
     auto whileOp = cast<scf::WhileOp>(op);
     const auto &options =
         static_cast<const OneShotBufferizationOptions &>(state.getOptions());
-    if (options.allowReturnAllocs)
+    if (options.allowReturnAllocsFromLoops)
       return success();
 
     auto conditionOp = whileOp.getConditionOp();
