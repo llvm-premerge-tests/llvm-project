@@ -9687,8 +9687,7 @@ void VPWidenMemoryInstructionRecipe::execute(VPTransformState &State) {
       PartPtr = Builder.CreateGEP(ScalarDataTy, Ptr, Increment, "", InBounds);
     }
 
-    unsigned AddressSpace = Ptr->getType()->getPointerAddressSpace();
-    return Builder.CreateBitCast(PartPtr, DataTy->getPointerTo(AddressSpace));
+    return PartPtr;
   };
 
   // Handle Stores:
