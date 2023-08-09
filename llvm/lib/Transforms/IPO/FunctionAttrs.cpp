@@ -118,24 +118,32 @@ using SCCNodeSet = SmallSetVector<Function *, 8>;
 /// result will be based only on AA results for the function declaration; it
 /// will be assumed that some other (perhaps less optimized) version of the
 /// function may be selected at link time.
-static MemoryEffects checkFunctionMemoryAccess(Function &F, bool ThisBody,
-                                               AAResults &AAR,
-                                               const SCCNodeSet &SCCNodes) {
+///
+/// The return value is split into two parts: Memory effects that always apply,
+/// and additional memory effects that apply if any of the functions in the SCC
+/// can access argmem.
+static std::pair<MemoryEffects, MemoryEffects>
+checkFunctionMemoryAccess(Function &F, bool ThisBody, AAResults &AAR,
+                          const SCCNodeSet &SCCNodes) {
   MemoryEffects OrigME = AAR.getMemoryEffects(&F);
   if (OrigME.doesNotAccessMemory())
     // Already perfect!
-    return OrigME;
+    return {OrigME, MemoryEffects::none()};
 
   if (!ThisBody)
-    return OrigME;
+    return {OrigME, MemoryEffects::none()};
 
   MemoryEffects ME = MemoryEffects::none();
+  // Additional locations accessed if the SCC accesses argmem.
+  MemoryEffects RecursiveArgME = MemoryEffects::none();
+
   // Inalloca and preallocated arguments are always clobbered by the call.
   if (F.getAttributes().hasAttrSomewhere(Attribute::InAlloca) ||
       F.getAttributes().hasAttrSomewhere(Attribute::Preallocated))
     ME |= MemoryEffects::argMemOnly(ModRefInfo::ModRef);
 
-  auto AddLocAccess = [&](const MemoryLocation &Loc, ModRefInfo MR) {
+  auto AddLocAccess = [&](MemoryEffects &ME, const MemoryLocation &Loc,
+                          ModRefInfo MR) {
     // Ignore accesses to known-invariant or local memory.
     MR &= AAR.getModRefInfoMask(Loc, /*IgnoreLocal=*/true);
     if (isNoModRef(MR))
@@ -159,13 +167,31 @@ static MemoryEffects checkFunctionMemoryAccess(Function &F, bool ThisBody,
     // Some instructions can be ignored even if they read or write memory.
     // Detect these now, skipping to the next instruction if one is found.
     if (auto *Call = dyn_cast<CallBase>(&I)) {
-      // Ignore calls to functions in the same SCC, as long as the call sites
-      // don't have operand bundles.  Calls with operand bundles are allowed to
-      // have memory effects not described by the memory effects of the call
-      // target.
+      auto AddArgLocs = [&](MemoryEffects &ME, ModRefInfo ArgMR) {
+        for (const Use &U : Call->args()) {
+          const Value *Arg = U;
+          if (!Arg->getType()->isPtrOrPtrVectorTy())
+            continue;
+
+          AddLocAccess(ME,
+                       MemoryLocation::getBeforeOrAfter(Arg, I.getAAMetadata()),
+                       ArgMR);
+        }
+      };
+
+      // We can optimistically ignore calls to functions in the same SCC, with
+      // two caveats:
+      //  * Calls with operand bundles may have additional effects.
+      //  * Argument memory accesses may imply additional effects depending on
+      //    what the argument location is.
       if (!Call->hasOperandBundles() && Call->getCalledFunction() &&
-          SCCNodes.count(Call->getCalledFunction()))
+          SCCNodes.count(Call->getCalledFunction())) {
+        // Keep track of which additional locations are accessed if the SCC
+        // turns out to access argmem.
+        AddArgLocs(RecursiveArgME, ModRefInfo::ModRef);
         continue;
+      }
+
       MemoryEffects CallME = AAR.getMemoryEffects(Call);
 
       // If the call doesn't access memory, we're done.
@@ -190,15 +216,8 @@ static MemoryEffects checkFunctionMemoryAccess(Function &F, bool ThisBody,
       // Check whether all pointer arguments point to local memory, and
       // ignore calls that only access local memory.
       ModRefInfo ArgMR = CallME.getModRef(IRMemLocation::ArgMem);
-      if (ArgMR != ModRefInfo::NoModRef) {
-        for (const Use &U : Call->args()) {
-          const Value *Arg = U;
-          if (!Arg->getType()->isPtrOrPtrVectorTy())
-            continue;
-
-          AddLocAccess(MemoryLocation::getBeforeOrAfter(Arg, I.getAAMetadata()), ArgMR);
-        }
-      }
+      if (ArgMR != ModRefInfo::NoModRef)
+        AddArgLocs(ME, ArgMR);
       continue;
     }
 
@@ -222,15 +241,15 @@ static MemoryEffects checkFunctionMemoryAccess(Function &F, bool ThisBody,
     if (I.isVolatile())
       ME |= MemoryEffects::inaccessibleMemOnly(MR);
 
-    AddLocAccess(*Loc, MR);
+    AddLocAccess(ME, *Loc, MR);
   }
 
-  return OrigME & ME;
+  return {OrigME & ME, RecursiveArgME};
 }
 
 MemoryEffects llvm::computeFunctionBodyMemoryAccess(Function &F,
                                                     AAResults &AAR) {
-  return checkFunctionMemoryAccess(F, /*ThisBody=*/true, AAR, {});
+  return checkFunctionMemoryAccess(F, /*ThisBody=*/true, AAR, {}).first;
 }
 
 /// Deduce readonly/readnone/writeonly attributes for the SCC.
@@ -238,17 +257,26 @@ template <typename AARGetterT>
 static void addMemoryAttrs(const SCCNodeSet &SCCNodes, AARGetterT &&AARGetter,
                            SmallSet<Function *, 8> &Changed) {
   MemoryEffects ME = MemoryEffects::none();
+  MemoryEffects RecursiveArgME = MemoryEffects::none();
   for (Function *F : SCCNodes) {
     // Call the callable parameter to look up AA results for this function.
     AAResults &AAR = AARGetter(*F);
     // Non-exact function definitions may not be selected at link time, and an
     // alternative version that writes to memory may be selected.  See the
     // comment on GlobalValue::isDefinitionExact for more details.
-    ME |= checkFunctionMemoryAccess(*F, F->hasExactDefinition(), AAR, SCCNodes);
+    auto [FnME, FnRecursiveArgME] =
+        checkFunctionMemoryAccess(*F, F->hasExactDefinition(), AAR, SCCNodes);
+    ME |= FnME;
+    RecursiveArgME |= FnRecursiveArgME;
     // Reached bottom of the lattice, we will not be able to improve the result.
     if (ME == MemoryEffects::unknown())
       return;
   }
+
+  // If the SCC accesses argmem, add recursive accesses resulting from that.
+  ModRefInfo ArgMR = ME.getModRef(IRMemLocation::ArgMem);
+  if (ArgMR != ModRefInfo::NoModRef)
+    ME |= RecursiveArgME & MemoryEffects(ArgMR);
 
   for (Function *F : SCCNodes) {
     MemoryEffects OldME = F->getMemoryEffects();
