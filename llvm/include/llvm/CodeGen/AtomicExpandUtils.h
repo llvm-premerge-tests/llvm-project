@@ -10,6 +10,7 @@
 #define LLVM_CODEGEN_ATOMICEXPANDUTILS_H
 
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/AtomicOrdering.h"
 
@@ -57,7 +58,9 @@ using CreateCmpXchgInstFun =
 ///     [...]
 ///
 /// Returns true if the containing function was modified.
-bool expandAtomicRMWToCmpXchg(AtomicRMWInst *AI, CreateCmpXchgInstFun CreateCmpXchg);
+bool expandAtomicRMWToCmpXchg(AtomicRMWInst *AI,
+                              CreateCmpXchgInstFun CreateCmpXchg,
+                              SmallVector<BasicBlock *> &CmpXchgLoopBlocks);
 
 } // end namespace llvm
 
