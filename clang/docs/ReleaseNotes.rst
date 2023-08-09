@@ -56,6 +56,7 @@ sections with improvements to Clang's support for those languages.
 
 C++ Language Changes
 --------------------
+- Improved ``__builtin_offsetof`` support, allowing qualified name in member designator. This fixes [Issue 64154](https://github.com/llvm/llvm-project/issues/64154).
 
 C++20 Feature Support
 ^^^^^^^^^^^^^^^^^^^^^

@@ -98,3 +98,10 @@ int test_definition(void) {
     B x;
   }, a);
 }
+
+// https://github.com/llvm/llvm-project/issues/64154
+struct X2 { int a; static int static_a; };
+int x2[__builtin_offsetof(struct X2, X2::a) == 0 ? 1 : -1];
+int x3[__builtin_offsetof(struct X2, X2::static_a) == 0 ? 1 : -1]; // expected-error{{no member named 'static_a'}}
+int x4[__builtin_offsetof(struct X2, X2::X2) == 0 ? 1 : -1]; // expected-error{{no member named 'X2'}}
+

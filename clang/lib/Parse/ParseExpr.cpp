@@ -2635,16 +2635,23 @@ ExprResult Parser::ParseBuiltinPrimaryExpression() {
     SmallVector<Sema::OffsetOfComponent, 4> Comps;
 
     Comps.push_back(Sema::OffsetOfComponent());
-    Comps.back().isBrackets = false;
+    Comps.back().Kind = Sema::OffsetOfComponent::Identifier;
     Comps.back().U.IdentInfo = Tok.getIdentifierInfo();
     Comps.back().LocStart = Comps.back().LocEnd = ConsumeToken();
 
     // FIXME: This loop leaks the index expressions on error.
     while (true) {
-      if (Tok.is(tok::period)) {
+      if (Tok.is(tok::period) || Tok.is(tok::coloncolon)) {
         // offsetof-member-designator: offsetof-member-designator '.' identifier
+        if (Tok.is(tok::coloncolon) && getLangOpts().CPlusPlus) {
+          Comps.back().Kind = Sema::OffsetOfComponent::Qualifier;
+        } else if (Tok.is(tok::coloncolon) && !getLangOpts().CPlusPlus) {
+          Res = ExprError();
+          break;
+        }
+
         Comps.push_back(Sema::OffsetOfComponent());
-        Comps.back().isBrackets = false;
+        Comps.back().Kind = Sema::OffsetOfComponent::Identifier;
         Comps.back().LocStart = ConsumeToken();
 
         if (Tok.isNot(tok::identifier)) {
@@ -2660,7 +2667,7 @@ ExprResult Parser::ParseBuiltinPrimaryExpression() {
 
         // offsetof-member-designator: offsetof-member-design '[' expression ']'
         Comps.push_back(Sema::OffsetOfComponent());
-        Comps.back().isBrackets = true;
+        Comps.back().Kind = Sema::OffsetOfComponent::Brackets;
         BalancedDelimiterTracker ST(*this, tok::l_square);
         ST.consumeOpen();
         Comps.back().LocStart = ST.getOpenLocation();

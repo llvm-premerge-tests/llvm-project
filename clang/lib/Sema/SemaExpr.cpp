@@ -16612,7 +16612,7 @@ ExprResult Sema::BuildBuiltinOffsetOf(SourceLocation BuiltinLoc,
   SmallVector<OffsetOfNode, 4> Comps;
   SmallVector<Expr*, 4> Exprs;
   for (const OffsetOfComponent &OC : Components) {
-    if (OC.isBrackets) {
+    if (OC.Kind == OffsetOfComponent::Brackets) {
       // Offset of an array sub-field.  TODO: Should we allow vector elements?
       if (!CurrentType->isDependentType()) {
         const ArrayType *AT = Context.getAsArrayType(CurrentType);
@@ -16682,6 +16682,10 @@ ExprResult Sema::BuildBuiltinOffsetOf(SourceLocation BuiltinLoc,
                               << SourceRange(Components[0].LocStart, OC.LocEnd)
                               << CurrentType))
         DidWarnAboutNonPOD = true;
+
+      if (OC.Kind == OffsetOfComponent::Qualifier &&
+          RD->getIdentifier() == OC.U.IdentInfo)
+        continue;
     }
 
     // Look for the field.

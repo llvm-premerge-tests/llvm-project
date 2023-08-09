@@ -11028,7 +11028,7 @@ TreeTransform<Derived>::TransformOffsetOfExpr(OffsetOfExpr *E) {
   for (unsigned I = 0, N = E->getNumComponents(); I != N; ++I) {
     const OffsetOfNode &ON = E->getComponent(I);
     Component Comp;
-    Comp.isBrackets = true;
+    Comp.Kind = Sema::OffsetOfComponent::Brackets;
     Comp.LocStart = ON.getSourceRange().getBegin();
     Comp.LocEnd = ON.getSourceRange().getEnd();
     switch (ON.getKind()) {
@@ -11039,14 +11039,14 @@ TreeTransform<Derived>::TransformOffsetOfExpr(OffsetOfExpr *E) {
         return ExprError();
 
       ExprChanged = ExprChanged || Index.get() != FromIndex;
-      Comp.isBrackets = true;
+      Comp.Kind = Sema::OffsetOfComponent::Brackets;
       Comp.U.E = Index.get();
       break;
     }
 
     case OffsetOfNode::Field:
     case OffsetOfNode::Identifier:
-      Comp.isBrackets = false;
+      Comp.Kind = Sema::OffsetOfComponent::Identifier;
       Comp.U.IdentInfo = ON.getFieldName();
       if (!Comp.U.IdentInfo)
         continue;

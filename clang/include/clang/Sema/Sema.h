@@ -6035,11 +6035,15 @@ public:
   // __builtin_offsetof(type, identifier(.identifier|[expr])*)
   struct OffsetOfComponent {
     SourceLocation LocStart, LocEnd;
-    bool isBrackets;  // true if [expr], false if .ident
     union {
       IdentifierInfo *IdentInfo;
       Expr *E;
     } U;
+    enum {
+      Brackets,   // U.E is valid
+      Identifier, // U.IdentInfo is valid
+      Qualifier,  // Nothing in U is valid
+    } Kind;
   };
 
   /// __builtin_offsetof(type, a.b[123][456].c)
