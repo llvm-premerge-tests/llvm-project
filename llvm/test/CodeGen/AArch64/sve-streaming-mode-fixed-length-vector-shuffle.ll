@@ -379,3 +379,270 @@ define void @shuffle_ext_invalid(ptr %a, ptr %b) {
   store <4 x double> %ret, ptr %a
   ret void
 }
+
+; CHECK: .LCPI23_0:
+; CHECK-NEXT:	.hword	10
+; CHECK-NEXT:	.hword	1
+; CHECK-NEXT:	.hword	3
+; CHECK-NEXT:	.hword	4
+; CHECK-NEXT:	.hword	255
+; CHECK-NEXT:	.hword	255
+; CHECK-NEXT:	.hword	255
+; CHECK-NEXT:	.hword	255
+define <4 x i16> @sve2_shuffle_v4i16_tbl2(ptr %a, ptr %b) #1 {
+; CHECK-LABEL: sve2_shuffle_v4i16_tbl2:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    adrp x8, .LCPI23_0
+; CHECK-NEXT:    ldr d0, [x0]
+; CHECK-NEXT:    ldr d1, [x1]
+; CHECK-NEXT:    ldr q2, [x8, :lo12:.LCPI23_0]
+; CHECK-NEXT:    tbl z0.h, { z0.h, z1.h }, z2.h
+; CHECK-NEXT:    // kill: def $d0 killed $d0 killed $z0
+; CHECK-NEXT:    ret
+  %op1 = load <4 x i16>, ptr %a
+  %op2 = load <4 x i16>, ptr %b
+  %1 = shufflevector <4 x i16> %op1, <4 x i16> %op2, <4 x i32> <i32 6, i32 1, i32 3, i32 4>
+  ret <4 x i16> %1
+}
+
+; CHECK: .LCPI24_0:
+; CHECK-NEXT:	.hword	0
+; CHECK-NEXT:	.hword	3
+; CHECK-NEXT:	.hword	7
+; CHECK-NEXT:	.hword	7
+; CHECK-NEXT:	.hword	15
+; CHECK-NEXT:	.hword	0
+; CHECK-NEXT:	.hword	0
+; CHECK-NEXT:	.hword	1
+define <8 x i16> @sve2_shuffle_v8i16_tbl2(ptr %a, ptr %b) #1 {
+; CHECK-LABEL: sve2_shuffle_v8i16_tbl2:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    adrp x8, .LCPI24_0
+; CHECK-NEXT:    ldr q0, [x0]
+; CHECK-NEXT:    ldr q1, [x1]
+; CHECK-NEXT:    ldr q2, [x8, :lo12:.LCPI24_0]
+; CHECK-NEXT:    tbl z0.h, { z0.h, z1.h }, z2.h
+; CHECK-NEXT:    // kill: def $q0 killed $q0 killed $z0
+; CHECK-NEXT:    ret
+  %op1 = load <8 x i16>, ptr %a
+  %op2 = load <8 x i16>, ptr %b
+  %1 = shufflevector <8 x i16> %op1, <8 x i16> %op2, <8 x i32> <i32 0, i32 3, i32 7, i32 7, i32 15, i32 0, i32 0, i32 1>
+  ret <8 x i16> %1
+}
+
+; CHECK: .LCPI25_0:
+; CHECK-NEXT:	.hword	0
+; CHECK-NEXT:	.hword	3
+; CHECK-NEXT:	.hword	7
+; CHECK-NEXT:	.hword	7
+; CHECK-NEXT:	.hword	1
+; CHECK-NEXT:	.hword	0
+; CHECK-NEXT:	.hword	0
+; CHECK-NEXT:	.hword	1
+define <8 x i16> @sve2_shuffle_v8i16_tbl_op1(ptr %a, ptr %b) #1 {
+; CHECK-LABEL: sve2_shuffle_v8i16_tbl_op1:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    adrp x8, .LCPI25_0
+; CHECK-NEXT:    ldr q0, [x0]
+; CHECK-NEXT:    ldr q1, [x8, :lo12:.LCPI25_0]
+; CHECK-NEXT:    tbl z0.h, { z0.h }, z1.h
+; CHECK-NEXT:    // kill: def $q0 killed $q0 killed $z0
+; CHECK-NEXT:    ret
+  %op1 = load <8 x i16>, ptr %a
+  %op2 = load <8 x i16>, ptr %b
+  %1 = shufflevector <8 x i16> %op1, <8 x i16> %op2, <8 x i32> <i32 0, i32 3, i32 7, i32 7, i32 1, i32 0, i32 0, i32 1>
+  ret <8 x i16> %1
+}
+
+; CHECK: .LCPI26_0:
+; CHECK-NEXT:	.hword	2
+; CHECK-NEXT:	.hword	5
+; CHECK-NEXT:	.hword	2
+; CHECK-NEXT:	.hword	3
+; CHECK-NEXT:	.hword	7
+; CHECK-NEXT:	.hword	3
+; CHECK-NEXT:	.hword	3
+; CHECK-NEXT:	.hword	2
+define <8 x i16> @sve2_shuffle_v8i16_tbl_op2(ptr %a, ptr %b) #1 {
+; CHECK-LABEL: sve2_shuffle_v8i16_tbl_op2:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    adrp x8, .LCPI26_0
+; CHECK-NEXT:    ldr q0, [x1]
+; CHECK-NEXT:    ldr q1, [x8, :lo12:.LCPI26_0]
+; CHECK-NEXT:    tbl z0.h, { z0.h }, z1.h
+; CHECK-NEXT:    // kill: def $q0 killed $q0 killed $z0
+; CHECK-NEXT:    ret
+  %op1 = load <8 x i16>, ptr %a
+  %op2 = load <8 x i16>, ptr %b
+  %1 = shufflevector <8 x i16> %op1, <8 x i16> %op2, <8 x i32> <i32 10, i32 13, i32 10, i32 11, i32 15, i32 11, i32 11, i32 10>
+  ret <8 x i16> %1
+}
+
+; CHECK: .LCPI27_0:
+; CHECK-NEXT:	.word	0
+; CHECK-NEXT:	.word	3
+; CHECK-NEXT:	.word	5
+; CHECK-NEXT:	.word	1
+define <4 x float> @sve2_shuffle_v4f32_tbl2_op2(ptr %a, ptr %b) #1 {
+; CHECK-LABEL: sve2_shuffle_v4f32_tbl2_op2:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    adrp x8, .LCPI27_0
+; CHECK-NEXT:    ldr q0, [x0]
+; CHECK-NEXT:    ldr q1, [x1]
+; CHECK-NEXT:    ldr q2, [x8, :lo12:.LCPI27_0]
+; CHECK-NEXT:    tbl z0.s, { z0.s, z1.s }, z2.s
+; CHECK-NEXT:    // kill: def $q0 killed $q0 killed $z0
+; CHECK-NEXT:    ret
+  %op1 = load <4 x float>, ptr %a
+  %op2 = load <4 x float>, ptr %b
+  %1 = shufflevector <4 x float> %op1, <4 x float> %op2, <4 x i32> <i32 0, i32 3, i32 5, i32 1>
+  ret <4 x float> %1
+}
+
+; CHECK: .LCPI28_0:
+; CHECK-NEXT:   .word   0
+; CHECK-NEXT:   .word   3
+; CHECK-NEXT:   .word   2
+; CHECK-NEXT:   .word   1
+define <4 x float> @sve2_shuffle_v4f32_tbl_op1(ptr %a, ptr %b) #1 {
+; CHECK-LABEL: sve2_shuffle_v4f32_tbl_op1:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    adrp x8, .LCPI28_0
+; CHECK-NEXT:    ldr q0, [x0]
+; CHECK-NEXT:    ldr q1, [x8, :lo12:.LCPI28_0]
+; CHECK-NEXT:    tbl z0.s, { z0.s }, z1.s
+; CHECK-NEXT:    // kill: def $q0 killed $q0 killed $z0
+; CHECK-NEXT:    ret
+  %op1 = load <4 x float>, ptr %a
+  %op2 = load <4 x float>, ptr %b
+  %1 = shufflevector <4 x float> %op1, <4 x float> %op2, <4 x i32> <i32 0, i32 3, i32 2, i32 1>
+  ret <4 x float> %1
+}
+
+; CHECK: .LCPI29_0:
+; CHECK-NEXT:	.byte	0
+; CHECK-NEXT:	.byte	1
+; CHECK-NEXT:	.byte	2
+; CHECK-NEXT:	.byte	3
+; CHECK-NEXT:	.byte	4
+; CHECK-NEXT:	.byte	7
+; CHECK-NEXT:	.byte	6
+; CHECK-NEXT:	.byte	7
+; CHECK-NEXT:	.byte	255
+; CHECK-NEXT:	.byte	255
+define <8 x i8> @shuffle_index_size_acceptable_op2(ptr %a, ptr %b) #2 {
+; CHECK-LABEL: shuffle_index_size_acceptable_op2:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    adrp x8, .LCPI29_0
+; CHECK-NEXT:    add x8, x8, :lo12:.LCPI29_0
+; CHECK-NEXT:    ptrue p0.b
+; CHECK-NEXT:    ldr d0, [x1]
+; CHECK-NEXT:    ld1b { z1.b }, p0/z, [x8]
+; CHECK-NEXT:    tbl z0.b, { z0.b }, z1.b
+; CHECK-NEXT:    // kill: def $d0 killed $d0 killed $z0
+; CHECK-NEXT:    ret
+  %op1 = load <8 x i8>, ptr %a
+  %op2 = load <8 x i8>, ptr %b
+  %1 = shufflevector <8 x i8> %op1, <8 x i8> %op2, <8 x i32> <i32 8, i32 9, i32 10, i32 11, i32 12, i32 15, i32 14, i32 15>
+  ret <8 x i8> %1
+}
+
+; CHECK: .LCPI30_0:
+; CHECK-NEXT:	.byte	1
+; CHECK-NEXT:	.byte	2
+; CHECK-NEXT:	.byte	3
+; CHECK-NEXT:	.byte	4
+; CHECK-NEXT:	.byte	5
+; CHECK-NEXT:	.byte	7
+; CHECK-NEXT:	.byte	6
+; CHECK-NEXT:	.byte	7
+; CHECK-NEXT:	.byte	255
+; CHECK-NEXT:	.byte	255
+define <8 x i8> @shuffle_index_size_acceptable_op1(ptr %a, ptr %b) #2 {
+; CHECK-LABEL: shuffle_index_size_acceptable_op1:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    adrp x8, .LCPI30_0
+; CHECK-NEXT:    add x8, x8, :lo12:.LCPI30_0
+; CHECK-NEXT:    ptrue p0.b
+; CHECK-NEXT:    ldr d0, [x0]
+; CHECK-NEXT:    ld1b { z1.b }, p0/z, [x8]
+; CHECK-NEXT:    tbl z0.b, { z0.b }, z1.b
+; CHECK-NEXT:    // kill: def $d0 killed $d0 killed $z0
+; CHECK-NEXT:    ret
+  %op1 = load <8 x i8>, ptr %a
+  %op2 = load <8 x i8>, ptr %b
+  %1 = shufflevector <8 x i8> %op1, <8 x i8> %op2, <8 x i32> <i32 1, i32 2, i32 3, i32 4, i32 5, i32 7, i32 6, i32 7>
+  ret <8 x i8> %1
+}
+
+; CHECK: .LCPI31_0:
+; CHECK-NEXT:	.byte	1
+; CHECK-NEXT:	.byte	129
+; CHECK-NEXT:	.byte	130
+; CHECK-NEXT:	.byte	131
+; CHECK-NEXT:	.byte	132
+; CHECK-NEXT:	.byte	132
+; CHECK-NEXT:	.byte	134
+; CHECK-NEXT:	.byte	135
+; CHECK-NEXT:	.byte	255
+; CHECK-NEXT:	.byte	255
+define <8 x i8> @shuffle_index_size_acceptable_op_both(ptr %a, ptr %b) #2 {
+; CHECK-LABEL: shuffle_index_size_acceptable_op_both:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    adrp x8, .LCPI31_0
+; CHECK-NEXT:    add x8, x8, :lo12:.LCPI31_0
+; CHECK-NEXT:    ptrue p0.b
+; CHECK-NEXT:    ldr d0, [x0]
+; CHECK-NEXT:    ldr d1, [x1]
+; CHECK-NEXT:    ld1b { z2.b }, p0/z, [x8]
+; CHECK-NEXT:    tbl z0.b, { z0.b, z1.b }, z2.b
+; CHECK-NEXT:    // kill: def $d0 killed $d0 killed $z0
+; CHECK-NEXT:    ret
+  %op1 = load <8 x i8>, ptr %a
+  %op2 = load <8 x i8>, ptr %b
+  %1 = shufflevector <8 x i8> %op1, <8 x i8> %op2, <8 x i32> <i32 1, i32 9, i32 10, i32 11, i32 12, i32 12, i32 14, i32 15>
+  ret <8 x i8> %1
+}
+
+define <8 x i8> @shuffle_index_size_unacceptable_op_both(ptr %a, ptr %b) #3 {
+; CHECK-LABEL: shuffle_index_size_unacceptable_op_both:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    sub sp, sp, #16
+; CHECK-NEXT:    .cfi_def_cfa_offset 16
+; CHECK-NEXT:    ldr d0, [x1]
+; CHECK-NEXT:    ldr d1, [x0]
+; CHECK-NEXT:    mov z2.b, z0.b[7]
+; CHECK-NEXT:    fmov w8, s2
+; CHECK-NEXT:    mov z2.b, z0.b[6]
+; CHECK-NEXT:    fmov w9, s2
+; CHECK-NEXT:    mov z2.b, z0.b[4]
+; CHECK-NEXT:    fmov w10, s2
+; CHECK-NEXT:    mov z2.b, z0.b[3]
+; CHECK-NEXT:    strb w8, [sp, #15]
+; CHECK-NEXT:    fmov w8, s2
+; CHECK-NEXT:    mov z2.b, z0.b[2]
+; CHECK-NEXT:    mov z0.b, z0.b[1]
+; CHECK-NEXT:    mov z1.b, z1.b[1]
+; CHECK-NEXT:    strb w9, [sp, #14]
+; CHECK-NEXT:    fmov w9, s2
+; CHECK-NEXT:    strb w10, [sp, #13]
+; CHECK-NEXT:    strb w10, [sp, #12]
+; CHECK-NEXT:    fmov w10, s0
+; CHECK-NEXT:    strb w8, [sp, #11]
+; CHECK-NEXT:    fmov w8, s1
+; CHECK-NEXT:    strb w9, [sp, #10]
+; CHECK-NEXT:    strb w10, [sp, #9]
+; CHECK-NEXT:    strb w8, [sp, #8]
+; CHECK-NEXT:    ldr d0, [sp, #8]
+; CHECK-NEXT:    add sp, sp, #16
+; CHECK-NEXT:    ret
+  %op1 = load <8 x i8>, ptr %a
+  %op2 = load <8 x i8>, ptr %b
+  %1 = shufflevector <8 x i8> %op1, <8 x i8> %op2, <8 x i32> <i32 1, i32 9, i32 10, i32 11, i32 12, i32 12, i32 14, i32 15>
+  ret <8 x i8> %1
+}
+
+attributes #0 = { "target-features"="+sve" }
+attributes #1 = { "target-features"="+sve2" vscale_range(1,1) }
+attributes #2 = { "target-features"="+sve2" vscale_range(8,8) }
+attributes #3 = { "target-features"="+sve2" vscale_range(16,16) }
