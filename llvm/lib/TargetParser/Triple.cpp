@@ -1471,10 +1471,6 @@ bool Triple::isArch32Bit() const {
   return getArchPointerBitWidth(getArch()) == 32;
 }
 
-bool Triple::isArch16Bit() const {
-  return getArchPointerBitWidth(getArch()) == 16;
-}
-
 Triple Triple::get32BitArchVariant() const {
   Triple T(*this);
   switch (getArch()) {
