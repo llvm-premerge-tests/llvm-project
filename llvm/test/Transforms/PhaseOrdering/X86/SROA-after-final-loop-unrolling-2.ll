@@ -25,8 +25,8 @@ define dso_local void @foo(i32 noundef %arg, ptr noundef nonnull align 4 derefer
 ; CHECK-NEXT:    [[I9:%.*]] = sdiv i32 [[ARG:%.*]], 128
 ; CHECK-NEXT:    [[I10:%.*]] = shl nsw i32 [[I9]], 7
 ; CHECK-NEXT:    [[ARG_OFF:%.*]] = add i32 [[ARG]], 127
-; CHECK-NEXT:    [[TMP0:%.*]] = icmp ult i32 [[ARG_OFF]], 255
-; CHECK-NEXT:    br i1 [[TMP0]], label [[BB12:%.*]], label [[BB13:%.*]]
+; CHECK-NEXT:    [[I11_NOT4:%.*]] = icmp ult i32 [[ARG_OFF]], 255
+; CHECK-NEXT:    br i1 [[I11_NOT4]], label [[BB12:%.*]], label [[BB13:%.*]]
 ; CHECK:       bb12.loopexit:
 ; CHECK-NEXT:    [[I3_SROA_8_0_INSERT_EXT:%.*]] = zext i32 [[I21_3:%.*]] to i64
 ; CHECK-NEXT:    [[I3_SROA_8_0_INSERT_SHIFT:%.*]] = shl nuw i64 [[I3_SROA_8_0_INSERT_EXT]], 32
@@ -34,8 +34,8 @@ define dso_local void @foo(i32 noundef %arg, ptr noundef nonnull align 4 derefer
 ; CHECK-NEXT:    [[I3_SROA_0_0_INSERT_INSERT:%.*]] = or i64 [[I3_SROA_8_0_INSERT_SHIFT]], [[I3_SROA_0_0_INSERT_EXT]]
 ; CHECK-NEXT:    br label [[BB12]]
 ; CHECK:       bb12:
-; CHECK-NEXT:    [[TMP1:%.*]] = phi i64 [ [[I3_SROA_0_0_INSERT_INSERT]], [[BB12_LOOPEXIT:%.*]] ], [ 180388626456, [[BB:%.*]] ]
-; CHECK-NEXT:    store i64 [[TMP1]], ptr [[ARG1:%.*]], align 4, !tbaa [[TBAA5:![0-9]+]]
+; CHECK-NEXT:    [[TMP0:%.*]] = phi i64 [ [[I3_SROA_0_0_INSERT_INSERT]], [[BB12_LOOPEXIT:%.*]] ], [ 180388626456, [[BB:%.*]] ]
+; CHECK-NEXT:    store i64 [[TMP0]], ptr [[ARG1:%.*]], align 4, !tbaa [[TBAA5:![0-9]+]]
 ; CHECK-NEXT:    ret void
 ; CHECK:       bb13:
 ; CHECK-NEXT:    [[I3_SROA_8_0:%.*]] = phi i32 [ [[I21_3]], [[BB13]] ], [ 42, [[BB]] ]
