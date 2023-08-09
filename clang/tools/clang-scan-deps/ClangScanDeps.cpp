@@ -279,6 +279,35 @@ public:
     return Cache[ClangBinaryPath];
   }
 
+  /// findResourceDir finds the resource directory relative to the clang
+  /// compiler being used in Args, by running it with "-print-resource-dir"
+  /// option and cache the results for reuse. \returns resource directory path
+  /// associated with the given invocation command or empty string if the
+  /// compiler path is NOT an absolute path.
+
+  /// getResourceDir finds the resource directory by calling the
+  /// `Driver::GetResourcesPath` function and cache the results for reuse.
+  /// Assuming the compiler `%clang` and `%clang-scan-deps` live in the same
+  /// directory. This is true if the both binaries are built from the same Git
+  /// checkout. \param Args       The command line arguments. \param BinaryPath
+  /// The path of clang-scan-deps. \returns          The resource directory
+  /// path.
+  StringRef getResourceDir(const tooling::CommandLineArguments &Args,
+                           StringRef BinaryPath) {
+    if (Args.size() < 1)
+      return "";
+
+    const std::string &ClangBinaryPath = Args[0];
+
+    std::unique_lock<std::mutex> LockGuard(CacheLock);
+    const auto &CachedResourceDir = Cache.find(ClangBinaryPath);
+    if (CachedResourceDir != Cache.end())
+      return CachedResourceDir->second;
+
+    Cache[ClangBinaryPath] = driver::Driver::GetResourcesPath(BinaryPath);
+    return Cache[ClangBinaryPath];
+  }
+
 private:
   std::map<std::string, std::string> Cache;
   std::mutex CacheLock;
@@ -774,8 +803,8 @@ int clang_scan_deps_main(int argc, char **argv, const llvm::ToolContext &) {
   ResourceDirectoryCache ResourceDirCache;
 
   AdjustingCompilations->appendArgumentsAdjuster(
-      [&ResourceDirCache](const tooling::CommandLineArguments &Args,
-                          StringRef FileName) {
+      [&ResourceDirCache, argv](const tooling::CommandLineArguments &Args,
+                                StringRef FileName) {
         std::string LastO;
         bool HasResourceDir = false;
         bool ClangCLMode = false;
@@ -820,9 +849,12 @@ int clang_scan_deps_main(int argc, char **argv, const llvm::ToolContext &) {
           AdjustedArgs.push_back("/clang:" + LastO);
         }
 
-        if (!HasResourceDir && ResourceDirRecipe == RDRK_InvokeCompiler) {
+        if (!HasResourceDir) {
           StringRef ResourceDir =
-              ResourceDirCache.findResourceDir(Args, ClangCLMode);
+              (ResourceDirRecipe == RDRK_InvokeCompiler)
+                  ? ResourceDirCache.findResourceDir(Args, ClangCLMode)
+                  : ResourceDirCache.getResourceDir(Args, argv[0]);
+
           if (!ResourceDir.empty()) {
             AdjustedArgs.push_back("-resource-dir");
             AdjustedArgs.push_back(std::string(ResourceDir));
