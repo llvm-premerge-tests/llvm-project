@@ -10971,54 +10971,6 @@ static SDValue lowerShuffleAsDecomposedShuffleMerge(
   return DAG.getVectorShuffle(VT, DL, V1, V2, FinalMask);
 }
 
-/// Try to lower a vector shuffle as a bit rotation.
-///
-/// Look for a repeated rotation pattern in each sub group.
-/// Returns a ISD::ROTL element rotation amount or -1 if failed.
-static int matchShuffleAsBitRotate(ArrayRef<int> Mask, int NumSubElts) {
-  int NumElts = Mask.size();
-  assert((NumElts % NumSubElts) == 0 && "Illegal shuffle mask");
-
-  int RotateAmt = -1;
-  for (int i = 0; i != NumElts; i += NumSubElts) {
-    for (int j = 0; j != NumSubElts; ++j) {
-      int M = Mask[i + j];
-      if (M < 0)
-        continue;
-      if (!isInRange(M, i, i + NumSubElts))
-        return -1;
-      int Offset = (NumSubElts - (M - (i + j))) % NumSubElts;
-      if (0 <= RotateAmt && Offset != RotateAmt)
-        return -1;
-      RotateAmt = Offset;
-    }
-  }
-  return RotateAmt;
-}
-
-static int matchShuffleAsBitRotate(MVT &RotateVT, int EltSizeInBits,
-                                   const X86Subtarget &Subtarget,
-                                   ArrayRef<int> Mask) {
-  assert(!isNoopShuffleMask(Mask) && "We shouldn't lower no-op shuffles!");
-  assert(EltSizeInBits < 64 && "Can't rotate 64-bit integers");
-
-  // AVX512 only has vXi32/vXi64 rotates, so limit the rotation sub group size.
-  int MinSubElts = Subtarget.hasAVX512() ? std::max(32 / EltSizeInBits, 2) : 2;
-  int MaxSubElts = 64 / EltSizeInBits;
-  for (int NumSubElts = MinSubElts; NumSubElts <= MaxSubElts; NumSubElts *= 2) {
-    int RotateAmt = matchShuffleAsBitRotate(Mask, NumSubElts);
-    if (RotateAmt < 0)
-      continue;
-
-    int NumElts = Mask.size();
-    MVT RotateSVT = MVT::getIntegerVT(EltSizeInBits * NumSubElts);
-    RotateVT = MVT::getVectorVT(RotateSVT, NumElts / NumSubElts);
-    return RotateAmt * EltSizeInBits;
-  }
-
-  return -1;
-}
-
 /// Lower shuffle using X86ISD::VROTLI rotations.
 static SDValue lowerShuffleAsBitRotate(const SDLoc &DL, MVT VT, SDValue V1,
                                        ArrayRef<int> Mask,
@@ -11031,11 +10983,22 @@ static SDValue lowerShuffleAsBitRotate(const SDLoc &DL, MVT VT, SDValue V1,
   if (!IsLegal && Subtarget.hasSSE3())
     return SDValue();
 
-  MVT RotateVT;
-  int RotateAmt = matchShuffleAsBitRotate(RotateVT, VT.getScalarSizeInBits(),
-                                          Subtarget, Mask);
-  if (RotateAmt < 0)
+  assert(!isNoopShuffleMask(Mask) && "We shouldn't lower no-op shuffles!");
+  int EltSizeInBits = VT.getScalarSizeInBits();
+  assert(EltSizeInBits < 64 && "Can't rotate 64-bit integers");
+
+  // AVX512 only has vXi32/vXi64 rotates, so limit the rotation sub group size.
+  int MinSubElts = Subtarget.hasAVX512() ? std::max(32 / EltSizeInBits, 2) : 2;
+  int MaxSubElts = 64 / EltSizeInBits;
+
+  unsigned NumSubElts, RotateAmt;
+  if (!ShuffleVectorInst::isBitRotateMask(Mask, EltSizeInBits, MinSubElts,
+                                          MaxSubElts, NumSubElts, RotateAmt))
     return SDValue();
+
+  MVT RotateSVT = MVT::getIntegerVT(EltSizeInBits * NumSubElts);
+  MVT RotateVT =
+      MVT::getVectorVT(RotateSVT, VT.getVectorNumElements() / NumSubElts);
 
   // For pre-SSSE3 targets, if we are shuffling vXi8 elts then ISD::ROTL,
   // expanded to OR(SRL,SHL), will be more efficient, but if they can
