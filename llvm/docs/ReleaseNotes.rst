@@ -104,6 +104,8 @@ Changes to the Windows Target
 Changes to the X86 Backend
 --------------------------
 
+* Support ISA of ``AVX10.1``.
+
 Changes to the OCaml bindings
 -----------------------------
 

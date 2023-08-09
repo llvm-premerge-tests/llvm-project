@@ -187,6 +187,13 @@ def FeatureVP2INTERSECT  : SubtargetFeature<"avx512vp2intersect",
 def FeatureFP16    : SubtargetFeature<"avx512fp16", "HasFP16", "true",
                            "Support 16-bit floating point",
                            [FeatureBWI, FeatureVLX, FeatureDQI]>;
+def FeatureAVX10_1  : SubtargetFeature<"avx10.1", "HasAVX10_1", "true",
+                                       "Enable AVX10.1 instructions",
+                                       [FeatureFP16, FeatureCDI, FeatureBF16,
+                                        FeatureBITALG, FeatureIFMA, FeatureVNNI,
+                                        FeatureVPOPCNTDQ, FeatureVBMI, FeatureVBMI2]>;
+def FeatureAVX10_512bit : SubtargetFeature<"avx10-512bit", "HasAVX10_512BIT", "true",
+                                           "Enable AVX10 512-bit Instructions">;
 def FeatureAVXVNNIINT8  : SubtargetFeature<"avxvnniint8",
                              "HasAVXVNNIINT8", "true",
                              "Enable AVX-VNNI-INT8",

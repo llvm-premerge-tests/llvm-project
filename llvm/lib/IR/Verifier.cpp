@@ -2031,6 +2031,17 @@ void Verifier::verifyFunctionAttrs(FunctionType *FT, AttributeList Attrs,
               "' does not apply to function return values",
           V);
 
+  unsigned MaxParameterWidth = 0;
+  auto GetMaxParameterWidth = [&MaxParameterWidth](Type *Ty) {
+    if (Ty->isVectorTy()) {
+      if (auto *VT = dyn_cast<FixedVectorType>(Ty)) {
+        unsigned Size = VT->getPrimitiveSizeInBits().getFixedValue();
+        if (Size > MaxParameterWidth)
+          MaxParameterWidth = Size;
+      }
+    }
+  };
+  GetMaxParameterWidth(FT->getReturnType());
   verifyParameterAttrs(RetAttrs, FT->getReturnType(), V);
 
   // Verify parameter attributes.
@@ -2049,6 +2060,7 @@ void Verifier::verifyFunctionAttrs(FunctionType *FT, AttributeList Attrs,
     }
 
     verifyParameterAttrs(ArgAttrs, Ty, V);
+    GetMaxParameterWidth(Ty);
 
     if (ArgAttrs.hasAttribute(Attribute::Nest)) {
       Check(!SawNest, "More than one parameter has attribute nest!", V);
@@ -2202,6 +2214,16 @@ void Verifier::verifyFunctionAttrs(FunctionType *FT, AttributeList Attrs,
     StringRef FP = Attrs.getFnAttr("frame-pointer").getValueAsString();
     if (FP != "all" && FP != "non-leaf" && FP != "none")
       CheckFailed("invalid value for 'frame-pointer' attribute: " + FP, V);
+  }
+
+  // Check AVX10 512-bit feature.
+  if (MaxParameterWidth >= 512 && Attrs.hasFnAttr("target-features")) {
+    Triple T(M.getTargetTriple());
+    if (T.isX86()) {
+      StringRef TF = Attrs.getFnAttr("target-features").getValueAsString();
+      Check(!TF.contains("+avx10.1") || TF.contains("+avx10-512bit"),
+            "512-bit vector arguments require 'avx10-512bit' for AVX10", V);
+    }
   }
 
   checkUnsignedBaseTenFuncAttr(Attrs, "patchable-function-prefix", V);

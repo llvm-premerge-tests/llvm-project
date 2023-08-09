@@ -2573,6 +2573,20 @@ void CodeGenFunction::checkTargetFeatures(const CallExpr *E,
   return checkTargetFeatures(E->getBeginLoc(), TargetDecl);
 }
 
+// Emits an error if the builtin's vector width >= 512 and avx10-512bit
+// feature is not set.
+void CodeGenFunction::checkTargetVectorWidth(const CallExpr *E,
+                                             const FunctionDecl *TargetDecl,
+                                             unsigned VectorWidth) {
+  if (!getTarget().getTriple().isX86() || VectorWidth < 512)
+    return;
+  llvm::StringMap<bool> FeatureMap;
+  CGM.getContext().getFunctionFeatureMap(FeatureMap, TargetDecl);
+  if (FeatureMap.lookup("avx10.1") && !FeatureMap.lookup("avx10-512bit"))
+    CGM.getDiags().Report(E->getBeginLoc(), diag::err_builtin_needs_feature)
+        << TargetDecl->getDeclName() << "avx10-512bit";
+}
+
 // Emits an error if we don't have a valid set of target features for the
 // called function.
 void CodeGenFunction::checkTargetFeatures(SourceLocation Loc,

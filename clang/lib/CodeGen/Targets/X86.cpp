@@ -1486,6 +1486,24 @@ static void initFeatureMaps(const ASTContext &Ctx,
   }
 }
 
+static bool checkAVX10ParamFeature(DiagnosticsEngine &Diag,
+                                   SourceLocation CallLoc,
+                                   const llvm::StringMap<bool> &CallerMap,
+                                   const llvm::StringMap<bool> &CalleeMap,
+                                   QualType Ty, bool IsArgument) {
+  bool CallerAVX256 =
+      CallerMap.lookup("avx10.1") && !CallerMap.lookup("avx10-512bit");
+  bool CalleeAVX256 =
+      CallerMap.lookup("avx10.1") && !CallerMap.lookup("avx10-512bit");
+
+  // Forbid 512-bit or large vector pass or return on AVX10 256-bit targets.
+  if (CallerAVX256 || CalleeAVX256)
+    return Diag.Report(CallLoc, diag::err_avx_calling_convention)
+           << IsArgument << Ty << "avx10.x-256";
+
+  return false;
+}
+
 static bool checkAVXParamFeature(DiagnosticsEngine &Diag,
                                  SourceLocation CallLoc,
                                  const llvm::StringMap<bool> &CallerMap,
@@ -1515,7 +1533,9 @@ static bool checkAVXParam(DiagnosticsEngine &Diag, ASTContext &Ctx,
                           bool IsArgument) {
   uint64_t Size = Ctx.getTypeSize(Ty);
   if (Size > 256)
-    return checkAVXParamFeature(Diag, CallLoc, CallerMap, CalleeMap, Ty,
+    return checkAVX10ParamFeature(Diag, CallLoc, CallerMap, CalleeMap, Ty,
+                                  IsArgument) ||
+           checkAVXParamFeature(Diag, CallLoc, CallerMap, CalleeMap, Ty,
                                 "avx512f", IsArgument);
 
   if (Size > 128)

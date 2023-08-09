@@ -169,6 +169,7 @@ public:
   }
   void setZ(bool V) { EVEX_z = V; }
   void setL2(bool V) { EVEX_L2 = V; }
+  bool getL2() { return EVEX_L2; }
   void setEVEX_b(bool V) { EVEX_b = V; }
   void setV2(const MCInst &MI, unsigned OpNum) {
     setV2(getRegEncoding(MI, OpNum));
@@ -285,6 +286,7 @@ private:
                             SmallVectorImpl<char> &CB) const;
 
   PrefixKind emitVEXOpcodePrefix(int MemOperand, const MCInst &MI,
+                                 const MCSubtargetInfo &STI,
                                  SmallVectorImpl<char> &CB) const;
 
   void emitSegmentOverridePrefix(unsigned SegOperand, const MCInst &MI,
@@ -841,7 +843,7 @@ PrefixKind X86MCCodeEmitter::emitPrefixImpl(unsigned &CurOp, const MCInst &MI,
   // REX prefix is optional, but if used must be immediately before the opcode
   // Encoding type for this instruction.
   return (TSFlags & X86II::EncodingMask)
-             ? emitVEXOpcodePrefix(MemoryOperand, MI, CB)
+             ? emitVEXOpcodePrefix(MemoryOperand, MI, STI, CB)
              : emitOpcodePrefix(MemoryOperand, MI, STI, CB);
 }
 
@@ -860,6 +862,7 @@ PrefixKind X86MCCodeEmitter::emitPrefixImpl(unsigned &CurOp, const MCInst &MI,
 /// \returns the used prefix.
 PrefixKind
 X86MCCodeEmitter::emitVEXOpcodePrefix(int MemOperand, const MCInst &MI,
+                                      const MCSubtargetInfo &STI,
                                       SmallVectorImpl<char> &CB) const {
   const MCInstrDesc &Desc = MCII.get(MI.getOpcode());
   uint64_t TSFlags = Desc.TSFlags;
@@ -919,6 +922,9 @@ X86MCCodeEmitter::emitVEXOpcodePrefix(int MemOperand, const MCInst &MI,
 
   Prefix.setL(TSFlags & X86II::VEX_L);
   Prefix.setL2(TSFlags & X86II::EVEX_L2);
+  if (Prefix.getL2() && STI.hasFeature(X86::FeatureAVX10_1) &&
+      !STI.hasFeature(X86::FeatureAVX10_512bit))
+    report_fatal_error("ZMM registers are not supported without AVX10-512BIT");
   switch (TSFlags & X86II::OpPrefixMask) {
   case X86II::PD:
     Prefix.setPP(0x1); // 66

@@ -228,6 +228,10 @@ bool X86TargetInfo::handleTargetFeatures(std::vector<std::string> &Features,
       HasF16C = true;
     } else if (Feature == "+gfni") {
       HasGFNI = true;
+    } else if (Feature == "+avx10.1") {
+      HasAVX10_1 = true;
+    } else if (Feature == "+avx10-512bit") {
+      HasAVX10_512BIT = true;
     } else if (Feature == "+avx512cd") {
       HasAVX512CD = true;
     } else if (Feature == "+avx512vpopcntdq") {
@@ -729,6 +733,11 @@ void X86TargetInfo::getTargetDefines(const LangOptions &Opts,
   if (HasGFNI)
     Builder.defineMacro("__GFNI__");
 
+  if (HasAVX10_1)
+    Builder.defineMacro("__AVX10_1__");
+  if (HasAVX10_512BIT)
+    Builder.defineMacro("__AVX10_512BIT__");
+
   if (HasAVX512CD)
     Builder.defineMacro("__AVX512CD__");
   if (HasAVX512VPOPCNTDQ)
@@ -952,6 +961,8 @@ bool X86TargetInfo::isValidFeatureName(StringRef Name) const {
       .Case("amx-int8", true)
       .Case("amx-tile", true)
       .Case("avx", true)
+      .Case("avx10-512bit", true)
+      .Case("avx10.1", true)
       .Case("avx2", true)
       .Case("avx512f", true)
       .Case("avx512cd", true)
@@ -1058,6 +1069,8 @@ bool X86TargetInfo::hasFeature(StringRef Feature) const {
       .Case("amx-int8", HasAMXINT8)
       .Case("amx-tile", HasAMXTILE)
       .Case("avx", SSELevel >= AVX)
+      .Case("avx10-512bit", HasAVX10_512BIT)
+      .Case("avx10.1", HasAVX10_1)
       .Case("avx2", SSELevel >= AVX2)
       .Case("avx512f", SSELevel >= AVX512F)
       .Case("avx512cd", HasAVX512CD)
@@ -1529,7 +1542,11 @@ bool X86TargetInfo::validateOperandSize(const llvm::StringMap<bool> &FeatureMap,
       return Size <= 64;
     case 'z':
       // XMM0/YMM/ZMM0
-      if (hasFeatureEnabled(FeatureMap, "avx512f"))
+      if (hasFeatureEnabled(FeatureMap, "avx10.1") &&
+          !hasFeatureEnabled(FeatureMap, "avx10-512bit"))
+        // ZMM0 cannot be used if target only supports AVX10.x.
+        return Size <= 256U;
+      else if (hasFeatureEnabled(FeatureMap, "avx512f"))
         // ZMM0 can be used if target supports AVX512F.
         return Size <= 512U;
       else if (hasFeatureEnabled(FeatureMap, "avx"))
@@ -1549,7 +1566,11 @@ bool X86TargetInfo::validateOperandSize(const llvm::StringMap<bool> &FeatureMap,
     break;
   case 'v':
   case 'x':
-    if (hasFeatureEnabled(FeatureMap, "avx512f"))
+    if (hasFeatureEnabled(FeatureMap, "avx10.1") &&
+        !hasFeatureEnabled(FeatureMap, "avx10-512bit"))
+      // 512-bit zmm registers cannot be used if target only supports AVX10.x.
+      return Size <= 256U;
+    else if (hasFeatureEnabled(FeatureMap, "avx512f"))
       // 512-bit zmm registers can be used if target supports AVX512F.
       return Size <= 512U;
     else if (hasFeatureEnabled(FeatureMap, "avx"))
