@@ -1613,6 +1613,13 @@ AArch64TargetLowering::AArch64TargetLowering(const TargetMachine &TM,
   PredictableSelectIsExpensive = Subtarget->predictableSelectIsExpensive();
 
   IsStrictFPEnabled = true;
+
+  if (Subtarget->isWindowsArm64EC()) {
+    // FIXME: are there other intrinsics we need to add here?
+    setLibcallName(RTLIB::MEMCPY, "#memcpy");
+    setLibcallName(RTLIB::MEMSET, "#memset");
+    setLibcallName(RTLIB::MEMMOVE, "#memmove");
+  }
 }
 
 void AArch64TargetLowering::addTypeForNEON(MVT VT) {
@@ -2581,6 +2588,7 @@ const char *AArch64TargetLowering::getTargetNodeName(unsigned Opcode) const {
     MAKE_CASE(AArch64ISD::MRRS)
     MAKE_CASE(AArch64ISD::MSRR)
     MAKE_CASE(AArch64ISD::RSHRNB_I)
+    MAKE_CASE(AArch64ISD::CALL_ARM64EC_TO_X64)
   }
 #undef MAKE_CASE
   return nullptr;
@@ -6271,19 +6279,35 @@ CCAssignFn *AArch64TargetLowering::CCAssignFnForCall(CallingConv::ID CC,
      }
      return CC_AArch64_AAPCS;
    case CallingConv::CFGuard_Check:
+     if (Subtarget->isWindowsArm64EC())
+       return CC_AArch64_Arm64EC_CFGuard_Check;
      return CC_AArch64_Win64_CFGuard_Check;
    case CallingConv::AArch64_VectorCall:
    case CallingConv::AArch64_SVE_VectorCall:
    case CallingConv::AArch64_SME_ABI_Support_Routines_PreserveMost_From_X0:
    case CallingConv::AArch64_SME_ABI_Support_Routines_PreserveMost_From_X2:
      return CC_AArch64_AAPCS;
+  case CallingConv::ARM64EC_Thunk_X64:
+    return CC_AArch64_Arm64EC_Thunk;
+  case CallingConv::ARM64EC_Thunk_Native:
+    return CC_AArch64_Arm64EC_Thunk_Native;
   }
 }
 
 CCAssignFn *
 AArch64TargetLowering::CCAssignFnForReturn(CallingConv::ID CC) const {
-  return CC == CallingConv::WebKit_JS ? RetCC_AArch64_WebKit_JS
-                                      : RetCC_AArch64_AAPCS;
+  switch (CC) {
+  default:
+    return RetCC_AArch64_AAPCS;
+  case CallingConv::WebKit_JS:
+    return RetCC_AArch64_WebKit_JS;
+  case CallingConv::ARM64EC_Thunk_X64:
+    return RetCC_AArch64_Arm64EC_Thunk;
+  case CallingConv::CFGuard_Check:
+    if (Subtarget->isWindowsArm64EC())
+      return RetCC_AArch64_Arm64EC_CFGuard_Check;
+    return RetCC_AArch64_AAPCS;
+  }
 }
 
 
@@ -6324,6 +6348,8 @@ SDValue AArch64TargetLowering::LowerFormalArguments(
   const Function &F = MF.getFunction();
   MachineFrameInfo &MFI = MF.getFrameInfo();
   bool IsWin64 = Subtarget->isCallingConvWin64(F.getCallingConv());
+  bool StackViaX4 = CallConv == CallingConv::ARM64EC_Thunk_X64 ||
+                    (isVarArg && Subtarget->isWindowsArm64EC());
   AArch64FunctionInfo *FuncInfo = MF.getInfo<AArch64FunctionInfo>();
 
   SmallVector<ISD::OutputArg, 4> Outs;
@@ -6493,10 +6519,14 @@ SDValue AArch64TargetLowering::LowerFormalArguments(
 
       SDValue FIN;
       MachinePointerInfo PtrInfo;
-      if (isVarArg && Subtarget->isWindowsArm64EC()) {
-        // In the ARM64EC varargs convention, fixed arguments on the stack are
-        // accessed relative to x4, not sp.
+      if (StackViaX4) {
+        // In both the ARM64EC varargs convention and the thunk convention,
+        // arguments on the stack are accessed relative to x4, not sp. In
+        // the thunk convention, there's an additional offset of 32 bytes
+        // to account for the shadow store.
         unsigned ObjOffset = ArgOffset + BEAlign;
+        if (CallConv == CallingConv::ARM64EC_Thunk_X64)
+          ObjOffset += 32;
         Register VReg = MF.addLiveIn(AArch64::X4, &AArch64::GPR64RegClass);
         SDValue Val = DAG.getCopyFromReg(Chain, DL, VReg, MVT::i64);
         FIN = DAG.getNode(ISD::ADD, DL, MVT::i64, Val,
@@ -6666,9 +6696,11 @@ SDValue AArch64TargetLowering::LowerFormalArguments(
   // On Windows, InReg pointers must be returned, so record the pointer in a
   // virtual register at the start of the function so it can be returned in the
   // epilogue.
-  if (IsWin64) {
+  if (IsWin64 || F.getCallingConv() == CallingConv::ARM64EC_Thunk_X64) {
     for (unsigned I = 0, E = Ins.size(); I != E; ++I) {
-      if (Ins[I].Flags.isInReg() && Ins[I].Flags.isSRet()) {
+      if ((F.getCallingConv() == CallingConv::ARM64EC_Thunk_X64 ||
+           Ins[I].Flags.isInReg()) &&
+          Ins[I].Flags.isSRet()) {
         assert(!FuncInfo->getSRetReturnReg());
 
         MVT PtrTy = getPointerTy(DAG.getDataLayout());
@@ -6898,6 +6930,11 @@ static void analyzeCallOperands(const AArch64TargetLowering &TLI,
   bool IsVarArg = CLI.IsVarArg;
   const SmallVector<ISD::OutputArg, 32> &Outs = CLI.Outs;
   bool IsCalleeWin64 = Subtarget->isCallingConvWin64(CalleeCC);
+
+  // For Arm64EC thunks, allocate 32 extra bytes at the bottom of the stack
+  // for the shadow store.
+  if (CalleeCC == CallingConv::ARM64EC_Thunk_X64)
+    CCInfo.AllocateStack(32, Align(16));
 
   unsigned NumArgs = Outs.size();
   for (unsigned i = 0; i != NumArgs; ++i) {
@@ -7605,7 +7642,7 @@ AArch64TargetLowering::LowerCall(CallLoweringInfo &CLI,
       Callee = DAG.getNode(AArch64ISD::LOADgot, DL, PtrVT, Callee);
     } else {
       const GlobalValue *GV = G->getGlobal();
-      Callee = DAG.getTargetGlobalAddress(GV, DL, PtrVT, 0, 0);
+      Callee = DAG.getTargetGlobalAddress(GV, DL, PtrVT, 0, OpFlags);
     }
   } else if (auto *S = dyn_cast<ExternalSymbolSDNode>(Callee)) {
     if (getTargetMachine().getCodeModel() == CodeModel::Large &&
@@ -7700,8 +7737,11 @@ AArch64TargetLowering::LowerCall(CallLoweringInfo &CLI,
     Function *ARCFn = *objcarc::getAttachedARCFunction(CLI.CB);
     auto GA = DAG.getTargetGlobalAddress(ARCFn, DL, PtrVT);
     Ops.insert(Ops.begin() + 1, GA);
-  } else if (GuardWithBTI)
+  } else if (CallConv == CallingConv::ARM64EC_Thunk_X64) {
+    CallOpc = AArch64ISD::CALL_ARM64EC_TO_X64;
+  } else if (GuardWithBTI) {
     CallOpc = AArch64ISD::CALL_BTI;
+  }
 
   // Returns a chain and a flag for retval copy to use.
   Chain = DAG.getNode(CallOpc, DL, NodeTys, Ops);
@@ -7891,6 +7931,8 @@ AArch64TargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                                      getPointerTy(MF.getDataLayout()));
 
     unsigned RetValReg = AArch64::X0;
+    if (CallConv == CallingConv::ARM64EC_Thunk_X64)
+      RetValReg = AArch64::X8;
     Chain = DAG.getCopyToReg(Chain, DL, RetValReg, Val, Glue);
     Glue = Chain.getValue(1);
 
@@ -7915,6 +7957,21 @@ AArch64TargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   // Add the glue if we have it.
   if (Glue.getNode())
     RetOps.push_back(Glue);
+
+  if (CallConv == CallingConv::ARM64EC_Thunk_X64) {
+    // ARM64EC entry thunks use a special return sequence: instead of a regular
+    // "ret" instruction, they need to explicitly call the emulator.
+    EVT PtrVT = getPointerTy(DAG.getDataLayout());
+    SDValue Arm64ECRetDest =
+        DAG.getExternalSymbol("__os_arm64x_dispatch_ret", PtrVT);
+    Arm64ECRetDest =
+        getAddr(cast<ExternalSymbolSDNode>(Arm64ECRetDest), DAG, 0);
+    Arm64ECRetDest = DAG.getLoad(PtrVT, DL, DAG.getEntryNode(), Arm64ECRetDest,
+                                 MachinePointerInfo());
+    RetOps.insert(RetOps.begin() + 1, Arm64ECRetDest);
+    RetOps.insert(RetOps.begin() + 2, DAG.getTargetConstant(0, DL, MVT::i32));
+    return DAG.getNode(AArch64ISD::TC_RETURN, DL, MVT::Other, RetOps);
+  }
 
   return DAG.getNode(AArch64ISD::RET_GLUE, DL, MVT::Other, RetOps);
 }
@@ -7947,6 +8004,12 @@ SDValue AArch64TargetLowering::getTargetNode(BlockAddressSDNode* N, EVT Ty,
                                              SelectionDAG &DAG,
                                              unsigned Flag) const {
   return DAG.getTargetBlockAddress(N->getBlockAddress(), Ty, 0, Flag);
+}
+
+SDValue AArch64TargetLowering::getTargetNode(ExternalSymbolSDNode *N, EVT Ty,
+                                             SelectionDAG &DAG,
+                                             unsigned Flag) const {
+  return DAG.getTargetExternalSymbol(N->getSymbol(), Ty, Flag);
 }
 
 // (loadGOT sym)
@@ -8029,8 +8092,7 @@ SDValue AArch64TargetLowering::LowerGlobalAddress(SDValue Op,
   }
   EVT PtrVT = getPointerTy(DAG.getDataLayout());
   SDLoc DL(GN);
-  if (OpFlags & (AArch64II::MO_DLLIMPORT | AArch64II::MO_DLLIMPORTAUX |
-                 AArch64II::MO_COFFSTUB))
+  if (OpFlags & (AArch64II::MO_DLLIMPORT | AArch64II::MO_COFFSTUB))
     Result = DAG.getLoad(PtrVT, DL, DAG.getEntryNode(), Result,
                          MachinePointerInfo::getGOT(DAG.getMachineFunction()));
   return Result;

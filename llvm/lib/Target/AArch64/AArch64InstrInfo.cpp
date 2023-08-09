@@ -7123,9 +7123,10 @@ AArch64InstrInfo::getSerializableBitmaskMachineOperandTargetFlags() const {
       {MO_S, "aarch64-s"},
       {MO_TLS, "aarch64-tls"},
       {MO_DLLIMPORT, "aarch64-dllimport"},
-      {MO_DLLIMPORTAUX, "aarch64-dllimportaux"},
       {MO_PREL, "aarch64-prel"},
-      {MO_TAGGED, "aarch64-tagged"}};
+      {MO_TAGGED, "aarch64-tagged"},
+      {MO_ARM64EC_CALLMANGLE, "aarch64-arm64ec-callmangle"},
+  };
   return ArrayRef(TargetFlags);
 }
 
