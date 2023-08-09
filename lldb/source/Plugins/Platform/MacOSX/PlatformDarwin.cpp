@@ -18,6 +18,7 @@
 #include "lldb/Breakpoint/BreakpointLocation.h"
 #include "lldb/Breakpoint/BreakpointSite.h"
 #include "lldb/Core/Debugger.h"
+#include "lldb/Target/Language.h"
 #include "lldb/Core/Module.h"
 #include "lldb/Core/ModuleSpec.h"
 #include "lldb/Core/PluginManager.h"
@@ -1097,7 +1098,7 @@ void PlatformDarwin::AddClangModuleCompilationOptionsForSDKType(
 
   FileSpec sysroot_spec;
 
-  if (target) {
+  if (target && Language::LanguageIsObjC(target->GetLanguage())) {
     if (ModuleSP exe_module_sp = target->GetExecutableModule()) {
       auto path_or_err = ResolveSDKPathFromDebugInfo(*exe_module_sp);
       if (path_or_err) {
