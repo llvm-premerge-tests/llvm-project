@@ -153,7 +153,7 @@ static bool parseCommand(StringRef BinaryName, bool IsAddr2Line,
                          StringRef InputString, Command &Cmd,
                          std::string &ModuleName, object::BuildID &BuildID,
                          uint64_t &ModuleOffset) {
-  ModuleName = "";
+  ModuleName = BinaryName;
   if (InputString.consume_front("CODE ")) {
     Cmd = Command::Code;
   } else if (InputString.consume_front("DATA ")) {
@@ -165,39 +165,53 @@ static bool parseCommand(StringRef BinaryName, bool IsAddr2Line,
     Cmd = Command::Code;
   }
 
-  // Skip delimiters and parse input filename (if needed).
-  if (BinaryName.empty() && BuildID.empty()) {
-    bool HasFilePrefix = false;
-    bool HasBuildIDPrefix = false;
-    while (true) {
-      if (InputString.consume_front("FILE:")) {
-        if (HasFilePrefix)
-          return false;
-        HasFilePrefix = true;
-        continue;
-      }
-      if (InputString.consume_front("BUILDID:")) {
-        if (HasBuildIDPrefix)
-          return false;
-        HasBuildIDPrefix = true;
-        continue;
-      }
-      break;
+  // Parse optional input file specification.
+  bool HasFilePrefix = false;
+  bool HasBuildIDPrefix = false;
+  while (!InputString.empty()) {
+    InputString = InputString.ltrim();
+    if (InputString.consume_front("FILE:")) {
+      if (HasFilePrefix || HasBuildIDPrefix)
+        // Input file specification prefix is already seen.
+        return false;
+      HasFilePrefix = true;
+      continue;
     }
-    if (HasFilePrefix && HasBuildIDPrefix)
+    if (InputString.consume_front("BUILDID:")) {
+      if (HasBuildIDPrefix || HasFilePrefix)
+        // Input file specification prefix is already seen.
+        return false;
+      HasBuildIDPrefix = true;
+      continue;
+    }
+    break;
+  }
+  if (HasBuildIDPrefix || HasFilePrefix) {
+    if (!BinaryName.empty() || !BuildID.empty())
+      // Input file is already specified in command line.
       return false;
-
-    ModuleName = getSpaceDelimitedWord(InputString);
-    if (ModuleName.empty())
+    StringRef Name = getSpaceDelimitedWord(InputString);
+    if (Name.empty())
+      // Wrong name for module file.
       return false;
     if (HasBuildIDPrefix) {
-      BuildID = parseBuildID(ModuleName);
+      BuildID = parseBuildID(Name);
       if (BuildID.empty())
+        // Wrong format of BuildID hash.
         return false;
-      ModuleName.clear();
+    } else {
+      ModuleName = Name;
     }
   } else {
-    ModuleName = BinaryName.str();
+    if (BinaryName.empty() && BuildID.empty()) {
+      // No input file is specified. If the input string contains at least two
+      // items, assume that the first item is a file name.
+      StringRef Name = getSpaceDelimitedWord(InputString);
+      if (Name.empty() || InputString.empty())
+        // No input filename is specified.
+        return false;
+      ModuleName = Name;
+    }
   }
 
   // Skip delimiters and parse module offset.
