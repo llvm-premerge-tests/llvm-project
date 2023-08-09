@@ -28,6 +28,7 @@ body:             |
     ; LOWER-NEXT: %cmp:_(s32) = G_ICMP intpred(sle), %cmp_rhs(s64), %cmp_lhs
     ; LOWER-NEXT: $w0 = COPY %cmp(s32)
     ; LOWER-NEXT: RET_ReallyLR implicit $w0
+    ;
     ; SELECT-LABEL: name: swap_sextinreg_lhs
     ; SELECT: liveins: $x0, $x1
     ; SELECT-NEXT: {{  $}}
@@ -55,8 +56,6 @@ body:             |
   bb.0:
     liveins: $x0, $x1
 
-    ; The LHS of the compare is used in an add, and a second compare. Don't
-    ; swap, since we don't gain any folding opportunities here.
 
     ; LOWER-LABEL: name: dont_swap_more_than_one_use
     ; LOWER: liveins: $x0, $x1
@@ -67,6 +66,7 @@ body:             |
     ; LOWER-NEXT: %cmp2:_(s32) = G_ICMP intpred(sge), %cmp_lhs(s64), %add
     ; LOWER-NEXT: $w0 = COPY %cmp2(s32)
     ; LOWER-NEXT: RET_ReallyLR implicit $w0
+    ;
     ; SELECT-LABEL: name: dont_swap_more_than_one_use
     ; SELECT: liveins: $x0, $x1
     ; SELECT-NEXT: {{  $}}
@@ -96,8 +96,6 @@ tracksRegLiveness: true
 body:             |
   bb.0:
     liveins: $x0, $x1
-    ; Arithmetic immediates can be folded into compares. If we have one, then
-    ; don't bother changing anything.
 
     ; LOWER-LABEL: name: dont_swap_legal_arith_immed_on_rhs
     ; LOWER: liveins: $x0, $x1
@@ -108,6 +106,7 @@ body:             |
     ; LOWER-NEXT: %cmp:_(s32) = G_ICMP intpred(sge), %cmp_lhs(s64), %cmp_rhs
     ; LOWER-NEXT: $w0 = COPY %cmp(s32)
     ; LOWER-NEXT: RET_ReallyLR implicit $w0
+    ;
     ; SELECT-LABEL: name: dont_swap_legal_arith_immed_on_rhs
     ; SELECT: liveins: $x0, $x1
     ; SELECT-NEXT: {{  $}}
@@ -132,8 +131,6 @@ tracksRegLiveness: true
 body:             |
   bb.0:
     liveins: $x0, $x1
-    ; If we have a non-arithmetic immediate on the rhs, then we can swap to get
-    ; a guaranteed folding opportunity.
 
     ; LOWER-LABEL: name: swap_non_arith_immed_on_rhs
     ; LOWER: liveins: $x0, $x1
@@ -144,6 +141,7 @@ body:             |
     ; LOWER-NEXT: %cmp:_(s32) = G_ICMP intpred(sle), %cmp_rhs(s64), %cmp_lhs
     ; LOWER-NEXT: $w0 = COPY %cmp(s32)
     ; LOWER-NEXT: RET_ReallyLR implicit $w0
+    ;
     ; SELECT-LABEL: name: swap_non_arith_immed_on_rhs
     ; SELECT: liveins: $x0, $x1
     ; SELECT-NEXT: {{  $}}
@@ -181,6 +179,7 @@ body:             |
     ; LOWER-NEXT: %cmp:_(s32) = G_ICMP intpred(sle), %cmp_rhs(s64), %cmp_lhs
     ; LOWER-NEXT: $w0 = COPY %cmp(s32)
     ; LOWER-NEXT: RET_ReallyLR implicit $w0
+    ;
     ; SELECT-LABEL: name: swap_and_lhs_0xFF
     ; SELECT: liveins: $x0, $x1
     ; SELECT-NEXT: {{  $}}
@@ -220,6 +219,7 @@ body:             |
     ; LOWER-NEXT: %cmp:_(s32) = G_ICMP intpred(sle), %cmp_rhs(s64), %cmp_lhs
     ; LOWER-NEXT: $w0 = COPY %cmp(s32)
     ; LOWER-NEXT: RET_ReallyLR implicit $w0
+    ;
     ; SELECT-LABEL: name: swap_and_lhs_0xFFFF
     ; SELECT: liveins: $x0, $x1
     ; SELECT-NEXT: {{  $}}
@@ -259,6 +259,7 @@ body:             |
     ; LOWER-NEXT: %cmp:_(s32) = G_ICMP intpred(sle), %cmp_rhs(s64), %cmp_lhs
     ; LOWER-NEXT: $w0 = COPY %cmp(s32)
     ; LOWER-NEXT: RET_ReallyLR implicit $w0
+    ;
     ; SELECT-LABEL: name: swap_and_lhs_0xFFFFFFFF
     ; SELECT: liveins: $x0, $x1
     ; SELECT-NEXT: {{  $}}
@@ -288,9 +289,6 @@ tracksRegLiveness: true
 body:             |
   bb.0:
     liveins: $x0, $x1
-    ; 7 isn't an extend mask for G_AND, so there's no folding opportunities
-    ; here.
-    ;
     ; LOWER-LABEL: name: dont_swap_and_lhs_wrong_mask
     ; LOWER: liveins: $x0, $x1
     ; LOWER-NEXT: {{  $}}
@@ -301,6 +299,7 @@ body:             |
     ; LOWER-NEXT: %cmp:_(s32) = G_ICMP intpred(sge), %cmp_lhs(s64), %cmp_rhs
     ; LOWER-NEXT: $w0 = COPY %cmp(s32)
     ; LOWER-NEXT: RET_ReallyLR implicit $w0
+    ;
     ; SELECT-LABEL: name: dont_swap_and_lhs_wrong_mask
     ; SELECT: liveins: $x0, $x1
     ; SELECT-NEXT: {{  $}}
@@ -340,6 +339,7 @@ body:             |
     ; LOWER-NEXT: %cmp:_(s32) = G_ICMP intpred(sgt), %cmp_rhs(s64), %cmp_lhs
     ; LOWER-NEXT: $w0 = COPY %cmp(s32)
     ; LOWER-NEXT: RET_ReallyLR implicit $w0
+    ;
     ; SELECT-LABEL: name: swap_shl_lhs
     ; SELECT: liveins: $x0, $x1
     ; SELECT-NEXT: {{  $}}
@@ -378,6 +378,7 @@ body:             |
     ; LOWER-NEXT: %cmp:_(s32) = G_ICMP intpred(sgt), %cmp_rhs(s64), %cmp_lhs
     ; LOWER-NEXT: $w0 = COPY %cmp(s32)
     ; LOWER-NEXT: RET_ReallyLR implicit $w0
+    ;
     ; SELECT-LABEL: name: swap_ashr_lhs
     ; SELECT: liveins: $x0, $x1
     ; SELECT-NEXT: {{  $}}
@@ -416,6 +417,7 @@ body:             |
     ; LOWER-NEXT: %cmp:_(s32) = G_ICMP intpred(sgt), %cmp_rhs(s64), %cmp_lhs
     ; LOWER-NEXT: $w0 = COPY %cmp(s32)
     ; LOWER-NEXT: RET_ReallyLR implicit $w0
+    ;
     ; SELECT-LABEL: name: swap_lshr_lhs
     ; SELECT: liveins: $x0, $x1
     ; SELECT-NEXT: {{  $}}
@@ -444,7 +446,6 @@ body:             |
   bb.0:
     liveins: $x0, $x1
 
-    ; Constant for the shift must be <= 63.
 
     ; LOWER-LABEL: name: dont_swap_shift_s64_cst_too_large
     ; LOWER: liveins: $x0, $x1
@@ -456,6 +457,7 @@ body:             |
     ; LOWER-NEXT: %cmp:_(s32) = G_ICMP intpred(slt), %cmp_lhs(s64), %cmp_rhs
     ; LOWER-NEXT: $w0 = COPY %cmp(s32)
     ; LOWER-NEXT: RET_ReallyLR implicit $w0
+    ;
     ; SELECT-LABEL: name: dont_swap_shift_s64_cst_too_large
     ; SELECT: liveins: $x0, $x1
     ; SELECT-NEXT: {{  $}}
@@ -488,7 +490,6 @@ body:             |
   bb.0:
     liveins: $w0, $w1
 
-    ; Constant for the shift must be <= 32.
 
     ; LOWER-LABEL: name: dont_swap_shift_s32_cst_too_large
     ; LOWER: liveins: $w0, $w1
@@ -500,6 +501,7 @@ body:             |
     ; LOWER-NEXT: %cmp:_(s32) = G_ICMP intpred(slt), %cmp_lhs(s32), %cmp_rhs
     ; LOWER-NEXT: $w0 = COPY %cmp(s32)
     ; LOWER-NEXT: RET_ReallyLR implicit $w0
+    ;
     ; SELECT-LABEL: name: dont_swap_shift_s32_cst_too_large
     ; SELECT: liveins: $w0, $w1
     ; SELECT-NEXT: {{  $}}
@@ -530,9 +532,6 @@ body:             |
   bb.0.entry:
     liveins: $x0, $x1
 
-    ; No reason to swap a CMN on the LHS when it won't introduce a constant
-    ; folding opportunity. We can recognise CMNs on the LHS and RHS, so there's
-    ; nothing to gain here.
 
     ; LOWER-LABEL: name: dont_swap_cmn_lhs_no_folding_opportunities
     ; LOWER: liveins: $x0, $x1
@@ -544,6 +543,7 @@ body:             |
     ; LOWER-NEXT: %cmp:_(s32) = G_ICMP intpred(ne), %cmp_lhs(s64), %cmp_rhs
     ; LOWER-NEXT: $w0 = COPY %cmp(s32)
     ; LOWER-NEXT: RET_ReallyLR implicit $w0
+    ;
     ; SELECT-LABEL: name: dont_swap_cmn_lhs_no_folding_opportunities
     ; SELECT: liveins: $x0, $x1
     ; SELECT-NEXT: {{  $}}
@@ -572,8 +572,6 @@ body:             |
   bb.0.entry:
     liveins: $x0, $x1
 
-    ; Swap when we can see a constant folding opportunity through the sub on
-    ; the LHS.
 
 
     ; LOWER-LABEL: name: swap_cmn_lhs
@@ -588,6 +586,7 @@ body:             |
     ; LOWER-NEXT: %cmp:_(s32) = G_ICMP intpred(ne), %cmp_rhs(s64), %cmp_lhs
     ; LOWER-NEXT: $w0 = COPY %cmp(s32)
     ; LOWER-NEXT: RET_ReallyLR implicit $w0
+    ;
     ; SELECT-LABEL: name: swap_cmn_lhs
     ; SELECT: liveins: $x0, $x1
     ; SELECT-NEXT: {{  $}}
@@ -618,11 +617,6 @@ body:             |
   bb.0.entry:
     liveins: $x0, $x1
 
-    ; Don't swap when the RHS's subtract offers a better constant folding
-    ; opportunity than the LHS's subtract.
-    ;
-    ; In this case, the RHS has a supported extend, plus a shift with a constant
-    ; <= 4.
 
     ; LOWER-LABEL: name: dont_swap_cmn_lhs_when_rhs_more_profitable
     ; LOWER: liveins: $x0, $x1
@@ -640,6 +634,7 @@ body:             |
     ; LOWER-NEXT: %cmp:_(s32) = G_ICMP intpred(eq), %cmp_lhs(s64), %cmp_rhs
     ; LOWER-NEXT: $w0 = COPY %cmp(s32)
     ; LOWER-NEXT: RET_ReallyLR implicit $w0
+    ;
     ; SELECT-LABEL: name: dont_swap_cmn_lhs_when_rhs_more_profitable
     ; SELECT: liveins: $x0, $x1
     ; SELECT-NEXT: {{  $}}
@@ -648,7 +643,7 @@ body:             |
     ; SELECT-NEXT: %shl:gpr64 = UBFMXri %reg0, 1, 0
     ; SELECT-NEXT: %reg1:gpr64 = COPY $x1
     ; SELECT-NEXT: %sext_in_reg:gpr64 = SBFMXri %reg1, 0, 0
-    ; SELECT-NEXT: %cmp_rhs:gpr64 = SUBSXrs %zero, %sext_in_reg, 131, implicit-def $nzcv
+    ; SELECT-NEXT: %cmp_rhs:gpr64 = SUBSXrs %zero, %sext_in_reg, 131, implicit-def dead $nzcv
     ; SELECT-NEXT: [[ADDSXrr:%[0-9]+]]:gpr64 = ADDSXrr %shl, %cmp_rhs, implicit-def $nzcv
     ; SELECT-NEXT: %cmp:gpr32 = CSINCWr $wzr, $wzr, 1, implicit $nzcv
     ; SELECT-NEXT: $w0 = COPY %cmp
@@ -678,7 +673,6 @@ tracksRegLiveness: true
 body:             |
   bb.0:
     liveins: $x0, $x1
-    ; The RHS offers more constant folding opportunities than the LHS.
 
     ; LOWER-LABEL: name: dont_swap_rhs_with_supported_extend
     ; LOWER: liveins: $x0, $x1
@@ -694,6 +688,7 @@ body:             |
     ; LOWER-NEXT: %cmp:_(s32) = G_ICMP intpred(slt), %cmp_lhs(s64), %cmp_rhs
     ; LOWER-NEXT: $w0 = COPY %cmp(s32)
     ; LOWER-NEXT: RET_ReallyLR implicit $w0
+    ;
     ; SELECT-LABEL: name: dont_swap_rhs_with_supported_extend
     ; SELECT: liveins: $x0, $x1
     ; SELECT-NEXT: {{  $}}
@@ -729,9 +724,6 @@ body:             |
   bb.0:
     liveins: $x0, $x1
 
-    ; In this case, both the LHS and RHS are fed by a supported extend. However,
-    ; the LHS' shift has a constant <= 4. This makes it more profitable, so
-    ; we should swap the operands.
 
     ; LOWER-LABEL: name: swap_rhs_with_supported_extend
     ; LOWER: liveins: $x0, $x1
@@ -746,6 +738,7 @@ body:             |
     ; LOWER-NEXT: %cmp:_(s32) = G_ICMP intpred(slt), %cmp_rhs(s64), %cmp_lhs
     ; LOWER-NEXT: $w0 = COPY %cmp(s32)
     ; LOWER-NEXT: RET_ReallyLR implicit $w0
+    ;
     ; SELECT-LABEL: name: swap_rhs_with_supported_extend
     ; SELECT: liveins: $x0, $x1
     ; SELECT-NEXT: {{  $}}
