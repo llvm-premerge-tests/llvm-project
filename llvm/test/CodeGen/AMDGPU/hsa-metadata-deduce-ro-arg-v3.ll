@@ -26,6 +26,6 @@ define amdgpu_kernel void @test_ro_arg(ptr addrspace(1) noalias readonly %in, pt
 }
 
 !0 = !{i32 1, i32 1}
-!1 = !{!"none", !"none"}
+!1 = !{!"read_only", !"none"}
 !2 = !{!"float*", !"float*"}
 !3 = !{!"const restrict", !""}

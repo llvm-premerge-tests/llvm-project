@@ -308,14 +308,9 @@ void MetadataStreamerYamlV2::emitKernelArg(const Argument &Arg) {
     BaseTypeName = cast<MDString>(Node->getOperand(ArgNo))->getString();
 
   StringRef AccQual;
-  if (Arg.getType()->isPointerTy() && Arg.onlyReadsMemory() &&
-      Arg.hasNoAliasAttr()) {
-    AccQual = "read_only";
-  } else {
-    Node = Func->getMetadata("kernel_arg_access_qual");
-    if (Node && ArgNo < Node->getNumOperands())
-      AccQual = cast<MDString>(Node->getOperand(ArgNo))->getString();
-  }
+  Node = Func->getMetadata("kernel_arg_access_qual");
+  if (Node && ArgNo < Node->getNumOperands())
+    AccQual = cast<MDString>(Node->getOperand(ArgNo))->getString();
 
   StringRef TypeQual;
   Node = Func->getMetadata("kernel_arg_type_qual");
@@ -715,14 +710,9 @@ void MetadataStreamerMsgPackV3::emitKernelArg(const Argument &Arg,
     BaseTypeName = cast<MDString>(Node->getOperand(ArgNo))->getString();
 
   StringRef AccQual;
-  if (Arg.getType()->isPointerTy() && Arg.onlyReadsMemory() &&
-      Arg.hasNoAliasAttr()) {
-    AccQual = "read_only";
-  } else {
-    Node = Func->getMetadata("kernel_arg_access_qual");
-    if (Node && ArgNo < Node->getNumOperands())
-      AccQual = cast<MDString>(Node->getOperand(ArgNo))->getString();
-  }
+  Node = Func->getMetadata("kernel_arg_access_qual");
+  if (Node && ArgNo < Node->getNumOperands())
+    AccQual = cast<MDString>(Node->getOperand(ArgNo))->getString();
 
   StringRef TypeQual;
   Node = Func->getMetadata("kernel_arg_type_qual");
