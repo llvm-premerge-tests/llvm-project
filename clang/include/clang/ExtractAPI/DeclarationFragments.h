@@ -22,6 +22,7 @@
 #include "clang/AST/Decl.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/DeclObjC.h"
+#include "clang/AST/DeclTemplate.h"
 #include "clang/Lex/MacroInfo.h"
 #include "llvm/ADT/StringRef.h"
 #include <vector>
@@ -161,6 +162,11 @@ public:
     return *this;
   }
 
+  DeclarationFragments &pop_back() {
+    Fragments.pop_back();
+    return *this;
+  }
+
   /// Append a text Fragment of a space character.
   ///
   /// \returns a reference to the DeclarationFragments object itself after
@@ -180,6 +186,50 @@ public:
 
 private:
   std::vector<Fragment> Fragments;
+};
+
+class Template {
+  struct TemplateParameter {
+    // "class", "typename", or concept name
+    std::string Type;
+    std::string Name;
+    unsigned int Index;
+    unsigned int Depth;
+    bool IsParameterPack;
+
+    TemplateParameter(std::string Type, std::string Name, unsigned int Index,
+                      unsigned int Depth, bool IsParameterPack)
+        : Type(Type), Name(Name), Index(Index), Depth(Depth),
+          IsParameterPack(IsParameterPack) {}
+  };
+
+  struct TemplateConstraint {
+    // type name of the constraint, if it has one
+    std::string Type;
+    std::string Kind;
+    std::string LHS, RHS;
+  };
+  SmallVector<TemplateParameter> Parameters;
+  SmallVector<TemplateConstraint> Constraints;
+
+public:
+  Template() = default;
+
+  const SmallVector<TemplateParameter> &getParameters() const {
+    return Parameters;
+  }
+
+  const SmallVector<TemplateConstraint> &getConstraints() const {
+    return Constraints;
+  }
+
+  void addTemplateParameter(std::string Type, std::string Name,
+                            unsigned int Index, unsigned int Depth,
+                            bool IsParameterPack) {
+    Parameters.emplace_back(Type, Name, Index, Depth, IsParameterPack);
+  }
+
+  bool empty() const { return Parameters.empty() && Constraints.empty(); }
 };
 
 class AccessControl {
@@ -259,6 +309,50 @@ public:
     llvm_unreachable("Unhandled access control");
   }
 
+  /// Get template details from a template function, class, or variable
+  static Template getTemplate(const TemplateDecl *Decl) {
+    Template Template;
+    for (auto *const Parameter : *Decl->getTemplateParameters()) {
+      const auto *Param = dyn_cast<TemplateTypeParmDecl>(Parameter);
+      if (!Param) // some params are null
+        continue;
+      std::string Type;
+      if (Param->hasTypeConstraint())
+        Type = Param->getTypeConstraint()->getNamedConcept()->getName().str();
+      else if (Param->wasDeclaredWithTypename())
+        Type = "typename";
+      else
+        Type = "class";
+
+      Template.addTemplateParameter(Type, Param->getName().str(),
+                                    Param->getIndex(), Param->getDepth(),
+                                    Param->isParameterPack());
+    }
+    return Template;
+  }
+
+  static Template
+  getTemplate(const ClassTemplatePartialSpecializationDecl *Decl) {
+    Template Template;
+    for (auto *const Parameter : *Decl->getTemplateParameters()) {
+      const auto *Param = dyn_cast<TemplateTypeParmDecl>(Parameter);
+      if (!Param) // some params are null
+        continue;
+      std::string Type;
+      if (Param->hasTypeConstraint())
+        Type = Param->getTypeConstraint()->getNamedConcept()->getName().str();
+      else if (Param->wasDeclaredWithTypename())
+        Type = "typename";
+      else
+        Type = "class";
+
+      Template.addTemplateParameter(Type, Param->getName().str(),
+                                    Param->getIndex(), Param->getDepth(),
+                                    Param->isParameterPack());
+    }
+    return Template;
+  }
+
   /// Build DeclarationFragments for a variable declaration VarDecl.
   static DeclarationFragments getFragmentsForVar(const VarDecl *);
 
@@ -291,6 +385,28 @@ public:
 
   static DeclarationFragments
   getFragmentsForOverloadedOperator(const CXXMethodDecl *);
+
+  static DeclarationFragments
+      getFragmentsForTemplateParameters(ArrayRef<NamedDecl *>);
+
+  static std::string
+  getNameForTemplateArgument(const ArrayRef<NamedDecl *>, std::string);
+
+  static DeclarationFragments
+  getFragmentsForTemplateArguments(const ArrayRef<TemplateArgument>,
+                                   ASTContext &,
+                                   const std::optional<ArrayRef<NamedDecl *>>);
+
+  static DeclarationFragments getFragmentsForConcept(const ConceptDecl *);
+
+  static DeclarationFragments
+  getFragmentsForRedeclarableTemplate(const RedeclarableTemplateDecl *);
+
+  static DeclarationFragments getFragmentsForClassTemplateSpecialization(
+      const ClassTemplateSpecializationDecl *);
+
+  static DeclarationFragments getFragmentsForClassTemplatePartialSpecialization(
+      const ClassTemplatePartialSpecializationDecl *);
 
   /// Build DeclarationFragments for an Objective-C category declaration
   /// ObjCCategoryDecl.
