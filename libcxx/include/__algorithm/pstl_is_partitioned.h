@@ -35,8 +35,8 @@ template <class _ExecutionPolicy,
           class _Predicate,
           class _RawPolicy                                    = __remove_cvref_t<_ExecutionPolicy>,
           enable_if_t<is_execution_policy_v<_RawPolicy>, int> = 0>
-_LIBCPP_NODISCARD_EXT _LIBCPP_HIDE_FROM_ABI bool
-is_partitioned(_ExecutionPolicy&& __policy, _ForwardIterator __first, _ForwardIterator __last, _Predicate __pred) {
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI optional<bool> __is_partitioned(
+    _ExecutionPolicy&& __policy, _ForwardIterator&& __first, _ForwardIterator&& __last, _Predicate&& __pred) {
   return std::__pstl_frontend_dispatch(
       _LIBCPP_PSTL_CUSTOMIZATION_POINT(__pstl_is_partitioned),
       [&__policy](_ForwardIterator __g_first, _ForwardIterator __g_last, _Predicate __g_pred) {
@@ -49,6 +49,19 @@ is_partitioned(_ExecutionPolicy&& __policy, _ForwardIterator __first, _ForwardIt
       std::move(__first),
       std::move(__last),
       std::move(__pred));
+}
+
+template <class _ExecutionPolicy,
+          class _ForwardIterator,
+          class _Predicate,
+          class _RawPolicy                                    = __remove_cvref_t<_ExecutionPolicy>,
+          enable_if_t<is_execution_policy_v<_RawPolicy>, int> = 0>
+_LIBCPP_NODISCARD_EXT _LIBCPP_HIDE_FROM_ABI bool
+is_partitioned(_ExecutionPolicy&& __policy, _ForwardIterator __first, _ForwardIterator __last, _Predicate __pred) {
+  auto __res = std::__is_partitioned(__policy, std::move(__first), std::move(__last), std::move(__pred));
+  if (!__res)
+    std::__throw_bad_alloc();
+  return *std::move(__res);
 }
 
 _LIBCPP_END_NAMESPACE_STD
