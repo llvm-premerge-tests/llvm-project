@@ -6083,12 +6083,20 @@ static SDValue foldAndOrOfSETCC(SDNode *LogicOp, SelectionDAG &DAG) {
   // The optimization does not work for `==` or `!=` .
   // The two comparisons should have either the same predicate or the
   // predicate of one of the comparisons is the opposite of the other one.
-  if (OpVT.isInteger() && !ISD::isIntEqualitySetCC(CCL) &&
-      (CCL == CCR || CCL == ISD::getSetCCSwappedOperands(CCR)) &&
-      TLI.isOperationLegal(ISD::UMAX, OpVT) &&
-      TLI.isOperationLegal(ISD::SMAX, OpVT) &&
-      TLI.isOperationLegal(ISD::UMIN, OpVT) &&
-      TLI.isOperationLegal(ISD::SMIN, OpVT)) {
+  if (((OpVT.isInteger() && TLI.isOperationLegal(ISD::UMAX, OpVT) &&
+        TLI.isOperationLegal(ISD::SMAX, OpVT) &&
+        TLI.isOperationLegal(ISD::UMIN, OpVT) &&
+        TLI.isOperationLegal(ISD::SMIN, OpVT)) ||
+       (OpVT.isFloatingPoint() &&
+        ((TLI.isOperationLegalOrCustom(ISD::FMAXNUM, OpVT) &&
+          TLI.isOperationLegalOrCustom(ISD::FMINNUM, OpVT)) ||
+         (TLI.isOperationLegal(ISD::FMAXNUM_IEEE, OpVT) &&
+          TLI.isOperationLegal(ISD::FMINNUM_IEEE, OpVT))))) &&
+      !ISD::isIntEqualitySetCC(CCL) && !ISD::isFPEqualitySetCC(CCL) &&
+      CCL != ISD::SETFALSE && CCL != ISD::SETO && CCL != ISD::SETUO &&
+      CCL != ISD::SETTRUE &&
+      (CCL == CCR || CCL == ISD::getSetCCSwappedOperands(CCR))) {
+
     SDValue CommonValue, Operand1, Operand2;
     ISD::CondCode CC = ISD::SETCC_INVALID;
     if (CCL == CCR) {
@@ -6119,19 +6127,74 @@ static SDValue foldAndOrOfSETCC(SDNode *LogicOp, SelectionDAG &DAG) {
     }
 
     if (CC != ISD::SETCC_INVALID) {
-      unsigned NewOpcode;
+      std::optional<unsigned> NewOpcode;
       bool IsSigned = isSignedIntSetCC(CC);
-      bool IsLess = (CC == ISD::SETLE || CC == ISD::SETULE ||
-                     CC == ISD::SETLT || CC == ISD::SETULT);
-      bool IsOr = (LogicOp->getOpcode() == ISD::OR);
-      if (IsLess == IsOr)
-        NewOpcode = IsSigned ? ISD::SMIN : ISD::UMIN;
-      else
-        NewOpcode = IsSigned ? ISD::SMAX : ISD::UMAX;
-
-      SDValue MinMaxValue =
-          DAG.getNode(NewOpcode, DL, OpVT, Operand1, Operand2);
-      return DAG.getSetCC(DL, VT, MinMaxValue, CommonValue, CC);
+      if (OpVT.isInteger()) {
+        bool IsLess = (CC == ISD::SETLE || CC == ISD::SETULE ||
+                       CC == ISD::SETLT || CC == ISD::SETULT);
+        bool IsOr = (LogicOp->getOpcode() == ISD::OR);
+        if (IsLess == IsOr)
+          NewOpcode = IsSigned ? ISD::SMIN : ISD::UMIN;
+        else
+          NewOpcode = IsSigned ? ISD::SMAX : ISD::UMAX;
+      } else if (OpVT.isFloatingPoint()) {
+        // The optimization cannot be applied for all the predicates because
+        // of the way FMINNUM/FMAXNUM and FMINNUM_IEEE/FMAXNUM_IEEE handle
+        // NaNs. For FMINNUM_IEEE/FMAXNUM_IEEE, the optimization cannot be
+        // applied at all if one of the operands is a signaling NaN.
+        bool isNotNaN =
+            DAG.isKnownNeverNaN(Operand1) && DAG.isKnownNeverNaN(Operand2);
+        bool isNotSNaN =
+            DAG.isKnownNeverSNaN(Operand1) && DAG.isKnownNeverSNaN(Operand2);
+        bool isFMINNUM_FMAXNUM_Supported =
+            TLI.isOperationLegalOrCustom(ISD::FMAXNUM, OpVT) &&
+            TLI.isOperationLegalOrCustom(ISD::FMINNUM, OpVT);
+        if (isNotNaN) {
+          // It is safe to use FMINNUM_IEEE/FMAXNUM_IEEE if all the operands
+          // are non NaN values.
+          if (((CC == ISD::SETLT || CC == ISD::SETLE) &&
+               (LogicOp->getOpcode() == ISD::OR)) ||
+              ((CC == ISD::SETGT || CC == ISD::SETGE) &&
+               (LogicOp->getOpcode() == ISD::AND)))
+            NewOpcode = ISD::FMINNUM_IEEE;
+          else if (((CC == ISD::SETGT || CC == ISD::SETGE) &&
+                    (LogicOp->getOpcode() == ISD::OR)) ||
+                   ((CC == ISD::SETLT || CC == ISD::SETLE) &&
+                    (LogicOp->getOpcode() == ISD::AND)))
+            NewOpcode = ISD::FMAXNUM_IEEE;
+        } else if (isNotSNaN || isFMINNUM_FMAXNUM_Supported) {
+          // Both FMINNUM/FMAXNUM and FMINNUM_IEEE/FMAXNUM_IEEE handle quiet
+          // NaNs in the same way. But, FMINNUM/FMAXNUM and FMINNUM_IEEE/
+          // FMAXNUM_IEEE handle signaling NaNs differently. If we cannot prove
+          // that there are not any sNaNs, then the optimization is not valid
+          // for FMINNUM_IEEE/FMAXNUM_IEEE. In the presence of sNaNs, we apply
+          // the optimization using FMINNUM/FMAXNUM for the following cases. If
+          // we can prove that we do not have any sNaNs, then we can do the
+          // optimization using FMINNUM_IEEE/FMAXNUM_IEEE for the following
+          // cases.
+          if (((CC == ISD::SETOLT || CC == ISD::SETOLE) &&
+               (LogicOp->getOpcode() == ISD::OR)) ||
+              ((CC == ISD::SETUGT || CC == ISD::SETUGE) &&
+               (LogicOp->getOpcode() == ISD::AND)))
+            NewOpcode = isNotSNaN ? std::optional<unsigned>(ISD::FMINNUM_IEEE)
+                                  : isFMINNUM_FMAXNUM_Supported
+                                        ? std::optional<unsigned>(ISD::FMINNUM)
+                                        : std::nullopt;
+          else if (((CC == ISD::SETOGT || CC == ISD::SETOGE) &&
+                    (LogicOp->getOpcode() == ISD::OR)) ||
+                   ((CC == ISD::SETULT || CC == ISD::SETULE) &&
+                    (LogicOp->getOpcode() == ISD::AND)))
+            NewOpcode = isNotSNaN ? std::optional<unsigned>(ISD::FMAXNUM_IEEE)
+                                  : isFMINNUM_FMAXNUM_Supported
+                                        ? std::optional<unsigned>(ISD::FMAXNUM)
+                                        : std::nullopt;
+        }
+      }
+      if (NewOpcode) {
+        SDValue MinMaxValue =
+            DAG.getNode(*NewOpcode, DL, OpVT, Operand1, Operand2);
+        return DAG.getSetCC(DL, VT, MinMaxValue, CommonValue, CC);
+      }
     }
   }
 
