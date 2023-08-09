@@ -36,5 +36,5 @@ fi
 build_dir="${1}"
 shift
 
-cmake --build "${build_dir}" --target cxx-test-depends
+cmake --build "${build_dir}" --target runtimes-test-depends
 "${build_dir}/bin/llvm-lit" ${@}
