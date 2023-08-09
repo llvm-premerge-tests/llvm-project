@@ -168,9 +168,9 @@ public:
                 EntriesCount, atomic_load_relaxed(&MaxEntriesCount),
                 atomic_load_relaxed(&MaxEntrySize));
     Str->append("Stats: CacheRetrievalStats: SuccessRate: %u/%u "
-                "(%u.%02u%%)\n",
+                "(%u.%02u%%), FragmentedBytes: %zuK\n",
                 SuccessfulRetrieves, CallsToRetrieve,
-                Integral, Fractional);
+                Integral, Fractional, FragmentedBytes >> 10);
     for (CachedBlock Entry : Entries) {
       if (!Entry.isValid())
         continue;
@@ -260,6 +260,7 @@ public:
             Entries[I] = Entries[0];
           Entries[0] = Entry;
           EntriesCount++;
+          FragmentedBytes -= reinterpret_cast<uptr>(H) - Entry.CommitBase;
           if (OldestTime == 0)
             OldestTime = Entry.Time;
           EntryCached = true;
@@ -330,6 +331,7 @@ public:
         Entries[OptimalFitIndex].invalidate();
         EntriesCount--;
         SuccessfulRetrieves++;
+        FragmentedBytes += EntryHeaderPos - Entry.CommitBase;
       }
     }
     if (!Found)
@@ -467,6 +469,7 @@ private:
   atomic_s32 ReleaseToOsIntervalMs = {};
   u32 CallsToRetrieve GUARDED_BY(Mutex) = 0;
   u32 SuccessfulRetrieves GUARDED_BY(Mutex) = 0;
+  uptr FragmentedBytes GUARDED_BY(Mutex) = 0;
 
   CachedBlock Entries[CacheConfig::EntriesArraySize] GUARDED_BY(Mutex) = {};
   NonZeroLengthArray<CachedBlock, CacheConfig::QuarantineSize>
