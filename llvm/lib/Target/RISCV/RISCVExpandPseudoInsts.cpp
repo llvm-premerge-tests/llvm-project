@@ -55,6 +55,8 @@ private:
                             MachineBasicBlock::iterator MBBI);
   bool expandRV32ZdinxLoad(MachineBasicBlock &MBB,
                            MachineBasicBlock::iterator MBBI);
+  bool expandCoreVBitManip(MachineBasicBlock &MBB,
+                           MachineBasicBlock::iterator MBBI);
 #ifndef NDEBUG
   unsigned getInstSizeInBytes(const MachineFunction &MF) const {
     unsigned Size = 0;
@@ -142,6 +144,12 @@ bool RISCVExpandPseudo::expandMI(MachineBasicBlock &MBB,
   case RISCV::PseudoVMSET_M_B64:
     // vmset.m vd => vmxnor.mm vd, vd, vd
     return expandVMSET_VMCLR(MBB, MBBI, RISCV::VMXNOR_MM);
+  case RISCV::CV_EXTRACT_PSEUDO:
+  case RISCV::CV_EXTRACTU_PSEUDO:
+  case RISCV::CV_BSET_PSEUDO:
+  case RISCV::CV_BCLR_PSEUDO:
+  case RISCV::CV_INSERT_PSEUDO:
+    return expandCoreVBitManip(MBB, MBBI);
   }
 
   return false;
@@ -337,6 +345,43 @@ bool RISCVExpandPseudo::expandRV32ZdinxLoad(MachineBasicBlock &MBB,
         .add(MBBI->getOperand(2));
   }
 
+  MBBI->eraseFromParent();
+  return true;
+}
+
+bool RISCVExpandPseudo::expandCoreVBitManip(MachineBasicBlock &MBB,
+                                            MachineBasicBlock::iterator MBBI) {
+  DebugLoc DL = MBBI->getDebugLoc();
+  Register DstReg = MBBI->getOperand(0).getReg();
+  Register SrcReg = MBBI->getOperand(1).getReg();
+  uint16_t Imm = MBBI->getOperand(2).getImm();
+  unsigned Opcode;
+  switch (MBBI->getOpcode()) {
+  case RISCV::CV_EXTRACT_PSEUDO:
+    Opcode = RISCV::CV_EXTRACT;
+    break;
+  case RISCV::CV_EXTRACTU_PSEUDO:
+    Opcode = RISCV::CV_EXTRACTU;
+    break;
+  case RISCV::CV_BCLR_PSEUDO:
+    Opcode = RISCV::CV_BCLR;
+    break;
+  case RISCV::CV_BSET_PSEUDO:
+    Opcode = RISCV::CV_BSET;
+    break;
+  case RISCV::CV_INSERT_PSEUDO:
+    Opcode = RISCV::CV_INSERT;
+    break;
+
+  default:
+    llvm_unreachable("unknown instruction");
+  }
+  const MCInstrDesc &Desc = TII->get(Opcode);
+  auto MBI = BuildMI(MBB, MBBI, DL, Desc, DstReg);
+  if (MBBI->getOpcode() == RISCV::CV_INSERT_PSEUDO) {
+    MBI.addReg(MBBI->getOperand(3).getReg());
+  }
+  MBI.addReg(SrcReg).addImm((Imm >> 5) & 0x1f).addImm(Imm & 0x1f);
   MBBI->eraseFromParent();
   return true;
 }

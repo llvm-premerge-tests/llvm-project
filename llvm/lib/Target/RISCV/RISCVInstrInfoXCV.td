@@ -33,7 +33,7 @@ let DecoderNamespace = "XCVbitmanip" in {
 
   class CVBitManipR<bits<7> funct7, string opcodestr>
       : RVInstR<funct7, 0b011, OPC_CUSTOM_1, (outs GPR:$rd),
-                (ins GPR:$rs1, GPR:$rs2), opcodestr, "$rd, $rs1"> {
+                (ins GPR:$rs1), opcodestr, "$rd, $rs1"> {
     let rs2 = 0b00000;
   }
 }
@@ -62,7 +62,7 @@ let Predicates = [HasVendorXCVbitmanip, IsRV32],
   def CV_BCLRR : CVBitManipRR<0b0011100, "cv.bclrr">;
   def CV_BSETR : CVBitManipRR<0b0011101, "cv.bsetr">;
 
-  def CVROR : CVBitManipRR<0b0100000, "cv.ror">;
+  def CV_ROR : CVBitManipRR<0b0100000, "cv.ror">;
   def CV_FF1 : CVBitManipR<0b0100001, "cv.ff1">;
   def CV_FL1 : CVBitManipR<0b0100010, "cv.fl1">;
   def CV_CLB : CVBitManipR<0b0100011, "cv.clb">;
@@ -504,4 +504,41 @@ let Predicates = [HasVendorXCVbi, IsRV32], hasSideEffects = 0, mayLoad = 0,
   def CV_BNEIMM : CVInstImmBranch<0b111, (outs),
         (ins GPR:$rs1, simm5:$imm5, simm13_lsb0:$imm12),
         "cv.bneimm", "$rs1, $imm5, $imm12">, Sched<[]>;
+}
+
+def cv_tuimm2: Operand<XLenVT>, TImmLeaf<XLenVT, [{return isUInt<2>(Imm);}]>;
+def cv_tuimm5: Operand<XLenVT>, TImmLeaf<XLenVT, [{return isUInt<5>(Imm);}]>;
+def cv_uimm10: Operand<XLenVT>, ImmLeaf<XLenVT, [{return isUInt<10>(Imm);}]>;
+def cv_tuimm10: Operand<XLenVT>, TImmLeaf<XLenVT, [{return isUInt<10>(Imm);}]>;
+
+multiclass PatCoreVBitManip <Intrinsic intr> {
+  def "CV_" # NAME # "_PSEUDO" : Pseudo<(outs GPR:$rd), 
+                                        (ins GPR:$rs1, cv_uimm10:$imm), []>;
+  def : PatGprGpr<intr, !cast<RVInst>("CV_" # NAME # "R")>;
+  def : PatGprImm<intr, !cast<RVInst>("CV_" # NAME # "_PSEUDO"), cv_uimm10>;
+}
+
+let Predicates = [HasVendorXCVbitmanip, IsRV32] in {
+  defm EXTRACT : PatCoreVBitManip<int_riscv_cv_bitmanip_extract>;
+  defm EXTRACTU : PatCoreVBitManip<int_riscv_cv_bitmanip_extractu>;
+  defm BCLR : PatCoreVBitManip<int_riscv_cv_bitmanip_bclr>;
+  defm BSET : PatCoreVBitManip<int_riscv_cv_bitmanip_bset>;
+
+  def CV_INSERT_PSEUDO : Pseudo<(outs GPR:$rd_wb), 
+                                (ins GPR:$rs1, cv_tuimm10:$imm, GPR:$rd), []>;
+  def : Pat<(int_riscv_cv_bitmanip_insert GPR:$rs1, GPR:$rs2, GPR:$rd),
+            (CV_INSERTR GPR:$rd, GPR:$rs1, GPR:$rs2)>;
+  def : Pat<(int_riscv_cv_bitmanip_insert GPR:$rs1, cv_uimm10:$imm, GPR:$rd),
+            (CV_INSERT_PSEUDO GPR:$rs1, cv_uimm10:$imm, GPR:$rd)>;
+
+  def : PatGpr<int_riscv_cv_bitmanip_ff1, CV_FF1>;
+  def : PatGpr<int_riscv_cv_bitmanip_fl1, CV_FL1>;
+  def : PatGpr<int_riscv_cv_bitmanip_clb, CV_CLB>;
+  def : PatGpr<int_riscv_cv_bitmanip_cnt, CV_CNT>;
+
+  def : PatGprGpr<int_riscv_cv_bitmanip_ror, CV_ROR>;
+
+  def : Pat<(int_riscv_cv_bitmanip_bitrev GPR:$rs1, cv_tuimm5:$pts, 
+             cv_tuimm2:$radix),
+            (CV_BITREV GPR:$rs1, cv_tuimm2:$radix, cv_tuimm5:$pts)>;
 }
