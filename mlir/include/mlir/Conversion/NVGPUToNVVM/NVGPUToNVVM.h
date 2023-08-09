@@ -8,16 +8,29 @@
 #ifndef MLIR_CONVERSION_NVGPUTONVVM_NVGPUTONVVMPASS_H_
 #define MLIR_CONVERSION_NVGPUTONVVM_NVGPUTONVVMPASS_H_
 
-#include <memory>
+#include "mlir/Dialect/NVGPU/IR/NVGPUDialect.h"
 
 namespace mlir {
 
 class LLVMTypeConverter;
+class MemRefType;
 class RewritePatternSet;
 class Pass;
 
 #define GEN_PASS_DECL_CONVERTNVGPUTONVVMPASS
 #include "mlir/Conversion/Passes.h.inc"
+
+namespace nvgpu {
+class MBarrierType;
+
+/// Returns the memory space attribute of the mbarrier object.
+Attribute getMbarrierMemorySpace(MLIRContext *context,
+                                 MBarrierType barrierType);
+
+/// Return the memref type that can be used to represent an mbarrier object.
+MemRefType getMBarrierMemrefType(MLIRContext *context,
+                                 MBarrierType barrierType);
+} // namespace nvgpu
 
 void populateNVGPUToNVVMConversionPatterns(LLVMTypeConverter &converter,
                                            RewritePatternSet &patterns);
