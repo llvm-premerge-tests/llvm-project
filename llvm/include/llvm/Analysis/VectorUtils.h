@@ -179,8 +179,9 @@ static constexpr char const *_LLVM_Scalarize_ = "_LLVM_Scalarize_";
 /// name. At the moment, this parameter is needed only to retrieve the
 /// Vectorization Factor of scalable vector functions from their
 /// respective IR declarations.
-std::optional<VFInfo> tryDemangleForVFABI(StringRef MangledName,
-                                          const Module &M);
+std::optional<VFInfo>
+tryDemangleForVFABI(StringRef MangledName, const Module &M,
+                    std::optional<ElementCount> EC = std::nullopt);
 
 /// This routine mangles the given VectorName according to the LangRef
 /// specification for vector-function-abi-variant attribute and is specific to

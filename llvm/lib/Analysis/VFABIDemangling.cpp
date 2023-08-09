@@ -314,8 +314,9 @@ ElementCount getECFromSignature(FunctionType *Signature) {
 
 // Format of the ABI name:
 // _ZGV<isa><mask><vlen><parameters>_<scalarname>[(<redirection>)]
-std::optional<VFInfo> VFABI::tryDemangleForVFABI(StringRef MangledName,
-                                                 const Module &M) {
+std::optional<VFInfo>
+VFABI::tryDemangleForVFABI(StringRef MangledName, const Module &M,
+                           std::optional<ElementCount> EC) {
   const StringRef OriginalName = MangledName;
   // Assume there is no custom name <redirection>, and therefore the
   // vector name consists of
@@ -434,21 +435,24 @@ std::optional<VFInfo> VFABI::tryDemangleForVFABI(StringRef MangledName,
   // need to make sure that the VF field of the VFShape class is never
   // set to 0.
   if (IsScalable) {
-    const Function *F = M.getFunction(VectorName);
-    // The declaration of the function must be present in the module
-    // to be able to retrieve its signature.
-    if (!F)
-      return std::nullopt;
-    const ElementCount EC = getECFromSignature(F->getFunctionType());
-    VF = EC.getKnownMinValue();
+    if (EC) {
+      VF = EC->getKnownMinValue();
+    } else {
+      const Function *F = M.getFunction(VectorName);
+      // The declaration of the function must be present in the module
+      // to be able to retrieve its signature.
+      if (!F)
+        return std::nullopt;
+      const ElementCount EC = getECFromSignature(F->getFunctionType());
+      VF = EC.getKnownMinValue();
+    }
   }
-
   // 1. We don't accept a zero lanes vectorization factor.
   // 2. We don't accept the demangling if the vector function is not
   // present in the module.
   if (VF == 0)
     return std::nullopt;
-  if (!M.getFunction(VectorName))
+  if (!EC && !M.getFunction(VectorName))
     return std::nullopt;
 
   const VFShape Shape({ElementCount::get(VF, IsScalable), Parameters});
