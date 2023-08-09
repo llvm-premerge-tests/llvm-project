@@ -103,10 +103,7 @@ template <class _Tp>
 using raw_invocation_type_t = typename raw_invocation_type<_Tp>::type;
 */
 
-// 3.3.4, Detection idiom
-template <class...> using void_t = void;
-
-struct nonesuch : private __nat { // make nonesuch "not an aggregate"
+struct _LIBCPP_DEPRECATED_LFTS_IS_NOW_CXX20("nonesuch") nonesuch : private __nat { // make nonesuch "not an aggregate"
   ~nonesuch() = delete;
   nonesuch      (nonesuch const&) = delete;
   void operator=(nonesuch const&) = delete;
@@ -130,7 +127,7 @@ template <template<class...> class _Op, class... _Args>
 template <template<class...> class _Op, class... _Args>
   using detected_t = typename _DETECTOR<nonesuch, void, _Op, _Args...>::type;
 template <template<class...> class _Op, class... _Args>
-  _LIBCPP_CONSTEXPR bool is_detected_v = is_detected<_Op, _Args...>::value;
+  _LIBCPP_DEPRECATED_LFTS_IS_NOW_CXX20("is_detected_v") _LIBCPP_CONSTEXPR bool is_detected_v = is_detected<_Op, _Args...>::value;
 
 template <class _Default, template<class...> class _Op, class... _Args>
   using detected_or = _DETECTOR<_Default, void, _Op, _Args...>;
@@ -140,12 +137,12 @@ template <class _Default, template<class...> class _Op, class... _Args>
 template <class _Expected, template<class...> class _Op, class... _Args>
   using is_detected_exact = is_same<_Expected, detected_t<_Op, _Args...>>;
 template <class _Expected, template<class...> class _Op, class... _Args>
-  _LIBCPP_CONSTEXPR bool is_detected_exact_v = is_detected_exact<_Expected, _Op, _Args...>::value;
+  _LIBCPP_DEPRECATED_LFTS_IS_NOW_CXX20("is_detected_exact_v") _LIBCPP_CONSTEXPR bool is_detected_exact_v = is_detected_exact<_Expected, _Op, _Args...>::value;
 
 template <class _To, template<class...> class _Op, class... _Args>
   using is_detected_convertible = is_convertible<detected_t<_Op, _Args...>, _To>;
 template <class _To, template<class...> class _Op, class... _Args>
-  _LIBCPP_CONSTEXPR bool is_detected_convertible_v = is_detected_convertible<_To, _Op, _Args...>::value;
+  _LIBCPP_DEPRECATED_LFTS_IS_NOW_CXX20("is_detected_convertible_v") _LIBCPP_CONSTEXPR bool is_detected_convertible_v = is_detected_convertible<_To, _Op, _Args...>::value;
 
 
 _LIBCPP_END_NAMESPACE_LFTS

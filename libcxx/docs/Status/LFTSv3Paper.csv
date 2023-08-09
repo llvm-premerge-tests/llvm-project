@@ -1,0 +1,10 @@
+Section,Description,Dependencies,Status
+`[utilities] <https://wg21.link/N4920>`_,"",,Not assigned,|Complete|
+`[propagate_const] <https://wg21.link/N4920>`_,"",,,|Complete|
+`[meta] <https://wg21.link/N4920>`_,"",,Not assigned,|Partial|
+`[func] <https://wg21.link/N4920>`_,"",,Not assigned,|Not Started|
+`[memory] <https://wg21.link/N4920>`_,"",,Not assigned,|Not Started|
+`[iterator] <https://wg21.link/N4920>`_,"",,,|Complete|
+`[futures] <https://wg21.link/N4920>`_,"",,Not assigned,|Not Started|
+`[algorithms] <https://wg21.link/N4920>`_,"",,Not assigned,|Not Started|
+`[numeric] <https://wg21.link/N4920>`_,"",,Not assigned,|Not Started|

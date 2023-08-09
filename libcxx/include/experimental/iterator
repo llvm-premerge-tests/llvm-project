@@ -70,7 +70,7 @@ namespace std {
 _LIBCPP_BEGIN_NAMESPACE_LFTS
 
 template <class _Delim, class _CharT = char, class _Traits = char_traits<_CharT>>
-class ostream_joiner {
+class _LIBCPP_DEPRECATED_LFTS_IS_NOW_CXX20("ostream_joiner") ostream_joiner {
 public:
 
     typedef _CharT                               char_type;
@@ -111,6 +111,7 @@ private:
 
 
 template <class _CharT, class _Traits, class _Delim>
+_LIBCPP_DEPRECATED_LFTS_IS_NOW_CXX20("make_ostream_joiner")
 _LIBCPP_HIDE_FROM_ABI ostream_joiner<__decay_t<_Delim>, _CharT, _Traits>
 make_ostream_joiner(basic_ostream<_CharT, _Traits>& __os, _Delim && __d)
 { return ostream_joiner<__decay_t<_Delim>, _CharT, _Traits>(__os, _VSTD::forward<_Delim>(__d)); }

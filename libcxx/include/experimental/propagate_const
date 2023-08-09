@@ -154,7 +154,7 @@ inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR
 _Up& get_underlying(propagate_const<_Up>& __pu) _NOEXCEPT;
 
 template <class _Tp>
-class propagate_const
+class _LIBCPP_DEPRECATED_LFTS_IS_NOW_CXX20("propagate_const") propagate_const
 {
 public:
   typedef remove_reference_t<decltype(*std::declval<_Tp&>())> element_type;
@@ -504,90 +504,90 @@ _LIBCPP_END_NAMESPACE_LFTS_V2
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 template <class _Tp>
-struct hash<experimental::fundamentals_v2::propagate_const<_Tp>>
+struct hash<experimental::propagate_const<_Tp>>
 {
   typedef size_t result_type;
-  typedef experimental::fundamentals_v2::propagate_const<_Tp> argument_type;
+  typedef experimental::propagate_const<_Tp> argument_type;
 
-  _LIBCPP_HIDE_FROM_ABI size_t operator()(const experimental::fundamentals_v2::propagate_const<_Tp>& __pc1) const
+  _LIBCPP_HIDE_FROM_ABI size_t operator()(const experimental::propagate_const<_Tp>& __pc1) const
   {
     return std::hash<_Tp>()(_VSTD_LFTS_V2::get_underlying(__pc1));
   }
 };
 
 template <class _Tp>
-struct equal_to<experimental::fundamentals_v2::propagate_const<_Tp>>
+struct equal_to<experimental::propagate_const<_Tp>>
 {
-  typedef experimental::fundamentals_v2::propagate_const<_Tp> first_argument_type;
-  typedef experimental::fundamentals_v2::propagate_const<_Tp> second_argument_type;
+  typedef experimental::propagate_const<_Tp> first_argument_type;
+  typedef experimental::propagate_const<_Tp> second_argument_type;
 
-  _LIBCPP_HIDE_FROM_ABI bool operator()(const experimental::fundamentals_v2::propagate_const<_Tp>& __pc1,
-      const experimental::fundamentals_v2::propagate_const<_Tp>& __pc2) const
+  _LIBCPP_HIDE_FROM_ABI bool operator()(const experimental::propagate_const<_Tp>& __pc1,
+      const experimental::propagate_const<_Tp>& __pc2) const
   {
     return std::equal_to<_Tp>()(_VSTD_LFTS_V2::get_underlying(__pc1), _VSTD_LFTS_V2::get_underlying(__pc2));
   }
 };
 
 template <class _Tp>
-struct not_equal_to<experimental::fundamentals_v2::propagate_const<_Tp>>
+struct not_equal_to<experimental::propagate_const<_Tp>>
 {
-  typedef experimental::fundamentals_v2::propagate_const<_Tp> first_argument_type;
-  typedef experimental::fundamentals_v2::propagate_const<_Tp> second_argument_type;
+  typedef experimental::propagate_const<_Tp> first_argument_type;
+  typedef experimental::propagate_const<_Tp> second_argument_type;
 
-  _LIBCPP_HIDE_FROM_ABI bool operator()(const experimental::fundamentals_v2::propagate_const<_Tp>& __pc1,
-      const experimental::fundamentals_v2::propagate_const<_Tp>& __pc2) const
+  _LIBCPP_HIDE_FROM_ABI bool operator()(const experimental::propagate_const<_Tp>& __pc1,
+      const experimental::propagate_const<_Tp>& __pc2) const
   {
     return std::not_equal_to<_Tp>()(_VSTD_LFTS_V2::get_underlying(__pc1), _VSTD_LFTS_V2::get_underlying(__pc2));
   }
 };
 
 template <class _Tp>
-struct less<experimental::fundamentals_v2::propagate_const<_Tp>>
+struct less<experimental::propagate_const<_Tp>>
 {
-  typedef experimental::fundamentals_v2::propagate_const<_Tp> first_argument_type;
-  typedef experimental::fundamentals_v2::propagate_const<_Tp> second_argument_type;
+  typedef experimental::propagate_const<_Tp> first_argument_type;
+  typedef experimental::propagate_const<_Tp> second_argument_type;
 
-  _LIBCPP_HIDE_FROM_ABI bool operator()(const experimental::fundamentals_v2::propagate_const<_Tp>& __pc1,
-      const experimental::fundamentals_v2::propagate_const<_Tp>& __pc2) const
+  _LIBCPP_HIDE_FROM_ABI bool operator()(const experimental::propagate_const<_Tp>& __pc1,
+      const experimental::propagate_const<_Tp>& __pc2) const
   {
     return std::less<_Tp>()(_VSTD_LFTS_V2::get_underlying(__pc1), _VSTD_LFTS_V2::get_underlying(__pc2));
   }
 };
 
 template <class _Tp>
-struct greater<experimental::fundamentals_v2::propagate_const<_Tp>>
+struct greater<experimental::propagate_const<_Tp>>
 {
-  typedef experimental::fundamentals_v2::propagate_const<_Tp> first_argument_type;
-  typedef experimental::fundamentals_v2::propagate_const<_Tp> second_argument_type;
+  typedef experimental::propagate_const<_Tp> first_argument_type;
+  typedef experimental::propagate_const<_Tp> second_argument_type;
 
-  _LIBCPP_HIDE_FROM_ABI bool operator()(const experimental::fundamentals_v2::propagate_const<_Tp>& __pc1,
-      const experimental::fundamentals_v2::propagate_const<_Tp>& __pc2) const
+  _LIBCPP_HIDE_FROM_ABI bool operator()(const experimental::propagate_const<_Tp>& __pc1,
+      const experimental::propagate_const<_Tp>& __pc2) const
   {
     return std::greater<_Tp>()(_VSTD_LFTS_V2::get_underlying(__pc1), _VSTD_LFTS_V2::get_underlying(__pc2));
   }
 };
 
 template <class _Tp>
-struct less_equal<experimental::fundamentals_v2::propagate_const<_Tp>>
+struct less_equal<experimental::propagate_const<_Tp>>
 {
-  typedef experimental::fundamentals_v2::propagate_const<_Tp> first_argument_type;
-  typedef experimental::fundamentals_v2::propagate_const<_Tp> second_argument_type;
+  typedef experimental::propagate_const<_Tp> first_argument_type;
+  typedef experimental::propagate_const<_Tp> second_argument_type;
 
-  _LIBCPP_HIDE_FROM_ABI bool operator()(const experimental::fundamentals_v2::propagate_const<_Tp>& __pc1,
-      const experimental::fundamentals_v2::propagate_const<_Tp>& __pc2) const
+  _LIBCPP_HIDE_FROM_ABI bool operator()(const experimental::propagate_const<_Tp>& __pc1,
+      const experimental::propagate_const<_Tp>& __pc2) const
   {
     return std::less_equal<_Tp>()(_VSTD_LFTS_V2::get_underlying(__pc1), _VSTD_LFTS_V2::get_underlying(__pc2));
   }
 };
 
 template <class _Tp>
-struct greater_equal<experimental::fundamentals_v2::propagate_const<_Tp>>
+struct greater_equal<experimental::propagate_const<_Tp>>
 {
-  typedef experimental::fundamentals_v2::propagate_const<_Tp> first_argument_type;
-  typedef experimental::fundamentals_v2::propagate_const<_Tp> second_argument_type;
+  typedef experimental::propagate_const<_Tp> first_argument_type;
+  typedef experimental::propagate_const<_Tp> second_argument_type;
 
-  _LIBCPP_HIDE_FROM_ABI bool operator()(const experimental::fundamentals_v2::propagate_const<_Tp>& __pc1,
-      const experimental::fundamentals_v2::propagate_const<_Tp>& __pc2) const
+  _LIBCPP_HIDE_FROM_ABI bool operator()(const experimental::propagate_const<_Tp>& __pc1,
+      const experimental::propagate_const<_Tp>& __pc2) const
   {
     return std::greater_equal<_Tp>()(_VSTD_LFTS_V2::get_underlying(__pc1), _VSTD_LFTS_V2::get_underlying(__pc2));
   }
