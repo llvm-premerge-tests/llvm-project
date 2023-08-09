@@ -1,3 +1,19 @@
+# Helper function that creates an alias if a target specific implementation
+# exists, otherwise it uses a generic one.
+function(add_stdio_entrypoint_object entrypoint)
+  get_fq_target_name("" fq_target_name)
+  if(TARGET ${fq_target_name}${LIBC_TARGET_OS}.${entrypoint})
+    add_entrypoint_object(
+      ${entrypoint}
+      ALIAS
+      DEPENDS
+        .${LIBC_TARGET_OS}.${entrypoint}
+    )
+  else()
+    add_entrypoint_object(${entrypoint} ${ARGN})
+  endif()
+endfunction(add_stdio_entrypoint_object)
+
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${LIBC_TARGET_OS})
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/${LIBC_TARGET_OS})
 endif()
@@ -5,7 +21,7 @@ endif()
 add_subdirectory(printf_core)
 add_subdirectory(scanf_core)
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   fopen
   SRCS
     fopen.cpp
@@ -17,7 +33,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   fclose
   SRCS
     fclose.cpp
@@ -30,7 +46,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   clearerr
   SRCS
     clearerr.cpp
@@ -42,7 +58,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   clearerr_unlocked
   SRCS
     clearerr_unlocked.cpp
@@ -54,7 +70,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   feof
   SRCS
     feof.cpp
@@ -66,7 +82,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   feof_unlocked
   SRCS
     feof_unlocked.cpp
@@ -78,7 +94,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   ferror
   SRCS
     ferror.cpp
@@ -90,7 +106,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   ferror_unlocked
   SRCS
     ferror_unlocked.cpp
@@ -102,7 +118,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   fgetc
   SRCS
     fgetc.cpp
@@ -115,7 +131,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   fgetc_unlocked
   SRCS
     fgetc_unlocked.cpp
@@ -128,7 +144,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   getc
   SRCS
     getc.cpp
@@ -141,7 +157,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   getc_unlocked
   SRCS
     getc_unlocked.cpp
@@ -154,7 +170,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   getchar
   SRCS
     getchar.cpp
@@ -167,7 +183,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   getchar_unlocked
   SRCS
     getc_unlocked.cpp
@@ -180,7 +196,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   fgets
   SRCS
     fgets.cpp
@@ -193,7 +209,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   fflush
   SRCS
     fflush.cpp
@@ -206,7 +222,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   flockfile
   SRCS
     flockfile.cpp
@@ -218,7 +234,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   funlockfile
   SRCS
     funlockfile.cpp
@@ -230,7 +246,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   fread_unlocked
   SRCS
     fread_unlocked.cpp
@@ -243,7 +259,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   fread
   SRCS
     fread.cpp
@@ -256,7 +272,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   fwrite_unlocked
   SRCS
     fwrite_unlocked.cpp
@@ -269,7 +285,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   fwrite
   SRCS
     fwrite.cpp
@@ -282,7 +298,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   fputc
   SRCS
     fputc.cpp
@@ -295,7 +311,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   putc
   SRCS
     putc.cpp
@@ -308,7 +324,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   putchar
   SRCS
     putchar.cpp
@@ -321,7 +337,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   fputs
   SRCS
     fputs.cpp
@@ -335,7 +351,7 @@ add_entrypoint_object(
 )
 
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   puts
   SRCS
     puts.cpp
@@ -348,7 +364,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   fseek
   SRCS
     fseek.cpp
@@ -361,7 +377,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   ungetc
   SRCS
     ungetc.cpp
@@ -373,7 +389,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   fopencookie
   SRCS
     fopencookie.cpp
@@ -385,7 +401,7 @@ add_entrypoint_object(
     libc.src.__support.File.file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   stdin
   SRCS
     stdin.cpp
@@ -393,11 +409,9 @@ add_entrypoint_object(
     stdin.h
   DEPENDS
     libc.include.stdio
-    libc.src.__support.File.file
-    libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   stdout
   SRCS
     stdout.cpp
@@ -405,11 +419,9 @@ add_entrypoint_object(
     stdout.h
   DEPENDS
     libc.include.stdio
-    libc.src.__support.File.file
-    libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   stderr
   SRCS
     stderr.cpp
@@ -417,11 +429,9 @@ add_entrypoint_object(
     stderr.h
   DEPENDS
     libc.include.stdio
-    libc.src.__support.File.file
-    libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   setbuf
   SRCS
     setbuf.cpp
@@ -434,7 +444,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   setvbuf
   SRCS
     setvbuf.cpp
@@ -447,7 +457,7 @@ add_entrypoint_object(
     libc.src.__support.File.platform_file
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   sscanf
   SRCS
     sscanf.cpp
@@ -460,7 +470,7 @@ add_entrypoint_object(
     libc.src.stdio.scanf_core.scanf_main
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   fscanf
   SRCS
     fscanf.cpp
@@ -471,7 +481,7 @@ add_entrypoint_object(
     libc.src.stdio.scanf_core.vfscanf_internal
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   scanf
   SRCS
     scanf.cpp
@@ -482,7 +492,7 @@ add_entrypoint_object(
     libc.src.stdio.scanf_core.vfscanf_internal
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   sprintf
   SRCS
     sprintf.cpp
@@ -493,7 +503,7 @@ add_entrypoint_object(
     libc.src.stdio.printf_core.writer
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   snprintf
   SRCS
     snprintf.cpp
@@ -517,7 +527,7 @@ else()
  set(printf_copts "-DLIBC_COPT_PRINTF_USE_SYSTEM_FILE")
 endif()
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   printf
   SRCS
     printf.cpp
@@ -529,7 +539,7 @@ add_entrypoint_object(
     ${printf_copts}
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   fprintf
   SRCS
     fprintf.cpp
@@ -542,7 +552,7 @@ add_entrypoint_object(
     ${printf_copts}
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   vsprintf
   SRCS
     vsprintf.cpp
@@ -553,7 +563,7 @@ add_entrypoint_object(
     libc.src.stdio.printf_core.writer
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   vsnprintf
   SRCS
     vsnprintf.cpp
@@ -564,7 +574,7 @@ add_entrypoint_object(
     libc.src.stdio.printf_core.writer
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   vprintf
   SRCS
     vprintf.cpp
@@ -576,7 +586,7 @@ add_entrypoint_object(
     ${printf_copts}
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   vfprintf
   SRCS
     vfprintf.cpp
@@ -589,7 +599,7 @@ add_entrypoint_object(
     ${printf_copts}
 )
 
-add_entrypoint_object(
+add_stdio_entrypoint_object(
   ftell
   SRCS
     ftell.cpp

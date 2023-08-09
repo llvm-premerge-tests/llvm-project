@@ -6,8 +6,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "src/__support/File/file.h"
+#include "src/__support/macros/attributes.h"
 
 #include <stdio.h>
 
-extern "C" FILE *stderr;
+#ifdef LIBC_TARGET_ARCH_IS_GPU
+namespace __llvm_libc {
+static struct {
+} stub;
+FILE *stderr = reinterpret_cast<FILE *>(&stub);
+} // namespace __llvm_libc
+extern "C" FILE *stderr = reinterpret_cast<FILE *>(&__llvm_libc::stub);
+#endif
