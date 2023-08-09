@@ -898,6 +898,7 @@ void fixupIndex(const DWARFObject &DObj, DWARFContext &C,
 }
 
 const DWARFUnitIndex &DWARFContext::getCUIndex() {
+  std::unique_lock<std::recursive_mutex> LockGuard(Mutex);
   if (CUIndex)
     return *CUIndex;
 
@@ -910,6 +911,7 @@ const DWARFUnitIndex &DWARFContext::getCUIndex() {
 }
 
 const DWARFUnitIndex &DWARFContext::getTUIndex() {
+  std::unique_lock<std::recursive_mutex> LockGuard(Mutex);
   if (TUIndex)
     return *TUIndex;
 
@@ -924,6 +926,7 @@ const DWARFUnitIndex &DWARFContext::getTUIndex() {
 }
 
 DWARFGdbIndex &DWARFContext::getGdbIndex() {
+  std::unique_lock<std::recursive_mutex> LockGuard(Mutex);
   if (GdbIndex)
     return *GdbIndex;
 
@@ -934,6 +937,7 @@ DWARFGdbIndex &DWARFContext::getGdbIndex() {
 }
 
 const DWARFDebugAbbrev *DWARFContext::getDebugAbbrev() {
+  std::unique_lock<std::recursive_mutex> LockGuard(Mutex);
   if (Abbrev)
     return Abbrev.get();
 
@@ -943,6 +947,7 @@ const DWARFDebugAbbrev *DWARFContext::getDebugAbbrev() {
 }
 
 const DWARFDebugAbbrev *DWARFContext::getDebugAbbrevDWO() {
+  std::unique_lock<std::recursive_mutex> LockGuard(Mutex);
   if (AbbrevDWO)
     return AbbrevDWO.get();
 
@@ -952,6 +957,7 @@ const DWARFDebugAbbrev *DWARFContext::getDebugAbbrevDWO() {
 }
 
 const DWARFDebugLoc *DWARFContext::getDebugLoc() {
+  std::unique_lock<std::recursive_mutex> LockGuard(Mutex);
   if (Loc)
     return Loc.get();
 
@@ -966,6 +972,7 @@ const DWARFDebugLoc *DWARFContext::getDebugLoc() {
 }
 
 const DWARFDebugAranges *DWARFContext::getDebugAranges() {
+  std::unique_lock<std::recursive_mutex> LockGuard(Mutex);
   if (Aranges)
     return Aranges.get();
 
@@ -975,6 +982,7 @@ const DWARFDebugAranges *DWARFContext::getDebugAranges() {
 }
 
 Expected<const DWARFDebugFrame *> DWARFContext::getDebugFrame() {
+  std::unique_lock<std::recursive_mutex> LockGuard(Mutex);
   if (DebugFrame)
     return DebugFrame.get();
 
@@ -1001,6 +1009,7 @@ Expected<const DWARFDebugFrame *> DWARFContext::getDebugFrame() {
 }
 
 Expected<const DWARFDebugFrame *> DWARFContext::getEHFrame() {
+  std::unique_lock<std::recursive_mutex> LockGuard(Mutex);
   if (EHFrame)
     return EHFrame.get();
 
@@ -1017,24 +1026,28 @@ Expected<const DWARFDebugFrame *> DWARFContext::getEHFrame() {
 }
 
 const DWARFDebugMacro *DWARFContext::getDebugMacro() {
+  std::unique_lock<std::recursive_mutex> LockGuard(Mutex);
   if (!Macro)
     Macro = parseMacroOrMacinfo(MacroSection);
   return Macro.get();
 }
 
 const DWARFDebugMacro *DWARFContext::getDebugMacroDWO() {
+  std::unique_lock<std::recursive_mutex> LockGuard(Mutex);
   if (!MacroDWO)
     MacroDWO = parseMacroOrMacinfo(MacroDwoSection);
   return MacroDWO.get();
 }
 
 const DWARFDebugMacro *DWARFContext::getDebugMacinfo() {
+  std::unique_lock<std::recursive_mutex> LockGuard(Mutex);
   if (!Macinfo)
     Macinfo = parseMacroOrMacinfo(MacinfoSection);
   return Macinfo.get();
 }
 
 const DWARFDebugMacro *DWARFContext::getDebugMacinfoDWO() {
+  std::unique_lock<std::recursive_mutex> LockGuard(Mutex);
   if (!MacinfoDWO)
     MacinfoDWO = parseMacroOrMacinfo(MacinfoDwoSection);
   return MacinfoDWO.get();
@@ -1093,6 +1106,7 @@ DWARFContext::getLineTableForUnit(DWARFUnit *U) {
 
 Expected<const DWARFDebugLine::LineTable *> DWARFContext::getLineTableForUnit(
     DWARFUnit *U, function_ref<void(Error)> RecoverableErrorHandler) {
+  std::unique_lock<std::recursive_mutex> LockGuard(Mutex);
   if (!Line)
     Line.reset(new DWARFDebugLine);
 
@@ -1121,6 +1135,7 @@ Expected<const DWARFDebugLine::LineTable *> DWARFContext::getLineTableForUnit(
 }
 
 void DWARFContext::clearLineTableForUnit(DWARFUnit *U) {
+  std::unique_lock<std::recursive_mutex> LockGuard(Mutex);
   if (!Line)
     return;
 
@@ -1137,6 +1152,7 @@ void DWARFContext::clearLineTableForUnit(DWARFUnit *U) {
 }
 
 void DWARFContext::parseNormalUnits() {
+  std::unique_lock<std::recursive_mutex> LockGuard(Mutex);
   if (!NormalUnits.empty())
     return;
   DObj->forEachInfoSections([&](const DWARFSection &S) {
@@ -1149,6 +1165,7 @@ void DWARFContext::parseNormalUnits() {
 }
 
 void DWARFContext::parseDWOUnits(bool Lazy) {
+  std::unique_lock<std::recursive_mutex> LockGuard(Mutex);
   if (!DWOUnits.empty())
     return;
   DObj->forEachInfoDWOSections([&](const DWARFSection &S) {
@@ -1519,6 +1536,7 @@ DWARFContext::getInliningInfoForAddress(object::SectionedAddress Address,
 
 std::shared_ptr<DWARFContext>
 DWARFContext::getDWOContext(StringRef AbsolutePath) {
+  std::unique_lock<std::recursive_mutex> LockGuard(Mutex);
   if (auto S = DWP.lock()) {
     DWARFContext *Ctxt = S->Context.get();
     return std::shared_ptr<DWARFContext>(std::move(S), Ctxt);
