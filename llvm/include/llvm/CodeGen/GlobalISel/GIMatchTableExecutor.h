@@ -360,6 +360,12 @@ enum {
   /// - Imm - The immediate to add
   GIR_AddImm,
 
+  /// Add an CImm to the specified instruction
+  /// - InsnID - Instruction ID to modify
+  /// - Ty - Type of the constant immediate.
+  /// - Imm - The immediate to add
+  GIR_AddCImm,
+
   /// Render complex operands to the specified instruction
   /// - InsnID - Instruction ID to modify
   /// - RendererID - The renderer to call
@@ -386,7 +392,8 @@ enum {
   /// Calls a C++ function to perform an action when a match is complete.
   /// The MatcherState is passed to the function to allow it to modify
   /// instructions.
-  /// This is less constrained than a custom renderer and can update instructions
+  /// This is less constrained than a custom renderer and can update
+  /// instructions
   /// in the state.
   /// - FnID - The function to call.
   /// TODO: Remove this at some point when combiners aren't reliant on it. It's
@@ -553,7 +560,8 @@ protected:
       const int64_t *MatchTable, const TargetInstrInfo &TII,
       MachineRegisterInfo &MRI, const TargetRegisterInfo &TRI,
       const RegisterBankInfo &RBI, const PredicateBitset &AvailableFeatures,
-      CodeGenCoverage *CoverageInfo) const;
+      CodeGenCoverage *CoverageInfo,
+      GISelChangeObserver *Observer = nullptr) const;
 
   virtual const int64_t *getMatchTable() const {
     llvm_unreachable("Should have been overridden by tablegen if used");
@@ -581,12 +589,14 @@ protected:
     llvm_unreachable("Subclass does not implement testSimplePredicate!");
   }
 
-  virtual void runCustomAction(unsigned, const MatcherState &State) const {
+  virtual void runCustomAction(unsigned, const MatcherState &State,
+                               NewMIVector &OutMIs) const {
     llvm_unreachable("Subclass does not implement runCustomAction!");
   }
 
   bool isOperandImmEqual(const MachineOperand &MO, int64_t Value,
-                         const MachineRegisterInfo &MRI) const;
+                         const MachineRegisterInfo &MRI,
+                         bool Splat = false) const;
 
   /// Return true if the specified operand is a G_PTR_ADD with a G_CONSTANT on
   /// the right-hand side. GlobalISel's separation of pointer and integer types
