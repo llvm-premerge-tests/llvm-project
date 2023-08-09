@@ -25,6 +25,7 @@
 #include "llvm/TargetParser/Host.h"
 #include <cstdint>
 #include <memory>
+#include <mutex>
 
 namespace llvm {
 
@@ -46,6 +47,8 @@ class DWARFUnitIndex;
 /// information parsing. The actual data is supplied through DWARFObj.
 class DWARFContext : public DIContext {
   DWARFUnitVector NormalUnits;
+  // Mutex protecting multi-threaded access to the DWARFContext.
+  std::recursive_mutex Mutex;
   std::optional<DenseMap<uint64_t, DWARFTypeUnit *>> NormalTypeUnits;
   std::unique_ptr<DWARFUnitIndex> CUIndex;
   std::unique_ptr<DWARFGdbIndex> GdbIndex;
