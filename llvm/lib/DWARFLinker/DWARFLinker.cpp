@@ -1044,32 +1044,36 @@ void DWARFLinker::assignAbbrev(DIEAbbrev &Abbrev) {
 unsigned DWARFLinker::DIECloner::cloneStringAttribute(DIE &Die,
                                                       AttributeSpec AttrSpec,
                                                       const DWARFFormValue &Val,
-                                                      const DWARFUnit &,
+                                                      const DWARFUnit &U,
                                                       AttributesInfo &Info) {
   std::optional<const char *> String = dwarf::toString(Val);
   if (!String)
     return 0;
-
   DwarfStringPoolEntryRef StringEntry;
   if (AttrSpec.Form == dwarf::DW_FORM_line_strp) {
     StringEntry = DebugLineStrPool.getEntry(*String);
   } else {
     StringEntry = DebugStrPool.getEntry(*String);
-
     // Update attributes info.
     if (AttrSpec.Attr == dwarf::DW_AT_name)
       Info.Name = StringEntry;
     else if (AttrSpec.Attr == dwarf::DW_AT_MIPS_linkage_name ||
              AttrSpec.Attr == dwarf::DW_AT_linkage_name)
       Info.MangledName = StringEntry;
-
+    if (U.getVersion() >= 5) {
+      // Switch everything to DW_FORM_strx strings.
+      auto StringOffsetIndex =
+          StringOffsetPool.getValueIndex(StringEntry.getOffset());
+      return Die
+          .addValue(DIEAlloc, dwarf::Attribute(AttrSpec.Attr),
+                    dwarf::DW_FORM_strx, DIEInteger(StringOffsetIndex))
+          ->sizeOf(U.getFormParams());
+    }
     // Switch everything to out of line strings.
     AttrSpec.Form = dwarf::DW_FORM_strp;
   }
-
   Die.addValue(DIEAlloc, dwarf::Attribute(AttrSpec.Attr), AttrSpec.Form,
                DIEInteger(StringEntry.getOffset()));
-
   return 4;
 }
 
@@ -1389,7 +1393,7 @@ unsigned DWARFLinker::DIECloner::cloneAddressAttribute(
     return Unit.getOrigUnit().getAddressByteSize();
   }
 
-  auto AddrIndex = AddrPool.getAddrIndex(*Addr);
+  auto AddrIndex = AddrPool.getValueIndex(*Addr);
 
   return Die
       .addValue(DIEAlloc, static_cast<dwarf::Attribute>(AttrSpec.Attr),
@@ -1664,9 +1668,6 @@ shouldSkipAttribute(bool Update,
     // Since DW_AT_rnglists_base is used for only DW_FORM_rnglistx the
     // DW_AT_rnglists_base is removed.
     return !Update;
-  case dwarf::DW_AT_str_offsets_base:
-    // FIXME: Use the string offset table with Dwarf 5.
-    return true;
   case dwarf::DW_AT_loclists_base:
     // In case !Update the .debug_addr table is not generated/preserved.
     // Thus instead of DW_FORM_loclistx the DW_FORM_sec_offset is used.
@@ -1774,6 +1775,9 @@ DIE *DWARFLinker::DIECloner::cloneDIE(const DWARFDie &InputDIE,
     Val.extractValue(Data, &Offset, U.getFormParams(), &U);
     AttrSize = Offset - AttrSize;
 
+    if (AttrSpec.Attr == dwarf::DW_AT_str_offsets_base)
+      AttrStrOffsetBaseSeen = true;
+
     OutOffset += cloneAttribute(*Die, InputDIE, File, Unit, Val, AttrSpec,
                                 AttrSize, AttrInfo, IsLittleEndian);
   }
@@ -1833,6 +1837,13 @@ DIE *DWARFLinker::DIECloner::cloneDIE(const DWARFDie &InputDIE,
     }
   }
 
+  if (Unit.getOrigUnit().getVersion() >= 5 && !AttrStrOffsetBaseSeen) {
+    // No DW_AT_str_offsets_base seen, add it to the DIE.
+    Die->addValue(DIEAlloc, dwarf::DW_AT_str_offsets_base,
+                  dwarf::DW_FORM_sec_offset, DIEInteger(8));
+    OutOffset += 4;
+  }
+
   DIEAbbrev NewAbbrev = Die->generateAbbrev();
   if (HasChildren)
     NewAbbrev.setChildrenFlag(dwarf::DW_CHILDREN_yes);
@@ -1869,7 +1880,7 @@ DIE *DWARFLinker::DIECloner::cloneDIE(const DWARFDie &InputDIE,
 /// entries and emit them in the output file. Update the relevant attributes
 /// to point at the new entries.
 void DWARFLinker::generateUnitRanges(CompileUnit &Unit, const DWARFFile &File,
-                                     DebugAddrPool &AddrPool) const {
+                                     DebugDieValuePool &AddrPool) const {
   if (LLVM_UNLIKELY(Options.Update))
     return;
 
@@ -2001,6 +2012,15 @@ static void patchAddrBase(DIE &Die, DIEInteger Offset) {
   llvm_unreachable("Didn't find a DW_AT_addr_base in cloned DIE!");
 }
 
+static void patchStrOffsetsBase(DIE &Die, DIEInteger Offset) {
+  for (auto &V : Die.values())
+    if (V.getAttribute() == dwarf::DW_AT_str_offsets_base) {
+      V = DIEValue(V.getAttribute(), V.getForm(), Offset);
+      return;
+    }
+  llvm_unreachable("Didn't find a DW_AT_str_offsets_base in cloned DIE!");
+}
+
 void DWARFLinker::DIECloner::emitDebugAddrSection(
     CompileUnit &Unit,
     const uint16_t DwarfVersion) const {
@@ -2011,13 +2031,14 @@ void DWARFLinker::DIECloner::emitDebugAddrSection(
   if (DwarfVersion < 5)
     return;
 
-  if (AddrPool.Addrs.empty())
+  if (AddrPool.DieValues.empty())
     return;
 
   MCSymbol *EndLabel = Emitter->emitDwarfDebugAddrsHeader(Unit);
   patchAddrBase(*Unit.getOutputUnitDIE(),
                 DIEInteger(Emitter->getDebugAddrSectionSize()));
-  Emitter->emitDwarfDebugAddrs(AddrPool.Addrs, Unit.getOrigUnit().getAddressByteSize());
+  Emitter->emitDwarfDebugAddrs(AddrPool.DieValues,
+                               Unit.getOrigUnit().getAddressByteSize());
   Emitter->emitDwarfDebugAddrsFooter(Unit, EndLabel);
 }
 
@@ -2544,6 +2565,8 @@ uint64_t DWARFLinker::DIECloner::cloneAllCompileUnits(
 
   for (auto &CurrentUnit : CompileUnits) {
     const uint16_t DwarfVersion = CurrentUnit->getOrigUnit().getVersion();
+    if (DwarfVersion >= 5)
+      Linker.Dwarf5CUSeen = true;
     const uint32_t UnitHeaderSize = DwarfVersion >= 5 ? 12 : 11;
     auto InputDIE = CurrentUnit->getOrigUnit().getUnitDIE();
     CurrentUnit->setStartOffset(OutputDebugInfoSize);
@@ -2558,6 +2581,12 @@ uint64_t DWARFLinker::DIECloner::cloneAllCompileUnits(
       rememberUnitForMacroOffset(*CurrentUnit);
       cloneDIE(InputDIE, File, *CurrentUnit, 0 /* PC offset */, UnitHeaderSize,
                0, IsLittleEndian, CurrentUnit->getOutputUnitDIE());
+      // dsymutil will emit only one .debug_str_offset contribution for all
+      // compile units, therefore the DW_AT_str_offsets_base for all CUs needs
+      // to be patched up to be the start of the section after the header, which
+      // will be 8 bytes.
+      if (DwarfVersion >= 5)
+        patchStrOffsetsBase(*CurrentUnit->getOutputUnitDIE(), DIEInteger(8));
     }
 
     OutputDebugInfoSize = CurrentUnit->computeNextUnitOffset(DwarfVersion);
@@ -2731,6 +2760,7 @@ Error DWARFLinker::link() {
   // reproducibility.
   OffsetsStringPool DebugStrPool(StringsTranslator, true);
   OffsetsStringPool DebugLineStrPool(StringsTranslator, false);
+  DebugDieValuePool StringOffsetPool;
 
   // ODR Contexts for the optimize.
   DeclContextTree ODRContexts;
@@ -2797,7 +2827,7 @@ Error DWARFLinker::link() {
 
     for (auto &CU : OptContext.ModuleUnits) {
       if (Error Err = cloneModuleUnit(OptContext, CU, ODRContexts, DebugStrPool,
-                                      DebugLineStrPool))
+                                      DebugLineStrPool, StringOffsetPool))
         reportWarning(toString(std::move(Err)), CU.File);
     }
   }
@@ -2894,7 +2924,7 @@ Error DWARFLinker::link() {
       SizeByObject[OptContext.File.FileName].Output =
           DIECloner(*this, TheDwarfEmitter.get(), OptContext.File, DIEAlloc,
                     OptContext.CompileUnits, Options.Update, DebugStrPool,
-                    DebugLineStrPool)
+                    DebugLineStrPool, StringOffsetPool)
               .cloneAllCompileUnits(*OptContext.File.Dwarf, OptContext.File,
                                     OptContext.File.Dwarf->isLittleEndian());
     }
@@ -2911,6 +2941,8 @@ Error DWARFLinker::link() {
     if (TheDwarfEmitter != nullptr) {
       TheDwarfEmitter->emitAbbrevs(Abbreviations, Options.TargetDWARFVersion);
       TheDwarfEmitter->emitStrings(DebugStrPool);
+      if (Dwarf5CUSeen && !StringOffsetPool.DieValues.empty())
+        TheDwarfEmitter->emitStringOffsets(StringOffsetPool.DieValues);
       TheDwarfEmitter->emitLineStrings(DebugLineStrPool);
       for (AccelTableKind TableKind : Options.AccelTables) {
         switch (TableKind) {
@@ -3027,6 +3059,7 @@ Error DWARFLinker::cloneModuleUnit(LinkContext &Context, RefModuleUnit &Unit,
                                    DeclContextTree &ODRContexts,
                                    OffsetsStringPool &DebugStrPool,
                                    OffsetsStringPool &DebugLineStrPool,
+                                   DebugDieValuePool &StringOffsetPool,
                                    unsigned Indent) {
   assert(Unit.Unit.get() != nullptr);
 
@@ -3053,7 +3086,7 @@ Error DWARFLinker::cloneModuleUnit(LinkContext &Context, RefModuleUnit &Unit,
   CompileUnits.emplace_back(std::move(Unit.Unit));
   assert(TheDwarfEmitter);
   DIECloner(*this, TheDwarfEmitter.get(), Unit.File, DIEAlloc, CompileUnits,
-            Options.Update, DebugStrPool, DebugLineStrPool)
+            Options.Update, DebugStrPool, DebugLineStrPool, StringOffsetPool)
       .cloneAllCompileUnits(*Unit.File.Dwarf, Unit.File,
                             Unit.File.Dwarf->isLittleEndian());
   return Error::success();

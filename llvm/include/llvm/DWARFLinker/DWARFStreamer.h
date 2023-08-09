@@ -81,6 +81,10 @@ public:
   /// Emit the string table described by \p Pool into .debug_str table.
   void emitStrings(const NonRelocatableStringpool &Pool) override;
 
+  /// Emit the debug string offset table described by \p StringOffsets into the
+  /// .debug_string_offset table.
+  void emitStringOffsets(const SmallVector<uint64_t> &StringOffset) override;
+
   /// Emit the string table described by \p Pool into .debug_line_str table.
   void emitLineStrings(const NonRelocatableStringpool &Pool) override;
 
@@ -99,7 +103,7 @@ public:
   void emitDwarfDebugRangeListFragment(const CompileUnit &Unit,
                                        const AddressRanges &LinkedRanges,
                                        PatchLocation Patch,
-                                       DebugAddrPool &AddrPool) override;
+                                       DebugDieValuePool &AddrPool) override;
 
   /// Emit debug ranges(.debug_ranges, .debug_rnglists) footer.
   void emitDwarfDebugRangeListFooter(const CompileUnit &Unit,
@@ -123,7 +127,7 @@ public:
   void emitDwarfDebugLocListFragment(
       const CompileUnit &Unit,
       const DWARFLocationExpressionsVector &LinkedLocationExpression,
-      PatchLocation Patch, DebugAddrPool &AddrPool) override;
+      PatchLocation Patch, DebugDieValuePool &AddrPool) override;
 
   /// Emit debug ranges(.debug_loc, .debug_loclists) footer.
   void emitDwarfDebugLocListFooter(const CompileUnit &Unit,
@@ -222,7 +226,7 @@ private:
   void emitDwarfDebugRngListsTableFragment(const CompileUnit &Unit,
                                            const AddressRanges &LinkedRanges,
                                            PatchLocation Patch,
-                                           DebugAddrPool &AddrPool);
+                                           DebugDieValuePool &AddrPool);
 
   /// Emit piece of .debug_loc for \p LinkedRanges.
   void emitDwarfDebugLocTableFragment(
@@ -234,7 +238,7 @@ private:
   void emitDwarfDebugLocListsTableFragment(
       const CompileUnit &Unit,
       const DWARFLocationExpressionsVector &LinkedLocationExpression,
-      PatchLocation Patch, DebugAddrPool &AddrPool);
+      PatchLocation Patch, DebugDieValuePool &AddrPool);
 
   /// \defgroup Line table emission
   /// @{
@@ -293,6 +297,7 @@ private:
   uint64_t MacInfoSectionSize = 0;
   uint64_t MacroSectionSize = 0;
   uint64_t AddrSectionSize = 0;
+  uint64_t StrOffsetSectionSize = 0;
 
   /// Keep track of emitted CUs and their Unique ID.
   struct EmittedUnit {

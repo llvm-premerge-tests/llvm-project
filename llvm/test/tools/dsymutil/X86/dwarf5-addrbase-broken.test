@@ -25,7 +25,7 @@
 # CHECK: DW_TAG_variable
 # CHECK: DW_AT_name{{.*}}"var1"
 # CHECK: DW_AT_location        (DW_OP_addr
-# CHECK: 0x0000004e:   NULL
+# CHECK: 0x0000004f:   NULL
 # CHECK: Compile Unit:
 # CHECK: DW_TAG_compile_unit
 # CHECK-NOT: DW_AT_low_pc
