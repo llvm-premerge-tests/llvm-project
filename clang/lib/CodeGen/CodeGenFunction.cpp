@@ -570,6 +570,9 @@ bool CodeGenFunction::AlwaysEmitXRayTypedEvents() const {
 
 llvm::ConstantInt *
 CodeGenFunction::getUBSanFunctionTypeHash(QualType Ty) const {
+  if (isa<AttributedType>(Ty))
+    Ty = Ty.getDesugaredType(getContext());
+
   // Remove any (C++17) exception specifications, to allow calling e.g. a
   // noexcept function through a non-noexcept pointer.
   if (!isa<FunctionNoProtoType>(Ty))
