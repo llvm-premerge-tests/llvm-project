@@ -109,6 +109,7 @@ class CopyTracker {
   struct CopyInfo {
     MachineInstr *MI, *LastSeenUseInCopy;
     SmallVector<MCRegister, 4> DefRegs;
+    SmallVector<MCRegister, 4> SrcRegs;
     bool Avail;
   };
 
@@ -151,6 +152,8 @@ public:
         }
         RegsToInvalidate.insert(I->second.DefRegs.begin(),
                                 I->second.DefRegs.end());
+        RegsToInvalidate.insert(I->second.SrcRegs.begin(),
+                                I->second.SrcRegs.end());
       }
     }
     for (MCRegister InvalidReg : RegsToInvalidate)
@@ -167,6 +170,7 @@ public:
         // When we clobber the source of a copy, we need to clobber everything
         // it defined.
         markRegsUnavailable(I->second.DefRegs, TRI);
+        markRegsUnavailable(I->second.SrcRegs, TRI);
         // When we clobber the destination of a copy, we need to clobber the
         // whole register it defined.
         if (MachineInstr *MI = I->second.MI) {
@@ -193,15 +197,17 @@ public:
 
     // Remember Def is defined by the copy.
     for (MCRegUnit Unit : TRI.regunits(Def))
-      Copies[Unit] = {MI, nullptr, {}, true};
+      Copies[Unit] = {MI, nullptr, {}, {}, true};
 
     // Remember source that's copied to Def. Once it's clobbered, then
     // it's no longer available for copy propagation.
     for (MCRegUnit Unit : TRI.regunits(Src)) {
-      auto I = Copies.insert({Unit, {nullptr, nullptr, {}, false}});
+      auto I = Copies.insert({Unit, {nullptr, nullptr, {}, {}, false}});
       auto &Copy = I.first->second;
       if (!is_contained(Copy.DefRegs, Def))
         Copy.DefRegs.push_back(Def);
+      if (!is_contained(Copy.SrcRegs, Src))
+        Copy.SrcRegs.push_back(Src);
       Copy.LastSeenUseInCopy = MI;
     }
   }
