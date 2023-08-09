@@ -865,6 +865,19 @@ TEST_F(LlvmLibcSPrintfTest, FloatHexExpConv) {
 
   written = __llvm_libc::sprintf(buff, "%+-#12.3a % 012.3a", 0.1256, 1256.0);
   ASSERT_STREQ_LEN(written, buff, "+0x1.014p-3   0x1.3a0p+10");
+
+  // Found via fuzzing
+
+  // The trailing zeroes were previously not counted when calculating the
+  // padding, which caused a high-precision number to get too much padding.
+  written = __llvm_libc::sprintf(buff, "%50.50a", 0x1.0p0);
+  ASSERT_STREQ_LEN(written, buff,
+                   "0x1.00000000000000000000000000000000000000000000000000p+0");
+
+  written = __llvm_libc::sprintf(buff, "%58.50a", 0x1.0p0);
+  ASSERT_STREQ_LEN(
+      written, buff,
+      " 0x1.00000000000000000000000000000000000000000000000000p+0");
 }
 
 TEST_F(LlvmLibcSPrintfTest, FloatDecimalConv) {
