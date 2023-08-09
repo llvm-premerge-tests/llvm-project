@@ -79,10 +79,6 @@ struct CommutativeOperand {
   /// particular point in time.
   std::queue<Operation *> ancestorQueue;
 
-  /// Stores the list of ancestors that have been visited by the BFS traversal
-  /// at a particular point in time.
-  DenseSet<Operation *> visitedAncestors;
-
   /// Stores the operand's "key". This "key" is defined as a list of the
   /// "AncestorKeys" associated with the ancestors of this operand, in a
   /// breadth-first order.
@@ -117,8 +113,6 @@ struct CommutativeOperand {
   /// "visited ancestors" list (iff it is an op rather than a block argument).
   void pushAncestor(Operation *op) {
     ancestorQueue.push(op);
-    if (op)
-      visitedAncestors.insert(op);
   }
 
   /// Refresh the key.
@@ -149,8 +143,7 @@ struct CommutativeOperand {
       return;
     for (Value operand : frontAncestor->getOperands()) {
       Operation *operandDefOp = operand.getDefiningOp();
-      if (!operandDefOp || !visitedAncestors.contains(operandDefOp))
-        pushAncestor(operandDefOp);
+      pushAncestor(operandDefOp);
     }
   }
 };
@@ -206,6 +199,7 @@ struct CommutativeOperand {
 /// 2. The key associated with %2 is:
 ///     `{
 ///       {NON_CONSTANT_OP, "foo.mul"},
+///       {BLOCK_ARGUMENT, ""},
 ///       {BLOCK_ARGUMENT, ""}
 ///      }`
 /// 3. The key associated with %3 is:
@@ -226,11 +220,11 @@ struct CommutativeOperand {
 ///      }`
 ///
 /// Thus, the sorted `foo.commutative` is:
-/// %5 = foo.commutative %4, %3, %2, %1
-class SortCommutativeOperands : public RewritePattern {
-public:
+/// %5 = foo.commutative %4, %2, %3, %1
+struct SortCommutativeOperands final
+    : public OpTraitRewritePattern<OpTrait::IsCommutative> {
   SortCommutativeOperands(MLIRContext *context)
-      : RewritePattern(MatchAnyOpTypeTag(), /*benefit=*/5, context) {}
+      : OpTraitRewritePattern<OpTrait::IsCommutative>(context, /*benefit=*/5) {}
   LogicalResult matchAndRewrite(Operation *op,
                                 PatternRewriter &rewriter) const override {
     // Custom comparator for two commutative operands, which returns true iff
@@ -269,20 +263,22 @@ public:
               commOperandB->popFrontAndPushAdjacentUnvisitedAncestors();
               commOperandB->refreshKey();
             }
-            if (commOperandA->ancestorQueue.empty() ||
-                commOperandB->ancestorQueue.empty())
-              return commOperandA->key.size() < commOperandB->key.size();
-            if (commOperandA->key[keyIndex] < commOperandB->key[keyIndex])
-              return true;
-            if (commOperandB->key[keyIndex] < commOperandA->key[keyIndex])
-              return false;
+            // Try comparing the keys at the current keyIndex
+            if (keyIndex < commOperandA->key.size() && keyIndex < commOperandB->key.size()) {
+              if (commOperandA->key[keyIndex] < commOperandB->key[keyIndex])
+                return true;
+              if (commOperandB->key[keyIndex] < commOperandA->key[keyIndex])
+                return false;
+            } else { // keyIndex exceeds one or both key sizes
+              // Compare key sizes if the values at every possible keyIndex were equal
+              // Both operands must have fully generated key and cannot have anything in the ancestorQueue
+              if (commOperandA->ancestorQueue.empty() &&
+                  commOperandB->ancestorQueue.empty())
+                return commOperandA->key.size() < commOperandB->key.size();
+            }
             keyIndex++;
           }
         };
-
-    // If `op` is not commutative, do nothing.
-    if (!op->hasTrait<OpTrait::IsCommutative>())
-      return failure();
 
     // Populate the list of commutative operands.
     SmallVector<Value, 2> operands = op->getOperands();
