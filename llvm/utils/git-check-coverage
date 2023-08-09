@@ -1,0 +1,210 @@
+#!/usr/bin/env python3
+#
+#===- git-check-coverage - CheckCoverage Git Integration ---------*- python -*--===#
+#
+# Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+# See https://llvm.org/LICENSE.txt for license information.
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+#
+#===------------------------------------------------------------------------===#
+
+r"""
+code-coverage git integration
+============================
+
+This file provides a code-coverage integration for git. Put it somewhere in your
+path and ensure that it is executable. Then, code coverage information will be
+emit for a specific commit.
+
+For further details, run:
+git code-coverage -h
+
+Requires Python 2.7 or Python 3
+"""
+
+import os
+import subprocess
+import re
+
+def create_patch_from_last_commit(output_path):
+    try:
+        # Get the hash of the last commit using `git log` command
+        git_hash_cmd = ['git', 'rev-parse', 'HEAD']
+        commit_hash = subprocess.check_output(git_hash_cmd).strip().decode('utf-8')
+
+        # Create the patch from the last commit using `git show` command
+        patch_cmd = ['git', 'show', commit_hash]
+        patch_output = subprocess.check_output(patch_cmd).decode('utf-8')
+
+        # Write the patch to the output file
+        with open(output_path, 'w') as patch_file:
+            patch_file.write(patch_output)
+
+        print("Patch file '{}' created successfully.".format(output_path))
+
+    except subprocess.CalledProcessError as e:
+        print("Error while creating the patch from the last commit:", e)
+    
+
+def get_current_branch(repo_path):
+    try:
+        result = subprocess.check_output(['git', '-C', repo_path, 'rev-parse', '--abbrev-ref', 'HEAD']).strip()
+        return result.decode('utf-8')
+    except subprocess.CalledProcessError:
+        return None
+    
+
+def create_new_temp_branch(repo_path, temp_branch_name):
+    i = 1
+    while True:
+        new_temp_branch_name = f"{temp_branch_name}-{i}"
+        try:
+            subprocess.check_call(['git', '-C', repo_path, 'rev-parse', '--verify', new_temp_branch_name])
+            i += 1
+        except subprocess.CalledProcessError:
+            return new_temp_branch_name
+
+
+def remove_last_commit(temp_branch_name):
+    try:
+        # Get the current working directory as the repo path
+        repo_path = os.getcwd()
+
+        # Get the name of the current branch
+        current_branch = subprocess.check_output(['git', '-C', repo_path, 'rev-parse', '--abbrev-ref', 'HEAD']).decode().strip()
+
+        # Create a new temporary branch to store the removed commit
+        new_temp_branch_name = create_new_temp_branch(repo_path, temp_branch_name)
+        subprocess.check_call(['git', '-C', repo_path, 'checkout', '-b', new_temp_branch_name])
+
+        # Check if the current branch has more than one commit
+        commit_count = int(subprocess.check_output(['git', '-C', repo_path, 'rev-list', '--count', 'HEAD']).strip())
+        if commit_count > 1:
+            # Reset the branch to remove the last commit
+            subprocess.check_call(['git', '-C', repo_path, 'reset', '--hard', 'HEAD~1'])
+            print("Last commit removed and saved to '{}' branch.".format(new_temp_branch_name))
+        else:
+            print("The branch '{}' has only one commit. No commits removed.".format(current_branch))
+
+    except subprocess.CalledProcessError as e:
+        print("Error:", e)
+
+
+def build_llvm(build_dir, llvm_source_dir):
+    try:
+        # Check if the build directory exists, if not, create it
+        if not os.path.exists(build_dir):
+            os.makedirs(build_dir)
+
+        # Change to the build directory
+        os.chdir(build_dir)
+
+        # Run the cmake command to configure LLVM build
+        cmake_command = [
+            'cmake',
+            '-G', 'Ninja',
+            llvm_source_dir,
+            '-DCMAKE_BUILD_TYPE=Release',
+            '-DLLVM_USE_LINKER=lld',
+            '-DLLVM_INDIVIDUAL_TEST_COVERAGE=ON',
+            '-DCMAKE_C_COMPILER=/usr/bin/clang',
+            '-DCMAKE_CXX_COMPILER=/usr/bin/clang++',
+            '-DLLVM_TARGETS_TO_BUILD=X86',
+            '-DLLVM_BUILD_INSTRUMENTED_COVERAGE=ON',
+            '-DLLVM_ENABLE_ASSERTIONS=ON',
+            '-DLLVM_INDIVIDUAL_TEST_COVERAGE=ON',
+        ]
+        subprocess.check_call(cmake_command)
+
+        # Run the ninja build command
+        subprocess.check_call(['ninja'])
+
+        # Run the ninja check command
+        # ERROR RUN ONLY TESTCASES WHICH ARE MODIFIED OR ADDED IN THE PATCH WITH LLVM-LIT
+        #subprocess.check_call(['ninja', 'check-llvm'])
+
+        print("LLVM build completed successfully.")
+
+    except subprocess.CalledProcessError as e:
+        print("Error during LLVM build:", e)
+
+
+def run_single_test_with_coverage(llvm_lit_path, test_path, build_dir):
+    #os.chdir(build_dir)
+    print("Current Working Directory: 2 ", os.getcwd())
+
+    try:
+        # Run a single test case using llvm-lit with coverage
+        lit_cmd = [llvm_lit_path, '--per-test-coverage', '../' + test_path]
+        subprocess.check_call(lit_cmd)
+
+        print("Test case executed:", test_path)
+
+    except subprocess.CalledProcessError as e:
+        print("Error while running test:", e)
+    except Exception as ex:
+        print("Error:", ex)
+
+
+def run_modified_added_tests(llvm_lit_path, patch_path, build_dir):
+    #os.chdir(build_dir)
+    print("Current Working Directory: 1 ", os.getcwd())
+    patch_path = 'patch.diff'  # Path to the patch file (output)
+
+
+    try:
+        # Get the list of modified and added test cases from the patch
+        with open(patch_path, 'r') as patch_file:
+            patch_data = patch_file.read()
+
+        modified_tests = []
+        added_tests = []
+
+        # Use regular expressions to find modified and added test cases with ".ll" extension
+        for match in re.finditer(r'^\+\+\+ [ab]/(.*\.ll)$', patch_data, re.MULTILINE):
+            test_file = match.group(1)
+            if 'test' in test_file:
+                if match.group(0).startswith('+++'):
+                    added_tests.append(test_file)
+                else:
+                    modified_tests.append(test_file)
+
+        if not modified_tests and not added_tests:
+            print("No modified or added tests found in the patch.")
+            return
+
+        # Run each modified test case
+        print("Running modified test cases:")
+        for test_file in modified_tests:
+            run_single_test_with_coverage(llvm_lit_path, test_file, build_dir)
+
+        # Run each added test case
+        print("Running added test cases:")
+        for test_file in added_tests:
+            run_single_test_with_coverage(llvm_lit_path, test_file, build_dir)
+
+    except subprocess.CalledProcessError as e:
+        print("Error while running modified and added tests:", e)
+    except Exception as ex:
+        print("Error:", ex)
+
+
+if __name__ == "__main__":
+
+    build_dir = 'build'  # Path to LLVM build directory
+    if not os.path.exists(build_dir):
+            os.makedirs(build_dir)
+
+    patch_path = 'build/patch.diff'  # Path to the patch file (output)
+
+    create_patch_from_last_commit(patch_path)
+
+    temp_branch_name = "HEAD"  # Change this to your base temporary branch name
+    remove_last_commit(temp_branch_name)
+
+    llvm_source_dir = '../llvm'  # Path to LLVM source directory
+    build_llvm(build_dir, llvm_source_dir)
+
+    llvm_lit_path = 'bin/llvm-lit'  # Path to llvm-lit executable
+    run_modified_added_tests(llvm_lit_path, patch_path, build_dir)
+
