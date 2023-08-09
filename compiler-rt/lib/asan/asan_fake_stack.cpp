@@ -133,6 +133,10 @@ void FakeStack::HandleNoReturn() {
   needs_gc_ = true;
 }
 
+// Hack: The statement below is not true we take into account sigaltstack or
+// makecontext stacks allocated on the default stack. For now, lets support only
+// simple case and GC only the default stack ignoring nested stacks.
+//
 // When throw, longjmp or some such happens we don't call OnFree() and
 // as the result may leak one or more fake frames, but the good news is that
 // we are notified about all such events by HandleNoReturn().
@@ -140,6 +144,14 @@ void FakeStack::HandleNoReturn() {
 // We do it based on their 'real_stack' values -- everything that is lower
 // than the current real_stack is garbage.
 NOINLINE void FakeStack::GC(uptr real_stack) {
+  AsanThread *curr_thread = GetCurrentThread();
+  if (!curr_thread)
+    return;  // Try again when we have a thread.
+  auto top = curr_thread->stack_top();
+  auto bottom = curr_thread->stack_bottom();
+  if (real_stack < top || real_stack > bottom)
+    return;  // Not the default stack.
+
   for (uptr class_id = 0; class_id < kNumberOfSizeClasses; class_id++) {
     u8 *flags = GetFlags(stack_size_log(), class_id);
     for (uptr i = 0, n = NumberOfFrames(stack_size_log(), class_id); i < n;
@@ -147,8 +159,11 @@ NOINLINE void FakeStack::GC(uptr real_stack) {
       if (flags[i] == 0) continue;  // not allocated.
       FakeFrame *ff = reinterpret_cast<FakeFrame *>(
           GetFrame(stack_size_log(), class_id, i));
-      if (ff->real_stack < real_stack) {
+      // GC only on the default stack.
+      if (ff->real_stack < real_stack && ff->real_stack >= top) {
         flags[i] = 0;
+        SetShadow(reinterpret_cast<uptr>(ff), BytesInSizeClass(class_id),
+                  class_id, kMagic8);
       }
     }
   }
