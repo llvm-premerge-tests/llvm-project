@@ -1498,6 +1498,30 @@ static void writeGetSpellingFunction(const Record &R, raw_ostream &OS) {
   OS << "}\n\n";
 }
 
+static void writeGetVarietyFunction(const Record &R, raw_ostream &OS) {
+  std::vector<FlattenedSpelling> Spellings = GetFlattenedSpellings(R);
+
+  OS << "Attr::Variety " << R.getName() << "Attr::getVariety() const {\n";
+  if (Spellings.empty()) {
+    OS << "  return Variety::None;\n}\n\n";
+    return;
+  }
+
+  OS << "  switch (getAttributeSpellingListIndex()) {\n"
+        "  default:\n"
+        "    llvm_unreachable(\"Unknown attribute spelling!\");\n"
+        "    return Variety::None;\n";
+
+  for (unsigned I = 0; I < Spellings.size(); ++I) {
+    OS << "  case " << I << ":\n";
+    OS << "    return Variety::" << Spellings[I].variety() << ";\n";
+  }
+  // End of the switch statement.
+  OS << "  }\n";
+  // End of the getVariety function.
+  OS << "}\n\n";
+}
+
 static void
 writePrettyPrintFunction(const Record &R,
                          const std::vector<std::unique_ptr<Argument>> &Args,
@@ -2798,6 +2822,7 @@ static void emitAttributes(RecordKeeper &Records, raw_ostream &OS,
       OS << "  void printPretty(raw_ostream &OS,\n"
          << "                   const PrintingPolicy &Policy) const;\n";
       OS << "  const char *getSpelling() const;\n";
+      OS << "  Variety getVariety() const;\n";
     }
 
     if (!ElideSpelling) {
@@ -2872,6 +2897,7 @@ static void emitAttributes(RecordKeeper &Records, raw_ostream &OS,
 
       writePrettyPrintFunction(R, Args, OS);
       writeGetSpellingFunction(R, OS);
+      writeGetVarietyFunction(R, OS);
     }
   }
 }
@@ -2918,6 +2944,9 @@ void clang::EmitClangAttrImpl(RecordKeeper &Records, raw_ostream &OS) {
 
   OS << "Attr *Attr::clone(ASTContext &C) const {\n";
   EmitFunc("clone(C)");
+
+  OS << "Attr::Variety Attr::getVariety() const {\n";
+  EmitFunc("getVariety()");
 
   OS << "void Attr::printPretty(raw_ostream &OS, "
         "const PrintingPolicy &Policy) const {\n";
