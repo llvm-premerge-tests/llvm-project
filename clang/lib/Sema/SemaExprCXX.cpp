@@ -9072,15 +9072,20 @@ Sema::BuildExprRequirement(
     MultiLevelTemplateArgumentList MLTAL(Param, TAL.asArray(),
                                          /*Final=*/false);
     MLTAL.addOuterRetainedLevels(TPL->getDepth());
-    Expr *IDC = Param->getTypeConstraint()->getImmediatelyDeclaredConstraint();
-    ExprResult Constraint = SubstExpr(IDC, MLTAL);
-    if (Constraint.isInvalid()) {
+    const TypeConstraint *TC = Param->getTypeConstraint();
+    if (!TC) {
       Status = concepts::ExprRequirement::SS_ExprSubstitutionFailure;
     } else {
-      SubstitutedConstraintExpr =
-          cast<ConceptSpecializationExpr>(Constraint.get());
-      if (!SubstitutedConstraintExpr->isSatisfied())
-        Status = concepts::ExprRequirement::SS_ConstraintsNotSatisfied;
+      ExprResult Constraint =
+          SubstExpr(TC->getImmediatelyDeclaredConstraint(), MLTAL);
+      if (Constraint.isInvalid()) {
+        Status = concepts::ExprRequirement::SS_ExprSubstitutionFailure;
+      } else {
+        SubstitutedConstraintExpr =
+            cast<ConceptSpecializationExpr>(Constraint.get());
+        if (!SubstitutedConstraintExpr->isSatisfied())
+          Status = concepts::ExprRequirement::SS_ConstraintsNotSatisfied;
+      }
     }
   }
   return new (Context) concepts::ExprRequirement(E, IsSimple, NoexceptLoc,
