@@ -343,6 +343,11 @@ enum {
   /// - RegNum - The register to add
   GIR_AddRegister,
 
+  /// Marks the implicit def of a register as dead.
+  /// - InsnID - Instruction ID to modify
+  /// - RegNum - The implicit def to look for
+  GIR_SetImplicitDefDead,
+
   /// Add a temporary register to the specified instruction
   /// - InsnID - Instruction ID to modify
   /// - TempRegID - The temporary register ID to add
