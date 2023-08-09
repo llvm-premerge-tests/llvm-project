@@ -123,3 +123,41 @@ struct ImplicitCtorInit2 : ImplicitCtorInit1 {
 
   // CHECK-NEXT: };
 };
+
+
+// CHECK: struct MethodAttr1 {
+struct MethodAttr1 {
+  // CHECK-NEXT: virtual void f1() = 0;
+  virtual void f1() = 0;
+
+  // CHECK-NEXT: };
+};
+
+  // CHECK-NEXT: struct MethodAttr2 : MethodAttr1 {
+struct MethodAttr2 : MethodAttr1 {
+  // CHECK-NEXT: MethodAttr2() = default;
+  MethodAttr2() = default;
+
+  // CHECK-NEXT: explicit MethodAttr2(int);
+  explicit MethodAttr2(int);
+
+  // CHECK-NEXT: void f1() override;
+  void f1() override;
+
+  // CHECK-NEXT: virtual void f2();
+  virtual void f2();
+
+  // CHECK-NEXT: static void f3();
+  static void f3();
+
+  // CHECK-NEXT: {{\[\[}}noreturn]] static inline void f4();
+  [[noreturn]] static inline void f4();
+
+  // CHECK-NEXT: void f5() noexcept(10 > 1);
+  void f5() noexcept(10 > 1);
+
+  // CHECK-NEXT: void f6() asm("f6.2");
+  void f6() asm("f6.2");
+
+  // CHECK-NEXT: };
+};

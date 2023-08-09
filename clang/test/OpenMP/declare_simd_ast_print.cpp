@@ -60,7 +60,7 @@ void h(int *hp, int *hp2, int *hq, int *lin)
 
 class VV {
   // CHECK: #pragma omp declare simd uniform(this, a) linear(val(b): a)
-  // CHECK-NEXT: int add(int a, int b) __attribute__((cold))    {
+  // CHECK-NEXT: __attribute__((cold)) int add(int a, int b)  {
   // CHECK-NEXT: return a + b;
   // CHECK-NEXT: }
   #pragma omp declare simd uniform(this, a) linear(val(b): a)
