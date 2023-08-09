@@ -1467,3 +1467,5 @@ include "X86InstrVecCompiler.td"
 // Assembler mnemonic/instruction aliases
 include "X86InstrAsmAlias.td"
 
+// GISel target pseudos
+include "X86InstrGISel.td"

@@ -1128,6 +1128,14 @@ LegalizerHelper::LegalizeResult LegalizerHelper::narrowScalar(MachineInstr &MI,
   case TargetOpcode::G_LSHR:
   case TargetOpcode::G_ASHR:
     return narrowScalarShift(MI, TypeIdx, NarrowTy);
+  case TargetOpcode::G_FSHR:
+  case TargetOpcode::G_FSHL:
+    if (TypeIdx != 1)
+      return UnableToLegalize;
+    Observer.changingInstr(MI);
+    narrowScalarSrc(MI, NarrowTy, 3);
+    Observer.changedInstr(MI);
+    return Legalized;
   case TargetOpcode::G_CTLZ:
   case TargetOpcode::G_CTLZ_ZERO_UNDEF:
   case TargetOpcode::G_CTTZ:

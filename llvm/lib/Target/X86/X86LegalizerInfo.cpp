@@ -14,6 +14,7 @@
 #include "X86Subtarget.h"
 #include "X86TargetMachine.h"
 #include "llvm/CodeGen/GlobalISel/LegalizerHelper.h"
+#include "llvm/CodeGen/GlobalISel/MachineIRBuilder.h"
 #include "llvm/CodeGen/TargetOpcodes.h"
 #include "llvm/CodeGen/ValueTypes.h"
 #include "llvm/IR/DerivedTypes.h"
@@ -152,6 +153,16 @@ X86LegalizerInfo::X86LegalizerInfo(const X86Subtarget &STI,
       .widenScalarToNextPow2(0, /*Min=*/32)
       .clampScalar(0, s8, sMaxScalar)
       .scalarize(0);
+
+  getActionDefinitionsBuilder({G_FSHL, G_FSHR})
+    .legalIf([=](const LegalityQuery &Query) -> bool {
+      if (typeInSet(0, {s32})(Query) || (Is64Bit && typeInSet(0, {s64})(Query)))
+        return typeInSet(1, {s8})(Query);
+      return false;
+    })
+    .clampScalar(1, s8, s8)
+    .customFor({s16})
+    .lowerFor({s8});
 
   getActionDefinitionsBuilder({G_UADDE, G_UADDO, G_USUBE, G_USUBO})
       .legalIf([=](const LegalityQuery &Query) -> bool {
@@ -541,6 +552,41 @@ X86LegalizerInfo::X86LegalizerInfo(const X86Subtarget &STI,
 
   getLegacyLegalizerInfo().computeTables();
   verify(*STI.getInstrInfo());
+}
+
+bool X86LegalizerInfo::legalizeCustom(LegalizerHelper &Helper,
+                                      MachineInstr &MI) const {
+  MachineIRBuilder &MIRBuilder = Helper.MIRBuilder;
+  MachineRegisterInfo &MRI = *MIRBuilder.getMRI();
+  GISelChangeObserver &Observer = Helper.Observer;
+  switch (MI.getOpcode()) {
+    default:
+      return false;
+    case TargetOpcode::G_FSHL:
+    case TargetOpcode::G_FSHR:
+      return legalizeFunnelShift(MI, MRI, MIRBuilder, Observer);
+  }
+}
+
+bool X86LegalizerInfo::legalizeFunnelShift(MachineInstr &MI,
+                                           MachineRegisterInfo &MRI,
+                                           MachineIRBuilder &MIRBuilder,
+                                           GISelChangeObserver &Observer) const {
+  const TargetInstrInfo &TII = MIRBuilder.getTII();
+  auto Masked = MIRBuilder.buildAnd(LLT::scalar(8), MI.getOperand(3), MIRBuilder.buildConstant(LLT::scalar(8), 15));
+  unsigned Opc = 0;
+  if (MI.getOpcode() == TargetOpcode::G_FSHL)
+    Opc = X86::G_FSHL16;
+  else if (MI.getOpcode() == TargetOpcode::G_FSHR)
+    Opc = X86::G_FSHR16;
+  else
+    return false;
+
+  Observer.changingInstr(MI);
+  MI.setDesc(TII.get(Opc));
+  MI.getOperand(3).setReg(Masked.getReg(0));
+  Observer.changedInstr(MI);
+  return true;
 }
 
 bool X86LegalizerInfo::legalizeIntrinsic(LegalizerHelper &Helper,

@@ -14,7 +14,10 @@
 #ifndef LLVM_LIB_TARGET_X86_X86MACHINELEGALIZER_H
 #define LLVM_LIB_TARGET_X86_X86MACHINELEGALIZER_H
 
+#include "llvm/CodeGen/GlobalISel/GISelChangeObserver.h"
+#include "llvm/CodeGen/GlobalISel/LegalizerHelper.h"
 #include "llvm/CodeGen/GlobalISel/LegalizerInfo.h"
+#include "llvm/CodeGen/MachineRegisterInfo.h"
 
 namespace llvm {
 
@@ -31,8 +34,15 @@ private:
 public:
   X86LegalizerInfo(const X86Subtarget &STI, const X86TargetMachine &TM);
 
+  bool legalizeCustom(LegalizerHelper &Helper, MachineInstr &MI) const override;
+
   bool legalizeIntrinsic(LegalizerHelper &Helper,
                          MachineInstr &MI) const override;
+
+private:
+  bool legalizeFunnelShift(MachineInstr &MI, MachineRegisterInfo &MRI,
+                           MachineIRBuilder &MIRBuilder,
+                           GISelChangeObserver &Observer) const;
 };
 } // namespace llvm
 #endif
