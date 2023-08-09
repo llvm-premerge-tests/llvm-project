@@ -352,6 +352,9 @@ public:
     eBroadcastBitProfileData = (1 << 4),
     eBroadcastBitStructuredData = (1 << 5),
   };
+  // This is all the event bits the public process broadcaster broadcasts.
+  // The process shadow listener signs up for all these bits...
+  static const int g_all_event_bits;
 
   enum {
     eBroadcastInternalStateControlStop = (1 << 0),
@@ -381,10 +384,6 @@ public:
 
   ConstString &GetBroadcasterClass() const override {
     return GetStaticBroadcasterClass();
-  }
-
-  void SetShadowListener(lldb::ListenerSP listener_sp) override {
-    Broadcaster::SetShadowListener(listener_sp);
   }
 
 /// A notification structure that can be used by clients to listen
@@ -608,6 +607,15 @@ public:
     error.SetErrorStringWithFormatv(
         "error: {0} does not support loading core files.", GetPluginName());
     return error;
+  }
+
+  /// The "ShadowListener" for a process is just an ordinary Listener that 
+  /// listens for all the Process event bits.  It's convenient because you can
+  /// specify it in the LaunchInfo or AttachInfo, so it will get events from
+  /// the very start of the process.
+  void SetShadowListener(lldb::ListenerSP shadow_listener_sp) {
+    if (shadow_listener_sp)
+      AddListener(shadow_listener_sp, g_all_event_bits);
   }
 
   // FUTURE WORK: GetLoadImageUtilityFunction are the first use we've

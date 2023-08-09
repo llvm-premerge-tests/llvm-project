@@ -369,6 +369,12 @@ FollowForkMode ProcessProperties::GetFollowForkMode() const {
                g_process_properties[idx].default_uint_value));
 }
 
+const int Process::g_all_event_bits = eBroadcastBitStateChanged 
+                              | eBroadcastBitInterrupt
+                              | eBroadcastBitSTDOUT | eBroadcastBitSTDERR
+                              | eBroadcastBitProfileData 
+                              | eBroadcastBitStructuredData;
+
 ProcessSP Process::FindPlugin(lldb::TargetSP target_sp,
                               llvm::StringRef plugin_name,
                               ListenerSP listener_sp,
@@ -475,10 +481,9 @@ Process::Process(lldb::TargetSP target_sp, ListenerSP listener_sp,
   m_private_state_control_broadcaster.SetEventName(
       eBroadcastInternalStateControlResume, "control-resume");
 
-  m_listener_sp->StartListeningForEvents(
-      this, eBroadcastBitStateChanged | eBroadcastBitInterrupt |
-                eBroadcastBitSTDOUT | eBroadcastBitSTDERR |
-                eBroadcastBitProfileData | eBroadcastBitStructuredData);
+  // The listener passed into process creation is the primary listener:
+  // It always listens for all the event bits for Process:
+  SetPrimaryListener(m_listener_sp);
 
   m_private_state_listener_sp->StartListeningForEvents(
       &m_private_state_broadcaster,
@@ -4114,8 +4119,8 @@ void Process::ProcessEventData::DoOnRemoval(Event *event_ptr) {
   if (!still_should_stop && does_anybody_have_an_opinion) {
     // We've been asked to continue, so do that here.
     SetRestarted(true);
-    // Use the public resume method here, since this is just extending a
-    // public resume.
+    // Use the private resume method here, since we aren't changing the run
+    // lock state.
     process_sp->PrivateResume();
   } else {
     bool hijacked = process_sp->IsHijackedForEvent(eBroadcastBitStateChanged) &&

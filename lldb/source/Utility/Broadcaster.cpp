@@ -151,6 +151,10 @@ bool Broadcaster::BroadcasterImpl::EventTypeHasListeners(uint32_t event_type) {
   if (!m_hijacking_listeners.empty() && event_type & m_hijacking_masks.back())
     return true;
 
+  // The primary listener listens for all event bits:
+  if (m_primary_listener_sp)
+    return true;
+
   for (auto &pair : GetListeners()) {
     if (pair.second & event_type)
       return true;
@@ -222,14 +226,36 @@ void Broadcaster::BroadcasterImpl::PrivateBroadcastEvent(EventSP &event_sp,
              event_description.GetData(), unique,
              static_cast<void *>(hijacking_listener_sp.get()));
   }
+  ListenerSP primary_listener_sp = hijacking_listener_sp;
+  bool is_hijack = false;
+  
+  if (primary_listener_sp)
+    is_hijack = true;
+  else
+    primary_listener_sp = m_primary_listener_sp;
 
-  if (hijacking_listener_sp) {
-    if (unique && hijacking_listener_sp->PeekAtNextEventForBroadcasterWithType(
+  if (primary_listener_sp) {
+    if (unique && primary_listener_sp->PeekAtNextEventForBroadcasterWithType(
                       &m_broadcaster, event_type))
       return;
-    hijacking_listener_sp->AddEvent(event_sp);
-    if (m_shadow_listener)
-      m_shadow_listener->AddEvent(event_sp);
+    // Add the pending listeners but not if the event is hijacked, since that
+    // is given sole access to the event stream it is hijacking.
+    // Make sure to do this before adding the event to the primary or it might
+    // start handling the event before we're done adding all the pending 
+    // listeners.
+    if (!is_hijack) {
+      for (auto &pair : GetListeners()) {
+        if (!(pair.second & event_type))
+          continue;
+        if (unique && pair.first->PeekAtNextEventForBroadcasterWithType(
+                          &m_broadcaster, event_type))
+          continue;
+        if (pair.first != hijacking_listener_sp 
+            && pair.first != m_primary_listener_sp)
+          event_sp->AddPendingListener(pair.first);
+      }
+    }
+    primary_listener_sp->AddEvent(event_sp);
   } else {
     for (auto &pair : GetListeners()) {
       if (!(pair.second & event_type))
@@ -239,8 +265,6 @@ void Broadcaster::BroadcasterImpl::PrivateBroadcastEvent(EventSP &event_sp,
         continue;
 
       pair.first->AddEvent(event_sp);
-      if (m_shadow_listener)
-        m_shadow_listener->AddEvent(event_sp);
     }
   }
 }
