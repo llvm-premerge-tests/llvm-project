@@ -2392,6 +2392,53 @@ static void createRegisterFunc(mlir::OpBuilder &modBuilder,
   modBuilder.setInsertionPointAfter(registerFuncOp);
 }
 
+template <typename ExitOp>
+static void createUnregisterFunc(mlir::OpBuilder &modBuilder,
+                                 fir::FirOpBuilder &builder, mlir::Location loc,
+                                 fir::GlobalOp &globalOp,
+                                 mlir::acc::DataClause clause) {
+  std::stringstream unregisterFuncName;
+  unregisterFuncName << globalOp.getSymName().str()
+                     << "_acc_declare_update_desc_post_dealloc";
+  auto funcTy = mlir::FunctionType::get(modBuilder.getContext(), {}, {});
+  mlir::func::FuncOp unregisterFuncOp = modBuilder.create<mlir::func::FuncOp>(
+      loc, unregisterFuncName.str(), funcTy);
+  unregisterFuncOp.setVisibility(mlir::SymbolTable::Visibility::Private);
+  builder.createBlock(&unregisterFuncOp.getRegion(),
+                      unregisterFuncOp.getRegion().end(), {}, {});
+  builder.setInsertionPointToEnd(&unregisterFuncOp.getRegion().back());
+
+  fir::AddrOfOp addrOp = builder.create<fir::AddrOfOp>(
+      loc, fir::ReferenceType::get(globalOp.getType()), globalOp.getSymbol());
+  auto loadOp = builder.create<fir::LoadOp>(loc, addrOp.getResult());
+  fir::BoxAddrOp boxAddrOp = builder.create<fir::BoxAddrOp>(loc, loadOp);
+  addDeclareAttr(builder, boxAddrOp.getOperation(), clause);
+
+  std::stringstream asFortran;
+  asFortran << Fortran::lower::mangle::demangleName(globalOp.getSymName());
+  llvm::SmallVector<mlir::Value> bounds;
+  mlir::acc::GetDevicePtrOp entryOp =
+      createDataEntryOp<mlir::acc::GetDevicePtrOp>(
+          builder, loc, boxAddrOp.getResult(), asFortran, bounds,
+          /*structured=*/false, /*implicit=*/false, clause,
+          boxAddrOp.getType());
+
+  builder.create<mlir::acc::DeclareExitOp>(
+      loc, mlir::ValueRange(entryOp.getAccPtr()));
+
+  mlir::Value varPtr;
+  if constexpr (std::is_same_v<ExitOp, mlir::acc::CopyoutOp> ||
+                std::is_same_v<ExitOp, mlir::acc::UpdateHostOp>)
+    varPtr = entryOp.getVarPtr();
+  builder.create<ExitOp>(entryOp.getLoc(), entryOp.getAccPtr(), varPtr,
+                         entryOp.getBounds(), entryOp.getDataClause(),
+                         /*structured=*/false, /*implicit=*/false,
+                         builder.getStringAttr(*entryOp.getName()));
+
+  builder.create<mlir::func::ReturnOp>(loc);
+  modBuilder.setInsertionPointAfter(unregisterFuncOp);
+}
+
 template <typename EntryOp, typename ExitOp>
 static void genGlobalCtors(Fortran::lower::AbstractConverter &converter,
                            mlir::OpBuilder &modBuilder,
@@ -2422,6 +2469,9 @@ static void genGlobalCtors(Fortran::lower::AbstractConverter &converter,
                       /*implicit=*/true);
                   createRegisterFunc<EntryOp>(
                       modBuilder, builder, operandLocation, globalOp, clause);
+                  if constexpr (!std::is_same_v<EntryOp, ExitOp>)
+                    createUnregisterFunc<ExitOp>(
+                        modBuilder, builder, operandLocation, globalOp, clause);
                 } else {
                   createDeclareGlobalOp<mlir::acc::GlobalConstructorOp, EntryOp,
                                         mlir::acc::DeclareEnterOp, ExitOp>(
