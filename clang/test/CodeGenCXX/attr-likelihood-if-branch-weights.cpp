@@ -1,5 +1,5 @@
-// RUN: %clang_cc1 -O1 -emit-llvm %s -o - -triple=x86_64-linux-gnu | FileCheck -DLIKELY=2000 -DUNLIKELY=1 %s
-// RUN: %clang_cc1 -O1 -emit-llvm %s -triple=x86_64-linux-gnu -mllvm -likely-branch-weight=99 -mllvm -unlikely-branch-weight=42 -o - | FileCheck -DLIKELY=99 -DUNLIKELY=42 %s
+// RUN: %clang_cc1 -O1 -disable-llvm-passes -emit-llvm %s -o - -triple=x86_64-linux-gnu | opt -S -passes=lower-expect | FileCheck -DLIKELY=2000 -DUNLIKELY=1 %s
+// RUN: %clang_cc1 -O1 -disable-llvm-passes -emit-llvm %s -triple=x86_64-linux-gnu -o - | opt -S -passes=lower-expect -likely-branch-weight=99 -unlikely-branch-weight=42 | FileCheck -DLIKELY=99 -DUNLIKELY=42 %s
 
 extern volatile bool b;
 extern volatile int i;
@@ -69,7 +69,7 @@ void WhileStmt() {
 
   // CHECK-NOT: br {{.*}} %if.end{{.*}} !prof
   if (b)
-    // CHECK: br {{.*}} !prof ![[PROF_LIKELY]]
+    // CHECK: br {{.*}} !prof ![[PROF_UNLIKELY]]
     while (B())
       [[unlikely]] { b = false; }
 }
@@ -97,7 +97,7 @@ void ForStmt() {
 
   // CHECK-NOT: br {{.*}} %if.end{{.*}} !prof
   if (b)
-    // CHECK: br {{.*}} !prof ![[PROF_LIKELY]]
+    // CHECK: br {{.*}} !prof ![[PROF_UNLIKELY]]
     for (; B();)
       [[unlikely]] {}
 }
@@ -144,5 +144,5 @@ void SwitchStmt() {
   }
 }
 
-// CHECK: ![[PROF_LIKELY]] = !{!"branch_weights", i32 [[UNLIKELY]], i32 [[LIKELY]]}
-// CHECK: ![[PROF_UNLIKELY]] = !{!"branch_weights", i32 [[LIKELY]], i32 [[UNLIKELY]]}
+// CHECK: ![[PROF_LIKELY]] = !{!"branch_weights", i32 [[LIKELY]], i32 [[UNLIKELY]]}
+// CHECK: ![[PROF_UNLIKELY]] = !{!"branch_weights", i32 [[UNLIKELY]], i32 [[LIKELY]]}
