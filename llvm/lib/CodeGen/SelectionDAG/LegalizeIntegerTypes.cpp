@@ -5295,6 +5295,11 @@ SDValue DAGTypeLegalizer::ExpandIntOp_XINT_TO_FP(SDNode *N) {
   SDValue Chain = IsStrict ? N->getOperand(0) : SDValue();
   SDValue Op = N->getOperand(IsStrict ? 1 : 0);
   EVT DstVT = N->getValueType(0);
+  EVT OrigDstVT = DstVT;
+  // If converting to bf16, do it by first converting to f32 because there
+  // aren't direct int to bf16 libcalls.
+  if (DstVT == MVT::bf16)
+    DstVT = MVT::f32;
   RTLIB::Libcall LC = IsSigned ? RTLIB::getSINTTOFP(Op.getValueType(), DstVT)
                                : RTLIB::getUINTTOFP(Op.getValueType(), DstVT);
   assert(LC != RTLIB::UNKNOWN_LIBCALL &&
@@ -5304,9 +5309,15 @@ SDValue DAGTypeLegalizer::ExpandIntOp_XINT_TO_FP(SDNode *N) {
   std::pair<SDValue, SDValue> Tmp =
       TLI.makeLibCall(DAG, LC, DstVT, Op, CallOptions, SDLoc(N), Chain);
 
-  if (!IsStrict)
+  if (!IsStrict) {
+    if (OrigDstVT == MVT::bf16)
+      return DAG.getNode(ISD::FP_ROUND, SDLoc(N), MVT::bf16, Tmp.first,
+                         DAG.getIntPtrConstant(0, SDLoc(N), /*isTarget=*/true));
     return Tmp.first;
+  }
 
+  assert(OrigDstVT != MVT::bf16 &&
+         "Don't know how to do STRICT_XINT_TO_FP with bf16 target");
   ReplaceValueWith(SDValue(N, 1), Tmp.second);
   ReplaceValueWith(SDValue(N, 0), Tmp.first);
   return SDValue();
