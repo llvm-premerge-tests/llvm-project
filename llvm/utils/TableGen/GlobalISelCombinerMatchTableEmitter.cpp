@@ -968,6 +968,7 @@ bool CombineRuleBuilder::parseApply(DagInit &Apply) {
   }
 
   const StringInit *Code = dyn_cast<StringInit>(Apply.getArg(0));
+  assert(Code && "Expected 1 StringInit argument in 'apply'");
   auto Pat = std::make_unique<CXXPattern>(*Code, makeAnonPatName("apply"),
                                           /*IsApply*/ true);
   ApplyPats[Pat->getName()] = std::move(Pat);
