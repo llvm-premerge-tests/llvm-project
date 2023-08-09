@@ -662,6 +662,13 @@ define amdgpu_ps void @wqm_deriv(<2 x float> %input, float %arg, i32 %index) {
 ; SI-NEXT:    s_mov_b64 s[0:1], exec
 ; SI-NEXT:    s_wqm_b64 exec, exec
 ; SI-NEXT:    v_cvt_i32_f32_e32 v0, v0
+; SI-NEXT:    s_mov_b32 s2, 0xffff
+; SI-NEXT:    s_and_b32 s3, 0xffff, 0
+; SI-NEXT:    s_and_b32 s2, s2, 0x3c00
+; SI-NEXT:    s_lshl_b32 s4, s3, 16
+; SI-NEXT:    s_or_b32 s4, s2, s4
+; SI-NEXT:    s_lshl_b32 s2, s2, 16
+; SI-NEXT:    s_or_b32 s5, s3, s2
 ; SI-NEXT:    v_cmp_ne_u32_e32 vcc, 0, v0
 ; SI-NEXT:    s_and_saveexec_b64 s[2:3], vcc
 ; SI-NEXT:    s_xor_b64 s[2:3], exec, s[2:3]
@@ -670,8 +677,8 @@ define amdgpu_ps void @wqm_deriv(<2 x float> %input, float %arg, i32 %index) {
 ; SI-NEXT:    s_andn2_b64 s[0:1], s[0:1], exec
 ; SI-NEXT:    s_cbranch_scc0 .LBB6_7
 ; SI-NEXT:  ; %bb.2: ; %.demote0
-; SI-NEXT:    s_wqm_b64 s[4:5], s[0:1]
-; SI-NEXT:    s_and_b64 exec, exec, s[4:5]
+; SI-NEXT:    s_wqm_b64 s[6:7], s[0:1]
+; SI-NEXT:    s_and_b64 exec, exec, s[6:7]
 ; SI-NEXT:  .LBB6_3: ; %.continue0
 ; SI-NEXT:    s_or_b64 exec, exec, s[2:3]
 ; SI-NEXT:    s_mov_b64 s[2:3], s[0:1]
@@ -686,8 +693,8 @@ define amdgpu_ps void @wqm_deriv(<2 x float> %input, float %arg, i32 %index) {
 ; SI-NEXT:    v_cmp_eq_f32_e32 vcc, 0, v0
 ; SI-NEXT:    s_and_b64 s[2:3], s[0:1], vcc
 ; SI-NEXT:    s_xor_b64 s[2:3], s[2:3], -1
-; SI-NEXT:    s_and_saveexec_b64 s[4:5], s[2:3]
-; SI-NEXT:    s_xor_b64 s[2:3], exec, s[4:5]
+; SI-NEXT:    s_and_saveexec_b64 s[6:7], s[2:3]
+; SI-NEXT:    s_xor_b64 s[2:3], exec, s[6:7]
 ; SI-NEXT:    s_cbranch_execz .LBB6_6
 ; SI-NEXT:  ; %bb.4: ; %.demote1
 ; SI-NEXT:    s_andn2_b64 s[0:1], s[0:1], exec
@@ -696,8 +703,8 @@ define amdgpu_ps void @wqm_deriv(<2 x float> %input, float %arg, i32 %index) {
 ; SI-NEXT:    s_mov_b64 exec, 0
 ; SI-NEXT:  .LBB6_6: ; %.continue1
 ; SI-NEXT:    s_or_b64 exec, exec, s[2:3]
-; SI-NEXT:    v_mov_b32_e32 v0, 0x3c00
-; SI-NEXT:    v_bfrev_b32_e32 v1, 60
+; SI-NEXT:    v_mov_b32_e32 v0, s4
+; SI-NEXT:    v_mov_b32_e32 v1, s5
 ; SI-NEXT:    exp mrt0 v0, v0, v1, v1 done compr vm
 ; SI-NEXT:    s_endpgm
 ; SI-NEXT:  .LBB6_7:
@@ -885,7 +892,12 @@ define amdgpu_ps void @wqm_deriv_loop(<2 x float> %input, float %arg, i32 %index
 ; SI-NEXT:    s_mov_b64 s[0:1], exec
 ; SI-NEXT:    s_wqm_b64 exec, exec
 ; SI-NEXT:    v_cvt_i32_f32_e32 v0, v0
-; SI-NEXT:    s_mov_b32 s4, 0
+; SI-NEXT:    s_mov_b32 s2, 0xffff
+; SI-NEXT:    s_and_b32 s4, s2, 0x3c00
+; SI-NEXT:    s_and_b32 s5, 0xffff, 0
+; SI-NEXT:    s_lshl_b32 s6, s5, 16
+; SI-NEXT:    s_lshl_b32 s7, s4, 16
+; SI-NEXT:    s_mov_b32 s8, 0
 ; SI-NEXT:    v_cmp_ne_u32_e32 vcc, 0, v0
 ; SI-NEXT:    s_and_saveexec_b64 s[2:3], vcc
 ; SI-NEXT:    s_xor_b64 s[2:3], exec, s[2:3]
@@ -894,12 +906,14 @@ define amdgpu_ps void @wqm_deriv_loop(<2 x float> %input, float %arg, i32 %index
 ; SI-NEXT:    s_andn2_b64 s[0:1], s[0:1], exec
 ; SI-NEXT:    s_cbranch_scc0 .LBB7_9
 ; SI-NEXT:  ; %bb.2: ; %.demote0
-; SI-NEXT:    s_wqm_b64 s[6:7], s[0:1]
-; SI-NEXT:    s_and_b64 exec, exec, s[6:7]
+; SI-NEXT:    s_wqm_b64 s[10:11], s[0:1]
+; SI-NEXT:    s_and_b64 exec, exec, s[10:11]
 ; SI-NEXT:  .LBB7_3: ; %.continue0.preheader
 ; SI-NEXT:    s_or_b64 exec, exec, s[2:3]
+; SI-NEXT:    s_or_b32 s6, s4, s6
+; SI-NEXT:    s_or_b32 s7, s5, s7
 ; SI-NEXT:    s_mov_b64 s[2:3], 0
-; SI-NEXT:    v_mov_b32_e32 v0, s4
+; SI-NEXT:    v_mov_b32_e32 v0, s8
 ; SI-NEXT:    s_branch .LBB7_5
 ; SI-NEXT:  .LBB7_4: ; %.continue1
 ; SI-NEXT:    ; in Loop: Header=BB7_5 Depth=1
@@ -922,8 +936,8 @@ define amdgpu_ps void @wqm_deriv_loop(<2 x float> %input, float %arg, i32 %index
 ; SI-NEXT:    v_cmp_eq_f32_e32 vcc, 0, v2
 ; SI-NEXT:    s_and_b64 s[4:5], s[0:1], vcc
 ; SI-NEXT:    s_xor_b64 s[4:5], s[4:5], -1
-; SI-NEXT:    s_and_saveexec_b64 s[6:7], s[4:5]
-; SI-NEXT:    s_xor_b64 s[4:5], exec, s[6:7]
+; SI-NEXT:    s_and_saveexec_b64 s[8:9], s[4:5]
+; SI-NEXT:    s_xor_b64 s[4:5], exec, s[8:9]
 ; SI-NEXT:    s_cbranch_execz .LBB7_4
 ; SI-NEXT:  ; %bb.6: ; %.demote1
 ; SI-NEXT:    ; in Loop: Header=BB7_5 Depth=1
@@ -931,14 +945,14 @@ define amdgpu_ps void @wqm_deriv_loop(<2 x float> %input, float %arg, i32 %index
 ; SI-NEXT:    s_cbranch_scc0 .LBB7_9
 ; SI-NEXT:  ; %bb.7: ; %.demote1
 ; SI-NEXT:    ; in Loop: Header=BB7_5 Depth=1
-; SI-NEXT:    s_wqm_b64 s[6:7], s[0:1]
-; SI-NEXT:    s_and_b64 exec, exec, s[6:7]
+; SI-NEXT:    s_wqm_b64 s[8:9], s[0:1]
+; SI-NEXT:    s_and_b64 exec, exec, s[8:9]
 ; SI-NEXT:    s_branch .LBB7_4
 ; SI-NEXT:  .LBB7_8: ; %.return
 ; SI-NEXT:    s_or_b64 exec, exec, s[2:3]
 ; SI-NEXT:    s_and_b64 exec, exec, s[0:1]
-; SI-NEXT:    v_mov_b32_e32 v0, 0x3c00
-; SI-NEXT:    v_bfrev_b32_e32 v1, 60
+; SI-NEXT:    v_mov_b32_e32 v0, s6
+; SI-NEXT:    v_mov_b32_e32 v1, s7
 ; SI-NEXT:    exp mrt0 v0, v0, v1, v1 done compr vm
 ; SI-NEXT:    s_endpgm
 ; SI-NEXT:  .LBB7_9:
