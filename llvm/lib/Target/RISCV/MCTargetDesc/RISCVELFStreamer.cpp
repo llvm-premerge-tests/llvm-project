@@ -23,10 +23,15 @@
 #include "llvm/MC/MCSectionELF.h"
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/MC/MCValue.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/LEB128.h"
 #include "llvm/Support/RISCVAttributes.h"
 
 using namespace llvm;
+
+static cl::opt<bool>
+    EnableULEB128Reloc("riscv-enable-uleb128", cl::Hidden,
+                       cl::desc("Enable relocation emission for ULEB128."));
 
 // This part is for ELF object output.
 RISCVTargetELFStreamer::RISCVTargetELFStreamer(MCStreamer &S,
@@ -120,6 +125,41 @@ void RISCVTargetELFStreamer::reset() {
 void RISCVTargetELFStreamer::emitDirectiveVariantCC(MCSymbol &Symbol) {
   getStreamer().getAssembler().registerSymbol(Symbol);
   cast<MCSymbolELF>(Symbol).setOther(ELF::STO_RISCV_VARIANT_CC);
+}
+
+void RISCVELFStreamer::emitULEB128Value(const MCExpr *Value) {
+  if (!EnableULEB128Reloc)
+    return MCELFStreamer::emitULEB128Value(Value);
+
+  int64_t IntValue;
+  unsigned PadTo = 0;
+  if (!Value->evaluateAsAbsolute(IntValue, getAssemblerPtr())) {
+    const FeatureBitset &Features =
+        getContext().getSubtargetInfo()->getFeatureBits();
+    unsigned XLen = Features[RISCV::Feature64Bit] ? 64 : 32;
+
+    // Emit a placeholder to make sure we'll emit enough space could be filled
+    // by linker later.
+    IntValue = 0;
+    // Each byte in ULEB128 format can encoding at most 7 bits.
+    PadTo = divideCeil(XLen, 7);
+  }
+
+  if (IntValue < 0)
+    report_fatal_error("Can't encoding negative value in uleb128 format.");
+
+  MCDataFragment *DF = getOrCreateDataFragment();
+  flushPendingLabels(DF, DF->getContents().size());
+  MCDwarfLineEntry::make(this, getCurrentSectionOnly());
+
+  DF->getFixups().push_back(MCFixup::create(DF->getContents().size(), Value,
+                                            MCFixup::getKindForSize(0, false),
+                                            Value->getLoc()));
+
+  SmallString<128> Tmp;
+  raw_svector_ostream OSE(Tmp);
+  encodeULEB128(IntValue, OSE, PadTo);
+  emitBytes(OSE.str());
 }
 
 void RISCVELFStreamer::reset() {

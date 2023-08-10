@@ -106,6 +106,10 @@ enum Fixups {
   // 6-bit fixup corresponding to R_RISCV_SUB6 for local label assignment in
   // DWARF CFA.
   fixup_riscv_sub_6b,
+  // fixup corresponding to R_RISCV_SET_ULEB128 for local label assignment.
+  fixup_riscv_set_uleb128,
+  // fixup corresponding to R_RISCV_SUB_ULEB128 for local label assignment.
+  fixup_riscv_sub_uleb128,
 
   // Used as a sentinel, must be the last
   fixup_riscv_invalid,
