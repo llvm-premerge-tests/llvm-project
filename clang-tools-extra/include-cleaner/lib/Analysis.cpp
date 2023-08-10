@@ -17,6 +17,7 @@
 #include "clang/Basic/SourceManager.h"
 #include "clang/Format/Format.h"
 #include "clang/Lex/HeaderSearch.h"
+#include "clang/Lex/HeaderSearchOptions.h"
 #include "clang/Tooling/Core/Replacement.h"
 #include "clang/Tooling/Inclusions/StandardLibrary.h"
 #include "llvm/ADT/ArrayRef.h"
@@ -68,12 +69,18 @@ analyze(llvm::ArrayRef<Decl *> ASTRoots,
   llvm::StringSet<> Missing;
   if (!HeaderFilter)
     HeaderFilter = [](llvm::StringRef) { return false; };
+  std::string ResourceDir = HS.getHeaderSearchOpts().ResourceDir;
   walkUsed(ASTRoots, MacroRefs, PI, SM,
            [&](const SymbolReference &Ref, llvm::ArrayRef<Header> Providers) {
              bool Satisfied = false;
              for (const Header &H : Providers) {
-               if (H.kind() == Header::Physical && H.physical() == MainFile)
+               if (H.kind() == Header::Physical &&
+                   (H.physical() == MainFile ||
+                    H.physical()->getLastRef().getDir().getName() ==
+                        ResourceDir)) {
                  Satisfied = true;
+                 continue;
+               }
                for (const Include *I : Inc.match(H)) {
                  Used.insert(I);
                  Satisfied = true;
@@ -88,7 +95,8 @@ analyze(llvm::ArrayRef<Decl *> ASTRoots,
   AnalysisResults Results;
   for (const Include &I : Inc.all()) {
     if (Used.contains(&I) || !I.Resolved ||
-        HeaderFilter(I.Resolved->getFileEntry().tryGetRealPathName()))
+        HeaderFilter(I.Resolved->getFileEntry().tryGetRealPathName()) ||
+        I.Resolved->getDir().getName() == ResourceDir)
       continue;
     if (PI) {
       if (PI->shouldKeep(*I.Resolved))

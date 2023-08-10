@@ -306,6 +306,12 @@ getUnused(ParsedAST &AST,
     auto IncludeID = static_cast<IncludeStructure::HeaderID>(*MFI.HeaderID);
     if (ReferencedFiles.contains(IncludeID))
       continue;
+    auto Dir = llvm::StringRef{MFI.Resolved}.rsplit('/').first;
+    if (Dir == AST.getPreprocessor()
+                   .getHeaderSearchInfo()
+                   .getHeaderSearchOpts()
+                   .ResourceDir) 
+      continue;
     if (!mayConsiderUnused(MFI, AST, AST.getPragmaIncludes().get())) {
       dlog("{0} was not used, but is not eligible to be diagnosed as unused",
            MFI.Written);
@@ -392,6 +398,10 @@ IncludeCleanerFindings computeIncludeCleanerFindings(ParsedAST &AST) {
   std::vector<MissingIncludeDiagInfo> MissingIncludes;
   llvm::DenseSet<IncludeStructure::HeaderID> Used;
   trace::Span Tracer("include_cleaner::walkUsed");
+  std::string ResourceDir = AST.getPreprocessor()
+                                .getHeaderSearchInfo()
+                                .getHeaderSearchOpts()
+                                .ResourceDir;
   include_cleaner::walkUsed(
       AST.getLocalTopLevelDecls(), /*MacroRefs=*/Macros,
       AST.getPragmaIncludes().get(), SM,
@@ -400,7 +410,8 @@ IncludeCleanerFindings computeIncludeCleanerFindings(ParsedAST &AST) {
         bool Satisfied = false;
         for (const auto &H : Providers) {
           if (H.kind() == include_cleaner::Header::Physical &&
-              (H.physical() == MainFile || H.physical() == PreamblePatch)) {
+              (H.physical() == MainFile || H.physical() == PreamblePatch ||
+               H.physical()->getLastRef().getDir().getName() == ResourceDir)) {
             Satisfied = true;
             continue;
           }

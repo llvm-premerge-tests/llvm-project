@@ -273,6 +273,30 @@ TEST_F(AnalyzeTest, NoCrashWhenUnresolved) {
   EXPECT_THAT(Results.Unused, testing::IsEmpty());
 }
 
+TEST_F(AnalyzeTest, ResourceDirIsIgnored) {
+  Inputs.ExtraArgs.push_back("-resource-dir");
+  Inputs.ExtraArgs.push_back("./resources");
+  Inputs.Code = R"cpp(
+    #include "resources/amintrin.h"
+    #include "resources/imintrin.h"
+    void baz() {
+      bar();
+    }
+  )cpp";
+  Inputs.ExtraFiles["resources/amintrin.h"] = "";
+  Inputs.ExtraFiles["resources/emintrin.h"] = guard(R"cpp(
+    void bar();
+  )cpp");
+  Inputs.ExtraFiles["resources/imintrin.h"] = guard(R"cpp(
+    #include "emintrin.h"
+  )cpp");
+  TestAST AST(Inputs);
+  auto Results = analyze({}, {}, PP.Includes, &PI, AST.sourceManager(),
+                         AST.preprocessor().getHeaderSearchInfo());
+  EXPECT_THAT(Results.Unused, testing::IsEmpty());
+  EXPECT_THAT(Results.Missing, testing::IsEmpty());
+}
+
 TEST(FixIncludes, Basic) {
   llvm::StringRef Code = R"cpp(#include "d.h"
 #include "a.h"
