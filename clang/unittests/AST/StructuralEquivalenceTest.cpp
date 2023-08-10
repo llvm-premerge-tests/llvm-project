@@ -833,7 +833,18 @@ TEST_F(StructuralEquivalenceRecordTest, SameFriendMultipleTimes) {
   auto t = makeNamedDecls("struct foo { friend class X; };",
                           "struct foo { friend class X; friend class X; };",
                           Lang_CXX11);
-  EXPECT_FALSE(testStructuralMatch(t));
+  EXPECT_TRUE(testStructuralMatch(t));
+}
+
+TEST_F(StructuralEquivalenceRecordTest,
+       SameFriendMultipleTimesForwardIteratorDirection) {
+  // Deduplication with forward iterator produces the same 'foo', but reverse
+  // iterator doesn't.
+  auto t = makeNamedDecls(
+      "struct foo { friend class X; friend class Y;};",
+      "struct foo { friend class X; friend class Y; friend class X; };",
+      Lang_CXX11);
+  EXPECT_TRUE(testStructuralMatch(t));
 }
 
 TEST_F(StructuralEquivalenceRecordTest, SameFriendsDifferentOrder) {

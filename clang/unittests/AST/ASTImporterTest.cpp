@@ -10,6 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "clang/AST/ASTStructuralEquivalence.h"
 #include "clang/AST/RecordLayout.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
 #include "llvm/ADT/StringMap.h"
@@ -4383,6 +4384,44 @@ TEST_P(ImportFriendClasses, ImportOfRepeatedFriendDecl) {
   EXPECT_NE(ToImportedFriend1, ToImportedFriend2);
   EXPECT_EQ(ToFriend1, ToImportedFriend1);
   EXPECT_EQ(ToFriend2, ToImportedFriend2);
+}
+
+TEST_P(ASTImporterOptionSpecificTestBase, ImportRepeatedFriendDeclIntoEmptyDC) {
+  Decl *From, *To;
+  std::tie(From, To) = getImportedDecl(R"(
+      template <class T>
+      class A {
+      public:
+        template <class U> friend A<U> &f();
+        template <class U> friend A<U> &f();
+      };
+  )",
+                                       Lang_CXX17, "", Lang_CXX17, "A");
+
+  auto *FromFriend1 = FirstDeclMatcher<FriendDecl>().match(From, friendDecl());
+  auto *FromFriend2 = LastDeclMatcher<FriendDecl>().match(From, friendDecl());
+  auto *ToFriend1 = FirstDeclMatcher<FriendDecl>().match(To, friendDecl());
+  auto *ToFriend2 = LastDeclMatcher<FriendDecl>().match(To, friendDecl());
+
+  // Two different FriendDecls in From context.
+  EXPECT_TRUE(FromFriend1 != FromFriend2);
+  // Only one is imported into empty DC.
+  EXPECT_TRUE(ToFriend1 == ToFriend2);
+
+  // 'A' is imported into empty DC, keeping structure equivalence.
+  llvm::DenseSet<std::pair<Decl *, Decl *>> NonEquivalentDecls01;
+  llvm::DenseSet<std::pair<Decl *, Decl *>> NonEquivalentDecls10;
+  StructuralEquivalenceContext Ctx01(
+      From->getASTContext(), To->getASTContext(), NonEquivalentDecls01,
+      StructuralEquivalenceKind::Default, false, false);
+  StructuralEquivalenceContext Ctx10(
+      To->getASTContext(), From->getASTContext(), NonEquivalentDecls10,
+      StructuralEquivalenceKind::Default, false, false);
+
+  bool Eq01 = Ctx01.IsEquivalent(From, To);
+  bool Eq10 = Ctx10.IsEquivalent(To, From);
+  EXPECT_EQ(Eq01, Eq10);
+  EXPECT_TRUE(Eq01);
 }
 
 TEST_P(ASTImporterOptionSpecificTestBase, FriendFunInClassTemplate) {

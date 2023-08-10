@@ -6447,7 +6447,8 @@ ASTNodeImporter::VisitFunctionTemplateDecl(FunctionTemplateDecl *D) {
 
   ToFunc->setAccess(D->getAccess());
   ToFunc->setLexicalDeclContext(LexicalDC);
-  LexicalDC->addDeclInternal(ToFunc);
+  if (D->getFriendObjectKind() == Decl::FOK_None)
+    LexicalDC->addDeclInternal(ToFunc);
 
   ASTImporterLookupTable *LT = Importer.SharedState->getLookupTable();
   if (LT && !OldParamDC.empty()) {
