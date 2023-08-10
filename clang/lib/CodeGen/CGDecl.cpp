@@ -1472,6 +1472,9 @@ static bool extendLifetime(const ASTContext &Context, const Decl *FuncDecl,
   // Do not extend variables in nodebug functions.
   if (FuncDecl->hasAttr<NoDebugAttr>())
     return false;
+  // pragma clang extend_lifetimes disable has been seen.
+  if (FuncDecl->hasAttr<ExtendLifetimesDisableAttr>())
+    return false;
   return true;
 }
 

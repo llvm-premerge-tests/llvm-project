@@ -3605,6 +3605,32 @@ function table. It is only supported when using the Microsoft C++ ABI.
   }];
 }
 
+def ExtendLifetimesDisableDocs : Documentation {
+  let Category = DocCatFunction;
+  let Heading = "#pragma clang extend_lifetimes disable, #pragma clang extend_lifetimes enable";
+  let Content = [{
+The ``#pragma clang extend_lifetimes disable`` directive can be used to
+selectively disable the ``-fextend-lifetimes`` and ``-fextend-this-ptr`` flags.
+This may be useful in cases where one of these options is used for development
+but results in very poor codegen for some functions. Functions defined after
+this pragma will have extend lifetimes/`this` suppressed;
+``#pragma clang extend_lifetimes enable`` can be used to reenable the lifetime
+extension for subsequent functions definitions. The directive can be used as
+follows:
+
+.. code-block:: c++
+
+  #pragma clang extend_lifetimes disable
+  void foo(...) {} // -fextend-lifetimes disabled for foo,
+  void bar(...) {} // also disabled for bar.
+  #pragma clang extend_lifetimes enable
+  void baz(...) {} // -fextend-lifetimes reenabled for baz.
+
+This directive has no effect if neither ``-fextend-lifetimes` nor
+`-fextend-this-ptr` are passed.
+  }];
+}
+
 def OptnoneDocs : Documentation {
   let Category = DocCatFunction;
   let Content = [{

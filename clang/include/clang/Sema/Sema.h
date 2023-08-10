@@ -780,6 +780,12 @@ public:
   /// optimizations are currently "on", this is set to an invalid location.
   SourceLocation OptimizeOffPragmaLocation;
 
+  /// This represents the last location of a "#pragma clang extend_lifetimes
+  /// disable" directive if such a directive has not been closed by an "enable"
+  /// yet. If extend_lifetimes is currently enabled, this is set to an invalid
+  /// location.
+  SourceLocation ExtendLifetimesDisablePragmaLocation;
+
   /// The "on" or "off" argument passed by \#pragma optimize, that denotes
   /// whether the optimizations in the list passed to the pragma should be
   /// turned off or on. This boolean is true by default because command line
@@ -10950,6 +10956,9 @@ public:
   /// Called on well formed \#pragma clang optimize.
   void ActOnPragmaOptimize(bool On, SourceLocation PragmaLoc);
 
+  /// Called on well formed \#pragma clang extend_lifetimes.
+  void ActOnPragmaExtendLifetimes(bool Enable, SourceLocation PragmaLoc);
+
   /// #pragma optimize("[optimization-list]", on | off).
   void ActOnPragmaMSOptimize(SourceLocation Loc, bool IsOn);
 
@@ -10962,6 +10971,13 @@ public:
   /// off". If this location is invalid, then the state of the pragma is "on".
   SourceLocation getOptimizeOffPragmaLocation() const {
     return OptimizeOffPragmaLocation;
+  }
+
+  /// Get the location for the currently active "\#pragma extend_lifetimes
+  /// disable". If this location is invalid, then the state of the pragma is
+  /// "enabled".
+  SourceLocation getExtendLifetimesDisablePragmaLocation() const {
+    return ExtendLifetimesDisablePragmaLocation;
   }
 
   /// Only called on function definitions; if there is a pragma in scope
@@ -10978,6 +10994,14 @@ public:
   /// are no conflicts; Loc represents the location causing the 'optnone'
   /// attribute to be added (usually because of a pragma).
   void AddOptnoneAttributeIfNoConflicts(FunctionDecl *FD, SourceLocation Loc);
+
+  /// For function definitions, if there is a pragma in scope with the effect
+  /// of disabling extend_lifetimes, mark the function with attribute
+  /// ExtendLifetimesDisable.
+  void AddRangeBasedExtendLifetimesDisable(FunctionDecl *FD);
+
+  /// Adds the ExtendLifetimesDisable attribute to the function declaration.
+  void AddExtendLifetimesDisableAttribute(FunctionDecl *FD, SourceLocation Loc);
 
   /// Only called on function definitions; if there is a MSVC #pragma optimize
   /// in scope, consider changing the function's attributes based on the

@@ -1321,6 +1321,9 @@ void Sema::ActOnStartOfLambdaDefinition(LambdaIntroducer &Intro,
   // have to apply optnone due to a pragma.
   AddRangeBasedOptnone(Method);
 
+  // Check if we have to apply the extend_lifetimes disable pragma.
+  AddRangeBasedExtendLifetimesDisable(Method);
+
   // code_seg attribute on lambda apply to the method.
   if (Attr *A = getImplicitCodeSegOrSectionAttrForFunction(
           Method, /*IsDefinition=*/true))
