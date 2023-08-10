@@ -14,12 +14,12 @@
 #define FORTRAN_OPTIMIZER_CODEGEN_TYPECONVERTER_H
 
 #include "flang/Optimizer/Builder/Todo.h" // remove when TODO's are done
-#include "flang/Optimizer/CodeGen/TBAABuilder.h"
 #include "flang/Optimizer/CodeGen/Target.h"
 #include "flang/Optimizer/Dialect/FIRType.h"
 #include "flang/Optimizer/Dialect/Support/FIRContext.h"
 #include "flang/Optimizer/Dialect/Support/KindMapping.h"
 #include "mlir/Conversion/LLVMCommon/TypeConverter.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "llvm/Support/Debug.h"
 
 // Position of the different values in a `fir.box`.
@@ -45,7 +45,7 @@ namespace fir {
 /// This converts FIR types to LLVM types (for now)
 class LLVMTypeConverter : public mlir::LLVMTypeConverter {
 public:
-  LLVMTypeConverter(mlir::ModuleOp module, bool applyTBAA);
+  LLVMTypeConverter(mlir::ModuleOp module);
 
   // i32 is used here because LLVM wants i32 constants when indexing into struct
   // types. Indexing into other aggregate types is more flexible.
@@ -138,15 +138,9 @@ public:
 
   KindMapping &getKindMap() { return kindMapping; }
 
-  // Relay TBAA tag attachment to TBAABuilder.
-  void attachTBAATag(mlir::LLVM::AliasAnalysisOpInterface op,
-                     mlir::Type baseFIRType, mlir::Type accessFIRType,
-                     mlir::LLVM::GEPOp gep);
-
 private:
   KindMapping kindMapping;
   std::unique_ptr<CodeGenSpecifics> specifics;
-  TBAABuilder tbaaBuilder;
 };
 
 } // namespace fir

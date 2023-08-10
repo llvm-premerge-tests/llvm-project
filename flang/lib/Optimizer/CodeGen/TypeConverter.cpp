@@ -15,7 +15,6 @@
 #include "flang/Optimizer/CodeGen/TypeConverter.h"
 #include "DescriptorModel.h"
 #include "flang/Optimizer/Builder/Todo.h" // remove when TODO's are done
-#include "flang/Optimizer/CodeGen/TBAABuilder.h"
 #include "flang/Optimizer/CodeGen/Target.h"
 #include "flang/Optimizer/Dialect/FIRType.h"
 #include "flang/Optimizer/Dialect/Support/FIRContext.h"
@@ -25,7 +24,7 @@
 
 namespace fir {
 
-LLVMTypeConverter::LLVMTypeConverter(mlir::ModuleOp module, bool applyTBAA)
+LLVMTypeConverter::LLVMTypeConverter(mlir::ModuleOp module)
     : mlir::LLVMTypeConverter(module.getContext(),
                               [&] {
                                 mlir::LowerToLLVMOptions options(
@@ -36,8 +35,7 @@ LLVMTypeConverter::LLVMTypeConverter(mlir::ModuleOp module, bool applyTBAA)
       kindMapping(getKindMapping(module)),
       specifics(CodeGenSpecifics::get(module.getContext(),
                                       getTargetTriple(module),
-                                      getKindMapping(module))),
-      tbaaBuilder(module->getContext(), applyTBAA) {
+                                      getKindMapping(module))) {
   LLVM_DEBUG(llvm::dbgs() << "FIR type converter\n");
 
   // Each conversion should return a value of type mlir::Type.
@@ -331,14 +329,6 @@ mlir::Type LLVMTypeConverter::convertSequenceType(SequenceType seq) {
 mlir::Type LLVMTypeConverter::convertTypeDescType(mlir::MLIRContext *ctx) {
   return mlir::LLVM::LLVMPointerType::get(
       mlir::IntegerType::get(&getContext(), 8));
-}
-
-// Relay TBAA tag attachment to TBAABuilder.
-void LLVMTypeConverter::attachTBAATag(mlir::LLVM::AliasAnalysisOpInterface op,
-                                      mlir::Type baseFIRType,
-                                      mlir::Type accessFIRType,
-                                      mlir::LLVM::GEPOp gep) {
-  tbaaBuilder.attachTBAATag(op, baseFIRType, accessFIRType, gep);
 }
 
 } // namespace fir
