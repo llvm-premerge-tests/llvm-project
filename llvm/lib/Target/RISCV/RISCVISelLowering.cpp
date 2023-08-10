@@ -12019,7 +12019,7 @@ static SDValue performFP_TO_INTCombine(SDNode *N,
     return SDValue();
 
   RISCVFPRndMode::RoundingMode FRM = matchRoundingOp(Src.getOpcode());
-  if (FRM == RISCVFPRndMode::Invalid)
+  if (FRM == RISCVFPRndMode::Invalid || FRM == RISCVFPRndMode::DYN)
     return SDValue();
 
   SDLoc DL(N);
