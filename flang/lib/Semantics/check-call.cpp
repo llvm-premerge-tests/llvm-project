@@ -9,15 +9,20 @@
 #include "check-call.h"
 #include "definable.h"
 #include "pointer-assignment.h"
+#include "flang/Evaluate/call.h"
 #include "flang/Evaluate/characteristics.h"
 #include "flang/Evaluate/check-expression.h"
+#include "flang/Evaluate/constant.h"
+#include "flang/Evaluate/expression.h"
 #include "flang/Evaluate/fold-designator.h"
 #include "flang/Evaluate/shape.h"
 #include "flang/Evaluate/tools.h"
+#include "flang/Evaluate/type.h"
 #include "flang/Parser/characters.h"
 #include "flang/Parser/message.h"
 #include "flang/Semantics/scope.h"
 #include "flang/Semantics/tools.h"
+#include "flang/Semantics/type.h"
 #include <map>
 #include <string>
 
@@ -25,6 +30,35 @@ using namespace Fortran::parser::literals;
 namespace characteristics = Fortran::evaluate::characteristics;
 
 namespace Fortran::semantics {
+
+// Automatic conversion of different-kind LOGICAL scalar actual argument
+// expressions that are constants or results of relational operators to LOGICAL
+// scalar dummies when the dummy is of default logical kind or is implicit. This
+// allows these expressions in dummy arguments to work when the default logical
+// kind is not the one used in LogicalResult. This will always be safe even when
+// downconverting so no warning is needed.
+static void ConvertLogicalResult(evaluate::Expr<evaluate::SomeType> &actual,
+    characteristics::TypeAndShape &actualType,
+    evaluate::FoldingContext &context) {
+  auto defaultLogicalKind{
+      context.defaults().GetDefaultKind(TypeCategory::Logical)};
+  auto argChars{characteristics::DummyArgument::FromActual(
+      "actual argument", actual, context)};
+  if (actualType.type().category() == TypeCategory::Logical &&
+      actualType.type().kind() != defaultLogicalKind &&
+      (evaluate::UnwrapExpr<evaluate::Relational<evaluate::SomeType>>(actual) ||
+          evaluate::UnwrapExpr<evaluate::Constant<evaluate::LogicalResult>>(
+              actual)) &&
+      !evaluate::IsVariable(actual)) {
+    evaluate::DynamicType defaultLogicalType{
+        TypeCategory::Logical, defaultLogicalKind};
+    auto converted{
+        evaluate::ConvertToType(defaultLogicalType, std::move(actual))};
+    CHECK(converted);
+    actual = std::move(*converted);
+    actualType.set_type(defaultLogicalType);
+  }
+}
 
 static void CheckImplicitInterfaceArg(evaluate::ActualArgument &arg,
     parser::ContextualMessages &messages, evaluate::FoldingContext &context) {
@@ -49,7 +83,11 @@ static void CheckImplicitInterfaceArg(evaluate::ActualArgument &arg,
       }
     }
   }
-  if (const auto *expr{arg.UnwrapExpr()}) {
+  if (auto *expr{arg.UnwrapExpr()}) {
+    if (auto type{
+            characteristics::TypeAndShape::Characterize(*expr, context)}) {
+      ConvertLogicalResult(*expr, *type, context);
+    }
     if (IsBOZLiteral(*expr)) {
       messages.Say("BOZ argument requires an explicit interface"_err_en_US);
     } else if (evaluate::IsNullPointer(*expr)) {
@@ -294,6 +332,8 @@ static void CheckExplicitDataArg(const characteristics::DummyDataObject &dummy,
   if (allowActualArgumentConversions) {
     ConvertIntegerActual(actual, dummy.type, actualType, messages);
   }
+  // ConvertLogicalActual(actual, dummy.type, actualType);
+  ConvertLogicalResult(actual, actualType, foldingContext);
   bool typesCompatible{typesCompatibleWithIgnoreTKR ||
       dummy.type.type().IsTkCompatibleWith(actualType.type())};
   int dummyRank{dummy.type.Rank()};
