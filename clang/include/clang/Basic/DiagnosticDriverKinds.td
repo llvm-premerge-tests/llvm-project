@@ -70,6 +70,16 @@ def err_drv_no_rocm_device_lib : Error<
 def err_drv_no_hip_runtime : Error<
   "cannot find HIP runtime; provide its path via '--rocm-path', or pass "
   "'-nogpuinc' to build without HIP runtime">;
+def err_drv_no_hip_stdpar_lib : Error<
+  "cannot find HIP Standard Parallelism Acceleration library; provide it via "
+  "'--stdpar-path'">;
+def err_drv_no_hip_stdpar_thrust_lib : Error<
+  "cannot find rocThrust, which is required by the HIP Standard Parallelism "
+  "Acceleration library; provide it via "
+  "'--stdpar-thrust-path'">;
+def err_drv_no_hip_stdpar_prim_lib : Error<
+  "cannot find rocPrim, which is required by the HIP Standard Parallelism "
+  "Acceleration library; provide it via '--stdpar-prim-path'">;
 
 def err_drv_no_hipspv_device_lib : Error<
   "cannot find HIP device library%select{| for %1}0; provide its path via "
