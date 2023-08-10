@@ -57,6 +57,7 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Scalar/InferAddressSpaces.h"
+#include "llvm/Transforms/StdPar/StdPar.h"
 #include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Utils/SimplifyLibCalls.h"
 #include "llvm/Transforms/Vectorize/LoadStoreVectorizer.h"
@@ -348,6 +349,11 @@ static cl::opt<bool> EnableRewritePartialRegUses(
     "amdgpu-enable-rewrite-partial-reg-uses",
     cl::desc("Enable rewrite partial reg uses pass"), cl::init(false),
     cl::Hidden);
+
+static cl::opt<bool> EnableStdPar(
+  "amdgpu-enable-stdpar",
+  cl::desc("Enable Standard Parallelism Offload support"), cl::init(false),
+  cl::Hidden);
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeAMDGPUTarget() {
   // Register the target
@@ -691,6 +697,8 @@ void AMDGPUTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
         if (EnableLibCallSimplify && Level != OptimizationLevel::O0)
           FPM.addPass(AMDGPUSimplifyLibCallsPass());
         PM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
+        if (EnableStdPar)
+          PM.addPass(StdParAcceleratorCodeSelectionPass());
       });
 
   PB.registerPipelineEarlySimplificationEPCallback(

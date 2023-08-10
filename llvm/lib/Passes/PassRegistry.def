@@ -108,6 +108,9 @@ MODULE_PASS("rpo-function-attrs", ReversePostOrderFunctionAttrsPass())
 MODULE_PASS("sample-profile", SampleProfileLoaderPass())
 MODULE_PASS("scc-oz-module-inliner",
   buildInlinerPipeline(OptimizationLevel::Oz, ThinOrFullLTOPhase::None))
+MODULE_PASS("stdpar-select-accelerator-code",
+  StdParAcceleratorCodeSelectionPass())
+MODULE_PASS("stdpar-interpose-alloc", StdParAllocationInterpositionPass())
 MODULE_PASS("strip", StripSymbolsPass())
 MODULE_PASS("strip-dead-debug-info", StripDeadDebugInfoPass())
 MODULE_PASS("pseudo-probe", SampleProfileProbePass(TM))

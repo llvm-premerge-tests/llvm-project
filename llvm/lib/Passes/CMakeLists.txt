@@ -24,6 +24,7 @@ add_llvm_component_library(LLVMPasses
   IRPrinter
   ObjCARC
   Scalar
+  StdPar
   Support
   Target
   TransformUtils
