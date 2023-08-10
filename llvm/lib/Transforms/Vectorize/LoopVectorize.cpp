@@ -7188,7 +7188,6 @@ LoopVectorizationCostModel::getInstructionCost(Instruction *I, ElementCount VF,
   case Instruction::Mul:
   case Instruction::FMul:
   case Instruction::FDiv:
-  case Instruction::FRem:
   case Instruction::Shl:
   case Instruction::LShr:
   case Instruction::AShr:
@@ -7220,6 +7219,56 @@ LoopVectorizationCostModel::getInstructionCost(Instruction *I, ElementCount VF,
         I->getOpcode(), VectorTy, CostKind,
         {TargetTransformInfo::OK_AnyValue, TargetTransformInfo::OP_None},
         Op2Info, Operands, I);
+  }
+  case Instruction::FRem: {
+    SmallVector<const Value *, 4> Operands(I->operand_values());
+    InstructionCost Cost = TTI.getArithmeticInstrCost(
+        I->getOpcode(), VectorTy, CostKind,
+        {TargetTransformInfo::OK_AnyValue, TargetTransformInfo::OP_None},
+        TTI.getOperandInfo(I->getOperand(1)), Operands, I);
+    InstructionCost LibFuncCost = InstructionCost::getInvalid();
+    // We need to check if we have a lib function available as we don't want
+    // to emit frem instructions operation on scalable vectors for targets
+    // on which such instructions can not be code generated.
+    // If we do not find a valid cost we return the cost computed by TTI.
+    // If we find a valid cost we return the one which is lower.
+    if (VF.isScalable()) {
+      if (TLI) {
+        Module *M = I->getModule();
+        StringRef ScalarFnName;
+        Type *Ty = I->getType();
+        if (Ty->isFloatTy())
+          ScalarFnName = TLI->getName(LibFunc_fmodf);
+        else if (Ty->isDoubleTy())
+          ScalarFnName = TLI->getName(LibFunc_fmod);
+        else
+          return Cost;
+        Type *RetTy = ToVectorTy(Ty, VF);
+        SmallVector<Type *> Tys = {RetTy, RetTy};
+        Function *TLIFunc = nullptr;
+        StringRef TLIName = TLI->getVectorizedFunction(ScalarFnName, VF);
+        if (TLIName.empty()) {
+          TLIName = TLI->getVectorizedFunction(ScalarFnName, VF, true);
+          if (TLIName.empty())
+            return Cost;
+          // Get the mask position.
+          std::optional<llvm::VFInfo> Info =
+              VFABI::tryDemangleForVFABI(TLIName, *M, VF);
+          if (!Info)
+            return Cost;
+          unsigned MaskPos = Info->getParamIndexForOptionalMask().value();
+          Tys.insert(Tys.begin() + MaskPos,
+                     VectorType::get(Type::getInt1Ty(M->getContext()), VF));
+        }
+        TLIFunc = Function::Create(FunctionType::get(RetTy, Tys, false),
+                                   Function::ExternalLinkage, ScalarFnName, *M);
+        if (TLIFunc == nullptr)
+          return Cost;
+        LibFuncCost =
+            TTI.getCallInstrCost(TLIFunc, RetTy, Tys, TTI::TCK_RecipThroughput);
+      }
+    }
+    return Cost < LibFuncCost ? Cost : LibFuncCost;
   }
   case Instruction::FNeg: {
     return TTI.getArithmeticInstrCost(
