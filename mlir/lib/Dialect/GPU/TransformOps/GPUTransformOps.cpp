@@ -985,8 +985,7 @@ static DiagnosedSilenceableFailure rewriteOneForallCommonImpl(
         llvm::dbgs() << "\n");
     // clang-format on
     for (auto [activeId, activeMappingSize, availableMappingSize] :
-         llvm::zip_equal(activeIdOps, activeMappingSizes,
-                         availableMappingSizes)) {
+         llvm::zip(activeIdOps, activeMappingSizes, availableMappingSizes)) {
       if (activeMappingSize > availableMappingSize) {
         return definiteFailureHelper(
             transformOp, forallOp,
