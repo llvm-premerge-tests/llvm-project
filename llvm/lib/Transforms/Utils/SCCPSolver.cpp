@@ -1539,11 +1539,13 @@ void SCCPInstVisitor::visitGetElementPtrInst(GetElementPtrInst &I) {
     return (void)markOverdefined(&I);
   }
 
-  Constant *Ptr = Operands[0];
-  auto Indices = ArrayRef(Operands.begin() + 1, Operands.end());
-  Constant *C =
-      ConstantExpr::getGetElementPtr(I.getSourceElementType(), Ptr, Indices);
-  markConstant(&I, C);
+  if (!I.getSourceElementType()->isScalableTy()) {
+    Constant *Ptr = Operands[0];
+    auto Indices = ArrayRef(Operands.begin() + 1, Operands.end());
+    Constant *C =
+        ConstantExpr::getGetElementPtr(I.getSourceElementType(), Ptr, Indices);
+    markConstant(&I, C);
+  }
 }
 
 void SCCPInstVisitor::visitStoreInst(StoreInst &SI) {
