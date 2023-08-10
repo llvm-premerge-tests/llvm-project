@@ -462,6 +462,14 @@ private:
 
   bool SelectCVTFixedPosOperand(SDValue N, SDValue &FixedPos, unsigned Width);
 
+  template<unsigned RegWidth>
+  bool SelectCVTFixedPosRecipOperand(SDValue N, SDValue &FixedPos) {
+    return SelectCVTFixedPosRecipOperand(N, FixedPos, RegWidth);
+  }
+
+  bool SelectCVTFixedPosRecipOperand(SDValue N, SDValue &FixedPos,
+                                     unsigned Width);
+
   bool SelectCMP_SWAP(SDNode *N);
 
   bool SelectSVEAddSubImm(SDValue N, MVT VT, SDValue &Imm, SDValue &Shift);
@@ -3659,6 +3667,60 @@ AArch64DAGToDAGISel::SelectCVTFixedPosOperand(SDValue N, SDValue &FixedPos,
 
   // N.b. isPowerOf2 also checks for > 0.
   if (!IsExact || !IntVal.isPowerOf2()) return false;
+  unsigned FBits = IntVal.logBase2();
+
+  // Checks above should have guaranteed that we haven't lost information in
+  // finding FBits, but it must still be in range.
+  if (FBits == 0 || FBits > RegWidth) return false;
+
+  FixedPos = CurDAG->getTargetConstant(FBits, SDLoc(N), MVT::i32);
+  return true;
+}
+
+bool AArch64DAGToDAGISel::SelectCVTFixedPosRecipOperand(SDValue N,
+                                                        SDValue &FixedPos,
+                                                        unsigned RegWidth) {
+  const TargetOptions &Options = CurDAG->getTarget().Options;
+  SDNodeFlags Flags = N.getNode()->getFlags();
+  if (!Options.UnsafeFPMath && !Flags.hasAllowReciprocal())
+    return false;
+
+  APFloat FVal(0.0);
+  if (ConstantFPSDNode *CN = dyn_cast<ConstantFPSDNode>(N))
+    FVal = CN->getValueAPF();
+  else if (LoadSDNode *LN = dyn_cast<LoadSDNode>(N)) {
+    // Some otherwise illegal constants are allowed in this case.
+    if (LN->getOperand(1).getOpcode() != AArch64ISD::ADDlow ||
+        !isa<ConstantPoolSDNode>(LN->getOperand(1)->getOperand(1)))
+      return false;
+
+    ConstantPoolSDNode *CN =
+        dyn_cast<ConstantPoolSDNode>(LN->getOperand(1)->getOperand(1));
+    FVal = cast<ConstantFP>(CN->getConstVal())->getValueAPF();
+  } else
+    return false;
+
+  // An SCVTF instruction performs: convertToInt(Val * (1/2^fbits)) where
+  // fbits is between 1 and 32 for a destination w-register, or 1 and 64 for an
+  // x-register.
+  //
+  // By this stage, we've detected (fp_to_[su]int (fmul Val, THIS_NODE)) so we
+  // want THIS_NODE to be 1/2^fbits. This is much easier to deal with using
+  // integers.
+  bool IsExact;
+
+  APFloat InverseFVal(0.0);
+  if (!FVal.getExactInverse(&InverseFVal))
+    return false;
+
+  // fbits is between 1 and 64 in the worst-case, which means the fmul
+  // could have 2^64 as an actual operand. Need 65 bits of precision.
+  APSInt IntVal(65, true);
+  InverseFVal.convertToInteger(IntVal, APFloat::rmTowardZero, &IsExact);
+
+  // N.b. isPowerOf2 also checks for > 0.
+  if (!IsExact || !IntVal.isPowerOf2())
+    return false;
   unsigned FBits = IntVal.logBase2();
 
   // Checks above should have guaranteed that we haven't lost information in
