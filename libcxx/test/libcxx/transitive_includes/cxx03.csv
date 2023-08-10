@@ -15,6 +15,7 @@ algorithm iterator
 algorithm limits
 algorithm memory
 algorithm new
+algorithm optional
 algorithm ratio
 algorithm stdexcept
 algorithm type_traits
@@ -591,6 +592,7 @@ numeric initializer_list
 numeric iterator
 numeric limits
 numeric new
+numeric optional
 numeric ratio
 numeric type_traits
 numeric version
