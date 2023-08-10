@@ -49,6 +49,7 @@
 
 namespace mlir {
 #define GEN_PASS_DEF_CONVERTFUNCTOLLVMPASS
+#define GEN_PASS_DEF_SETMODULEDATALAYOUTPASS
 #include "mlir/Conversion/Passes.h.inc"
 } // namespace mlir
 
@@ -772,7 +773,23 @@ struct ConvertFuncToLLVMPass
     LLVMConversionTarget target(getContext());
     if (failed(applyPartialConversion(m, target, std::move(patterns))))
       signalPassFailure();
+  }
+};
 
+struct SetModuleDataLayoutPass
+    : public impl::SetModuleDataLayoutPassBase<SetModuleDataLayoutPass> {
+  using Base::Base;
+
+  /// Run the dialect converter on the module.
+  void runOnOperation() override {
+    if (failed(LLVM::LLVMDialect::verifyDataLayoutString(
+            this->dataLayout, [this](const Twine &message) {
+              getOperation().emitError() << message.str();
+            }))) {
+      signalPassFailure();
+      return;
+    }
+    ModuleOp m = getOperation();
     m->setAttr(LLVM::LLVMDialect::getDataLayoutAttrName(),
                StringAttr::get(m.getContext(), this->dataLayout));
   }
