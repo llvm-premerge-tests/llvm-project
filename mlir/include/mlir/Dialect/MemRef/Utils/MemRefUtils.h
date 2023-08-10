@@ -28,6 +28,13 @@ namespace memref {
 /// contiguous chunk of memory.
 bool isStaticShapeAndContiguousRowMajor(MemRefType type);
 
+/// Compute linear index from provided strides and indices, assuming strided
+/// layout.
+OpFoldResult computeLinearIndex(OpBuilder &builder, Location loc,
+                                OpFoldResult sourceOffset,
+                                ArrayRef<OpFoldResult> strides,
+                                ArrayRef<OpFoldResult> indices);
+
 /// Returns the flattened 1-D memref and linearized offset for narrow type
 /// emulation.
 ///
