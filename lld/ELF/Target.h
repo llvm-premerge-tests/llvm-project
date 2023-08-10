@@ -92,6 +92,9 @@ public:
     relocate(loc, Relocation{R_NONE, type, 0, 0, nullptr}, val);
   }
   virtual void relocateAlloc(InputSectionBase &sec, uint8_t *buf) const;
+  void reportOrphanRelocationPair(uint8_t *loc, const Relocation &rel) const;
+  virtual void relocatePair(uint8_t *loc, const Relocation &relA, uint64_t valA,
+                            const Relocation &relB, uint64_t valB) const;
 
   // Do a linker relaxation pass and return true if we changed something.
   virtual bool relaxOnce(int pass) const { return false; }

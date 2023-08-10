@@ -43,6 +43,8 @@ public:
                      const uint8_t *loc) const override;
   void relocate(uint8_t *loc, const Relocation &rel,
                 uint64_t val) const override;
+  void relocatePair(uint8_t *loc, const Relocation &relA, uint64_t valA,
+                    const Relocation &relB, uint64_t valB) const override;
   bool relaxOnce(int pass) const override;
 };
 
@@ -99,6 +101,16 @@ static uint32_t setLO12_I(uint32_t insn, uint32_t imm) {
 static uint32_t setLO12_S(uint32_t insn, uint32_t imm) {
   return (insn & 0x1fff07f) | (extractBits(imm, 11, 5) << 25) |
          (extractBits(imm, 4, 0) << 7);
+}
+
+static void reportULEB128LengthExtend(uint8_t *loc, const RelType type,
+                                      Symbol &setSymbol, Symbol &subSymbol,
+                                      unsigned oldLength, unsigned newLength) {
+  ErrorPlace errPlace = getErrorPlace(loc);
+  error(errPlace.loc + "ULEB128 difference relocation pair overflow: " +
+        Twine(newLength) + " bytes needed but only " + Twine(oldLength) +
+        " bytes allocated; references '" + toString(setSymbol) + "' - '" +
+        toString(subSymbol) + "'");
 }
 
 RISCV::RISCV() {
@@ -277,6 +289,10 @@ RelExpr RISCV::getRelExpr(const RelType type, const Symbol &s,
   case R_RISCV_SUB32:
   case R_RISCV_SUB64:
     return R_RISCV_ADD;
+  case R_RISCV_SET_ULEB128:
+    return R_RELOCATE_PAIR_FIRST;
+  case R_RISCV_SUB_ULEB128:
+    return R_RELOCATE_PAIR_SECOND;
   case R_RISCV_JAL:
   case R_RISCV_BRANCH:
   case R_RISCV_PCREL_HI20:
@@ -313,6 +329,18 @@ RelExpr RISCV::getRelExpr(const RelType type, const Symbol &s,
   }
 }
 
+void RISCV::relocatePair(uint8_t *loc, const Relocation &relA, uint64_t valA,
+                         const Relocation &relB, uint64_t valB) const {
+  unsigned oldLength;
+  decodeULEB128(loc, &oldLength);
+  uint64_t newVal = valA - valB;
+  unsigned newLength = getULEB128Size(newVal);
+  if (newLength <= oldLength)
+    encodeULEB128(newVal, loc, /*PadTo*/ oldLength);
+  else
+    reportULEB128LengthExtend(loc, relA.type, *relA.sym, *relB.sym, oldLength,
+                              newLength);
+}
 void RISCV::relocate(uint8_t *loc, const Relocation &rel, uint64_t val) const {
   const unsigned bits = config->wordsize * 8;
 

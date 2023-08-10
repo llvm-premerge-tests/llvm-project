@@ -635,6 +635,8 @@ uint64_t InputSectionBase::getRelocTargetVA(const InputFile *file, RelType type,
   case R_RELAX_TLS_LD_TO_LE_ABS:
   case R_RELAX_GOT_PC_NOPIC:
   case R_RISCV_ADD:
+  case R_RELOCATE_PAIR_FIRST:
+  case R_RELOCATE_PAIR_SECOND:
     return sym.getVA(a);
   case R_ADDEND:
     return a;
@@ -861,7 +863,7 @@ void InputSection::relocateNonAlloc(uint8_t *buf, ArrayRef<RelTy> rels) {
       break;
     }
 
-  for (const RelTy &rel : rels) {
+  for (auto [i, rel] : llvm::enumerate(rels)) {
     RelType type = rel.getType(config->isMips64EL);
 
     // GCC 8.0 or earlier have a bug that they emit R_386_GOTPC relocations
@@ -937,6 +939,57 @@ void InputSection::relocateNonAlloc(uint8_t *buf, ArrayRef<RelTy> rels) {
     if (expr == R_ABS || expr == R_DTPREL || expr == R_GOTPLTREL ||
         expr == R_RISCV_ADD) {
       target.relocateNoSym(bufLoc, type, SignExtend64<bits>(sym.getVA(addend)));
+      continue;
+    }
+
+    // Relocation pairs should appear together; we always handle them at the
+    // later one.
+    if (expr == R_RELOCATE_PAIR_FIRST || expr == R_RELOCATE_PAIR_SECOND) {
+      RelExpr expectedOther = expr == R_RELOCATE_PAIR_FIRST
+                                  ? R_RELOCATE_PAIR_SECOND
+                                  : R_RELOCATE_PAIR_FIRST;
+      bool foundPair = false;
+      const RelTy *otherRel = nullptr;
+      RelExpr otherExpr = R_NONE;
+      RelType otherType = R_NONE;
+      Symbol *otherSym = nullptr;
+      bool isSecondOne = false;
+
+      auto getRelInfo = [&](size_t idx) {
+        otherRel = &rels[idx];
+        otherType = otherRel->getType(config->isMips64EL);
+        otherSym = &getFile<ELFT>()->getRelocTargetSym(*otherRel);
+        otherExpr = target.getRelExpr(otherType, *otherSym, bufLoc);
+      };
+
+      // Try to look towards the front.
+      if (i + 1 < rels.size()) {
+        getRelInfo(i + 1);
+        if (expectedOther == otherExpr)
+          foundPair = true;
+      }
+      // Try to look towards the back.
+      if (!foundPair && i >= 1) {
+        getRelInfo(i - 1);
+        if (expectedOther == otherExpr) {
+          foundPair = true;
+          isSecondOne = true;
+        }
+      }
+      if (!foundPair) {
+        std::string msg = getLocation(offset) +
+                          ": found orphan paired relocation " + toString(type) +
+                          " against symbol '" + toString(sym) + "'";
+        error(msg);
+        continue;
+      }
+      if (isSecondOne)
+        target.relocatePair(
+            bufLoc, Relocation{R_NONE, otherType, 0, 0, otherSym},
+            SignExtend64<bits>(otherSym->getVA(addend)),
+            Relocation{R_NONE, type, 0, 0,
+                       &getFile<ELFT>()->getRelocTargetSym(rel)},
+            SignExtend64<bits>(sym.getVA(addend)));
       continue;
     }
 

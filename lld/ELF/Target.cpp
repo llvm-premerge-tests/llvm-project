@@ -159,15 +159,55 @@ void TargetInfo::relocateAlloc(InputSectionBase &sec, uint8_t *buf) const {
   uint64_t secAddr = sec.getOutputSection()->addr;
   if (auto *s = dyn_cast<InputSection>(&sec))
     secAddr += s->outSecOff;
-  for (const Relocation &rel : sec.relocs()) {
+  for (auto [i, rel] : llvm::enumerate(sec.relocs())) {
     uint8_t *loc = buf + rel.offset;
     const uint64_t val = SignExtend64(
         sec.getRelocTargetVA(sec.file, rel.type, rel.addend,
                              secAddr + rel.offset, *rel.sym, rel.expr),
         bits);
-    if (rel.expr != R_RELAX_HINT)
+    switch (rel.expr) {
+    case R_RELAX_HINT:
+      break;
+    case R_RELOCATE_PAIR_FIRST: {
+      if (i + 1 >= sec.relocs().size()) {
+        reportOrphanRelocationPair(loc, rel);
+        break;
+      }
+
+      auto nextRel = sec.relocs()[i + 1];
+      uint64_t nextVal = SignExtend64(
+          sec.getRelocTargetVA(sec.file, nextRel.type, nextRel.addend,
+                               secAddr + nextRel.offset, *nextRel.sym,
+                               nextRel.expr),
+          bits);
+      relocatePair(loc, rel, val, nextRel, nextVal);
+    } break;
+    case R_RELOCATE_PAIR_SECOND:
+      if (i < 1 ||
+          (i > 1 && sec.relocs()[i - 1].expr != R_RELOCATE_PAIR_FIRST)) {
+        reportOrphanRelocationPair(loc, rel);
+      }
+      break;
+    default:
       relocate(loc, rel, val);
+      break;
+    }
   }
+}
+
+void TargetInfo::reportOrphanRelocationPair(uint8_t *loc,
+                                            const Relocation &rel) const {
+  ErrorPlace errPlace = getErrorPlace(loc);
+  std::string msg = errPlace.loc + ": found orphan paired relocation " +
+                    toString(rel.type) + " against symbol '" +
+                    toString(*rel.sym) + "'";
+  error(msg);
+}
+
+void TargetInfo::relocatePair(uint8_t *loc, const Relocation &relA,
+                              uint64_t valA, const Relocation &relB,
+                              uint64_t valB) const {
+  llvm_unreachable("Target doesn't support relocatePair.");
 }
 
 uint64_t TargetInfo::getImageBase() const {
