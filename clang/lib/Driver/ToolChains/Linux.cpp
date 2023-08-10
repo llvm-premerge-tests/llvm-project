@@ -343,7 +343,8 @@ ToolChain::RuntimeLibType Linux::GetDefaultRuntimeLibType() const {
 }
 
 unsigned Linux::GetDefaultDwarfVersion() const {
-  if (getTriple().isAndroid())
+  // TODO Remove isRISCV when R_RISCV_SET_ULEB128 linker support is better.
+  if (getTriple().isAndroid() || getTriple().isRISCV())
     return 4;
   return ToolChain::GetDefaultDwarfVersion();
 }
