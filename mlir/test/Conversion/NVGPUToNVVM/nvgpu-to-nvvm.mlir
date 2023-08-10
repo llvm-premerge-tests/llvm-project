@@ -631,6 +631,45 @@ module @mymodule {
   }
 }
 
+!tensorMap = !nvgpu.tensormap.descriptor<tensor = memref<128x64xf16,3>, swizzle = swizzle_128b, l2promo=none, oob=zero, interleave=none>
+memref.global "private" @dynamicShmem : memref<0xf16,3>
+// CHECK-LABEL: func @create_wgmma_descriptor(
+func.func @create_wgmma_descriptor(%tensorMap : !tensorMap) -> i64{
+  %dynamicMem = memref.get_global @dynamicShmem : memref<0xf16, 3>
+  %lhsShmem = memref.reinterpret_cast %dynamicMem to offset: [0], sizes: [128,64], strides: [64,1] : memref<0xf16, 3> to memref<128x64xf16,3>
+  // CHECK: %[[S0:.+]] = memref.get_global @dynamicShmem : memref<0xf16, 3>
+  // CHECK: %[[Sreinterpret_cast:.+]] = memref.reinterpret_cast %[[S0]] to offset: [0], sizes: [128, 64], strides: [64, 1] : memref<0xf16, 3> to memref<128x64xf16, 3>
+  // CHECK: %[[S1:.+]] = builtin.unrealized_conversion_cast %reinterpret_cast : memref<128x64xf16, 3> to !llvm.struct<(ptr<3>, ptr<3>, i64, array<2 x i64>, array<2 x i64>)>
+  // CHECK: %[[S2:.+]] = llvm.mlir.constant(0 : i64) : i64
+  // CHECK: %[[S3:.+]] = llvm.mlir.constant(1 : i64) : i64
+  // CHECK: %[[S4:.+]] = llvm.mlir.constant(62 : i64) : i64
+  // CHECK: %[[S5:.+]] = llvm.shl %[[S3]], %[[S4]] : i64
+  // CHECK: %[[S6:.+]] = llvm.or %[[S2]], %[[S5]]  : i64
+  // CHECK: %[[S7:.+]] = llvm.mlir.constant(0 : i64) : i64
+  // CHECK: %[[S8:.+]] = llvm.mlir.constant(49 : i64) : i64
+  // CHECK: %[[S9:.+]] = llvm.shl %[[S7]], %[[S8]]  : i64
+  // CHECK: %[[S10:.+]] = llvm.or %[[S6]], %[[S9]]  : i64
+  // CHECK: %[[S11:.+]] = llvm.mlir.constant(64 : i64) : i64
+  // CHECK: %[[S12:.+]] = llvm.mlir.constant(32 : i64) : i64
+  // CHECK: %[[S13:.+]] = llvm.shl %[[S11]], %[[S12]]  : i64
+  // CHECK: %[[S14:.+]] = llvm.or %[[S10]], %[[S13]]  : i64
+  // CHECK: %[[S15:.+]] = llvm.mlir.constant(1024 : i64) : i64
+  // CHECK: %[[S16:.+]] = llvm.mlir.constant(16 : i64) : i64
+  // CHECK: %[[S17:.+]] = llvm.shl %[[S15]], %[[S16]]  : i64
+  // CHECK: %[[S18:.+]] = llvm.or %[[S14]], %[[S17]]  : i64
+  // CHECK: %[[S19:.+]] = llvm.extractvalue %1[1] : !llvm.struct<(ptr<3>, ptr<3>, i64, array<2 x i64>, array<2 x i64>)> 
+  // CHECK: %[[S20:.+]] = llvm.ptrtoint %[[S19]] : !llvm.ptr<3> to i64
+  // CHECK: %[[S21:.+]] = llvm.mlir.constant(46 : i64) : i64
+  // CHECK: %[[S22:.+]] = llvm.shl %[[S20]], %[[S21]]  : i64
+  // CHECK: %[[S23:.+]] = llvm.mlir.constant(50 : i64) : i64
+  // CHECK: %[[S24:.+]] = llvm.lshr %[[S22]], %[[S23]]  : i64
+  // CHECK: %[[S25:.+]] = llvm.or %[[S18]], %[[S24]]  : i64
+  // CHECK: return %[[S25]] : i64
+  %descA = nvgpu.wgmma.generate.descriptor %lhsShmem, %tensorMap : memref<128x64xf16,3>, !tensorMap
+  func.return %descA : i64
+}
+
+
 transform.sequence failures(propagate) {
 ^bb1(%arg1: !transform.any_op):
   %0 = transform.structured.match ops{["func.func"]} in %arg1 
