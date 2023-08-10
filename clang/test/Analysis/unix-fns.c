@@ -1,4 +1,4 @@
-// RUN: %clang_analyze_cc1 -triple x86_64-apple-darwin10 -analyzer-checker=core,unix.API,osx.API,optin.portability %s -analyzer-output=plist -analyzer-config faux-bodies=true  -fblocks -verify -o %t.plist
+// RUN: %clang_analyze_cc1 -triple x86_64-apple-darwin10 -analyzer-checker=core,unix.API,osx.API,optin.portability,optin.portabilityMinor %s -analyzer-output=plist -analyzer-config faux-bodies=true  -fblocks -verify -o %t.plist
 // RUN: %normalize_plist <%t.plist | diff -ub %S/Inputs/expected-plists/unix-fns.c.plist -
 // RUN: mkdir -p %t.dir
 // RUN: %clang_analyze_cc1 -analyzer-checker=core,unix.API,osx.API,optin.portability -analyzer-output=html -analyzer-config faux-bodies=true -fblocks -o %t.dir %s
@@ -77,6 +77,18 @@ void _dispatch_once(dispatch_once_t *predicate,
 int open(const char *, int, ...);
 int openat(int, const char *, int, ...);
 int close(int fildes);
+
+#ifndef NULL
+#define NULL ((void*) 0)
+#endif
+
+struct FILE_t;
+typedef struct FILE_t FILE;
+
+int printf( const char *, ... );
+int fprintf(FILE *, const char *, ...);
+int sprintf(char *, const char *, ...);
+int snprintf(char *, size_t, const char *, ...);
 
 void test_open(const char *path) {
   int fd;
@@ -245,4 +257,33 @@ void test_inline_dispatch_once_reachable(void) {
   });
 
   *p = 7; // expected-warning {{Dereference of null pointer (loaded from variable 'p')}}
+}
+
+// Test basic case for the whole print family.
+void test_printf_family_pointer_conversion_specifier_null(FILE *file, char *buf, size_t buf_size, char *format) {
+  printf(format, NULL); // expected-warning{{The result of passing a null pointer to the pointer conversion specifier of the printf family of functions is implementation defined}}
+  fprintf(file, format, NULL); // expected-warning{{The result of passing a null pointer to the pointer conversion specifier of the printf family of functions is implementation defined}}
+  sprintf(buf, format, NULL); // expected-warning{{The result of passing a null pointer to the pointer conversion specifier of the printf family of functions is implementation defined}}
+  snprintf(buf, buf_size, format, NULL); // expected-warning{{The result of passing a null pointer to the pointer conversion specifier of the printf family of functions is implementation defined}}
+}
+
+// Test various arguments.
+void test_printf_pointer_conversion_specifier_null_various_arguments(char *format) {
+  printf(format, NULL); // expected-warning{{The result of passing a null pointer to the pointer conversion specifier of the printf family of functions is implementation defined}}
+  printf(format, 1, NULL); // expected-warning{{The result of passing a null pointer to the pointer conversion specifier of the printf family of functions is implementation defined}}
+  printf(format, 1, NULL, 2); // expected-warning{{The result of passing a null pointer to the pointer conversion specifier of the printf family of functions is implementation defined}}
+  printf(format, NULL, NULL); // expected-warning{{The result of passing a null pointer to the pointer conversion specifier of the printf family of functions is implementation defined}}
+  printf(format, NULL, 1, NULL); // expected-warning{{The result of passing a null pointer to the pointer conversion specifier of the printf family of functions is implementation defined}}
+  printf(format, 0); // no-warning
+}
+
+// Test pointer constraint.
+void printf_pointer_conversion_specifier_null_pointer_constraint(char *format, void *pointer1) {
+  void *pointer2 = NULL;
+  printf(format, pointer2); // expected-warning{{The result of passing a null pointer to the pointer conversion specifier of the printf family of functions is implementation defined}}
+  if (pointer1 != NULL) {
+    printf(format, pointer1); // no-warning
+    return;
+  }
+  printf(format, pointer1); // expected-warning{{The result of passing a null pointer to the pointer conversion specifier of the printf family of functions is implementation defined}}
 }

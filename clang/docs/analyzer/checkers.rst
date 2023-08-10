@@ -698,6 +698,13 @@ optin.portability.UnixAPI
 Finds implementation-defined behavior in UNIX/Posix functions.
 
 
+.. _optin-portabilityMinor-UnixAPI:
+
+optin.portabilityMinor.UnixAPI
+"""""""""""""""""""""""""
+Finds non-severe implementation-defined behavior in UNIX/Posix functions.
+
+
 .. _security-checkers:
 
 security

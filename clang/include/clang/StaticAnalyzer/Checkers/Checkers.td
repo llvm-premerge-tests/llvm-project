@@ -42,6 +42,12 @@ def OptIn : Package<"optin">;
 // development, but unwanted for developers who target only a single platform.
 def PortabilityOptIn : Package<"portability">, ParentPackage<OptIn>;
 
+// The PortabilityMinor package is for checkers that find non-severe portability
+// issues (see also the Portability package). Such checks may be unwanted for
+// developers who want to ignore minor portability issues, hence they are put in
+// a separate package.
+def PortabilityMinorOptIn : Package<"portabilityMinor">, ParentPackage<OptIn>;
+
 def Nullability : Package<"nullability">,
   PackageOptions<[
     CmdLineOption<Boolean,
@@ -1659,6 +1665,14 @@ def UnixAPIPortabilityChecker : Checker<"UnixAPI">,
   Documentation<NotDocumented>;
 
 } // end optin.portability
+
+let ParentPackage = PortabilityMinorOptIn in {
+
+def UnixAPIPortabilityMinorChecker : Checker<"UnixAPI">,
+  HelpText<"Finds non-severe implementation-defined behavior in UNIX/Posix functions">,
+  Documentation<NotDocumented>;
+
+} // end optin.portabilityMinor
 
 //===----------------------------------------------------------------------===//
 // NonDeterminism checkers.

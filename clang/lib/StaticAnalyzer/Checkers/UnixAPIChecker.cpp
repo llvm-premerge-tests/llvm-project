@@ -85,6 +85,25 @@ private:
                             const char *fn) const;
 };
 
+class UnixAPIPortabilityMinorChecker
+    : public Checker<check::PreStmt<CallExpr>> {
+public:
+  void checkPreStmt(const CallExpr *CE, CheckerContext &C) const;
+
+private:
+  mutable std::unique_ptr<BugType> BT_printfPointerConversionSpecifierNULL;
+
+  void
+  CheckPrintfPointerConversionSpecifierNULL(CheckerContext &C,
+                                            const CallExpr *CE,
+                                            unsigned int data_args_index) const;
+
+  void
+  ReportPrintfPointerConversionSpecifierNULL(clang::ento::CheckerContext &C,
+                                             ProgramStateRef nullState,
+                                             const clang::Expr *arg) const;
+};
+
 } //end anonymous namespace
 
 static void LazyInitialize(const CheckerBase *Checker,
@@ -494,6 +513,94 @@ void UnixAPIPortabilityChecker::checkPreStmt(const CallExpr *CE,
 }
 
 //===----------------------------------------------------------------------===//
+// printf family of functions with null pointer passed to pointer
+// conversion specifier
+//===----------------------------------------------------------------------===//
+
+// Generates an error report, indicating that the result of passing a null
+// pointer to pointer conversion specifier of printf family of functions is
+// implementation defined.
+void UnixAPIPortabilityMinorChecker::ReportPrintfPointerConversionSpecifierNULL(
+    clang::ento::CheckerContext &C, ProgramStateRef nullState,
+    const clang::Expr *arg) const {
+  ExplodedNode *N =
+      C.generateNonFatalErrorNode(nullState ? nullState : C.getState());
+  if (!N)
+    return;
+  LazyInitialize(
+      this, BT_printfPointerConversionSpecifierNULL,
+      "Passing a null pointer to the pointer conversion specifier of "
+      "the printf family of functions");
+  auto report = std::make_unique<PathSensitiveBugReport>(
+      *BT_printfPointerConversionSpecifierNULL,
+      "The result of passing a null pointer to the pointer conversion "
+      "specifier of "
+      "the printf family of functions is implementation defined",
+      N);
+  report->addRange(arg->getSourceRange());
+  bugreporter::trackExpressionValue(N, arg, *report);
+  C.emitReport(std::move(report));
+}
+
+// Checks data arguments of printf family of functions for a null pointer,
+// assuming it is passed to a pointer conversion specifier (%p), i.e. without
+// checking the format string.
+void UnixAPIPortabilityMinorChecker::CheckPrintfPointerConversionSpecifierNULL(
+    CheckerContext &C, const CallExpr *CE, unsigned int data_args_index) const {
+  ProgramStateRef state = C.getState();
+  ConstraintManager &CM = state->getConstraintManager();
+
+  for (unsigned int i = data_args_index; i < CE->getNumArgs(); i++) {
+    const Expr *arg = CE->getArg(i);
+    if (!arg)
+      continue;
+
+    if (!arg->getType()->isPointerType())
+      continue;
+
+    SVal argVal = C.getSVal(arg);
+    if (argVal.isUnknownOrUndef())
+      continue;
+
+    auto argDefinedVal = argVal.getAs<DefinedSVal>();
+
+    ProgramStateRef notNullState, nullState;
+    std::tie(notNullState, nullState) =
+        CM.assumeDual(C.getState(), *argDefinedVal);
+    if (!notNullState && nullState) {
+      ReportPrintfPointerConversionSpecifierNULL(C, nullState, arg);
+      return;
+    }
+  }
+}
+
+void UnixAPIPortabilityMinorChecker::checkPreStmt(const CallExpr *CE,
+                                                  CheckerContext &C) const {
+  const FunctionDecl *FD = C.getCalleeDecl(CE);
+  if (!FD || FD->getKind() != Decl::Function)
+    return;
+
+  // Don't treat functions in namespaces with the same name a Unix function
+  // as a call to the Unix function.
+  const DeclContext *NamespaceCtx = FD->getEnclosingNamespaceContext();
+  if (isa_and_nonnull<NamespaceDecl>(NamespaceCtx))
+    return;
+
+  StringRef FName = C.getCalleeName(FD);
+  if (FName.empty())
+    return;
+
+  if (FName == "printf")
+    CheckPrintfPointerConversionSpecifierNULL(C, CE, 1);
+
+  else if (FName == "fprintf" || FName == "sprintf")
+    CheckPrintfPointerConversionSpecifierNULL(C, CE, 2);
+
+  else if (FName == "snprintf")
+    CheckPrintfPointerConversionSpecifierNULL(C, CE, 3);
+}
+
+//===----------------------------------------------------------------------===//
 // Registration.
 //===----------------------------------------------------------------------===//
 
@@ -508,3 +615,4 @@ void UnixAPIPortabilityChecker::checkPreStmt(const CallExpr *CE,
 
 REGISTER_CHECKER(UnixAPIMisuseChecker)
 REGISTER_CHECKER(UnixAPIPortabilityChecker)
+REGISTER_CHECKER(UnixAPIPortabilityMinorChecker)
