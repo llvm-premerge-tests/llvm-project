@@ -40,7 +40,29 @@ protected:
         Code,
         /*Ranges=*/{1, tooling::Range(0, Code.size())}, Style);
   }
+
+  bool isFormatted(StringRef Code, const std::vector<tooling::Range> &Ranges,
+                   const FormatStyle &Style = getLLVMStyle()) const {
+    return clang::format::fixNamespaceEndComments(Style, Code, Ranges,
+                                                  "<stdin>")
+        .empty();
+  }
+
+  bool isFormatted(StringRef Code,
+                   const FormatStyle &Style = getLLVMStyle()) const {
+    return isFormatted(Code, {1, tooling::Range(0, Code.size())}, Style);
+  }
 };
+
+TEST_F(NamespaceEndCommentsFixerTest, IsFormatted) {
+  auto Style = getLLVMStyle();
+  Style.NamespaceMacros.push_back("SUITE");
+  EXPECT_TRUE(isFormatted("SUITE(\"foo\") {\n"
+                          "int i;\n"
+                          "int j;\n"
+                          "} // SUITE(\"foo\")",
+                          Style));
+}
 
 TEST_F(NamespaceEndCommentsFixerTest, AddsEndComment) {
   EXPECT_EQ("namespace {\n"
