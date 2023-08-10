@@ -5,6 +5,7 @@ extern int scanf(const char *restrict, ...);
 extern int printf(const char *restrict, ...);
 }
 
-void f(char *c) {
+void f(char *c, int *q) {
   printf("%p", c);
+  printf("%p", q);
 }
