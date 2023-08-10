@@ -407,3 +407,160 @@ define i1 @addand_eq_i64(i64 %x) nounwind {
   %r = and i1 %cmp1, %cmp2
   ret i1 %r
 }
+
+declare void @use.i64(i64)
+define i1 @negand_eq_i64_through_use(i64 %x) nounwind {
+; CHECK-LABEL: negand_eq_i64_through_use:
+; CHECK:       # %bb.0:
+; CHECK-NEXT:    pushq %rbx
+; CHECK-NEXT:    movq %rdi, %rbx
+; CHECK-NEXT:    negq %rdi
+; CHECK-NEXT:    callq use.i64@PLT
+; CHECK-NEXT:    addq $256, %rbx # imm = 0x100
+; CHECK-NEXT:    testq $-257, %rbx # imm = 0xFEFF
+; CHECK-NEXT:    sete %al
+; CHECK-NEXT:    popq %rbx
+; CHECK-NEXT:    retq
+  %neg_x = sub i64 0, %x
+  call void @use.i64(i64 %neg_x)
+  %cmp1 = icmp eq i64 %x, 0
+  %cmp2 = icmp eq i64 %x, -256
+  %r = or i1 %cmp1, %cmp2
+  ret i1 %r
+}
+
+define <4 x i1> @negand_ne_4xi64(<4 x i64> %x) nounwind {
+; AVX512-LABEL: negand_ne_4xi64:
+; AVX512:       # %bb.0:
+; AVX512-NEXT:    vpcmpneqq {{\.?LCPI[0-9]+_[0-9]+}}(%rip){1to4}, %ymm0, %k1
+; AVX512-NEXT:    vptestmq %ymm0, %ymm0, %k1 {%k1}
+; AVX512-NEXT:    vpcmpeqd %xmm0, %xmm0, %xmm0
+; AVX512-NEXT:    vmovdqa32 %xmm0, %xmm0 {%k1} {z}
+; AVX512-NEXT:    vzeroupper
+; AVX512-NEXT:    retq
+;
+; AVX2-LABEL: negand_ne_4xi64:
+; AVX2:       # %bb.0:
+; AVX2-NEXT:    vpxor %xmm1, %xmm1, %xmm1
+; AVX2-NEXT:    vpcmpeqq %ymm1, %ymm0, %ymm1
+; AVX2-NEXT:    vpcmpeqd %ymm2, %ymm2, %ymm2
+; AVX2-NEXT:    vpbroadcastq {{.*#+}} ymm3 = [18446744073709551612,18446744073709551612,18446744073709551612,18446744073709551612]
+; AVX2-NEXT:    vpcmpeqq %ymm3, %ymm0, %ymm0
+; AVX2-NEXT:    vpor %ymm0, %ymm1, %ymm0
+; AVX2-NEXT:    vpxor %ymm2, %ymm0, %ymm0
+; AVX2-NEXT:    vextracti128 $1, %ymm0, %xmm1
+; AVX2-NEXT:    vpackssdw %xmm1, %xmm0, %xmm0
+; AVX2-NEXT:    vzeroupper
+; AVX2-NEXT:    retq
+;
+; SSE41-LABEL: negand_ne_4xi64:
+; SSE41:       # %bb.0:
+; SSE41-NEXT:    pxor %xmm2, %xmm2
+; SSE41-NEXT:    movdqa %xmm0, %xmm3
+; SSE41-NEXT:    pcmpeqq %xmm2, %xmm3
+; SSE41-NEXT:    pcmpeqq %xmm1, %xmm2
+; SSE41-NEXT:    pcmpeqd %xmm4, %xmm4
+; SSE41-NEXT:    movdqa {{.*#+}} xmm5 = [18446744073709551612,18446744073709551612]
+; SSE41-NEXT:    pcmpeqq %xmm5, %xmm0
+; SSE41-NEXT:    por %xmm3, %xmm0
+; SSE41-NEXT:    pcmpeqq %xmm5, %xmm1
+; SSE41-NEXT:    por %xmm2, %xmm1
+; SSE41-NEXT:    packssdw %xmm1, %xmm0
+; SSE41-NEXT:    pxor %xmm4, %xmm0
+; SSE41-NEXT:    retq
+;
+; SSE2-LABEL: negand_ne_4xi64:
+; SSE2:       # %bb.0:
+; SSE2-NEXT:    pxor %xmm2, %xmm2
+; SSE2-NEXT:    movdqa %xmm1, %xmm3
+; SSE2-NEXT:    pcmpeqd %xmm2, %xmm3
+; SSE2-NEXT:    pcmpeqd %xmm0, %xmm2
+; SSE2-NEXT:    movdqa %xmm2, %xmm4
+; SSE2-NEXT:    shufps {{.*#+}} xmm4 = xmm4[1,3],xmm3[1,3]
+; SSE2-NEXT:    shufps {{.*#+}} xmm2 = xmm2[0,2],xmm3[0,2]
+; SSE2-NEXT:    andps %xmm4, %xmm2
+; SSE2-NEXT:    pcmpeqd %xmm3, %xmm3
+; SSE2-NEXT:    movdqa {{.*#+}} xmm4 = [18446744073709551612,18446744073709551612]
+; SSE2-NEXT:    pcmpeqd %xmm4, %xmm1
+; SSE2-NEXT:    pcmpeqd %xmm4, %xmm0
+; SSE2-NEXT:    movdqa %xmm0, %xmm4
+; SSE2-NEXT:    shufps {{.*#+}} xmm4 = xmm4[1,3],xmm1[1,3]
+; SSE2-NEXT:    shufps {{.*#+}} xmm0 = xmm0[0,2],xmm1[0,2]
+; SSE2-NEXT:    andps %xmm4, %xmm0
+; SSE2-NEXT:    orps %xmm2, %xmm0
+; SSE2-NEXT:    xorps %xmm3, %xmm0
+; SSE2-NEXT:    retq
+  %cmp1 = icmp ne <4 x i64> %x, zeroinitializer
+  %cmp2 = icmp ne <4 x i64> %x, <i64 -4, i64 -4, i64 -4, i64 -4>
+  %r = and <4 x i1> %cmp1, %cmp2
+  ret <4 x i1> %r
+}
+
+
+define <4 x i1> @negand_ne_4xi64_non_splat(<4 x i64> %x) nounwind {
+; AVX512-LABEL: negand_ne_4xi64_non_splat:
+; AVX512:       # %bb.0:
+; AVX512-NEXT:    vpcmpneqq {{\.?LCPI[0-9]+_[0-9]+}}(%rip), %ymm0, %k1
+; AVX512-NEXT:    vptestmq %ymm0, %ymm0, %k1 {%k1}
+; AVX512-NEXT:    vpcmpeqd %xmm0, %xmm0, %xmm0
+; AVX512-NEXT:    vmovdqa32 %xmm0, %xmm0 {%k1} {z}
+; AVX512-NEXT:    vzeroupper
+; AVX512-NEXT:    retq
+;
+; AVX2-LABEL: negand_ne_4xi64_non_splat:
+; AVX2:       # %bb.0:
+; AVX2-NEXT:    vpxor %xmm1, %xmm1, %xmm1
+; AVX2-NEXT:    vpcmpeqq %ymm1, %ymm0, %ymm1
+; AVX2-NEXT:    vpcmpeqd %ymm2, %ymm2, %ymm2
+; AVX2-NEXT:    vpcmpeqq {{\.?LCPI[0-9]+_[0-9]+}}(%rip), %ymm0, %ymm0
+; AVX2-NEXT:    vpor %ymm0, %ymm1, %ymm0
+; AVX2-NEXT:    vpxor %ymm2, %ymm0, %ymm0
+; AVX2-NEXT:    vextracti128 $1, %ymm0, %xmm1
+; AVX2-NEXT:    vpackssdw %xmm1, %xmm0, %xmm0
+; AVX2-NEXT:    vzeroupper
+; AVX2-NEXT:    retq
+;
+; SSE41-LABEL: negand_ne_4xi64_non_splat:
+; SSE41:       # %bb.0:
+; SSE41-NEXT:    pxor %xmm2, %xmm2
+; SSE41-NEXT:    movdqa %xmm0, %xmm3
+; SSE41-NEXT:    pcmpeqq %xmm2, %xmm3
+; SSE41-NEXT:    pcmpeqq %xmm1, %xmm2
+; SSE41-NEXT:    pcmpeqd %xmm4, %xmm4
+; SSE41-NEXT:    pcmpeqq {{\.?LCPI[0-9]+_[0-9]+}}(%rip), %xmm0
+; SSE41-NEXT:    por %xmm3, %xmm0
+; SSE41-NEXT:    pcmpeqq {{\.?LCPI[0-9]+_[0-9]+}}(%rip), %xmm1
+; SSE41-NEXT:    por %xmm2, %xmm1
+; SSE41-NEXT:    packssdw %xmm1, %xmm0
+; SSE41-NEXT:    pxor %xmm4, %xmm0
+; SSE41-NEXT:    retq
+;
+; SSE2-LABEL: negand_ne_4xi64_non_splat:
+; SSE2:       # %bb.0:
+; SSE2-NEXT:    pxor %xmm2, %xmm2
+; SSE2-NEXT:    movdqa %xmm1, %xmm3
+; SSE2-NEXT:    pcmpeqd %xmm2, %xmm3
+; SSE2-NEXT:    pcmpeqd %xmm0, %xmm2
+; SSE2-NEXT:    movdqa %xmm2, %xmm4
+; SSE2-NEXT:    shufps {{.*#+}} xmm4 = xmm4[1,3],xmm3[1,3]
+; SSE2-NEXT:    shufps {{.*#+}} xmm2 = xmm2[0,2],xmm3[0,2]
+; SSE2-NEXT:    andps %xmm4, %xmm2
+; SSE2-NEXT:    pcmpeqd %xmm3, %xmm3
+; SSE2-NEXT:    pcmpeqd {{\.?LCPI[0-9]+_[0-9]+}}(%rip), %xmm1
+; SSE2-NEXT:    pcmpeqd {{\.?LCPI[0-9]+_[0-9]+}}(%rip), %xmm0
+; SSE2-NEXT:    movdqa %xmm0, %xmm4
+; SSE2-NEXT:    shufps {{.*#+}} xmm4 = xmm4[1,3],xmm1[1,3]
+; SSE2-NEXT:    shufps {{.*#+}} xmm0 = xmm0[0,2],xmm1[0,2]
+; SSE2-NEXT:    andps %xmm4, %xmm0
+; SSE2-NEXT:    orps %xmm2, %xmm0
+; SSE2-NEXT:    xorps %xmm3, %xmm0
+; SSE2-NEXT:    retq
+  %cmp1 = icmp ne <4 x i64> %x, zeroinitializer
+  %cmp2 = icmp ne <4 x i64> %x, <i64 -2, i64 -4, i64 -4, i64 -4>
+  %r = and <4 x i1> %cmp1, %cmp2
+  ret <4 x i1> %r
+}
+
+
+
+
