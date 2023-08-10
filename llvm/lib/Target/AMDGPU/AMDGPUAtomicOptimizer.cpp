@@ -207,6 +207,8 @@ void AMDGPUAtomicOptimizerImpl::visitAtomicRMWInst(AtomicRMWInst &I) {
   case AtomicRMWInst::UMin:
   case AtomicRMWInst::FAdd:
   case AtomicRMWInst::FSub:
+  case AtomicRMWInst::FMax:
+  case AtomicRMWInst::FMin:
     break;
   }
 
@@ -315,6 +317,12 @@ void AMDGPUAtomicOptimizerImpl::visitIntrinsicInst(IntrinsicInst &I) {
   case Intrinsic::amdgcn_global_atomic_fadd:
     Op = AtomicRMWInst::FAdd;
     break;
+  case Intrinsic::amdgcn_global_atomic_fmax:
+    Op = AtomicRMWInst::FMax;
+    break;
+  case Intrinsic::amdgcn_global_atomic_fmin:
+    Op = AtomicRMWInst::FMin;
+    break;
   }
 
   // Only 32-bit floating point atomic ops are supported.
@@ -325,7 +333,8 @@ void AMDGPUAtomicOptimizerImpl::visitIntrinsicInst(IntrinsicInst &I) {
   unsigned ValIdx = 0;
 
   // TODO: Operand order is not consistent for atomic fadd intrinsics
-  if (Op == AtomicRMWInst::FAdd) {
+  if (Op == AtomicRMWInst::FAdd || Op == AtomicRMWInst::FMax ||
+      Op == AtomicRMWInst::FMin) {
     ValIdx = 1;
   }
 
@@ -392,6 +401,10 @@ static Value *buildNonAtomicBinOp(IRBuilder<> &B, AtomicRMWInst::BinOp Op,
   case AtomicRMWInst::UMin:
     Pred = CmpInst::ICMP_ULT;
     break;
+  case AtomicRMWInst::FMax:
+    return B.CreateMaxNum(LHS, RHS);
+  case AtomicRMWInst::FMin:
+    return B.CreateMinNum(LHS, RHS);
   }
   Value *Cond = B.CreateICmp(Pred, LHS, RHS);
   return B.CreateSelect(Cond, LHS, RHS);
@@ -712,6 +725,10 @@ static APFloat getIdentityValueForFAtomicOp(AtomicRMWInst::BinOp Op,
     return APFloat::getZero(Semantics, false);
   case AtomicRMWInst::FSub:
     return APFloat::getZero(Semantics, true);
+  case AtomicRMWInst::FMin:
+    return APFloat::getInf(Semantics, false);
+  case AtomicRMWInst::FMax:
+    return APFloat::getInf(Semantics, true);
   }
 }
 
@@ -906,6 +923,8 @@ void AMDGPUAtomicOptimizerImpl::optimizeAtomic(Instruction &I,
     case AtomicRMWInst::Min:
     case AtomicRMWInst::UMax:
     case AtomicRMWInst::UMin:
+    case AtomicRMWInst::FMin:
+    case AtomicRMWInst::FMax:
       // These operations with a uniform value are idempotent: doing the atomic
       // operation multiple times has the same effect as doing it once.
       NewV = V;
