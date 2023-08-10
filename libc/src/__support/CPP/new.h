@@ -9,6 +9,10 @@
 #ifndef LLVM_LIBC_SRC_SUPPORT_CPP_NEW_H
 #define LLVM_LIBC_SRC_SUPPORT_CPP_NEW_H
 
+#ifdef LIBC_COPT_DISABLE_NEW
+#warning "new included when LIBC_COPT_DISABLE_NEW is set."
+#endif
+
 #include "src/__support/common.h"
 
 #include <stddef.h> // For size_t
@@ -50,6 +54,12 @@ public:
     ac = (mem != nullptr);
     return mem;
   }
+
+  LIBC_INLINE static void *realloc(void *ptr, size_t s, AllocChecker &ac) {
+    void *mem = ::realloc(ptr, s);
+    ac = (mem != nullptr);
+    return mem;
+  }
 };
 
 } // namespace __llvm_libc
@@ -72,6 +82,11 @@ LIBC_INLINE void *operator new[](size_t size,
 LIBC_INLINE void *operator new[](size_t size, std::align_val_t align,
                                  __llvm_libc::AllocChecker &ac) noexcept {
   return __llvm_libc::AllocChecker::aligned_alloc(size, align, ac);
+}
+
+LIBC_INLINE void *operator new[](size_t size, void *ptr,
+                                 __llvm_libc::AllocChecker &ac) noexcept {
+  return __llvm_libc::AllocChecker::realloc(ptr, size, ac);
 }
 
 // The ideal situation would be to define the various flavors of operator delete

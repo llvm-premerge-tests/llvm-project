@@ -355,14 +355,12 @@ int File::set_buffer(void *buffer, size_t size, int buffer_mode) {
   if (buffer == nullptr && size != 0 && buffer_mode != _IONBF) {
     // We exclude the case of buffer_mode == _IONBF in this branch
     // because we don't need to allocate buffer in such a case.
+    AllocChecker ac;
     if (own_buf) {
-      // This is one of the places where use a C allocation functon
-      // as C++ does not have an equivalent of realloc.
-      buf = reinterpret_cast<uint8_t *>(realloc(buf, size));
-      if (buf == nullptr)
+      buf = reinterpret_cast<uint8_t *>(AllocChecker::realloc(buf, size, ac));
+      if (!ac)
         return ENOMEM;
     } else {
-      AllocChecker ac;
       buf = new (ac) uint8_t[size];
       if (!ac)
         return ENOMEM;
