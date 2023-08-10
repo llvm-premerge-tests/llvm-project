@@ -290,3 +290,19 @@
 // RUN:   -fcuda-is-device -fgpu-default-stream=per-thread \
 // RUN:   | FileCheck -match-full-lines %s --check-prefix=CHECK-PTH
 // CHECK-PTH: #define HIP_API_PER_THREAD_DEFAULT_STREAM 1
+
+// RUN: %clang_cc1 %s -E -dM -o - -x hip -stdpar -triple x86_64-unknown-linux-gnu \
+// RUN:   | FileCheck -match-full-lines %s --check-prefix=CHECK-STDPAR
+// CHECK-STDPAR: #define __STDPAR__ 1
+
+// RUN: %clang_cc1 %s -E -dM -o - -x hip -stdpar -stdpar-interpose-alloc \
+// RUN:  -triple x86_64-unknown-linux-gnu | FileCheck -match-full-lines %s \
+// RUN:  --check-prefix=CHECK-STDPAR-INTERPOSE
+// CHECK-STDPAR-INTERPOSE: #define __STDPAR_INTERPOSE_ALLOC__ 1
+// CHECK-STDPAR-INTERPOSE: #define __STDPAR__ 1
+
+// RUN: %clang_cc1 %s -E -dM -o - -x hip -stdpar -stdpar-interpose-alloc \
+// RUN:  -triple amdgcn-amd-amdhsa -fcuda-is-device | FileCheck -match-full-lines \
+// RUN:  %s --check-prefix=CHECK-STDPAR-INTERPOSE-DEV-NEG
+// CHECK-STDPAR-INTERPOSE-DEV-NEG: #define __STDPAR__ 1
+// CHECK-STDPAR-INTERPOSE-DEV-NEG-NOT: #define __STDPAR_INTERPOSE_ALLOC__ 1
