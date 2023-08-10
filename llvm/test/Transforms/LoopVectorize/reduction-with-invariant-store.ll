@@ -560,14 +560,13 @@ exit:                                             ; preds = %for.body
   ret i32 %add.lcssa
 }
 
-; FIXME: This tests currently shows incorrect behavior and it will fixed in the following patch
 ; Make sure that if there are several reductions in the loop, the order of invariant stores sank outside of the loop is preserved
 define void @reduc_add_mul_store(ptr %dst, ptr readonly %src) {
 ; CHECK-LABEL: define void @reduc_add_mul_store
 ; CHECK:       middle.block:
-; CHECK-NEXT:    [[TMP2:%.*]] = call i32 @llvm.vector.reduce.mul.v4i32(<4 x i32> [[TMP1:%.*]])
+; CHECK-NEXT:    [[TMP2:%.*]] = call i32 @llvm.vector.reduce.add.v4i32(<4 x i32> [[TMP1:%.*]])
 ; CHECK-NEXT:    store i32 [[TMP2]], ptr %dst, align 4
-; CHECK-NEXT:    [[TMP4:%.*]] = call i32 @llvm.vector.reduce.add.v4i32(<4 x i32> [[TMP3:%.*]])
+; CHECK-NEXT:    [[TMP4:%.*]] = call i32 @llvm.vector.reduce.mul.v4i32(<4 x i32> [[TMP3:%.*]])
 ; CHECK-NEXT:    store i32 [[TMP4]], ptr %dst, align 4
 ;
 entry:
