@@ -280,10 +280,9 @@ define fastcc void @c_expand_expr_stmt(ptr %expr) nounwind {
 ; CHECK-NEXT:  .LBB3_15:
 ; CHECK-NEXT:    xorl %eax, %eax
 ; CHECK-NEXT:  .LBB3_16: # %lvalue_p.exit4
-; CHECK-NEXT:    testb %al, %al
-; CHECK-NEXT:    jne .LBB3_9
-; CHECK-NEXT:  # %bb.17: # %lvalue_p.exit4
 ; CHECK-NEXT:    testb %bl, %bl
+; CHECK-NEXT:    sete %cl
+; CHECK-NEXT:    orb %al, %cl
 ; CHECK-NEXT:  .LBB3_10: # %bb2.i3
 ; CHECK-NEXT:    movq 8(%rax), %rax
 ; CHECK-NEXT:    movzbl 16(%rax), %ecx

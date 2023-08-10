@@ -1134,6 +1134,11 @@ namespace llvm {
 
     bool preferScalarizeSplat(SDNode *N) const override;
 
+    bool keepJumpConditionsTogether(const FunctionLoweringInfo &,
+                                    const BranchInst &, Instruction::BinaryOps,
+                                    const Value *,
+                                    const Value *) const override;
+
     bool shouldFoldConstantShiftPairToMask(const SDNode *N,
                                            CombineLevel Level) const override;
 

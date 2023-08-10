@@ -585,6 +585,13 @@ public:
   /// avoided.
   bool isJumpExpensive() const { return JumpIsExpensive; }
 
+  virtual bool keepJumpConditionsTogether(const FunctionLoweringInfo &,
+                                          const BranchInst &,
+                                          Instruction::BinaryOps, const Value *,
+                                          const Value *) const {
+    return false;
+  }
+
   /// Return true if selects are only cheaper than branches if the branch is
   /// unlikely to be predicted right.
   bool isPredictableSelectExpensive() const {

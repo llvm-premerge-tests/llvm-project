@@ -27,9 +27,12 @@
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringSwitch.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
+#include "llvm/Analysis/BranchProbabilityInfo.h"
 #include "llvm/Analysis/ObjCARCUtil.h"
 #include "llvm/Analysis/ProfileSummaryInfo.h"
+#include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/Analysis/VectorUtils.h"
+#include "llvm/CodeGen/FunctionLoweringInfo.h"
 #include "llvm/CodeGen/IntrinsicLowering.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
@@ -55,6 +58,7 @@
 #include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCSymbol.h"
+#include "llvm/Support/BranchProbability.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -3251,6 +3255,122 @@ bool X86TargetLowering::
     return true;
   // Pre-AVX2 vector codegen for this pattern is best for variant with 'shl'.
   return NewShiftOpcode == ISD::SHL;
+}
+
+// Collect dependings on V recursively. This is used for the cost analysis in
+// `keepJumpConditionsTogether`.
+static bool
+collectDeps(SmallPtrSet<const Instruction *, 8> *Deps, const Value *V,
+            SmallPtrSet<const Instruction *, 8> *Necessary = nullptr,
+            unsigned Depth = 0) {
+  // Return false if we have an incomplete count.
+  if (Depth >= 6)
+    return false;
+
+  auto *I = dyn_cast<Instruction>(V);
+  if (I == nullptr)
+    return true;
+
+  if (Necessary != nullptr) {
+    // This instruction is necessary for the other side of the condition so
+    // don't count it.
+    if (Necessary->contains(I))
+      return true;
+  }
+
+  // Already added this dep.
+  if (!Deps->insert(I).second)
+    return true;
+
+  for (unsigned OpIdx = 0; OpIdx < I->getNumOperands(); ++OpIdx)
+    if (!collectDeps(Deps, I->getOperand(OpIdx), Necessary, Depth + 1))
+      return false;
+  return true;
+}
+
+bool X86TargetLowering::keepJumpConditionsTogether(
+    const FunctionLoweringInfo &FuncInfo, const BranchInst &I,
+    Instruction::BinaryOps Opc, const Value *Lhs, const Value *Rhs) const {
+
+  if (I.getNumSuccessors() != 2)
+    return false;
+
+  // Baseline cost. This is properly arbitrary.
+  InstructionCost CostThresh = 5;
+
+  BranchProbabilityInfo *BPI = FuncInfo.BPI;
+  if (BPI != nullptr) {
+    BasicBlock *IfFalse = I.getSuccessor(0);
+    BasicBlock *IfTrue = I.getSuccessor(1);
+
+    std::optional<bool> HotEdge;
+    if (BPI->isEdgeHot(I.getParent(), IfTrue))
+      HotEdge = true;
+    else if (BPI->isEdgeHot(I.getParent(), IfFalse))
+      HotEdge = false;
+
+    if (HotEdge) {
+      if (Opc == (*HotEdge ? Instruction::And : Instruction::Or))
+        // Its likely we will have to compute both lhs and rhs of condition
+        CostThresh += 2;
+      else
+        // Its likely we will get an early out.
+        CostThresh -= 2;
+    }
+  }
+
+  // Collect "all" instructions that lhs condition is dependent on.
+  SmallPtrSet<const Instruction *, 8> LhsDeps, RhsDeps;
+  collectDeps(&LhsDeps, Lhs);
+  // Collect "all" instructions that rhs condition is dependent on AND are
+  // dependencies of lhs. This gives us an estimate on which instructions we
+  // stand to save by splitting the condition.
+  if (!collectDeps(&RhsDeps, Rhs, &LhsDeps))
+    return false;
+  const auto &TTI = getTargetMachine().getTargetTransformInfo(*I.getFunction());
+
+  InstructionCost CostOfIncluding = 0;
+  // See if this instruction will need to computed independently of whether RHS
+  // is.
+  auto ShouldCountInsn = [&RhsDeps, Rhs](const Instruction *Ins) {
+    // Always count the compare instruction itself.
+    if (Ins == Rhs)
+      return true;
+    for (const auto *U : Ins->users()) {
+      // If user is independent of RHS calculation we don't need to count it.
+      if (auto *UIns = dyn_cast<Instruction>(U))
+        if (!RhsDeps.contains(UIns))
+          return false;
+    }
+    return true;
+  };
+
+  // Prune instructions from RHS Deps that are dependencies of unrelated
+  // instructions.
+  const unsigned MaxPruneIters = 8;
+  // Stop after a certain point. No incorrectness from including too many
+  // instructions.
+  for (unsigned PruneIters = 0; PruneIters < MaxPruneIters; ++PruneIters) {
+    const Instruction *ToDrop = nullptr;
+    for (const auto *Ins : RhsDeps) {
+      if (!ShouldCountInsn(Ins)) {
+        ToDrop = Ins;
+        break;
+      }
+    }
+    if (ToDrop == nullptr)
+      break;
+    RhsDeps.erase(ToDrop);
+  }
+
+  for (const auto *Ins : RhsDeps) {
+    CostOfIncluding +=
+        TTI.getInstructionCost(Ins, TargetTransformInfo::TCK_Latency);
+
+    if (CostOfIncluding > CostThresh)
+      return false;
+  }
+  return true;
 }
 
 bool X86TargetLowering::preferScalarizeSplat(SDNode *N) const {

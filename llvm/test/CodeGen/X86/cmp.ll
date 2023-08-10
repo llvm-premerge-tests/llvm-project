@@ -107,23 +107,27 @@ define i64 @test4(i64 %x) nounwind {
 define i32 @test5(double %A) nounwind {
 ; CHECK-LABEL: test5:
 ; CHECK:       # %bb.0: # %entry
-; CHECK-NEXT:    ucomisd {{\.?LCPI[0-9]+_[0-9]+}}(%rip), %xmm0 # encoding: [0x66,0x0f,0x2e,0x05,A,A,A,A]
+; CHECK-NEXT:    movsd {{\.?LCPI[0-9]+_[0-9]+}}(%rip), %xmm1 # encoding: [0xf2,0x0f,0x10,0x0d,A,A,A,A]
 ; CHECK-NEXT:    # fixup A - offset: 4, value: {{\.?LCPI[0-9]+_[0-9]+}}-4, kind: reloc_riprel_4byte
-; CHECK-NEXT:    ja .LBB5_3 # encoding: [0x77,A]
-; CHECK-NEXT:    # fixup A - offset: 1, value: .LBB5_3-1, kind: FK_PCRel_1
-; CHECK-NEXT:  # %bb.1: # %entry
-; CHECK-NEXT:    ucomisd {{\.?LCPI[0-9]+_[0-9]+}}(%rip), %xmm0 # encoding: [0x66,0x0f,0x2e,0x05,A,A,A,A]
+; CHECK-NEXT:    # xmm1 = mem[0],zero
+; CHECK-NEXT:    cmplepd %xmm0, %xmm1 # encoding: [0x66,0x0f,0xc2,0xc8,0x02]
+; CHECK-NEXT:    movsd {{\.?LCPI[0-9]+_[0-9]+}}(%rip), %xmm2 # encoding: [0xf2,0x0f,0x10,0x15,A,A,A,A]
 ; CHECK-NEXT:    # fixup A - offset: 4, value: {{\.?LCPI[0-9]+_[0-9]+}}-4, kind: reloc_riprel_4byte
-; CHECK-NEXT:    jb .LBB5_3 # encoding: [0x72,A]
-; CHECK-NEXT:    # fixup A - offset: 1, value: .LBB5_3-1, kind: FK_PCRel_1
-; CHECK-NEXT:  # %bb.2: # %bb12
-; CHECK-NEXT:    movl $32, %eax # encoding: [0xb8,0x20,0x00,0x00,0x00]
-; CHECK-NEXT:    retq # encoding: [0xc3]
-; CHECK-NEXT:  .LBB5_3: # %bb8
+; CHECK-NEXT:    # xmm2 = mem[0],zero
+; CHECK-NEXT:    cmpnltpd %xmm0, %xmm2 # encoding: [0x66,0x0f,0xc2,0xd0,0x05]
+; CHECK-NEXT:    andpd %xmm1, %xmm2 # encoding: [0x66,0x0f,0x54,0xd1]
+; CHECK-NEXT:    movd %xmm2, %eax # encoding: [0x66,0x0f,0x7e,0xd0]
+; CHECK-NEXT:    testb $1, %al # encoding: [0xa8,0x01]
+; CHECK-NEXT:    jne .LBB5_1 # encoding: [0x75,A]
+; CHECK-NEXT:    # fixup A - offset: 1, value: .LBB5_1-1, kind: FK_PCRel_1
+; CHECK-NEXT:  # %bb.2: # %bb8
 ; CHECK-NEXT:    xorl %eax, %eax # encoding: [0x31,0xc0]
 ; CHECK-NEXT:    jmp foo@PLT # TAILCALL
 ; CHECK-NEXT:    # encoding: [0xeb,A]
 ; CHECK-NEXT:    # fixup A - offset: 1, value: foo@PLT-1, kind: FK_PCRel_1
+; CHECK-NEXT:  .LBB5_1: # %bb12
+; CHECK-NEXT:    movl $32, %eax # encoding: [0xb8,0x20,0x00,0x00,0x00]
+; CHECK-NEXT:    retq # encoding: [0xc3]
 entry:
   %tmp2 = fcmp ogt double %A, 1.500000e+02
   %tmp5 = fcmp ult double %A, 7.500000e+01

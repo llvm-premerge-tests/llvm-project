@@ -2521,8 +2521,11 @@ void SelectionDAGBuilder::visitBr(const BranchInst &I) {
     else if (match(BOp, m_LogicalOr(m_Value(BOp0), m_Value(BOp1))))
       Opcode = Instruction::Or;
 
-    if (Opcode && !(match(BOp0, m_ExtractElt(m_Value(Vec), m_Value())) &&
-                    match(BOp1, m_ExtractElt(m_Specific(Vec), m_Value())))) {
+    if (Opcode &&
+        !(match(BOp0, m_ExtractElt(m_Value(Vec), m_Value())) &&
+          match(BOp1, m_ExtractElt(m_Specific(Vec), m_Value()))) &&
+        !DAG.getTargetLoweringInfo().keepJumpConditionsTogether(
+            FuncInfo, I, Opcode, BOp0, BOp1)) {
       FindMergedConditions(BOp, Succ0MBB, Succ1MBB, BrMBB, BrMBB, Opcode,
                            getEdgeProbability(BrMBB, Succ0MBB),
                            getEdgeProbability(BrMBB, Succ1MBB),
