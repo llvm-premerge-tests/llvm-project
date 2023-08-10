@@ -13475,11 +13475,12 @@ SDValue RISCVTargetLowering::PerformDAGCombine(SDNode *N,
         ISD::isBuildVectorOfConstantSDNodes(Val.getNode())) {
       // Get the constant vector bits
       APInt NewC(Val.getValueSizeInBits(), 0);
+      uint64_t EleSize = Val.getScalarValueSizeInBits();
       for (unsigned i = 0; i < Val.getNumOperands(); i++) {
         if (Val.getOperand(i).isUndef())
           continue;
-        NewC.insertBits(Val.getConstantOperandAPInt(i),
-                        i * Val.getScalarValueSizeInBits());
+        NewC.insertBits(Val.getConstantOperandAPInt(i).trunc(EleSize),
+                        i * EleSize);
       }
       MVT NewVT = MVT::getIntegerVT(MemVT.getSizeInBits());
 
