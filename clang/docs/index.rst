@@ -47,6 +47,7 @@ Using Clang as a Compiler
    OpenCLSupport
    OpenMPSupport
    SYCLSupport
+   StdParSupport
    HIPSupport
    HLSL/HLSLDocs
    ThinLTO
