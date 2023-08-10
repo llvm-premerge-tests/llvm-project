@@ -1,0 +1,115 @@
+# Prevent the machine scheduler from moving instructions past FAKE_USE.
+# RUN: llc -run-pass machine-scheduler -o - %s | FileCheck %s
+#
+# We make sure that, beginning with the first FAKE_USE instruction,
+# no changes to the sequence of instructions are undertaken by the
+# scheduler. We don't bother to check that the order of the FAKE_USEs
+# remains the same. They should, but it is irrelevant.
+#
+# CHECK:      bb.{{.*}}:
+# CHECK:      FAKE_USE
+# CHECK-NEXT: FAKE_USE
+# CHECK-NEXT: FAKE_USE
+# CHECK-NEXT: FAKE_USE
+# CHECK-NEXT: COPY
+# CHECK-NEXT: RET
+#
+--- |
+  @glb = common dso_local local_unnamed_addr global [100 x i32] zeroinitializer, align 16
+
+  ; Function Attrs: nounwind uwtable
+  define dso_local i64 @foo(i32* %p) local_unnamed_addr {
+  entry:
+    %0 = load i32, i32* getelementptr inbounds ([100 x i32], [100 x i32]* @glb, i64 0, i64 0), align 16, !tbaa !2
+    store i32 %0, i32* %p, align 4, !tbaa !2
+    %conv = sext i32 %0 to i64
+    %1 = load i32, i32* getelementptr inbounds ([100 x i32], [100 x i32]* @glb, i64 0, i64 1), align 4, !tbaa !2
+    %arrayidx1 = getelementptr inbounds i32, i32* %p, i64 1
+    store i32 %1, i32* %arrayidx1, align 4, !tbaa !2
+    %conv2 = sext i32 %1 to i64
+    %add3 = add nsw i64 %conv2, %conv
+    notail call void (...) @llvm.fake.use(i64 %add3)
+    notail call void (...) @llvm.fake.use(i32 %1)
+    notail call void (...) @llvm.fake.use(i32 %0)
+    notail call void (...) @llvm.fake.use(i32* %p)
+    ret i64 %add3
+  }
+
+  ; Function Attrs: nounwind
+  declare void @llvm.fake.use(...) #1
+
+  ; Function Attrs: nounwind
+  declare void @llvm.stackprotector(i8*, i8**) #1
+
+
+  !llvm.module.flags = !{!0}
+  !llvm.ident = !{!1}
+
+  !0 = !{i32 1, !"wchar_size", i32 4}
+  !1 = !{!"clang version 9.0.0"}
+  !2 = !{!3, !3, i64 0}
+  !3 = !{!"int", !4, i64 0}
+  !4 = !{!"omnipotent char", !5, i64 0}
+  !5 = !{!"Simple C/C++ TBAA"}
+
+...
+---
+name:            foo
+alignment:       4
+exposesReturnsTwice: false
+legalized:       false
+regBankSelected: false
+selected:        false
+failedISel:      false
+tracksRegLiveness: true
+hasWinCFI:       false
+registers:
+  - { id: 0, class: gr64, preferred-register: '' }
+  - { id: 1, class: gr64_with_sub_8bit, preferred-register: '' }
+  - { id: 2, class: gr32, preferred-register: '' }
+  - { id: 3, class: gr64_with_sub_8bit, preferred-register: '' }
+  - { id: 4, class: gr32, preferred-register: '' }
+  - { id: 5, class: gr64, preferred-register: '' }
+liveins:
+  - { reg: '$rdi', virtual-reg: '%0' }
+frameInfo:
+  isFrameAddressTaken: false
+  isReturnAddressTaken: false
+  hasStackMap:     false
+  hasPatchPoint:   false
+  stackSize:       0
+  offsetAdjustment: 0
+  maxAlignment:    0
+  adjustsStack:    false
+  hasCalls:        false
+  stackProtector:  ''
+  maxCallFrameSize: 4294967295
+  cvBytesOfCalleeSavedRegisters: 0
+  hasOpaqueSPAdjustment: false
+  hasVAStart:      false
+  hasMustTailInVarArgFunc: false
+  localFrameSize:  0
+  savePoint:       ''
+  restorePoint:    ''
+fixedStack:      []
+stack:           []
+constants:       []
+body:             |
+  bb.0.entry:
+    liveins: $rdi
+
+    %0:gr64 = COPY $rdi
+    %1:gr64_with_sub_8bit = MOVSX64rm32 $rip, 1, $noreg, @glb, $noreg :: (dereferenceable load 4 from `i32* getelementptr inbounds ([100 x i32], [100 x i32]* @glb, i64 0, i64 0)`, align 16, !tbaa !2)
+    MOV32mr %0, 1, $noreg, 0, $noreg, %1.sub_32bit :: (store 4 into %ir.p, !tbaa !2)
+    %3:gr64_with_sub_8bit = MOVSX64rm32 $rip, 1, $noreg, @glb + 4, $noreg :: (dereferenceable load 4 from `i32* getelementptr inbounds ([100 x i32], [100 x i32]* @glb, i64 0, i64 1)`, !tbaa !2)
+    MOV32mr %0, 1, $noreg, 4, $noreg, %3.sub_32bit :: (store 4 into %ir.arrayidx1, !tbaa !2)
+    %5:gr64 = COPY %3
+    %5:gr64 = nsw ADD64rr %5, %1, implicit-def dead $eflags
+    FAKE_USE %5
+    FAKE_USE %3.sub_32bit
+    FAKE_USE %1.sub_32bit
+    FAKE_USE %0
+    $rax = COPY %5
+    RET 0, killed $rax
+
+...

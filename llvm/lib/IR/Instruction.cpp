@@ -880,7 +880,9 @@ Instruction::getNextNonDebugInstruction(bool SkipPseudoOp) const {
 const Instruction *
 Instruction::getPrevNonDebugInstruction(bool SkipPseudoOp) const {
   for (const Instruction *I = getPrevNode(); I; I = I->getPrevNode())
-    if (!isa<DbgInfoIntrinsic>(I) && !(SkipPseudoOp && isa<PseudoProbeInst>(I)))
+    if (!isa<DbgInfoIntrinsic>(I) && !(SkipPseudoOp && isa<PseudoProbeInst>(I))
+        && !(isa<IntrinsicInst>(I) &&
+             cast<IntrinsicInst>(I)->getIntrinsicID() == Intrinsic::fake_use))
       return I;
   return nullptr;
 }

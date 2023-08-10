@@ -1,0 +1,17 @@
+; assert in DAGlegalizer with fake use of half precision float.
+; Changes to half float promotion.
+; RUN: llc -O2 -stop-after=finalize-isel -filetype=asm -o - %s | FileCheck %s
+;
+; CHECK:      bb.0.entry:
+; CHECK-NEXT: %0:fr16 = FsFLD0SH
+; CHECK-NEXT: FAKE_USE killed %0
+;
+target triple = "x86_64-unknown-unknown"
+
+define void @_Z6doTestv() local_unnamed_addr {
+entry:
+  tail call void (...) @llvm.fake.use(half 0xH0000)
+  ret void
+}
+
+declare void @llvm.fake.use(...)

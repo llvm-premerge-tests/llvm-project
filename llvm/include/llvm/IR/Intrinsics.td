@@ -1737,6 +1737,9 @@ def int_is_constant : DefaultAttrsIntrinsic<[llvm_i1_ty], [llvm_any_ty],
                                 [IntrNoMem, IntrWillReturn, IntrConvergent],
                                 "llvm.is.constant">;
 
+// Introduce a use of the argument without generating any code.
+def int_fake_use : Intrinsic<[], [llvm_vararg_ty]>;
+
 // Intrinsic to mask out bits of a pointer.
 def int_ptrmask: DefaultAttrsIntrinsic<[llvm_anyptr_ty], [LLVMMatchType<0>, llvm_anyint_ty],
                            [IntrNoMem, IntrSpeculatable, IntrWillReturn]>;
