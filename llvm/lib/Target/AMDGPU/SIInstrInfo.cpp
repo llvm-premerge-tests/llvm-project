@@ -3906,6 +3906,7 @@ bool SIInstrInfo::isInlineConstant(const MachineOperand &MO,
   }
   case AMDGPU::OPERAND_KIMM32:
   case AMDGPU::OPERAND_KIMM16:
+    return false;
   case AMDGPU::OPERAND_INPUT_MODS:
   case MCOI::OPERAND_IMMEDIATE:
     // Always embedded in the instruction for free.
@@ -7818,7 +7819,9 @@ unsigned SIInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
     for (int I = 0, E = MI.getNumExplicitOperands(); I != E; ++I) {
       const MachineOperand &Op = MI.getOperand(I);
       const MCOperandInfo &OpInfo = Desc.operands()[I];
-      if (!Op.isReg() && !isInlineConstant(Op, OpInfo)) {
+      if (!Op.isReg() && !isInlineConstant(Op, OpInfo) &&
+          OpInfo.OperandType != AMDGPU::OPERAND_KIMM16 &&
+          OpInfo.OperandType != AMDGPU::OPERAND_KIMM32) {
         HasLiteral = true;
         break;
       }
