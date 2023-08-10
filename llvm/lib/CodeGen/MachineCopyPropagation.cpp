@@ -108,7 +108,7 @@ static std::optional<DestSourcePair> isCopyInstr(const MachineInstr &MI,
 class CopyTracker {
   struct CopyInfo {
     MachineInstr *MI, *LastSeenUseInCopy;
-    SmallVector<MCRegister, 4> DefRegs;
+    SmallVector<MCRegUnit, 4> DefRegs;
     bool Avail;
   };
 
@@ -117,16 +117,15 @@ class CopyTracker {
 public:
   /// Mark all of the given registers and their subregisters as unavailable for
   /// copying.
-  void markRegsUnavailable(ArrayRef<MCRegister> Regs,
+  void markRegsUnavailable(ArrayRef<MCRegUnit> Regs,
                            const TargetRegisterInfo &TRI) {
-    for (MCRegister Reg : Regs) {
       // Source of copy is no longer available for propagation.
-      for (MCRegUnit Unit : TRI.regunits(Reg)) {
+      for (MCRegUnit Unit : Regs) {
         auto CI = Copies.find(Unit);
         if (CI != Copies.end())
           CI->second.Avail = false;
       }
-    }
+
   }
 
   /// Remove register from copy maps.
@@ -135,27 +134,23 @@ public:
     // Since Reg might be a subreg of some registers, only invalidate Reg is not
     // enough. We have to find the COPY defines Reg or registers defined by Reg
     // and invalidate all of them.
-    SmallSet<MCRegister, 8> RegsToInvalidate;
-    RegsToInvalidate.insert(Reg);
+    SmallSet<MCRegUnit, 8> RegsToInvalidate;
     for (MCRegUnit Unit : TRI.regunits(Reg)) {
       auto I = Copies.find(Unit);
       if (I != Copies.end()) {
-        if (MachineInstr *MI = I->second.MI) {
-          std::optional<DestSourcePair> CopyOperands =
-              isCopyInstr(*MI, TII, UseCopyInstr);
-          assert(CopyOperands && "Expect copy");
+        MachineInstr *MI = I->second.MI ? I->second.MI : I->second.LastSeenUseInCopy;
+        std::optional<DestSourcePair> CopyOperands =
+            isCopyInstr(*MI, TII, UseCopyInstr);
+        assert(CopyOperands && "Expect copy");
 
-          RegsToInvalidate.insert(
-              CopyOperands->Destination->getReg().asMCReg());
-          RegsToInvalidate.insert(CopyOperands->Source->getReg().asMCReg());
-        }
-        RegsToInvalidate.insert(I->second.DefRegs.begin(),
-                                I->second.DefRegs.end());
+        auto Dest = TRI.regunits(CopyOperands->Destination->getReg().asMCReg());
+        auto Src = TRI.regunits(CopyOperands->Source->getReg().asMCReg());
+        RegsToInvalidate.insert(Dest.begin(), Dest.end());
+        RegsToInvalidate.insert(Src.begin(), Src.end());
       }
     }
-    for (MCRegister InvalidReg : RegsToInvalidate)
-      for (MCRegUnit Unit : TRI.regunits(InvalidReg))
-        Copies.erase(Unit);
+    for (MCRegUnit Unit : RegsToInvalidate)
+       Copies.erase(Unit);
   }
 
   /// Clobber a single register, removing it from the tracker's copy maps.
@@ -166,14 +161,17 @@ public:
       if (I != Copies.end()) {
         // When we clobber the source of a copy, we need to clobber everything
         // it defined.
-        markRegsUnavailable(I->second.DefRegs, TRI);
+        SmallVector<MCRegUnit, 4> Dest(I->second.DefRegs.begin(), I->second.DefRegs.end());
+        markRegsUnavailable(Dest, TRI);
+
         // When we clobber the destination of a copy, we need to clobber the
         // whole register it defined.
         if (MachineInstr *MI = I->second.MI) {
           std::optional<DestSourcePair> CopyOperands =
               isCopyInstr(*MI, TII, UseCopyInstr);
-          markRegsUnavailable({CopyOperands->Destination->getReg().asMCReg()},
-                              TRI);
+          auto DestUnits = TRI.regunits(CopyOperands->Destination->getReg().asMCReg());
+          SmallVector<MCRegUnit, 4> Dest(DestUnits.begin(), DestUnits.end());
+          markRegsUnavailable(Dest, TRI);
         }
         // Now we can erase the copy.
         Copies.erase(I);
@@ -188,20 +186,22 @@ public:
         isCopyInstr(*MI, TII, UseCopyInstr);
     assert(CopyOperands && "Tracking non-copy?");
 
-    MCRegister Src = CopyOperands->Source->getReg().asMCReg();
-    MCRegister Def = CopyOperands->Destination->getReg().asMCReg();
-
+    auto Src = TRI.regunits(CopyOperands->Source->getReg().asMCReg());
+    auto Def = TRI.regunits(CopyOperands->Destination->getReg().asMCReg());
     // Remember Def is defined by the copy.
-    for (MCRegUnit Unit : TRI.regunits(Def))
+    for (MCRegUnit Unit : Def)
       Copies[Unit] = {MI, nullptr, {}, true};
 
     // Remember source that's copied to Def. Once it's clobbered, then
     // it's no longer available for copy propagation.
-    for (MCRegUnit Unit : TRI.regunits(Src)) {
+    for (MCRegUnit Unit : Src) {
       auto I = Copies.insert({Unit, {nullptr, nullptr, {}, false}});
       auto &Copy = I.first->second;
-      if (!is_contained(Copy.DefRegs, Def))
-        Copy.DefRegs.push_back(Def);
+      std::for_each(Def.begin(), Def.end(), [&Copy](MCRegUnit DefUnit) {
+        if (!is_contained(Copy.DefRegs, DefUnit))
+          Copy.DefRegs.push_back(DefUnit);
+      });
+
       Copy.LastSeenUseInCopy = MI;
     }
   }
@@ -210,7 +210,7 @@ public:
     return !Copies.empty();
   }
 
-  MachineInstr *findCopyForUnit(MCRegister RegUnit,
+  MachineInstr *findCopyForUnit(MCRegUnit RegUnit,
                                 const TargetRegisterInfo &TRI,
                                 bool MustBeAvailable = false) {
     auto CI = Copies.find(RegUnit);
@@ -221,15 +221,21 @@ public:
     return CI->second.MI;
   }
 
-  MachineInstr *findCopyDefViaUnit(MCRegister RegUnit,
+  MachineInstr *findCopyDefViaUnit(MCRegUnit RegUnit,
                                    const TargetRegisterInfo &TRI) {
     auto CI = Copies.find(RegUnit);
     if (CI == Copies.end())
       return nullptr;
-    if (CI->second.DefRegs.size() != 1)
+    if (!CI->second.DefRegs.size())
       return nullptr;
-    MCRegUnit RU = *TRI.regunits(CI->second.DefRegs[0]).begin();
-    return findCopyForUnit(RU, TRI, true);
+    MCRegUnit RU = CI->second.DefRegs[0];
+    auto CandidateCopy = findCopyForUnit(RU, TRI, true);
+    for (size_t I = 1; I < CI->second.DefRegs.size(); I++) {
+      MCRegUnit NextRU = CI->second.DefRegs[I];
+      if (findCopyForUnit(NextRU, TRI, true) != CandidateCopy)
+        return nullptr;
+    }
+    return CandidateCopy;
   }
 
   MachineInstr *findAvailBackwardCopy(MachineInstr &I, MCRegister Reg,
