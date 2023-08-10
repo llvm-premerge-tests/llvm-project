@@ -127,9 +127,10 @@ print(
     f"""\
 //--- module_std.sh.cpp
 // UNSUPPORTED{BLOCKLIT}: c++03, c++11, c++14, c++17, c++20
+// UNSUPPORTED(BLOCKLIT): libcpp-has-no-std-modules
+// UNSUPPORTED(BLOCKLIT): modules-build
 
 // REQUIRES{BLOCKLIT}: has-clang-tidy
-// REQUIRES{BLOCKLIT}: use_module_std
 
 // The GCC compiler flags are not always compatible with clang-tidy.
 // UNSUPPORTED{BLOCKLIT}: gcc
