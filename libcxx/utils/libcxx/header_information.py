@@ -57,6 +57,24 @@ lit_header_restrictions = {
     "wctype.h": "// UNSUPPORTED: no-wide-characters",
 }
 
+header_include_requirements = {
+    # headers with #error directives
+    ("_LIBCPP_HAS_NO_ATOMIC_HEADER",): ("atomic",
+    # transitive includers of the above headers
+                                        "stdatomic.h"),
+    # headers with #error directives
+    ("_LIBCPP_HAS_NO_LOCALIZATION",): ("ios", "locale.h",
+    # transitive includers of the above headers
+                                       "clocale", "codecvt", "experimental/regex", "fstream", "iomanip", "iostream", "istream",
+                                       "locale", "ostream", "regex", "sstream", "streambuf", "strstream"),
+    # headers with #error directives
+    ("_LIBCPP_HAS_NO_THREADS",): ("barrier", "future", "latch", "semaphore", "shared_mutex", "stop_token", "thread"),
+    # headers with #error directives
+    ("_LIBCPP_HAS_NO_WIDE_CHARACTERS",): ("wchar.h", "wctype.h",
+    # transitive includers of the above headers
+                                          "cwchar", "cwctype")
+}
+
 # This table was produced manually, by grepping the TeX source of the Standard's
 # library clauses for the string "#include". Each header's synopsis contains
 # explicit "#include" directives for its mandatory inclusions.
@@ -107,6 +125,7 @@ def is_header(file):
         not file.is_dir()
         and not file.name == "module.modulemap.in"
         and not file.name == "CMakeLists.txt"
+        and not file.name == "generate_std_clang_module_header.py"
         and file.name != "libcxx.imp"
     )
 
