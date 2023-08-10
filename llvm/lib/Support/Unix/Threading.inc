@@ -371,6 +371,14 @@ static int computeHostNumPhysicalCores() {
   }
   return CPU_COUNT(&Enabled);
 }
+#elif defined(__linux__) && defined(__aarch64__)
+static int computeHostNumPhysicalCores() {
+  cpu_set_t Affinity;
+  if (sched_getaffinity(0, sizeof(Affinity), &Affinity) == 0)
+    return CPU_COUNT(&Affinity);
+ 
+  return -1;
+}
 #elif defined(__linux__) && defined(__s390x__)
 static int computeHostNumPhysicalCores() {
   return sysconf(_SC_NPROCESSORS_ONLN);
