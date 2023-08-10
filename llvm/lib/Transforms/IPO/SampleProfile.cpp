@@ -491,6 +491,10 @@ private:
   }
   void distributeIRToProfileLocationMap();
   void distributeIRToProfileLocationMap(FunctionSamples &FS);
+  void populateIRLocations(
+      const Function &F, const FunctionSamples &FS,
+      std::unordered_set<LineLocation, LineLocationHash> &MatchedCallsiteLocs,
+      std::map<LineLocation, StringRef> &IRLocations);
   void populateProfileCallsites(
       const FunctionSamples &FS,
       StringMap<std::set<LineLocation>> &CalleeToCallsitesMap);
@@ -2110,6 +2114,91 @@ bool SampleProfileLoader::doInitialization(Module &M,
   return true;
 }
 
+void SampleProfileMatcher::populateIRLocations(
+    const Function &F, const FunctionSamples &FS,
+    std::unordered_set<LineLocation, LineLocationHash> &MatchedCallsiteLocs,
+    std::map<LineLocation, StringRef> &IRLocations) {
+  for (auto &BB : F) {
+    for (auto &I : BB) {
+      // Use flattened IR for the matching since we also use the flattened
+      // profile.
+      if (DILocation *DIL = I.getDebugLoc()) {
+        if (DIL->getInlinedAt()) {
+          // Recover the original callsite and call target by analyzing the
+          // inline frames from the debug info.
+          // TODO: Support line-number based location(AutoFDO).
+          if (FunctionSamples::ProfileIsProbeBased &&
+              isa<PseudoProbeInst>(&I)) {
+            // For pseudo probe mode, extracting inline info from the probe inst
+            // is enough.
+            if (std::optional<PseudoProbe> Probe = extractProbe(I)) {
+              // Find the base inline frame.
+              const DILocation *PrevDIL = DIL;
+              for (; DIL->getInlinedAt(); DIL = DIL->getInlinedAt())
+                PrevDIL = DIL;
+
+              LineLocation Callsite =
+                  FunctionSamples::getCallSiteIdentifier(DIL);
+              StringRef CalleeName = PrevDIL->getSubprogramLinkageName();
+              IRLocations.emplace(Callsite, CalleeName);
+            }
+          }
+          // Skip the inlined code since it doesn't belong to the original
+          // function.
+          continue;
+        }
+      }
+
+      // TODO: Support line-number based location(AutoFDO).
+      if (FunctionSamples::ProfileIsProbeBased && isa<PseudoProbeInst>(&I)) {
+        if (std::optional<PseudoProbe> Probe = extractProbe(I))
+          IRLocations.emplace(LineLocation(Probe->Id, 0), StringRef());
+      }
+
+      if (!isa<CallBase>(&I) || isa<IntrinsicInst>(&I))
+        continue;
+
+      const auto *CB = dyn_cast<CallBase>(&I);
+      if (auto &DLoc = I.getDebugLoc()) {
+        LineLocation IRCallsite = FunctionSamples::getCallSiteIdentifier(DLoc);
+
+        StringRef CalleeName;
+        if (Function *Callee = CB->getCalledFunction())
+          CalleeName = FunctionSamples::getCanonicalFnName(Callee->getName());
+
+        // Force to overwrite the callee name in case any non-call location was
+        // written before.
+        auto R = IRLocations.emplace(IRCallsite, CalleeName);
+        R.first->second = CalleeName;
+        assert((!FunctionSamples::ProfileIsProbeBased || R.second ||
+                R.first->second == CalleeName) &&
+               "Overwrite non-call or different callee name location for "
+               "pseudo probe callsite");
+
+        // Go through all the callsites on the IR and flag the callsite if the
+        // target name is the same as the one in the profile.
+        const auto CTM = FS.findCallTargetMapAt(IRCallsite);
+        const auto CallsiteFS = FS.findFunctionSamplesMapAt(IRCallsite);
+
+        // Indirect call case.
+        if (CalleeName.empty()) {
+          // Since indirect call does not have the CalleeName, check
+          // conservatively if callsite in the profile is a callsite location.
+          // This is to avoid nums of false positive since otherwise all the
+          // indirect call samples will be reported as mismatching.
+          if ((CTM && !CTM->empty()) || (CallsiteFS && !CallsiteFS->empty()))
+            MatchedCallsiteLocs.insert(IRCallsite);
+        } else {
+          // Check if the call target name is matched for direct call case.
+          if ((CTM && CTM->count(CalleeName)) ||
+              (CallsiteFS && CallsiteFS->count(CalleeName)))
+            MatchedCallsiteLocs.insert(IRCallsite);
+        }
+      }
+    }
+  }
+}
+
 void SampleProfileMatcher::countProfileMismatches(
     const FunctionSamples &FS,
     const std::unordered_set<LineLocation, LineLocationHash>
@@ -2287,58 +2376,8 @@ void SampleProfileMatcher::runOnFunction(const Function &F,
   // The value of the map is the name of direct callsite and use empty StringRef
   // for non-direct-call site.
   std::map<LineLocation, StringRef> IRLocations;
-
   // Extract profile matching anchors and profile mismatch metrics in the IR.
-  for (auto &BB : F) {
-    for (auto &I : BB) {
-      // TODO: Support line-number based location(AutoFDO).
-      if (FunctionSamples::ProfileIsProbeBased && isa<PseudoProbeInst>(&I)) {
-        if (std::optional<PseudoProbe> Probe = extractProbe(I))
-          IRLocations.emplace(LineLocation(Probe->Id, 0), StringRef());
-      }
-
-      if (!isa<CallBase>(&I) || isa<IntrinsicInst>(&I))
-        continue;
-
-      const auto *CB = dyn_cast<CallBase>(&I);
-      if (auto &DLoc = I.getDebugLoc()) {
-        LineLocation IRCallsite = FunctionSamples::getCallSiteIdentifier(DLoc);
-
-        StringRef CalleeName;
-        if (Function *Callee = CB->getCalledFunction())
-          CalleeName = FunctionSamples::getCanonicalFnName(Callee->getName());
-
-        // Force to overwrite the callee name in case any non-call location was
-        // written before.
-        auto R = IRLocations.emplace(IRCallsite, CalleeName);
-        R.first->second = CalleeName;
-        assert((!FunctionSamples::ProfileIsProbeBased || R.second ||
-                R.first->second == CalleeName) &&
-               "Overwrite non-call or different callee name location for "
-               "pseudo probe callsite");
-
-        // Go through all the callsites on the IR and flag the callsite if the
-        // target name is the same as the one in the profile.
-        const auto CTM = FS.findCallTargetMapAt(IRCallsite);
-        const auto CallsiteFS = FS.findFunctionSamplesMapAt(IRCallsite);
-
-        // Indirect call case.
-        if (CalleeName.empty()) {
-          // Since indirect call does not have the CalleeName, check
-          // conservatively if callsite in the profile is a callsite location.
-          // This is to avoid nums of false positive since otherwise all the
-          // indirect call samples will be reported as mismatching.
-          if ((CTM && !CTM->empty()) || (CallsiteFS && !CallsiteFS->empty()))
-            MatchedCallsiteLocs.insert(IRCallsite);
-        } else {
-          // Check if the call target name is matched for direct call case.
-          if ((CTM && CTM->count(CalleeName)) ||
-              (CallsiteFS && CallsiteFS->count(CalleeName)))
-            MatchedCallsiteLocs.insert(IRCallsite);
-        }
-      }
-    }
-  }
+  populateIRLocations(F, FS, MatchedCallsiteLocs, IRLocations);
 
   // Detect profile mismatch for profile staleness metrics report.
   if (ReportProfileStaleness || PersistProfileStaleness) {
