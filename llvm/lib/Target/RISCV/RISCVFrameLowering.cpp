@@ -1307,7 +1307,23 @@ RISCVFrameLowering::getFirstSPAdjustAmount(const MachineFunction &MF) const {
     // instruction, and we have to stick with the stack alignment. 2048 has
     // 16-byte alignment. The stack alignment for RV32 and RV64 is 16 and for
     // RV32E it is 4. So (2048 - StackAlign) will satisfy the stack alignment.
-    return 2048 - getStackAlign().value();
+    const uint64_t StackAlign = getStackAlign().value();
+    uint64_t FirstSPAmount = 2048 - StackAlign;
+    // Adjust the FirstSP amount to make stack inst be compressed.
+    if (STI.hasStdExtC()) {
+      // riscv32: c.lwsp rd, offset[7:2] => 2^(6+2)
+      const uint64_t RV32CompressLen = 256;
+      // riscv64: c.lwsp rd, offset[8:3] => 2^(6+3)
+      const uint64_t RV64CompressLen = 512;
+      // Avoid increasing extra instructions when inst can be compressed.
+      if (STI.getXLen() == 32 && (StackSize <= RV32CompressLen + 2048 ||
+                                  StackSize > 2048 * 3 - StackAlign))
+        FirstSPAmount = 256;
+      else if (STI.getXLen() == 64 && (StackSize <= RV64CompressLen + 2048 ||
+                                       StackSize > 2048 * 3 - StackAlign))
+        FirstSPAmount = 512;
+    }
+    return FirstSPAmount;
   }
   return 0;
 }
