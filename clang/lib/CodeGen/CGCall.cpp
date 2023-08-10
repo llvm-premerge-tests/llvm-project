@@ -2506,6 +2506,10 @@ void CodeGenModule::ConstructAttributeList(StringRef Name,
     if (shouldDisableTailCalls())
       FuncAttrs.addAttribute("disable-tail-calls", "true");
 
+    // Suppress the machine instruction scheduler when -fextend-lifetimes is on.
+    if (CodeGenOpts.ExtendLifetimes)
+      FuncAttrs.addAttribute("disable-post-ra");
+
     // CPU/feature overrides.  addDefaultFunctionDefinitionAttributes
     // handles these separately to set them based on the global defaults.
     GetCPUAndFeaturesAttributes(CalleeInfo.getCalleeDecl(), FuncAttrs);
@@ -3491,14 +3495,26 @@ static llvm::StoreInst *findDominatingStoreToReturnValue(CodeGenFunction &CGF) {
 
     // Look at directly preceding instruction, skipping bitcasts and lifetime
     // markers.
-    for (llvm::Instruction &I : make_range(IP->rbegin(), IP->rend())) {
-      if (isa<llvm::BitCastInst>(&I))
+    llvm::Instruction *I = &IP->back();
+    for (llvm::BasicBlock::reverse_iterator II = IP->rbegin(), IE = IP->rend();
+         II != IE; ++II) {
+      if (isa<llvm::BitCastInst>(&*II))
         continue;
-      if (auto *II = dyn_cast<llvm::IntrinsicInst>(&I))
-        if (II->getIntrinsicID() == llvm::Intrinsic::lifetime_end)
+      if (auto *Intrinsic = dyn_cast<llvm::IntrinsicInst>(&*II)) {
+        if (Intrinsic->getIntrinsicID() == llvm::Intrinsic::lifetime_end)
           continue;
 
-      return GetStoreIfValid(&I);
+        // Ignore fake uses and the instructions that load their
+        // operands.
+        if (Intrinsic->getIntrinsicID() == llvm::Intrinsic::fake_use) {
+          const llvm::Value *FakeUseArg = Intrinsic->getArgOperand(0);
+          if (++II == IE || &*II != FakeUseArg)
+            break;
+          continue;
+        }
+      }
+      I = &*II;
+      return GetStoreIfValid(I);
     }
     return nullptr;
   }
