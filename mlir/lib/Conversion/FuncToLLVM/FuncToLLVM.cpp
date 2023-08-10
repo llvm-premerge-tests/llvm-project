@@ -62,7 +62,7 @@ static constexpr StringRef barePtrAttrName = "llvm.bareptr";
 
 /// Return `true` if the `op` should use bare pointer calling convention.
 static bool shouldUseBarePtrCallConv(Operation *op,
-                                     LLVMTypeConverter *typeConverter) {
+                                     const LLVMTypeConverter *typeConverter) {
   return (op && op->hasAttr(barePtrAttrName)) ||
          typeConverter->getOptions().useBarePtrCallConv;
 }
@@ -117,7 +117,7 @@ static void prependEmptyArgAttr(OpBuilder &builder,
 /// components and forwards them to `newFuncOp` and forwards the results to
 /// the extra arguments.
 static void wrapForExternalCallers(OpBuilder &rewriter, Location loc,
-                                   LLVMTypeConverter &typeConverter,
+                                   const LLVMTypeConverter &typeConverter,
                                    func::FuncOp funcOp,
                                    LLVM::LLVMFuncOp newFuncOp) {
   auto type = funcOp.getFunctionType();
@@ -181,7 +181,7 @@ static void wrapForExternalCallers(OpBuilder &rewriter, Location loc,
 /// compatible with functions defined in C using pointers to C structs
 /// corresponding to a memref descriptor.
 static void wrapExternalFunction(OpBuilder &builder, Location loc,
-                                 LLVMTypeConverter &typeConverter,
+                                 const LLVMTypeConverter &typeConverter,
                                  func::FuncOp funcOp,
                                  LLVM::LLVMFuncOp newFuncOp) {
   OpBuilder::InsertionGuard guard(builder);
@@ -280,7 +280,7 @@ static void wrapExternalFunction(OpBuilder &builder, Location loc,
 /// the bare pointer calling convention lowering of `memref` types.
 static void modifyFuncOpToUseBarePtrCallingConv(
     ConversionPatternRewriter &rewriter, Location loc,
-    LLVMTypeConverter &typeConverter, LLVM::LLVMFuncOp funcOp,
+    const LLVMTypeConverter &typeConverter, LLVM::LLVMFuncOp funcOp,
     TypeRange oldArgTypes) {
   if (funcOp.getBody().empty())
     return;
@@ -464,7 +464,7 @@ protected:
 /// MemRef descriptors (LLVM struct data types) containing all the MemRef type
 /// information.
 struct FuncOpConversion : public FuncOpConversionBase {
-  FuncOpConversion(LLVMTypeConverter &converter)
+  FuncOpConversion(const LLVMTypeConverter &converter)
       : FuncOpConversionBase(converter) {}
 
   LogicalResult
