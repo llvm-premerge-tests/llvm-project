@@ -382,11 +382,15 @@ nub_process_t DNBProcessLaunch(
         if (err_str && err_len > 0) {
           if (launch_err.AsString()) {
             ::snprintf(err_str, err_len,
-                       "failed to get the task for process %i (%s)", pid,
+                       "failed to get the task for process %i: %s", pid,
                        launch_err.AsString());
           } else {
             ::snprintf(err_str, err_len,
-                       "failed to get the task for process %i", pid);
+                       "failed to get the task for process %i: this likely "
+                       "means the process cannot be debugged, either because "
+                       "it's a system process or because the process is "
+                       "missing the get-task-allow entitlement.",
+                       pid);
           }
         }
       } else {
