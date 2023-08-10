@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -ast-print -triple i386-linux-gnu %s -o - -std=c++20 | FileCheck %s
+// RUN: %clang_cc1 -ast-print -triple i386-linux-gnu -fdeclspec %s -o - -std=c++20 | FileCheck %s
 
 // CHECK: struct DelegatingCtor1 {
 struct DelegatingCtor1 {
@@ -120,6 +120,54 @@ struct ImplicitCtorInit2 : ImplicitCtorInit1 {
   ImplicitCtorInit2(int **) : ImplicitCtorInit1() {
   // CHECK-NEXT: }
   }
+
+  // CHECK-NEXT: };
+};
+
+
+// CHECK: struct MethodAttr1 {
+struct MethodAttr1 {
+  // CHECK-NEXT: virtual void f1() & = 0;
+  virtual void f1() & = 0;
+
+  // CHECK-NEXT: virtual void f2();
+  virtual void f2();
+
+  // CHECK-NEXT: };
+};
+
+  // CHECK-NEXT: struct MethodAttr2 : MethodAttr1 {
+struct MethodAttr2 : MethodAttr1 {
+  // CHECK-NEXT: MethodAttr2() = default;
+  MethodAttr2() = default;
+
+  // CHECK-NEXT: explicit MethodAttr2(int);
+  explicit MethodAttr2(int);
+
+  // CHECK-NEXT: void f1() & override;
+  void f1() & override;
+
+  // CHECK-NEXT: virtual void f2() final;
+  virtual void f2() final;
+
+  // CHECK-NEXT: static void f3();
+  static void f3();
+
+  // CHECK-NEXT: {{\[\[}}noreturn]] static inline void f4();
+  [[noreturn]] static inline void f4();
+
+  // CHECK-NEXT: void f5() noexcept(10 > 1);
+  void f5() noexcept(10 > 1);
+
+  // CHECK-NEXT: void f6() asm("f6.2");
+  void f6() asm("f6.2");
+
+  // FIXME: Noreturn attribute is attached to FunctionProtoType and not print
+  // CHECK-NEXT: void f7();
+  void f7() __attribute__((noreturn));
+
+  // CHECK-NEXT: __declspec(deprecated("bad")) void f8();
+  __declspec(deprecated("bad")) void f8();
 
   // CHECK-NEXT: };
 };

@@ -42,21 +42,21 @@ void bar() __attribute__((__const));
 // CHECK: int f1() __attribute__((warn_unused_result("")));
 int f1() __attribute__((warn_unused_result));
 
-// CHECK: {{\[}}[clang::warn_unused_result("")]];
+// CHECK: {{\[}}[clang::warn_unused_result("")]]
 int f2 [[clang::warn_unused_result]] ();
 
-// CHECK: {{\[}}[gnu::warn_unused_result("")]];
+// CHECK: {{\[}}[gnu::warn_unused_result("")]]
 int f3 [[gnu::warn_unused_result]] ();
 
 // FIXME: ast-print need to print C++11
 // attribute after function declare-id.
-// CHECK: {{\[}}[noreturn]];
+// CHECK: {{\[}}[noreturn]]
 void f4 [[noreturn]] ();
 
 // CHECK: __attribute__((gnu_inline));
 inline void f6() __attribute__((gnu_inline));
 
-// CHECK: {{\[}}[gnu::gnu_inline]];
+// CHECK: {{\[}}[gnu::gnu_inline]]
 inline void f7 [[gnu::gnu_inline]] ();
 
 // arguments printing
@@ -66,8 +66,8 @@ void f8 (void *, const char *, ...) __attribute__ ((format (printf, 2, 3)));
 // CHECK: int m __attribute__((aligned(4
 // CHECK: int n alignas(4
 // CHECK: int p alignas(int
-// CHECK: static int f() __attribute__((pure))
-// CHECK: static int g() {{\[}}[gnu::pure]]
+// CHECK: __attribute__((pure)) static int f()
+// CHECK: {{\[}}[gnu::pure]] static int g()
 template <typename T> struct S {
   __attribute__((aligned(4))) int m;
   alignas(4) int n;
@@ -82,8 +82,8 @@ template <typename T> struct S {
 
 // CHECK: int m __attribute__((aligned(4
 // CHECK: int n alignas(4
-// CHECK: static int f() __attribute__((pure))
-// CHECK: static int g() {{\[}}[gnu::pure]]
+// CHECK: __attribute__((pure)) static int f()
+// CHECK: {{\[}}[gnu::pure]] static int g()
 template struct S<int>;
 
 // CHECK: using Small2 {{\[}}[gnu::mode(byte)]] = int;
