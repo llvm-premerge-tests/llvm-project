@@ -16,6 +16,7 @@
 
 namespace llvm {
 
+class AMDGPUTargetMachine;
 class TargetMachine;
 
 // GlobalISel passes
@@ -53,7 +54,7 @@ FunctionPass *createAMDGPUCodeGenPreparePass();
 FunctionPass *createAMDGPULateCodeGenPreparePass();
 FunctionPass *createAMDGPUMachineCFGStructurizerPass();
 FunctionPass *createAMDGPURewriteOutArgumentsPass();
-ModulePass *createAMDGPULowerModuleLDSPass();
+ModulePass *createAMDGPULowerModuleLDSPass(const AMDGPUTargetMachine &TM);
 FunctionPass *createSIModeRegisterPass();
 FunctionPass *createGCNPreRAOptimizationsPass();
 
@@ -116,6 +117,9 @@ void initializeAMDGPULowerModuleLDSPass(PassRegistry &);
 extern char &AMDGPULowerModuleLDSID;
 
 struct AMDGPULowerModuleLDSPass : PassInfoMixin<AMDGPULowerModuleLDSPass> {
+  const AMDGPUTargetMachine &TM;
+  AMDGPULowerModuleLDSPass(const AMDGPUTargetMachine &TM_) : TM(TM_) {}
+
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
 };
 

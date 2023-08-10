@@ -253,6 +253,7 @@ template <typename T> std::vector<T> sortByName(std::vector<T> &&V) {
 }
 
 class AMDGPULowerModuleLDS : public ModulePass {
+  const AMDGPUTargetMachine &TM;
 
   static void
   removeLocalVarsFromUsedLists(Module &M,
@@ -328,7 +329,8 @@ class AMDGPULowerModuleLDS : public ModulePass {
 public:
   static char ID;
 
-  AMDGPULowerModuleLDS() : ModulePass(ID) {
+  AMDGPULowerModuleLDS(const AMDGPUTargetMachine &TM_)
+      : ModulePass(ID), TM(TM_) {
     initializeAMDGPULowerModuleLDSPass(*PassRegistry::getPassRegistry());
   }
 
@@ -1539,12 +1541,13 @@ INITIALIZE_PASS(AMDGPULowerModuleLDS, DEBUG_TYPE,
                 "Lower uses of LDS variables from non-kernel functions", false,
                 false)
 
-ModulePass *llvm::createAMDGPULowerModuleLDSPass() {
-  return new AMDGPULowerModuleLDS();
+ModulePass *
+llvm::createAMDGPULowerModuleLDSPass(const AMDGPUTargetMachine &TM) {
+  return new AMDGPULowerModuleLDS(TM);
 }
 
 PreservedAnalyses AMDGPULowerModuleLDSPass::run(Module &M,
                                                 ModuleAnalysisManager &) {
-  return AMDGPULowerModuleLDS().runOnModule(M) ? PreservedAnalyses::none()
-                                               : PreservedAnalyses::all();
+  return AMDGPULowerModuleLDS(TM).runOnModule(M) ? PreservedAnalyses::none()
+                                                 : PreservedAnalyses::all();
 }
