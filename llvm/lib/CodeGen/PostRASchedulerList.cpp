@@ -279,6 +279,9 @@ bool PostRAScheduler::runOnMachineFunction(MachineFunction &Fn) {
   if (skipFunction(Fn.getFunction()))
     return false;
 
+  if (Fn.getFunction().hasFnAttribute("disable-post-ra"))
+    return false;
+
   TII = Fn.getSubtarget().getInstrInfo();
   MachineLoopInfo &MLI = getAnalysis<MachineLoopInfo>();
   AliasAnalysis *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
