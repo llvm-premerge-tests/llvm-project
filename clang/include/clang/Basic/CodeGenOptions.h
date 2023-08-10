@@ -84,6 +84,13 @@ public:
     SRCK_InRegs    // Small structs in registers (-freg-struct-return).
   };
 
+  enum ComplexArgumentConventionKind {
+    CMPLX_Default,
+    CMPLX_OnStack,
+    CMPLX_OnGPR,
+    CMPLX_OnFPR
+  };
+
   enum ProfileInstrKind {
     ProfileNone,       // Profile instrumentation is turned off.
     ProfileClangInstr, // Clang instrumentation to generate execution counts
