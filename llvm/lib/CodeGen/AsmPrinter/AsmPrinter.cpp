@@ -1068,10 +1068,43 @@ void AsmPrinter::emitFunctionEntryLabel() {
   }
 }
 
+// Recognize cases where a spilled register is reloaded solely to feed into a
+// FAKE_USE.
+static bool isLoadFeedingIntoFakeUse(const MachineInstr &MI) {
+  const MachineFunction *MF = MI.getMF();
+  const TargetInstrInfo *TII = MF->getSubtarget().getInstrInfo();
+
+  // If the restore size is std::nullopt then we are not dealing with a reload
+  // of a spilled register.
+  if (!MI.getRestoreSize(TII))
+    return false;
+
+  // Check if this register is the operand of a FAKE_USE and
+  // does it have the kill flag set there.
+  auto NextI = std::next(MI.getIterator());
+  if (NextI == MI.getParent()->end() || !NextI->isFakeUse())
+    return false;
+
+  unsigned Reg = MI.getOperand(0).getReg();
+  for (const MachineOperand &MO : NextI->operands()) {
+    // Return true if we came across the register from the
+    // previous spill instruction that is killed in NextI.
+    if (MO.isReg() && MO.isUse() && MO.isKill() && MO.getReg() == Reg)
+      return true;
+  }
+
+  return false;
+}
+
 /// emitComments - Pretty-print comments for instructions.
 static void emitComments(const MachineInstr &MI, raw_ostream &CommentOS) {
   const MachineFunction *MF = MI.getMF();
   const TargetInstrInfo *TII = MF->getSubtarget().getInstrInfo();
+
+  // If this is a reload of a spilled register that only feeds into a FAKE_USE
+  // instruction and is not otherwise used, we skip emitting it.
+  if (isLoadFeedingIntoFakeUse(MI))
+    return;
 
   // Check for spills and reloads
 
@@ -1714,6 +1747,8 @@ void AsmPrinter::emitFunctionBody() {
       case TargetOpcode::KILL:
         if (isVerbose()) emitKill(&MI, *this);
         break;
+      case TargetOpcode::FAKE_USE:
+        break;
       case TargetOpcode::PSEUDO_PROBE:
         emitPseudoProbe(MI);
         break;
@@ -1725,6 +1760,10 @@ void AsmPrinter::emitFunctionBody() {
         OutStreamer->emitRawComment("MEMBARRIER");
         break;
       default:
+        // If this is a reload of a spilled register that only feeds into a
+        // FAKE_USE instruction and is not otherwise used, we skip emitting it.
+        if (isLoadFeedingIntoFakeUse(MI))
+          break;
         emitInstruction(&MI);
         if (CanDoExtraAnalysis) {
           MCInst MCI;

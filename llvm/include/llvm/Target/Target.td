@@ -1326,6 +1326,14 @@ def FAULTING_OP : StandardPseudoInstruction {
   let isTerminator = true;
   let isBranch = true;
 }
+def FAKE_USE : StandardPseudoInstruction {
+  // An instruction that uses its operands but does nothing.
+  let OutOperandList = (outs);
+  let InOperandList = (ins variable_ops);
+  let AsmString = "FAKE_USE";
+  let hasSideEffects = 0;
+  let isMeta = true;
+}
 def PATCHABLE_OP : StandardPseudoInstruction {
   let OutOperandList = (outs);
   let InOperandList = (ins variable_ops);

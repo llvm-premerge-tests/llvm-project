@@ -678,6 +678,58 @@ static void reportFastISelFailure(MachineFunction &MF,
   LLVM_DEBUG(dbgs() << R.getMsg() << "\n");
 }
 
+// Return true if operand 0 of a fake use is def'd by a given TailCall
+// instruction or if it is def'd after it.
+static bool opDefdByOrAfter(BasicBlock::iterator FakeUse,
+                            BasicBlock::iterator TailCall) {
+  llvm::Value *Op = FakeUse->getOperand(0);
+  if (auto Def = dyn_cast<llvm::Instruction>(Op))
+    for (BasicBlock::const_iterator Inst = TailCall; Inst != FakeUse; ++Inst)
+      if (&*Inst == Def)
+        return true;
+  return false;
+}
+
+// Detect any fake uses that follow a tail call and move them before the tail
+// call. Ignore fake uses that use values that are def'd by or after the tail
+// call.
+static void preserveFakeUses(BasicBlock::iterator Begin,
+                             BasicBlock::iterator End) {
+  BasicBlock::iterator I = End;
+  if (--I == Begin || !isa<ReturnInst>(*I))
+    return;
+  // Detect whether there are any fake uses trailing a (potential) tail call.
+  bool HaveFakeUse = false;
+  bool HaveTailCall = false;
+  do {
+    if (const CallInst *CI = dyn_cast<CallInst>(--I))
+      if (CI->isTailCall()) {
+        HaveTailCall = true;
+        break;
+      }
+    if (const IntrinsicInst *II = dyn_cast<IntrinsicInst>(I))
+      if (II->getIntrinsicID() == Intrinsic::fake_use)
+        HaveFakeUse = true;
+  } while (I != Begin);
+
+  // If we didn't find any tail calls followed by fake uses, we are done.
+  if (!HaveTailCall || !HaveFakeUse)
+    return;
+
+  std::vector<Instruction *> FakeUses;
+  // Record the fake uses we found so we can move them to the front of the
+  // tail call. Ignore them if they use a value that is def'd by or after
+  // the tail call.
+  for (BasicBlock::iterator Inst = I; Inst != End; Inst++)
+    if (IntrinsicInst *II = dyn_cast<IntrinsicInst>(Inst))
+      if (II->getIntrinsicID() == Intrinsic::fake_use)
+        if (!opDefdByOrAfter(Inst, I))
+          FakeUses.push_back(&*Inst);
+
+  for (auto *Inst : FakeUses)
+    Inst->moveBefore(*Inst->getParent(), I);
+}
+
 void SelectionDAGISel::SelectBasicBlock(BasicBlock::const_iterator Begin,
                                         BasicBlock::const_iterator End,
                                         bool &HadTailCall) {
@@ -1530,6 +1582,16 @@ void SelectionDAGISel::SelectAllBasicBlocks(const Function &Fn) {
       FuncInfo->VisitedBBs.insert(LLVMBB);
     }
 
+    // Fake uses that follow tail calls are dropped. To avoid this, move
+    // such fake uses in front of the tail call, provided they don't
+    // use anything def'd by or after the tail call.
+    {
+      BasicBlock::iterator BBStart =
+          const_cast<BasicBlock *>(LLVMBB)->getFirstNonPHI()->getIterator();
+      BasicBlock::iterator BBEnd = const_cast<BasicBlock *>(LLVMBB)->end();
+      preserveFakeUses(BBStart, BBEnd);
+    }
+
     BasicBlock::const_iterator const Begin =
         LLVMBB->getFirstNonPHI()->getIterator();
     BasicBlock::const_iterator const End = LLVMBB->end();
@@ -2300,6 +2362,13 @@ void SelectionDAGISel::Select_UNDEF(SDNode *N) {
   CurDAG->SelectNodeTo(N, TargetOpcode::IMPLICIT_DEF, N->getValueType(0));
 }
 
+// Use the generic target FAKE_USE target opcode. The chain operand
+// must come last, because InstrEmitter::AddOperand() requires it.
+void SelectionDAGISel::Select_FAKE_USE(SDNode *N) {
+  CurDAG->SelectNodeTo(N, TargetOpcode::FAKE_USE, N->getValueType(0),
+                       N->getOperand(1), N->getOperand(0));
+}
+
 void SelectionDAGISel::Select_FREEZE(SDNode *N) {
   // TODO: We don't have FREEZE pseudo-instruction in MachineInstr-level now.
   // If FREEZE instruction is added later, the code below must be changed as
@@ -2971,6 +3040,9 @@ void SelectionDAGISel::SelectCodeCommon(SDNode *NodeToMatch,
     return;
   case ISD::UNDEF:
     Select_UNDEF(NodeToMatch);
+    return;
+  case ISD::FAKE_USE:
+    Select_FAKE_USE(NodeToMatch);
     return;
   case ISD::FREEZE:
     Select_FREEZE(NodeToMatch);

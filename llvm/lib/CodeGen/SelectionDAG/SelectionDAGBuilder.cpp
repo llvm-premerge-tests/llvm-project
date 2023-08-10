@@ -3024,6 +3024,7 @@ void SelectionDAGBuilder::visitInvoke(const InvokeInst &I) {
     switch (Fn->getIntrinsicID()) {
     default:
       llvm_unreachable("Cannot invoke this intrinsic");
+    case Intrinsic::fake_use:
     case Intrinsic::donothing:
       // Ignore invokes to @llvm.donothing: jump directly to the next BB.
     case Intrinsic::seh_try_begin:
@@ -7198,6 +7199,19 @@ void SelectionDAGBuilder::visitIntrinsicCall(const CallInst &I,
     SDValue Add = DAG.getMemBasePlusOffset(FPVal, OffsetVal, sdl);
     setValue(&I, Add);
 
+    return;
+  }
+
+  case Intrinsic::fake_use: {
+    SDValue Ops[2];
+    Ops[0] = getRoot();
+    Ops[1] = getValue(I.getArgOperand(0));
+    // Zero-length operands create empty SDValues. Do not translate a fake use
+    // if we encounter one. Also, do not translate a fake use with an undef
+    // operand.
+    if (!Ops[1] || Ops[1].isUndef())
+      return;
+    DAG.setRoot(DAG.getNode(ISD::FAKE_USE, sdl, MVT::Other, Ops));
     return;
   }
 

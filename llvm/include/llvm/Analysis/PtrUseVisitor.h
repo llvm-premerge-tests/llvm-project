@@ -282,6 +282,15 @@ protected:
     case Intrinsic::lifetime_start:
     case Intrinsic::lifetime_end:
       return; // No-op intrinsics.
+
+    // fake_use is a noop.
+    // Note: pointers used by a fake_use are escaped here to prevent SROA from
+    // transforming it.
+    // FIXME: revisit this and find another way to deal with the resulting
+    // inconsistencies in SROA.
+    case Intrinsic::fake_use:
+      PI.setEscaped(&II);
+      return; // No-op intrinsic.
     }
   }
 
