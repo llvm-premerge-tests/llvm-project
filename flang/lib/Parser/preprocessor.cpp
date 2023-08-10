@@ -288,6 +288,7 @@ std::optional<TokenSequence> Preprocessor::MacroReplacement(
       result.Put(input, j);
       continue;
     }
+    auto dirName{token.ToString()};
     Definition *def{&it->second};
     if (def->isDisabled()) {
       result.Put(input, j);
@@ -332,6 +333,7 @@ std::optional<TokenSequence> Preprocessor::MacroReplacement(
           auto it{definitions_.find(token)};
           if (it != definitions_.end() && !it->second.isDisabled() &&
               it->second.isFunctionLike()) {
+            dirName = token.ToString();
             def = &it->second;
             isRenaming = true;
           }
@@ -385,6 +387,21 @@ std::optional<TokenSequence> Preprocessor::MacroReplacement(
     }
     if (k >= tokens || argStart.size() < def->argumentCount() ||
         (argStart.size() > def->argumentCount() && !def->isVariadic())) {
+      if (k >= tokens) {
+        prescanner.Say(input.GetTokenProvenance(j),
+            "unterminated argument list invoking macro '%s'"_err_en_US,
+            dirName);
+      } else if (argStart.size() < def->argumentCount()) {
+        // FIXME: argStart is never zero if def->argumentCount() > 0
+        // so this will at least diagnose "but only 1 given".
+        prescanner.Say(input.GetTokenProvenance(j),
+            "macro '%s' requires %d arguments, but only %d given"_err_en_US,
+            dirName, def->argumentCount(), argStart.size());
+      } else if (argStart.size() > def->argumentCount()) {
+        prescanner.Say(input.GetTokenProvenance(j),
+            "macro '%s' passed %d arguments, but takes just %d"_err_en_US,
+            dirName, argStart.size(), def->argumentCount());
+      }
       result.Put(input, j);
       continue;
     }
