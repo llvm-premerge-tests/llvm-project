@@ -1036,6 +1036,7 @@ bool SIInsertWaitcnts::generateWaitcntInstBefore(MachineInstr &MI,
   else if (MI.getOpcode() == AMDGPU::S_ENDPGM ||
            MI.getOpcode() == AMDGPU::S_ENDPGM_SAVED) {
     if (ST->getGeneration() >= AMDGPUSubtarget::GFX11 &&
+        MI.getMF()->getTarget().getOptLevel() != CodeGenOpt::None &&
         ScoreBrackets.getScoreRange(VS_CNT) != 0 &&
         !ScoreBrackets.hasPendingEvent(SCRATCH_WRITE_ACCESS))
       ReleaseVGPRInsts.insert(&MI);
