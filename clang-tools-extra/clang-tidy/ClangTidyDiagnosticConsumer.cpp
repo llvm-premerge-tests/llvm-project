@@ -436,9 +436,10 @@ void ClangTidyDiagnosticConsumer::HandleDiagnostic(
         Errors.back());
     SmallString<100> Message;
     Info.FormatDiagnostic(Message);
-    FullSourceLoc Loc;
-    if (Info.getLocation().isValid() && Info.hasSourceManager())
-      Loc = FullSourceLoc(Info.getLocation(), Info.getSourceManager());
+    FullSourceLoc Loc(Info.getLocation(),
+                      Info.hasSourceManager()
+                          ? Info.getSourceManager()
+                          : Context.DiagEngine->getSourceManager());
     Converter.emitDiagnostic(Loc, DiagLevel, Message, Info.getRanges(),
                              Info.getFixItHints());
   }
