@@ -3355,6 +3355,14 @@ def stack_usage_file : Separate<["-"], "stack-usage-file">,
   Flags<[CC1Option, NoDriverOption]>,
   HelpText<"Filename (or -) to write stack usage output to">,
   MarshallingInfoString<CodeGenOpts<"StackUsageOutput">>;
+def fextend_this_ptr : Flag <["-"], "fextend-this-ptr">, Group<f_Group>,
+  HelpText<"Extend the lifetime of the 'this' pointer to improve visibility "
+           "in optimized debugging">, Flags<[CC1Option]>,
+  MarshallingInfoFlag<CodeGenOpts<"ExtendThisPtr">>;
+def fextend_lifetimes : Flag <["-"], "fextend-lifetimes">, Group<f_Group>,
+  HelpText<"Extend the lifetimes of local variables and parameters to improve "
+           "visibility in optimized debugging">, Flags<[CC1Option]>,
+  MarshallingInfoFlag<CodeGenOpts<"ExtendLifetimes">>;
 
 defm unique_basic_block_section_names : BoolFOption<"unique-basic-block-section-names",
   CodeGenOpts<"UniqueBasicBlockSectionNames">, DefaultFalse,
