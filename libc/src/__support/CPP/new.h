@@ -9,6 +9,10 @@
 #ifndef LLVM_LIBC_SRC_SUPPORT_CPP_NEW_H
 #define LLVM_LIBC_SRC_SUPPORT_CPP_NEW_H
 
+#ifdef LIBC_COPT_DISABLE_NEW
+#warning "new included when LIBC_COPT_DISABLE_NEW is set."
+#endif
+
 #include "src/__support/common.h"
 
 #include <stddef.h> // For size_t
@@ -47,6 +51,12 @@ public:
   LIBC_INLINE static void *aligned_alloc(size_t s, std::align_val_t align,
                                          AllocChecker &ac) {
     void *mem = ::aligned_alloc(static_cast<size_t>(align), s);
+    ac = (mem != nullptr);
+    return mem;
+  }
+
+  LIBC_INLINE static void *realloc(void *ptr, size_t s, AllocChecker &ac) {
+    void *mem = ::realloc(ptr, s);
     ac = (mem != nullptr);
     return mem;
   }

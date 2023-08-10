@@ -9,6 +9,7 @@
 #ifndef LLVM_LIBC_SRC_SUPPORT_CHARVECTOR_H
 #define LLVM_LIBC_SRC_SUPPORT_CHARVECTOR_H
 
+#include "src/__support/CPP/new.h"
 #include "src/__support/common.h"
 
 #include <stddef.h>
@@ -33,7 +34,7 @@ public:
   CharVector() = default;
   LIBC_INLINE ~CharVector() {
     if (cur_str != local_buffer)
-      free(cur_str);
+      delete (cur_str);
   }
 
   // append returns true on success and false on allocation failure.
@@ -42,11 +43,12 @@ public:
     if (index >= cur_buff_size - 2) {
       // If the new character would cause the string to be longer than the
       // buffer's size, attempt to allocate a new buffer.
+      AllocChecker ac;
       cur_buff_size = cur_buff_size * 2;
       if (cur_str == local_buffer) {
         char *new_str;
-        new_str = reinterpret_cast<char *>(malloc(cur_buff_size));
-        if (new_str == NULL) {
+        new_str = new (ac) char[cur_buff_size];
+        if (!ac) {
           return false;
         }
         // TODO: replace with inline memcpy
@@ -54,8 +56,9 @@ public:
           new_str[i] = cur_str[i];
         cur_str = new_str;
       } else {
-        cur_str = reinterpret_cast<char *>(realloc(cur_str, cur_buff_size));
-        if (cur_str == NULL) {
+        cur_str = reinterpret_cast<char *>(
+            AllocChecker::realloc(cur_str, cur_buff_size, ac));
+        if (!ac) {
           return false;
         }
       }
