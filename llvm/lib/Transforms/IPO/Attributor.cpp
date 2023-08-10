@@ -3545,6 +3545,20 @@ void Attributor::identifyDefaultAbstractAttributes(Function &F) {
       UsedAssumedInformation);
   (void)Success;
   assert(Success && "Expected the check call to be successful!");
+
+  // AllocaInstPredicate
+  auto AllocaInstPred = [&](Instruction &I) -> bool {
+    if (auto *AI = dyn_cast<AllocaInst>(&I)) {
+      getOrCreateAAFor<AAAllocationInfo>(IRPosition::value(*AI));
+    }
+    return true;
+  };
+
+  Success = checkForAllInstructionsImpl(
+      nullptr, OpcodeInstMap, AllocaInstPred, nullptr, nullptr,
+      {(unsigned)Instruction::Alloca}, UsedAssumedInformation);
+  (void)Success;
+  assert(Success && "Expected the check call to be successful!");
 }
 
 /// Helpers to ease debugging through output streams and print calls.
