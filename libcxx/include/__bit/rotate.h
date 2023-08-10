@@ -34,15 +34,22 @@ _Tp __rotr(_Tp __t, unsigned int __cnt) _NOEXCEPT
 #if _LIBCPP_STD_VER >= 20
 
 template <__libcpp_unsigned_integer _Tp>
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI constexpr _Tp rotl(_Tp __t, unsigned int __cnt) noexcept {
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI constexpr _Tp rotl(_Tp __t, int __cnt) noexcept {
   const unsigned int __dig = numeric_limits<_Tp>::digits;
   if ((__cnt % __dig) == 0)
     return __t;
+
+  if (__cnt < 0)
+    return std::__rotr(__t, -__cnt);
+
   return (__t << (__cnt % __dig)) | (__t >> (__dig - (__cnt % __dig)));
 }
 
 template <__libcpp_unsigned_integer _Tp>
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI constexpr _Tp rotr(_Tp __t, unsigned int __cnt) noexcept {
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI constexpr _Tp rotr(_Tp __t, int __cnt) noexcept {
+  if (__cnt < 0)
+    return rotl(__t, -__cnt);
+
   return std::__rotr(__t, __cnt);
 }
 
