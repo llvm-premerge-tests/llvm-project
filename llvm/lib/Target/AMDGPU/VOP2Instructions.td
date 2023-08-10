@@ -931,7 +931,7 @@ let SubtargetPredicate = isGFX11Plus in {
   } // End isCommutable = 1
 } // End SubtargetPredicate = isGFX11Plus
 
-let FPDPRounding = 1, isReMaterializable = 1 in {
+let FPDPRounding = 1, isReMaterializable = 1, FixedSize = 1 in {
 let SubtargetPredicate = isGFX10Plus, OtherPredicates = [NotHasTrue16BitInsts] in {
 def V_FMAMK_F16 : VOP2_Pseudo <"v_fmamk_f16", VOP_MADMK_F16, [], "">;
 }
@@ -1089,7 +1089,7 @@ let AddedComplexity = 30 in {
   }
 } // End AddedComplexity = 30
 
-let SubtargetPredicate = HasFmaakFmamkF32Insts, isReMaterializable = 1 in {
+let SubtargetPredicate = HasFmaakFmamkF32Insts, isReMaterializable = 1, FixedSize = 1 in {
 def V_FMAMK_F32 : VOP2_Pseudo<"v_fmamk_f32", VOP_MADMK_F32, [], "">, VOPD_Component<0x2, "v_fmamk_f32">;
 
 let isCommutable = 1 in
