@@ -37,3 +37,7 @@
 
 // CHECK-WITH-G-STANDALONE: "-debug-info-kind=standalone"
 // CHECK-WITH-G-STANDALONE: "-dwarf-version=2"
+
+// RUN: %clang -### -S %s -g --target=riscv64-linux-gnu 2>&1 \
+// RUN:   | FileCheck --check-prefix=VERSION4 %s
+// VERSION4: "-dwarf-version=4"

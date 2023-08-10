@@ -343,7 +343,7 @@ ToolChain::RuntimeLibType Linux::GetDefaultRuntimeLibType() const {
 }
 
 unsigned Linux::GetDefaultDwarfVersion() const {
-  if (getTriple().isAndroid())
+  if (getTriple().isAndroid() || getTriple().isRISCV())
     return 4;
   return ToolChain::GetDefaultDwarfVersion();
 }
