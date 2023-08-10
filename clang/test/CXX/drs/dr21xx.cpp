@@ -10,6 +10,16 @@
 #define static_assert(...) __extension__ _Static_assert(__VA_ARGS__)
 #endif
 
+namespace std {
+  __extension__ typedef __SIZE_TYPE__ size_t;
+
+  template<typename E> struct initializer_list {
+    const E *p; size_t n;
+    initializer_list(const E *p, size_t n);
+    initializer_list();
+  };
+}
+
 namespace dr2100 { // dr2100: 12
   template<const int *P, bool = true> struct X {};
   template<typename T> struct A {
@@ -107,6 +117,36 @@ namespace dr2126 { // dr2126: 12
   static_assert(i.a.n == 1, ""); // expected-error {{constant}} expected-note {{read of non-constexpr variable}}
   static_assert(j.a.n == 1, ""); // expected-error {{constant}} expected-note {{read of temporary}}
   static_assert(k.a.n == 1, "");
+#endif
+}
+
+namespace dr2137 { // dr2137: 18
+#if __cplusplus >= 201103L
+  struct Q {
+    Q();
+    Q(Q&&);
+    Q(std::initializer_list<Q>) = delete; // expected-note 2 {{has been explicitly marked deleted here}}
+  };
+
+  Q x = Q { Q() }; // expected-error {{call to deleted constructor}}
+
+  int f(Q); // expected-note {{passing argument to parameter here}}
+  int y = f({ Q() }); // expected-error {{call to deleted constructor}}
+
+  struct U {
+    U();
+    U(const U&);
+  };
+
+  struct Derived : U {
+    Derived();
+    Derived(const Derived&);
+  } d;
+
+  int g(Derived);
+  int g(U(&&)[1]) = delete;
+
+  int z = g({ d });
 #endif
 }
 

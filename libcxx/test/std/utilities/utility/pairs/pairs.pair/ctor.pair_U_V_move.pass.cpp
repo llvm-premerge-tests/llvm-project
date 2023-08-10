@@ -121,7 +121,30 @@ int main(int, char**)
         test_pair_rv<CopyOnly, CopyOnly&>();
         test_pair_rv<CopyOnly, CopyOnly&&>();
 
-        test_pair_rv<ExplicitTypes::CopyOnly, ExplicitTypes::CopyOnly>();
+        /* For ExplicitTypes::CopyOnly, two of the viable candidates for initializing from a non-const xvalue are:
+         *   pair(const pair&);  // (defaulted copy constructor)
+         *   template<class U1, class U2> explicit pair(const pair<U1, U2>&&); [U1 = ExplicitTypes::CopyOnly, U2 = int]
+         * This results in diverging behavior for test_convertible which uses copy-list-initialization
+         * Prior to CWG2137, this would have selected the first (non-explicit) ctor as explicit ctors would not be considered
+         * Afterwards, it should select the second since it is a better match, and then failed because it is explicit
+         *
+         * This may change with future defect reports, and some compilers only have partial support for CWG2137,
+         * so use std::is_convertible directly to avoid a copy-list-initialization
+         */
+        //test_pair_rv<ExplicitTypes::CopyOnly, ExplicitTypes::CopyOnly, true, false>();
+        static_assert(std::is_constructible<std::pair<ExplicitTypes::CopyOnly, int>,
+                                            std::pair<ExplicitTypes::CopyOnly, int>&&>::value,
+                      "");
+        static_assert(std::is_convertible<std::pair<ExplicitTypes::CopyOnly, int>&&,
+                                          std::pair<ExplicitTypes::CopyOnly, int>>::value,
+                      "");
+        static_assert(std::is_constructible<std::pair<int, ExplicitTypes::CopyOnly>,
+                                            std::pair<int, ExplicitTypes::CopyOnly>&&>::value,
+                      "");
+        static_assert(std::is_convertible<std::pair<int, ExplicitTypes::CopyOnly>&&,
+                                          std::pair<int, ExplicitTypes::CopyOnly>>::value,
+                      "");
+
         test_pair_rv<ExplicitTypes::CopyOnly, ExplicitTypes::CopyOnly&, true, false>();
         test_pair_rv<ExplicitTypes::CopyOnly, ExplicitTypes::CopyOnly&&, true, false>();
 
