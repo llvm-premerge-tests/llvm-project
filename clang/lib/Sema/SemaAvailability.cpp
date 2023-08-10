@@ -419,6 +419,31 @@ static void DoEmitAvailabilityWarning(Sema &S, AvailabilityResult K,
     }
     return;
   }
+  case AR_Extension: {
+    assert(Message.empty());
+    auto ExtKind = OffendingDecl->getAttr<LibraryExtensionAttr>()->getKind();
+    if (ExtKind == "C++11")
+      diag = diag::warn_cxx11_ext;
+    else if (ExtKind == "C++14")
+      diag = diag::warn_cxx14_ext;
+    else if (ExtKind == "C++17")
+      diag = diag::warn_cxx17_ext;
+    else if (ExtKind == "C++20")
+      diag = diag::warn_cxx20_ext;
+    else if (ExtKind == "C++23")
+      diag = diag::warn_cxx23_ext;
+    else if (ExtKind == "C++26")
+      diag = diag::warn_cxx26_ext;
+    else if (ExtKind == "GNU")
+      diag = diag::warn_gnu_ext;
+
+    available_here_select_kind = 3;
+    if (const auto *AL = OffendingDecl->getAttr<LibraryExtensionAttr>())
+      NoteLocation = AL->getLocation();
+
+    break;
+  }
+
   case AR_Deprecated:
     diag = !ObjCPropertyAccess ? diag::warn_deprecated
                                : diag::warn_property_method_deprecated;

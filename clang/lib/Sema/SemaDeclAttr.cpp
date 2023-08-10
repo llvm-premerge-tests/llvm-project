@@ -8220,6 +8220,19 @@ static void handleDeprecatedAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
   D->addAttr(::new (S.Context) DeprecatedAttr(S.Context, AL, Str, Replacement));
 }
 
+static void handleLibraryExtensionAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
+  StringRef Kind;
+  if (!S.checkStringLiteralArgumentAttr(AL, 0, Kind))
+    return;
+  if (llvm::none_of(std::array{"C++11", "C++14", "C++17", "C++20", "C++23",
+                               "C++26", "GNU"},
+                    [&](const char *K) { return K == Kind; })) {
+    S.Diag(AL.getLoc(), diag::warn_unknown_ext) << Kind;
+  }
+
+    D->addAttr(::new (S.Context) LibraryExtensionAttr(S.Context, AL, Kind));
+}
+
 static bool isGlobalVar(const Decl *D) {
   if (const auto *S = dyn_cast<VarDecl>(D))
     return S->hasGlobalStorage();
@@ -8953,6 +8966,9 @@ ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D, const ParsedAttr &AL,
     break;
   case ParsedAttr::AT_Error:
     handleErrorAttr(S, D, AL);
+    break;
+  case ParsedAttr::AT_LibraryExtension:
+    handleLibraryExtensionAttr(S, D, AL);
     break;
   case ParsedAttr::AT_DiagnoseIf:
     handleDiagnoseIfAttr(S, D, AL);

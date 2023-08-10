@@ -1727,6 +1727,30 @@ Also see the documentation for `@available
   }];
 }
 
+def ExtensionDocs : Documentation {
+  let Category = DocCatType;
+  let Content = [{
+The ``clang::extension`` attribute tells the compiler that the annotated symbol
+is an extension. This is useful for standard library implementations to inform
+users that a given symbol is from a later standard or completely non-standard.
+
+.. code-block:: c++
+
+  namespace std {
+    template <class CharT, class Traits = char_traits<CharT>>
+    class [[clang::extension("C++17")]] basic_string_view { /*...*/ };
+
+    using string_view = basic_string_view<char>;
+  }
+
+  // Clang produces the warning "std::string_view is a C++17 extension"
+  void func(std::string_view);
+
+The currently supported argument arguments are "C++11", "C++14", "C++17", "C++20",
+"C++23", "C++26" and "GNU".
+  }];
+}
+
 def ExternalSourceSymbolDocs : Documentation {
   let Category = DocCatDecl;
   let Content = [{

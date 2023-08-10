@@ -8280,6 +8280,7 @@ static CXAvailabilityKind getCursorAvailabilityForDecl(const Decl *D) {
   switch (D->getAvailability()) {
   case AR_Available:
   case AR_NotYetIntroduced:
+  case AR_Extension:
     if (const EnumConstantDecl *EnumConst = dyn_cast<EnumConstantDecl>(D))
       return getCursorAvailabilityForDecl(
           cast<Decl>(EnumConst->getDeclContext()));

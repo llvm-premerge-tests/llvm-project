@@ -69,8 +69,9 @@ class UsingDirectiveDecl;
 enum AvailabilityResult {
   AR_Available = 0,
   AR_NotYetIntroduced,
+  AR_Extension,
   AR_Deprecated,
-  AR_Unavailable
+  AR_Unavailable,
 };
 
 /// Decl - This represents one declaration (or definition), e.g. a variable,

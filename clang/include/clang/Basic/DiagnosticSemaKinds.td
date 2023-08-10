@@ -5682,10 +5682,25 @@ def warn_unavailable_fwdclass_message : Warning<
     InGroup<UnavailableDeclarations>;
 def note_availability_specified_here : Note<
   "%0 has been explicitly marked "
-  "%select{unavailable|deleted|deprecated}1 here">;
+  "%select{unavailable|deleted|deprecated|as an extension}1 here">;
 def note_partial_availability_specified_here : Note<
   "%0 has been marked as being introduced in %1 %2 here, "
   "but the deployment target is %1 %3">;
+def warn_unknown_ext : Warning<"Unknown extension kind: %0">;
+def warn_cxx11_ext : Warning<"%0 is a C++11 extension">,
+    InGroup<CXX11>;
+def warn_cxx14_ext : Warning<"%0 is a C++14 extension">,
+    InGroup<CXX14>;
+def warn_cxx17_ext : Warning<"%0 is a C++17 extension">,
+    InGroup<CXX17>;
+def warn_cxx20_ext : Warning<"%0 is a C++20 extension">,
+    InGroup<CXX20>;
+def warn_cxx23_ext : Warning<"%0 is a C++23 extension">,
+    InGroup<CXX23>;
+def warn_cxx26_ext : Warning<"%0 is a C++2c extension">,
+    InGroup<CXX26>;
+def warn_gnu_ext : Warning<"%0 is a GNU extension">,
+    InGroup<GNU>;
 def note_implicitly_deleted : Note<
   "explicitly defaulted function was implicitly deleted here">;
 def warn_not_enough_argument : Warning<

@@ -656,6 +656,22 @@ AvailabilityResult Decl::getAvailability(std::string *Message,
       continue;
     }
 
+    if (const auto* Extension = dyn_cast<LibraryExtensionAttr>(A)) {
+      if (Result >= AR_Extension)
+        continue;
+
+      auto ExtKind = Extension->getKind();
+      if ((!getLangOpts().CPlusPlus26 && ExtKind == "C++26") ||
+          (!getLangOpts().CPlusPlus23 && ExtKind == "C++23") ||
+          (!getLangOpts().CPlusPlus20 && ExtKind == "C++20") ||
+          (!getLangOpts().CPlusPlus17 && ExtKind == "C++17") ||
+          (!getLangOpts().CPlusPlus14 && ExtKind == "C++14") ||
+          (!getLangOpts().CPlusPlus11 && ExtKind == "C++11") ||
+          ExtKind == "GNU")
+        Result = AR_Extension;
+      continue;
+    }
+
     if (const auto *Unavailable = dyn_cast<UnavailableAttr>(A)) {
       if (Message)
         *Message = std::string(Unavailable->getMessage());

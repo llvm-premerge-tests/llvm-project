@@ -1560,6 +1560,7 @@ Sema::ActOnFinishSwitchStmt(SourceLocation SwitchLoc, Stmt *Switch,
         case AR_Deprecated:
           // Omitting a deprecated constant is ok; it should never materialize.
         case AR_Unavailable:
+        case AR_Extension:
           continue;
 
         case AR_NotYetIntroduced:

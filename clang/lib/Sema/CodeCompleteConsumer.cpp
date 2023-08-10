@@ -786,6 +786,7 @@ void CodeCompletionResult::computeCursorKindAndAvailability(bool Accessible) {
     switch (getDeclAvailability(Declaration)) {
     case AR_Available:
     case AR_NotYetIntroduced:
+    case AR_Extension:
       Availability = CXAvailability_Available;
       break;
 

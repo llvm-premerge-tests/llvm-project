@@ -979,6 +979,14 @@ static llvm::StringRef canonicalizePlatformName(llvm::StringRef Platform) {
   let Documentation = [AvailabilityDocs];
 }
 
+def LibraryExtension : InheritableAttr {
+  let Spellings = [Clang<"library_extension", /*allowInC=*/0>];
+  let Args = [StringArgument<"kind">];
+  let Subjects = SubjectList<[Named]>;
+  let Documentation = [ExtensionDocs];
+  let MeaningfulToClassTemplateDefinition = 1;
+}
+
 def ExternalSourceSymbol : InheritableAttr {
   let Spellings = [Clang<"external_source_symbol", /*allowInC=*/1,
                    /*version=*/20230206>];
@@ -4198,4 +4206,3 @@ def AvailableOnlyInDefaultEvalMethod : InheritableAttr {
   let Subjects = SubjectList<[TypedefName], ErrorDiag>;
   let Documentation = [Undocumented];
 }
-
