@@ -1312,6 +1312,12 @@ Currently, only the following parameter attributes are defined:
     This indicates that callee does not free the pointer argument. This is not
     a valid attribute for return values.
 
+``noreadafterunwind``
+    This indicates that the caller will not read the underlying object of a
+    pointer argument if the call unwinds. As such, stores to the object that
+    are only visible on unwind paths can be elided. This attribute cannot be
+    applied to return values.
+
 .. _nest:
 
 ``nest``

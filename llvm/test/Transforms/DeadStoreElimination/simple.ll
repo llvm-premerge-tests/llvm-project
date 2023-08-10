@@ -515,12 +515,10 @@ define void @test34(ptr noalias %p) {
   ret void
 }
 ; Same as previous case, but with an sret argument.
-; TODO: The first store could be eliminated if sret is not visible on unwind.
-define void @test34_sret(ptr noalias sret(i32) %p) {
-; CHECK-LABEL: @test34_sret(
-; CHECK-NEXT:    store i32 1, ptr [[P:%.*]], align 4
+define void @test34_noreadafterunwind(ptr noalias noreadafterunwind %p) {
+; CHECK-LABEL: @test34_noreadafterunwind(
 ; CHECK-NEXT:    call void @unknown_func()
-; CHECK-NEXT:    store i32 0, ptr [[P]], align 4
+; CHECK-NEXT:    store i32 0, ptr [[P:%.*]], align 4
 ; CHECK-NEXT:    ret void
 ;
   store i32 1, ptr %p

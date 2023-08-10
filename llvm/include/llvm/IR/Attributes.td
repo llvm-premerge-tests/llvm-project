@@ -151,6 +151,9 @@ def NoDuplicate : EnumAttr<"noduplicate", [FnAttr]>;
 /// Function does not deallocate memory.
 def NoFree : EnumAttr<"nofree", [FnAttr, ParamAttr]>;
 
+/// Argument is not read if the call unwinds.
+def NoReadAfterUnwind : EnumAttr<"noreadafterunwind", [ParamAttr]>;
+
 /// Disable implicit floating point insts.
 def NoImplicitFloat : EnumAttr<"noimplicitfloat", [FnAttr]>;
 
