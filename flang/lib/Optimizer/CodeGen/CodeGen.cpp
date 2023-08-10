@@ -14,6 +14,7 @@
 
 #include "CGOps.h"
 #include "flang/ISO_Fortran_binding.h"
+#include "flang/Optimizer/CodeGen/TBAABuilder.h"
 #include "flang/Optimizer/Dialect/FIRAttr.h"
 #include "flang/Optimizer/Dialect/FIROps.h"
 #include "flang/Optimizer/Dialect/FIRType.h"
@@ -118,8 +119,10 @@ template <typename FromOp>
 class FIROpConversion : public mlir::ConvertOpToLLVMPattern<FromOp> {
 public:
   explicit FIROpConversion(fir::LLVMTypeConverter &lowering,
+                           fir::TBAABuilder *tbaaBuilder,
                            const fir::FIRToLLVMPassOptions &options)
-      : mlir::ConvertOpToLLVMPattern<FromOp>(lowering), options(options) {}
+      : mlir::ConvertOpToLLVMPattern<FromOp>(lowering),
+        tbaaBuilder(tbaaBuilder), options(options) {}
 
 protected:
   mlir::Type convertType(mlir::Type ty) const {
@@ -366,8 +369,10 @@ protected:
   void attachTBAATag(mlir::LLVM::AliasAnalysisOpInterface op,
                      mlir::Type baseFIRType, mlir::Type accessFIRType,
                      mlir::LLVM::GEPOp gep) const {
-    lowerTy().attachTBAATag(op, baseFIRType, accessFIRType, gep);
+    tbaaBuilder->attachTBAATag(op, baseFIRType, accessFIRType, gep);
   }
+
+  fir::TBAABuilder *const tbaaBuilder;
 
   const fir::FIRToLLVMPassOptions &options;
 };
@@ -3611,8 +3616,9 @@ struct NegcOpConversion : public FIROpConversion<fir::NegcOp> {
 template <typename FromOp>
 struct MustBeDeadConversion : public FIROpConversion<FromOp> {
   explicit MustBeDeadConversion(fir::LLVMTypeConverter &lowering,
+                                fir::TBAABuilder *tbaaBuilder,
                                 const fir::FIRToLLVMPassOptions &options)
-      : FIROpConversion<FromOp>(lowering, options) {}
+      : FIROpConversion<FromOp>(lowering, tbaaBuilder, options) {}
   using OpAdaptor = typename FromOp::Adaptor;
 
   mlir::LogicalResult
@@ -3746,8 +3752,8 @@ public:
       return signalPassFailure();
 
     auto *context = getModule().getContext();
-    fir::LLVMTypeConverter typeConverter{getModule(),
-                                         options.applyTBAA || applyTBAA};
+    fir::TBAABuilder tbaaBuilder(context, options.applyTBAA || applyTBAA);
+    fir::LLVMTypeConverter typeConverter{getModule()};
     mlir::RewritePatternSet pattern(context);
     pattern.insert<
         AbsentOpConversion, AddcOpConversion, AddrOfOpConversion,
@@ -3771,8 +3777,8 @@ public:
         SubcOpConversion, TypeDescOpConversion, UnboxCharOpConversion,
         UnboxProcOpConversion, UndefOpConversion, UnreachableOpConversion,
         UnrealizedConversionCastOpConversion, XArrayCoorOpConversion,
-        XEmboxOpConversion, XReboxOpConversion, ZeroOpConversion>(typeConverter,
-                                                                  options);
+        XEmboxOpConversion, XReboxOpConversion, ZeroOpConversion>(
+        typeConverter, &tbaaBuilder, options);
     mlir::populateFuncToLLVMConversionPatterns(typeConverter, pattern);
     mlir::populateOpenMPToLLVMConversionPatterns(typeConverter, pattern);
     mlir::arith::populateArithToLLVMConversionPatterns(typeConverter, pattern);
