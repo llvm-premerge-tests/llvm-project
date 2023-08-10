@@ -192,6 +192,29 @@ define <vscale x 4 x float> @llvm_exp2_vscale_f32(<vscale x 4 x float> %in) #0 {
   ret <vscale x 4 x float> %1
 }
 
+; TLI mappings for FREM instruction. They are not utilized since the names of the vector library functions
+; cannot be demangled.
+
+define <vscale x 2 x double> @llvm_frem_vscale_f64(<vscale x 2 x double> %in1, <vscale x 2 x double> %in2) #0 {
+; CHECK-LABEL: define <vscale x 2 x double> @llvm_frem_vscale_f64
+; CHECK-SAME: (<vscale x 2 x double> [[IN1:%.*]], <vscale x 2 x double> [[IN2:%.*]]) #[[ATTR1]] {
+; CHECK-NEXT:    [[OUT:%.*]] = frem fast <vscale x 2 x double> [[IN1]], [[IN2]]
+; CHECK-NEXT:    ret <vscale x 2 x double> [[OUT]]
+;
+  %out = frem fast <vscale x 2 x double> %in1, %in2
+  ret <vscale x 2 x double> %out
+}
+
+define <vscale x 4 x float> @llvm_frem_vscale_f32(<vscale x 4 x float> %in1, <vscale x 4 x float> %in2)  #0 {
+; CHECK-LABEL: define <vscale x 4 x float> @llvm_frem_vscale_f32
+; CHECK-SAME: (<vscale x 4 x float> [[IN1:%.*]], <vscale x 4 x float> [[IN2:%.*]]) #[[ATTR1]] {
+; CHECK-NEXT:    [[OUT:%.*]] = frem fast <vscale x 4 x float> [[IN1]], [[IN2]]
+; CHECK-NEXT:    ret <vscale x 4 x float> [[OUT]]
+;
+  %out = frem fast <vscale x 4 x float> %in1, %in2
+  ret <vscale x 4 x float> %out
+}
+
 
 declare <2 x double> @llvm.log.v2f64(<2 x double>)
 declare <4 x float> @llvm.log.v4f32(<4 x float>)
