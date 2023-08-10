@@ -5778,8 +5778,10 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
       }
 
       // If the value is offset in memory, apply the offset now.
-      Address StorePtr = emitAddressAtOffset(*this, DestPtr, RetAI);
-      CreateCoercedStore(CI, StorePtr, DestIsVolatile, *this);
+      if (!ReturnValue.isDummy()) {
+        Address StorePtr = emitAddressAtOffset(*this, DestPtr, RetAI);
+        CreateCoercedStore(CI, StorePtr, DestIsVolatile, *this);
+      }
 
       return convertTempToRValue(DestPtr, RetTy, SourceLocation());
     }

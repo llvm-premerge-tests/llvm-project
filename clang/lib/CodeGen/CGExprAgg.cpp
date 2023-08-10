@@ -317,7 +317,7 @@ void AggExprEmitter::withReturnValueSlot(
 
   RValue Src =
       EmitCall(ReturnValueSlot(RetAddr, Dest.isVolatile(), IsResultUnused,
-                               Dest.isExternallyDestructed()));
+                               Dest.isExternallyDestructed(), Dest.isDummy()));
 
   if (!UseTemp)
     return;

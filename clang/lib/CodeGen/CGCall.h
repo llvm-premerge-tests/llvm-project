@@ -359,20 +359,23 @@ class ReturnValueSlot {
   unsigned IsVolatile : 1;
   unsigned IsUnused : 1;
   unsigned IsExternallyDestructed : 1;
+  unsigned IsDummy : 1;
 
 public:
   ReturnValueSlot()
-      : IsVolatile(false), IsUnused(false), IsExternallyDestructed(false) {}
+      : IsVolatile(false), IsUnused(false), IsExternallyDestructed(false),
+        IsDummy(false) {}
   ReturnValueSlot(Address Addr, bool IsVolatile, bool IsUnused = false,
-                  bool IsExternallyDestructed = false)
+                  bool IsExternallyDestructed = false, bool IsDummy = false)
       : Addr(Addr), IsVolatile(IsVolatile), IsUnused(IsUnused),
-        IsExternallyDestructed(IsExternallyDestructed) {}
+        IsExternallyDestructed(IsExternallyDestructed), IsDummy(IsDummy) {}
 
   bool isNull() const { return !Addr.isValid(); }
   bool isVolatile() const { return IsVolatile; }
   Address getValue() const { return Addr; }
   bool isUnused() const { return IsUnused; }
   bool isExternallyDestructed() const { return IsExternallyDestructed; }
+  bool isDummy() const { return IsDummy; }
 };
 
 /// Helper to add attributes to \p F according to the CodeGenOptions and

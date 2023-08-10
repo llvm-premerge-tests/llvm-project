@@ -559,13 +559,16 @@ class AggValueSlot {
   /// them.
   bool SanitizerCheckedFlag : 1;
 
+  bool IsDummy : 1;
+
+public:
   AggValueSlot(Address Addr, Qualifiers Quals, bool DestructedFlag,
                bool ObjCGCFlag, bool ZeroedFlag, bool AliasedFlag,
-               bool OverlapFlag, bool SanitizerCheckedFlag)
+               bool OverlapFlag, bool SanitizerCheckedFlag, bool IsDummy)
       : Addr(Addr), Quals(Quals), DestructedFlag(DestructedFlag),
         ObjCGCFlag(ObjCGCFlag), ZeroedFlag(ZeroedFlag),
         AliasedFlag(AliasedFlag), OverlapFlag(OverlapFlag),
-        SanitizerCheckedFlag(SanitizerCheckedFlag) {}
+        SanitizerCheckedFlag(SanitizerCheckedFlag), IsDummy(IsDummy) {}
 
 public:
   enum IsAliased_t { IsNotAliased, IsAliased };
@@ -574,6 +577,7 @@ public:
   enum Overlap_t { DoesNotOverlap, MayOverlap };
   enum NeedsGCBarriers_t { DoesNotNeedGCBarriers, NeedsGCBarriers };
   enum IsSanitizerChecked_t { IsNotSanitizerChecked, IsSanitizerChecked };
+  enum IsDummy_t { IsNotADummySlot, IsADummySlot };
 
   /// ignored - Returns an aggregate value slot indicating that the
   /// aggregate value is being ignored.
@@ -592,27 +596,26 @@ public:
   ///   for calling destructors on this object
   /// \param needsGC - true if the slot is potentially located
   ///   somewhere that ObjC GC calls should be emitted for
-  static AggValueSlot forAddr(Address addr,
-                              Qualifiers quals,
-                              IsDestructed_t isDestructed,
-                              NeedsGCBarriers_t needsGC,
-                              IsAliased_t isAliased,
-                              Overlap_t mayOverlap,
-                              IsZeroed_t isZeroed = IsNotZeroed,
-                       IsSanitizerChecked_t isChecked = IsNotSanitizerChecked) {
+  static AggValueSlot
+  forAddr(Address addr, Qualifiers quals, IsDestructed_t isDestructed,
+          NeedsGCBarriers_t needsGC, IsAliased_t isAliased,
+          Overlap_t mayOverlap, IsZeroed_t isZeroed = IsNotZeroed,
+          IsSanitizerChecked_t isChecked = IsNotSanitizerChecked,
+          IsDummy_t isDummy = IsNotADummySlot) {
     if (addr.isValid())
       addr.setKnownNonNull();
     return AggValueSlot(addr, quals, isDestructed, needsGC, isZeroed, isAliased,
-                        mayOverlap, isChecked);
+                        mayOverlap, isChecked, isDummy);
   }
 
   static AggValueSlot
   forLValue(const LValue &LV, CodeGenFunction &CGF, IsDestructed_t isDestructed,
             NeedsGCBarriers_t needsGC, IsAliased_t isAliased,
             Overlap_t mayOverlap, IsZeroed_t isZeroed = IsNotZeroed,
-            IsSanitizerChecked_t isChecked = IsNotSanitizerChecked) {
+            IsSanitizerChecked_t isChecked = IsNotSanitizerChecked,
+            IsDummy_t isDummy = IsNotADummySlot) {
     return forAddr(LV.getAddress(CGF), LV.getQuals(), isDestructed, needsGC,
-                   isAliased, mayOverlap, isZeroed, isChecked);
+                   isAliased, mayOverlap, isZeroed, isChecked, isDummy);
   }
 
   IsDestructed_t isExternallyDestructed() const {
@@ -670,6 +673,8 @@ public:
   bool isSanitizerChecked() const {
     return SanitizerCheckedFlag;
   }
+
+  bool isDummy() const { return IsDummy; }
 
   RValue asRValue() const {
     if (isIgnored()) {
