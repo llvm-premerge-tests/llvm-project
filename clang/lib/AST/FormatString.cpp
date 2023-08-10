@@ -481,20 +481,8 @@ ArgType::matchesType(ASTContext &C, QualType argTy) const {
     }
 
     case CStrTy: {
-      const PointerType *PT = argTy->getAs<PointerType>();
-      if (!PT)
-        return NoMatch;
-      QualType pointeeTy = PT->getPointeeType();
-      if (const BuiltinType *BT = pointeeTy->getAs<BuiltinType>())
-        switch (BT->getKind()) {
-          case BuiltinType::Char_U:
-          case BuiltinType::UChar:
-          case BuiltinType::Char_S:
-          case BuiltinType::SChar:
-            return Match;
-          default:
-            break;
-        }
+      if (const auto *PT = argTy->getAs<PointerType>(); PT && PT->getPointeeType()->isCharType())
+        return Match;
 
       return NoMatch;
     }
@@ -529,14 +517,20 @@ ArgType::matchesType(ASTContext &C, QualType argTy) const {
     }
 
     case CPointerTy:
-      if (argTy->isVoidPointerType()) {
-        return Match;
-      } if (argTy->isPointerType() || argTy->isObjCObjectPointerType() ||
-            argTy->isBlockPointerType() || argTy->isNullPtrType()) {
+      if (const auto *PT = argTy->getAs<PointerType>()) {
+        QualType PointeeTy = PT->getPointeeType();
+        if (PointeeTy->isVoidType() || (!Ptr && PointeeTy->isCharType()))
+          return Match;
         return NoMatchPedantic;
-      } else {
-        return NoMatch;
       }
+
+      if (argTy->isNullPtrType())
+        return MatchPromotion;
+
+      if (argTy->isObjCObjectPointerType() || argTy->isBlockPointerType())
+        return NoMatchPedantic;
+
+      return NoMatch;
 
     case ObjCPointerTy: {
       if (argTy->getAs<ObjCObjectPointerType>() ||

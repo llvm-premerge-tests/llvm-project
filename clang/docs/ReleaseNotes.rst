@@ -89,6 +89,8 @@ C++2c Feature Support
 
 Resolutions to C++ Defect Reports
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+- Implemented `DR722 <https://wg21.link/CWG722>`_ which promotes ``nullptr`` to ``void*``
+  when passed to a C-style variadic function.
 
 C Language Changes
 ------------------

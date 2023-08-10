@@ -923,6 +923,13 @@ ExprResult Sema::DefaultArgumentPromotion(Expr *E) {
     E = Temp.get();
   }
 
+  // C++ [expr.call]p7, per DR722:
+  //   An argument that has (possibly cv-qualified) type std::nullptr_t is
+  //   converted to void* ([conv.ptr]).
+  // (This does not apply to C2x nullptr)
+  if (getLangOpts().CPlusPlus && E->getType()->isNullPtrType())
+    E = ImpCastExprToType(E, Context.VoidPtrTy, CK_NullToPointer).get();
+
   return E;
 }
 
@@ -936,9 +943,9 @@ Sema::VarArgKind Sema::isValidVarArgType(const QualType &Ty) {
     //   enumeration, pointer, pointer to member, or class type, the program
     //   is ill-formed.
     //
-    // Since we've already performed array-to-pointer and function-to-pointer
-    // decay, the only such type in C++ is cv void. This also handles
-    // initializer lists as variadic arguments.
+    // Since we've already performed null pointer conversion, array-to-pointer
+    // decay and function-to-pointer decay, the only such type in C++ is cv
+    // void. This also handles initializer lists as variadic arguments.
     if (Ty->isVoidType())
       return VAK_Invalid;
 
@@ -17277,65 +17284,25 @@ ExprResult Sema::BuildVAArgExpr(SourceLocation BuiltinLoc,
         << TInfo->getType()
         << TInfo->getTypeLoc().getSourceRange();
     }
-
-    // Check for va_arg where arguments of the given type will be promoted
-    // (i.e. this va_arg is guaranteed to have undefined behavior).
-    QualType PromoteType;
-    if (Context.isPromotableIntegerType(TInfo->getType())) {
-      PromoteType = Context.getPromotedIntegerType(TInfo->getType());
-      // [cstdarg.syn]p1 defers the C++ behavior to what the C standard says,
-      // and C2x 7.16.1.1p2 says, in part:
-      //   If type is not compatible with the type of the actual next argument
-      //   (as promoted according to the default argument promotions), the
-      //   behavior is undefined, except for the following cases:
-      //     - both types are pointers to qualified or unqualified versions of
-      //       compatible types;
-      //     - one type is a signed integer type, the other type is the
-      //       corresponding unsigned integer type, and the value is
-      //       representable in both types;
-      //     - one type is pointer to qualified or unqualified void and the
-      //       other is a pointer to a qualified or unqualified character type.
-      // Given that type compatibility is the primary requirement (ignoring
-      // qualifications), you would think we could call typesAreCompatible()
-      // directly to test this. However, in C++, that checks for *same type*,
-      // which causes false positives when passing an enumeration type to
-      // va_arg. Instead, get the underlying type of the enumeration and pass
-      // that.
-      QualType UnderlyingType = TInfo->getType();
-      if (const auto *ET = UnderlyingType->getAs<EnumType>())
-        UnderlyingType = ET->getDecl()->getIntegerType();
-      if (Context.typesAreCompatible(PromoteType, UnderlyingType,
-                                     /*CompareUnqualified*/ true))
-        PromoteType = QualType();
-
-      // If the types are still not compatible, we need to test whether the
-      // promoted type and the underlying type are the same except for
-      // signedness. Ask the AST for the correctly corresponding type and see
-      // if that's compatible.
-      if (!PromoteType.isNull() && !UnderlyingType->isBooleanType() &&
-          PromoteType->isUnsignedIntegerType() !=
-              UnderlyingType->isUnsignedIntegerType()) {
-        UnderlyingType =
-            UnderlyingType->isUnsignedIntegerType()
-                ? Context.getCorrespondingSignedType(UnderlyingType)
-                : Context.getCorrespondingUnsignedType(UnderlyingType);
-        if (Context.typesAreCompatible(PromoteType, UnderlyingType,
-                                       /*CompareUnqualified*/ true))
-          PromoteType = QualType();
-      }
-    }
-    if (TInfo->getType()->isSpecificBuiltinType(BuiltinType::Float))
-      PromoteType = Context.DoubleTy;
-    if (!PromoteType.isNull())
-      DiagRuntimeBehavior(TInfo->getTypeLoc().getBeginLoc(), E,
-                  PDiag(diag::warn_second_parameter_to_va_arg_never_compatible)
-                          << TInfo->getType()
-                          << PromoteType
-                          << TInfo->getTypeLoc().getSourceRange());
   }
 
   QualType T = TInfo->getType().getNonLValueExprType(Context);
-  return new (Context) VAArgExpr(BuiltinLoc, E, TInfo, RPLoc, T, IsMS);
+  auto *ResultExpr = new (Context) VAArgExpr(BuiltinLoc, E, TInfo, RPLoc, T, IsMS);
+
+  // Check for va_arg where arguments of the given type will be promoted
+  // (i.e. this va_arg is guaranteed to have undefined behavior).
+  ExprResult PromotedExpr = DefaultArgumentPromotion(ResultExpr);
+  QualType PromoteType = PromotedExpr.get()->getType();
+
+  if (!Context.typesAreCompatible(PromoteType, ResultExpr->getType(), true)) {
+    DiagRuntimeBehavior(TInfo->getTypeLoc().getBeginLoc(), E,
+                        PDiag(diag::warn_second_parameter_to_va_arg_never_compatible)
+                            << TInfo->getType()
+                            << PromoteType
+                            << TInfo->getTypeLoc().getSourceRange());
+  }
+
+  return ResultExpr;
 }
 
 ExprResult Sema::ActOnGNUNullExpr(SourceLocation TokenLoc) {
