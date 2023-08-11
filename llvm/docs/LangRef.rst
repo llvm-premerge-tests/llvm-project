@@ -23759,9 +23759,9 @@ Proper :ref:`function attributes <fnattrs>` usage is required for the
 constrained intrinsics to function correctly.
 
 All function *calls* done in a function that uses constrained floating
-point intrinsics must have the ``strictfp`` attribute either on the
-calling instruction or on the declaration or definition of the function
-being called.
+point intrinsics must have the ``strictfp`` attribute. Calls to intrinsics
+that are defined to have the ``strictfp`` are allowed to omit the attribute
+from the call site.
 
 All function *definitions* that use constrained floating point intrinsics
 must have the ``strictfp`` attribute.
