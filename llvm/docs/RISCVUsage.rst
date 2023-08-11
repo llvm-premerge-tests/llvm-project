@@ -117,6 +117,7 @@ on support follow.
      ``Zicbom``       Assembly Support
      ``Zicbop``       Assembly Support
      ``Zicboz``       Assembly Support
+     ``Zicfilp``      Assembly Support
      ``Zicntr``       (`See Note <#riscv-i2p1-note>`__)
      ``Zicsr``        (`See Note <#riscv-i2p1-note>`__)
      ``Zifencei``     (`See Note <#riscv-i2p1-note>`__)
