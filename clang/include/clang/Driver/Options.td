@@ -900,6 +900,10 @@ def : Flag<["-"], "Xparser">, IgnoredGCCCompat;
 // FIXME -Xcompiler is misused by some ChromeOS packages. Remove it after a while.
 def : Flag<["-"], "Xcompiler">, IgnoredGCCCompat;
 def Z_Flag : Flag<["-"], "Z">, Group<Link_Group>;
+def mno_gather : Flag<["-"], "mno-gather">, Flags<[NoXarchOption]>,
+                 HelpText<"Disable generation of gather instructions in auto-vectorization">;
+def mno_scatter : Flag<["-"], "mno-scatter">, Flags<[NoXarchOption]>,
+                  HelpText<"Disable generation of scatter instructions in auto-vectorization">;
 def all__load : Flag<["-"], "all_load">;
 def allowable__client : Separate<["-"], "allowable_client">;
 def ansi : Flag<["-", "--"], "ansi">, Group<CompileOnly_Group>;
@@ -7218,6 +7222,10 @@ def _SLASH_QIntel_jcc_erratum : CLFlag<"QIntel-jcc-erratum">,
   Alias<mbranches_within_32B_boundaries>;
 def _SLASH_arm64EC : CLFlag<"arm64EC">,
   HelpText<"Set build target to arm64ec">;
+def : CLFlag<"Qgather-">, Alias<mno_gather>,
+      HelpText<"Disable generation of gather instructions in auto-vectorization">;
+def : CLFlag<"Qscatter-">, Alias<mno_scatter>,
+      HelpText<"Disable generation of scatter instructions in auto-vectorization">;
 
 // Non-aliases:
 
