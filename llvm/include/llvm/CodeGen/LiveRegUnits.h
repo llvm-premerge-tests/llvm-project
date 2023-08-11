@@ -112,14 +112,12 @@ public:
   /// The regmask has the same format as the one in the RegMask machine operand.
   void addRegsInMask(const uint32_t *RegMask);
 
-  /// Returns true if no part of physical register \p Reg is live.
-  bool available(MCPhysReg Reg) const {
-    for (MCRegUnit Unit : TRI->regunits(Reg)) {
-      if (Units.test(Unit))
-        return false;
-    }
-    return true;
-  }
+  /// Returns true if no part of non-reserved physical register \p Reg is live
+  /// (overloaded)
+  bool available(const MachineRegisterInfo &MRI, MCPhysReg Reg) const;
+
+  /// Returns true if no part of physical register \p Reg is live. (overloaded)
+  bool available(MCPhysReg Reg) const;
 
   /// Updates liveness when stepping backwards over the instruction \p MI.
   /// This removes all register units defined or clobbered in \p MI and then

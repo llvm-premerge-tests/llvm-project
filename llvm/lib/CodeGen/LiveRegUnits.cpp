@@ -84,6 +84,25 @@ void LiveRegUnits::accumulate(const MachineInstr &MI) {
   }
 }
 
+bool LiveRegUnits::available(const MachineRegisterInfo &MRI,
+                             MCPhysReg Reg) const {
+  for (MCRegUnit Unit : TRI->regunits(Reg)) {
+    if (Units.test(Unit))
+      return false;
+    else if (MRI.isReserved(Reg))
+      return false;
+  }
+  return true;
+}
+
+bool LiveRegUnits::available(MCPhysReg Reg) const {
+  for (MCRegUnit Unit : TRI->regunits(Reg)) {
+    if (Units.test(Unit))
+      return false;
+  }
+  return true;
+}
+
 /// Add live-in registers of basic block \p MBB to \p LiveUnits.
 static void addBlockLiveIns(LiveRegUnits &LiveUnits,
                             const MachineBasicBlock &MBB) {
