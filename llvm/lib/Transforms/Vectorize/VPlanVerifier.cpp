@@ -190,8 +190,8 @@ static bool verifyPhiRecipes(const VPBasicBlock *VPBB) {
   return true;
 }
 
-static bool verifyVPBasicBlock(const VPBasicBlock *VPBB,
-                               VPDominatorTree &VPDT) {
+static bool verifyVPBasicBlock(const VPBasicBlock *VPBB, VPDominatorTree &VPDT,
+                               const VPBlockBase *Entry) {
   if (!verifyPhiRecipes(VPBB))
     return false;
 
@@ -202,7 +202,25 @@ static bool verifyVPBasicBlock(const VPBasicBlock *VPBB,
   for (const VPRecipeBase &R : *VPBB)
     RecipeNumbering[&R] = Cnt++;
 
+  // Check if VPEVLRecipe exists only in Entry block and only once.
+  bool VPEVLFound = false;
+  auto CheckEVLRecipies = [&](const VPRecipeBase *R) {
+    if (isa<VPEVLRecipe>(R)) {
+      if (VPBB != Entry || VPEVLFound)
+        return false;
+      VPEVLFound = true;
+    }
+    return true;
+  };
+
   for (const VPRecipeBase &R : *VPBB) {
+    if (!CheckEVLRecipies(&R)) {
+      if (Entry != VPBB)
+        errs() << "EVL recipe not in entry block!\n";
+      else
+        errs() << "EVL recipe inserted more than once!\n";
+      return false;
+    }
     for (const VPValue *V : R.definedValues()) {
       for (const VPUser *U : V->users()) {
         auto *UI = dyn_cast<VPRecipeBase>(U);
@@ -234,14 +252,14 @@ bool VPlanVerifier::verifyPlanIsValid(const VPlan &Plan) {
   VPDominatorTree VPDT;
   VPDT.recalculate(const_cast<VPlan &>(Plan));
 
+  const VPRegionBlock *TopRegion = Plan.getVectorLoopRegion();
   auto Iter = vp_depth_first_deep(Plan.getEntry());
   for (const VPBasicBlock *VPBB :
        VPBlockUtils::blocksOnly<const VPBasicBlock>(Iter)) {
-    if (!verifyVPBasicBlock(VPBB, VPDT))
+    if (!verifyVPBasicBlock(VPBB, VPDT, TopRegion->getEntry()))
       return false;
   }
 
-  const VPRegionBlock *TopRegion = Plan.getVectorLoopRegion();
   const VPBasicBlock *Entry = dyn_cast<VPBasicBlock>(TopRegion->getEntry());
   if (!Entry) {
     errs() << "VPlan entry block is not a VPBasicBlock\n";

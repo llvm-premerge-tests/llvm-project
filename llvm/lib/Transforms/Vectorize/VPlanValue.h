@@ -350,6 +350,7 @@ public:
     VPWidenMemoryInstructionSC,
     VPWidenSC,
     VPWidenSelectSC,
+    VPEVLSC,
     // START: Phi-like recipes. Need to be kept together.
     VPBlendSC,
     VPPredInstPHISC,
