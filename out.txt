@@ -1,0 +1,650 @@
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700   1) //===- SymbolTable.cpp ----------------------------------------------------===//
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700   2) //
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700   3) // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700   4) // See https://llvm.org/LICENSE.txt for license information.
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700   5) // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700   6) //
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700   7) //===----------------------------------------------------------------------===//
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700   8) 
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700   9) #include "SymbolTable.h"
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400  10) #include "ConcatOutputSection.h"
+cc1cf6332a301 (Greg McGary            2020-12-13 19:31:33 -0800  11) #include "Config.h"
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700  12) #include "InputFiles.h"
+002eda7056af5 (Jez Ng                 2021-10-26 16:04:04 -0400  13) #include "InputSection.h"
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700  14) #include "Symbols.h"
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400  15) #include "SyntheticSections.h"
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700  16) #include "lld/Common/ErrorHandler.h"
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700  17) #include "lld/Common/Memory.h"
+32647c8f53a65 (Jez Ng                 2022-10-14 15:28:19 -0400  18) #include "llvm/Demangle/Demangle.h"
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700  19) 
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700  20) using namespace llvm;
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700  21) using namespace lld;
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700  22) using namespace lld::macho;
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700  23) 
+db1e845a9646f (Greg McGary            2021-03-10 16:45:18 -0800  24) Symbol *SymbolTable::find(CachedHashStringRef cachedName) {
+db1e845a9646f (Greg McGary            2021-03-10 16:45:18 -0800  25)   auto it = symMap.find(cachedName);
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700  26)   if (it == symMap.end())
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700  27)     return nullptr;
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700  28)   return symVector[it->second];
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700  29) }
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700  30) 
+eb5b7d4497e32 (Jez Ng                 2021-04-15 21:14:29 -0400  31) std::pair<Symbol *, bool> SymbolTable::insert(StringRef name,
+eb5b7d4497e32 (Jez Ng                 2021-04-15 21:14:29 -0400  32)                                               const InputFile *file) {
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700  33)   auto p = symMap.insert({CachedHashStringRef(name), (int)symVector.size()});
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700  34) 
+eb5b7d4497e32 (Jez Ng                 2021-04-15 21:14:29 -0400  35)   Symbol *sym;
+eb5b7d4497e32 (Jez Ng                 2021-04-15 21:14:29 -0400  36)   if (!p.second) {
+eb5b7d4497e32 (Jez Ng                 2021-04-15 21:14:29 -0400  37)     // Name already present in the symbol table.
+eb5b7d4497e32 (Jez Ng                 2021-04-15 21:14:29 -0400  38)     sym = symVector[p.first->second];
+eb5b7d4497e32 (Jez Ng                 2021-04-15 21:14:29 -0400  39)   } else {
+eb5b7d4497e32 (Jez Ng                 2021-04-15 21:14:29 -0400  40)     // Name is a new symbol.
+eb5b7d4497e32 (Jez Ng                 2021-04-15 21:14:29 -0400  41)     sym = reinterpret_cast<Symbol *>(make<SymbolUnion>());
+eb5b7d4497e32 (Jez Ng                 2021-04-15 21:14:29 -0400  42)     symVector.push_back(sym);
+eb5b7d4497e32 (Jez Ng                 2021-04-15 21:14:29 -0400  43)   }
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700  44) 
+eb5b7d4497e32 (Jez Ng                 2021-04-15 21:14:29 -0400  45)   sym->isUsedInRegularObj |= !file || isa<ObjFile>(file);
+eb5b7d4497e32 (Jez Ng                 2021-04-15 21:14:29 -0400  46)   return {sym, p.second};
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700  47) }
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700  48) 
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700  49) namespace {
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700  50) struct DuplicateSymbolDiag {
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700  51)   // Pair containing source location and source file
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700  52)   const std::pair<std::string, std::string> src1;
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700  53)   const std::pair<std::string, std::string> src2;
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700  54)   const Symbol *sym;
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700  55) 
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700  56)   DuplicateSymbolDiag(const std::pair<std::string, std::string> src1,
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700  57)                       const std::pair<std::string, std::string> src2,
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700  58)                       const Symbol *sym)
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700  59)       : src1(src1), src2(src2), sym(sym) {}
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700  60) };
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700  61) SmallVector<DuplicateSymbolDiag> dupSymDiags;
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700  62) } // namespace
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700  63) 
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  64) // Move symbols at \p fromOff in \p fromIsec into \p toIsec, unless that symbol
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  65) // is \p skip.
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  66) static void transplantSymbolsAtOffset(InputSection *fromIsec,
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  67)                                       InputSection *toIsec, Defined *skip,
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  68)                                       uint64_t fromOff, uint64_t toOff) {
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  69)   // Ensure the symbols will still be in address order after our insertions.
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  70)   auto insertIt = llvm::upper_bound(toIsec->symbols, toOff,
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  71)                                     [](uint64_t off, const Symbol *s) {
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  72)                                       return cast<Defined>(s)->value < off;
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  73)                                     });
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  74)   llvm::erase_if(fromIsec->symbols, [&](Symbol *s) {
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  75)     auto *d = cast<Defined>(s);
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  76)     if (d->value != fromOff)
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  77)       return false;
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  78)     if (d != skip) {
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  79)       // This repeated insertion will be quadratic unless insertIt is the end
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  80)       // iterator. However, that is typically the case for files that have
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  81)       // .subsections_via_symbols set.
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  82)       insertIt = toIsec->symbols.insert(insertIt, d);
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  83)       d->isec = toIsec;
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  84)       d->value = toOff;
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  85)       // We don't want to have more than one unwindEntry at a given address, so
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  86)       // drop the redundant ones. We We can safely drop the unwindEntries of
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  87)       // the symbols in fromIsec since we will be adding another unwindEntry as
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  88)       // we finish parsing toIsec's file. (We can assume that toIsec has its
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  89)       // own unwindEntry because of the ODR.)
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  90)       d->unwindEntry = nullptr;
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  91)     }
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  92)     return true;
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  93)   });
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  94) }
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500  95) 
+d8283d9ddcc5e (Jez Ng                 2021-03-12 17:26:12 -0500  96) Defined *SymbolTable::addDefined(StringRef name, InputFile *file,
+f6ad0453665f6 (Alexander Shaposhnikov 2021-04-01 17:48:09 -0700  97)                                  InputSection *isec, uint64_t value,
+f6ad0453665f6 (Alexander Shaposhnikov 2021-04-01 17:48:09 -0700  98)                                  uint64_t size, bool isWeakDef,
+ed59b8a11c899 (Vincent Lee            2023-05-15 02:00:29 -0700  99)                                  bool isPrivateExtern,
+9b29dae3cae18 (Vy Nguyen              2021-11-08 19:50:34 -0500 100)                                  bool isReferencedDynamically, bool noDeadStrip,
+9b29dae3cae18 (Vy Nguyen              2021-11-08 19:50:34 -0500 101)                                  bool isWeakDefCanBeHidden) {
+2a38dba7dd4d3 (Jez Ng                 2020-08-27 15:59:30 -0700 102)   bool overridesWeakDef = false;
+b99da9d255e91 (Nico Weber             2022-08-07 10:49:26 -0400 103)   auto [s, wasInserted] = insert(name, file);
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700 104) 
+d515575714b60 (Jez Ng                 2022-09-15 22:55:41 -0400 105)   assert(!file || !isa<BitcodeFile>(file) || !isec);
+d5a70db1938c0 (Nico Weber             2021-05-06 14:47:57 -0400 106) 
+31d58858425f6 (Jez Ng                 2020-07-24 15:55:25 -0700 107)   if (!wasInserted) {
+31d58858425f6 (Jez Ng                 2020-07-24 15:55:25 -0700 108)     if (auto *defined = dyn_cast<Defined>(s)) {
+13f439a1872b5 (Nico Weber             2020-12-17 13:30:18 -0500 109)       if (isWeakDef) {
+2e1be96df696e (Vy Nguyen              2021-11-09 10:42:21 -0500 110)         // See further comment in createDefined() in InputFiles.cpp
+d5a70db1938c0 (Nico Weber             2021-05-06 14:47:57 -0400 111)         if (defined->isWeakDef()) {
+13f439a1872b5 (Nico Weber             2020-12-17 13:30:18 -0500 112)           defined->privateExtern &= isPrivateExtern;
+9b29dae3cae18 (Vy Nguyen              2021-11-08 19:50:34 -0500 113)           defined->weakDefCanBeHidden &= isWeakDefCanBeHidden;
+4a12248ee2763 (Nico Weber             2021-05-17 09:15:39 -0400 114)           defined->referencedDynamically |= isReferencedDynamically;
+a5645513dba70 (Nico Weber             2021-05-07 17:10:05 -0400 115)           defined->noDeadStrip |= noDeadStrip;
+d5a70db1938c0 (Nico Weber             2021-05-06 14:47:57 -0400 116)         }
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500 117)         if (auto concatIsec = dyn_cast_or_null<ConcatInputSection>(isec)) {
+2e1be96df696e (Vy Nguyen              2021-11-09 10:42:21 -0500 118)           concatIsec->wasCoalesced = true;
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500 119)           // Any local symbols that alias the coalesced symbol should be moved
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500 120)           // into the prevailing section. Note that we have sorted the symbols
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500 121)           // in ObjFile::parseSymbols() such that extern weak symbols appear
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500 122)           // last, so we don't need to worry about subsequent symbols being
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500 123)           // added to an already-coalesced section.
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500 124)           if (defined->isec)
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500 125)             transplantSymbolsAtOffset(concatIsec, defined->isec,
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500 126)                                       /*skip=*/nullptr, value, defined->value);
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500 127)         }
+d8283d9ddcc5e (Jez Ng                 2021-03-12 17:26:12 -0500 128)         return defined;
+13f439a1872b5 (Nico Weber             2020-12-17 13:30:18 -0500 129)       }
+2e1be96df696e (Vy Nguyen              2021-11-09 10:42:21 -0500 130) 
+2e1be96df696e (Vy Nguyen              2021-11-09 10:42:21 -0500 131)       if (defined->isWeakDef()) {
+2e1be96df696e (Vy Nguyen              2021-11-09 10:42:21 -0500 132)         if (auto concatIsec =
+2e1be96df696e (Vy Nguyen              2021-11-09 10:42:21 -0500 133)                 dyn_cast_or_null<ConcatInputSection>(defined->isec)) {
+2e1be96df696e (Vy Nguyen              2021-11-09 10:42:21 -0500 134)           concatIsec->wasCoalesced = true;
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500 135)           if (isec)
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500 136)             transplantSymbolsAtOffset(concatIsec, isec, defined, defined->value,
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500 137)                                       value);
+2e1be96df696e (Vy Nguyen              2021-11-09 10:42:21 -0500 138)         }
+2e1be96df696e (Vy Nguyen              2021-11-09 10:42:21 -0500 139)       } else {
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 140)         std::string srcLoc1 = defined->getSourceLocation();
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 141)         std::string srcLoc2 = isec ? isec->getSourceLocation(value) : "";
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 142)         std::string srcFile1 = toString(defined->getFile());
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 143)         std::string srcFile2 = toString(file);
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 144) 
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 145)         dupSymDiags.push_back({make_pair(srcLoc1, srcFile1),
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 146)                                make_pair(srcLoc2, srcFile2), defined});
+2e1be96df696e (Vy Nguyen              2021-11-09 10:42:21 -0500 147)       }
+2e1be96df696e (Vy Nguyen              2021-11-09 10:42:21 -0500 148) 
+2a38dba7dd4d3 (Jez Ng                 2020-08-27 15:59:30 -0700 149)     } else if (auto *dysym = dyn_cast<DylibSymbol>(s)) {
+2a38dba7dd4d3 (Jez Ng                 2020-08-27 15:59:30 -0700 150)       overridesWeakDef = !isWeakDef && dysym->isWeakDef();
+2c1903412b0a7 (Nico Weber             2021-05-31 22:12:35 -0400 151)       dysym->unreference();
+b9457330266e1 (Jez Ng                 2022-10-21 22:48:25 -0400 152)     } else if (auto *undef = dyn_cast<Undefined>(s)) {
+b9457330266e1 (Jez Ng                 2022-10-21 22:48:25 -0400 153)       // Preserve the original bitcode file name (instead of using the object
+b9457330266e1 (Jez Ng                 2022-10-21 22:48:25 -0400 154)       // file name).
+b9457330266e1 (Jez Ng                 2022-10-21 22:48:25 -0400 155)       if (undef->wasBitcodeSymbol)
+b9457330266e1 (Jez Ng                 2022-10-21 22:48:25 -0400 156)         file = undef->getFile();
+31d58858425f6 (Jez Ng                 2020-07-24 15:55:25 -0700 157)     }
+31d58858425f6 (Jez Ng                 2020-07-24 15:55:25 -0700 158)     // Defined symbols take priority over other types of symbols, so in case
+31d58858425f6 (Jez Ng                 2020-07-24 15:55:25 -0700 159)     // of a name conflict, we fall through to the replaceSymbol() call below.
+31d58858425f6 (Jez Ng                 2020-07-24 15:55:25 -0700 160)   }
+31d58858425f6 (Jez Ng                 2020-07-24 15:55:25 -0700 161) 
+ceff23c6e3911 (Jez Ng                 2022-03-14 21:51:15 -0400 162)   // With -flat_namespace, all extern symbols in dylibs are interposable.
+ceff23c6e3911 (Jez Ng                 2022-03-14 21:51:15 -0400 163)   // FIXME: Add support for `-interposable` (PR53680).
+ceff23c6e3911 (Jez Ng                 2022-03-14 21:51:15 -0400 164)   bool interposable = config->namespaceKind == NamespaceKind::flat &&
+ceff23c6e3911 (Jez Ng                 2022-03-14 21:51:15 -0400 165)                       config->outputType != MachO::MH_EXECUTE &&
+ceff23c6e3911 (Jez Ng                 2022-03-14 21:51:15 -0400 166)                       !isPrivateExtern;
+4a12248ee2763 (Nico Weber             2021-05-17 09:15:39 -0400 167)   Defined *defined = replaceSymbol<Defined>(
+4a12248ee2763 (Nico Weber             2021-05-17 09:15:39 -0400 168)       s, name, file, isec, value, size, isWeakDef, /*isExternal=*/true,
+ed59b8a11c899 (Vincent Lee            2023-05-15 02:00:29 -0700 169)       isPrivateExtern, /*includeInSymtab=*/true, isReferencedDynamically,
+ed59b8a11c899 (Vincent Lee            2023-05-15 02:00:29 -0700 170)       noDeadStrip, overridesWeakDef, isWeakDefCanBeHidden, interposable);
+d8283d9ddcc5e (Jez Ng                 2021-03-12 17:26:12 -0500 171)   return defined;
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700 172) }
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700 173) 
+d515575714b60 (Jez Ng                 2022-09-15 22:55:41 -0400 174) Defined *SymbolTable::aliasDefined(Defined *src, StringRef target,
+d515575714b60 (Jez Ng                 2022-09-15 22:55:41 -0400 175)                                    InputFile *newFile, bool makePrivateExtern) {
+d515575714b60 (Jez Ng                 2022-09-15 22:55:41 -0400 176)   bool isPrivateExtern = makePrivateExtern || src->privateExtern;
+d515575714b60 (Jez Ng                 2022-09-15 22:55:41 -0400 177)   return addDefined(target, newFile, src->isec, src->value, src->size,
+ed59b8a11c899 (Vincent Lee            2023-05-15 02:00:29 -0700 178)                     src->isWeakDef(), isPrivateExtern,
+0bc100986c250 (Keith Smiley           2022-07-16 11:26:44 -0700 179)                     src->referencedDynamically, src->noDeadStrip,
+0bc100986c250 (Keith Smiley           2022-07-16 11:26:44 -0700 180)                     src->weakDefCanBeHidden);
+0bc100986c250 (Keith Smiley           2022-07-16 11:26:44 -0700 181) }
+0bc100986c250 (Keith Smiley           2022-07-16 11:26:44 -0700 182) 
+163dcd851309d (Jez Ng                 2021-02-03 13:31:40 -0500 183) Symbol *SymbolTable::addUndefined(StringRef name, InputFile *file,
+163dcd851309d (Jez Ng                 2021-02-03 13:31:40 -0500 184)                                   bool isWeakRef) {
+b99da9d255e91 (Nico Weber             2022-08-07 10:49:26 -0400 185)   auto [s, wasInserted] = insert(name, file);
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700 186) 
+fdc0c21973c80 (Greg McGary            2021-03-09 20:15:29 -0800 187)   RefState refState = isWeakRef ? RefState::Weak : RefState::Strong;
+811444d7a173e (Jez Ng                 2020-12-15 21:05:06 -0500 188) 
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700 189)   if (wasInserted)
+b9457330266e1 (Jez Ng                 2022-10-21 22:48:25 -0400 190)     replaceSymbol<Undefined>(s, name, file, refState,
+b9457330266e1 (Jez Ng                 2022-10-21 22:48:25 -0400 191)                              /*wasBitcodeSymbol=*/false);
+97a5dccb7d3a8 (Fangrui Song           2022-01-11 16:49:06 -0800 192)   else if (auto *lazy = dyn_cast<LazyArchive>(s))
+2b920ae78c1d3 (Kellie Medlin          2020-05-14 12:43:51 -0700 193)     lazy->fetchArchiveMember();
+0aae2bf37318e (Fangrui Song           2022-01-19 10:14:49 -0800 194)   else if (isa<LazyObject>(s))
+0aae2bf37318e (Fangrui Song           2022-01-19 10:14:49 -0800 195)     extract(*s->getFile(), s->getName());
+811444d7a173e (Jez Ng                 2020-12-15 21:05:06 -0500 196)   else if (auto *dynsym = dyn_cast<DylibSymbol>(s))
+2c1903412b0a7 (Nico Weber             2021-05-31 22:12:35 -0400 197)     dynsym->reference(refState);
+811444d7a173e (Jez Ng                 2020-12-15 21:05:06 -0500 198)   else if (auto *undefined = dyn_cast<Undefined>(s))
+811444d7a173e (Jez Ng                 2020-12-15 21:05:06 -0500 199)     undefined->refState = std::max(undefined->refState, refState);
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700 200)   return s;
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700 201) }
+6acd3003755db (Fangrui Song           2020-04-02 11:54:05 -0700 202) 
+c32e69b2ce7ab (Jez Ng                 2020-09-24 14:44:14 -0700 203) Symbol *SymbolTable::addCommon(StringRef name, InputFile *file, uint64_t size,
+13f439a1872b5 (Nico Weber             2020-12-17 13:30:18 -0500 204)                                uint32_t align, bool isPrivateExtern) {
+b99da9d255e91 (Nico Weber             2022-08-07 10:49:26 -0400 205)   auto [s, wasInserted] = insert(name, file);
+c32e69b2ce7ab (Jez Ng                 2020-09-24 14:44:14 -0700 206) 
+c32e69b2ce7ab (Jez Ng                 2020-09-24 14:44:14 -0700 207)   if (!wasInserted) {
+c32e69b2ce7ab (Jez Ng                 2020-09-24 14:44:14 -0700 208)     if (auto *common = dyn_cast<CommonSymbol>(s)) {
+c32e69b2ce7ab (Jez Ng                 2020-09-24 14:44:14 -0700 209)       if (size < common->size)
+c32e69b2ce7ab (Jez Ng                 2020-09-24 14:44:14 -0700 210)         return s;
+5213576fa25e6 (Jez Ng                 2020-09-24 15:00:56 -0700 211)     } else if (isa<Defined>(s)) {
+c32e69b2ce7ab (Jez Ng                 2020-09-24 14:44:14 -0700 212)       return s;
+c32e69b2ce7ab (Jez Ng                 2020-09-24 14:44:14 -0700 213)     }
+5213576fa25e6 (Jez Ng                 2020-09-24 15:00:56 -0700 214)     // Common symbols take priority over all non-Defined symbols, so in case of
+5213576fa25e6 (Jez Ng                 2020-09-24 15:00:56 -0700 215)     // a name conflict, we fall through to the replaceSymbol() call below.
+c32e69b2ce7ab (Jez Ng                 2020-09-24 14:44:14 -0700 216)   }
+c32e69b2ce7ab (Jez Ng                 2020-09-24 14:44:14 -0700 217) 
+13f439a1872b5 (Nico Weber             2020-12-17 13:30:18 -0500 218)   replaceSymbol<CommonSymbol>(s, name, file, size, align, isPrivateExtern);
+c32e69b2ce7ab (Jez Ng                 2020-09-24 14:44:14 -0700 219)   return s;
+c32e69b2ce7ab (Jez Ng                 2020-09-24 14:44:14 -0700 220) }
+c32e69b2ce7ab (Jez Ng                 2020-09-24 14:44:14 -0700 221) 
+3c9100fb785c4 (Jez Ng                 2020-08-12 19:50:09 -0700 222) Symbol *SymbolTable::addDylib(StringRef name, DylibFile *file, bool isWeakDef,
+3c9100fb785c4 (Jez Ng                 2020-08-12 19:50:09 -0700 223)                               bool isTlv) {
+b99da9d255e91 (Nico Weber             2022-08-07 10:49:26 -0400 224)   auto [s, wasInserted] = insert(name, file);
+060efd24c7f06 (Jez Ng                 2020-04-21 13:37:57 -0700 225) 
+fdc0c21973c80 (Greg McGary            2021-03-09 20:15:29 -0800 226)   RefState refState = RefState::Unreferenced;
+811444d7a173e (Jez Ng                 2020-12-15 21:05:06 -0500 227)   if (!wasInserted) {
+811444d7a173e (Jez Ng                 2020-12-15 21:05:06 -0500 228)     if (auto *defined = dyn_cast<Defined>(s)) {
+811444d7a173e (Jez Ng                 2020-12-15 21:05:06 -0500 229)       if (isWeakDef && !defined->isWeakDef())
+2a38dba7dd4d3 (Jez Ng                 2020-08-27 15:59:30 -0700 230)         defined->overridesWeakDef = true;
+811444d7a173e (Jez Ng                 2020-12-15 21:05:06 -0500 231)     } else if (auto *undefined = dyn_cast<Undefined>(s)) {
+811444d7a173e (Jez Ng                 2020-12-15 21:05:06 -0500 232)       refState = undefined->refState;
+811444d7a173e (Jez Ng                 2020-12-15 21:05:06 -0500 233)     } else if (auto *dysym = dyn_cast<DylibSymbol>(s)) {
+2c1903412b0a7 (Nico Weber             2021-05-31 22:12:35 -0400 234)       refState = dysym->getRefState();
+811444d7a173e (Jez Ng                 2020-12-15 21:05:06 -0500 235)     }
+811444d7a173e (Jez Ng                 2020-12-15 21:05:06 -0500 236)   }
+2a38dba7dd4d3 (Jez Ng                 2020-08-27 15:59:30 -0700 237) 
+cafb6cd10c743 (Nico Weber             2021-02-25 19:56:31 -0500 238)   bool isDynamicLookup = file == nullptr;
+31d58858425f6 (Jez Ng                 2020-07-24 15:55:25 -0700 239)   if (wasInserted || isa<Undefined>(s) ||
+cafb6cd10c743 (Nico Weber             2021-02-25 19:56:31 -0500 240)       (isa<DylibSymbol>(s) &&
+cafb6cd10c743 (Nico Weber             2021-02-25 19:56:31 -0500 241)        ((!isWeakDef && s->isWeakDef()) ||
+2c1903412b0a7 (Nico Weber             2021-05-31 22:12:35 -0400 242)         (!isDynamicLookup && cast<DylibSymbol>(s)->isDynamicLookup())))) {
+2c1903412b0a7 (Nico Weber             2021-05-31 22:12:35 -0400 243)     if (auto *dynsym = dyn_cast<DylibSymbol>(s))
+2c1903412b0a7 (Nico Weber             2021-05-31 22:12:35 -0400 244)       dynsym->unreference();
+811444d7a173e (Jez Ng                 2020-12-15 21:05:06 -0500 245)     replaceSymbol<DylibSymbol>(s, file, name, isWeakDef, refState, isTlv);
+2c1903412b0a7 (Nico Weber             2021-05-31 22:12:35 -0400 246)   }
+31d58858425f6 (Jez Ng                 2020-07-24 15:55:25 -0700 247) 
+060efd24c7f06 (Jez Ng                 2020-04-21 13:37:57 -0700 248)   return s;
+060efd24c7f06 (Jez Ng                 2020-04-21 13:37:57 -0700 249) }
+060efd24c7f06 (Jez Ng                 2020-04-21 13:37:57 -0700 250) 
+cafb6cd10c743 (Nico Weber             2021-02-25 19:56:31 -0500 251) Symbol *SymbolTable::addDynamicLookup(StringRef name) {
+cafb6cd10c743 (Nico Weber             2021-02-25 19:56:31 -0500 252)   return addDylib(name, /*file=*/nullptr, /*isWeakDef=*/false, /*isTlv=*/false);
+cafb6cd10c743 (Nico Weber             2021-02-25 19:56:31 -0500 253) }
+cafb6cd10c743 (Nico Weber             2021-02-25 19:56:31 -0500 254) 
+97a5dccb7d3a8 (Fangrui Song           2022-01-11 16:49:06 -0800 255) Symbol *SymbolTable::addLazyArchive(StringRef name, ArchiveFile *file,
+97a5dccb7d3a8 (Fangrui Song           2022-01-11 16:49:06 -0800 256)                                     const object::Archive::Symbol &sym) {
+b99da9d255e91 (Nico Weber             2022-08-07 10:49:26 -0400 257)   auto [s, wasInserted] = insert(name, file);
+2b920ae78c1d3 (Kellie Medlin          2020-05-14 12:43:51 -0700 258) 
+1b44364714981 (Jez Ng                 2021-12-03 21:26:32 -0500 259)   if (wasInserted) {
+97a5dccb7d3a8 (Fangrui Song           2022-01-11 16:49:06 -0800 260)     replaceSymbol<LazyArchive>(s, file, sym);
+1b44364714981 (Jez Ng                 2021-12-03 21:26:32 -0500 261)   } else if (isa<Undefined>(s)) {
+2b920ae78c1d3 (Kellie Medlin          2020-05-14 12:43:51 -0700 262)     file->fetch(sym);
+1b44364714981 (Jez Ng                 2021-12-03 21:26:32 -0500 263)   } else if (auto *dysym = dyn_cast<DylibSymbol>(s)) {
+1b44364714981 (Jez Ng                 2021-12-03 21:26:32 -0500 264)     if (dysym->isWeakDef()) {
+1b44364714981 (Jez Ng                 2021-12-03 21:26:32 -0500 265)       if (dysym->getRefState() != RefState::Unreferenced)
+1b44364714981 (Jez Ng                 2021-12-03 21:26:32 -0500 266)         file->fetch(sym);
+1b44364714981 (Jez Ng                 2021-12-03 21:26:32 -0500 267)       else
+97a5dccb7d3a8 (Fangrui Song           2022-01-11 16:49:06 -0800 268)         replaceSymbol<LazyArchive>(s, file, sym);
+1b44364714981 (Jez Ng                 2021-12-03 21:26:32 -0500 269)     }
+1b44364714981 (Jez Ng                 2021-12-03 21:26:32 -0500 270)   }
+2b920ae78c1d3 (Kellie Medlin          2020-05-14 12:43:51 -0700 271)   return s;
+2b920ae78c1d3 (Kellie Medlin          2020-05-14 12:43:51 -0700 272) }
+2b920ae78c1d3 (Kellie Medlin          2020-05-14 12:43:51 -0700 273) 
+0aae2bf37318e (Fangrui Song           2022-01-19 10:14:49 -0800 274) Symbol *SymbolTable::addLazyObject(StringRef name, InputFile &file) {
+b99da9d255e91 (Nico Weber             2022-08-07 10:49:26 -0400 275)   auto [s, wasInserted] = insert(name, &file);
+0aae2bf37318e (Fangrui Song           2022-01-19 10:14:49 -0800 276) 
+0aae2bf37318e (Fangrui Song           2022-01-19 10:14:49 -0800 277)   if (wasInserted) {
+0aae2bf37318e (Fangrui Song           2022-01-19 10:14:49 -0800 278)     replaceSymbol<LazyObject>(s, file, name);
+0aae2bf37318e (Fangrui Song           2022-01-19 10:14:49 -0800 279)   } else if (isa<Undefined>(s)) {
+0aae2bf37318e (Fangrui Song           2022-01-19 10:14:49 -0800 280)     extract(file, name);
+0aae2bf37318e (Fangrui Song           2022-01-19 10:14:49 -0800 281)   } else if (auto *dysym = dyn_cast<DylibSymbol>(s)) {
+0aae2bf37318e (Fangrui Song           2022-01-19 10:14:49 -0800 282)     if (dysym->isWeakDef()) {
+0aae2bf37318e (Fangrui Song           2022-01-19 10:14:49 -0800 283)       if (dysym->getRefState() != RefState::Unreferenced)
+0aae2bf37318e (Fangrui Song           2022-01-19 10:14:49 -0800 284)         extract(file, name);
+0aae2bf37318e (Fangrui Song           2022-01-19 10:14:49 -0800 285)       else
+0aae2bf37318e (Fangrui Song           2022-01-19 10:14:49 -0800 286)         replaceSymbol<LazyObject>(s, file, name);
+0aae2bf37318e (Fangrui Song           2022-01-19 10:14:49 -0800 287)     }
+0aae2bf37318e (Fangrui Song           2022-01-19 10:14:49 -0800 288)   }
+0aae2bf37318e (Fangrui Song           2022-01-19 10:14:49 -0800 289)   return s;
+0aae2bf37318e (Fangrui Song           2022-01-19 10:14:49 -0800 290) }
+0aae2bf37318e (Fangrui Song           2022-01-19 10:14:49 -0800 291) 
+d8283d9ddcc5e (Jez Ng                 2021-03-12 17:26:12 -0500 292) Defined *SymbolTable::addSynthetic(StringRef name, InputSection *isec,
+2461804b484e5 (Jez Ng                 2021-04-06 17:52:30 -0400 293)                                    uint64_t value, bool isPrivateExtern,
+4a12248ee2763 (Nico Weber             2021-05-17 09:15:39 -0400 294)                                    bool includeInSymtab,
+4a12248ee2763 (Nico Weber             2021-05-17 09:15:39 -0400 295)                                    bool referencedDynamically) {
+2cb3d28b17357 (Nico Weber             2022-04-07 08:48:52 -0400 296)   assert(!isec || !isec->getFile()); // See makeSyntheticInputSection().
+ed59b8a11c899 (Vincent Lee            2023-05-15 02:00:29 -0700 297)   Defined *s = addDefined(name, /*file=*/nullptr, isec, value, /*size=*/0,
+ed59b8a11c899 (Vincent Lee            2023-05-15 02:00:29 -0700 298)                           /*isWeakDef=*/false, isPrivateExtern,
+ed59b8a11c899 (Vincent Lee            2023-05-15 02:00:29 -0700 299)                           referencedDynamically, /*noDeadStrip=*/false,
+ed59b8a11c899 (Vincent Lee            2023-05-15 02:00:29 -0700 300)                           /*isWeakDefCanBeHidden=*/false);
+66f340051ac2d (Vy Nguyen              2021-03-18 18:49:45 -0400 301)   s->includeInSymtab = includeInSymtab;
+3587de2281986 (Jez Ng                 2020-07-30 14:28:41 -0700 302)   return s;
+3587de2281986 (Jez Ng                 2020-07-30 14:28:41 -0700 303) }
+3587de2281986 (Jez Ng                 2020-07-30 14:28:41 -0700 304) 
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 305) enum class Boundary {
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 306)   Start,
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 307)   End,
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 308) };
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 309) 
+80caa1eb4a0ea (Nico Weber             2021-07-23 10:12:55 -0400 310) static Defined *createBoundarySymbol(const Undefined &sym) {
+80caa1eb4a0ea (Nico Weber             2021-07-23 10:12:55 -0400 311)   return symtab->addSynthetic(
+80caa1eb4a0ea (Nico Weber             2021-07-23 10:12:55 -0400 312)       sym.getName(), /*isec=*/nullptr, /*value=*/-1, /*isPrivateExtern=*/true,
+80caa1eb4a0ea (Nico Weber             2021-07-23 10:12:55 -0400 313)       /*includeInSymtab=*/false, /*referencedDynamically=*/false);
+80caa1eb4a0ea (Nico Weber             2021-07-23 10:12:55 -0400 314) }
+80caa1eb4a0ea (Nico Weber             2021-07-23 10:12:55 -0400 315) 
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 316) static void handleSectionBoundarySymbol(const Undefined &sym, StringRef segSect,
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 317)                                         Boundary which) {
+2f3256a02ec33 (Nico Weber             2022-08-08 11:09:22 -0400 318)   auto [segName, sectName] = segSect.split('$');
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 319) 
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 320)   // Attach the symbol to any InputSection that will end up in the right
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 321)   // OutputSection -- it doesn't matter which one we pick.
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 322)   // Don't bother looking through inputSections for a matching
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 323)   // ConcatInputSection -- we need to create ConcatInputSection for
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 324)   // non-existing sections anyways, and that codepath works even if we should
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 325)   // already have a ConcatInputSection with the right name.
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 326) 
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 327)   OutputSection *osec = nullptr;
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 328)   // This looks for __TEXT,__cstring etc.
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 329)   for (SyntheticSection *ssec : syntheticSections)
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 330)     if (ssec->segname == segName && ssec->name == sectName) {
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 331)       osec = ssec->isec->parent;
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 332)       break;
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 333)     }
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 334) 
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 335)   if (!osec) {
+2b78ef06c2cd6 (Jez Ng                 2022-02-03 19:53:29 -0500 336)     ConcatInputSection *isec = makeSyntheticInputSection(segName, sectName);
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 337) 
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 338)     // This runs after markLive() and is only called for Undefineds that are
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 339)     // live. Marking the isec live ensures an OutputSection is created that the
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 340)     // start/end symbol can refer to.
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 341)     assert(sym.isLive());
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 342)     isec->live = true;
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 343) 
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 344)     // This runs after gatherInputSections(), so need to explicitly set parent
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 345)     // and add to inputSections.
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 346)     osec = isec->parent = ConcatOutputSection::getOrCreateForInput(isec);
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 347)     inputSections.push_back(isec);
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 348)   }
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 349) 
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 350)   if (which == Boundary::Start)
+80caa1eb4a0ea (Nico Weber             2021-07-23 10:12:55 -0400 351)     osec->sectionStartSymbols.push_back(createBoundarySymbol(sym));
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 352)   else
+80caa1eb4a0ea (Nico Weber             2021-07-23 10:12:55 -0400 353)     osec->sectionEndSymbols.push_back(createBoundarySymbol(sym));
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 354) }
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 355) 
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 356) static void handleSegmentBoundarySymbol(const Undefined &sym, StringRef segName,
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 357)                                         Boundary which) {
+80caa1eb4a0ea (Nico Weber             2021-07-23 10:12:55 -0400 358)   OutputSegment *seg = getOrCreateOutputSegment(segName);
+80caa1eb4a0ea (Nico Weber             2021-07-23 10:12:55 -0400 359)   if (which == Boundary::Start)
+80caa1eb4a0ea (Nico Weber             2021-07-23 10:12:55 -0400 360)     seg->segmentStartSymbols.push_back(createBoundarySymbol(sym));
+80caa1eb4a0ea (Nico Weber             2021-07-23 10:12:55 -0400 361)   else
+80caa1eb4a0ea (Nico Weber             2021-07-23 10:12:55 -0400 362)     seg->segmentEndSymbols.push_back(createBoundarySymbol(sym));
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 363) }
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 364) 
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 365) // Try to find a definition for an undefined symbol.
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 366) // Returns true if a definition was found and no diagnostics are needed.
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 367) static bool recoverFromUndefinedSymbol(const Undefined &sym) {
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 368)   // Handle start/end symbols.
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 369)   StringRef name = sym.getName();
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 370)   if (name.consume_front("section$start$")) {
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 371)     handleSectionBoundarySymbol(sym, name, Boundary::Start);
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 372)     return true;
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 373)   }
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 374)   if (name.consume_front("section$end$")) {
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 375)     handleSectionBoundarySymbol(sym, name, Boundary::End);
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 376)     return true;
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 377)   }
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 378)   if (name.consume_front("segment$start$")) {
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 379)     handleSegmentBoundarySymbol(sym, name, Boundary::Start);
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 380)     return true;
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 381)   }
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 382)   if (name.consume_front("segment$end$")) {
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 383)     handleSegmentBoundarySymbol(sym, name, Boundary::End);
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 384)     return true;
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 385)   }
+04e8d0b62dca0 (Nico Weber             2021-07-15 12:54:42 -0400 386) 
+6c641d0de686e (Kaining Zhong          2022-07-11 15:21:57 -0400 387)   // Leave dtrace symbols, since we will handle them when we do the relocation
+8d85c96e0e3a0 (Fangrui Song           2023-06-05 14:36:19 -0700 388)   if (name.starts_with("___dtrace_"))
+6c641d0de686e (Kaining Zhong          2022-07-11 15:21:57 -0400 389)     return true;
+6c641d0de686e (Kaining Zhong          2022-07-11 15:21:57 -0400 390) 
+2d6fb62ef2d96 (Nico Weber             2021-07-22 11:20:36 -0400 391)   // Handle -U.
+2d6fb62ef2d96 (Nico Weber             2021-07-22 11:20:36 -0400 392)   if (config->explicitDynamicLookups.count(sym.getName())) {
+2d6fb62ef2d96 (Nico Weber             2021-07-22 11:20:36 -0400 393)     symtab->addDynamicLookup(sym.getName());
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 394)     return true;
+2d6fb62ef2d96 (Nico Weber             2021-07-22 11:20:36 -0400 395)   }
+2d6fb62ef2d96 (Nico Weber             2021-07-22 11:20:36 -0400 396) 
+2d6fb62ef2d96 (Nico Weber             2021-07-22 11:20:36 -0400 397)   // Handle -undefined.
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 398)   if (config->undefinedSymbolTreatment ==
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 399)           UndefinedSymbolTreatment::dynamic_lookup ||
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 400)       config->undefinedSymbolTreatment == UndefinedSymbolTreatment::suppress) {
+0658fc654c758 (Nico Weber             2021-02-28 13:42:14 -0500 401)     symtab->addDynamicLookup(sym.getName());
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 402)     return true;
+cc1cf6332a301 (Greg McGary            2020-12-13 19:31:33 -0800 403)   }
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 404) 
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 405)   // We do not return true here, as we still need to print diagnostics.
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 406)   if (config->undefinedSymbolTreatment == UndefinedSymbolTreatment::warning)
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 407)     symtab->addDynamicLookup(sym.getName());
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 408) 
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 409)   return false;
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 410) }
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 411) 
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 412) namespace {
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 413) struct UndefinedDiag {
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 414)   struct SectionAndOffset {
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 415)     const InputSection *isec;
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 416)     uint64_t offset;
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 417)   };
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 418) 
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 419)   std::vector<SectionAndOffset> codeReferences;
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 420)   std::vector<std::string> otherReferences;
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 421) };
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 422) 
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 423) MapVector<const Undefined *, UndefinedDiag> undefs;
+bb69a66ced279 (Jez Ng                 2023-03-10 22:28:36 -0500 424) } // namespace
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 425) 
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 426) void macho::reportPendingDuplicateSymbols() {
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 427)   for (const auto &duplicate : dupSymDiags) {
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 428)     if (!config->deadStripDuplicates || duplicate.sym->isLive()) {
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 429)       std::string message =
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 430)           "duplicate symbol: " + toString(*duplicate.sym) + "\n>>> defined in ";
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 431)       if (!duplicate.src1.first.empty())
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 432)         message += duplicate.src1.first + "\n>>>            ";
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 433)       message += duplicate.src1.second + "\n>>> defined in ";
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 434)       if (!duplicate.src2.first.empty())
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 435)         message += duplicate.src2.first + "\n>>>            ";
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 436)       error(message + duplicate.src2.second);
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 437)     }
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 438)   }
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 439) }
+58edaef3fe08b (Vincent Lee            2022-09-27 23:42:47 -0700 440) 
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 441) // Check whether the definition name def is a mangled function name that matches
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 442) // the reference name ref.
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 443) static bool canSuggestExternCForCXX(StringRef ref, StringRef def) {
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 444)   llvm::ItaniumPartialDemangler d;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 445)   std::string name = def.str();
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 446)   if (d.partialDemangle(name.c_str()))
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 447)     return false;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 448)   char *buf = d.getFunctionName(nullptr, nullptr);
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 449)   if (!buf)
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 450)     return false;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 451)   bool ret = ref == buf;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 452)   free(buf);
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 453)   return ret;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 454) }
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 455) 
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 456) // Suggest an alternative spelling of an "undefined symbol" diagnostic. Returns
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 457) // the suggested symbol, which is either in the symbol table, or in the same
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 458) // file of sym.
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 459) static const Symbol *getAlternativeSpelling(const Undefined &sym,
+c4d9df9f78f31 (Jez Ng                 2023-04-05 01:48:34 -0400 460)                                             std::string &preHint,
+c4d9df9f78f31 (Jez Ng                 2023-04-05 01:48:34 -0400 461)                                             std::string &postHint) {
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 462)   DenseMap<StringRef, const Symbol *> map;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 463)   if (sym.getFile() && sym.getFile()->kind() == InputFile::ObjKind) {
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 464)     // Build a map of local defined symbols.
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 465)     for (const Symbol *s : sym.getFile()->symbols)
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 466)       if (auto *defined = dyn_cast_or_null<Defined>(s))
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 467)         if (!defined->isExternal())
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 468)           map.try_emplace(s->getName(), s);
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 469)   }
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 470) 
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 471)   auto suggest = [&](StringRef newName) -> const Symbol * {
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 472)     // If defined locally.
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 473)     if (const Symbol *s = map.lookup(newName))
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 474)       return s;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 475) 
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 476)     // If in the symbol table and not undefined.
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 477)     if (const Symbol *s = symtab->find(newName))
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 478)       if (dyn_cast<Undefined>(s) == nullptr)
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 479)         return s;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 480) 
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 481)     return nullptr;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 482)   };
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 483) 
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 484)   // This loop enumerates all strings of Levenshtein distance 1 as typo
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 485)   // correction candidates and suggests the one that exists as a non-undefined
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 486)   // symbol.
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 487)   StringRef name = sym.getName();
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 488)   for (size_t i = 0, e = name.size(); i != e + 1; ++i) {
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 489)     // Insert a character before name[i].
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 490)     std::string newName = (name.substr(0, i) + "0" + name.substr(i)).str();
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 491)     for (char c = '0'; c <= 'z'; ++c) {
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 492)       newName[i] = c;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 493)       if (const Symbol *s = suggest(newName))
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 494)         return s;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 495)     }
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 496)     if (i == e)
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 497)       break;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 498) 
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 499)     // Substitute name[i].
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 500)     newName = std::string(name);
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 501)     for (char c = '0'; c <= 'z'; ++c) {
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 502)       newName[i] = c;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 503)       if (const Symbol *s = suggest(newName))
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 504)         return s;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 505)     }
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 506) 
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 507)     // Transpose name[i] and name[i+1]. This is of edit distance 2 but it is
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 508)     // common.
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 509)     if (i + 1 < e) {
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 510)       newName[i] = name[i + 1];
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 511)       newName[i + 1] = name[i];
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 512)       if (const Symbol *s = suggest(newName))
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 513)         return s;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 514)     }
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 515) 
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 516)     // Delete name[i].
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 517)     newName = (name.substr(0, i) + name.substr(i + 1)).str();
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 518)     if (const Symbol *s = suggest(newName))
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 519)       return s;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 520)   }
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 521) 
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 522)   // Case mismatch, e.g. Foo vs FOO.
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 523)   for (auto &it : map)
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 524)     if (name.equals_insensitive(it.first))
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 525)       return it.second;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 526)   for (Symbol *sym : symtab->getSymbols())
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 527)     if (dyn_cast<Undefined>(sym) == nullptr &&
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 528)         name.equals_insensitive(sym->getName()))
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 529)       return sym;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 530) 
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 531)   // The reference may be a mangled name while the definition is not. Suggest a
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 532)   // missing extern "C".
+8d85c96e0e3a0 (Fangrui Song           2023-06-05 14:36:19 -0700 533)   if (name.starts_with("__Z")) {
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 534)     std::string buf = name.str();
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 535)     llvm::ItaniumPartialDemangler d;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 536)     if (!d.partialDemangle(buf.c_str()))
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 537)       if (char *buf = d.getFunctionName(nullptr, nullptr)) {
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 538)         const Symbol *s = suggest((Twine("_") + buf).str());
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 539)         free(buf);
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 540)         if (s) {
+c4d9df9f78f31 (Jez Ng                 2023-04-05 01:48:34 -0400 541)           preHint = ": extern \"C\" ";
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 542)           return s;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 543)         }
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 544)       }
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 545)   } else {
+c4d9df9f78f31 (Jez Ng                 2023-04-05 01:48:34 -0400 546)     StringRef nameWithoutUnderscore = name;
+c4d9df9f78f31 (Jez Ng                 2023-04-05 01:48:34 -0400 547)     nameWithoutUnderscore.consume_front("_");
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 548)     const Symbol *s = nullptr;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 549)     for (auto &it : map)
+c4d9df9f78f31 (Jez Ng                 2023-04-05 01:48:34 -0400 550)       if (canSuggestExternCForCXX(nameWithoutUnderscore, it.first)) {
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 551)         s = it.second;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 552)         break;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 553)       }
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 554)     if (!s)
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 555)       for (Symbol *sym : symtab->getSymbols())
+c4d9df9f78f31 (Jez Ng                 2023-04-05 01:48:34 -0400 556)         if (canSuggestExternCForCXX(nameWithoutUnderscore, sym->getName())) {
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 557)           s = sym;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 558)           break;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 559)         }
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 560)     if (s) {
+c4d9df9f78f31 (Jez Ng                 2023-04-05 01:48:34 -0400 561)       preHint = " to declare ";
+c4d9df9f78f31 (Jez Ng                 2023-04-05 01:48:34 -0400 562)       postHint = " as extern \"C\"?";
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 563)       return s;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 564)     }
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 565)   }
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 566) 
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 567)   return nullptr;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 568) }
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 569) 
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 570) static void reportUndefinedSymbol(const Undefined &sym,
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 571)                                   const UndefinedDiag &locations,
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 572)                                   bool correctSpelling) {
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 573)   std::string message = "undefined symbol";
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 574)   if (config->archMultiple)
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 575)     message += (" for arch " + getArchitectureName(config->arch())).str();
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 576)   message += ": " + toString(sym);
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 577) 
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 578)   const size_t maxUndefinedReferences = 3;
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 579)   size_t i = 0;
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 580)   for (const std::string &loc : locations.otherReferences) {
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 581)     if (i >= maxUndefinedReferences)
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 582)       break;
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 583)     message += "\n>>> referenced by " + loc;
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 584)     ++i;
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 585)   }
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 586) 
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 587)   for (const UndefinedDiag::SectionAndOffset &loc : locations.codeReferences) {
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 588)     if (i >= maxUndefinedReferences)
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 589)       break;
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 590)     message += "\n>>> referenced by ";
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 591)     std::string src = loc.isec->getSourceLocation(loc.offset);
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 592)     if (!src.empty())
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 593)       message += src + "\n>>>               ";
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 594)     message += loc.isec->getLocation(loc.offset);
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 595)     ++i;
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 596)   }
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 597) 
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 598)   size_t totalReferences =
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 599)       locations.otherReferences.size() + locations.codeReferences.size();
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 600)   if (totalReferences > i)
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 601)     message +=
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 602)         ("\n>>> referenced " + Twine(totalReferences - i) + " more times")
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 603)             .str();
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 604) 
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 605)   if (correctSpelling) {
+c4d9df9f78f31 (Jez Ng                 2023-04-05 01:48:34 -0400 606)     std::string preHint = ": ", postHint;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 607)     if (const Symbol *corrected =
+c4d9df9f78f31 (Jez Ng                 2023-04-05 01:48:34 -0400 608)             getAlternativeSpelling(sym, preHint, postHint)) {
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 609)       message +=
+c4d9df9f78f31 (Jez Ng                 2023-04-05 01:48:34 -0400 610)           "\n>>> did you mean" + preHint + toString(*corrected) + postHint;
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 611)       if (corrected->getFile())
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 612)         message += "\n>>> defined in: " + toString(corrected->getFile());
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 613)     }
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 614)   }
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 615) 
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 616)   if (config->undefinedSymbolTreatment == UndefinedSymbolTreatment::error)
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 617)     error(message);
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 618)   else if (config->undefinedSymbolTreatment ==
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 619)            UndefinedSymbolTreatment::warning)
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 620)     warn(message);
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 621)   else
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 622)     assert(false && "diagnostics make sense for -undefined error|warning only");
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 623) }
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 624) 
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 625) void macho::reportPendingUndefinedSymbols() {
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 626)   // Enable spell corrector for the first 2 diagnostics.
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 627)   for (const auto &[i, undef] : llvm::enumerate(undefs))
+82ca390062d11 (Nico Weber             2022-10-11 20:40:26 -0400 628)     reportUndefinedSymbol(*undef.first, undef.second, i < 2);
+248237364b7df (Nico Weber             2022-10-02 09:20:22 -0400 629) 
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 630)   // This function is called multiple times during execution. Clear the printed
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 631)   // diagnostics to avoid printing the same things again the next time.
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 632)   undefs.clear();
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 633) }
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 634) 
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 635) void macho::treatUndefinedSymbol(const Undefined &sym, StringRef source) {
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 636)   if (recoverFromUndefinedSymbol(sym))
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 637)     return;
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 638) 
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 639)   undefs[&sym].otherReferences.push_back(source.str());
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 640) }
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 641) 
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 642) void macho::treatUndefinedSymbol(const Undefined &sym, const InputSection *isec,
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 643)                                  uint64_t offset) {
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 644)   if (recoverFromUndefinedSymbol(sym))
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 645)     return;
+f2e92cf60e45c (Daniel Bertalan        2022-06-14 09:41:28 -0400 646) 
+0eec7e2a89abc (Daniel Bertalan        2022-06-15 19:17:07 -0400 647)   undefs[&sym].codeReferences.push_back({isec, offset});
+cc1cf6332a301 (Greg McGary            2020-12-13 19:31:33 -0800 648) }
+cc1cf6332a301 (Greg McGary            2020-12-13 19:31:33 -0800 649) 
+477bc36d3b2a1 (Fangrui Song           2022-01-10 19:39:14 -0800 650) std::unique_ptr<SymbolTable> macho::symtab;
