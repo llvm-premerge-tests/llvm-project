@@ -328,6 +328,21 @@ def ConvertControlFlowToSPIRV : Pass<"convert-cf-to-spirv"> {
 // FuncToLLVM
 //===----------------------------------------------------------------------===//
 
+def SetModuleDataLayoutPass : Pass<"set-module-datalayout", "ModuleOp"> {
+  let summary = "Attach a datalayout string as a module attribute";
+  let description = [{
+    Verify that the dataLayout string is a valid LLVM datalayout string and
+    attach it as an attribute `LLVMDialect::getDataLayoutAttrName()` to the
+    module, overriding the existing one.
+  }];
+  let options = [
+    Option<"dataLayout", "data-layout", "std::string",
+           /*default=*/"\"\"",
+           "String description (LLVM format) of the data layout that is "
+           "expected on the produced module">,
+  ];
+}
+
 def ConvertFuncToLLVMPass : Pass<"convert-func-to-llvm", "ModuleOp"> {
   let summary = "Convert from the Func dialect to the LLVM dialect";
   let description = [{
