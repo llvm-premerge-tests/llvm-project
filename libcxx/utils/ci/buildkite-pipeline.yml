@@ -146,27 +146,6 @@ steps:
           limit: 2
     timeout_in_minutes: 120
 
-  - label: "C++23 Module std"
-    command: "libcxx/utils/ci/run-buildbot generic-module-std-cxx23"
-    artifact_paths:
-      - "**/test-results.xml"
-      - "**/*.abilist"
-    env:
-        # Note modules require and absolute path for clang-scan-deps
-        # https://github.com/llvm/llvm-project/issues/61006
-        CC: "/usr/lib/llvm-${LLVM_HEAD_VERSION}/bin/clang"
-        CXX: "/usr/lib/llvm-${LLVM_HEAD_VERSION}/bin/clang++"
-        CMAKE: "/opt/bin/cmake"
-        ENABLE_CLANG_TIDY: "On"
-    agents:
-      queue: "libcxx-builders"
-      os: "linux"
-    retry:
-      automatic:
-        - exit_status: -1  # Agent was lost
-          limit: 2
-    timeout_in_minutes: 120
-
   - label: "C++11"
     command: "libcxx/utils/ci/run-buildbot generic-cxx11"
     artifact_paths:
@@ -214,8 +193,10 @@ steps:
       - "**/test-results.xml"
       - "**/*.abilist"
     env:
-        CC: "clang-${LLVM_HEAD_VERSION}"
-        CXX: "clang++-${LLVM_HEAD_VERSION}"
+        # Note modules require and absolute path for clang-scan-deps
+        # https://github.com/llvm/llvm-project/issues/61006
+        CC: "/usr/lib/llvm-${LLVM_HEAD_VERSION}/bin/clang"
+        CXX: "/usr/lib/llvm-${LLVM_HEAD_VERSION}/bin/clang++"
         ENABLE_CLANG_TIDY: "On"
     agents:
       queue: "libcxx-builders"
@@ -300,7 +281,7 @@ steps:
     timeout_in_minutes: 120
 
   - label: "Clang 15"
-    command: "libcxx/utils/ci/run-buildbot generic-cxx23"
+    command: "libcxx/utils/ci/run-buildbot generic-cxx23-no-modules"
     artifact_paths:
       - "**/test-results.xml"
       - "**/*.abilist"
@@ -318,7 +299,7 @@ steps:
     timeout_in_minutes: 120
 
   - label: "Clang 16"
-    command: "libcxx/utils/ci/run-buildbot generic-cxx23"
+    command: "libcxx/utils/ci/run-buildbot generic-cxx23-no-modules"
     artifact_paths:
       - "**/test-results.xml"
       - "**/*.abilist"
@@ -341,8 +322,10 @@ steps:
       - "**/test-results.xml"
       - "**/*.abilist"
     env:
-        CC: "clang-17"
-        CXX: "clang++-17"
+        # Note modules require and absolute path for clang-scan-deps
+        # https://github.com/llvm/llvm-project/issues/61006
+        CC: "/usr/lib/llvm-${LLVM_HEAD_VERSION}/bin/clang"
+        CXX: "/usr/lib/llvm-${LLVM_HEAD_VERSION}/bin/clang++"
         ENABLE_CLANG_TIDY: "On"
     agents:
       queue: "libcxx-builders"
@@ -1101,7 +1084,7 @@ steps:
   - group: ":freebsd: FreeBSD"
     steps:
     - label: "FreeBSD 13 amd64"
-      command: "libcxx/utils/ci/run-buildbot generic-cxx23"
+      command: "libcxx/utils/ci/run-buildbot generic-cxx23-no-modules"
       artifact_paths:
         - "**/test-results.xml"
         - "**/*.abilist"

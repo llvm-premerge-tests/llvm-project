@@ -414,12 +414,6 @@ generic-modules-lsv)
     check-runtimes
     check-abi-list
 ;;
-generic-module-std-cxx23)
-    clean
-    generate-cmake -C "${MONOREPO_ROOT}/libcxx/cmake/caches/Generic-module-std-cxx23.cmake"
-    check-runtimes
-    check-abi-list
-;;
 #
 # Parts removed
 #
@@ -462,6 +456,15 @@ generic-no-experimental)
 generic-no-exceptions)
     clean
     generate-cmake -C "${MONOREPO_ROOT}/libcxx/cmake/caches/Generic-no-exceptions.cmake"
+    check-runtimes
+    check-abi-list
+;;
+# Using C++20 modules requires Clang 17 or newer.
+# This is a transition build for older Clang versions.
+# TODO(LLVM 20) Remove this build and cache file.
+generic-cxx23-no-modules)
+    clean
+    generate-cmake -C "${MONOREPO_ROOT}/libcxx/cmake/caches/Generic-cxx23-no-modules.cmake"
     check-runtimes
     check-abi-list
 ;;
