@@ -99,7 +99,7 @@ FIELD(HasPrivateFields, 1, NO_MERGE)
 /// True when there are protected non-static data members.
 FIELD(HasProtectedFields, 1, NO_MERGE)
 
-/// True when there are private non-static data members.
+/// True when there are public non-static data members.
 FIELD(HasPublicFields, 1, NO_MERGE)
 
 /// True if this class (or any subobject) has mutable fields.
