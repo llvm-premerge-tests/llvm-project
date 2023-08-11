@@ -151,7 +151,9 @@ public:
       // (symbol@{gd|le}) for TLS variables, depending on the TLS model.
       if (Kind == MCSymbolRefExpr::VariantKind::VK_PPC_AIX_TLSGD ||
           Kind == MCSymbolRefExpr::VariantKind::VK_PPC_AIX_TLSGDM ||
-          Kind == MCSymbolRefExpr::VariantKind::VK_PPC_AIX_TLSLE)
+          Kind == MCSymbolRefExpr::VariantKind::VK_PPC_AIX_TLSLE ||
+          Kind == MCSymbolRefExpr::VariantKind::VK_PPC_AIX_TLSLD ||
+          Kind == MCSymbolRefExpr::VariantKind::VK_PPC_AIX_TLSML)
         OS << "\t.tc " << TCSym->getName() << "," << XSym->getName() << "@"
            << MCSymbolRefExpr::getVariantKindName(Kind) << '\n';
       else
