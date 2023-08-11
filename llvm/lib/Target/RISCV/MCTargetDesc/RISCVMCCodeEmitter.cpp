@@ -443,7 +443,9 @@ unsigned RISCVMCCodeEmitter::getImmOpValue(const MCInst &MI, unsigned OpNo,
       break;
     }
   } else if (Kind == MCExpr::SymbolRef &&
-             cast<MCSymbolRefExpr>(Expr)->getKind() == MCSymbolRefExpr::VK_None) {
+                 cast<MCSymbolRefExpr>(Expr)->getKind() ==
+                     MCSymbolRefExpr::VK_None ||
+             Kind == MCExpr::Binary) {
     if (MIFrm == RISCVII::InstFormatJ) {
       FixupKind = RISCV::fixup_riscv_jal;
     } else if (MIFrm == RISCVII::InstFormatB) {
