@@ -5486,8 +5486,10 @@ std::string ObjectFileMachO::GetIdentifierString() {
   return result;
 }
 
-addr_t ObjectFileMachO::GetAddressMask() {
-  addr_t mask = 0;
+bool ObjectFileMachO::GetAddressMask(addr_t &lowmem_mask,
+                                     addr_t &highmem_mask) {
+  lowmem_mask = highmem_mask = 0;
+
   Log *log(GetLog(LLDBLog::Process));
   ModuleSP module_sp(GetModule());
   if (module_sp) {
@@ -5514,13 +5516,37 @@ addr_t ObjectFileMachO::GetAddressMask() {
             if (version == 3) {
               uint32_t num_addr_bits = m_data.GetU32_unchecked(&offset);
               if (num_addr_bits != 0) {
-                mask = ~((1ULL << num_addr_bits) - 1);
+                lowmem_mask = highmem_mask = ~((1ULL << num_addr_bits) - 1);
               }
               LLDB_LOGF(log,
-                        "LC_NOTE 'addrable bits' found, value %d bits, "
+                        "LC_NOTE 'addrable bits' v3 found, value %d bits, "
                         "mask 0x%" PRIx64,
-                        num_addr_bits, mask);
-              break;
+                        num_addr_bits, lowmem_mask);
+              return true;
+            }
+            if (version == 4) {
+              uint32_t lo_addr_bits = m_data.GetU32_unchecked(&offset);
+              uint32_t hi_addr_bits = m_data.GetU32_unchecked(&offset);
+
+              if (lo_addr_bits == hi_addr_bits) {
+                LLDB_LOGF(log,
+                          "LC_NOTE 'addrable bits' v4 found, value %d bits",
+                          lo_addr_bits);
+              } else {
+                LLDB_LOGF(
+                    log, "LC_NOTE 'addrable bits' v4 found, value %d & %d bits",
+                    lo_addr_bits, hi_addr_bits);
+              }
+
+              if (lo_addr_bits == 0)
+                lo_addr_bits = hi_addr_bits;
+
+              if (lo_addr_bits != 0)
+                lowmem_mask = ~((1ULL << lo_addr_bits) - 1);
+              if (hi_addr_bits != 0)
+                highmem_mask = ~((1ULL << hi_addr_bits) - 1);
+
+              return true;
             }
           }
         }
@@ -5528,7 +5554,7 @@ addr_t ObjectFileMachO::GetAddressMask() {
       offset = cmd_offset + lc.cmdsize;
     }
   }
-  return mask;
+  return false;
 }
 
 bool ObjectFileMachO::GetCorefileMainBinaryInfo(addr_t &value,
@@ -6669,10 +6695,12 @@ bool ObjectFileMachO::SaveCore(const lldb::ProcessSP &process_sp,
           addrable_bits_lcnote_up->name = "addrable bits";
           addrable_bits_lcnote_up->payload_file_offset = file_offset;
           int bits = std::bitset<64>(~address_mask).count();
-          addrable_bits_lcnote_up->payload.PutHex32(3); // version
+          addrable_bits_lcnote_up->payload.PutHex32(4); // version
           addrable_bits_lcnote_up->payload.PutHex32(
-              bits); // # of bits used for addressing
-          addrable_bits_lcnote_up->payload.PutHex64(0); // unused
+              bits); // # of bits used for low addresses
+          addrable_bits_lcnote_up->payload.PutHex32(
+              bits); // # of bits used for high addresses
+          addrable_bits_lcnote_up->payload.PutHex32(0); // reserved
 
           file_offset += addrable_bits_lcnote_up->payload.GetSize();
 

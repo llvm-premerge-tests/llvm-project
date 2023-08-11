@@ -899,10 +899,21 @@ void ProcessGDBRemote::DidLaunchOrAttach(ArchSpec &process_arch) {
              process_arch.GetTriple().getTriple());
   }
 
-  if (int addressable_bits = m_gdb_comm.GetAddressingBits()) {
-    lldb::addr_t address_mask = ~((1ULL << addressable_bits) - 1);
+  uint32_t low_mem_addressable_bits, high_mem_addressable_bits;
+  m_gdb_comm.GetAddressingBits(low_mem_addressable_bits,
+                               high_mem_addressable_bits);
+  // In case we were only given a high memory addressing bits
+  if (low_mem_addressable_bits == 0)
+    low_mem_addressable_bits = high_mem_addressable_bits;
+  if (low_mem_addressable_bits != 0) {
+    lldb::addr_t address_mask = ~((1ULL << low_mem_addressable_bits) - 1);
     SetCodeAddressMask(address_mask);
     SetDataAddressMask(address_mask);
+    if (low_mem_addressable_bits != high_mem_addressable_bits) {
+      lldb::addr_t hi_address_mask = ~((1ULL << high_mem_addressable_bits) - 1);
+      SetCodeAddressMask(hi_address_mask);
+      SetDataAddressMask(hi_address_mask);
+    }
   }
 
   if (process_arch.IsValid()) {
