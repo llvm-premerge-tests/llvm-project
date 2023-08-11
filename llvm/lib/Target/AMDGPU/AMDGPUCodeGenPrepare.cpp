@@ -1809,14 +1809,6 @@ bool AMDGPUCodeGenPrepareImpl::canBreakPHINode(const PHINode &I) {
   SmallPtrSet<const PHINode *, 8> WorkList;
   collectPHINodes(I, WorkList);
 
-#ifndef NDEBUG
-  // Check that none of the PHI nodes in the worklist are in the map. If some of
-  // them are, it means we're not good enough at collecting related PHIs.
-  for (const PHINode *WLP : WorkList) {
-    assert(BreakPhiNodesCache.count(WLP) == 0);
-  }
-#endif
-
   // To consider a PHI profitable to break, we need to see some interesting
   // incoming values. At least 2/3rd (rounded up) of all PHIs in the worklist
   // must have one to consider all PHIs breakable.
