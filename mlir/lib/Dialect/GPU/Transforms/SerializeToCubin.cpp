@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Dialect/GPU/Transforms/Passes.h"
+#include "mlir/Dialect/LLVMIR/NVVMDialect.h"
 #include "llvm/Support/Debug.h"
 
 #if MLIR_GPU_TO_CUBIN_PASS_ENABLE
@@ -102,7 +103,8 @@ SerializeToCubinPass::SerializeToCubinPass(StringRef triple, StringRef chip,
 
 void SerializeToCubinPass::getDependentDialects(
     DialectRegistry &registry) const {
-  registerNVVMDialectTranslation(registry);
+  registry.insert<NVVM::NVVMDialect>();
+  // registerNVVMDialectTranslation(registry);
   gpu::SerializeToBlobPass::getDependentDialects(registry);
 }
 
