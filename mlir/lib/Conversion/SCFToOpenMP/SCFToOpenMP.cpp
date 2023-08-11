@@ -301,6 +301,21 @@ static omp::ReductionDeclareOp declareReduction(PatternRewriter &builder,
     return addAtomicRMW(builder, LLVM::AtomicBinOp::_and, decl, reduce,
                         useOpaquePointers);
   }
+  // Match explicit min/max reductions.
+  if (matchSimpleReduction<arith::MinFOp>(reduction)) {
+    omp::ReductionDeclareOp decl =
+        createDecl(builder, symbolTable, reduce,
+                   minMaxValueForFloat(type, /*isMin=*/true));
+    return addAtomicRMW(builder, LLVM::AtomicBinOp::fmin, decl, reduce,
+                        useOpaquePointers);
+  }
+  if (matchSimpleReduction<arith::MaxFOp>(reduction)) {
+    omp::ReductionDeclareOp decl =
+        createDecl(builder, symbolTable, reduce,
+                   minMaxValueForFloat(type, /*isMin=*/false));
+    return addAtomicRMW(builder, LLVM::AtomicBinOp::fmax, decl, reduce,
+                        useOpaquePointers);
+  }
 
   // Match simple binary reductions that cannot be expressed with atomicrmw.
   // TODO: add atomic region using cmpxchg (which needs atomic load to be

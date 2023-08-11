@@ -229,3 +229,75 @@ func.func @reduction4(%arg0 : index, %arg1 : index, %arg2 : index,
   // CHECK: return %[[RES1]], %[[RES2]]
   return %res#0, %res#1 : f32, i64
 }
+
+// -----
+
+// Only check the declaration here, the rest is same as above.
+// CHECK: omp.reduction.declare @{{.*}} : f32
+
+// CHECK: init
+// CHECK: %[[INIT:.*]] = llvm.mlir.constant(-3.40282347E+38 : f32)
+// CHECK: omp.yield(%[[INIT]] : f32)
+
+// CHECK: combiner
+// CHECK: ^{{.*}}(%[[ARG0:.*]]: f32, %[[ARG1:.*]]: f32)
+// CHECK: %[[RES:.*]] = arith.minf %[[ARG0]], %[[ARG1]]
+// CHECK: omp.yield(%[[RES]] : f32)
+
+// CHECK: atomic
+// CHECK: ^{{.*}}(%[[ARG0:.*]]: !llvm.ptr, %[[ARG1:.*]]: !llvm.ptr):
+// CHECK: %[[RHS:.*]] = llvm.load %[[ARG1]] : !llvm.ptr -> f32
+// CHECK: llvm.atomicrmw fmin %[[ARG0]], %[[RHS]] monotonic
+
+// CHECK-LABEL: @reduction5
+func.func @reduction5(%arg0 : index, %arg1 : index, %arg2 : index,
+                 %arg3 : index, %arg4 : index) {
+  %step = arith.constant 1 : index
+  %zero = arith.constant 0.0 : f32
+  scf.parallel (%i0, %i1) = (%arg0, %arg1) to (%arg2, %arg3)
+                            step (%arg4, %step) init (%zero) -> (f32) {
+    %one = arith.constant 1.0 : f32
+    scf.reduce(%one) : f32 {
+    ^bb0(%lhs : f32, %rhs: f32):
+      %res = arith.minf %lhs, %rhs : f32
+      scf.reduce.return %res : f32
+    }
+  }
+  return
+}
+
+// -----
+
+// Only check the declaration here, the rest is same as above.
+// CHECK: omp.reduction.declare @{{.*}} : f32
+
+// CHECK: init
+// CHECK: %[[INIT:.*]] = llvm.mlir.constant(3.40282347E+38 : f32)
+// CHECK: omp.yield(%[[INIT]] : f32)
+
+// CHECK: combiner
+// CHECK: ^{{.*}}(%[[ARG0:.*]]: f32, %[[ARG1:.*]]: f32)
+// CHECK: %[[RES:.*]] = arith.maxf %[[ARG0]], %[[ARG1]]
+// CHECK: omp.yield(%[[RES]] : f32)
+
+// CHECK: atomic
+// CHECK: ^{{.*}}(%[[ARG0:.*]]: !llvm.ptr, %[[ARG1:.*]]: !llvm.ptr):
+// CHECK: %[[RHS:.*]] = llvm.load %[[ARG1]] : !llvm.ptr -> f32
+// CHECK: llvm.atomicrmw fmax %[[ARG0]], %[[RHS]] monotonic
+
+// CHECK-LABEL: @reduction6
+func.func @reduction6(%arg0 : index, %arg1 : index, %arg2 : index,
+                 %arg3 : index, %arg4 : index) {
+  %step = arith.constant 1 : index
+  %zero = arith.constant 0.0 : f32
+  scf.parallel (%i0, %i1) = (%arg0, %arg1) to (%arg2, %arg3)
+                            step (%arg4, %step) init (%zero) -> (f32) {
+    %one = arith.constant 1.0 : f32
+    scf.reduce(%one) : f32 {
+    ^bb0(%lhs : f32, %rhs: f32):
+      %res = arith.maxf %lhs, %rhs : f32
+      scf.reduce.return %res : f32
+    }
+  }
+  return
+}
