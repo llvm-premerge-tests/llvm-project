@@ -153,6 +153,36 @@ static bool parseDebugArgs(Fortran::frontend::CodeGenOptions &opts,
   return true;
 }
 
+static CodeGenOptions::OptRemark
+parseOptimizationRemark(clang::DiagnosticsEngine &diags,
+                        llvm::opt::ArgList &args, llvm::opt::OptSpecifier optEq,
+                        llvm::StringRef name) {
+  CodeGenOptions::OptRemark result;
+
+  for (llvm::opt::Arg *a : args) {
+    if (a->getOption().matches(clang::driver::options::OPT_R_Joined)) {
+      llvm::StringRef value = a->getValue();
+
+      if (value == name)
+        result.Kind = CodeGenOptions::RemarkKind::RK_Enabled;
+      else if (value.split('-') == std::make_pair(llvm::StringRef("no"), name))
+        result.Kind = CodeGenOptions::RemarkKind::RK_Disabled;
+      else
+        continue;
+
+      if (result.Kind == CodeGenOptions::RemarkKind::RK_Disabled) {
+        result.Pattern = "";
+        result.Regex = nullptr;
+      } else {
+        result.Pattern = ".*";
+        result.Regex = std::make_shared<llvm::Regex>(result.Pattern);
+      }
+    }
+  }
+
+  return result;
+}
+
 static void parseCodeGenArgs(Fortran::frontend::CodeGenOptions &opts,
                              llvm::opt::ArgList &args,
                              clang::DiagnosticsEngine &diags) {
@@ -194,13 +224,42 @@ static void parseCodeGenArgs(Fortran::frontend::CodeGenOptions &opts,
           args.getLastArg(clang::driver::options::OPT_opt_record_file))
     opts.OptRecordFile = a->getValue();
 
-  if (const llvm::opt::Arg *a =
-          args.getLastArg(clang::driver::options::OPT_opt_record_format))
-    opts.OptRecordFormat = a->getValue();
+  bool needLocTracking = false;
+
+  if (!opts.OptRecordFile.empty())
+    needLocTracking = true;
 
   if (const llvm::opt::Arg *a =
-          args.getLastArg(clang::driver::options::OPT_opt_record_passes))
+          args.getLastArg(clang::driver::options::OPT_opt_record_passes)) {
     opts.OptRecordPasses = a->getValue();
+    needLocTracking = true;
+  }
+
+  if (const llvm::opt::Arg *a =
+          args.getLastArg(clang::driver::options::OPT_opt_record_format)) {
+    opts.OptRecordFormat = a->getValue();
+    needLocTracking = true;
+  }
+
+  opts.OptimizationRemark = parseOptimizationRemark(
+      diags, args, clang::driver::options::OPT_Rpass_EQ, "pass");
+
+  opts.OptimizationRemarkMissed = parseOptimizationRemark(
+      diags, args, clang::driver::options::OPT_Rpass_missed_EQ, "pass-missed");
+
+  opts.OptimizationRemarkAnalysis = parseOptimizationRemark(
+      diags, args, clang::driver::options::OPT_Rpass_analysis_EQ,
+      "pass-analysis");
+
+  needLocTracking |= opts.OptimizationRemark.hasValidPattern() ||
+                     opts.OptimizationRemarkMissed.hasValidPattern() ||
+                     opts.OptimizationRemarkAnalysis.hasValidPattern();
+
+  // If the user requested a flag that requires source locations available in
+  // the backend, make sure that the backend tracks source location information.
+  if (needLocTracking &&
+      opts.getDebugInfo() == llvm::codegenoptions::NoDebugInfo)
+    opts.setDebugInfo(llvm::codegenoptions::LocTrackingOnly);
 
   if (auto *a = args.getLastArg(clang::driver::options::OPT_save_temps_EQ))
     opts.SaveTempsDir = a->getValue();
@@ -957,6 +1016,11 @@ bool CompilerInvocation::createFromArgs(
   // -fno-ppc-native-vector-element-order
   if (args.hasArg(clang::driver::options::OPT_fno_ppc_native_vec_elem_order)) {
     res.loweringOpts.setNoPPCNativeVecElemOrder(true);
+  }
+
+  // add the remark option requested i.e. pass, pass-missed or pass-analysis
+  for (auto *a : args.filtered(clang::driver::options::OPT_R_Group)) {
+    res.getDiagnosticOpts().Remarks.push_back(a->getValue());
   }
 
   success &= parseFrontendArgs(res.getFrontendOpts(), args, diags);
