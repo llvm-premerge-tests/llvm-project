@@ -67,7 +67,7 @@ define hidden noundef i32 @baz_async(i32 noundef %a) #0 uwtable(async) {
 ; CHECK-V8A-NEXT:    .cfi_def_cfa_offset 16
 ; CHECK-V8A-NEXT:    .cfi_offset w30, -16
 ; CHECK-V8A-NEXT:    .cfi_remember_state
-; CHECK-V8A-NEXT:    cbz w0, .LBB1_2
+; CHECK-V8A-NEXT:    cbz w0, .LBB1_3
 ; CHECK-V8A-NEXT:  // %bb.1: // %if.then
 ; CHECK-V8A-NEXT:    mov w0, wzr
 ; CHECK-V8A-NEXT:    bl _Z3bari
@@ -75,9 +75,14 @@ define hidden noundef i32 @baz_async(i32 noundef %a) #0 uwtable(async) {
 ; CHECK-V8A-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK-V8A-NEXT:    hint #29
 ; CHECK-V8A-NEXT:    .cfi_negate_ra_state
+; CHECK-V8A-NEXT:    mov x16, x30
+; CHECK-V8A-NEXT:    hint #7
+; CHECK-V8A-NEXT:    cmp x16, x30
+; CHECK-V8A-NEXT:    b.ne .LBB1_4
+; CHECK-V8A-NEXT:  // %bb.2: // %if.then
 ; CHECK-V8A-NEXT:    .cfi_restore w30
 ; CHECK-V8A-NEXT:    b _Z3bari
-; CHECK-V8A-NEXT:  .LBB1_2: // %if.else
+; CHECK-V8A-NEXT:  .LBB1_3: // %if.else
 ; CHECK-V8A-NEXT:    .cfi_restore_state
 ; CHECK-V8A-NEXT:    bl _Z4quuxi
 ; CHECK-V8A-NEXT:    add w0, w0, #1
@@ -87,6 +92,8 @@ define hidden noundef i32 @baz_async(i32 noundef %a) #0 uwtable(async) {
 ; CHECK-V8A-NEXT:    .cfi_negate_ra_state
 ; CHECK-V8A-NEXT:    .cfi_restore w30
 ; CHECK-V8A-NEXT:    ret
+; CHECK-V8A-NEXT:  .LBB1_4: // %if.then
+; CHECK-V8A-NEXT:    brk #0xc471
 ;
 ; CHECK-V83A-LABEL: baz_async:
 ; CHECK-V83A:       // %bb.0: // %entry
@@ -96,7 +103,7 @@ define hidden noundef i32 @baz_async(i32 noundef %a) #0 uwtable(async) {
 ; CHECK-V83A-NEXT:    .cfi_def_cfa_offset 16
 ; CHECK-V83A-NEXT:    .cfi_offset w30, -16
 ; CHECK-V83A-NEXT:    .cfi_remember_state
-; CHECK-V83A-NEXT:    cbz w0, .LBB1_2
+; CHECK-V83A-NEXT:    cbz w0, .LBB1_3
 ; CHECK-V83A-NEXT:  // %bb.1: // %if.then
 ; CHECK-V83A-NEXT:    mov w0, wzr
 ; CHECK-V83A-NEXT:    bl _Z3bari
@@ -104,9 +111,14 @@ define hidden noundef i32 @baz_async(i32 noundef %a) #0 uwtable(async) {
 ; CHECK-V83A-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK-V83A-NEXT:    autiasp
 ; CHECK-V83A-NEXT:    .cfi_negate_ra_state
+; CHECK-V83A-NEXT:    mov x16, x30
+; CHECK-V83A-NEXT:    xpaclri
+; CHECK-V83A-NEXT:    cmp x16, x30
+; CHECK-V83A-NEXT:    b.ne .LBB1_4
+; CHECK-V83A-NEXT:  // %bb.2: // %if.then
 ; CHECK-V83A-NEXT:    .cfi_restore w30
 ; CHECK-V83A-NEXT:    b _Z3bari
-; CHECK-V83A-NEXT:  .LBB1_2: // %if.else
+; CHECK-V83A-NEXT:  .LBB1_3: // %if.else
 ; CHECK-V83A-NEXT:    .cfi_restore_state
 ; CHECK-V83A-NEXT:    bl _Z4quuxi
 ; CHECK-V83A-NEXT:    add w0, w0, #1
@@ -114,6 +126,8 @@ define hidden noundef i32 @baz_async(i32 noundef %a) #0 uwtable(async) {
 ; CHECK-V83A-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK-V83A-NEXT:    .cfi_restore w30
 ; CHECK-V83A-NEXT:    retaa
+; CHECK-V83A-NEXT:  .LBB1_4: // %if.then
+; CHECK-V83A-NEXT:    brk #0xc471
 entry:
   %tobool.not = icmp eq i32 %a, 0
   br i1 %tobool.not, label %if.else, label %if.then
@@ -145,19 +159,26 @@ define hidden noundef i32 @baz_sync(i32 noundef %a) #0 uwtable(sync) {
 ; CHECK-V8A-NEXT:    str x30, [sp, #-16]! // 8-byte Folded Spill
 ; CHECK-V8A-NEXT:    .cfi_def_cfa_offset 16
 ; CHECK-V8A-NEXT:    .cfi_offset w30, -16
-; CHECK-V8A-NEXT:    cbz w0, .LBB2_2
+; CHECK-V8A-NEXT:    cbz w0, .LBB2_3
 ; CHECK-V8A-NEXT:  // %bb.1: // %if.then
 ; CHECK-V8A-NEXT:    mov w0, wzr
 ; CHECK-V8A-NEXT:    bl _Z3bari
 ; CHECK-V8A-NEXT:    ldr x30, [sp], #16 // 8-byte Folded Reload
 ; CHECK-V8A-NEXT:    hint #29
+; CHECK-V8A-NEXT:    mov x16, x30
+; CHECK-V8A-NEXT:    hint #7
+; CHECK-V8A-NEXT:    cmp x16, x30
+; CHECK-V8A-NEXT:    b.ne .LBB2_4
+; CHECK-V8A-NEXT:  // %bb.2: // %if.then
 ; CHECK-V8A-NEXT:    b _Z3bari
-; CHECK-V8A-NEXT:  .LBB2_2: // %if.else
+; CHECK-V8A-NEXT:  .LBB2_3: // %if.else
 ; CHECK-V8A-NEXT:    bl _Z4quuxi
 ; CHECK-V8A-NEXT:    add w0, w0, #1
 ; CHECK-V8A-NEXT:    ldr x30, [sp], #16 // 8-byte Folded Reload
 ; CHECK-V8A-NEXT:    hint #29
 ; CHECK-V8A-NEXT:    ret
+; CHECK-V8A-NEXT:  .LBB2_4: // %if.then
+; CHECK-V8A-NEXT:    brk #0xc471
 ;
 ; CHECK-V83A-LABEL: baz_sync:
 ; CHECK-V83A:       // %bb.0: // %entry
@@ -166,18 +187,25 @@ define hidden noundef i32 @baz_sync(i32 noundef %a) #0 uwtable(sync) {
 ; CHECK-V83A-NEXT:    str x30, [sp, #-16]! // 8-byte Folded Spill
 ; CHECK-V83A-NEXT:    .cfi_def_cfa_offset 16
 ; CHECK-V83A-NEXT:    .cfi_offset w30, -16
-; CHECK-V83A-NEXT:    cbz w0, .LBB2_2
+; CHECK-V83A-NEXT:    cbz w0, .LBB2_3
 ; CHECK-V83A-NEXT:  // %bb.1: // %if.then
 ; CHECK-V83A-NEXT:    mov w0, wzr
 ; CHECK-V83A-NEXT:    bl _Z3bari
 ; CHECK-V83A-NEXT:    ldr x30, [sp], #16 // 8-byte Folded Reload
 ; CHECK-V83A-NEXT:    autiasp
+; CHECK-V83A-NEXT:    mov x16, x30
+; CHECK-V83A-NEXT:    xpaclri
+; CHECK-V83A-NEXT:    cmp x16, x30
+; CHECK-V83A-NEXT:    b.ne .LBB2_4
+; CHECK-V83A-NEXT:  // %bb.2: // %if.then
 ; CHECK-V83A-NEXT:    b _Z3bari
-; CHECK-V83A-NEXT:  .LBB2_2: // %if.else
+; CHECK-V83A-NEXT:  .LBB2_3: // %if.else
 ; CHECK-V83A-NEXT:    bl _Z4quuxi
 ; CHECK-V83A-NEXT:    add w0, w0, #1
 ; CHECK-V83A-NEXT:    ldr x30, [sp], #16 // 8-byte Folded Reload
 ; CHECK-V83A-NEXT:    retaa
+; CHECK-V83A-NEXT:  .LBB2_4: // %if.then
+; CHECK-V83A-NEXT:    brk #0xc471
 entry:
   %tobool.not = icmp eq i32 %a, 0
   br i1 %tobool.not, label %if.else, label %if.then

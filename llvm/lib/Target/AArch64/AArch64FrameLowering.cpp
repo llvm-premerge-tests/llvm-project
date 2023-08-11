@@ -258,6 +258,11 @@ cl::opt<bool> EnableHomogeneousPrologEpilog(
     cl::desc("Emit homogeneous prologue and epilogue for the size "
              "optimization (default = off)"));
 
+cl::opt<bool> CheckAuthenticatedLRByLoad(
+    "aarch64-check-authenticated-lr-by-load", cl::Hidden, cl::init(false),
+    cl::desc("When performing a tail call with authenticated LR, "
+             "use a load instruction to check the LR"));
+
 STATISTIC(NumRedZoneFunctions, "Number of functions using red zone");
 
 /// Returns how much of the incoming argument stack area (in bytes) we should
@@ -269,14 +274,10 @@ STATISTIC(NumRedZoneFunctions, "Number of functions using red zone");
 static int64_t getArgumentStackToRestore(MachineFunction &MF,
                                          MachineBasicBlock &MBB) {
   MachineBasicBlock::iterator MBBI = MBB.getLastNonDebugInstr();
-  bool IsTailCallReturn = false;
-  if (MBB.end() != MBBI) {
-    unsigned RetOpcode = MBBI->getOpcode();
-    IsTailCallReturn = RetOpcode == AArch64::TCRETURNdi ||
-                       RetOpcode == AArch64::TCRETURNri ||
-                       RetOpcode == AArch64::TCRETURNriBTI;
-  }
   AArch64FunctionInfo *AFI = MF.getInfo<AArch64FunctionInfo>();
+  bool IsTailCallReturn = (MBB.end() != MBBI)
+                              ? AArch64InstrInfo::isTailCallReturnInst(*MBBI)
+                              : false;
 
   int64_t ArgumentPopSize = 0;
   if (IsTailCallReturn) {
@@ -1963,6 +1964,103 @@ void AArch64FrameLowering::authenticateLR(MachineFunction &MF,
   }
 }
 
+// Checks authenticated LR just before the TCRETURN* instruction.
+// This function may split MBB - in that case, the returned basic block
+// is the new block containing the return instruction.
+static MachineBasicBlock &checkAuthenticatedLRIfNeeded(MachineFunction &MF,
+                                                       MachineBasicBlock &MBB) {
+  const auto &MFnI = *MF.getInfo<AArch64FunctionInfo>();
+  const auto &Subtarget = MF.getSubtarget<AArch64Subtarget>();
+  const auto *TII = Subtarget.getInstrInfo();
+  const auto *TRI = Subtarget.getRegisterInfo();
+
+  if (!MFnI.shouldSignReturnAddress(MF))
+    return MBB;
+
+  auto TI = MBB.getFirstTerminator();
+  if (TI == MBB.end())
+    return MBB;
+
+  // Only explicitly check LR if we are performing tail call.
+  if (!AArch64InstrInfo::isTailCallReturnInst(*TI))
+    return MBB;
+
+  Register TmpReg =
+      TI->readsRegister(AArch64::X16, TRI) ? AArch64::X17 : AArch64::X16;
+  assert(!TI->readsRegister(TmpReg, TRI) &&
+         "More than a single register is used by TCRETURN");
+
+  // The following code may create a signing oracle:
+  //
+  //   <authenticate LR>
+  //   TCRETURN          ; the callee may sign and spill the LR in its prologue
+  //
+  // To avoid generating a signing oracle, check the authenticated value
+  // before possibly re-signing it in the callee, as follows:
+  //
+  //   <authenticate LR>
+  //   mov tmp, lr
+  //   xpaclri           ; encoded as "hint #7"
+  //   ; Note: at this point, the LR register contains the return address as if
+  //   ; the authentication succeeded and the temporary register contains the
+  //   ; *real* result of authentication.
+  //   cmp tmp, lr
+  //   b.ne break_block
+  // ret_block:
+  //   TCRETURN
+  // break_block:
+  //   brk 0xc471
+  //
+  // or just
+  //
+  //   <authenticate LR>
+  //   ldr tmp, [lr]
+  //   TCRETURN
+
+  const BasicBlock *BB = MBB.getBasicBlock();
+  DebugLoc DL = TI->getDebugLoc();
+
+  if (CheckAuthenticatedLRByLoad) {
+    BuildMI(MBB, TI, DL, TII->get(AArch64::LDRXui), TmpReg)
+        .addReg(AArch64::LR)
+        .addImm(0)
+        .setMIFlags(MachineInstr::FrameDestroy);
+    return MBB;
+  }
+
+  // Auth instruction was previously added to this basic block.
+  assert(TI != MBB.begin() && "Non-terminator instructions expected");
+  auto &LastNonTerminator = *std::prev(TI);
+  MachineBasicBlock *RetBlock = MBB.splitAt(LastNonTerminator);
+
+  MachineBasicBlock *BreakBlock = MF.CreateMachineBasicBlock(BB);
+  MF.push_back(BreakBlock);
+  MBB.splitSuccessor(RetBlock, BreakBlock);
+
+  MachineBasicBlock *AuthBlock = &MBB;
+  BuildMI(AuthBlock, DL, TII->get(TargetOpcode::COPY), TmpReg)
+      .addReg(AArch64::LR)
+      .setMIFlags(MachineInstr::FrameDestroy);
+  BuildMI(AuthBlock, DL, TII->get(AArch64::XPACLRI))
+      .setMIFlags(MachineInstr::FrameDestroy);
+  BuildMI(AuthBlock, DL, TII->get(AArch64::SUBSXrs), AArch64::XZR)
+      .addReg(TmpReg)
+      .addReg(AArch64::LR)
+      .addImm(0)
+      .setMIFlags(MachineInstr::FrameDestroy);
+  BuildMI(AuthBlock, DL, TII->get(AArch64::Bcc))
+      .addImm(AArch64CC::NE)
+      .addMBB(BreakBlock)
+      .setMIFlags(MachineInstr::FrameDestroy);
+  assert(AuthBlock->getFallThrough() == RetBlock);
+
+  BuildMI(BreakBlock, DL, TII->get(AArch64::BRK))
+      .addImm(0xc471)
+      .setMIFlags(MachineInstr::FrameDestroy);
+
+  return *RetBlock;
+}
+
 static bool isFuncletReturnInstr(const MachineInstr &MI) {
   switch (MI.getOpcode()) {
   default:
@@ -1993,14 +2091,18 @@ void AArch64FrameLowering::emitEpilogue(MachineFunction &MF,
   }
 
   auto FinishingTouches = make_scope_exit([&]() {
+    MachineBasicBlock *RetMBB = &MBB;
     if (AFI->shouldSignReturnAddress(MF))
       authenticateLR(MF, MBB, NeedsWinCFI, &HasWinCFI);
     if (needsShadowCallStackPrologueEpilogue(MF))
       emitShadowCallStackEpilogue(*TII, MF, MBB, MBB.getFirstTerminator(), DL);
+    else
+      RetMBB = &checkAuthenticatedLRIfNeeded(MF, MBB);
+    // checkAuthenticatedLR() may have split MBB at this point.
     if (EmitCFI)
-      emitCalleeSavedGPRRestores(MBB, MBB.getFirstTerminator());
+      emitCalleeSavedGPRRestores(*RetMBB, RetMBB->getFirstTerminator());
     if (HasWinCFI)
-      BuildMI(MBB, MBB.getFirstTerminator(), DL,
+      BuildMI(*RetMBB, RetMBB->getFirstTerminator(), DL,
               TII->get(AArch64::SEH_EpilogEnd))
           .setMIFlag(MachineInstr::FrameDestroy);
   });
