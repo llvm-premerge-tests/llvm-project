@@ -947,11 +947,36 @@ public:
   SDValue getZExtOrTrunc(SDValue Op, const SDLoc &DL, EVT VT);
 
   /// Convert Op, which must be of integer type, to the
+  /// integer type VT, by either any/sign/zero-extending (depending on IsAny /
+  /// IsSigned) or truncating it.
+  SDValue getExtOrTrunc(bool IsAny, bool IsSigned, SDValue Op, const SDLoc &DL,
+                        EVT VT) {
+    return IsAny      ? getAnyExtOrTrunc(Op, DL, VT)
+           : IsSigned ? getSExtOrTrunc(Op, DL, VT)
+                      : getZExtOrTrunc(Op, DL, VT);
+  }
+
+  /// Convert Op, which must be of integer type, to the
   /// integer type VT, by either sign/zero-extending (depending on IsSigned) or
   /// truncating it.
   SDValue getExtOrTrunc(bool IsSigned, SDValue Op, const SDLoc &DL, EVT VT) {
     return IsSigned ? getSExtOrTrunc(Op, DL, VT) : getZExtOrTrunc(Op, DL, VT);
   }
+
+  /// Convert Op, which must be of integer type, to the
+  /// integer type VT, by first bitcasting (from potential vector) to
+  /// corresponding scalar type then either any-extending or truncating it.
+  SDValue getScalarizedAnyExtOrTrunc(SDValue Op, const SDLoc &DL, EVT VT);
+
+  /// Convert Op, which must be of integer type, to the
+  /// integer type VT, by first bitcasting (from potential vector) to
+  /// corresponding scalar type then either sign-extending or truncating it.
+  SDValue getScalarizedSExtOrTrunc(SDValue Op, const SDLoc &DL, EVT VT);
+
+  /// Convert Op, which must be of integer type, to the
+  /// integer type VT, by first bitcasting (from potential vector) to
+  /// corresponding scalar type then either zero-extending or truncating it.
+  SDValue getScalarizedZExtOrTrunc(SDValue Op, const SDLoc &DL, EVT VT);
 
   /// Return the expression required to zero extend the Op
   /// value assuming it was the smaller SrcTy value.
