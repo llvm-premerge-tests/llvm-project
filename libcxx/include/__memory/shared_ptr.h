@@ -1624,20 +1624,22 @@ private:
 public:
     _LIBCPP_INLINE_VISIBILITY
     _LIBCPP_CONSTEXPR weak_ptr() _NOEXCEPT;
-    template<class _Yp> _LIBCPP_INLINE_VISIBILITY weak_ptr(shared_ptr<_Yp> const& __r,
-                   typename enable_if<__compatible_with<_Yp, _Tp>::value, __nat*>::type = 0)
-                        _NOEXCEPT;
+
+    template<class _Yp, __enable_if_t<__compatible_with<_Yp, _Tp>::value, int> = 0>
+    _LIBCPP_INLINE_VISIBILITY weak_ptr(shared_ptr<_Yp> const& __r) _NOEXCEPT;
+
     _LIBCPP_INLINE_VISIBILITY
     weak_ptr(weak_ptr const& __r) _NOEXCEPT;
-    template<class _Yp> _LIBCPP_INLINE_VISIBILITY weak_ptr(weak_ptr<_Yp> const& __r,
-                   typename enable_if<__compatible_with<_Yp, _Tp>::value, __nat*>::type = 0)
-                         _NOEXCEPT;
+
+    template<class _Yp, __enable_if_t<__compatible_with<_Yp, _Tp>::value, int> = 0>
+    _LIBCPP_INLINE_VISIBILITY weak_ptr(weak_ptr<_Yp> const& __r) _NOEXCEPT;
 
     _LIBCPP_INLINE_VISIBILITY
     weak_ptr(weak_ptr&& __r) _NOEXCEPT;
-    template<class _Yp> _LIBCPP_INLINE_VISIBILITY weak_ptr(weak_ptr<_Yp>&& __r,
-                   typename enable_if<__compatible_with<_Yp, _Tp>::value, __nat*>::type = 0)
-                         _NOEXCEPT;
+
+    template<class _Yp, __enable_if_t<__compatible_with<_Yp, _Tp>::value, int> = 0>
+    _LIBCPP_INLINE_VISIBILITY weak_ptr(weak_ptr<_Yp>&& __r) _NOEXCEPT;
+
     _LIBCPP_HIDE_FROM_ABI ~weak_ptr();
 
     _LIBCPP_INLINE_VISIBILITY
@@ -1709,10 +1711,9 @@ weak_ptr<_Tp>::weak_ptr(weak_ptr const& __r) _NOEXCEPT
 }
 
 template<class _Tp>
-template<class _Yp>
+template<class _Yp, __enable_if_t<__compatible_with<_Yp, _Tp>::value, int> >
 inline
-weak_ptr<_Tp>::weak_ptr(shared_ptr<_Yp> const& __r,
-                        typename enable_if<__compatible_with<_Yp, _Tp>::value, __nat*>::type)
+weak_ptr<_Tp>::weak_ptr(shared_ptr<_Yp> const& __r)
                          _NOEXCEPT
     : __ptr_(__r.__ptr_),
       __cntrl_(__r.__cntrl_)
@@ -1722,10 +1723,9 @@ weak_ptr<_Tp>::weak_ptr(shared_ptr<_Yp> const& __r,
 }
 
 template<class _Tp>
-template<class _Yp>
+template<class _Yp, __enable_if_t<__compatible_with<_Yp, _Tp>::value, int> >
 inline
-weak_ptr<_Tp>::weak_ptr(weak_ptr<_Yp> const& __r,
-                        typename enable_if<__compatible_with<_Yp, _Tp>::value, __nat*>::type)
+weak_ptr<_Tp>::weak_ptr(weak_ptr<_Yp> const& __r)
          _NOEXCEPT
     : __ptr_(__r.__ptr_),
       __cntrl_(__r.__cntrl_)
@@ -1745,10 +1745,9 @@ weak_ptr<_Tp>::weak_ptr(weak_ptr&& __r) _NOEXCEPT
 }
 
 template<class _Tp>
-template<class _Yp>
+template<class _Yp, __enable_if_t<__compatible_with<_Yp, _Tp>::value, int> >
 inline
-weak_ptr<_Tp>::weak_ptr(weak_ptr<_Yp>&& __r,
-                        typename enable_if<__compatible_with<_Yp, _Tp>::value, __nat*>::type)
+weak_ptr<_Tp>::weak_ptr(weak_ptr<_Yp>&& __r)
          _NOEXCEPT
     : __ptr_(__r.__ptr_),
       __cntrl_(__r.__cntrl_)
