@@ -24,7 +24,11 @@ _LIBCPP_INLINE_VISIBILITY inline constexpr bool is_constant_evaluated() noexcept
 #endif
 
 _LIBCPP_HIDE_FROM_ABI inline _LIBCPP_CONSTEXPR bool __libcpp_is_constant_evaluated() _NOEXCEPT {
+#ifndef _LIBCPP_CXX03_LANG
   return __builtin_is_constant_evaluated();
+#else
+  return false;
+#endif
 }
 
 _LIBCPP_END_NAMESPACE_STD
