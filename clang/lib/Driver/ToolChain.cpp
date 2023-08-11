@@ -427,6 +427,14 @@ ToolChain::getDefaultUnwindTableLevel(const ArgList &Args) const {
   return UnwindTableLevel::None;
 }
 
+unsigned ToolChain::GetDefaultDwarfVersion() const {
+  // TODO: Remove the special case when R_RISCV_SET_ULEB128 linker support
+  // becomes more widely available.
+  if (getTriple().isRISCV())
+    return 4;
+  return 5;
+}
+
 Tool *ToolChain::getClang() const {
   if (!Clang)
     Clang.reset(new tools::Clang(*this, useIntegratedBackend()));
