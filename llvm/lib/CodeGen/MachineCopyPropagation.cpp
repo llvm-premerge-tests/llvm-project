@@ -134,23 +134,25 @@ public:
                           const TargetInstrInfo &TII, bool UseCopyInstr) {
     // Since Reg might be a subreg of some registers, only invalidate Reg is not
     // enough. We have to find the COPY defines Reg or registers defined by Reg
-    // and invalidate all of them.
+    // and invalidate all of them. Similarly, we must invalidate all of the
+    // the subregisters used in the source of the COPY.
     SmallSet<MCRegister, 8> RegsToInvalidate;
-    RegsToInvalidate.insert(Reg);
+    auto InvalidateCopy = [&](MachineInstr *MI) {
+      std::optional<DestSourcePair> CopyOperands =
+          isCopyInstr(*MI, TII, UseCopyInstr);
+      assert(CopyOperands && "Expect copy");
+
+      RegsToInvalidate.insert(CopyOperands->Destination->getReg().asMCReg());
+      RegsToInvalidate.insert(CopyOperands->Source->getReg().asMCReg());
+    };
+
     for (MCRegUnit Unit : TRI.regunits(Reg)) {
       auto I = Copies.find(Unit);
       if (I != Copies.end()) {
-        if (MachineInstr *MI = I->second.MI) {
-          std::optional<DestSourcePair> CopyOperands =
-              isCopyInstr(*MI, TII, UseCopyInstr);
-          assert(CopyOperands && "Expect copy");
-
-          RegsToInvalidate.insert(
-              CopyOperands->Destination->getReg().asMCReg());
-          RegsToInvalidate.insert(CopyOperands->Source->getReg().asMCReg());
-        }
-        RegsToInvalidate.insert(I->second.DefRegs.begin(),
-                                I->second.DefRegs.end());
+        if (MachineInstr *MI = I->second.MI)
+          InvalidateCopy(MI);
+        if (MachineInstr *MI = I->second.LastSeenUseInCopy)
+          InvalidateCopy(MI);
       }
     }
     for (MCRegister InvalidReg : RegsToInvalidate)
