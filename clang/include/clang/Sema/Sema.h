@@ -1353,6 +1353,10 @@ public:
 
     bool IsCurrentlyCheckingDefaultArgumentOrInitializer = false;
 
+    bool ExtendCXXForRangeInitVariableLifetime = false;
+
+    bool MaterializePRValueTemporaryInDiscardStatement = false;
+
     // When evaluating immediate functions in the initializer of a default
     // argument or default member initializer, this is the declaration whose
     // default initializer is being evaluated and the location of the call
@@ -9833,6 +9837,18 @@ public:
     assert(!ExprEvalContexts.empty() &&
            "Must be in an expression evaluation context");
     return ExprEvalContexts.back().isImmediateFunctionContext();
+  }
+
+  bool isExtendXXForRangeInitVariableLifetimeContext() const {
+    assert(!ExprEvalContexts.empty() &&
+           "Must be in an expression evaluation context");
+    return ExprEvalContexts.back().ExtendCXXForRangeInitVariableLifetime;
+  }
+
+  bool isMaterializePRValueTemporaryInDiscardStatement() const {
+    assert(!ExprEvalContexts.empty() &&
+           "Must be in an expression evaluation context");
+    return ExprEvalContexts.back().MaterializePRValueTemporaryInDiscardStatement;
   }
 
   bool isCheckingDefaultArgumentOrInitializer() const {

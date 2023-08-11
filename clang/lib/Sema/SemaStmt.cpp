@@ -27,6 +27,7 @@
 #include "clang/AST/TypeOrdering.h"
 #include "clang/Basic/TargetInfo.h"
 #include "clang/Lex/Preprocessor.h"
+#include "clang/Sema/EnterExpressionEvaluationContext.h"
 #include "clang/Sema/Initialization.h"
 #include "clang/Sema/Lookup.h"
 #include "clang/Sema/Ownership.h"
@@ -2529,10 +2530,20 @@ StmtResult Sema::ActOnCXXForRangeStmt(Scope *S, SourceLocation ForLoc,
   VarDecl *RangeVar = BuildForRangeVarDecl(*this, RangeLoc,
                                            Context.getAutoRRefDeductType(),
                                            std::string("__range") + DepthStr);
-  if (FinishForRangeVarDecl(*this, RangeVar, Range, RangeLoc,
-                            diag::err_for_range_deduction_failure)) {
-    ActOnInitializerError(LoopVar);
-    return StmtError();
+  {
+    EnterExpressionEvaluationContext RangeVarContext(
+        *this, ExpressionEvaluationContext::PotentiallyEvaluated, /*LambdaContextDecl=*/nullptr,
+        ExpressionEvaluationContextRecord::EK_Other, getLangOpts().CPlusPlus23);
+    if (getLangOpts().CPlusPlus23) {
+      auto &LastRecord = ExprEvalContexts.back();
+      LastRecord.ExtendCXXForRangeInitVariableLifetime = true;
+      Cleanup = LastRecord.ParentCleanup;
+    }
+    if (FinishForRangeVarDecl(*this, RangeVar, Range, RangeLoc,
+                              diag::err_for_range_deduction_failure)) {
+      ActOnInitializerError(LoopVar);
+      return StmtError();
+    }
   }
 
   // Claim the type doesn't contain auto: we've already done the checking.
