@@ -321,9 +321,9 @@ Check for memory leaks. Traces memory managed by new/delete.
    int *p = new int;
  } // warn
 
-.. _cplusplus-PlacementNewChecker:
+.. _cplusplus-PlacementNew:
 
-cplusplus.PlacementNewChecker (C++)
+cplusplus.PlacementNew (C++)
 """""""""""""""""""""""""""""""""""
 Check if default placement new is provided with pointers to sufficient storage capacity.
 
