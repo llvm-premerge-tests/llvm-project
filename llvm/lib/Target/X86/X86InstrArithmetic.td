@@ -1374,8 +1374,7 @@ class ADCOXOpRM <bits<8> opcode, string mnemonic, X86TypeInfo info>
   let OpSize = OpSizeFixed;
 }
 
-let Predicates = [HasADX], Defs = [EFLAGS], Uses = [EFLAGS],
-    Constraints = "$src1 = $dst", hasSideEffects = 0 in {
+let Defs = [EFLAGS], Uses = [EFLAGS], Constraints = "$src1 = $dst", hasSideEffects = 0 in {
   let SchedRW = [WriteADC], isCommutable = 1 in {
   def ADCX32rr : ADCOXOpRR<0xF6, "adcx", Xi32>, T8PD;
   def ADCX64rr : ADCOXOpRR<0xF6, "adcx", Xi64>, T8PD;
