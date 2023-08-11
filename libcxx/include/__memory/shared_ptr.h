@@ -1642,32 +1642,20 @@ public:
 
     _LIBCPP_INLINE_VISIBILITY
     weak_ptr& operator=(weak_ptr const& __r) _NOEXCEPT;
-    template<class _Yp>
-        typename enable_if
-        <
-            __compatible_with<_Yp, _Tp>::value,
-            weak_ptr&
-        >::type
+    template<class _Yp, __enable_if_t<__compatible_with<_Yp, _Tp>::value, int> = 0>
+        weak_ptr&
         _LIBCPP_INLINE_VISIBILITY
         operator=(weak_ptr<_Yp> const& __r) _NOEXCEPT;
 
     _LIBCPP_INLINE_VISIBILITY
     weak_ptr& operator=(weak_ptr&& __r) _NOEXCEPT;
-    template<class _Yp>
-        typename enable_if
-        <
-            __compatible_with<_Yp, _Tp>::value,
-            weak_ptr&
-        >::type
+    template<class _Yp, __enable_if_t<__compatible_with<_Yp, _Tp>::value, int> = 0>
+        weak_ptr&
         _LIBCPP_INLINE_VISIBILITY
         operator=(weak_ptr<_Yp>&& __r) _NOEXCEPT;
 
-    template<class _Yp>
-        typename enable_if
-        <
-            __compatible_with<_Yp, _Tp>::value,
-            weak_ptr&
-        >::type
+    template<class _Yp, __enable_if_t<__compatible_with<_Yp, _Tp>::value, int> = 0>
+        weak_ptr&
         _LIBCPP_INLINE_VISIBILITY
         operator=(shared_ptr<_Yp> const& __r) _NOEXCEPT;
 
@@ -1786,13 +1774,9 @@ weak_ptr<_Tp>::operator=(weak_ptr const& __r) _NOEXCEPT
 }
 
 template<class _Tp>
-template<class _Yp>
+template<class _Yp, __enable_if_t<__compatible_with<_Yp, _Tp>::value, int> >
 inline
-typename enable_if
-<
-    __compatible_with<_Yp, _Tp>::value,
-    weak_ptr<_Tp>&
->::type
+weak_ptr<_Tp>&
 weak_ptr<_Tp>::operator=(weak_ptr<_Yp> const& __r) _NOEXCEPT
 {
     weak_ptr(__r).swap(*this);
@@ -1809,13 +1793,9 @@ weak_ptr<_Tp>::operator=(weak_ptr&& __r) _NOEXCEPT
 }
 
 template<class _Tp>
-template<class _Yp>
+template<class _Yp, __enable_if_t<__compatible_with<_Yp, _Tp>::value, int> >
 inline
-typename enable_if
-<
-    __compatible_with<_Yp, _Tp>::value,
-    weak_ptr<_Tp>&
->::type
+weak_ptr<_Tp>&
 weak_ptr<_Tp>::operator=(weak_ptr<_Yp>&& __r) _NOEXCEPT
 {
     weak_ptr(_VSTD::move(__r)).swap(*this);
@@ -1823,13 +1803,9 @@ weak_ptr<_Tp>::operator=(weak_ptr<_Yp>&& __r) _NOEXCEPT
 }
 
 template<class _Tp>
-template<class _Yp>
+template<class _Yp, __enable_if_t<__compatible_with<_Yp, _Tp>::value, int> >
 inline
-typename enable_if
-<
-    __compatible_with<_Yp, _Tp>::value,
-    weak_ptr<_Tp>&
->::type
+weak_ptr<_Tp>&
 weak_ptr<_Tp>::operator=(shared_ptr<_Yp> const& __r) _NOEXCEPT
 {
     weak_ptr(__r).swap(*this);
