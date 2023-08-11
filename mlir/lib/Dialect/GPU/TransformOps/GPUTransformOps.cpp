@@ -13,6 +13,7 @@
 #include "mlir/Conversion/LLVMCommon/TypeConverter.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/DLTI/DLTI.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/GPU/IR/GPUDialect.h"
 #include "mlir/Dialect/GPU/TransformOps/Utils.h"
@@ -29,11 +30,17 @@
 #include "mlir/IR/AffineExpr.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinAttributes.h"
+#include "mlir/IR/BuiltinDialect.h"
+#include "mlir/IR/DialectRegistry.h"
 #include "mlir/IR/IRMapping.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/OpDefinition.h"
 #include "mlir/IR/Visitors.h"
+#include "mlir/Pass/Pass.h"
 #include "mlir/Support/LLVM.h"
+#include "mlir/Target/LLVMIR/Dialect/GPU/GPUToLLVMIRTranslation.h"
+#include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
+#include "mlir/Target/LLVMIR/Dialect/NVVM/NVVMToLLVMIRTranslation.h"
 #include "mlir/Transforms/DialectConversion.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
@@ -1455,10 +1462,19 @@ public:
     declareGeneratedDialect<scf::SCFDialect>();
     declareGeneratedDialect<arith::ArithDialect>();
     declareGeneratedDialect<GPUDialect>();
+    declareGeneratedDialect<LLVM::LLVMDialect>();
+    declareGeneratedDialect<NVVM::NVVMDialect>();
+    declareGeneratedDialect<DLTIDialect>();
     registerTransformOps<
 #define GET_OP_LIST
 #include "mlir/Dialect/GPU/TransformOps/GPUTransformOps.cpp.inc"
         >();
+    // Register translations(needed to serialize to cubin)
+    declareRegistration([](MLIRContext *c) {
+      registerNVVMDialectTranslation(*c);
+      registerGPUDialectTranslation(*c);
+      registerLLVMDialectTranslation(*c);
+    });
   }
 };
 } // namespace

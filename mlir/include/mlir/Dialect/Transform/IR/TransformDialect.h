@@ -233,6 +233,15 @@ protected:
         [](MLIRContext *context) { context->loadDialect<DialectTy>(); });
   }
 
+  /// Declares that the transformations associated with the operations
+  /// registered by this dialect extension need to register additional
+  /// extensions, beyond just dialects. This is used in particular for
+  /// registering translations that need to be called during IR transformation
+  /// (e.g. generating embedded binary blobs).
+  void declareRegistration(std::function<void(MLIRContext *)> fun) {
+    generatedDialectLoaders.push_back(fun);
+  }
+
 private:
   /// Callbacks performing extension initialization, e.g., registering ops,
   /// types and defining the additional data.
