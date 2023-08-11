@@ -26,6 +26,7 @@
 #include "clang/Basic/LangOptions.h"
 #include "clang/Basic/SourceLocation.h"
 #include "clang/Format/Format.h"
+#include "clang/Lex/HeaderSearchOptions.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Tooling/Core/Replacement.h"
 #include "clang/Tooling/Inclusions/HeaderIncludes.h"
@@ -118,47 +119,52 @@ void IncludeCleanerCheck::check(const MatchFinder::MatchResult &Result) {
     MainFileDecls.push_back(D);
   }
   llvm::DenseSet<include_cleaner::Symbol> SeenSymbols;
+  std::string ResourceDir = HS->getHeaderSearchOpts().ResourceDir;
   // FIXME: Find a way to have less code duplication between include-cleaner
   // analysis implementation and the below code.
-  walkUsed(MainFileDecls, RecordedPreprocessor.MacroReferences, &RecordedPI,
-           *SM,
-           [&](const include_cleaner::SymbolReference &Ref,
-               llvm::ArrayRef<include_cleaner::Header> Providers) {
-             // Process each symbol once to reduce noise in the findings.
-             // Tidy checks are used in two different workflows:
-             // - Ones that show all the findings for a given file. For such
-             // workflows there is not much point in showing all the occurences,
-             // as one is enough to indicate the issue.
-             // - Ones that show only the findings on changed pieces. For such
-             // workflows it's useful to show findings on every reference of a
-             // symbol as otherwise tools might give incosistent results
-             // depending on the parts of the file being edited. But it should
-             // still help surface findings for "new violations" (i.e.
-             // dependency did not exist in the code at all before).
-             if (DeduplicateFindings && !SeenSymbols.insert(Ref.Target).second)
-               return;
-             bool Satisfied = false;
-             for (const include_cleaner::Header &H : Providers) {
-               if (H.kind() == include_cleaner::Header::Physical &&
-                   H.physical() == MainFile)
-                 Satisfied = true;
+  walkUsed(
+      MainFileDecls, RecordedPreprocessor.MacroReferences, &RecordedPI, *SM,
+      [&](const include_cleaner::SymbolReference &Ref,
+          llvm::ArrayRef<include_cleaner::Header> Providers) {
+        // Process each symbol once to reduce noise in the findings.
+        // Tidy checks are used in two different workflows:
+        // - Ones that show all the findings for a given file. For such
+        // workflows there is not much point in showing all the occurences,
+        // as one is enough to indicate the issue.
+        // - Ones that show only the findings on changed pieces. For such
+        // workflows it's useful to show findings on every reference of a
+        // symbol as otherwise tools might give incosistent results
+        // depending on the parts of the file being edited. But it should
+        // still help surface findings for "new violations" (i.e.
+        // dependency did not exist in the code at all before).
+        if (DeduplicateFindings && !SeenSymbols.insert(Ref.Target).second)
+          return;
+        bool Satisfied = false;
+        for (const include_cleaner::Header &H : Providers) {
+          if (H.kind() == include_cleaner::Header::Physical &&
+              (H.physical() == MainFile ||
+               H.physical()->getLastRef().getDir().getName() == ResourceDir)) {
+            Satisfied = true;
+            continue;
+          }
 
-               for (const include_cleaner::Include *I :
-                    RecordedPreprocessor.Includes.match(H)) {
-                 Used.insert(I);
-                 Satisfied = true;
-               }
-             }
-             if (!Satisfied && !Providers.empty() &&
-                 Ref.RT == include_cleaner::RefType::Explicit &&
-                 !shouldIgnore(Providers.front()))
-               Missing.push_back({Ref, Providers.front()});
-           });
+          for (const include_cleaner::Include *I :
+               RecordedPreprocessor.Includes.match(H)) {
+            Used.insert(I);
+            Satisfied = true;
+          }
+        }
+        if (!Satisfied && !Providers.empty() &&
+            Ref.RT == include_cleaner::RefType::Explicit &&
+            !shouldIgnore(Providers.front()))
+          Missing.push_back({Ref, Providers.front()});
+      });
 
   std::vector<const include_cleaner::Include *> Unused;
   for (const include_cleaner::Include &I :
        RecordedPreprocessor.Includes.all()) {
-    if (Used.contains(&I) || !I.Resolved)
+    if (Used.contains(&I) || !I.Resolved ||
+        I.Resolved->getDir().getName() == ResourceDir)
       continue;
     if (RecordedPI.shouldKeep(*I.Resolved))
       continue;
