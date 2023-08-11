@@ -4233,3 +4233,22 @@ def AvailableOnlyInDefaultEvalMethod : InheritableAttr {
   let Documentation = [Undocumented];
 }
 
+def CountedBy : InheritableAttr {
+  let Spellings = [Clang<"counted_by">];
+  let Subjects = SubjectList<[Field]>;
+  let Args = [VariadicIdentifierArgument<"CountedByFields">];
+  let Documentation = [CountedByDocs];
+  let LangOpts = [COnly];
+  code AdditionalMembers = [{
+    private:
+      SmallVector<SourceRange, 2> CountFieldRanges;
+    public:
+      void addCountFieldSourceRange(ArrayRef<SourceRange> Ranges) {
+        for (SourceRange SR : Ranges)
+          CountFieldRanges.push_back(SR);
+      }
+      SourceRange getCountFieldSourceRange(unsigned Idx) const {
+        return CountFieldRanges[Idx];
+      }
+  }];
+}

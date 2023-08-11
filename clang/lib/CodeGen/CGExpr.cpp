@@ -933,6 +933,50 @@ static llvm::Value *getArrayIndexingBound(CodeGenFunction &CGF,
         return CGF.getVLASize(VAT).NumElts;
       // Ignore pass_object_size here. It's not applicable on decayed pointers.
     }
+
+    if (const auto *ME = dyn_cast<MemberExpr>(CE->getSubExpr())) {
+      if (ME->isFlexibleArrayMemberLike(CGF.getContext(),
+                                        StrictFlexArraysLevel, true)) {
+        if (const auto *MD = dyn_cast<FieldDecl>(ME->getMemberDecl())) {
+          if (const auto *ECA = MD->getAttr<CountedByAttr>()) {
+            const RecordDecl *RD = MD->getParent();
+            MemberExpr *Mem = nullptr;
+
+            for (const IdentifierInfo *CountField : ECA->countedByFields()) {
+              MemberExpr *TmpMem = nullptr;
+
+              for (FieldDecl *FD : RD->fields()) {
+                if (FD->getName() != CountField->getName())
+                  continue;
+
+                if (Mem)
+                  TmpMem = MemberExpr::CreateImplicit(
+                      CGF.getContext(), Mem, Mem->getType()->isPointerType(),
+                      FD, FD->getType(), VK_LValue, OK_Ordinary);
+                else
+                  TmpMem = MemberExpr::CreateImplicit(
+                      CGF.getContext(), const_cast<Expr*>(ME->getBase()),
+                      ME->isArrow(), FD, FD->getType(), VK_LValue,
+                      OK_Ordinary);
+
+                if (FD->getType()->isRecordType())
+                  RD = FD->getType()->getAsRecordDecl();
+
+                break;
+              }
+
+              Mem = TmpMem;
+              if (!Mem) break;
+            }
+
+            if (Mem) {
+              IndexedType = Base->getType();
+              return CGF.EmitAnyExprToTemp(Mem).getScalarVal();
+            }
+          }
+        }
+      }
+    }
   }
 
   QualType EltTy{Base->getType()->getPointeeOrArrayElementType(), 0};
@@ -949,8 +993,6 @@ void CodeGenFunction::EmitBoundsCheck(const Expr *E, const Expr *Base,
                                       bool Accessed) {
   assert(SanOpts.has(SanitizerKind::ArrayBounds) &&
          "should not be called unless adding bounds checks");
-  SanitizerScope SanScope(this);
-
   const LangOptions::StrictFlexArraysLevelKind StrictFlexArraysLevel =
     getLangOpts().getStrictFlexArraysLevel();
 
@@ -959,6 +1001,8 @@ void CodeGenFunction::EmitBoundsCheck(const Expr *E, const Expr *Base,
       getArrayIndexingBound(*this, Base, IndexedType, StrictFlexArraysLevel);
   if (!Bound)
     return;
+
+  SanitizerScope SanScope(this);
 
   bool IndexSigned = IndexType->isSignedIntegerOrEnumerationType();
   llvm::Value *IndexVal = Builder.CreateIntCast(Index, SizeTy, IndexSigned);

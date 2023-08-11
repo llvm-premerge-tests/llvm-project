@@ -7189,3 +7189,72 @@ the variables were declared in. It is not possible to check the return value
 (if any) of these ``cleanup`` callback functions.
 }];
 }
+
+def CountedByDocs : Documentation {
+  let Category = DocCatField;
+  let Content = [{
+Clang supports the ``counted_by`` attribute for flexible array members. The
+argument for the ``counted_by`` attribute is the name of a field member in
+the same structure holding the count of elements in the flexible array.
+
+For example:
+
+.. code-block:: c
+
+  struct bar;
+
+  struct foo {
+    size_t num_fam_elements;
+    /* ... */
+    struct bar *fam[] __attribute__((counted_by(num_fam_elements)));
+  };
+
+  struct foo *foo_alloc(size_t num_elements) {
+    struct foo *f;
+
+    f = malloc(sizeof(struct foo) + num_elements * sizeof(struct bar *));
+    f->num_fam_elements = num_elements;
+    return f;
+  }
+
+This attribute is used with the ``-fsantize=array-bounds`` flag to trap if a
+flexible array access is outside of the number of elements.
+
+.. code-block:: c
+
+  void mux(struct foo *);
+
+  struct bar *baz(void) {
+    struct foo *f = foo_alloc(128);
+
+    mux(f); /* Fills in fam element. */
+
+    return f->fam[256]; /* Trap. */
+  }
+
+It's possible to specify an element in a substructure. The attribute syntax can
+take a list of field names to the element count.
+
+For example:
+
+.. code-block:: c
+
+  struct bar;
+
+  struct foo {
+    struct {
+      size_t num_fam_elements;
+    } bork;
+    /* ... */
+    struct bar *fam[] __attribute__((counted_by(bork, num_fam_elements)));
+  };
+
+  struct foo *foo_alloc(size_t num_elements) {
+    struct foo *f;
+
+    f = malloc(sizeof(struct foo) + num_elements * sizeof(struct bar *));
+    f->bork.num_fam_elements = num_elements;
+    return f;
+  }
+  }];
+}

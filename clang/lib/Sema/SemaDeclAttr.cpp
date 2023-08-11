@@ -8370,6 +8370,30 @@ static void handleZeroCallUsedRegsAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
   D->addAttr(ZeroCallUsedRegsAttr::Create(S.Context, Kind, AL));
 }
 
+static void handleCountedByAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
+  // TODO: Probably needs more processing here. See Sema::AddAlignValueAttr.
+  SmallVector<IdentifierInfo *, 2> Names;
+  SmallVector<SourceRange, 2> Ranges;
+
+  for (unsigned I = 0, E = getNumAttributeArgs(AL); I != E; ++I) {
+    if (!AL.isArgIdent(I)) {
+      S.Diag(AL.getLoc(), diag::err_attribute_argument_type)
+          << AL << AANT_ArgumentIdentifier;
+      return;
+    }
+
+    IdentifierLoc *IL = AL.getArgAsIdent(I);
+    Names.push_back(IL->Ident);
+    Ranges.push_back(IL->Loc);
+  }
+
+  CountedByAttr *CBA = ::new (S.Context) CountedByAttr(S.Context, AL,
+                                                       Names.data(),
+                                                       Names.size());
+  CBA->addCountFieldSourceRange(Ranges);
+  D->addAttr(CBA);
+}
+
 static void handleFunctionReturnThunksAttr(Sema &S, Decl *D,
                                            const ParsedAttr &AL) {
   StringRef KindStr;
@@ -9314,6 +9338,10 @@ ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D, const ParsedAttr &AL,
 
   case ParsedAttr::AT_AvailableOnlyInDefaultEvalMethod:
     handleAvailableOnlyInDefaultEvalMethod(S, D, AL);
+    break;
+
+  case ParsedAttr::AT_CountedBy:
+    handleCountedByAttr(S, D, AL);
     break;
 
   // Microsoft attributes:

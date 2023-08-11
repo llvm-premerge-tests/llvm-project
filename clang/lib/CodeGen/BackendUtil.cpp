@@ -980,7 +980,8 @@ void EmitAssemblyHelper::RunOptimizationPipeline(
 
     // Register callbacks to schedule sanitizer passes at the appropriate part
     // of the pipeline.
-    if (LangOpts.Sanitize.has(SanitizerKind::LocalBounds))
+    if (LangOpts.Sanitize.has(SanitizerKind::LocalBounds) ||
+        LangOpts.Sanitize.has(SanitizerKind::ArrayBounds))
       PB.registerScalarOptimizerLateEPCallback(
           [](FunctionPassManager &FPM, OptimizationLevel Level) {
             FPM.addPass(BoundsCheckingPass());
