@@ -946,6 +946,15 @@ public:
   /// integer type VT, by either zero-extending or truncating it.
   SDValue getZExtOrTrunc(SDValue Op, const SDLoc &DL, EVT VT);
 
+  /// Convert Op, which must have scalar of integer type, to the
+  /// scalar integer type VT. First, convert a vector to a
+  /// correspondingly sized integer type, then either extend or
+  /// truncate it. The priority of extension types is:
+  /// ANY_EXTEND, SIGN_EXTEND, then ZERO_EXTEND depending on
+  /// whether or not \p isAny or \p isSigned is set.
+  SDValue getScalarizeExtOrTrunc(SDValue Op, const SDLoc &DL, EVT VT,
+                                 bool IsAny = false, bool IsSigned = false);
+
   /// Convert Op, which must be of integer type, to the
   /// integer type VT, by either sign/zero-extending (depending on IsSigned) or
   /// truncating it.

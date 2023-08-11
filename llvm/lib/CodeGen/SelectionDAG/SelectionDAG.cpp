@@ -1453,6 +1453,24 @@ SDValue SelectionDAG::getZExtOrTrunc(SDValue Op, const SDLoc &DL, EVT VT) {
     getNode(ISD::TRUNCATE, DL, VT, Op);
 }
 
+SDValue SelectionDAG::getScalarizeExtOrTrunc(SDValue Op, const SDLoc &DL,
+                                             EVT VT, bool IsAny,
+                                             bool IsSigned) {
+  assert(!VT.isVector());
+  auto Type = Op.getValueType();
+  SDValue DestOp;
+  if (Type == VT)
+    return Op;
+  auto Size = Op.getValueSizeInBits();
+  DestOp = getBitcast(MVT::getIntegerVT(Size), Op);
+  if (DestOp.getValueType() == VT)
+    return DestOp;
+
+  return IsAny      ? getAnyExtOrTrunc(DestOp, DL, VT)
+         : IsSigned ? getSExtOrTrunc(DestOp, DL, VT)
+                    : getZExtOrTrunc(DestOp, DL, VT);
+}
+
 SDValue SelectionDAG::getBoolExtOrTrunc(SDValue Op, const SDLoc &SL, EVT VT,
                                         EVT OpVT) {
   if (VT.bitsLE(Op.getValueType()))
