@@ -2617,8 +2617,9 @@ public:
   /// By default, performs semantic analysis to build the new expression.
   /// Subclasses may override this routine to provide different behavior.
   ExprResult RebuildPredefinedExpr(SourceLocation Loc,
-                                   PredefinedExpr::IdentKind IK) {
-    return getSema().BuildPredefinedExpr(Loc, IK);
+                                   PredefinedExpr::IdentKind IK,
+                                   StringLiteral::StringKind E) {
+    return getSema().BuildPredefinedExpr(Loc, IK, E);
   }
 
   /// Build a new expression that references a declaration.
@@ -10813,8 +10814,8 @@ TreeTransform<Derived>::TransformPredefinedExpr(PredefinedExpr *E) {
   if (!E->isTypeDependent())
     return E;
 
-  return getDerived().RebuildPredefinedExpr(E->getLocation(),
-                                            E->getIdentKind());
+  return getDerived().RebuildPredefinedExpr(E->getLocation(), E->getIdentKind(),
+                                            E->getEncoding());
 }
 
 template<typename Derived>

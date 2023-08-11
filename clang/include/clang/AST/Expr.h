@@ -1994,10 +1994,8 @@ public:
   enum IdentKind {
     Func,
     Function,
-    LFunction, // Same as Function, but as wide string.
     FuncDName,
     FuncSig,
-    LFuncSig, // Same as FuncSig, but as wide string
     PrettyFunction,
     /// The same as PrettyFunction, except that the
     /// 'virtual' keyword is omitted for virtual member functions.
@@ -2006,7 +2004,8 @@ public:
 
 private:
   PredefinedExpr(SourceLocation L, QualType FNTy, IdentKind IK,
-                 bool IsTransparent, StringLiteral *SL);
+                 StringLiteral::StringKind E, bool IsTransparent,
+                 StringLiteral *SL);
 
   explicit PredefinedExpr(EmptyShell Empty, bool HasFunctionName);
 
@@ -2025,7 +2024,8 @@ public:
   /// If IsTransparent, the PredefinedExpr is transparently handled as a
   /// StringLiteral.
   static PredefinedExpr *Create(const ASTContext &Ctx, SourceLocation L,
-                                QualType FNTy, IdentKind IK, bool IsTransparent,
+                                QualType FNTy, IdentKind IK,
+                                StringLiteral::StringKind E, bool IsTransparent,
                                 StringLiteral *SL);
 
   /// Create an empty PredefinedExpr.
@@ -2034,6 +2034,10 @@ public:
 
   IdentKind getIdentKind() const {
     return static_cast<IdentKind>(PredefinedExprBits.Kind);
+  }
+
+  StringLiteral::StringKind getEncoding() const {
+    return static_cast<StringLiteral::StringKind>(PredefinedExprBits.Encoding);
   }
 
   bool isTransparent() const { return PredefinedExprBits.IsTransparent; }
@@ -2053,9 +2057,10 @@ public:
                : nullptr;
   }
 
-  static StringRef getIdentKindName(IdentKind IK);
+  static StringRef getIdentKindName(IdentKind IK,
+                                    StringLiteral::StringKind Encoding);
   StringRef getIdentKindName() const {
-    return getIdentKindName(getIdentKind());
+    return getIdentKindName(getIdentKind(), getEncoding());
   }
 
   static std::string ComputeName(IdentKind IK, const Decl *CurrentDecl);

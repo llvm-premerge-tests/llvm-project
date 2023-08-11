@@ -1247,7 +1247,7 @@ void StmtPrinter::VisitSYCLUniqueStableNameExpr(
 }
 
 void StmtPrinter::VisitPredefinedExpr(PredefinedExpr *Node) {
-  OS << PredefinedExpr::getIdentKindName(Node->getIdentKind());
+  OS << Node->getIdentKindName();
 }
 
 void StmtPrinter::VisitCharacterLiteral(CharacterLiteral *Node) {

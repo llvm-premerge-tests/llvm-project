@@ -1261,7 +1261,7 @@ void JSONNodeDumper::VisitSYCLUniqueStableNameExpr(
 }
 
 void JSONNodeDumper::VisitPredefinedExpr(const PredefinedExpr *PE) {
-  JOS.attribute("name", PredefinedExpr::getIdentKindName(PE->getIdentKind()));
+  JOS.attribute("name", PE->getIdentKindName());
 }
 
 void JSONNodeDumper::VisitUnaryOperator(const UnaryOperator *UO) {

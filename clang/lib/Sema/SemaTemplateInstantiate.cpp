@@ -1772,7 +1772,8 @@ TemplateInstantiator::TransformPredefinedExpr(PredefinedExpr *E) {
   if (!E->isTypeDependent())
     return E;
 
-  return getSema().BuildPredefinedExpr(E->getLocation(), E->getIdentKind());
+  return getSema().BuildPredefinedExpr(E->getLocation(), E->getIdentKind(),
+                                       E->getEncoding());
 }
 
 ExprResult

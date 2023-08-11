@@ -1,16 +1,31 @@
-// RUN: %clang_cc1 %s -fsyntax-only -Wmicrosoft -verify -fms-extensions
+// RUN: %clang_cc1 %s -fsyntax-only -Wmicrosoft -verify -fms-extensions -std=c++20
 
 using size_t = __SIZE_TYPE__;
 
 // Test array initialization
 void array_init() {
- const char a[] = __FUNCTION__; // expected-warning{{initializing an array from a '__FUNCTION__' predefined identifier is a Microsoft extension}}
- const char b[] = __FUNCDNAME__; // expected-warning{{initializing an array from a '__FUNCDNAME__' predefined identifier is a Microsoft extension}}
- const char c[] = __FUNCSIG__; // expected-warning{{initializing an array from a '__FUNCSIG__' predefined identifier is a Microsoft extension}}
- const char d[] = __func__; // expected-warning{{initializing an array from a '__func__' predefined identifier is a Microsoft extension}}
- const char e[] = __PRETTY_FUNCTION__; // expected-warning{{initializing an array from a '__PRETTY_FUNCTION__' predefined identifier is a Microsoft extension}}
- const wchar_t f[] = L__FUNCTION__; // expected-warning{{initializing an array from a 'L__FUNCTION__' predefined identifier is a Microsoft extension}}
- const wchar_t g[] = L__FUNCSIG__; // expected-warning{{initializing an array from a 'L__FUNCSIG__' predefined identifier is a Microsoft extension}}
+ const char a_f[] = __func__; // expected-warning{{initializing an array from a '__func__' predefined identifier is a Microsoft extension}}
+ const char a_P[] = __PRETTY_FUNCTION__; // expected-warning{{initializing an array from a '__PRETTY_FUNCTION__' predefined identifier is a Microsoft extension}}
+
+ const char a_F[] = __FUNCTION__;  // expected-warning{{initializing an array from a '__FUNCTION__' predefined identifier is a Microsoft extension}}
+ const char a_D[] = __FUNCDNAME__; // expected-warning{{initializing an array from a '__FUNCDNAME__' predefined identifier is a Microsoft extension}}
+ const char a_S[] = __FUNCSIG__;   // expected-warning{{initializing an array from a '__FUNCSIG__' predefined identifier is a Microsoft extension}}
+
+ const wchar_t L_F[] = L__FUNCTION__;  // expected-warning{{initializing an array from a 'L__FUNCTION__' predefined identifier is a Microsoft extension}}
+ const wchar_t L_D[] = L__FUNCDNAME__; // expected-warning{{initializing an array from a 'L__FUNCDNAME__' predefined identifier is a Microsoft extension}}
+ const wchar_t L_S[] = L__FUNCSIG__;   // expected-warning{{initializing an array from a 'L__FUNCSIG__' predefined identifier is a Microsoft extension}}
+
+ const char8_t u8_F[] = u8__FUNCTION__;  // expected-warning{{initializing an array from a 'u8__FUNCTION__' predefined identifier is a Microsoft extension}}
+ const char8_t u8_D[] = u8__FUNCDNAME__; // expected-warning{{initializing an array from a 'u8__FUNCDNAME__' predefined identifier is a Microsoft extension}}
+ const char8_t u8_S[] = u8__FUNCSIG__;   // expected-warning{{initializing an array from a 'u8__FUNCSIG__' predefined identifier is a Microsoft extension}}
+
+ const char16_t u_F[] = u__FUNCTION__;  // expected-warning{{initializing an array from a 'u__FUNCTION__' predefined identifier is a Microsoft extension}}
+ const char16_t u_D[] = u__FUNCDNAME__; // expected-warning{{initializing an array from a 'u__FUNCDNAME__' predefined identifier is a Microsoft extension}}
+ const char16_t u_S[] = u__FUNCSIG__;   // expected-warning{{initializing an array from a 'u__FUNCSIG__' predefined identifier is a Microsoft extension}}
+
+ const char32_t U_F[] = U__FUNCTION__;  // expected-warning{{initializing an array from a 'U__FUNCTION__' predefined identifier is a Microsoft extension}}
+ const char32_t U_D[] = U__FUNCDNAME__; // expected-warning{{initializing an array from a 'U__FUNCDNAME__' predefined identifier is a Microsoft extension}}
+ const char32_t U_S[] = U__FUNCSIG__;   // expected-warning{{initializing an array from a 'U__FUNCSIG__' predefined identifier is a Microsoft extension}}
 }
 
 // Test function local identifiers outside of a function
@@ -100,24 +115,31 @@ extern "C" void test_concat() {
 
 extern "C" void test_wide_concat() {
   // test L"" + ""
-  ASSERT_EQ(L"" __FUNCTION__, L__FUNCTION__); // expected-warning{{expansion of predefined identifier '__FUNCTION__' to a string literal is a Microsoft extension}}
-  ASSERT_EQ(L"" __FUNCSIG__, L__FUNCSIG__);   // expected-warning{{expansion of predefined identifier '__FUNCSIG__' to a string literal is a Microsoft extension}}
+  ASSERT_EQ(L"" __FUNCTION__, L__FUNCTION__);   // expected-warning{{expansion of predefined identifier '__FUNCTION__' to a string literal is a Microsoft extension}}
+  ASSERT_EQ(L"" __FUNCDNAME__, L__FUNCDNAME__); // expected-warning{{expansion of predefined identifier '__FUNCDNAME__' to a string literal is a Microsoft extension}}
+  ASSERT_EQ(L"" __FUNCSIG__, L__FUNCSIG__);     // expected-warning{{expansion of predefined identifier '__FUNCSIG__' to a string literal is a Microsoft extension}}
 
   // test Lx + ""
-  ASSERT_EQ(L__FUNCTION__, L__FUNCTION__ ""); // expected-warning{{expansion of predefined identifier 'L__FUNCTION__' to a string literal is a Microsoft extension}}
-  ASSERT_EQ(L__FUNCSIG__, L__FUNCSIG__ "");   // expected-warning{{expansion of predefined identifier 'L__FUNCSIG__' to a string literal is a Microsoft extension}}
+  ASSERT_EQ(L__FUNCTION__, L__FUNCTION__ "");   // expected-warning{{expansion of predefined identifier 'L__FUNCTION__' to a string literal is a Microsoft extension}}
+  ASSERT_EQ(L__FUNCDNAME__, L__FUNCDNAME__ ""); // expected-warning{{expansion of predefined identifier 'L__FUNCDNAME__' to a string literal is a Microsoft extension}}
+  ASSERT_EQ(L__FUNCSIG__, L__FUNCSIG__ "");     // expected-warning{{expansion of predefined identifier 'L__FUNCSIG__' to a string literal is a Microsoft extension}}
 
   ASSERT_EQ(L"left_" L__FUNCTION__, L"left_test_wide_concat");                   // expected-warning{{expansion of predefined identifier 'L__FUNCTION__' to a string literal is a Microsoft extension}}
+  ASSERT_EQ(L"left_" L__FUNCDNAME__, L"left_test_wide_concat");                  // expected-warning{{expansion of predefined identifier 'L__FUNCDNAME__' to a string literal is a Microsoft extension}}
   ASSERT_EQ(L"left " L__FUNCSIG__, L"left void __cdecl test_wide_concat(void)"); // expected-warning{{expansion of predefined identifier 'L__FUNCSIG__' to a string literal is a Microsoft extension}}
 
   ASSERT_EQ(L__FUNCTION__ L"_right", L"test_wide_concat_right");                   // expected-warning{{expansion of predefined identifier 'L__FUNCTION__' to a string literal is a Microsoft extension}}
+  ASSERT_EQ(L__FUNCDNAME__ L"_right", L"test_wide_concat_right");                  // expected-warning{{expansion of predefined identifier 'L__FUNCDNAME__' to a string literal is a Microsoft extension}}
   ASSERT_EQ(L__FUNCSIG__ L" right", L"void __cdecl test_wide_concat(void) right"); // expected-warning{{expansion of predefined identifier 'L__FUNCSIG__' to a string literal is a Microsoft extension}}
 
   ASSERT_EQ(L"left_" L__FUNCTION__ L"_right", L"left_test_wide_concat_right");                   // expected-warning{{expansion of predefined identifier 'L__FUNCTION__' to a string literal is a Microsoft extension}}
+  ASSERT_EQ(L"left_" L__FUNCDNAME__ L"_right", L"left_test_wide_concat_right");                  // expected-warning{{expansion of predefined identifier 'L__FUNCDNAME__' to a string literal is a Microsoft extension}}
   ASSERT_EQ(L"left " L__FUNCSIG__ L" right", L"left void __cdecl test_wide_concat(void) right"); // expected-warning{{expansion of predefined identifier 'L__FUNCSIG__' to a string literal is a Microsoft extension}}
 
-  ASSERT_EQ(L__FUNCTION__ L"/" L__FUNCSIG__, L"test_wide_concat/void __cdecl test_wide_concat(void)"); // expected-warning{{expansion of predefined identifier 'L__FUNCTION__' to a string literal is a Microsoft extension}} \
-                                                                                                       // expected-warning{{expansion of predefined identifier 'L__FUNCSIG__' to a string literal is a Microsoft extension}}
+  ASSERT_EQ(L__FUNCTION__ L"/" L__FUNCSIG__ L"/" L__FUNCDNAME__, L"test_wide_concat/void __cdecl test_wide_concat(void)/test_wide_concat"); // \
+      // expected-warning{{expansion of predefined identifier 'L__FUNCTION__' to a string literal is a Microsoft extension}} \
+      // expected-warning{{expansion of predefined identifier 'L__FUNCDNAME__' to a string literal is a Microsoft extension}} \
+      // expected-warning{{expansion of predefined identifier 'L__FUNCSIG__' to a string literal is a Microsoft extension}}
 }
 
 void test_encoding() {

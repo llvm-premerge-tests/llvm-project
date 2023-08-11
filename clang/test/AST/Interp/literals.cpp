@@ -991,11 +991,10 @@ namespace PredefinedExprs {
   }
 
   void foo() {
-    static_assert(strings_match(__FUNCSIG__, "void __cdecl PredefinedExprs::foo(void)"), "");
-    static_assert(strings_match(L__FUNCSIG__, L"void __cdecl PredefinedExprs::foo(void)"), "");
-    static_assert(strings_match(L__FUNCTION__, L"foo"), "");
-    static_assert(strings_match(__FUNCTION__, "foo"), "");
     static_assert(strings_match(__func__, "foo"), "");
+    static_assert(strings_match(__FUNCTION__, "foo"), "");
+    static_assert(strings_match(__FUNCDNAME__, "_ZN15PredefinedExprs3fooEv"), "");
+    static_assert(strings_match(__FUNCSIG__, "void __cdecl PredefinedExprs::foo(void)"), "");
     static_assert(strings_match(__PRETTY_FUNCTION__, "void PredefinedExprs::foo()"), "");
   }
 

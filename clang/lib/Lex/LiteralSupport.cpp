@@ -442,9 +442,14 @@ void clang::expandUCNs(SmallVectorImpl<char> &Buf, StringRef Input) {
 bool clang::isFunctionLocalStringLiteralMacro(tok::TokenKind K,
                                               const LangOptions &LO) {
   return LO.MicrosoftExt &&
-         (K == tok::kw___FUNCTION__ || K == tok::kw_L__FUNCTION__ ||
-          K == tok::kw___FUNCSIG__ || K == tok::kw_L__FUNCSIG__ ||
-          K == tok::kw___FUNCDNAME__);
+         (K == tok::kw___FUNCTION__ || K == tok::kw___FUNCDNAME__ ||
+          K == tok::kw___FUNCSIG__ || K == tok::kw_L__FUNCTION__ ||
+          K == tok::kw_L__FUNCDNAME__ || K == tok::kw_L__FUNCSIG__ ||
+          K == tok::kw_u8__FUNCTION__ || K == tok::kw_u8__FUNCDNAME__ ||
+          K == tok::kw_u8__FUNCSIG__ || K == tok::kw_u__FUNCTION__ ||
+          K == tok::kw_u__FUNCDNAME__ || K == tok::kw_u__FUNCSIG__ ||
+          K == tok::kw_U__FUNCTION__ || K == tok::kw_U__FUNCDNAME__ ||
+          K == tok::kw_U__FUNCSIG__);
 }
 
 bool clang::tokenIsLikeStringLiteral(const Token &Tok, const LangOptions &LO) {

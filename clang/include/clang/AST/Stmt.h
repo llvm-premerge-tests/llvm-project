@@ -358,7 +358,11 @@ protected:
 
     /// The kind of this PredefinedExpr. One of the enumeration values
     /// in PredefinedExpr::IdentKind.
-    unsigned Kind : 4;
+    unsigned Kind : 3;
+
+    /// The encoding of this predefined expression.
+    /// One of the enumeration values of StringLiteral::StringKind.
+    unsigned Encoding : 3;
 
     /// True if this PredefinedExpr has a trailing "StringLiteral *"
     /// for the predefined identifier.

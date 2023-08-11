@@ -88,7 +88,7 @@ void LambdaFunctionNameCheck::check(const MatchFinder::MatchResult &Result) {
        "inside a lambda, '%0' expands to the name of the function call "
        "operator; consider capturing the name of the enclosing function "
        "explicitly")
-      << PredefinedExpr::getIdentKindName(E->getIdentKind());
+      << E->getIdentKindName();
 }
 
 } // namespace clang::tidy::bugprone

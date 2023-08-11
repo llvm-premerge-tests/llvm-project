@@ -1296,7 +1296,17 @@ ExprResult Parser::ParseCastExpression(CastParseKind ParseKind,
   case tok::kw___FUNCDNAME__:   // primary-expression: __FUNCDNAME__ [MS]
   case tok::kw___FUNCSIG__:     // primary-expression: __FUNCSIG__ [MS]
   case tok::kw_L__FUNCTION__:   // primary-expression: L__FUNCTION__ [MS]
+  case tok::kw_L__FUNCDNAME__:  // primary-expression: L__FUNCDNAME__ [MS]
   case tok::kw_L__FUNCSIG__:    // primary-expression: L__FUNCSIG__ [MS]
+  case tok::kw_u8__FUNCTION__:  // primary-expression: u8__FUNCTION__ [MS]
+  case tok::kw_u8__FUNCDNAME__: // primary-expression: u8__FUNCDNAME__ [MS]
+  case tok::kw_u8__FUNCSIG__:   // primary-expression: u8__FUNCSIG__ [MS]
+  case tok::kw_u__FUNCTION__:   // primary-expression: u__FUNCTION__ [MS]
+  case tok::kw_u__FUNCDNAME__:  // primary-expression: u__FUNCDNAME__ [MS]
+  case tok::kw_u__FUNCSIG__:    // primary-expression: u__FUNCSIG__ [MS]
+  case tok::kw_U__FUNCTION__:   // primary-expression: U__FUNCTION__ [MS]
+  case tok::kw_U__FUNCDNAME__:  // primary-expression: U__FUNCDNAME__ [MS]
+  case tok::kw_U__FUNCSIG__:    // primary-expression: U__FUNCSIG__ [MS]
   case tok::kw___PRETTY_FUNCTION__:  // primary-expression: __P..Y_F..N__ [GNU]
     // Function local predefined macros are represented by PredefinedExpr except
     // when Microsoft extensions are enabled and one of these macros is adjacent

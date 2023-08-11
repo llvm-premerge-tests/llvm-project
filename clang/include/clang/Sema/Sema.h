@@ -5718,7 +5718,8 @@ public:
   std::vector<Token> ExpandFunctionLocalPredefinedMacros(ArrayRef<Token> Toks);
 
   ExprResult BuildPredefinedExpr(SourceLocation Loc,
-                                 PredefinedExpr::IdentKind IK);
+                                 PredefinedExpr::IdentKind IK,
+                                 StringLiteral::StringKind E);
   ExprResult ActOnPredefinedExpr(SourceLocation Loc, tok::TokenKind Kind);
   ExprResult ActOnIntegerConstant(SourceLocation Loc, uint64_t Val);
 

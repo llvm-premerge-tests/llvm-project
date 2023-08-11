@@ -1883,24 +1883,45 @@ ExprResult Sema::CreateGenericSelectionExpr(
       ContainsUnexpandedParameterPack, ResultIndex);
 }
 
-static PredefinedExpr::IdentKind getPredefinedExprKind(tok::TokenKind Kind) {
+static std::pair<PredefinedExpr::IdentKind, StringLiteral::StringKind>
+getPredefinedExprKind(tok::TokenKind Kind) {
   switch (Kind) {
   default:
     llvm_unreachable("unexpected TokenKind");
   case tok::kw___func__:
-    return PredefinedExpr::Func; // [C99 6.4.2.2]
+    return {PredefinedExpr::Func, StringLiteral::Ordinary}; // [C99 6.4.2.2]
   case tok::kw___FUNCTION__:
-    return PredefinedExpr::Function;
+    return {PredefinedExpr::Function, StringLiteral::Ordinary};
   case tok::kw___FUNCDNAME__:
-    return PredefinedExpr::FuncDName; // [MS]
+    return {PredefinedExpr::FuncDName, StringLiteral::Ordinary}; // [MS]
   case tok::kw___FUNCSIG__:
-    return PredefinedExpr::FuncSig; // [MS]
+    return {PredefinedExpr::FuncSig, StringLiteral::Ordinary}; // [MS]
   case tok::kw_L__FUNCTION__:
-    return PredefinedExpr::LFunction; // [MS]
+    return {PredefinedExpr::Function, StringLiteral::Wide}; // [MS]
+  case tok::kw_L__FUNCDNAME__:
+    return {PredefinedExpr::FuncDName, StringLiteral::Wide}; // [MS]
   case tok::kw_L__FUNCSIG__:
-    return PredefinedExpr::LFuncSig; // [MS]
+    return {PredefinedExpr::FuncSig, StringLiteral::Wide}; // [MS]
+  case tok::kw_u8__FUNCTION__:
+    return {PredefinedExpr::Function, StringLiteral::UTF8}; // [MS]
+  case tok::kw_u8__FUNCDNAME__:
+    return {PredefinedExpr::FuncDName, StringLiteral::UTF8}; // [MS]
+  case tok::kw_u8__FUNCSIG__:
+    return {PredefinedExpr::FuncSig, StringLiteral::UTF8}; // [MS]
+  case tok::kw_u__FUNCTION__:
+    return {PredefinedExpr::Function, StringLiteral::UTF16}; // [MS]
+  case tok::kw_u__FUNCDNAME__:
+    return {PredefinedExpr::FuncDName, StringLiteral::UTF16}; // [MS]
+  case tok::kw_u__FUNCSIG__:
+    return {PredefinedExpr::FuncSig, StringLiteral::UTF16}; // [MS]
+  case tok::kw_U__FUNCTION__:
+    return {PredefinedExpr::Function, StringLiteral::UTF32}; // [MS]
+  case tok::kw_U__FUNCDNAME__:
+    return {PredefinedExpr::FuncDName, StringLiteral::UTF32}; // [MS]
+  case tok::kw_U__FUNCSIG__:
+    return {PredefinedExpr::FuncSig, StringLiteral::UTF32}; // [MS]
   case tok::kw___PRETTY_FUNCTION__:
-    return PredefinedExpr::PrettyFunction; // [GNU]
+    return {PredefinedExpr::PrettyFunction, StringLiteral::Ordinary}; // [GNU]
   }
 }
 
@@ -2001,20 +2022,36 @@ Sema::ExpandFunctionLocalPredefinedMacros(ArrayRef<Token> Toks) {
     // Stringify predefined expression
     Diag(Tok.getLocation(), diag::ext_string_literal_from_predefined)
         << Tok.getKind();
+    auto [ExprKind, Encoding] = getPredefinedExprKind(Tok.getKind());
     SmallString<64> Str;
     llvm::raw_svector_ostream OS(Str);
     Token &Exp = ExpandedToks.emplace_back();
     Exp.startToken();
-    if (Tok.getKind() == tok::kw_L__FUNCTION__ ||
-        Tok.getKind() == tok::kw_L__FUNCSIG__) {
+    switch (Encoding) {
+    case StringLiteral::Ordinary:
+      Exp.setKind(tok::string_literal);
+      break;
+    case StringLiteral::Wide:
       OS << 'L';
       Exp.setKind(tok::wide_string_literal);
-    } else {
-      Exp.setKind(tok::string_literal);
+      break;
+    case StringLiteral::UTF8:
+      OS << "u8";
+      Exp.setKind(tok::utf8_string_literal);
+      break;
+    case StringLiteral::UTF16:
+      OS << 'u';
+      Exp.setKind(tok::utf16_string_literal);
+      break;
+    case StringLiteral::UTF32:
+      OS << 'U';
+      Exp.setKind(tok::utf32_string_literal);
+      break;
+    case StringLiteral::Unevaluated:
+      llvm_unreachable("unexpected encoding");
     }
     OS << '"'
-       << Lexer::Stringify(PredefinedExpr::ComputeName(
-              getPredefinedExprKind(Tok.getKind()), CurrentDecl))
+       << Lexer::Stringify(PredefinedExpr::ComputeName(ExprKind, CurrentDecl))
        << '"';
     PP.CreateString(OS.str(), Exp, Tok.getLocation(), Tok.getEndLoc());
   }
@@ -3692,7 +3729,7 @@ ExprResult Sema::BuildDeclarationNameExpr(
 }
 
 static void ConvertUTF8ToWideString(unsigned CharByteWidth, StringRef Source,
-                                    SmallString<32> &Target) {
+                                    SmallVectorImpl<char> &Target) {
   Target.resize(CharByteWidth * (Source.size() + 1));
   char *ResultPtr = &Target[0];
   const llvm::UTF8 *ErrorPtr;
@@ -3704,7 +3741,8 @@ static void ConvertUTF8ToWideString(unsigned CharByteWidth, StringRef Source,
 }
 
 ExprResult Sema::BuildPredefinedExpr(SourceLocation Loc,
-                                     PredefinedExpr::IdentKind IK) {
+                                     PredefinedExpr::IdentKind IK,
+                                     StringLiteral::StringKind E) {
   Decl *currentDecl = getCurLocalScopeDecl();
   if (!currentDecl) {
     Diag(Loc, diag::ext_predef_outside_function);
@@ -3716,35 +3754,43 @@ ExprResult Sema::BuildPredefinedExpr(SourceLocation Loc,
   if (cast<DeclContext>(currentDecl)->isDependentContext())
     ResTy = Context.DependentTy;
   else {
-    // Pre-defined identifiers are of type char[x], where x is the length of
-    // the string.
+    // Pre-defined identifiers are of type CharT[x],
+    // where x is the length of the string.
+    SmallString<128> RawChars;
     auto Str = PredefinedExpr::ComputeName(IK, currentDecl);
-    unsigned Length = Str.length();
+    llvm::APInt LengthI(32, Str.length() + 1);
 
-    llvm::APInt LengthI(32, Length + 1);
-    if (IK == PredefinedExpr::LFunction || IK == PredefinedExpr::LFuncSig) {
-      ResTy =
-          Context.adjustStringLiteralBaseType(Context.WideCharTy.withConst());
-      SmallString<32> RawChars;
-      ConvertUTF8ToWideString(Context.getTypeSizeInChars(ResTy).getQuantity(),
-                              Str, RawChars);
-      ResTy = Context.getConstantArrayType(ResTy, LengthI, nullptr,
-                                           ArrayType::Normal,
-                                           /*IndexTypeQuals*/ 0);
-      SL = StringLiteral::Create(Context, RawChars, StringLiteral::Wide,
-                                 /*Pascal*/ false, ResTy, Loc);
-    } else {
-      ResTy = Context.adjustStringLiteralBaseType(Context.CharTy.withConst());
-      ResTy = Context.getConstantArrayType(ResTy, LengthI, nullptr,
-                                           ArrayType::Normal,
-                                           /*IndexTypeQuals*/ 0);
-      SL = StringLiteral::Create(Context, Str, StringLiteral::Ordinary,
-                                 /*Pascal*/ false, ResTy, Loc);
+    switch (E) {
+    case StringLiteral::Ordinary:
+      ResTy = Context.CharTy;
+      break;
+    case StringLiteral::Wide:
+      ResTy = Context.WideCharTy;
+      break;
+    case StringLiteral::UTF8:
+      ResTy = Context.Char8Ty;
+      break;
+    case StringLiteral::UTF16:
+      ResTy = Context.Char16Ty;
+      break;
+    case StringLiteral::UTF32:
+      ResTy = Context.Char32Ty;
+      break;
+    default:
+      llvm_unreachable("unexpected PredefinedExpr encoding");
     }
+
+    ResTy = Context.adjustStringLiteralBaseType(ResTy.withConst());
+    ConvertUTF8ToWideString(Context.getTypeSizeInChars(ResTy).getQuantity(),
+                            Str, RawChars);
+    ResTy = Context.getConstantArrayType(
+        ResTy, LengthI, nullptr, ArrayType::Normal, /*IndexTypeQuals*/ 0);
+    SL = StringLiteral::Create(Context, RawChars, E, /*Pascal*/ false, ResTy,
+                               Loc);
   }
 
-  return PredefinedExpr::Create(Context, Loc, ResTy, IK, LangOpts.MicrosoftExt,
-                                SL);
+  return PredefinedExpr::Create(Context, Loc, ResTy, IK, E,
+                                LangOpts.MicrosoftExt, SL);
 }
 
 ExprResult Sema::BuildSYCLUniqueStableNameExpr(SourceLocation OpLoc,
@@ -3770,7 +3816,8 @@ ExprResult Sema::ActOnSYCLUniqueStableNameExpr(SourceLocation OpLoc,
 }
 
 ExprResult Sema::ActOnPredefinedExpr(SourceLocation Loc, tok::TokenKind Kind) {
-  return BuildPredefinedExpr(Loc, getPredefinedExprKind(Kind));
+  auto [ExprKind, Encoding] = getPredefinedExprKind(Kind);
+  return BuildPredefinedExpr(Loc, ExprKind, Encoding);
 }
 
 ExprResult Sema::ActOnCharacterConstant(const Token &Tok, Scope *UDLScope) {

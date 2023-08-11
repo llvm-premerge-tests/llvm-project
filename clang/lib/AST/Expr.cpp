@@ -665,11 +665,15 @@ std::string SYCLUniqueStableNameExpr::ComputeName(ASTContext &Context,
 }
 
 PredefinedExpr::PredefinedExpr(SourceLocation L, QualType FNTy, IdentKind IK,
-                               bool IsTransparent, StringLiteral *SL)
+                               StringLiteral::StringKind E, bool IsTransparent,
+                               StringLiteral *SL)
     : Expr(PredefinedExprClass, FNTy, VK_LValue, OK_Ordinary) {
   PredefinedExprBits.Kind = IK;
   assert((getIdentKind() == IK) &&
          "IdentKind do not fit in PredefinedExprBitfields!");
+  PredefinedExprBits.Encoding = E;
+  assert((getEncoding() == E) &&
+         "Encoding do not fit in PredefinedExprBitfields!");
   bool HasFunctionName = SL != nullptr;
   PredefinedExprBits.HasFunctionName = HasFunctionName;
   PredefinedExprBits.IsTransparent = IsTransparent;
@@ -686,11 +690,12 @@ PredefinedExpr::PredefinedExpr(EmptyShell Empty, bool HasFunctionName)
 
 PredefinedExpr *PredefinedExpr::Create(const ASTContext &Ctx, SourceLocation L,
                                        QualType FNTy, IdentKind IK,
+                                       StringLiteral::StringKind E,
                                        bool IsTransparent, StringLiteral *SL) {
   bool HasFunctionName = SL != nullptr;
   void *Mem = Ctx.Allocate(totalSizeToAlloc<Stmt *>(HasFunctionName),
                            alignof(PredefinedExpr));
-  return new (Mem) PredefinedExpr(L, FNTy, IK, IsTransparent, SL);
+  return new (Mem) PredefinedExpr(L, FNTy, IK, E, IsTransparent, SL);
 }
 
 PredefinedExpr *PredefinedExpr::CreateEmpty(const ASTContext &Ctx,
@@ -700,22 +705,62 @@ PredefinedExpr *PredefinedExpr::CreateEmpty(const ASTContext &Ctx,
   return new (Mem) PredefinedExpr(EmptyShell(), HasFunctionName);
 }
 
-StringRef PredefinedExpr::getIdentKindName(PredefinedExpr::IdentKind IK) {
+StringRef PredefinedExpr::getIdentKindName(PredefinedExpr::IdentKind IK,
+                                           StringLiteral::StringKind E) {
   switch (IK) {
   case Func:
     return "__func__";
+
   case Function:
-    return "__FUNCTION__";
+    switch (E) {
+    case StringLiteral::Ordinary:
+      return "__FUNCTION__";
+    case StringLiteral::Wide:
+      return "L__FUNCTION__";
+    case StringLiteral::UTF8:
+      return "u8__FUNCTION__";
+    case StringLiteral::UTF16:
+      return "u__FUNCTION__";
+    case StringLiteral::UTF32:
+      return "U__FUNCTION__";
+    case StringLiteral::Unevaluated:
+      llvm_unreachable("unexpected PredefinedExpr encoding");
+    }
+
   case FuncDName:
-    return "__FUNCDNAME__";
-  case LFunction:
-    return "L__FUNCTION__";
+    switch (E) {
+    case StringLiteral::Ordinary:
+      return "__FUNCDNAME__";
+    case StringLiteral::Wide:
+      return "L__FUNCDNAME__";
+    case StringLiteral::UTF8:
+      return "u8__FUNCDNAME__";
+    case StringLiteral::UTF16:
+      return "u__FUNCDNAME__";
+    case StringLiteral::UTF32:
+      return "U__FUNCDNAME__";
+    case StringLiteral::Unevaluated:
+      llvm_unreachable("unexpected PredefinedExpr encoding");
+    }
+
+  case FuncSig:
+    switch (E) {
+    case StringLiteral::Ordinary:
+      return "__FUNCSIG__";
+    case StringLiteral::Wide:
+      return "L__FUNCSIG__";
+    case StringLiteral::UTF8:
+      return "u8__FUNCSIG__";
+    case StringLiteral::UTF16:
+      return "u__FUNCSIG__";
+    case StringLiteral::UTF32:
+      return "U__FUNCSIG__";
+    case StringLiteral::Unevaluated:
+      llvm_unreachable("unexpected PredefinedExpr encoding");
+    }
+
   case PrettyFunction:
     return "__PRETTY_FUNCTION__";
-  case FuncSig:
-    return "__FUNCSIG__";
-  case LFuncSig:
-    return "L__FUNCSIG__";
   case PrettyFunctionNoVirtual:
     break;
   }
@@ -772,8 +817,7 @@ std::string PredefinedExpr::ComputeName(IdentKind IK, const Decl *CurrentDecl) {
     return std::string(Out.str());
   }
   if (const FunctionDecl *FD = dyn_cast<FunctionDecl>(CurrentDecl)) {
-    if (IK != PrettyFunction && IK != PrettyFunctionNoVirtual &&
-        IK != FuncSig && IK != LFuncSig)
+    if (IK != PrettyFunction && IK != PrettyFunctionNoVirtual && IK != FuncSig)
       return FD->getNameAsString();
 
     SmallString<256> Name;
@@ -812,7 +856,7 @@ std::string PredefinedExpr::ComputeName(IdentKind IK, const Decl *CurrentDecl) {
     if (FD->hasWrittenPrototype())
       FT = dyn_cast<FunctionProtoType>(AFT);
 
-    if (IK == FuncSig || IK == LFuncSig) {
+    if (IK == FuncSig) {
       switch (AFT->getCallConv()) {
       case CC_C: POut << "__cdecl "; break;
       case CC_X86StdCall: POut << "__stdcall "; break;
@@ -837,8 +881,7 @@ std::string PredefinedExpr::ComputeName(IdentKind IK, const Decl *CurrentDecl) {
       if (FT->isVariadic()) {
         if (FD->getNumParams()) POut << ", ";
         POut << "...";
-      } else if ((IK == FuncSig || IK == LFuncSig ||
-                  !Context.getLangOpts().CPlusPlus) &&
+      } else if ((IK == FuncSig || !Context.getLangOpts().CPlusPlus) &&
                  !Decl->getNumParams()) {
         POut << "void";
       }
