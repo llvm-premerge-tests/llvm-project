@@ -2061,7 +2061,9 @@ LValue CodeGenFunction::EmitAggExprToLValue(const Expr *E) {
 
 AggValueSlot::Overlap_t
 CodeGenFunction::getOverlapForFieldInit(const FieldDecl *FD) {
-  if (!FD->hasAttr<NoUniqueAddressAttr>() || !FD->getType()->isRecordType())
+  if (!(FD->hasAttr<NoUniqueAddressAttr>() ||
+        FD->hasAttr<NoUniqueAddressMSVCAttr>()) ||
+      !FD->getType()->isRecordType())
     return AggValueSlot::DoesNotOverlap;
 
   // If the field lies entirely within the enclosing class's nvsize, its tail

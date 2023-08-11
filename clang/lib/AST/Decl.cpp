@@ -4486,7 +4486,7 @@ bool FieldDecl::isZeroSize(const ASTContext &Ctx) const {
   // C++2a [intro.object]p7:
   //   An object has nonzero size if it
   //     -- is not a potentially-overlapping subobject, or
-  if (!hasAttr<NoUniqueAddressAttr>())
+  if (!(hasAttr<NoUniqueAddressAttr>() || hasAttr<NoUniqueAddressMSVCAttr>()))
     return false;
 
   //     -- is not of class type, or
@@ -4505,6 +4505,13 @@ bool FieldDecl::isZeroSize(const ASTContext &Ctx) const {
   if (!CXXRD->isEmpty())
     return false;
 
+  if (Ctx.getTargetInfo().getCXXABI().isMicrosoft() && CXXRD->isUnion()) {
+    // Unions containing structs aren't zero sized?
+    for (const FieldDecl *Field : CXXRD->fields())
+      if (Field->getType()->getAsCXXRecordDecl())
+        return false;
+  }
+
   // Otherwise, [...] the circumstances under which the object has zero size
   // are implementation-defined.
   // FIXME: This might be Itanium ABI specific; we don't yet know what the MS
@@ -4513,7 +4520,9 @@ bool FieldDecl::isZeroSize(const ASTContext &Ctx) const {
 }
 
 bool FieldDecl::isPotentiallyOverlapping() const {
-  return hasAttr<NoUniqueAddressAttr>() && getType()->getAsCXXRecordDecl();
+  return (hasAttr<NoUniqueAddressAttr>() ||
+          hasAttr<NoUniqueAddressMSVCAttr>()) &&
+         getType()->getAsCXXRecordDecl();
 }
 
 unsigned FieldDecl::getFieldIndex() const {

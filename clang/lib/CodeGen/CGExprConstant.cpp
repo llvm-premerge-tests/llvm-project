@@ -756,7 +756,8 @@ bool ConstStructBuilder::Build(InitListExpr *ILE, bool AllowOverwrite) {
         return false;
       // After emitting a non-empty field with [[no_unique_address]], we may
       // need to overwrite its tail padding.
-      if (Field->hasAttr<NoUniqueAddressAttr>())
+      if (Field->hasAttr<NoUniqueAddressAttr>() ||
+          Field->hasAttr<NoUniqueAddressMSVCAttr>())
         AllowOverwrite = true;
     } else {
       // Otherwise we have a bitfield.
@@ -857,7 +858,8 @@ bool ConstStructBuilder::Build(const APValue &Val, const RecordDecl *RD,
         return false;
       // After emitting a non-empty field with [[no_unique_address]], we may
       // need to overwrite its tail padding.
-      if (Field->hasAttr<NoUniqueAddressAttr>())
+      if (Field->hasAttr<NoUniqueAddressAttr>() ||
+          Field->hasAttr<NoUniqueAddressMSVCAttr>())
         AllowOverwrite = true;
     } else {
       // Otherwise we have a bitfield.
