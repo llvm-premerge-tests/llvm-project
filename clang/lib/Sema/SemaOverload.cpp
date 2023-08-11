@@ -950,7 +950,10 @@ static bool shouldAddReversedEqEq(Sema &S, SourceLocation OpLoc,
     LookupResult Members(S, NotEqOp, OpLoc,
                          Sema::LookupNameKind::LookupMemberName);
     S.LookupQualifiedName(Members, RHSRec->getDecl());
-    Members.suppressAccessDiagnostics();
+    // According to [over.match.oper]p4 we should run "search" and not "lookup"
+    // for reversed operators, so suppress diagnostics.
+    Members.suppressDiagnostics();
+
     for (NamedDecl *Op : Members)
       if (FunctionsCorrespond(S.Context, EqFD, Op->getAsFunction()))
         return false;
