@@ -37,7 +37,8 @@ LLVMTypeConverter::LLVMTypeConverter(mlir::ModuleOp module, bool applyTBAA)
       specifics(CodeGenSpecifics::get(module.getContext(),
                                       getTargetTriple(module),
                                       getKindMapping(module))),
-      tbaaBuilder(module->getContext(), applyTBAA) {
+      tbaaBuilder(
+          std::make_unique<TBAABuilder>(module->getContext(), applyTBAA)) {
   LLVM_DEBUG(llvm::dbgs() << "FIR type converter\n");
 
   // Each conversion should return a value of type mlir::Type.
@@ -338,7 +339,7 @@ void LLVMTypeConverter::attachTBAATag(mlir::LLVM::AliasAnalysisOpInterface op,
                                       mlir::Type baseFIRType,
                                       mlir::Type accessFIRType,
                                       mlir::LLVM::GEPOp gep) {
-  tbaaBuilder.attachTBAATag(op, baseFIRType, accessFIRType, gep);
+  tbaaBuilder->attachTBAATag(op, baseFIRType, accessFIRType, gep);
 }
 
 } // namespace fir

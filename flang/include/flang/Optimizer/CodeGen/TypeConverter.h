@@ -146,7 +146,7 @@ public:
 private:
   KindMapping kindMapping;
   std::unique_ptr<CodeGenSpecifics> specifics;
-  TBAABuilder tbaaBuilder;
+  std::unique_ptr<TBAABuilder> tbaaBuilder;
 };
 
 } // namespace fir
