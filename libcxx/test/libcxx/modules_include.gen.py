@@ -22,8 +22,6 @@ for header in public_headers:
 //--- {header}.compile.pass.cpp
 // RUN{BLOCKLIT}: %{{cxx}} %s %{{flags}} %{{compile_flags}} -fmodules -fcxx-modules -fmodules-cache-path=%t -fsyntax-only
 
-// UNSUPPORTED{BLOCKLIT}: use_module_std
-
 // GCC doesn't support -fcxx-modules
 // UNSUPPORTED{BLOCKLIT}: gcc
 
@@ -50,7 +48,6 @@ print(f"""
 // RUN{BLOCKLIT}: %{{cxx}} %s %{{flags}} %{{compile_flags}} -fmodules -fcxx-modules -fmodules-cache-path=%t -fsyntax-only
 
 // REQUIRES{BLOCKLIT}: modules-build
-// UNSUPPORTED{BLOCKLIT}: use_module_std
 
 // GCC doesn't support -fcxx-modules
 // UNSUPPORTED{BLOCKLIT}: gcc
