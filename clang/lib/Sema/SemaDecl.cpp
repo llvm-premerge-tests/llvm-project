@@ -14360,19 +14360,19 @@ void Sema::CheckCompleteVariableDeclaration(VarDecl *var) {
       !inTemplateInstantiation()) {
     PragmaStack<StringLiteral *> *Stack = nullptr;
     int SectionFlags = ASTContext::PSF_Read;
-    if (var->getType().isConstQualified()) {
-      if (HasConstInit)
-        Stack = &ConstSegStack;
-      else {
-        Stack = &BSSSegStack;
-        SectionFlags |= ASTContext::PSF_Write;
-      }
-    } else if (var->hasInit() && HasConstInit) {
-      Stack = &DataSegStack;
-      SectionFlags |= ASTContext::PSF_Write;
+    bool MSVCEnv =
+        Context.getTargetInfo().getTriple().isWindowsMSVCEnvironment();
+    if (var->hasInit() && HasConstInit &&
+        var->getType().isConstantStorage(Context, true, false)) {
+      Stack = &ConstSegStack;
     } else {
-      Stack = &BSSSegStack;
       SectionFlags |= ASTContext::PSF_Write;
+      Stack = var->hasInit() && HasConstInit ? &DataSegStack : &BSSSegStack;
+      if (MSVCEnv && ConstSegStack.CurrentValue != ConstSegStack.DefaultValue &&
+          var->getType().isConstQualified() && HasConstInit) {
+        Diag(var->getLocation(), diag::warn_section_msvc_compat)
+            << var << ConstSegStack.CurrentValue;
+      }
     }
     if (const SectionAttr *SA = var->getAttr<SectionAttr>()) {
       if (SA->getSyntax() == AttributeCommonInfo::AS_Declspec)
