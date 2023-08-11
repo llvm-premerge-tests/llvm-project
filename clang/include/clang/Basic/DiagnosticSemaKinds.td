@@ -2817,8 +2817,8 @@ def warn_cxx17_compat_constexpr_local_var_no_init : Warning<
   "is incompatible with C++ standards before C++20">,
   InGroup<CXXPre20Compat>, DefaultIgnore;
 def ext_constexpr_function_never_constant_expr : ExtWarn<
-  "%select{constexpr|consteval}1 %select{function|constructor}0 never produces a "
-  "constant expression">, InGroup<DiagGroup<"invalid-constexpr">>, DefaultError;
+  "%select{constexpr|consteval|[[msvc::constexpr]]}1 %select{function|constructor}0 "
+  "never produces a constant expression">, InGroup<DiagGroup<"invalid-constexpr">>, DefaultError;
 def err_attr_cond_never_constant_expr : Error<
   "%0 attribute expression never produces a constant expression">;
 def err_diagnose_if_invalid_diagnostic_type : Error<
@@ -2840,6 +2840,12 @@ def warn_cxx11_compat_constexpr_body_multiple_return : Warning<
   InGroup<CXXPre14Compat>, DefaultIgnore;
 def note_constexpr_body_previous_return : Note<
   "previous return statement is here">;
+def err_ms_constexpr_not_distinct : Error<
+  "[[msvc::constexpr]] cannot be applied to a %select{constexpr|consteval}0 function %1">;
+def err_ms_constexpr_virtual : Error<"virtual function cannot be [[msvc::constexpr]]">;
+def warn_ms_constexpr_no_effect : Warning<
+  "[[msvc::constexpr]] has effect only on function definitions and return statements">,
+  InGroup<IgnoredAttributes>;
 
 // C++20 function try blocks in constexpr
 def ext_constexpr_function_try_block_cxx20 : ExtWarn<

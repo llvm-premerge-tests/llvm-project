@@ -3596,6 +3596,22 @@ an error:
 }];
 }
 
+def MSConstexprDocs : Documentation {
+  let Category = DocCatStmt;
+  let Content = [{
+The ``[[msvc::constexpr]]`` attribute can be applied only to a function
+definition or a ``return`` statement. It does not impact function declarations.
+A ``[[msvc::constexpr]]`` function cannot be ``constexpr`` or ``consteval``.
+A ``[[msvc::constexpr]]`` function is treated in the same way as a ``constexpr``
+function if it is evaluated in a constant context of
+``[[msvc::constexpr]] return`` statement.
+Otherwise, it is treated as a regular function.
+
+Semantics of this attribute is enabled only under MSVC compatibility
+(``-fms-compatibility-version``) 19.33 and later.
+  }];
+}
+
 def MSNoVTableDocs : Documentation {
   let Category = DocCatDecl;
   let Content = [{

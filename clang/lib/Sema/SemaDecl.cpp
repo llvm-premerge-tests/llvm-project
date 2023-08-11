@@ -16018,7 +16018,9 @@ Decl *Sema::ActOnFinishFunctionBody(Decl *dcl, Stmt *Body,
         ActivePolicy = &WP;
       }
 
-      if (!IsInstantiation && FD && FD->isConstexpr() && !FD->isInvalidDecl() &&
+      if (!IsInstantiation && FD &&
+          (FD->isConstexpr() || FD->hasAttr<MSConstexprAttr>()) &&
+          !FD->isInvalidDecl() &&
           !CheckConstexprFunctionDefinition(FD, CheckConstexprKind::Diagnose))
         FD->setInvalidDecl();
 

@@ -105,6 +105,8 @@ C23 Feature Support
 
 Non-comprehensive list of changes in this release
 -------------------------------------------------
+- The default value of `_MSC_VER` was raised from 1920 to 1933.
+  MSVC 19.33 added undocumented attribute ``[[msvc::constexpr]]``.
 
 New Compiler Flags
 ------------------
