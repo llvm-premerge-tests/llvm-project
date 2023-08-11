@@ -509,10 +509,14 @@ Status ProcessMachCore::DoLoadCore() {
 
   CleanupMemoryRegionPermissions();
 
-  addr_t address_mask = core_objfile->GetAddressMask();
-  if (address_mask != 0) {
-    SetCodeAddressMask(address_mask);
-    SetDataAddressMask(address_mask);
+  addr_t lo_addr_mask, hi_addr_mask;
+  if (core_objfile->GetAddressMask(lo_addr_mask, hi_addr_mask)) {
+    SetCodeAddressMask(lo_addr_mask);
+    SetDataAddressMask(lo_addr_mask);
+    if (lo_addr_mask != hi_addr_mask) {
+      SetHighmemCodeAddressMask(hi_addr_mask);
+      SetHighmemDataAddressMask(hi_addr_mask);
+    }
   }
   return error;
 }

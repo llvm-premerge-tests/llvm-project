@@ -496,11 +496,20 @@ public:
   /// embedded in them, e.g. a Mach-O core file using an LC_NOTE.  These
   /// object files can return the address mask that should be used in
   /// the Process.
+  ///
+  /// \param[out] lowmem_mask
+  ///     Address mask to be used for low memory addresses.
+  ///
+  /// \param[out] highmem_mask
+  ///     Address mask to be used for high memory addresses.
+  ///
   /// \return
-  ///     The mask will have bits set which aren't used for addressing --
-  ///     typically, the high bits.
-  ///     Zero is returned when no address bits mask is available.
-  virtual lldb::addr_t GetAddressMask() { return 0; }
+  ///     Returns true if address masks were found.
+  virtual bool GetAddressMask(lldb::addr_t &lowmem_mask,
+                              lldb::addr_t &highmem_mask) {
+    lowmem_mask = highmem_mask = 0;
+    return false;
+  }
 
   /// When the ObjectFile is a core file, lldb needs to locate the "binary" in
   /// the core file.  lldb can iterate over the pages looking for a valid
