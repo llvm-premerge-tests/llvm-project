@@ -22,6 +22,7 @@
 #include "mlir/IR/TypeUtilities.h"
 #include "mlir/Target/LLVMIR/TypeToLLVM.h"
 #include "mlir/Transforms/DialectConversion.h"
+#include "llvm/IR/DataLayout.h"
 #include "llvm/Support/Casting.h"
 #include <optional>
 
@@ -78,7 +79,7 @@ LogicalResult getMemRefAlignment(LLVMTypeConverter &typeConverter,
   // stop depending on translation.
   llvm::LLVMContext llvmContext;
   align = LLVM::TypeToLLVMIRTranslator(llvmContext)
-              .getPreferredAlignment(elementTy, typeConverter.getDataLayout());
+              .getPreferredAlignment(elementTy, llvm::DataLayout(""));
   return success();
 }
 

@@ -762,7 +762,6 @@ struct ConvertFuncToLLVMPass
     options.useBarePtrCallConv = useBarePtrCallConv;
     if (indexBitwidth != kDeriveIndexBitwidthFromDataLayout)
       options.overrideIndexBitwidth(indexBitwidth);
-    options.dataLayout = llvm::DataLayout(this->dataLayout);
     options.useOpaquePointers = useOpaquePointers;
 
     LLVMTypeConverter typeConverter(&getContext(), options,

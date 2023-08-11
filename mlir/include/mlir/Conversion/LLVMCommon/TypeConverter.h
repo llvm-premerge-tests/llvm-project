@@ -120,9 +120,6 @@ public:
   std::pair<LLVM::LLVMFunctionType, LLVM::LLVMStructType>
   convertFunctionTypeCWrapper(FunctionType type);
 
-  /// Returns the data layout to use during and after conversion.
-  const llvm::DataLayout &getDataLayout() { return options.dataLayout; }
-
   /// Returns the data layout analysis to query during conversion.
   const DataLayoutAnalysis *getDataLayoutAnalysis() const {
     return dataLayoutAnalysis;

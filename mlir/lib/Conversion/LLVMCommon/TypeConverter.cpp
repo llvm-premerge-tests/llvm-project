@@ -11,6 +11,7 @@
 #include "mlir/Conversion/LLVMCommon/MemRefBuilder.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/LLVMIR/LLVMTypes.h"
+#include "llvm/IR/DataLayout.h"
 #include <optional>
 
 using namespace mlir;
@@ -182,7 +183,7 @@ LLVMTypeConverter::getPointerType(Type elementType, unsigned int addressSpace) {
 }
 
 unsigned LLVMTypeConverter::getPointerBitwidth(unsigned addressSpace) {
-  return options.dataLayout.getPointerSizeInBits(addressSpace);
+  return llvm::DataLayout("").getPointerSizeInBits(addressSpace);
 }
 
 Type LLVMTypeConverter::convertIndexType(IndexType type) {

@@ -51,11 +51,6 @@ public:
 
   bool useGenericFunctions = false;
 
-  /// The data layout of the module to produce. This must be consistent with the
-  /// data layout used in the upper levels of the lowering pipeline.
-  // TODO: this should be replaced by MLIR data layout when one exists.
-  llvm::DataLayout dataLayout = llvm::DataLayout("");
-
   /// Set the index bitwidth to the given value.
   void overrideIndexBitwidth(unsigned bitwidth) {
     assert(bitwidth != kDeriveIndexBitwidthFromDataLayout &&
