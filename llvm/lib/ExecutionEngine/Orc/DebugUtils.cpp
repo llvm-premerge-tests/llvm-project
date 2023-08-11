@@ -76,7 +76,7 @@ bool flagsMatchCLOpts(const JITSymbolFlags &Flags) {
 #endif // NDEBUG
 }
 
-// Prints a sequence of items, filtered by an user-supplied predicate.
+// Prints a sequence of items, filtered by a user-supplied predicate.
 template <typename Sequence,
           typename Pred = PrintAll<typename Sequence::value_type>>
 class SequencePrinter {
