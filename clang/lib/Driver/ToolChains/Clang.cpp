@@ -7523,6 +7523,16 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
     addDebugObjectName(Args, CmdArgs, DebugCompilationDir,
                        Output.getFilename());
 
+  // -mno-gather, -mno-scatter support
+  if (Args.hasArg(options::OPT_mno_gather)) {
+    CmdArgs.push_back("-target-feature");
+    CmdArgs.push_back("+prefer-no-gather");
+  }
+  if (Args.hasArg(options::OPT_mno_scatter)) {
+    CmdArgs.push_back("-target-feature");
+    CmdArgs.push_back("+prefer-no-scatter");
+  }
+
   // Add the "-o out -x type src.c" flags last. This is done primarily to make
   // the -cc1 command easier to edit when reproducing compiler crashes.
   if (Output.getType() == types::TY_Dependencies) {
