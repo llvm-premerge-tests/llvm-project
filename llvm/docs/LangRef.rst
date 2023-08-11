@@ -1854,7 +1854,8 @@ example:
       accessible by the current module (before return from the function -- an
       allocator function may return newly accessible memory while only
       accessing inaccessible memory itself). Inaccessible memory is often used
-      to model control dependencies of intrinsics.
+      to model control dependencies of intrinsics. Note that `inaccessiblemem`
+      implies `nosync`.
     - The default access kind (specified without a location prefix) applies to
       all locations that haven't been specified explicitly, including those that
       don't currently have a dedicated location kind (e.g. accesses to globals
