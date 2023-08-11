@@ -734,6 +734,46 @@ void TextNodeDumper::dumpCleanupObject(
     llvm_unreachable("unexpected cleanup type");
 }
 
+void clang::TextNodeDumper::dumpNestedNameSpecifier(NestedNameSpecifier *NNS) {
+  if (!NNS)
+    return;
+
+  AddChild([=] {
+    OS << "NestedNameSpecifier";
+
+    switch (NNS->getKind()) {
+    case NestedNameSpecifier::Identifier:
+      OS << " Identifier";
+      OS << " '" << NNS->getAsIdentifier()->getName() << "'";
+      break;
+    case NestedNameSpecifier::Namespace:
+      OS << " Namespace";
+      dumpBareDeclRef(NNS->getAsNamespace());
+      break;
+    case NestedNameSpecifier::NamespaceAlias:
+      OS << " NamespaceAlias";
+      dumpBareDeclRef(NNS->getAsNamespaceAlias());
+      break;
+    case NestedNameSpecifier::TypeSpec:
+      OS << " TypeSpec";
+      dumpType(QualType(NNS->getAsType(), 0));
+      break;
+    case NestedNameSpecifier::TypeSpecWithTemplate:
+      OS << " TypeSpecWithTemplate";
+      dumpType(QualType(NNS->getAsType(), 0));
+      break;
+    case NestedNameSpecifier::Global:
+      OS << " Global";
+      break;
+    case NestedNameSpecifier::Super:
+      OS << " Super";
+      break;
+    }
+
+    dumpNestedNameSpecifier(NNS->getPrefix());
+  });
+}
+
 void TextNodeDumper::dumpDeclRef(const Decl *D, StringRef Label) {
   if (!D)
     return;
@@ -1037,6 +1077,7 @@ void TextNodeDumper::VisitImplicitCastExpr(const ImplicitCastExpr *Node) {
 void TextNodeDumper::VisitDeclRefExpr(const DeclRefExpr *Node) {
   OS << " ";
   dumpBareDeclRef(Node->getDecl());
+  dumpNestedNameSpecifier(Node->getQualifier());
   if (Node->getDecl() != Node->getFoundDecl()) {
     OS << " (";
     dumpBareDeclRef(Node->getFoundDecl());
@@ -1050,6 +1091,12 @@ void TextNodeDumper::VisitDeclRefExpr(const DeclRefExpr *Node) {
   }
   if (Node->isImmediateEscalating())
     OS << " immediate-escalating";
+}
+
+void clang::TextNodeDumper::VisitDependentScopeDeclRefExpr(
+    const DependentScopeDeclRefExpr *Node) {
+
+  dumpNestedNameSpecifier(Node->getQualifier());
 }
 
 void TextNodeDumper::VisitUnresolvedLookupExpr(
@@ -1146,6 +1193,7 @@ void TextNodeDumper::VisitUnaryExprOrTypeTraitExpr(
 void TextNodeDumper::VisitMemberExpr(const MemberExpr *Node) {
   OS << " " << (Node->isArrow() ? "->" : ".") << *Node->getMemberDecl();
   dumpPointer(Node->getMemberDecl());
+  dumpNestedNameSpecifier(Node->getQualifier());
   switch (Node->isNonOdrUse()) {
   case NOUR_None: break;
   case NOUR_Unevaluated: OS << " non_odr_use_unevaluated"; break;
@@ -1838,6 +1886,7 @@ void TextNodeDumper::VisitFieldDecl(const FieldDecl *D) {
 }
 
 void TextNodeDumper::VisitVarDecl(const VarDecl *D) {
+  dumpNestedNameSpecifier(D->getQualifier());
   dumpName(D);
   dumpType(D->getType());
   StorageClass SC = D->getStorageClass();
@@ -2028,6 +2077,9 @@ void TextNodeDumper::VisitTypeAliasTemplateDecl(
 
 void TextNodeDumper::VisitCXXRecordDecl(const CXXRecordDecl *D) {
   VisitRecordDecl(D);
+
+  dumpNestedNameSpecifier(D->getQualifier());
+
   if (!D->isCompleteDefinition())
     return;
 
@@ -2227,6 +2279,7 @@ void TextNodeDumper::VisitUsingDecl(const UsingDecl *D) {
   if (D->getQualifier())
     D->getQualifier()->print(OS, D->getASTContext().getPrintingPolicy());
   OS << D->getDeclName();
+  dumpNestedNameSpecifier(D->getQualifier());
 }
 
 void TextNodeDumper::VisitUsingEnumDecl(const UsingEnumDecl *D) {
