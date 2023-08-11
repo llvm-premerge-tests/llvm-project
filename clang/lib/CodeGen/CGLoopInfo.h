@@ -46,6 +46,9 @@ struct LoopAttributes {
   /// Value for llvm.loop.vectorize.enable metadata.
   LVEnableState VectorizeEnable;
 
+  /// Value for llvm.loop.vectorize.force_vectorize.enable metadata.
+  LVEnableState ForceVectorizeEnable;
+
   /// Value for llvm.loop.unroll.* metadata (enable, disable, or full).
   LVEnableState UnrollEnable;
 
@@ -234,6 +237,12 @@ public:
   /// Set the next pushed loop 'vectorize.enable'
   void setVectorizeEnable(bool Enable = true) {
     StagedAttrs.VectorizeEnable =
+        Enable ? LoopAttributes::Enable : LoopAttributes::Disable;
+  }
+
+  /// Set the next pushed loop 'force_vectorize.enable'
+  void setForceVectorizeEnable(bool Enable = true) {
+    StagedAttrs.ForceVectorizeEnable =
         Enable ? LoopAttributes::Enable : LoopAttributes::Disable;
   }
 

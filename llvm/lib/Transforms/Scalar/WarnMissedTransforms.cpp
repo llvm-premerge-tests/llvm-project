@@ -19,8 +19,8 @@ using namespace llvm;
 
 #define DEBUG_TYPE "transform-warning"
 
-/// Emit warnings for forced (i.e. user-defined) loop transformations which have
-/// still not been performed.
+/// Emit warnings or errors for forced (i.e. user-defined) loop transformations
+/// which have still not been performed.
 static void warnAboutLeftoverTransformations(Loop *L,
                                              OptimizationRemarkEmitter *ORE) {
   if (hasUnrollTransformation(L) == TM_ForcedByUser) {
@@ -51,8 +51,19 @@ static void warnAboutLeftoverTransformations(Loop *L,
         getOptionalElementCountLoopAttribute(L);
     std::optional<int> InterleaveCount =
         getOptionalIntLoopAttribute(L, "llvm.loop.interleave.count");
+    std::optional<bool> ForceVectorize =
+        getOptionalBoolLoopAttribute(L, "llvm.loop.vectorize.force_vectorize");
 
-    if (!VectorizeWidth || VectorizeWidth->isVector())
+    if (ForceVectorize == true)
+      ORE->emit(
+          DiagnosticInfoOptimizationFailure(
+              DEBUG_TYPE, "FailedRequestedForceVectorization", L->getStartLoc(),
+              L->getHeader(), DS_Error)
+          << "loop not force vectorized: the optimizer was unable to perform "
+             "the "
+             "requested transformation; the transformation might be disabled "
+             "or specified as part of an unsupported transformation ordering");
+    else if (!VectorizeWidth || VectorizeWidth->isVector())
       ORE->emit(
           DiagnosticInfoOptimizationFailure(DEBUG_TYPE,
                                             "FailedRequestedVectorization",
