@@ -1275,7 +1275,11 @@ void TargetPassConfig::addMachinePasses() {
                "performance.";
       }
     }
-    addPass(createMachineFunctionSplitterPass());
+    if (TM->getTargetTriple().isX86())
+      addPass(createMachineFunctionSplitterPass());
+    else
+      WithColor::warning()
+          << "-fsplit-machine-functions is only valid for X86.\n";
   }
 
   addPostBBSections();
