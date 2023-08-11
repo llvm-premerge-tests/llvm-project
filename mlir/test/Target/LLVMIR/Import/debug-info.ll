@@ -548,3 +548,25 @@ define void @func_in_module(ptr %arg) !dbg !8 {
 !2 = !DIFile(filename: "debug-info.ll", directory: "/")
 !8 = distinct !DISubprogram(name: "func_in_module", scope: !10, file: !2, unit: !1);
 !10 = !DIModule(scope: !2, name: "module", configMacros: "bar", includePath: "/", apinotes: "/", file: !2, line: 42, isDecl: true)
+
+; // -----
+
+; Check that metadata kill locations are skipped properly.
+
+; CHECK-LABEL: @metadata_kill_location
+define void @metadata_kill_location() {
+  call void @llvm.dbg.value(metadata !3, metadata !7, metadata !DIExpression()), !dbg !9
+  ret void
+}
+
+declare void @llvm.dbg.value(metadata, metadata, metadata)
+
+!llvm.dbg.cu = !{!1}
+!llvm.module.flags = !{!0}
+!0 = !{i32 2, !"Debug Info Version", i32 3}
+!1 = distinct !DICompileUnit(language: DW_LANG_C, file: !2)
+!2 = !DIFile(filename: "debug-info.ll", directory: "/")
+!3 = !{}
+!7 = !DILocalVariable(scope: !8, name: "killed")
+!8 = distinct !DISubprogram(name: "metadata_kill_location", scope: !2, file: !2, unit: !1);
+!9 = !DILocation(line: 1, column: 2, scope: !8)
