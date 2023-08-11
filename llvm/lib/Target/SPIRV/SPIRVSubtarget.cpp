@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "SPIRVSubtarget.h"
+#include "MCTargetDesc/SPIRVBaseInfo.h"
 #include "SPIRV.h"
 #include "SPIRVGlobalRegistry.h"
 #include "SPIRVLegalizerInfo.h"
@@ -101,6 +102,7 @@ void SPIRVSubtarget::initAvailableExtensions() {
   AvailableExtensions.insert(
       SPIRV::Extension::SPV_KHR_no_integer_wrap_decoration);
   AvailableExtensions.insert(SPIRV::Extension::SPV_INTEL_optnone);
+  AvailableExtensions.insert(SPIRV::Extension::SPV_KHR_expect_assume);
 }
 
 // TODO: use command line args for this rather than just defaults.

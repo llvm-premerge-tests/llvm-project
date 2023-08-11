@@ -244,6 +244,7 @@ defm SPV_INTEL_unstructured_loop_controls : ExtensionOperand<55>;
 defm SPV_EXT_demote_to_helper_invocation : ExtensionOperand<56>;
 defm SPV_INTEL_fpga_reg : ExtensionOperand<57>;
 defm SPV_INTEL_optnone : ExtensionOperand<58>;
+defm SPV_KHR_expect_assume : ExtensionOperand<60>;
 
 //===----------------------------------------------------------------------===//
 // Multiclass used to define Capabilities enum values and at the same time
@@ -398,6 +399,7 @@ defm FragmentDensityEXT : CapabilityOperand<5291, 0, 0, [], [Shader]>;
 defm PhysicalStorageBufferAddressesEXT : CapabilityOperand<5347, 0, 0, [], [Shader]>;
 defm CooperativeMatrixNV : CapabilityOperand<5357, 0, 0, [], [Shader]>;
 defm OptNoneINTEL : CapabilityOperand<6094, 0, 0, [SPV_INTEL_optnone], []>;
+defm ExpectAssumeKHR : CapabilityOperand<5629, 0, 0, [SPV_KHR_expect_assume], []>;
 
 //===----------------------------------------------------------------------===//
 // Multiclass used to define SourceLanguage enum values and at the same time

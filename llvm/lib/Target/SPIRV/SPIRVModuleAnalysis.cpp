@@ -15,6 +15,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "SPIRVModuleAnalysis.h"
+#include "MCTargetDesc/SPIRVBaseInfo.h"
+#include "MCTargetDesc/SPIRVMCTargetDesc.h"
 #include "SPIRV.h"
 #include "SPIRVSubtarget.h"
 #include "SPIRVTargetMachine.h"
@@ -555,6 +557,7 @@ void RequirementHandler::initAvailableCapabilities(const SPIRVSubtarget &ST) {
   // Add cap for SPV_INTEL_optnone.
   // FIXME: this should be added only if the target has the extension.
   addAvailableCaps({Capability::OptNoneINTEL});
+  addAvailableCaps({Capability::ExpectAssumeKHR});
 
   // TODO: add OpenCL extensions.
 }
@@ -849,6 +852,11 @@ void addInstrRequirements(const MachineInstr &MI,
   case SPIRV::OpGroupNonUniformBallotFindLSB:
   case SPIRV::OpGroupNonUniformBallotFindMSB:
     Reqs.addCapability(SPIRV::Capability::GroupNonUniformBallot);
+    break;
+  case SPIRV::OpAssumeTrueKHR:
+  case SPIRV::OpExpectKHR:
+    Reqs.addExtension(SPIRV::Extension::SPV_KHR_expect_assume);
+    Reqs.addCapability(SPIRV::Capability::ExpectAssumeKHR);
     break;
   default:
     break;
