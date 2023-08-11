@@ -441,7 +441,11 @@ void X86AsmPrinter::emitBasicBlockEnd(const MachineBasicBlock &MBB) {
   if (Subtarget->hardenSlsRet() || Subtarget->hardenSlsIJmp()) {
     auto I = MBB.getLastNonDebugInstr();
     if (I != MBB.end()) {
-      if ((Subtarget->hardenSlsRet() && isSimpleReturn(*I)) ||
+      if ((Subtarget->hardenSlsRet() &&
+           (isSimpleReturn(*I) ||
+            (I->getOpcode() == X86::TAILJMPd && I->getOperand(0).isSymbol() &&
+             !strcmp(I->getOperand(0).getSymbolName(),
+                     "__x86_return_thunk")))) ||
           (Subtarget->hardenSlsIJmp() && isIndirectBranchOrTailCall(*I))) {
         MCInst TmpInst;
         TmpInst.setOpcode(X86::INT3);
