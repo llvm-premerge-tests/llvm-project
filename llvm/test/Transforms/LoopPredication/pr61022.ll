@@ -8,7 +8,7 @@ define void @test_01(i1 %cond) {
 ; CHECK-NEXT:  bb:
 ; CHECK-NEXT:    [[INST:%.*]] = call i1 @llvm.experimental.widenable.condition()
 ; CHECK-NEXT:    [[TMP0:%.*]] = freeze i1 true
-; CHECK-NEXT:    [[TMP1:%.*]] = and i1 [[TMP0]], [[INST]]
+; CHECK-NEXT:    [[TMP1:%.*]] = and i1 [[INST]], [[TMP0]]
 ; CHECK-NEXT:    br label [[LOOP:%.*]]
 ; CHECK:       unreached:
 ; CHECK-NEXT:    unreachable

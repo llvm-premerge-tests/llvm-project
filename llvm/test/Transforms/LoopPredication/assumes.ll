@@ -30,7 +30,7 @@ define i32 @test0(ptr %p1, ptr %p2, ptr %p3, ptr %p4, ptr %p5, i1 %c, i32 %x) {
 ; CHECK-NEXT:    [[VALUE:%.*]] = load i8, ptr [[GEP_1]], align 1
 ; CHECK-NEXT:    [[COND_1:%.*]] = icmp ult i32 [[IV_1]], [[IV_1_END]]
 ; CHECK-NEXT:    [[WC:%.*]] = call i1 @llvm.experimental.widenable.condition()
-; CHECK-NEXT:    [[TMP6:%.*]] = and i1 [[TMP5]], [[WC]]
+; CHECK-NEXT:    [[TMP6:%.*]] = and i1 [[WC]], [[TMP5]]
 ; CHECK-NEXT:    br i1 [[TMP6]], label [[LOOP_NEXT]], label [[DEOPT:%.*]]
 ; CHECK:       loop.next:
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[COND_1]])
