@@ -110,6 +110,71 @@ if `--use-debug-loc` is passed then the CSV will include the source path, line n
   Source,Function,Count
   path:line:column,foo,3
 
+.. _count_subcommand:
+
+count
+~~~~~
+
+..program:: llvm-remarkutil count
+
+USAGE: :program:`llvm-remarkutil` count [*options*] <input file>
+
+Summary
+^^^^^^^
+
+:program:`llvm-remarkutil count` counts `remakrs <https://llvm.org/docs/Remarks.html>` based on specified properties. 
+By default the tool will count the remarks based on how many are there in a source, function or total count for the file. 
+If a `key` or a list of keys are provided then the numbers reported are a sum of the values collected from the remarks arguments.
+
+OPTIONS
+-------
+
+.. option:: --parser=<yaml|bitstream>
+
+  Select the type of input remark parser. Required.
+  * ``yaml``: The tool will parse YAML remarks.
+  * ``bitstream``: The tool will parse bitstream remarks.
+
+.. option:: --count-by<value>
+  Select option to collect remarks by.
+  * ``remark-name``: count how many individual remarks exist.
+  * ``key``: count remarks based on specified keys from `--keys`
+
+.. option:: --group-by=<value>
+  group count of remarks by property.
+  * ``source``: Count will be collected per source path. Requires remarks to have debug loc info
+  * ``function``: Count is collected per function.
+  * ``function-with-loc``: Count is collected per function per source. Requires remarks to have debug loc info 
+  * ``Total``: Report a count for the provided remark file.
+
+.. option:: --keys[=keys]
+  If `count-by` is set to `key` this flag can be used to collect from specified keys represented as a comma seperated string.
+  
+.. option:: --rkeys[=keys]
+  If `count-by` is set to `key` this flag can be used to collect from specified keys using regular expression.
+
+.. option:: --pass-name[=<string>]
+  Filter count by pass name.
+
+.. option:: --rpass-name[=<string>]
+  Filter count by pass name using regular expressions.
+
+.. option:: --remark-name[=<string>]
+  Filter count by name.
+
+.. option:: --rremark-name[=<string>]
+  Filter count by name using regular expressions.
+
+.. option:: --remark-type=<value>
+  Filter remarks by type with the following options.
+  * ``unknown``
+  * ``passed``               
+  * ``missed``               
+  * ``analysis``             
+  * ``analysis-fp-commute``
+  * ``analysis-aliasing``    
+  * ``failure``              
+
 .. _size-diff_subcommand:
 
 size-diff
