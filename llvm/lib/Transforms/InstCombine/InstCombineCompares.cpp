@@ -3896,7 +3896,7 @@ Instruction *InstCombinerImpl::foldICmpInstWithConstantNotInt(ICmpInst &I) {
     // Only fold icmp into the PHI if the phi and icmp are in the same
     // block.  If in the same block, we're encouraging jump threading.  If
     // not, we are just pessimizing the code by making an i1 phi.
-    if (LHSI->getParent() == I.getParent())
+    if (LHSI->getParent() == I.getParent() || isa<BinaryOperator>(LHSI->getOperand(0)))
       if (Instruction *NV = foldOpIntoPhi(I, cast<PHINode>(LHSI)))
         return NV;
     break;
