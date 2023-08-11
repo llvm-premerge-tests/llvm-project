@@ -3,11 +3,7 @@
 
 define i1 @or_simplify_ule(i8 %y_in, i8 %rhs_in, i1 %c) {
 ; CHECK-LABEL: @or_simplify_ule(
-; CHECK-NEXT:    [[Y:%.*]] = or i8 [[Y_IN:%.*]], 1
-; CHECK-NEXT:    [[RHS:%.*]] = and i8 [[RHS_IN:%.*]], -2
-; CHECK-NEXT:    [[LBO:%.*]] = or i8 [[Y]], [[RHS]]
-; CHECK-NEXT:    [[R:%.*]] = icmp ule i8 [[LBO]], [[RHS]]
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 false
 ;
   %y = or i8 %y_in, 1
   %rhs = and i8 %rhs_in, -2
@@ -18,11 +14,7 @@ define i1 @or_simplify_ule(i8 %y_in, i8 %rhs_in, i1 %c) {
 
 define i1 @or_simplify_uge(i8 %y_in, i8 %rhs_in, i1 %c) {
 ; CHECK-LABEL: @or_simplify_uge(
-; CHECK-NEXT:    [[Y:%.*]] = or i8 [[Y_IN:%.*]], -128
-; CHECK-NEXT:    [[RHS:%.*]] = and i8 [[RHS_IN:%.*]], 127
-; CHECK-NEXT:    [[LBO:%.*]] = or i8 [[Y]], [[RHS]]
-; CHECK-NEXT:    [[R:%.*]] = icmp uge i8 [[RHS]], [[LBO]]
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 false
 ;
   %y = or i8 %y_in, 128
   %rhs = and i8 %rhs_in, 127
@@ -48,11 +40,7 @@ define i1 @or_simplify_ule_fail(i8 %y_in, i8 %rhs_in) {
 
 define i1 @or_simplify_ugt(i8 %y_in, i8 %rhs_in) {
 ; CHECK-LABEL: @or_simplify_ugt(
-; CHECK-NEXT:    [[Y:%.*]] = or i8 [[Y_IN:%.*]], 1
-; CHECK-NEXT:    [[RHS:%.*]] = and i8 [[RHS_IN:%.*]], -2
-; CHECK-NEXT:    [[LBO:%.*]] = or i8 [[Y]], [[RHS]]
-; CHECK-NEXT:    [[R:%.*]] = icmp ugt i8 [[LBO]], [[RHS]]
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 true
 ;
   %y = or i8 %y_in, 1
   %rhs = and i8 %rhs_in, -2
@@ -63,11 +51,7 @@ define i1 @or_simplify_ugt(i8 %y_in, i8 %rhs_in) {
 
 define i1 @or_simplify_ult(i8 %y_in, i8 %rhs_in) {
 ; CHECK-LABEL: @or_simplify_ult(
-; CHECK-NEXT:    [[Y:%.*]] = or i8 [[Y_IN:%.*]], 4
-; CHECK-NEXT:    [[RHS:%.*]] = and i8 [[RHS_IN:%.*]], -5
-; CHECK-NEXT:    [[LBO:%.*]] = or i8 [[Y]], [[RHS]]
-; CHECK-NEXT:    [[R:%.*]] = icmp ult i8 [[RHS]], [[LBO]]
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 true
 ;
   %y = or i8 %y_in, 4
   %rhs = and i8 %rhs_in, -5
@@ -95,15 +79,11 @@ define i1 @or_simplify_ugt_fail(i8 %y_in, i8 %rhs_in) {
 declare void @foo()
 define i32 @pr64610() {
 ; CHECK-LABEL: @pr64610(
-; CHECK-NEXT:    [[TMP1:%.*]] = load i1, ptr @b, align 2
-; CHECK-NEXT:    [[TMP2:%.*]] = select i1 [[TMP1]], i32 74, i32 0
-; CHECK-NEXT:    [[TMP3:%.*]] = or i32 [[TMP2]], 1
-; CHECK-NEXT:    [[TMP4:%.*]] = icmp ugt i32 [[TMP3]], [[TMP2]]
-; CHECK-NEXT:    br i1 [[TMP4]], label [[TMP6:%.*]], label [[TMP5:%.*]]
-; CHECK:       5:
+; CHECK-NEXT:    br i1 true, label [[TMP2:%.*]], label [[TMP1:%.*]]
+; CHECK:       1:
 ; CHECK-NEXT:    tail call void @foo()
-; CHECK-NEXT:    br label [[TMP6]]
-; CHECK:       6:
+; CHECK-NEXT:    br label [[TMP2]]
+; CHECK:       2:
 ; CHECK-NEXT:    store i1 true, ptr @b, align 2
 ; CHECK-NEXT:    ret i32 0
 ;
