@@ -128,15 +128,8 @@ Error EHFrameEdgeFixer::processBlock(ParseContext &PC, Block &B) {
   // Find the offsets of any existing edges from this block.
   BlockEdgeMap BlockEdges;
   for (auto &E : B.edges())
-    if (E.isRelocation()) {
-      if (BlockEdges.count(E.getOffset()))
-        return make_error<JITLinkError>(
-            "Multiple relocations at offset " +
-            formatv("{0:x16}", E.getOffset()) + " in " + EHFrameSectionName +
-            " block at address " + formatv("{0:x16}", B.getAddress()));
-
-      BlockEdges[E.getOffset()] = EdgeTarget(E);
-    }
+    if (E.isRelocation())
+      BlockEdges.try_emplace(E.getOffset(), E);
 
   CIEInfosMap CIEInfos;
   BinaryStreamReader BlockReader(
