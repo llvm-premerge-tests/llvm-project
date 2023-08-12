@@ -279,6 +279,8 @@ DEFAULT_FEATURES = [
     Feature(name="msvc", when=_isMSVC),
     Feature(name=lambda cfg: "msvc-{}".format(*_msvcVersion(cfg)), when=_isMSVC),
     Feature(name=lambda cfg: "msvc-{}.{}".format(*_msvcVersion(cfg)), when=_isMSVC),
+
+    Feature(name="libcpp-has-no-std-modules", when=_isGCC or _isMSVC or _isAppleClang),
 ]
 
 # Deduce and add the test features that that are implied by the #defines in
@@ -303,6 +305,7 @@ macros = {
     "_LIBCPP_HAS_NO_LOCALIZATION": "no-localization",
     "_LIBCPP_HAS_NO_WIDE_CHARACTERS": "no-wide-characters",
     "_LIBCPP_HAS_NO_UNICODE": "libcpp-has-no-unicode",
+    "_LIBCPP_HAS_NO_STD_MODULES":  "libcpp-has-no-std-modules",
     "_LIBCPP_PSTL_CPU_BACKEND_LIBDISPATCH": "libcpp-pstl-cpu-backend-libdispatch",
 }
 for macro, feature in macros.items():
