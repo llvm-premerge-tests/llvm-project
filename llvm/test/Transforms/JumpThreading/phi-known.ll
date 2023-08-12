@@ -46,15 +46,19 @@ exit:
 ; Well, we could unroll this loop exactly twice, but that's
 ; a different transform.
 define void @test_mixed(ptr %p) {
-; CHECK-LABEL: @test_mixed
+; CHECK-LABEL: define void @test_mixed
+; CHECK-SAME: (ptr [[P:%.*]]) {
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[CMP0:%.*]] = icmp eq ptr [[P]], null
+; CHECK-NEXT:    br i1 [[CMP0]], label [[EXIT:%.*]], label [[LOOP:%.*]]
+; CHECK:       loop:
+; CHECK-NEXT:    br label [[EXIT]]
+; CHECK:       exit:
+; CHECK-NEXT:    ret void
 entry:
   %cmp0 = icmp eq ptr %p, null
   br i1 %cmp0, label %exit, label %loop
 loop:
-; CHECK-LABEL: loop:
-; CHECK-NEXT: phi
-; CHECK-NEXT: %cmp1 = icmp
-; CHECK-NEXT: br i1 %cmp1
   %p1 = phi ptr [%p, %entry], [%p1, %loop]
   %cmp1 = icmp ne ptr %p1, null
   br i1 %cmp1, label %exit, label %loop
