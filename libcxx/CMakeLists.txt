@@ -304,6 +304,14 @@ endif()
 option(LIBCXX_HERMETIC_STATIC_LIBRARY
   "Do not export any symbols from the static library." ${LIBCXX_HERMETIC_STATIC_LIBRARY_DEFAULT})
 
+set(LIBCXX_TIME_ZONE_DB "" CACHE PATH
+  "Where the time zone data files are found. When the path is empty
+  the platform specific defaults are used. Consult the libc++ building
+  instructions for more information.")
+if(LIBCXX_TIME_ZONE_DB)
+  add_definitions(-D_LIBCPP_TIME_ZONE_DB_PATH="${LIBCXX_TIME_ZONE_DB}")
+endif()
+
 #===============================================================================
 # Check option configurations
 #===============================================================================

@@ -405,10 +405,8 @@
 // easier to grep for target specific flags once the feature is complete.
 #  if !defined(_LIBCPP_ENABLE_EXPERIMENTAL) && !defined(_LIBCPP_BUILDING_LIBRARY)
 #    define _LIBCPP_HAS_NO_INCOMPLETE_PSTL
-#  endif
-
-#  if !defined(_LIBCPP_ENABLE_EXPERIMENTAL) && !defined(_LIBCPP_BUILDING_LIBRARY)
 #    define _LIBCPP_HAS_NO_EXPERIMENTAL_STOP_TOKEN
+#    define _LIBCPP_HAS_NO_INCOMPLETE_TZDB
 #  endif
 
 // Need to detect which libc we're using if we're on Linux.
@@ -1476,6 +1474,15 @@ __sanitizer_verify_double_ended_contiguous_container(const void*, const void*, c
 #  endif // (defined(_OPENMP) && _OPENMP >= 201307)
 
 #  define _PSTL_USE_NONTEMPORAL_STORES_IF_ALLOWED
+
+// Libc++ support for the IANA Time Zone Database.
+// TODO TZDB Add Apple when it provides the required files.
+// TODO TZDB Add FreeBSD when it provides the required files.
+#  ifndef _LIBCPP_TIME_ZONE_DB_PATH
+#    if defined(__linux__)
+#      define _LIBCPP_TIME_ZONE_DB_PATH "/usr/share/zoneinfo/"
+#    endif
+#  endif // _LIBCPP_TIME_ZONE_DB_PATH
 
 #endif // __cplusplus
 

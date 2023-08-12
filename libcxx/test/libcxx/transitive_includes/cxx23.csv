@@ -73,6 +73,7 @@ chrono compare
 chrono cstddef
 chrono cstdint
 chrono ctime
+chrono forward_list
 chrono initializer_list
 chrono limits
 chrono locale
@@ -80,6 +81,7 @@ chrono new
 chrono optional
 chrono ostream
 chrono ratio
+chrono shared_mutex
 chrono sstream
 chrono stdexcept
 chrono string

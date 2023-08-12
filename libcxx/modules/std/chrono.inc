@@ -188,21 +188,21 @@ export namespace std {
     using std::chrono::make12;
     using std::chrono::make24;
 
-#if 0
     // [time.zone.db], time zone database
     using std::chrono::tzdb;
     using std::chrono::tzdb_list;
 
     // [time.zone.db.access], time zone database access
-    using std::chrono::current_zone;
+    // using std::chrono::current_zone;
     using std::chrono::get_tzdb;
     using std::chrono::get_tzdb_list;
-    using std::chrono::locate_zone;
+    // using std::chrono::locate_zone;
 
     // [time.zone.db.remote], remote time zone database support
     using std::chrono::reload_tzdb;
     using std::chrono::remote_version;
 
+#if 0
     // [time.zone.exception], exception classes
     using std::chrono::ambiguous_local_time;
     using std::chrono::nonexistent_local_time;

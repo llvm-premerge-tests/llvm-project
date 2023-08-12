@@ -22,6 +22,36 @@ libc++ :ref:`here <using-libcxx>`.
   place to install libc++.
 
 
+.. _TimeZoneDatabase:
+
+Time Zone Database
+==================
+
+Starting with C++20 the ``<chrono>`` library has support for time zones.
+In order to use this facility libc++ needs to know where the
+`IANA Time Zone Database <https://www.iana.org/time-zones>`__ is stored.
+The database consists of a directory with the following files:
+
+- ``tzdata.zi``, and
+- ``leap-seconds.list``
+
+On platforms that ship the required database, libc++ will automatically find
+the database.
+
+If the database is not available on your platform, you can
+`download <https://data.iana.org/time-zones/tzdb-latest.tar.lz>`__
+and install the database manually. In order for libc++ to find the
+database configure CMake with the proper value for the option
+``LIBCXX_TIME_ZONE_DB``.
+
+.. note:: When your platform ships the database and libc++ fails to find it
+   automatically, please file a bug report using the
+   `LLVM bug tracker <https://github.com/llvm/llvm-project/issues>`_.
+   Make sure the report contains the  location of the database on
+   your platform. Alternatively you can provide a patch for the file
+   ``libcxx/include/__config``.
+
+
 The default build
 =================
 
@@ -294,6 +324,13 @@ libc++ specific options
   **Default**: ``""``
 
   Additional libraries libc++ is linked to which can be provided in cache.
+
+.. option:: LIBCXX_TIME_ZONE_DB:PATH
+
+  **Default**: ``""``
+
+  The path where the time zone data files are found. When the path is empty
+  the platform specific defaults are used.
 
 
 .. _ABI Library Specific Options:
