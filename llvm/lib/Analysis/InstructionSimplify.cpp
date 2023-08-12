@@ -3116,13 +3116,30 @@ static Value *simplifyICmpWithBinOpOnLHS(CmpInst::Predicate Pred,
     if (Pred == ICmpInst::ICMP_UGE)
       return getTrue(ITy);
 
-    if (Pred == ICmpInst::ICMP_SLT || Pred == ICmpInst::ICMP_SGE) {
+    if (Pred == ICmpInst::ICMP_SLT || Pred == ICmpInst::ICMP_SGE ||
+        Pred == ICmpInst::ICMP_ULE || Pred == ICmpInst::ICMP_UGT) {
       KnownBits RHSKnown = computeKnownBits(RHS, Q.DL, 0, Q.AC, Q.CxtI, Q.DT);
       KnownBits YKnown = computeKnownBits(Y, Q.DL, 0, Q.AC, Q.CxtI, Q.DT);
-      if (RHSKnown.isNonNegative() && YKnown.isNegative())
-        return Pred == ICmpInst::ICMP_SLT ? getTrue(ITy) : getFalse(ITy);
-      if (RHSKnown.isNegative() || YKnown.isNonNegative())
-        return Pred == ICmpInst::ICMP_SLT ? getFalse(ITy) : getTrue(ITy);
+
+      if (ICmpInst::isSigned(Pred)) {
+        if (RHSKnown.isNonNegative() && YKnown.isNegative())
+          return Pred == ICmpInst::ICMP_SLT ? getTrue(ITy) : getFalse(ITy);
+        if (RHSKnown.isNegative() || YKnown.isNonNegative())
+          return Pred == ICmpInst::ICMP_SLT ? getFalse(ITy) : getTrue(ITy);
+
+      } else {
+        // We could also do EQ/NE here, but seems unnecessary as they are
+        // handled elsewhere so no reason to spend the extra time on
+        // computeKnownBits.
+
+        // Get NOT of knownbits by swapping ones/zeros
+        std::swap(RHSKnown.One, RHSKnown.Zero);
+        KnownBits UniqueBits = RHSKnown & YKnown;
+        // We know there is a unique bit so equality conditions cannot be
+        // false.
+        if (UniqueBits.isNonZero())
+          return ICmpInst::isTrueWhenEqual(Pred) ? getFalse(ITy) : getTrue(ITy);
+      }
     }
   }
 
