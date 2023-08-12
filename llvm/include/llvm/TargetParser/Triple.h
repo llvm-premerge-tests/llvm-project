@@ -458,7 +458,9 @@ public:
   /// Test whether the architecture is 16-bit
   ///
   /// Note that this tests for 16-bit pointer width, and nothing else.
-  bool isArch16Bit() const;
+  [[deprecated("Use TripleUtils::isArch16Bit(const llvm::Triple& tripleImpl) "
+               "instead.")]] bool
+  isArch16Bit() const;
 
   /// Helper function for doing comparisons against version numbers included in
   /// the target triple.

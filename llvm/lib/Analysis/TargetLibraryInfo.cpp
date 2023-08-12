@@ -15,6 +15,7 @@
 #include "llvm/InitializePasses.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 using namespace llvm;
 
 static cl::opt<TargetLibraryInfoImpl::VectorLibrary> ClVectorLibrary(
@@ -184,7 +185,7 @@ static void initialize(TargetLibraryInfoImpl &TLI, const Triple &T,
   // Let's assume by default that the size of int is 32 bits, unless the target
   // is a 16-bit architecture because then it most likely is 16 bits. If that
   // isn't true for a target those defaults should be overridden below.
-  TLI.setIntSize(T.isArch16Bit() ? 16 : 32);
+  TLI.setIntSize(llvm::TripleUtils::isArch16Bit(T) ? 16 : 32);
 
   // There is really no runtime library on AMDGPU, apart from
   // __kmpc_alloc/free_shared.
