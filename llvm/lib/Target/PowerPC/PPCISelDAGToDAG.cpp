@@ -7530,6 +7530,7 @@ static void reduceVSXSwap(SDNode *N, SelectionDAG *DAG) {
 
 void PPCDAGToDAGISel::PeepholePPC64() {
   SelectionDAG::allnodes_iterator Position = CurDAG->allnodes_end();
+  bool HasAIXSmallLocalExecTLS = Subtarget->hasAIXSmallLocalExecTLS();
 
   while (Position != CurDAG->allnodes_begin()) {
     SDNode *N = &*--Position;
@@ -7611,19 +7612,28 @@ void PPCDAGToDAGISel::PeepholePPC64() {
     default: continue;
 
     case PPC::ADDI8:
-    case PPC::ADDI:
+    case PPC::ADDI: {
       // In some cases (such as TLS) the relocation information
       // is already in place on the operand, so copying the operand
       // is sufficient.
       ReplaceFlags = false;
+      SDValue BaseOp1 = Base.getOperand(1);
+
       // For these cases, the immediate may not be divisible by 4, in
       // which case the fold is illegal for DS-form instructions.  (The
       // other cases provide aligned addresses and are always safe.)
-      if (RequiresMod4Offset &&
-          (!isa<ConstantSDNode>(Base.getOperand(1)) ||
-           Base.getConstantOperandVal(1) % 4 != 0))
-        continue;
+      if (RequiresMod4Offset) {
+        if (isa<GlobalAddressSDNode>(BaseOp1) && HasAIXSmallLocalExecTLS) {
+          const auto *GV = dyn_cast<GlobalAddressSDNode>(BaseOp1)->getGlobal();
+          Align Alignment = GV->getPointerAlignment(CurDAG->getDataLayout());
+          if (Alignment < 4)
+            continue;
+        } else if (!isa<ConstantSDNode>(BaseOp1) ||
+                   (Base.getConstantOperandVal(1) % 4 != 0))
+          continue;
+      }
       break;
+    }
     case PPC::ADDIdtprelL:
       Flags = PPCII::MO_DTPREL_LO;
       break;
