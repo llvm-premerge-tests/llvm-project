@@ -32,7 +32,7 @@ define <2 x i1> @or_slt_pos(<2 x i8> %xx, <2 x i8> %yy, <2 x i8> %z) {
 ; CHECK-NEXT:    [[X:%.*]] = add <2 x i8> [[XX:%.*]], [[Z:%.*]]
 ; CHECK-NEXT:    [[Y:%.*]] = and <2 x i8> [[YY:%.*]], <i8 127, i8 127>
 ; CHECK-NEXT:    [[XN1:%.*]] = or <2 x i8> [[X]], [[Y]]
-; CHECK-NEXT:    [[R:%.*]] = icmp slt <2 x i8> [[X]], [[XN1]]
+; CHECK-NEXT:    [[R:%.*]] = icmp ne <2 x i8> [[XN1]], [[X]]
 ; CHECK-NEXT:    ret <2 x i1> [[R]]
 ;
   %x = add <2 x i8> %xx, %z
@@ -47,7 +47,7 @@ define i1 @or_sle_pos(i8 %x, i8 %y) {
 ; CHECK-NEXT:    [[NS:%.*]] = icmp sgt i8 [[Y:%.*]], -1
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[NS]])
 ; CHECK-NEXT:    [[XN1:%.*]] = or i8 [[X:%.*]], [[Y]]
-; CHECK-NEXT:    [[R:%.*]] = icmp sle i8 [[XN1]], [[X]]
+; CHECK-NEXT:    [[R:%.*]] = icmp eq i8 [[XN1]], [[X]]
 ; CHECK-NEXT:    ret i1 [[R]]
 ;
   %ns = icmp sge i8 %y, 0
@@ -152,8 +152,7 @@ define <2 x i1> @or_ne_noundef_fail_reuse(<2 x i8> %x, <2 x i8> noundef %y) {
 
 define i1 @or_slt_intmin(i8 %x) {
 ; CHECK-LABEL: @or_slt_intmin(
-; CHECK-NEXT:    [[XN1:%.*]] = or i8 [[X:%.*]], -128
-; CHECK-NEXT:    [[R:%.*]] = icmp slt i8 [[XN1]], [[X]]
+; CHECK-NEXT:    [[R:%.*]] = icmp sgt i8 [[X:%.*]], -1
 ; CHECK-NEXT:    ret i1 [[R]]
 ;
   %xn1 = or i8 %x, 128
@@ -163,10 +162,7 @@ define i1 @or_slt_intmin(i8 %x) {
 
 define <2 x i1> @or_slt_intmin_2(<2 x i8> %xx, <2 x i8> %z) {
 ; CHECK-LABEL: @or_slt_intmin_2(
-; CHECK-NEXT:    [[X:%.*]] = add <2 x i8> [[XX:%.*]], [[Z:%.*]]
-; CHECK-NEXT:    [[XN1:%.*]] = or <2 x i8> [[X]], <i8 -128, i8 -128>
-; CHECK-NEXT:    [[R:%.*]] = icmp slt <2 x i8> [[X]], [[XN1]]
-; CHECK-NEXT:    ret <2 x i1> [[R]]
+; CHECK-NEXT:    ret <2 x i1> zeroinitializer
 ;
   %x = add <2 x i8> %xx, %z
   %xn1 = or <2 x i8> %x, <i8 128, i8 128>
@@ -205,8 +201,7 @@ pos:
 
 define i1 @or_sge_intmin(i8 %x) {
 ; CHECK-LABEL: @or_sge_intmin(
-; CHECK-NEXT:    [[XN1:%.*]] = or i8 [[X:%.*]], -128
-; CHECK-NEXT:    [[R:%.*]] = icmp sge i8 [[XN1]], [[X]]
+; CHECK-NEXT:    [[R:%.*]] = icmp slt i8 [[X:%.*]], 0
 ; CHECK-NEXT:    ret i1 [[R]]
 ;
   %xn1 = or i8 %x, 128
@@ -244,8 +239,7 @@ pos:
 define <2 x i1> @or_sgt_intmin_2(<2 x i8> %xx, <2 x i8> %z) {
 ; CHECK-LABEL: @or_sgt_intmin_2(
 ; CHECK-NEXT:    [[X:%.*]] = add <2 x i8> [[XX:%.*]], [[Z:%.*]]
-; CHECK-NEXT:    [[XN1:%.*]] = or <2 x i8> [[X]], <i8 -128, i8 -128>
-; CHECK-NEXT:    [[R:%.*]] = icmp sgt <2 x i8> [[X]], [[XN1]]
+; CHECK-NEXT:    [[R:%.*]] = icmp sgt <2 x i8> [[X]], <i8 -1, i8 -1>
 ; CHECK-NEXT:    ret <2 x i1> [[R]]
 ;
   %x = add <2 x i8> %xx, %z

@@ -4447,6 +4447,14 @@ getKnownSign(Value *Op, Instruction *CxtI, const DataLayout &DL,
       ICmpInst::ICMP_SLT, Op, Constant::getNullValue(Op->getType()), CxtI, DL);
 }
 
+static std::optional<bool> getKnownSign(Value *Op, Instruction *CxtI,
+                                        const DataLayout &DL,
+                                        AssumptionCache *AC,
+                                        const DominatorTree *DT) {
+  KnownBits Known;
+  return getKnownSign(Op, CxtI, DL, AC, DT, Known);
+}
+
 static Instruction *foldICmpOrXX(ICmpInst &I, const SimplifyQuery &Q,
                                  InstCombinerImpl &IC) {
   Value *Op0 = I.getOperand(0), *Op1 = I.getOperand(1), *A;
@@ -4476,6 +4484,35 @@ static Instruction *foldICmpOrXX(ICmpInst &I, const SimplifyQuery &Q,
                           IC.Builder.CreateAnd(A, IC.Builder.CreateNot(Op1)),
                           Constant::getNullValue(Op1->getType()));
   }
+
+  auto KnownSign = getKnownSign(A, &I, Q.DL, Q.AC, Q.DT);
+  if (KnownSign != std::nullopt) {
+    // icmp (X | MinInt) s> X --> false
+    // icmp (X | MinInt) s<= X --> true
+    // icmp (X | MinInt) s>= X --> X s< 0
+    // icmp (X | MinInt) s< X --> X s>= 0
+    if (*KnownSign /* true is Signed. */ &&
+        IC.isKnownToBeAPowerOfTwo(A, /*OrZero*/ true, 0, &I)) {
+      if (Pred == ICmpInst::ICMP_SGT || Pred == ICmpInst::ICMP_SLE)
+        return IC.replaceInstUsesWith(
+            I, ConstantInt::get(I.getType(), Pred == ICmpInst::ICMP_SLE));
+      else if (Pred == ICmpInst::ICMP_SGE)
+        return new ICmpInst(ICmpInst::ICMP_SLT, Op1,
+                            Constant::getNullValue(Op0->getType()));
+      else
+        return new ICmpInst(ICmpInst::ICMP_SGE, Op1,
+                            Constant::getNullValue(Op0->getType()));
+    }
+    // icmp (X | Pos_Y) s> X --> (X | Pos_Y) != X
+    // icmp (X | Pos_Y) s<= X --> (X | Pos_Y) == X
+    else if (!*KnownSign) {
+      if (Pred == ICmpInst::ICMP_SGT)
+        return new ICmpInst(ICmpInst::ICMP_NE, Op0, Op1);
+      else if (Pred == ICmpInst::ICMP_SLE)
+        return new ICmpInst(ICmpInst::ICMP_EQ, Op0, Op1);
+    }
+  }
+
   return nullptr;
 }
 
