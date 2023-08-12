@@ -1478,14 +1478,21 @@ ConstantRange::shl(const ConstantRange &Other) const {
 
   APInt OtherMax = Other.getUnsignedMax();
 
+  bool Neg = getSingleElement() && isAllNegative() &&
+             OtherMax.ule(Max.abs().countl_zero());
+
   // There's overflow!
-  if (OtherMax.ugt(Max.countl_zero()))
+  if (OtherMax.ugt(Max.countl_zero()) && !Neg)
     return getFull();
 
   // FIXME: implement the other tricky cases
 
   Min <<= Other.getUnsignedMin();
   Max <<= OtherMax;
+
+  // For negitive value c, its shifted range is [c<<Other.max) , c<<Other.min)]
+  if (Neg)
+    std::swap(Min, Max);
 
   return ConstantRange::getNonEmpty(std::move(Min), std::move(Max) + 1);
 }
