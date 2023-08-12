@@ -897,7 +897,8 @@ public:
                     DiagnosticsEngine &Diag, LangOptions &LangOpts,
                     SourceManager &SourceMgr, FileManager &FileMgr,
                     SmallVectorImpl<StoredDiagnostic> &StoredDiagnostics,
-                    SmallVectorImpl<const llvm::MemoryBuffer *> &OwnedBuffers);
+                    SmallVectorImpl<const llvm::MemoryBuffer *> &OwnedBuffers,
+                    std::function<void(CompilerInstance&)> AfterBeginSourceFile = [](CompilerInstance& CI) -> void {});
 
   /// Save this translation unit to a file with the given name.
   ///

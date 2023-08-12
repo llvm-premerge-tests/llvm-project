@@ -35,6 +35,8 @@ class ThreadSafeContext;
 
 namespace clang {
 
+class CodeCompleteConsumer;
+class CodeCompletionResult;
 class CompilerInstance;
 class IncrementalExecutor;
 class IncrementalParser;
@@ -72,6 +74,8 @@ private:
   llvm::StringRef CudaSDKPath;
 };
 
+const std::string CodeCompletionFileName = "input_line_[Completion]";
+
 /// Provides top-level interfaces for incremental compilation and execution.
 class Interpreter {
   std::unique_ptr<llvm::orc::ThreadSafeContext> TSCtx;
@@ -93,11 +97,14 @@ class Interpreter {
 
 public:
   ~Interpreter();
+
   static llvm::Expected<std::unique_ptr<Interpreter>>
   create(std::unique_ptr<CompilerInstance> CI);
+
   static llvm::Expected<std::unique_ptr<Interpreter>>
   createWithCUDA(std::unique_ptr<CompilerInstance> CI,
                  std::unique_ptr<CompilerInstance> DCI);
+
   const ASTContext &getASTContext() const;
   ASTContext &getASTContext();
   const CompilerInstance *getCompilerInstance() const;
@@ -110,6 +117,10 @@ public:
 
   /// Undo N previous incremental inputs.
   llvm::Error Undo(unsigned N = 1);
+
+  void codeComplete(llvm::StringRef Content, unsigned Col,
+                    const clang::CompilerInstance *ParentCI,
+                    std::vector<CodeCompletionResult> &CCResults);
 
   /// Link a dynamic library
   llvm::Error LoadDynamicLibrary(const char *name);

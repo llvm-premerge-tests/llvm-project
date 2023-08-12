@@ -14,6 +14,7 @@
 #include "clang/Interpreter/Interpreter.h"
 
 #include "DeviceOffload.h"
+#include "ExternalSource.h"
 #include "IncrementalExecutor.h"
 #include "IncrementalParser.h"
 
@@ -31,10 +32,13 @@
 #include "clang/Driver/Job.h"
 #include "clang/Driver/Options.h"
 #include "clang/Driver/Tool.h"
+#include "clang/Frontend/ASTUnit.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/TextDiagnosticBuffer.h"
+#include "clang/Interpreter/CodeCompletion.h"
 #include "clang/Interpreter/Value.h"
 #include "clang/Lex/PreprocessorOptions.h"
+#include "clang/Sema/CodeCompleteConsumer.h"
 #include "clang/Sema/Lookup.h"
 #include "llvm/ExecutionEngine/JITSymbol.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
@@ -127,7 +131,6 @@ CreateCI(const llvm::opt::ArgStringList &Argv) {
 
   Clang->getFrontendOpts().DisableFree = false;
   Clang->getCodeGenOpts().DisableFree = false;
-
   return std::move(Clang);
 }
 
@@ -272,10 +275,12 @@ const char *const Runtimes = R"(
 llvm::Expected<std::unique_ptr<Interpreter>>
 Interpreter::create(std::unique_ptr<CompilerInstance> CI) {
   llvm::Error Err = llvm::Error::success();
-  auto Interp =
+  std::unique_ptr<Interpreter> Interp =
       std::unique_ptr<Interpreter>(new Interpreter(std::move(CI), Err));
+
   if (Err)
     return std::move(Err);
+
   auto PTU = Interp->Parse(Runtimes);
   if (!PTU)
     return PTU.takeError();
@@ -454,6 +459,45 @@ llvm::Error Interpreter::Undo(unsigned N) {
     PTUs.pop_back();
   }
   return llvm::Error::success();
+}
+
+void Interpreter::codeComplete(llvm::StringRef Content, unsigned Col,
+                               const clang::CompilerInstance *ParentCI,
+                               std::vector<CodeCompletionResult> &CCResults) {
+  std::unique_ptr<llvm::MemoryBuffer> MB =
+      llvm::MemoryBuffer::getMemBufferCopy(Content, CodeCompletionFileName);
+  llvm::SmallVector<ASTUnit::RemappedFile, 4> RemappedFiles;
+
+  RemappedFiles.push_back(std::make_pair(CodeCompletionFileName, MB.release()));
+
+  auto DiagOpts = DiagnosticOptions();
+  auto consumer = ReplCompletionConsumer(CCResults);
+
+  auto *InterpCI = const_cast<CompilerInstance *>(this->getCompilerInstance());
+  auto diag = InterpCI->getDiagnosticsPtr();
+  ASTUnit *AU = ASTUnit::LoadFromCompilerInvocationAction(
+      InterpCI->getInvocationPtr(), std::make_shared<PCHContainerOperations>(),
+      diag);
+  llvm::SmallVector<clang::StoredDiagnostic, 8> sd = {};
+  llvm::SmallVector<const llvm::MemoryBuffer *, 1> tb = {};
+  InterpCI->getFrontendOpts().Inputs[0] = FrontendInputFile(
+      CodeCompletionFileName, Language::CXX, InputKind::Source);
+  AU->CodeComplete(
+      CodeCompletionFileName, 1, Col, RemappedFiles, false, false, false,
+      consumer, std::make_shared<clang::PCHContainerOperations>(), *diag,
+      InterpCI->getLangOpts(), InterpCI->getSourceManager(),
+      InterpCI->getFileManager(), sd, tb,
+      [ParentCI](clang::CompilerInstance &CI) -> void {
+        clang::ExternalSource *myExternalSource = new clang::ExternalSource(
+            CI.getASTContext(), CI.getFileManager(), ParentCI->getASTContext(),
+            ParentCI->getFileManager());
+        llvm::IntrusiveRefCntPtr<clang::ExternalASTSource>
+            astContextExternalSource(myExternalSource);
+        CI.getASTContext().setExternalSource(astContextExternalSource);
+        CI.getASTContext()
+            .getTranslationUnitDecl()
+            ->setHasExternalVisibleStorage(true);
+      });
 }
 
 llvm::Error Interpreter::LoadDynamicLibrary(const char *name) {

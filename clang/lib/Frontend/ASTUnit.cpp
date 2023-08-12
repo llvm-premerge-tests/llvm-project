@@ -2005,6 +2005,7 @@ static void CalculateHiddenNames(const CodeCompletionContext &Context,
   case CodeCompletionContext::CCC_SymbolOrNewName:
   case CodeCompletionContext::CCC_ParenthesizedExpression:
   case CodeCompletionContext::CCC_ObjCInterfaceName:
+  case CodeCompletionContext::CCC_ReplTopLevel:
     break;
 
   case CodeCompletionContext::CCC_EnumTag:
@@ -2164,7 +2165,7 @@ void ASTUnit::CodeComplete(
     std::shared_ptr<PCHContainerOperations> PCHContainerOps,
     DiagnosticsEngine &Diag, LangOptions &LangOpts, SourceManager &SourceMgr,
     FileManager &FileMgr, SmallVectorImpl<StoredDiagnostic> &StoredDiagnostics,
-    SmallVectorImpl<const llvm::MemoryBuffer *> &OwnedBuffers) {
+    SmallVectorImpl<const llvm::MemoryBuffer *> &OwnedBuffers, std::function<void(CompilerInstance&)> AfterBeginSourceFile) {
   if (!Invocation)
     return;
 
@@ -2304,6 +2305,7 @@ void ASTUnit::CodeComplete(
   std::unique_ptr<SyntaxOnlyAction> Act;
   Act.reset(new SyntaxOnlyAction);
   if (Act->BeginSourceFile(*Clang.get(), Clang->getFrontendOpts().Inputs[0])) {
+    AfterBeginSourceFile(*Clang.get());
     if (llvm::Error Err = Act->Execute()) {
       consumeError(std::move(Err)); // FIXME this drops errors on the floor.
     }
