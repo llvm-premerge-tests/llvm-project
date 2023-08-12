@@ -1205,3 +1205,335 @@ subroutine vec_xstw4_test_vi4i4vai4(arg1, arg2, arg3, i)
 ! CHECK: store <4 x i32> %[[arg1]], ptr %[[trg]], align 1
 end subroutine vec_xstw4_test_vi4i4vai4
 
+!----------------------
+! vec_stxvp
+!----------------------
+
+! CHECK-LABEL: @test_vec_stxvp_i2_
+subroutine test_vec_stxvp_i2(vp, offset, v1)
+  integer(2) :: offset
+  vector(integer(2)) :: v1
+  __vector_pair :: vp
+  call vec_stxvp(vp, offset, v1)
+
+! CHECK-FIR: %[[vp:.*]] = fir.load %arg0 : !fir.ref<!fir.vector<256:i1>>
+! CHECK-FIR: %[[offset:.*]] = fir.load %arg1 : !fir.ref<i16>
+! CHECK-FIR: %[[v1:.*]] = fir.convert %arg2 : (!fir.ref<!fir.vector<8:i16>>) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: %[[addr:.*]] = fir.coordinate_of %[[v1]], %[[offset]] : (!fir.ref<!fir.array<?xi8>>, i16) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: fir.call @llvm.ppc.vsx.stxvp(%[[vp]], %[[addr]]) fastmath<contract> : (!fir.vector<256:i1>, !fir.ref<!fir.array<?xi8>>) -> ()
+
+! CHECK: %[[vp:.*]] = load <256 x i1>, ptr %0, align 32
+! CHECK: %[[offset:.*]] = load i16, ptr %1, align 2
+! CHECK: %[[addr:.*]] = getelementptr i8, ptr %2, i16 %[[offset]]
+! CHECK: call void @llvm.ppc.vsx.stxvp(<256 x i1> %[[vp]], ptr %[[addr]])
+end subroutine test_vec_stxvp_i2
+
+! CHECK-LABEL: @test_vec_stxvp_i4_
+subroutine test_vec_stxvp_i4(vp, offset, v1)
+  integer(2) :: offset
+  vector(integer(4)) :: v1
+  __vector_pair :: vp
+  call vec_stxvp(vp, offset, v1)
+
+! CHECK-FIR: %[[vp:.*]] = fir.load %arg0 : !fir.ref<!fir.vector<256:i1>>
+! CHECK-FIR: %[[offset:.*]] = fir.load %arg1 : !fir.ref<i16>
+! CHECK-FIR: %[[v1:.*]] = fir.convert %arg2 : (!fir.ref<!fir.vector<4:i32>>) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: %[[addr:.*]] = fir.coordinate_of %[[v1]], %[[offset]] : (!fir.ref<!fir.array<?xi8>>, i16) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: fir.call @llvm.ppc.vsx.stxvp(%[[vp]], %[[addr]]) fastmath<contract> : (!fir.vector<256:i1>, !fir.ref<!fir.array<?xi8>>) -> ()
+
+! CHECK: %[[vp:.*]] = load <256 x i1>, ptr %0, align 32
+! CHECK: %[[offset:.*]] = load i16, ptr %1, align 2
+! CHECK: %[[addr:.*]] = getelementptr i8, ptr %2, i16 %[[offset]]
+! CHECK: call void @llvm.ppc.vsx.stxvp(<256 x i1> %[[vp]], ptr %[[addr]])
+end subroutine test_vec_stxvp_i4
+
+! CHECK-LABEL: @test_vec_stxvp_u2_
+subroutine test_vec_stxvp_u2(vp, offset, v1)
+  integer(2) :: offset
+  vector(unsigned(2)) :: v1
+  __vector_pair :: vp
+  call vec_stxvp(vp, offset, v1)
+
+! CHECK-FIR: %[[vp:.*]] = fir.load %arg0 : !fir.ref<!fir.vector<256:i1>>
+! CHECK-FIR: %[[offset:.*]] = fir.load %arg1 : !fir.ref<i16>
+! CHECK-FIR: %[[v1:.*]] = fir.convert %arg2 : (!fir.ref<!fir.vector<8:ui16>>) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: %[[addr:.*]] = fir.coordinate_of %[[v1]], %[[offset]] : (!fir.ref<!fir.array<?xi8>>, i16) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: fir.call @llvm.ppc.vsx.stxvp(%[[vp]], %[[addr]]) fastmath<contract> : (!fir.vector<256:i1>, !fir.ref<!fir.array<?xi8>>) -> ()
+
+! CHECK: %[[vp:.*]] = load <256 x i1>, ptr %0, align 32
+! CHECK: %[[offset:.*]] = load i16, ptr %1, align 2
+! CHECK: %[[addr:.*]] = getelementptr i8, ptr %2, i16 %[[offset]]
+! CHECK: call void @llvm.ppc.vsx.stxvp(<256 x i1> %[[vp]], ptr %[[addr]])
+end subroutine test_vec_stxvp_u2
+
+! CHECK-LABEL: @test_vec_stxvp_u4_
+subroutine test_vec_stxvp_u4(vp, offset, v1)
+  integer(2) :: offset
+  vector(unsigned(4)) :: v1
+  __vector_pair :: vp
+  call vec_stxvp(vp, offset, v1)
+
+! CHECK-FIR: %[[vp:.*]] = fir.load %arg0 : !fir.ref<!fir.vector<256:i1>>
+! CHECK-FIR: %[[offset:.*]] = fir.load %arg1 : !fir.ref<i16>
+! CHECK-FIR: %[[v1:.*]] = fir.convert %arg2 : (!fir.ref<!fir.vector<4:ui32>>) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: %[[addr:.*]] = fir.coordinate_of %[[v1]], %[[offset]] : (!fir.ref<!fir.array<?xi8>>, i16) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: fir.call @llvm.ppc.vsx.stxvp(%[[vp]], %[[addr]]) fastmath<contract> : (!fir.vector<256:i1>, !fir.ref<!fir.array<?xi8>>) -> ()
+
+! CHECK: %[[vp:.*]] = load <256 x i1>, ptr %0, align 32
+! CHECK: %[[offset:.*]] = load i16, ptr %1, align 2
+! CHECK: %[[addr:.*]] = getelementptr i8, ptr %2, i16 %[[offset]]
+! CHECK: call void @llvm.ppc.vsx.stxvp(<256 x i1> %[[vp]], ptr %[[addr]])
+end subroutine test_vec_stxvp_u4
+
+! CHECK-LABEL: @test_vec_stxvp_r4_
+subroutine test_vec_stxvp_r4(vp, offset, v1)
+  integer(2) :: offset
+  vector(real(4)) :: v1
+  __vector_pair :: vp
+  call vec_stxvp(vp, offset, v1)
+
+! CHECK-FIR: %[[vp:.*]] = fir.load %arg0 : !fir.ref<!fir.vector<256:i1>>
+! CHECK-FIR: %[[offset:.*]] = fir.load %arg1 : !fir.ref<i16>
+! CHECK-FIR: %[[v1:.*]] = fir.convert %arg2 : (!fir.ref<!fir.vector<4:f32>>) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: %[[addr:.*]] = fir.coordinate_of %[[v1]], %[[offset]] : (!fir.ref<!fir.array<?xi8>>, i16) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: fir.call @llvm.ppc.vsx.stxvp(%[[vp]], %[[addr]]) fastmath<contract> : (!fir.vector<256:i1>, !fir.ref<!fir.array<?xi8>>) -> ()
+
+! CHECK: %[[vp:.*]] = load <256 x i1>, ptr %0, align 32
+! CHECK: %[[offset:.*]] = load i16, ptr %1, align 2
+! CHECK: %[[addr:.*]] = getelementptr i8, ptr %2, i16 %[[offset]]
+! CHECK: call void @llvm.ppc.vsx.stxvp(<256 x i1> %[[vp]], ptr %[[addr]])
+end subroutine test_vec_stxvp_r4
+
+! CHECK-LABEL: @test_vec_stxvp_r8_
+subroutine test_vec_stxvp_r8(vp, offset, v1)
+  integer(2) :: offset
+  vector(real(8)) :: v1
+  __vector_pair :: vp
+  call vec_stxvp(vp, offset, v1)
+
+! CHECK-FIR: %[[vp:.*]] = fir.load %arg0 : !fir.ref<!fir.vector<256:i1>>
+! CHECK-FIR: %[[offset:.*]] = fir.load %arg1 : !fir.ref<i16>
+! CHECK-FIR: %[[v1:.*]] = fir.convert %arg2 : (!fir.ref<!fir.vector<2:f64>>) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: %[[addr:.*]] = fir.coordinate_of %[[v1]], %[[offset]] : (!fir.ref<!fir.array<?xi8>>, i16) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: fir.call @llvm.ppc.vsx.stxvp(%[[vp]], %[[addr]]) fastmath<contract> : (!fir.vector<256:i1>, !fir.ref<!fir.array<?xi8>>) -> ()
+
+! CHECK: %[[vp:.*]] = load <256 x i1>, ptr %0, align 32
+! CHECK: %[[offset:.*]] = load i16, ptr %1, align 2
+! CHECK: %[[addr:.*]] = getelementptr i8, ptr %2, i16 %[[offset]]
+! CHECK: call void @llvm.ppc.vsx.stxvp(<256 x i1> %[[vp]], ptr %[[addr]])
+end subroutine test_vec_stxvp_r8
+
+! CHECK-LABEL: @test_vec_stxvp_vp_
+subroutine test_vec_stxvp_vp(vp, offset, v1)
+  implicit none
+  integer(2) :: offset
+  __vector_pair :: v1
+  __vector_pair :: vp
+  call vec_stxvp(vp, offset, v1)
+
+! CHECK-FIR: %[[vp:.*]] = fir.load %arg0 : !fir.ref<!fir.vector<256:i1>>
+! CHECK-FIR: %[[offset:.*]] = fir.load %arg1 : !fir.ref<i16>
+! CHECK-FIR: %[[v1:.*]] = fir.convert %arg2 : (!fir.ref<!fir.vector<256:i1>>) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: %[[addr:.*]] = fir.coordinate_of %[[v1]], %[[offset]] : (!fir.ref<!fir.array<?xi8>>, i16) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: fir.call @llvm.ppc.vsx.stxvp(%[[vp]], %[[addr]]) fastmath<contract> : (!fir.vector<256:i1>, !fir.ref<!fir.array<?xi8>>) -> ()
+
+! CHECK: %[[vp:.*]] = load <256 x i1>, ptr %0, align 32
+! CHECK: %[[offset:.*]] = load i16, ptr %1, align 2
+! CHECK: %[[addr:.*]] = getelementptr i8, ptr %2, i16 %[[offset]]
+! CHECK: call void @llvm.ppc.vsx.stxvp(<256 x i1> %[[vp]], ptr %[[addr]])
+end subroutine test_vec_stxvp_vp
+
+! CHECK-LABEL: @test_vec_stxvp_i2_arr_
+subroutine test_vec_stxvp_i2_arr(vp, offset, v1)
+  integer :: offset
+  vector(integer(2)) :: v1(10)
+  __vector_pair :: vp
+  call vec_stxvp(vp, offset, v1)
+
+! CHECK-FIR: %[[vp:.*]] = fir.load %arg0 : !fir.ref<!fir.vector<256:i1>>
+! CHECK-FIR: %[[offset:.*]] = fir.load %arg1 : !fir.ref<i32>
+! CHECK-FIR: %[[v1:.*]] = fir.convert %arg2 : (!fir.ref<!fir.array<10x!fir.vector<8:i16>>>) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: %[[addr:.*]] = fir.coordinate_of %[[v1]], %[[offset]] : (!fir.ref<!fir.array<?xi8>>, i32) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: fir.call @llvm.ppc.vsx.stxvp(%[[vp]], %[[addr]]) fastmath<contract> : (!fir.vector<256:i1>, !fir.ref<!fir.array<?xi8>>) -> ()
+
+! CHECK: %[[vp:.*]] = load <256 x i1>, ptr %0, align 32
+! CHECK: %[[offset:.*]] = load i32, ptr %1, align 4
+! CHECK: %[[addr:.*]] = getelementptr i8, ptr %2, i32 %[[offset]]
+! CHECK: call void @llvm.ppc.vsx.stxvp(<256 x i1> %[[vp]], ptr %[[addr]])
+end subroutine test_vec_stxvp_i2_arr
+
+! CHECK-LABEL: @test_vec_stxvp_i4_arr_
+subroutine test_vec_stxvp_i4_arr(vp, offset, v1)
+  integer :: offset
+  vector(integer(4)) :: v1(10)
+  __vector_pair :: vp
+  call vec_stxvp(vp, offset, v1)
+
+! CHECK-FIR: %[[vp:.*]] = fir.load %arg0 : !fir.ref<!fir.vector<256:i1>>
+! CHECK-FIR: %[[offset:.*]] = fir.load %arg1 : !fir.ref<i32>
+! CHECK-FIR: %[[v1:.*]] = fir.convert %arg2 : (!fir.ref<!fir.array<10x!fir.vector<4:i32>>>) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: %[[addr:.*]] = fir.coordinate_of %[[v1]], %[[offset]] : (!fir.ref<!fir.array<?xi8>>, i32) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: fir.call @llvm.ppc.vsx.stxvp(%[[vp]], %[[addr]]) fastmath<contract> : (!fir.vector<256:i1>, !fir.ref<!fir.array<?xi8>>) -> ()
+
+! CHECK: %[[vp:.*]] = load <256 x i1>, ptr %0, align 32
+! CHECK: %[[offset:.*]] = load i32, ptr %1, align 4
+! CHECK: %[[addr:.*]] = getelementptr i8, ptr %2, i32 %[[offset]]
+! CHECK: call void @llvm.ppc.vsx.stxvp(<256 x i1> %[[vp]], ptr %[[addr]])
+end subroutine test_vec_stxvp_i4_arr
+
+! CHECK-LABEL: @test_vec_stxvp_u2_arr_
+subroutine test_vec_stxvp_u2_arr(vp, offset, v1)
+  integer :: offset
+  vector(unsigned(2)) :: v1(11)
+  __vector_pair :: vp
+  call vec_stxvp(vp, offset, v1)
+
+! CHECK-FIR: %[[vp:.*]] = fir.load %arg0 : !fir.ref<!fir.vector<256:i1>>
+! CHECK-FIR: %[[offset:.*]] = fir.load %arg1 : !fir.ref<i32>
+! CHECK-FIR: %[[v1:.*]] = fir.convert %arg2 : (!fir.ref<!fir.array<11x!fir.vector<8:ui16>>>) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: %[[addr:.*]] = fir.coordinate_of %[[v1]], %[[offset]] : (!fir.ref<!fir.array<?xi8>>, i32) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: fir.call @llvm.ppc.vsx.stxvp(%[[vp]], %[[addr]]) fastmath<contract> : (!fir.vector<256:i1>, !fir.ref<!fir.array<?xi8>>) -> ()
+
+! CHECK: %[[vp:.*]] = load <256 x i1>, ptr %0, align 32
+! CHECK: %[[offset:.*]] = load i32, ptr %1, align 4
+! CHECK: %[[addr:.*]] = getelementptr i8, ptr %2, i32 %[[offset]]
+! CHECK: call void @llvm.ppc.vsx.stxvp(<256 x i1> %[[vp]], ptr %[[addr]])
+end subroutine test_vec_stxvp_u2_arr
+
+! CHECK-LABEL: @test_vec_stxvp_u4_arr_
+subroutine test_vec_stxvp_u4_arr(vp, offset, v1)
+  integer(8) :: offset
+  vector(unsigned(4)) :: v1(11,3)
+  __vector_pair :: vp
+  call vec_stxvp(vp, offset, v1)
+
+! CHECK-FIR: %[[vp:.*]] = fir.load %arg0 : !fir.ref<!fir.vector<256:i1>>
+! CHECK-FIR: %[[offset:.*]] = fir.load %arg1 : !fir.ref<i64>
+! CHECK-FIR: %[[v1:.*]] = fir.convert %arg2 : (!fir.ref<!fir.array<11x3x!fir.vector<4:ui32>>>) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: %[[addr:.*]] = fir.coordinate_of %[[v1]], %[[offset]] : (!fir.ref<!fir.array<?xi8>>, i64) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: fir.call @llvm.ppc.vsx.stxvp(%[[vp]], %[[addr]]) fastmath<contract> : (!fir.vector<256:i1>, !fir.ref<!fir.array<?xi8>>) -> ()
+
+! CHECK: %[[vp:.*]] = load <256 x i1>, ptr %0, align 32
+! CHECK: %[[offset:.*]] = load i64, ptr %1, align 8
+! CHECK: %[[addr:.*]] = getelementptr i8, ptr %2, i64 %[[offset]]
+! CHECK: call void @llvm.ppc.vsx.stxvp(<256 x i1> %[[vp]], ptr %[[addr]])
+end subroutine test_vec_stxvp_u4_arr
+
+! CHECK-LABEL: @test_vec_stxvp_r4_arr_
+subroutine test_vec_stxvp_r4_arr(vp, offset, v1)
+  implicit none
+  integer :: offset
+  vector(real(4)) :: v1(10)
+  __vector_pair :: vp
+  call vec_stxvp(vp, offset, v1)
+
+! CHECK-FIR: %[[vp:.*]] = fir.load %arg0 : !fir.ref<!fir.vector<256:i1>>
+! CHECK-FIR: %[[offset:.*]] = fir.load %arg1 : !fir.ref<i32>
+! CHECK-FIR: %[[v1:.*]] = fir.convert %arg2 : (!fir.ref<!fir.array<10x!fir.vector<4:f32>>>) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: %[[addr:.*]] = fir.coordinate_of %[[v1]], %[[offset]] : (!fir.ref<!fir.array<?xi8>>, i32) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: fir.call @llvm.ppc.vsx.stxvp(%[[vp]], %[[addr]]) fastmath<contract> : (!fir.vector<256:i1>, !fir.ref<!fir.array<?xi8>>) -> ()
+
+! CHECK: %[[vp:.*]] = load <256 x i1>, ptr %0, align 32
+! CHECK: %[[offset:.*]] = load i32, ptr %1, align 4
+! CHECK: %[[addr:.*]] = getelementptr i8, ptr %2, i32 %[[offset]]
+! CHECK: call void @llvm.ppc.vsx.stxvp(<256 x i1> %[[vp]], ptr %[[addr]])
+end subroutine test_vec_stxvp_r4_arr
+
+! CHECK-LABEL: @test_vec_stxvp_r8_arr_
+subroutine test_vec_stxvp_r8_arr(vp, offset, v1)
+  integer :: offset
+  vector(real(8)) :: v1(10)
+  __vector_pair :: vp
+  call vec_stxvp(vp, offset, v1)
+
+! CHECK-FIR: %[[vp:.*]] = fir.load %arg0 : !fir.ref<!fir.vector<256:i1>>
+! CHECK-FIR: %[[offset:.*]] = fir.load %arg1 : !fir.ref<i32>
+! CHECK-FIR: %[[v1:.*]] = fir.convert %arg2 : (!fir.ref<!fir.array<10x!fir.vector<2:f64>>>) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: %[[addr:.*]] = fir.coordinate_of %[[v1]], %[[offset]] : (!fir.ref<!fir.array<?xi8>>, i32) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: fir.call @llvm.ppc.vsx.stxvp(%[[vp]], %[[addr]]) fastmath<contract> : (!fir.vector<256:i1>, !fir.ref<!fir.array<?xi8>>) -> ()
+
+! CHECK: %[[vp:.*]] = load <256 x i1>, ptr %0, align 32
+! CHECK: %[[offset:.*]] = load i32, ptr %1, align 4
+! CHECK: %[[addr:.*]] = getelementptr i8, ptr %2, i32 %[[offset]]
+! CHECK: call void @llvm.ppc.vsx.stxvp(<256 x i1> %[[vp]], ptr %[[addr]])
+end subroutine test_vec_stxvp_r8_arr
+
+! CHECK-LABEL: @test_vec_stxvp_vp_arr_
+subroutine test_vec_stxvp_vp_arr(vp, offset, v1)
+  integer :: offset
+  __vector_pair :: v1(10)
+  __vector_pair :: vp
+  call vec_stxvp(vp, offset, v1)
+
+! CHECK-FIR: %[[vp:.*]] = fir.load %arg0 : !fir.ref<!fir.vector<256:i1>>
+! CHECK-FIR: %[[offset:.*]] = fir.load %arg1 : !fir.ref<i32>
+! CHECK-FIR: %[[v1:.*]] = fir.convert %arg2 : (!fir.ref<!fir.array<10x!fir.vector<256:i1>>>) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: %[[addr:.*]] = fir.coordinate_of %[[v1]], %[[offset]] : (!fir.ref<!fir.array<?xi8>>, i32) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: fir.call @llvm.ppc.vsx.stxvp(%[[vp]], %[[addr]]) fastmath<contract> : (!fir.vector<256:i1>, !fir.ref<!fir.array<?xi8>>) -> ()
+
+! CHECK: %[[vp:.*]] = load <256 x i1>, ptr %0, align 32
+! CHECK: %[[offset:.*]] = load i32, ptr %1, align 4
+! CHECK: %[[addr:.*]] = getelementptr i8, ptr %2, i32 %[[offset]]
+! CHECK: call void @llvm.ppc.vsx.stxvp(<256 x i1> %[[vp]], ptr %[[addr]])
+end subroutine test_vec_stxvp_vp_arr
+
+!----------------------
+! vsx_stxvp
+!----------------------
+
+! CHECK-LABEL: @test_vsx_stxvp_i2_
+subroutine test_vsx_stxvp_i2(vp, offset, v1)
+  integer(2) :: offset
+  vector(integer(2)) :: v1
+  __vector_pair :: vp
+  call vsx_stxvp(vp, offset, v1)
+
+! CHECK-FIR: %[[vp:.*]] = fir.load %arg0 : !fir.ref<!fir.vector<256:i1>>
+! CHECK-FIR: %[[offset:.*]] = fir.load %arg1 : !fir.ref<i16>
+! CHECK-FIR: %[[v1:.*]] = fir.convert %arg2 : (!fir.ref<!fir.vector<8:i16>>) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: %[[addr:.*]] = fir.coordinate_of %[[v1]], %[[offset]] : (!fir.ref<!fir.array<?xi8>>, i16) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: fir.call @llvm.ppc.vsx.stxvp(%[[vp]], %[[addr]]) fastmath<contract> : (!fir.vector<256:i1>, !fir.ref<!fir.array<?xi8>>) -> ()
+
+! CHECK: %[[vp:.*]] = load <256 x i1>, ptr %0, align 32
+! CHECK: %[[offset:.*]] = load i16, ptr %1, align 2
+! CHECK: %[[addr:.*]] = getelementptr i8, ptr %2, i16 %[[offset]]
+! CHECK: call void @llvm.ppc.vsx.stxvp(<256 x i1> %[[vp]], ptr %[[addr]])
+end subroutine test_vsx_stxvp_i2
+
+! CHECK-LABEL: @test_vsx_stxvp_r8_arr_
+subroutine test_vsx_stxvp_r8_arr(vp, offset, v1)
+  integer :: offset
+  vector(real(8)) :: v1(10)
+  __vector_pair :: vp
+  call vsx_stxvp(vp, offset, v1)
+
+! CHECK-FIR: %[[vp:.*]] = fir.load %arg0 : !fir.ref<!fir.vector<256:i1>>
+! CHECK-FIR: %[[offset:.*]] = fir.load %arg1 : !fir.ref<i32>
+! CHECK-FIR: %[[v1:.*]] = fir.convert %arg2 : (!fir.ref<!fir.array<10x!fir.vector<2:f64>>>) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: %[[addr:.*]] = fir.coordinate_of %[[v1]], %[[offset]] : (!fir.ref<!fir.array<?xi8>>, i32) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: fir.call @llvm.ppc.vsx.stxvp(%[[vp]], %[[addr]]) fastmath<contract> : (!fir.vector<256:i1>, !fir.ref<!fir.array<?xi8>>) -> ()
+
+! CHECK: %[[vp:.*]] = load <256 x i1>, ptr %0, align 32
+! CHECK: %[[offset:.*]] = load i32, ptr %1, align 4
+! CHECK: %[[addr:.*]] = getelementptr i8, ptr %2, i32 %[[offset]]
+! CHECK: call void @llvm.ppc.vsx.stxvp(<256 x i1> %[[vp]], ptr %[[addr]])
+end subroutine test_vsx_stxvp_r8_arr
+
+! CHECK-LABEL: @test_vsx_stxvp_vp_arr_
+subroutine test_vsx_stxvp_vp_arr(vp, offset, v1)
+  integer :: offset
+  __vector_pair :: v1(10)
+  __vector_pair :: vp
+  call vsx_stxvp(vp, offset, v1)
+
+! CHECK-FIR: %[[vp:.*]] = fir.load %arg0 : !fir.ref<!fir.vector<256:i1>>
+! CHECK-FIR: %[[offset:.*]] = fir.load %arg1 : !fir.ref<i32>
+! CHECK-FIR: %[[v1:.*]] = fir.convert %arg2 : (!fir.ref<!fir.array<10x!fir.vector<256:i1>>>) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: %[[addr:.*]] = fir.coordinate_of %[[v1]], %[[offset]] : (!fir.ref<!fir.array<?xi8>>, i32) -> !fir.ref<!fir.array<?xi8>>
+! CHECK-FIR: fir.call @llvm.ppc.vsx.stxvp(%[[vp]], %[[addr]]) fastmath<contract> : (!fir.vector<256:i1>, !fir.ref<!fir.array<?xi8>>) -> ()
+
+! CHECK: %[[vp:.*]] = load <256 x i1>, ptr %0, align 32
+! CHECK: %[[offset:.*]] = load i32, ptr %1, align 4
+! CHECK: %[[addr:.*]] = getelementptr i8, ptr %2, i32 %[[offset]]
+! CHECK: call void @llvm.ppc.vsx.stxvp(<256 x i1> %[[vp]], ptr %[[addr]])
+end subroutine test_vsx_stxvp_vp_arr
