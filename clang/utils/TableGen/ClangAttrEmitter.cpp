@@ -2297,6 +2297,22 @@ static bool isVariadicExprArgument(const Record *Arg) {
              .Default(false);
 }
 
+static bool isStringLiteralArgument(const Record *Arg) {
+  return !Arg->getSuperClasses().empty() &&
+         llvm::StringSwitch<bool>(
+             Arg->getSuperClasses().back().first->getName())
+             .Case("StringArgument", true)
+             .Default(false);
+}
+
+static bool isVariadicStringLiteralArgument(const Record *Arg) {
+  return !Arg->getSuperClasses().empty() &&
+         llvm::StringSwitch<bool>(
+             Arg->getSuperClasses().back().first->getName())
+             .Case("VariadicStringArgument", true)
+             .Default(false);
+}
+
 static void emitClangAttrVariadicIdentifierArgList(RecordKeeper &Records,
                                                    raw_ostream &OS) {
   OS << "#if defined(CLANG_ATTR_VARIADIC_IDENTIFIER_ARG_LIST)\n";
@@ -2315,6 +2331,34 @@ static void emitClangAttrVariadicIdentifierArgList(RecordKeeper &Records,
     });
   }
   OS << "#endif // CLANG_ATTR_VARIADIC_IDENTIFIER_ARG_LIST\n\n";
+}
+
+// Emits the list of arguments that should be parsed as unevaluated string
+// literals for each attributes
+static void emitClangAttrUnevaluatedStringLiteralList(RecordKeeper &Records,
+                                                      raw_ostream &OS) {
+  OS << "#if defined(CLANG_ATTR_STRING_LITERAL_ARG_LIST)\n";
+  std::vector<Record *> Attrs = Records.getAllDerivedDefinitions("Attr");
+  for (const auto *Attr : Attrs) {
+    std::vector<Record *> Args = Attr->getValueAsListOfDefs("Args");
+    uint32_t Bits = 0;
+    for (uint32_t N = 0; N < Args.size(); ++N) {
+      Bits |= (isStringLiteralArgument(Args[N]) << N);
+      // If we have a variadic string argument, set all the remaining bits to 1
+      if (isVariadicStringLiteralArgument(Args[N])) {
+        for (; N < sizeof(uint32_t) * CHAR_BIT; ++N)
+          Bits |= (1 << N);
+        break;
+      }
+    }
+    if (!Bits)
+      continue;
+    // All these spellings have at least one string literal has argument.
+    forEachUniqueSpelling(*Attr, [&](const FlattenedSpelling &S) {
+      OS << ".Case(\"" << S.name() << "\", " << Bits << ")\n";
+    });
+  }
+  OS << "#endif // CLANG_ATTR_STRING_LITERAL_ARG_LIST\n\n";
 }
 
 // Emits the first-argument-is-identifier property for attributes.
@@ -4611,6 +4655,7 @@ void EmitClangAttrParserStringSwitches(RecordKeeper &Records,
   emitSourceFileHeader("Parser-related llvm::StringSwitch cases", OS);
   emitClangAttrArgContextList(Records, OS);
   emitClangAttrIdentifierArgList(Records, OS);
+  emitClangAttrUnevaluatedStringLiteralList(Records, OS);
   emitClangAttrVariadicIdentifierArgList(Records, OS);
   emitClangAttrThisIsaIdentifierArgList(Records, OS);
   emitClangAttrAcceptsExprPack(Records, OS);
