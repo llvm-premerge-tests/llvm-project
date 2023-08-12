@@ -413,31 +413,38 @@ public:
     std::string FGUID;
     StringRef CanonName = FunctionSamples::getCanonicalFnName(F);
     CanonName = getRepInFormat(CanonName, useMD5(), FGUID);
-    auto It = Profiles.find(CanonName);
-    if (It != Profiles.end())
-      return &It->second;
+    for (SampleProfileMap *ProfileMap : {&Profiles, &OutlineFunctionSamples}) {
+      auto It = ProfileMap->find(CanonName);
+      if (It != ProfileMap->end())
+        return &It->second;
+    }
     if (!FGUID.empty()) {
       assert(useMD5() && "New name should only be generated for md5 profile");
       CanonName = *MD5NameBuffer.insert(FGUID).first;
     }
-    return &Profiles[CanonName];
+    return &OutlineFunctionSamples[CanonName];
   }
 
   /// Return the samples collected for function \p F.
   virtual FunctionSamples *getSamplesFor(StringRef Fname) {
     std::string FGUID;
     Fname = getRepInFormat(Fname, useMD5(), FGUID);
-    auto It = Profiles.find(Fname);
-    if (It != Profiles.end())
-      return &It->second;
+    for (SampleProfileMap *ProfileMap : {&Profiles, &OutlineFunctionSamples}) {
+      auto It = ProfileMap->find(Fname);
+      if (It != ProfileMap->end())
+        return &It->second;
+    }
 
     if (Remapper) {
       if (auto NameInProfile = Remapper->lookUpNameInProfile(Fname)) {
-        auto It = Profiles.find(*NameInProfile);
-        if (It != Profiles.end())
-          return &It->second;
+        for (SampleProfileMap *ProfileMap : {&Profiles, &OutlineFunctionSamples}) {
+          auto It = ProfileMap->find(*NameInProfile);
+          if (It != ProfileMap->end())
+            return &It->second;
+        }
       }
     }
+
     return nullptr;
   }
 
@@ -519,6 +526,11 @@ protected:
   /// in the structure FunctionSamples. This maps function objects
   /// to their corresponding profiles.
   SampleProfileMap Profiles;
+
+  /// Synthetic function samples created by SampleProfileLoader when inlined
+  /// callsites are duplicated as non-inlined callsites. They are added to here
+  /// instead of the original profiles to prevent potential rehashing.
+  SampleProfileMap OutlineFunctionSamples;
 
   /// LLVM context used to emit diagnostics.
   LLVMContext &Ctx;
