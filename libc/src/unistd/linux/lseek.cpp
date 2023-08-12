@@ -26,7 +26,7 @@ LLVM_LIBC_FUNCTION(off_t, lseek, (int fd, off_t offset, int whence)) {
 #elif defined(SYS_llseek)
   long ret = __llvm_libc::syscall_impl(SYS_llseek, fd,
                                        (long)(((uint64_t)(offset)) >> 32),
-                                       (long)offset, &result, whence);
+                                       (long)offset, (long)&result, whence);
   result = ret;
 #elif defined(SYS__llseek)
   int ret = __llvm_libc::syscall_impl<int>(SYS__llseek, fd, offset >> 32,
