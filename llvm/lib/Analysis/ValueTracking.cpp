@@ -1477,18 +1477,56 @@ static void computeKnownBitsFromOperator(const Operator *I,
               if (FalseSucc == P->getParent())
                 Pred = CmpInst::getInversePredicate(Pred);
 
+              APInt RHS = *RHSC;
               switch (Pred) {
               case CmpInst::Predicate::ICMP_EQ:
-                Known2 = KnownBits::makeConstant(*RHSC);
-                break;
-              case CmpInst::Predicate::ICMP_ULE:
-                Known2.Zero.setHighBits(RHSC->countl_zero());
+                Known2 = KnownBits::makeConstant(RHS);
                 break;
               case CmpInst::Predicate::ICMP_ULT:
-                Known2.Zero.setHighBits((*RHSC - 1).countl_zero());
+                RHS -= 1;
+                [[fallthrough]];
+              case CmpInst::Predicate::ICMP_ULE:
+                // X ule/ult Y implies highest set bit in X is leq highest set
+                // bit in Y.
+                Known2.Zero.setHighBits(RHS.countl_zero());
+                break;
+              case CmpInst::Predicate::ICMP_UGT:
+                RHS += 1;
+                [[fallthrough]];
+              case CmpInst::Predicate::ICMP_UGE:
+                // X uge/ugt Y implies any leading ones in Y must be set in X as
+                // well.
+                Known2.One.setHighBits(RHS.countl_one());
+                break;
+              case CmpInst::Predicate::ICMP_SGT:
+                // X sgt -1 -> X doesn't have signbit set
+                RHS += 1;
+                [[fallthrough]];
+              case CmpInst::Predicate::ICMP_SGE:
+                if (!RHS.isSignBitSet()) {
+                  // X sge/sgt C_Positive -> same as uge/ugt but start from
+                  // after the sign bit (and leave signbit unset).
+                  RHS.setSignBit();
+                  Known2.One.setHighBits(RHS.countl_one());
+                  Known2.One.clearSignBit();
+                  Known2.Zero.setSignBit();
+                }
+                break;
+              case CmpInst::Predicate::ICMP_SLT:
+                // X slt 0 -> X has signbit set
+                RHS -= 1;
+                [[fallthrough]];
+              case CmpInst::Predicate::ICMP_SLE:
+                if (RHS.isSignBitSet()) {
+                  // X sle/slt C_Negative -> same as ule/ult but start from
+                  // after the sign bit (and leave signbit unset).
+                  RHS.clearSignBit();
+                  Known2.Zero.setHighBits(RHS.countl_zero());
+                  Known2.Zero.clearSignBit();
+                  Known2.One.setSignBit();
+                }
                 break;
               default:
-                // TODO - add additional integer predicate handling.
                 break;
               }
             }
