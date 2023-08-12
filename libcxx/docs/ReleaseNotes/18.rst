@@ -38,6 +38,8 @@ What's New in Libc++ 18.0.0?
 
 Implemented Papers
 ------------------
+- P2093R14 Formatted output
+- P2539R4  Should the output of ``std::print`` to a terminal be synchronized with the underlying stream?
 
 
 Improvements and New Features
