@@ -43,9 +43,9 @@ STATISTIC(NumShufOfBitcast, "Number of shuffles moved after bitcast");
 STATISTIC(NumScalarBO, "Number of scalar binops formed");
 STATISTIC(NumScalarCmp, "Number of scalar compares formed");
 
-static cl::opt<bool> DisableVectorCombine(
-    "disable-vector-combine", cl::init(false), cl::Hidden,
-    cl::desc("Disable all vector combine transforms"));
+static cl::opt<bool>
+    DisableVectorCombine("disable-vector-combine", cl::init(false), cl::Hidden,
+                         cl::desc("Disable all vector combine transforms"));
 
 static cl::opt<bool> DisableBinopExtractShuffle(
     "disable-binop-extract-shuffle", cl::init(false), cl::Hidden,
@@ -890,8 +890,8 @@ bool VectorCombine::foldExtractedCmps(Instruction &I) {
   // The original scalar pattern is:
   // binop i1 (cmp Pred (ext X, Index0), C0), (cmp Pred (ext X, Index1), C1)
   CmpInst::Predicate Pred = P0;
-  unsigned CmpOpcode = CmpInst::isFPPredicate(Pred) ? Instruction::FCmp
-                                                    : Instruction::ICmp;
+  unsigned CmpOpcode =
+      CmpInst::isFPPredicate(Pred) ? Instruction::FCmp : Instruction::ICmp;
   auto *VecTy = dyn_cast<FixedVectorType>(X->getType());
   if (!VecTy)
     return false;
@@ -935,8 +935,8 @@ bool VectorCombine::foldExtractedCmps(Instruction &I) {
   Value *VCmp = Builder.CreateCmp(Pred, X, ConstantVector::get(CmpC));
 
   Value *Shuf = createShiftShuffle(VCmp, ExpensiveIndex, CheapIndex, Builder);
-  Value *VecLogic = Builder.CreateBinOp(cast<BinaryOperator>(I).getOpcode(),
-                                        VCmp, Shuf);
+  Value *VecLogic =
+      Builder.CreateBinOp(cast<BinaryOperator>(I).getOpcode(), VCmp, Shuf);
   Value *NewExt = Builder.CreateExtractElement(VecLogic, CheapIndex);
   replaceValue(I, *NewExt);
   ++NumVecCmpBO;
@@ -1013,19 +1013,36 @@ public:
 
 /// Check if it is legal to scalarize a memory access to \p VecTy at index \p
 /// Idx. \p Idx must access a valid vector element.
-static ScalarizationResult canScalarizeAccess(FixedVectorType *VecTy,
-                                              Value *Idx, Instruction *CtxI,
+static ScalarizationResult canScalarizeAccess(VectorType *VecTy, Value *Idx,
+                                              Instruction *CtxI,
                                               AssumptionCache &AC,
                                               const DominatorTree &DT) {
+  // This is the number of elements of fixed vector types,
+  // or the minium number of elements of scalable vector types.
+  uint64_t NumElements;
+
+  // We do checks for fixed vector types and scalable vector types in
+  // little endian.
+  if (isa<FixedVectorType>(VecTy)) {
+    auto FixedVecTy = cast<FixedVectorType>(VecTy);
+    NumElements = FixedVecTy->getNumElements();
+  } else {
+    const DataLayout &DL = CtxI->getModule()->getDataLayout();
+    if (DL.isBigEndian())
+      return ScalarizationResult::unsafe();
+    auto ScalableVecTy = cast<ScalableVectorType>(VecTy);
+    NumElements = ScalableVecTy->getMinNumElements();
+  }
+
   if (auto *C = dyn_cast<ConstantInt>(Idx)) {
-    if (C->getValue().ult(VecTy->getNumElements()))
+    if (C->getValue().ult(NumElements))
       return ScalarizationResult::safe();
     return ScalarizationResult::unsafe();
   }
 
   unsigned IntWidth = Idx->getType()->getScalarSizeInBits();
   APInt Zero(IntWidth, 0);
-  APInt MaxElts(IntWidth, VecTy->getNumElements());
+  APInt MaxElts(IntWidth, NumElements);
   ConstantRange ValidIndices(Zero, MaxElts);
   ConstantRange IdxRange(IntWidth, true);
 
@@ -1074,8 +1091,7 @@ static Align computeAlignmentAfterScalarization(Align VectorAlignment,
 //   store i32 %b, i32* %1
 bool VectorCombine::foldSingleElementStore(Instruction &I) {
   auto *SI = cast<StoreInst>(&I);
-  if (!SI->isSimple() ||
-      !isa<FixedVectorType>(SI->getValueOperand()->getType()))
+  if (!SI->isSimple() || !isa<VectorType>(SI->getValueOperand()->getType()))
     return false;
 
   // TODO: Combine more complicated patterns (multiple insert) by referencing
@@ -1089,7 +1105,7 @@ bool VectorCombine::foldSingleElementStore(Instruction &I) {
     return false;
 
   if (auto *Load = dyn_cast<LoadInst>(Source)) {
-    auto VecTy = cast<FixedVectorType>(SI->getValueOperand()->getType());
+    auto VecTy = cast<VectorType>(SI->getValueOperand()->getType());
     const DataLayout &DL = I.getModule()->getDataLayout();
     Value *SrcAddr = Load->getPointerOperand()->stripPointerCasts();
     // Don't optimize for atomic/volatile load or store. Ensure memory is not
@@ -1136,9 +1152,8 @@ bool VectorCombine::scalarizeLoadExtract(Instruction &I) {
   if (LI->isVolatile() || !DL.typeSizeEqualsStoreSize(FixedVT))
     return false;
 
-  InstructionCost OriginalCost =
-      TTI.getMemoryOpCost(Instruction::Load, FixedVT, LI->getAlign(),
-                          LI->getPointerAddressSpace());
+  InstructionCost OriginalCost = TTI.getMemoryOpCost(
+      Instruction::Load, FixedVT, LI->getAlign(), LI->getPointerAddressSpace());
   InstructionCost ScalarizedCost = 0;
 
   Instruction *LastCheckedInst = LI;
@@ -1738,7 +1753,6 @@ bool VectorCombine::run() {
 
     if (Opcode == Instruction::Store)
       MadeChange |= foldSingleElementStore(I);
-
 
     // If this is an early pipeline invocation of this pass, we are done.
     if (TryEarlyFoldsOnly)
