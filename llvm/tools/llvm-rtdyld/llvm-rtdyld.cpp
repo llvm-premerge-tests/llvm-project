@@ -37,7 +37,7 @@
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
-
+#include "llvm/TargetParser/TripleUtils.h"
 #include <future>
 #include <list>
 
@@ -728,7 +728,7 @@ static void remapSectionsAndSymbols(const llvm::Triple &TargetTriple,
   // If the -target-addr-end option wasn't explicitly passed, then set it to a
   // sensible default based on the target triple.
   if (TargetAddrEnd.getNumOccurrences() == 0) {
-    if (TargetTriple.isArch16Bit())
+    if (llvm::TripleUtils::isArch16Bit(TargetTriple))
       TargetAddrEnd = (1ULL << 16) - 1;
     else if (TargetTriple.isArch32Bit())
       TargetAddrEnd = (1ULL << 32) - 1;
