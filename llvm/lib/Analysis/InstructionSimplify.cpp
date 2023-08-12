@@ -3116,13 +3116,29 @@ static Value *simplifyICmpWithBinOpOnLHS(CmpInst::Predicate Pred,
     if (Pred == ICmpInst::ICMP_UGE)
       return getTrue(ITy);
 
-    if (Pred == ICmpInst::ICMP_SLT || Pred == ICmpInst::ICMP_SGE) {
+    if (Pred == ICmpInst::ICMP_SLT || Pred == ICmpInst::ICMP_SGE ||
+        Pred == ICmpInst::ICMP_ULE || Pred == ICmpInst::ICMP_UGT) {
       KnownBits RHSKnown = computeKnownBits(RHS, Q.DL, 0, Q.AC, Q.CxtI, Q.DT);
       KnownBits YKnown = computeKnownBits(Y, Q.DL, 0, Q.AC, Q.CxtI, Q.DT);
-      if (RHSKnown.isNonNegative() && YKnown.isNegative())
-        return Pred == ICmpInst::ICMP_SLT ? getTrue(ITy) : getFalse(ITy);
-      if (RHSKnown.isNegative() || YKnown.isNonNegative())
-        return Pred == ICmpInst::ICMP_SLT ? getFalse(ITy) : getTrue(ITy);
+
+      if (ICmpInst::isSigned(Pred)) {
+        if (RHSKnown.isNonNegative() && YKnown.isNegative())
+          return Pred == ICmpInst::ICMP_SLT ? getTrue(ITy) : getFalse(ITy);
+        if (RHSKnown.isNegative() || YKnown.isNonNegative())
+          return Pred == ICmpInst::ICMP_SLT ? getFalse(ITy) : getTrue(ITy);
+
+      }
+      // Check if there are any bits in Y set that are not set in RHS.
+      // If this is the case the `(or X, Y)` cannot equal `X`. For ULE/UGT, the
+      // only case the equality is true/false is equality, so we can constant
+      // fold those cases.
+      // NB: Y.One & RHS.Zero is equivilent of ~Y & RHS != 0.
+      else if ((YKnown.One & RHSKnown.Zero) != 0) {
+        // We could also do EQ/NE here, but seems unnecessary as they are
+        // handled elsewhere so no reason to spend the extra time on
+        // computeKnownBits.
+        return ICmpInst::isTrueWhenEqual(Pred) ? getFalse(ITy) : getTrue(ITy);
+      }
     }
   }
 
