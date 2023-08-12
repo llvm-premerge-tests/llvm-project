@@ -555,10 +555,9 @@ define i8 @shl_add_and_fail_mismatch_shift(i8 %x, i8 %y) {
 define i8 @and_ashr_not(i8 %x, i8 %y) {
 ; CHECK-LABEL: @and_ashr_not(
 ; CHECK-NEXT:    [[MUL:%.*]] = mul i8 [[X:%.*]], [[X]]
-; CHECK-NEXT:    [[SHR:%.*]] = ashr i8 [[MUL]], [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr i8 [[X]], [[Y]]
-; CHECK-NEXT:    [[SHR1:%.*]] = xor i8 [[NOT_NOT]], -1
-; CHECK-NEXT:    [[AND:%.*]] = and i8 [[SHR]], [[SHR1]]
+; CHECK-NEXT:    [[TMP1:%.*]] = xor i8 [[X]], -1
+; CHECK-NEXT:    [[TMP2:%.*]] = and i8 [[MUL]], [[TMP1]]
+; CHECK-NEXT:    [[AND:%.*]] = ashr i8 [[TMP2]], [[Y:%.*]]
 ; CHECK-NEXT:    ret i8 [[AND]]
 ;
   %mul = mul i8 %x, %x
@@ -572,10 +571,9 @@ define i8 @and_ashr_not(i8 %x, i8 %y) {
 define i8 @and_ashr_not_commuted(i8 %x, i8 %y) {
 ; CHECK-LABEL: @and_ashr_not_commuted(
 ; CHECK-NEXT:    [[MUL:%.*]] = mul i8 [[X:%.*]], [[X]]
-; CHECK-NEXT:    [[SHR:%.*]] = ashr i8 [[MUL]], [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr i8 [[X]], [[Y]]
-; CHECK-NEXT:    [[SHR1:%.*]] = xor i8 [[NOT_NOT]], -1
-; CHECK-NEXT:    [[AND:%.*]] = and i8 [[SHR]], [[SHR1]]
+; CHECK-NEXT:    [[TMP1:%.*]] = xor i8 [[X]], -1
+; CHECK-NEXT:    [[TMP2:%.*]] = and i8 [[MUL]], [[TMP1]]
+; CHECK-NEXT:    [[AND:%.*]] = ashr i8 [[TMP2]], [[Y:%.*]]
 ; CHECK-NEXT:    ret i8 [[AND]]
 ;
   %mul = mul i8 %x, %x
@@ -623,10 +621,9 @@ define i8 @and_ashr_not_fail_2(i8 %x, i8 %y) {
 define <4 x i8> @and_ashr_not_vec(<4 x i8> %x, <4 x i8> %y) {
 ; CHECK-LABEL: @and_ashr_not_vec(
 ; CHECK-NEXT:    [[MUL:%.*]] = mul <4 x i8> [[X:%.*]], [[X]]
-; CHECK-NEXT:    [[SHR:%.*]] = ashr <4 x i8> [[MUL]], [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr <4 x i8> [[X]], [[Y]]
-; CHECK-NEXT:    [[SHR1:%.*]] = xor <4 x i8> [[NOT_NOT]], <i8 -1, i8 -1, i8 -1, i8 -1>
-; CHECK-NEXT:    [[AND:%.*]] = and <4 x i8> [[SHR]], [[SHR1]]
+; CHECK-NEXT:    [[TMP1:%.*]] = xor <4 x i8> [[X]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    [[TMP2:%.*]] = and <4 x i8> [[MUL]], [[TMP1]]
+; CHECK-NEXT:    [[AND:%.*]] = ashr <4 x i8> [[TMP2]], [[Y:%.*]]
 ; CHECK-NEXT:    ret <4 x i8> [[AND]]
 ;
   %mul = mul <4 x i8> %x, %x
@@ -640,10 +637,9 @@ define <4 x i8> @and_ashr_not_vec(<4 x i8> %x, <4 x i8> %y) {
 define <4 x i8> @and_ashr_not_vec_commuted(<4 x i8> %x, <4 x i8> %y) {
 ; CHECK-LABEL: @and_ashr_not_vec_commuted(
 ; CHECK-NEXT:    [[MUL:%.*]] = mul <4 x i8> [[X:%.*]], [[X]]
-; CHECK-NEXT:    [[SHR:%.*]] = ashr <4 x i8> [[MUL]], [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr <4 x i8> [[X]], [[Y]]
-; CHECK-NEXT:    [[SHR1:%.*]] = xor <4 x i8> [[NOT_NOT]], <i8 -1, i8 -1, i8 -1, i8 -1>
-; CHECK-NEXT:    [[AND:%.*]] = and <4 x i8> [[SHR]], [[SHR1]]
+; CHECK-NEXT:    [[TMP1:%.*]] = xor <4 x i8> [[X]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    [[TMP2:%.*]] = and <4 x i8> [[MUL]], [[TMP1]]
+; CHECK-NEXT:    [[AND:%.*]] = ashr <4 x i8> [[TMP2]], [[Y:%.*]]
 ; CHECK-NEXT:    ret <4 x i8> [[AND]]
 ;
   %mul = mul <4 x i8> %x, %x
@@ -657,10 +653,9 @@ define <4 x i8> @and_ashr_not_vec_commuted(<4 x i8> %x, <4 x i8> %y) {
 define <4 x i8> @and_ashr_not_vec_undef_1(<4 x i8> %x, <4 x i8> %y) {
 ; CHECK-LABEL: @and_ashr_not_vec_undef_1(
 ; CHECK-NEXT:    [[MUL:%.*]] = mul <4 x i8> [[X:%.*]], [[X]]
-; CHECK-NEXT:    [[SHR:%.*]] = ashr <4 x i8> [[MUL]], [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr <4 x i8> [[X]], [[Y]]
-; CHECK-NEXT:    [[SHR1:%.*]] = xor <4 x i8> [[NOT_NOT]], <i8 -1, i8 -1, i8 -1, i8 -1>
-; CHECK-NEXT:    [[AND:%.*]] = and <4 x i8> [[SHR]], [[SHR1]]
+; CHECK-NEXT:    [[TMP1:%.*]] = xor <4 x i8> [[X]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    [[TMP2:%.*]] = and <4 x i8> [[MUL]], [[TMP1]]
+; CHECK-NEXT:    [[AND:%.*]] = ashr <4 x i8> [[TMP2]], [[Y:%.*]]
 ; CHECK-NEXT:    ret <4 x i8> [[AND]]
 ;
   %mul = mul <4 x i8> %x, %x
@@ -688,10 +683,9 @@ define <4 x i8> @and_ashr_not_vec_undef_2(<4 x i8> %x, <4 x i8> %y) {
 define i8 @or_ashr_not(i8 %x, i8 %y) {
 ; CHECK-LABEL: @or_ashr_not(
 ; CHECK-NEXT:    [[MUL:%.*]] = mul i8 [[X:%.*]], [[X]]
-; CHECK-NEXT:    [[SHR:%.*]] = ashr i8 [[MUL]], [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr i8 [[X]], [[Y]]
-; CHECK-NEXT:    [[SHR1:%.*]] = xor i8 [[NOT_NOT]], -1
-; CHECK-NEXT:    [[OR:%.*]] = or i8 [[SHR]], [[SHR1]]
+; CHECK-NEXT:    [[TMP1:%.*]] = xor i8 [[X]], -1
+; CHECK-NEXT:    [[TMP2:%.*]] = or i8 [[MUL]], [[TMP1]]
+; CHECK-NEXT:    [[OR:%.*]] = ashr i8 [[TMP2]], [[Y:%.*]]
 ; CHECK-NEXT:    ret i8 [[OR]]
 ;
   %mul = mul i8 %x, %x
@@ -705,10 +699,9 @@ define i8 @or_ashr_not(i8 %x, i8 %y) {
 define i8 @or_ashr_not_commuted(i8 %x, i8 %y) {
 ; CHECK-LABEL: @or_ashr_not_commuted(
 ; CHECK-NEXT:    [[MUL:%.*]] = mul i8 [[X:%.*]], [[X]]
-; CHECK-NEXT:    [[SHR:%.*]] = ashr i8 [[MUL]], [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr i8 [[X]], [[Y]]
-; CHECK-NEXT:    [[SHR1:%.*]] = xor i8 [[NOT_NOT]], -1
-; CHECK-NEXT:    [[OR:%.*]] = or i8 [[SHR]], [[SHR1]]
+; CHECK-NEXT:    [[TMP1:%.*]] = xor i8 [[X]], -1
+; CHECK-NEXT:    [[TMP2:%.*]] = or i8 [[MUL]], [[TMP1]]
+; CHECK-NEXT:    [[OR:%.*]] = ashr i8 [[TMP2]], [[Y:%.*]]
 ; CHECK-NEXT:    ret i8 [[OR]]
 ;
   %mul = mul i8 %x, %x
@@ -756,10 +749,9 @@ define i8 @or_ashr_not_fail_2(i8 %x, i8 %y) {
 define <4 x i8> @or_ashr_not_vec(<4 x i8> %x, <4 x i8> %y) {
 ; CHECK-LABEL: @or_ashr_not_vec(
 ; CHECK-NEXT:    [[MUL:%.*]] = mul <4 x i8> [[X:%.*]], [[X]]
-; CHECK-NEXT:    [[SHR:%.*]] = ashr <4 x i8> [[MUL]], [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr <4 x i8> [[X]], [[Y]]
-; CHECK-NEXT:    [[SHR1:%.*]] = xor <4 x i8> [[NOT_NOT]], <i8 -1, i8 -1, i8 -1, i8 -1>
-; CHECK-NEXT:    [[OR:%.*]] = or <4 x i8> [[SHR]], [[SHR1]]
+; CHECK-NEXT:    [[TMP1:%.*]] = xor <4 x i8> [[X]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    [[TMP2:%.*]] = or <4 x i8> [[MUL]], [[TMP1]]
+; CHECK-NEXT:    [[OR:%.*]] = ashr <4 x i8> [[TMP2]], [[Y:%.*]]
 ; CHECK-NEXT:    ret <4 x i8> [[OR]]
 ;
   %mul = mul <4 x i8> %x, %x
@@ -773,10 +765,9 @@ define <4 x i8> @or_ashr_not_vec(<4 x i8> %x, <4 x i8> %y) {
 define <4 x i8> @or_ashr_not_vec_commuted(<4 x i8> %x, <4 x i8> %y) {
 ; CHECK-LABEL: @or_ashr_not_vec_commuted(
 ; CHECK-NEXT:    [[MUL:%.*]] = mul <4 x i8> [[X:%.*]], [[X]]
-; CHECK-NEXT:    [[SHR:%.*]] = ashr <4 x i8> [[MUL]], [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr <4 x i8> [[X]], [[Y]]
-; CHECK-NEXT:    [[SHR1:%.*]] = xor <4 x i8> [[NOT_NOT]], <i8 -1, i8 -1, i8 -1, i8 -1>
-; CHECK-NEXT:    [[OR:%.*]] = or <4 x i8> [[SHR]], [[SHR1]]
+; CHECK-NEXT:    [[TMP1:%.*]] = xor <4 x i8> [[X]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    [[TMP2:%.*]] = or <4 x i8> [[MUL]], [[TMP1]]
+; CHECK-NEXT:    [[OR:%.*]] = ashr <4 x i8> [[TMP2]], [[Y:%.*]]
 ; CHECK-NEXT:    ret <4 x i8> [[OR]]
 ;
   %mul = mul <4 x i8> %x, %x
@@ -790,10 +781,9 @@ define <4 x i8> @or_ashr_not_vec_commuted(<4 x i8> %x, <4 x i8> %y) {
 define <4 x i8> @or_ashr_not_vec_undef_1(<4 x i8> %x, <4 x i8> %y) {
 ; CHECK-LABEL: @or_ashr_not_vec_undef_1(
 ; CHECK-NEXT:    [[MUL:%.*]] = mul <4 x i8> [[X:%.*]], [[X]]
-; CHECK-NEXT:    [[SHR:%.*]] = ashr <4 x i8> [[MUL]], [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr <4 x i8> [[X]], [[Y]]
-; CHECK-NEXT:    [[SHR1:%.*]] = xor <4 x i8> [[NOT_NOT]], <i8 -1, i8 -1, i8 -1, i8 -1>
-; CHECK-NEXT:    [[OR:%.*]] = or <4 x i8> [[SHR]], [[SHR1]]
+; CHECK-NEXT:    [[TMP1:%.*]] = xor <4 x i8> [[X]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    [[TMP2:%.*]] = or <4 x i8> [[MUL]], [[TMP1]]
+; CHECK-NEXT:    [[OR:%.*]] = ashr <4 x i8> [[TMP2]], [[Y:%.*]]
 ; CHECK-NEXT:    ret <4 x i8> [[OR]]
 ;
   %mul = mul <4 x i8> %x, %x
@@ -823,9 +813,9 @@ define <4 x i8> @or_ashr_not_vec_undef_2(<4 x i8> %x, <4 x i8> %y) {
 define i8 @xor_ashr_not(i8 %x, i8 %y) {
 ; CHECK-LABEL: @xor_ashr_not(
 ; CHECK-NEXT:    [[MUL:%.*]] = mul i8 [[X:%.*]], [[X]]
-; CHECK-NEXT:    [[NOT_NOT1:%.*]] = xor i8 [[MUL]], [[X]]
-; CHECK-NEXT:    [[TMP1:%.*]] = ashr i8 [[NOT_NOT1]], [[Y:%.*]]
-; CHECK-NEXT:    [[XOR:%.*]] = xor i8 [[TMP1]], -1
+; CHECK-NEXT:    [[TMP1:%.*]] = xor i8 [[MUL]], [[X]]
+; CHECK-NEXT:    [[DOTNOT:%.*]] = ashr i8 [[TMP1]], [[Y:%.*]]
+; CHECK-NEXT:    [[XOR:%.*]] = xor i8 [[DOTNOT]], -1
 ; CHECK-NEXT:    ret i8 [[XOR]]
 ;
   %mul = mul i8 %x, %x
@@ -839,9 +829,9 @@ define i8 @xor_ashr_not(i8 %x, i8 %y) {
 define i8 @xor_ashr_not_commuted(i8 %x, i8 %y) {
 ; CHECK-LABEL: @xor_ashr_not_commuted(
 ; CHECK-NEXT:    [[MUL:%.*]] = mul i8 [[X:%.*]], [[X]]
-; CHECK-NEXT:    [[NOT_NOT1:%.*]] = xor i8 [[MUL]], [[X]]
-; CHECK-NEXT:    [[TMP1:%.*]] = ashr i8 [[NOT_NOT1]], [[Y:%.*]]
-; CHECK-NEXT:    [[XOR:%.*]] = xor i8 [[TMP1]], -1
+; CHECK-NEXT:    [[TMP1:%.*]] = xor i8 [[MUL]], [[X]]
+; CHECK-NEXT:    [[DOTNOT:%.*]] = ashr i8 [[TMP1]], [[Y:%.*]]
+; CHECK-NEXT:    [[XOR:%.*]] = xor i8 [[DOTNOT]], -1
 ; CHECK-NEXT:    ret i8 [[XOR]]
 ;
   %mul = mul i8 %x, %x
@@ -889,9 +879,9 @@ define i8 @xor_ashr_not_fail_2(i8 %x, i8 %y) {
 define <4 x i8> @xor_ashr_not_vec(<4 x i8> %x, <4 x i8> %y) {
 ; CHECK-LABEL: @xor_ashr_not_vec(
 ; CHECK-NEXT:    [[MUL:%.*]] = mul <4 x i8> [[X:%.*]], [[X]]
-; CHECK-NEXT:    [[NOT_NOT1:%.*]] = xor <4 x i8> [[MUL]], [[X]]
-; CHECK-NEXT:    [[TMP1:%.*]] = ashr <4 x i8> [[NOT_NOT1]], [[Y:%.*]]
-; CHECK-NEXT:    [[XOR:%.*]] = xor <4 x i8> [[TMP1]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    [[TMP1:%.*]] = xor <4 x i8> [[MUL]], [[X]]
+; CHECK-NEXT:    [[DOTNOT:%.*]] = ashr <4 x i8> [[TMP1]], [[Y:%.*]]
+; CHECK-NEXT:    [[XOR:%.*]] = xor <4 x i8> [[DOTNOT]], <i8 -1, i8 -1, i8 -1, i8 -1>
 ; CHECK-NEXT:    ret <4 x i8> [[XOR]]
 ;
   %mul = mul <4 x i8> %x, %x
@@ -905,9 +895,9 @@ define <4 x i8> @xor_ashr_not_vec(<4 x i8> %x, <4 x i8> %y) {
 define <4 x i8> @xor_ashr_not_vec_commuted(<4 x i8> %x, <4 x i8> %y) {
 ; CHECK-LABEL: @xor_ashr_not_vec_commuted(
 ; CHECK-NEXT:    [[MUL:%.*]] = mul <4 x i8> [[X:%.*]], [[X]]
-; CHECK-NEXT:    [[NOT_NOT1:%.*]] = xor <4 x i8> [[MUL]], [[X]]
-; CHECK-NEXT:    [[TMP1:%.*]] = ashr <4 x i8> [[NOT_NOT1]], [[Y:%.*]]
-; CHECK-NEXT:    [[XOR:%.*]] = xor <4 x i8> [[TMP1]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    [[TMP1:%.*]] = xor <4 x i8> [[MUL]], [[X]]
+; CHECK-NEXT:    [[DOTNOT:%.*]] = ashr <4 x i8> [[TMP1]], [[Y:%.*]]
+; CHECK-NEXT:    [[XOR:%.*]] = xor <4 x i8> [[DOTNOT]], <i8 -1, i8 -1, i8 -1, i8 -1>
 ; CHECK-NEXT:    ret <4 x i8> [[XOR]]
 ;
   %mul = mul <4 x i8> %x, %x
@@ -921,9 +911,9 @@ define <4 x i8> @xor_ashr_not_vec_commuted(<4 x i8> %x, <4 x i8> %y) {
 define <4 x i8> @xor_ashr_not_vec_undef_1(<4 x i8> %x, <4 x i8> %y) {
 ; CHECK-LABEL: @xor_ashr_not_vec_undef_1(
 ; CHECK-NEXT:    [[MUL:%.*]] = mul <4 x i8> [[X:%.*]], [[X]]
-; CHECK-NEXT:    [[NOT_NOT1:%.*]] = xor <4 x i8> [[MUL]], [[X]]
-; CHECK-NEXT:    [[TMP1:%.*]] = ashr <4 x i8> [[NOT_NOT1]], [[Y:%.*]]
-; CHECK-NEXT:    [[XOR:%.*]] = xor <4 x i8> [[TMP1]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    [[TMP1:%.*]] = xor <4 x i8> [[MUL]], [[X]]
+; CHECK-NEXT:    [[DOTNOT:%.*]] = ashr <4 x i8> [[TMP1]], [[Y:%.*]]
+; CHECK-NEXT:    [[XOR:%.*]] = xor <4 x i8> [[DOTNOT]], <i8 -1, i8 -1, i8 -1, i8 -1>
 ; CHECK-NEXT:    ret <4 x i8> [[XOR]]
 ;
   %mul = mul <4 x i8> %x, %x
