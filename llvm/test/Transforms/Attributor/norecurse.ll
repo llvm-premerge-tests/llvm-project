@@ -62,7 +62,7 @@ define i32 @extern() {
 }
 
 ; CHECK: Function Attrs
-; CHECK-NEXT: declare i32 @k()
+; CHECK-NEXT: declare i32 @k() #[[ATTR3:[0-9]+]]
 declare i32 @k() readnone
 
 define void @intrinsic(ptr %dest, ptr %src, i32 %len) {
@@ -76,8 +76,8 @@ define void @intrinsic(ptr %dest, ptr %src, i32 %len) {
   ret void
 }
 
-; CHECK: Function Attrs
-; CHECK-NEXT: declare void @llvm.memcpy.p0.p0.i32
+; CHECK: Function Attrs:
+; CHECK-NEXT: declare void @llvm.memcpy.p0.p0.i32({{[^)]*}}) #[[ATTRCPY:[0-9]+]]
 declare void @llvm.memcpy.p0.p0.i32(ptr, ptr, i32, i1)
 
 define internal i32 @called_by_norecurse() {
@@ -307,15 +307,15 @@ f:
 }
 
 ;.
-; CHECK: attributes #[[ATTR0]] = { mustprogress nofree norecurse nosync nounwind willreturn memory(none) }
-; CHECK: attributes #[[ATTR1]] = { mustprogress nofree nosync nounwind willreturn memory(none) }
-; CHECK: attributes #[[ATTR2]] = { nosync memory(none) }
-; CHECK: attributes #[[ATTR3:[0-9]+]] = { memory(none) }
-; CHECK: attributes #[[ATTR4]] = { mustprogress nofree norecurse nosync nounwind willreturn memory(argmem: readwrite) }
-; CHECK: attributes #[[ATTR5:[0-9]+]] = { nocallback nofree nounwind willreturn memory(argmem: readwrite) }
-; CHECK: attributes #[[ATTR6]] = { norecurse nosync memory(none) }
-; CHECK: attributes #[[ATTR7]] = { null_pointer_is_valid }
-; CHECK: attributes #[[ATTR8:[0-9]+]] = { norecurse }
-; CHECK: attributes #[[ATTR9]] = { nosync }
-; CHECK: attributes #[[ATTR10]] = { nofree willreturn }
+; CHECK-DAG: attributes #[[ATTR0]] = { mustprogress nofree norecurse nosync nounwind willreturn memory(none) }
+; CHECK-DAG: attributes #[[ATTR1]] = { mustprogress nofree nosync nounwind willreturn memory(none) }
+; CHECK-DAG: attributes #[[ATTR2]] = { nosync memory(none) }
+; CHECK-DAG: attributes #[[ATTR3]] = { memory(none) }
+; CHECK-DAG: attributes #[[ATTR4]] = { mustprogress nofree norecurse nosync nounwind willreturn memory(argmem: readwrite) }
+; CHECK-DAG: attributes #[[ATTRCPY]] = { nocallback nofree nounwind willreturn memory(argmem: readwrite) }
+; CHECK-DAG: attributes #[[ATTR6]] = { norecurse nosync memory(none) }
+; CHECK-DAG: attributes #[[ATTR7]] = { null_pointer_is_valid }
+; CHECK-DAG: attributes #[[ATTR8:[0-9]+]] = { norecurse }
+; CHECK-DAG: attributes #[[ATTR9]] = { nosync }
+; CHECK-DAG: attributes #[[ATTR10]] = { nofree willreturn }
 ;.

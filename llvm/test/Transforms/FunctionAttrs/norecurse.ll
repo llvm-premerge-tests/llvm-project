@@ -80,6 +80,7 @@ define i32 @extern() {
   ret i32 %a
 }
 
+; COMMON: declare i32 @k() #[[ATTR3:[0-9]+]]
 declare i32 @k() readnone
 
 define void @intrinsic(ptr %dest, ptr %src, i32 %len) {
@@ -99,6 +100,7 @@ define void @intrinsic(ptr %dest, ptr %src, i32 %len) {
   ret void
 }
 
+; COMMON: declare void @llvm.memcpy{{.*}}) #[[ATTRCPY:[0-9]+]]
 declare void @llvm.memcpy.p0.p0.i32(ptr, ptr, i32, i1)
 
 define internal i32 @called_by_norecurse() {
@@ -237,20 +239,19 @@ define void @r() norecurse {
   ret void
 }
 ;.
-; FNATTRS: attributes #[[ATTR0]] = { mustprogress nofree norecurse nosync nounwind willreturn memory(none) }
-; FNATTRS: attributes #[[ATTR1]] = { nofree nosync nounwind memory(none) }
-; FNATTRS: attributes #[[ATTR2]] = { nofree nosync memory(none) }
-; FNATTRS: attributes #[[ATTR3:[0-9]+]] = { memory(none) }
-; FNATTRS: attributes #[[ATTR4]] = { mustprogress nofree nosync nounwind willreturn memory(argmem: readwrite) }
-; FNATTRS: attributes #[[ATTR5:[0-9]+]] = { nocallback nofree nounwind willreturn memory(argmem: readwrite) }
-; FNATTRS: attributes #[[ATTR6]] = { nofree norecurse nosync memory(none) }
+; COMMON-DAG: attributes #[[ATTRCPY]] = { nocallback nofree nounwind willreturn memory(argmem: readwrite) }
+; FNATTRS-DAG: attributes #[[ATTR0]] = { mustprogress nofree norecurse nosync nounwind willreturn memory(none) }
+; FNATTRS-DAG: attributes #[[ATTR1]] = { nofree nosync nounwind memory(none) }
+; FNATTRS-DAG: attributes #[[ATTR2]] = { nofree nosync memory(none) }
+; FNATTRS-DAG: attributes #[[ATTR3]] = { memory(none) }
+; FNATTRS-DAG: attributes #[[ATTR4]] = { mustprogress nofree nosync nounwind willreturn memory(argmem: readwrite) }
+; FNATTRS-DAG: attributes #[[ATTR6]] = { nofree norecurse nosync memory(none) }
 ;.
-; ATTRIBUTOR: attributes #[[ATTR0]] = { mustprogress nofree norecurse nosync nounwind willreturn memory(none) }
-; ATTRIBUTOR: attributes #[[ATTR1]] = { nofree nosync nounwind memory(none) }
-; ATTRIBUTOR: attributes #[[ATTR2]] = { nosync memory(none) }
-; ATTRIBUTOR: attributes #[[ATTR3:[0-9]+]] = { memory(none) }
-; ATTRIBUTOR: attributes #[[ATTR4]] = { mustprogress nofree norecurse nosync nounwind willreturn memory(argmem: readwrite) }
-; ATTRIBUTOR: attributes #[[ATTR5:[0-9]+]] = { nocallback nofree nounwind willreturn memory(argmem: readwrite) }
-; ATTRIBUTOR: attributes #[[ATTR6]] = { norecurse nosync memory(none) }
-; ATTRIBUTOR: attributes #[[ATTR7]] = { nofree willreturn }
+; ATTRIBUTOR-DAG: attributes #[[ATTR0]] = { mustprogress nofree norecurse nosync nounwind willreturn memory(none) }
+; ATTRIBUTOR-DAG: attributes #[[ATTR1]] = { nofree nosync nounwind memory(none) }
+; ATTRIBUTOR-DAG: attributes #[[ATTR2]] = { nosync memory(none) }
+; ATTRIBUTOR-DAG: attributes #[[ATTR3]] = { memory(none) }
+; ATTRIBUTOR-DAG: attributes #[[ATTR4]] = { mustprogress nofree norecurse nosync nounwind willreturn memory(argmem: readwrite) }
+; ATTRIBUTOR-DAG: attributes #[[ATTR6]] = { norecurse nosync memory(none) }
+; ATTRIBUTOR-DAG: attributes #[[ATTR7]] = { nofree willreturn }
 ;.
