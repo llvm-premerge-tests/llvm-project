@@ -549,3 +549,401 @@ define i8 @shl_add_and_fail_mismatch_shift(i8 %x, i8 %y) {
   %bw1 = and i8 %shift1, %bw2
   ret i8 %bw1
 }
+
+; Fold (-x >> y) & ((x >> y) ^ -1) -> (-x & ~x) >> y
+
+define i8 @and_ashr_not(i8 %x, i8 %y) {
+; CHECK-LABEL: @and_ashr_not(
+; CHECK-NEXT:    [[MUL:%.*]] = mul i8 [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[SHR:%.*]] = ashr i8 [[MUL]], [[Y:%.*]]
+; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr i8 [[X]], [[Y]]
+; CHECK-NEXT:    [[SHR1:%.*]] = xor i8 [[NOT_NOT]], -1
+; CHECK-NEXT:    [[AND:%.*]] = and i8 [[SHR]], [[SHR1]]
+; CHECK-NEXT:    ret i8 [[AND]]
+;
+  %mul = mul i8 %x, %x
+  %shr = ashr i8 %mul, %y
+  %not = xor i8 %x, -1
+  %shr1 = ashr i8 %not, %y
+  %and = and i8 %shr, %shr1
+  ret i8 %and
+}
+
+define i8 @and_ashr_not_commuted(i8 %x, i8 %y) {
+; CHECK-LABEL: @and_ashr_not_commuted(
+; CHECK-NEXT:    [[MUL:%.*]] = mul i8 [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[SHR:%.*]] = ashr i8 [[MUL]], [[Y:%.*]]
+; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr i8 [[X]], [[Y]]
+; CHECK-NEXT:    [[SHR1:%.*]] = xor i8 [[NOT_NOT]], -1
+; CHECK-NEXT:    [[AND:%.*]] = and i8 [[SHR]], [[SHR1]]
+; CHECK-NEXT:    ret i8 [[AND]]
+;
+  %mul = mul i8 %x, %x
+  %shr = ashr i8 %mul, %y
+  %not = xor i8 %x, -1
+  %shr1 = ashr i8 %not, %y
+  %and = and i8 %shr1, %shr
+  ret i8 %and
+}
+
+define i8 @and_ashr_not_fail_1(i8 %x, i8 %y) {
+; CHECK-LABEL: @and_ashr_not_fail_1(
+; CHECK-NEXT:    [[MUL:%.*]] = mul i8 [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[SHR:%.*]] = ashr i8 [[MUL]], [[Y:%.*]]
+; CHECK-NEXT:    [[NOT:%.*]] = xor i8 [[X]], -1
+; CHECK-NEXT:    [[SHR1:%.*]] = lshr i8 [[NOT]], [[Y]]
+; CHECK-NEXT:    [[AND:%.*]] = and i8 [[SHR]], [[SHR1]]
+; CHECK-NEXT:    ret i8 [[AND]]
+;
+  %mul = mul i8 %x, %x
+  %shr = ashr i8 %mul, %y
+  %not = xor i8 %x, -1
+  %shr1 = lshr i8 %not, %y
+  %and = and i8 %shr, %shr1
+  ret i8 %and
+}
+
+define i8 @and_ashr_not_fail_2(i8 %x, i8 %y) {
+; CHECK-LABEL: @and_ashr_not_fail_2(
+; CHECK-NEXT:    [[MUL:%.*]] = mul i8 [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[SHR:%.*]] = lshr i8 [[MUL]], [[Y:%.*]]
+; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr i8 [[X]], [[Y]]
+; CHECK-NEXT:    [[SHR1:%.*]] = xor i8 [[NOT_NOT]], -1
+; CHECK-NEXT:    [[AND:%.*]] = and i8 [[SHR]], [[SHR1]]
+; CHECK-NEXT:    ret i8 [[AND]]
+;
+  %mul = mul i8 %x, %x
+  %shr = lshr i8 %mul, %y
+  %not = xor i8 %x, -1
+  %shr1 = ashr i8 %not, %y
+  %and = and i8 %shr, %shr1
+  ret i8 %and
+}
+
+define <4 x i8> @and_ashr_not_vec(<4 x i8> %x, <4 x i8> %y) {
+; CHECK-LABEL: @and_ashr_not_vec(
+; CHECK-NEXT:    [[MUL:%.*]] = mul <4 x i8> [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[SHR:%.*]] = ashr <4 x i8> [[MUL]], [[Y:%.*]]
+; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr <4 x i8> [[X]], [[Y]]
+; CHECK-NEXT:    [[SHR1:%.*]] = xor <4 x i8> [[NOT_NOT]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    [[AND:%.*]] = and <4 x i8> [[SHR]], [[SHR1]]
+; CHECK-NEXT:    ret <4 x i8> [[AND]]
+;
+  %mul = mul <4 x i8> %x, %x
+  %shr = ashr <4 x i8> %mul, %y
+  %not = xor <4 x i8> %x, <i8 -1, i8 -1, i8 -1, i8 -1>
+  %shr1 = ashr <4 x i8> %not, %y
+  %and = and <4 x i8> %shr, %shr1
+  ret <4 x i8> %and
+}
+
+define <4 x i8> @and_ashr_not_vec_commuted(<4 x i8> %x, <4 x i8> %y) {
+; CHECK-LABEL: @and_ashr_not_vec_commuted(
+; CHECK-NEXT:    [[MUL:%.*]] = mul <4 x i8> [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[SHR:%.*]] = ashr <4 x i8> [[MUL]], [[Y:%.*]]
+; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr <4 x i8> [[X]], [[Y]]
+; CHECK-NEXT:    [[SHR1:%.*]] = xor <4 x i8> [[NOT_NOT]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    [[AND:%.*]] = and <4 x i8> [[SHR]], [[SHR1]]
+; CHECK-NEXT:    ret <4 x i8> [[AND]]
+;
+  %mul = mul <4 x i8> %x, %x
+  %shr = ashr <4 x i8> %mul, %y
+  %not = xor <4 x i8> %x, <i8 -1, i8 -1, i8 -1, i8 -1>
+  %shr1 = ashr <4 x i8> %not, %y
+  %and = and <4 x i8> %shr1, %shr
+  ret <4 x i8> %and
+}
+
+define <4 x i8> @and_ashr_not_vec_undef_1(<4 x i8> %x, <4 x i8> %y) {
+; CHECK-LABEL: @and_ashr_not_vec_undef_1(
+; CHECK-NEXT:    [[MUL:%.*]] = mul <4 x i8> [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[SHR:%.*]] = ashr <4 x i8> [[MUL]], [[Y:%.*]]
+; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr <4 x i8> [[X]], [[Y]]
+; CHECK-NEXT:    [[SHR1:%.*]] = xor <4 x i8> [[NOT_NOT]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    [[AND:%.*]] = and <4 x i8> [[SHR]], [[SHR1]]
+; CHECK-NEXT:    ret <4 x i8> [[AND]]
+;
+  %mul = mul <4 x i8> %x, %x
+  %shr = ashr <4 x i8> %mul, %y
+  %not = xor <4 x i8> %x, <i8 -1, i8 undef, i8 undef, i8 undef>
+  %shr1 = ashr <4 x i8> %not, %y
+  %and = and <4 x i8> %shr, %shr1
+  ret <4 x i8> %and
+}
+
+define <4 x i8> @and_ashr_not_vec_undef_2(<4 x i8> %x, <4 x i8> %y) {
+; CHECK-LABEL: @and_ashr_not_vec_undef_2(
+; CHECK-NEXT:    ret <4 x i8> zeroinitializer
+;
+  %mul = mul <4 x i8> %x, %x
+  %shr = ashr <4 x i8> %mul, %y
+  %not = xor <4 x i8> %x, <i8 undef, i8 undef, i8 undef, i8 undef>
+  %shr1 = ashr <4 x i8> %not, %y
+  %and = and <4 x i8> %shr, %shr1
+  ret <4 x i8> %and
+}
+
+; Fold (-x >> y) | ((x >> y) ^ -1) -> (-x | ~x) >> y
+
+define i8 @or_ashr_not(i8 %x, i8 %y) {
+; CHECK-LABEL: @or_ashr_not(
+; CHECK-NEXT:    [[MUL:%.*]] = mul i8 [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[SHR:%.*]] = ashr i8 [[MUL]], [[Y:%.*]]
+; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr i8 [[X]], [[Y]]
+; CHECK-NEXT:    [[SHR1:%.*]] = xor i8 [[NOT_NOT]], -1
+; CHECK-NEXT:    [[OR:%.*]] = or i8 [[SHR]], [[SHR1]]
+; CHECK-NEXT:    ret i8 [[OR]]
+;
+  %mul = mul i8 %x, %x
+  %shr = ashr i8 %mul, %y
+  %not = xor i8 %x, -1
+  %shr1 = ashr i8 %not, %y
+  %or = or i8 %shr, %shr1
+  ret i8 %or
+}
+
+define i8 @or_ashr_not_commuted(i8 %x, i8 %y) {
+; CHECK-LABEL: @or_ashr_not_commuted(
+; CHECK-NEXT:    [[MUL:%.*]] = mul i8 [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[SHR:%.*]] = ashr i8 [[MUL]], [[Y:%.*]]
+; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr i8 [[X]], [[Y]]
+; CHECK-NEXT:    [[SHR1:%.*]] = xor i8 [[NOT_NOT]], -1
+; CHECK-NEXT:    [[OR:%.*]] = or i8 [[SHR]], [[SHR1]]
+; CHECK-NEXT:    ret i8 [[OR]]
+;
+  %mul = mul i8 %x, %x
+  %shr = ashr i8 %mul, %y
+  %not = xor i8 %x, -1
+  %shr1 = ashr i8 %not, %y
+  %or = or i8 %shr1, %shr
+  ret i8 %or
+}
+
+define i8 @or_ashr_not_fail_1(i8 %x, i8 %y) {
+; CHECK-LABEL: @or_ashr_not_fail_1(
+; CHECK-NEXT:    [[MUL:%.*]] = mul i8 [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[SHR:%.*]] = ashr i8 [[MUL]], [[Y:%.*]]
+; CHECK-NEXT:    [[NOT:%.*]] = xor i8 [[X]], -1
+; CHECK-NEXT:    [[SHR1:%.*]] = lshr i8 [[NOT]], [[Y]]
+; CHECK-NEXT:    [[OR:%.*]] = or i8 [[SHR]], [[SHR1]]
+; CHECK-NEXT:    ret i8 [[OR]]
+;
+  %mul = mul i8 %x, %x
+  %shr = ashr i8 %mul, %y
+  %not = xor i8 %x, -1
+  %shr1 = lshr i8 %not, %y
+  %or = or i8 %shr, %shr1
+  ret i8 %or
+}
+
+define i8 @or_ashr_not_fail_2(i8 %x, i8 %y) {
+; CHECK-LABEL: @or_ashr_not_fail_2(
+; CHECK-NEXT:    [[MUL:%.*]] = mul i8 [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[SHR:%.*]] = lshr i8 [[MUL]], [[Y:%.*]]
+; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr i8 [[X]], [[Y]]
+; CHECK-NEXT:    [[SHR1:%.*]] = xor i8 [[NOT_NOT]], -1
+; CHECK-NEXT:    [[OR:%.*]] = or i8 [[SHR]], [[SHR1]]
+; CHECK-NEXT:    ret i8 [[OR]]
+;
+  %mul = mul i8 %x, %x
+  %shr = lshr i8 %mul, %y
+  %not = xor i8 %x, -1
+  %shr1 = ashr i8 %not, %y
+  %or = or i8 %shr, %shr1
+  ret i8 %or
+}
+
+define <4 x i8> @or_ashr_not_vec(<4 x i8> %x, <4 x i8> %y) {
+; CHECK-LABEL: @or_ashr_not_vec(
+; CHECK-NEXT:    [[MUL:%.*]] = mul <4 x i8> [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[SHR:%.*]] = ashr <4 x i8> [[MUL]], [[Y:%.*]]
+; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr <4 x i8> [[X]], [[Y]]
+; CHECK-NEXT:    [[SHR1:%.*]] = xor <4 x i8> [[NOT_NOT]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    [[OR:%.*]] = or <4 x i8> [[SHR]], [[SHR1]]
+; CHECK-NEXT:    ret <4 x i8> [[OR]]
+;
+  %mul = mul <4 x i8> %x, %x
+  %shr = ashr <4 x i8> %mul, %y
+  %not = xor <4 x i8> %x, <i8 -1, i8 -1, i8 -1, i8 -1>
+  %shr1 = ashr <4 x i8> %not, %y
+  %or = or <4 x i8> %shr, %shr1
+  ret <4 x i8> %or
+}
+
+define <4 x i8> @or_ashr_not_vec_commuted(<4 x i8> %x, <4 x i8> %y) {
+; CHECK-LABEL: @or_ashr_not_vec_commuted(
+; CHECK-NEXT:    [[MUL:%.*]] = mul <4 x i8> [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[SHR:%.*]] = ashr <4 x i8> [[MUL]], [[Y:%.*]]
+; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr <4 x i8> [[X]], [[Y]]
+; CHECK-NEXT:    [[SHR1:%.*]] = xor <4 x i8> [[NOT_NOT]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    [[OR:%.*]] = or <4 x i8> [[SHR]], [[SHR1]]
+; CHECK-NEXT:    ret <4 x i8> [[OR]]
+;
+  %mul = mul <4 x i8> %x, %x
+  %shr = ashr <4 x i8> %mul, %y
+  %not = xor <4 x i8> %x, <i8 -1, i8 -1, i8 -1, i8 -1>
+  %shr1 = ashr <4 x i8> %not, %y
+  %or = or <4 x i8> %shr1, %shr
+  ret <4 x i8> %or
+}
+
+define <4 x i8> @or_ashr_not_vec_undef_1(<4 x i8> %x, <4 x i8> %y) {
+; CHECK-LABEL: @or_ashr_not_vec_undef_1(
+; CHECK-NEXT:    [[MUL:%.*]] = mul <4 x i8> [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[SHR:%.*]] = ashr <4 x i8> [[MUL]], [[Y:%.*]]
+; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr <4 x i8> [[X]], [[Y]]
+; CHECK-NEXT:    [[SHR1:%.*]] = xor <4 x i8> [[NOT_NOT]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    [[OR:%.*]] = or <4 x i8> [[SHR]], [[SHR1]]
+; CHECK-NEXT:    ret <4 x i8> [[OR]]
+;
+  %mul = mul <4 x i8> %x, %x
+  %shr = ashr <4 x i8> %mul, %y
+  %not = xor <4 x i8> %x, <i8 -1, i8 undef, i8 undef, i8 undef>
+  %shr1 = ashr <4 x i8> %not, %y
+  %or = or <4 x i8> %shr, %shr1
+  ret <4 x i8> %or
+}
+
+define <4 x i8> @or_ashr_not_vec_undef_2(<4 x i8> %x, <4 x i8> %y) {
+; CHECK-LABEL: @or_ashr_not_vec_undef_2(
+; CHECK-NEXT:    [[MUL:%.*]] = mul <4 x i8> [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[SHR:%.*]] = ashr <4 x i8> [[MUL]], [[Y:%.*]]
+; CHECK-NEXT:    ret <4 x i8> [[SHR]]
+;
+  %mul = mul <4 x i8> %x, %x
+  %shr = ashr <4 x i8> %mul, %y
+  %not = xor <4 x i8> %x, <i8 undef, i8 undef, i8 undef, i8 undef>
+  %shr1 = ashr <4 x i8> %not, %y
+  %or = or <4 x i8> %shr, %shr1
+  ret <4 x i8> %or
+}
+
+; Fold (-x >> y) ^ ((x >> y) ^ -1) -> (-x ^ ~x) >> y
+
+define i8 @xor_ashr_not(i8 %x, i8 %y) {
+; CHECK-LABEL: @xor_ashr_not(
+; CHECK-NEXT:    [[MUL:%.*]] = mul i8 [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[NOT_NOT1:%.*]] = xor i8 [[MUL]], [[X]]
+; CHECK-NEXT:    [[TMP1:%.*]] = ashr i8 [[NOT_NOT1]], [[Y:%.*]]
+; CHECK-NEXT:    [[XOR:%.*]] = xor i8 [[TMP1]], -1
+; CHECK-NEXT:    ret i8 [[XOR]]
+;
+  %mul = mul i8 %x, %x
+  %shr = ashr i8 %mul, %y
+  %not = xor i8 %x, -1
+  %shr1 = ashr i8 %not, %y
+  %xor = xor i8 %shr, %shr1
+  ret i8 %xor
+}
+
+define i8 @xor_ashr_not_commuted(i8 %x, i8 %y) {
+; CHECK-LABEL: @xor_ashr_not_commuted(
+; CHECK-NEXT:    [[MUL:%.*]] = mul i8 [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[NOT_NOT1:%.*]] = xor i8 [[MUL]], [[X]]
+; CHECK-NEXT:    [[TMP1:%.*]] = ashr i8 [[NOT_NOT1]], [[Y:%.*]]
+; CHECK-NEXT:    [[XOR:%.*]] = xor i8 [[TMP1]], -1
+; CHECK-NEXT:    ret i8 [[XOR]]
+;
+  %mul = mul i8 %x, %x
+  %shr = ashr i8 %mul, %y
+  %not = xor i8 %x, -1
+  %shr1 = ashr i8 %not, %y
+  %xor = xor i8 %shr1, %shr
+  ret i8 %xor
+}
+
+define i8 @xor_ashr_not_fail_1(i8 %x, i8 %y) {
+; CHECK-LABEL: @xor_ashr_not_fail_1(
+; CHECK-NEXT:    [[MUL:%.*]] = mul i8 [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[SHR:%.*]] = ashr i8 [[MUL]], [[Y:%.*]]
+; CHECK-NEXT:    [[NOT:%.*]] = xor i8 [[X]], -1
+; CHECK-NEXT:    [[SHR1:%.*]] = lshr i8 [[NOT]], [[Y]]
+; CHECK-NEXT:    [[XOR:%.*]] = xor i8 [[SHR]], [[SHR1]]
+; CHECK-NEXT:    ret i8 [[XOR]]
+;
+  %mul = mul i8 %x, %x
+  %shr = ashr i8 %mul, %y
+  %not = xor i8 %x, -1
+  %shr1 = lshr i8 %not, %y
+  %xor = xor i8 %shr, %shr1
+  ret i8 %xor
+}
+
+define i8 @xor_ashr_not_fail_2(i8 %x, i8 %y) {
+; CHECK-LABEL: @xor_ashr_not_fail_2(
+; CHECK-NEXT:    [[MUL:%.*]] = mul i8 [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[SHR:%.*]] = lshr i8 [[MUL]], [[Y:%.*]]
+; CHECK-NEXT:    [[NOT_NOT:%.*]] = ashr i8 [[X]], [[Y]]
+; CHECK-NEXT:    [[TMP1:%.*]] = xor i8 [[NOT_NOT]], [[SHR]]
+; CHECK-NEXT:    [[XOR:%.*]] = xor i8 [[TMP1]], -1
+; CHECK-NEXT:    ret i8 [[XOR]]
+;
+  %mul = mul i8 %x, %x
+  %shr = lshr i8 %mul, %y
+  %not = xor i8 %x, -1
+  %shr1 = ashr i8 %not, %y
+  %xor = xor i8 %shr, %shr1
+  ret i8 %xor
+}
+
+define <4 x i8> @xor_ashr_not_vec(<4 x i8> %x, <4 x i8> %y) {
+; CHECK-LABEL: @xor_ashr_not_vec(
+; CHECK-NEXT:    [[MUL:%.*]] = mul <4 x i8> [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[NOT_NOT1:%.*]] = xor <4 x i8> [[MUL]], [[X]]
+; CHECK-NEXT:    [[TMP1:%.*]] = ashr <4 x i8> [[NOT_NOT1]], [[Y:%.*]]
+; CHECK-NEXT:    [[XOR:%.*]] = xor <4 x i8> [[TMP1]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    ret <4 x i8> [[XOR]]
+;
+  %mul = mul <4 x i8> %x, %x
+  %shr = ashr <4 x i8> %mul, %y
+  %not = xor <4 x i8> %x, <i8 -1, i8 -1, i8 -1, i8 -1>
+  %shr1 = ashr <4 x i8> %not, %y
+  %xor = xor <4 x i8> %shr, %shr1
+  ret <4 x i8> %xor
+}
+
+define <4 x i8> @xor_ashr_not_vec_commuted(<4 x i8> %x, <4 x i8> %y) {
+; CHECK-LABEL: @xor_ashr_not_vec_commuted(
+; CHECK-NEXT:    [[MUL:%.*]] = mul <4 x i8> [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[NOT_NOT1:%.*]] = xor <4 x i8> [[MUL]], [[X]]
+; CHECK-NEXT:    [[TMP1:%.*]] = ashr <4 x i8> [[NOT_NOT1]], [[Y:%.*]]
+; CHECK-NEXT:    [[XOR:%.*]] = xor <4 x i8> [[TMP1]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    ret <4 x i8> [[XOR]]
+;
+  %mul = mul <4 x i8> %x, %x
+  %shr = ashr <4 x i8> %mul, %y
+  %not = xor <4 x i8> %x, <i8 -1, i8 -1, i8 -1, i8 -1>
+  %shr1 = ashr <4 x i8> %not, %y
+  %xor = xor <4 x i8> %shr1, %shr
+  ret <4 x i8> %xor
+}
+
+define <4 x i8> @xor_ashr_not_vec_undef_1(<4 x i8> %x, <4 x i8> %y) {
+; CHECK-LABEL: @xor_ashr_not_vec_undef_1(
+; CHECK-NEXT:    [[MUL:%.*]] = mul <4 x i8> [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[NOT_NOT1:%.*]] = xor <4 x i8> [[MUL]], [[X]]
+; CHECK-NEXT:    [[TMP1:%.*]] = ashr <4 x i8> [[NOT_NOT1]], [[Y:%.*]]
+; CHECK-NEXT:    [[XOR:%.*]] = xor <4 x i8> [[TMP1]], <i8 -1, i8 -1, i8 -1, i8 -1>
+; CHECK-NEXT:    ret <4 x i8> [[XOR]]
+;
+  %mul = mul <4 x i8> %x, %x
+  %shr = ashr <4 x i8> %mul, %y
+  %not = xor <4 x i8> %x, <i8 -1, i8 undef, i8 undef, i8 undef>
+  %shr1 = ashr <4 x i8> %not, %y
+  %xor = xor <4 x i8> %shr, %shr1
+  ret <4 x i8> %xor
+}
+
+define <4 x i8> @xor_ashr_not_vec_undef_2(<4 x i8> %x, <4 x i8> %y) {
+; CHECK-LABEL: @xor_ashr_not_vec_undef_2(
+; CHECK-NEXT:    [[MUL:%.*]] = mul <4 x i8> [[X:%.*]], [[X]]
+; CHECK-NEXT:    [[SHR:%.*]] = ashr <4 x i8> [[MUL]], [[Y:%.*]]
+; CHECK-NEXT:    ret <4 x i8> [[SHR]]
+;
+  %mul = mul <4 x i8> %x, %x
+  %shr = ashr <4 x i8> %mul, %y
+  %not = xor <4 x i8> %x, <i8 undef, i8 undef, i8 undef, i8 undef>
+  %shr1 = ashr <4 x i8> %not, %y
+  %xor = xor <4 x i8> %shr, %shr1
+  ret <4 x i8> %xor
+}
