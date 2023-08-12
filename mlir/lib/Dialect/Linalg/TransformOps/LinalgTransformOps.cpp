@@ -3253,6 +3253,41 @@ LogicalResult transform::MaskedVectorizeOp::verify() {
 }
 
 //===----------------------------------------------------------------------===//
+// VectorizeOneOp
+//===----------------------------------------------------------------------===//
+DiagnosedSilenceableFailure transform::VectorizeOneOp::apply(
+    transform::TransformRewriter &rewriter,
+    mlir::transform::TransformResults &transformResults,
+    mlir::transform::TransformState &state) {
+  auto targets = state.getPayloadOps(getTarget());
+  if (std::empty(targets))
+    return DiagnosedSilenceableFailure::success();
+
+  SmallVector<int64_t> vectorSizes;
+
+  for (Operation *target : targets) {
+    if (!isa<linalg::LinalgOp, tensor::PadOp>(target)) {
+      return mlir::emitSilenceableFailure(target->getLoc())
+             << "Unsupported Op, cannot vectorize";
+    }
+
+    if (failed(vectorize(rewriter, target, /*inputVectorSizes=*/{},
+                         /*scalableVecDims=*/{}, getVectorizeNdExtract()))) {
+      return mlir::emitSilenceableFailure(target->getLoc())
+             << "Attempted to vectorize, but failed";
+    }
+  }
+
+  return DiagnosedSilenceableFailure::success();
+}
+
+void transform::VectorizeOneOp::getEffects(
+    SmallVectorImpl<MemoryEffects::EffectInstance> &effects) {
+  consumesHandle(getTarget(), effects);
+  modifiesPayload(effects);
+}
+
+//===----------------------------------------------------------------------===//
 // HoistRedundantVectorTransfersOp
 //===----------------------------------------------------------------------===//
 

@@ -2074,6 +2074,40 @@ def VectorizeOp : Op<Transform_Dialect, "structured.vectorize",
   }];
 }
 
+def VectorizeOneOp : Op<Transform_Dialect, "structured.vectorize_one_op",
+    [DeclareOpInterfaceMethods<MemoryEffectsOpInterface>,
+     TransformOpInterface, ReportTrackingListenerFailuresOpTrait]> {
+  let description = [{
+    Vectorize the target ops, which must be Linalg ops.
+
+    Use this Op to excercise the vectorizer. Contrary to `VectorizeOp`, it does
+    not apply any rewrite patterns, so that the output can easily be mapped to
+    the transformation within the vectorizer.
+
+    Typically this operator should be applied to linalg operations that have
+    already been tiled to the appropriate sizes.
+  }];
+
+  let arguments = (ins TransformHandleTypeInterface:$target,
+                       UnitAttr:$vectorize_nd_extract);
+
+  let results = (outs);
+  let assemblyFormat = [{
+      $target
+      attr-dict
+      `:` type($target)
+  }];
+
+  let extraClassDeclaration = [{
+    // TODO: applyToOne.
+    ::mlir::DiagnosedSilenceableFailure apply(
+        ::mlir::transform::TransformRewriter &rewriter,
+        ::mlir::transform::TransformResults &transformResults,
+        ::mlir::transform::TransformState &state);
+
+  }];
+}
+
 def MaskedVectorizeOp : Op<Transform_Dialect, "structured.masked_vectorize",
     [DeclareOpInterfaceMethods<MemoryEffectsOpInterface>,
      TransformOpInterface, ReportTrackingListenerFailuresOpTrait]> {
@@ -2089,7 +2123,7 @@ def MaskedVectorizeOp : Op<Transform_Dialect, "structured.masked_vectorize",
     counterpart iteration space sizes.
 
     Typically this operator should be applied to linalg operations that have
-    already be tiled to the appropriate sizes.
+    already been tiled to the appropriate sizes.
 
     #### Return modes:
 
