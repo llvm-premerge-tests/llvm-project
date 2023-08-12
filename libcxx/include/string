@@ -970,7 +970,9 @@ public:
     __init(__n, __c);
   }
 
-#if _LIBCPP_STD_VER >= 23
+#if _LIBCPP_STD_VER >= 20
+  // Extension: Support these overloads in C++20 rather than C++23.
+  // Otherwise C++20's `basic_stringbuf::str() &&` is hard to implement.
   _LIBCPP_HIDE_FROM_ABI constexpr
   basic_string(basic_string&& __str, size_type __pos, const _Allocator& __alloc = _Allocator())
       : basic_string(std::move(__str), __pos, npos, __alloc) {}
