@@ -189,6 +189,9 @@ public:
   // Returns whether this DAG is an `either` specifier.
   bool isEither() const;
 
+  // Returns whether this DAG is an `variadic` specifier.
+  bool isVariadic() const;
+
   // Returns true if this DAG node is an operation.
   bool isOperation() const;
 
@@ -250,6 +253,9 @@ public:
   // Class for information regarding a symbol.
   class SymbolInfo {
   public:
+    static constexpr int kInvalidRangeIndex = -1;
+
+  public:
     // Returns a type string of a variable.
     std::string getVarTypeStr(StringRef name) const;
 
@@ -268,9 +274,83 @@ public:
     // Allow SymbolInfoMap to access private methods.
     friend class SymbolInfoMap;
 
-    // DagNode and DagLeaf are accessed by value which means it can't be used as
-    // identifier here. Use an opaque pointer type instead.
-    using DagAndConstant = std::pair<const void *, int>;
+    // Structure to uniquely distinguish different locations of the symbols.
+    //
+    // * If a symbol is defined as an operand of an operation, `dag` specifies
+    //   the DAG of the operation, `operandIndexOrNumValues` specifies the
+    //   operand index, and `rangeIndex` must be set to `kRangeIndexInvalid`.
+    //
+    // * If a symbol is defined in a `variadic` DAG, `dag` specifies the DAG
+    //   of the parent operation, `operandIndexOrNumValues` specifies the
+    //   declared operand index of the variadic operand in the parent
+    //   operation.
+    //
+    //   - If the symbol is defined as a result of `variadic` DAG, the
+    //     `rangeIndex` must be set to `kInvalidRangeIndex`, which means that
+    //     the symbol binds to the full operand range.
+    //
+    //   - If the symbol is defined as a operand, the `rangeIndex` must be set
+    //     to the index within the variadic sub-operand list.
+    //
+    // * If a symbol is defined in a `either` DAG, `dag` specifies the DAG
+    //   of the parent operation, `operandIndexOrNumValues` specifies the
+    //   operand index in the parent operation (not necessary the index in the
+    //   DAG).
+    //
+    // * If a symbol is defined as a result, specifies the number of returning
+    //   value.
+    //
+    // Example 1:
+    //
+    //   def : Pat<(OpA $input0, $input1), ...>;
+    //
+    //   $input0: (OpA, 0, kInvalidRangeIndex)
+    //   $input1: (OpA, 1, kInvalidRangeIndex)
+    //
+    // Example 2:
+    //
+    //   def : Pat<(OpB (variadic:$input0 $input0_0, $input0_1),
+    //                  (variadic:$input1 $input1_0, $input1_1)), ...>;
+    //
+    //   $input0:   (OpB, 0, kInvalidRangeIndex)
+    //   $input0_0: (OpB, 0, 0)
+    //   $input0_1: (OpB, 0, 1)
+    //   $input1:   (OpB, 1, kInvalidRangeIndex)
+    //   $input1_0: (OpB, 1, 0)
+    //   $input1_1: (OpB, 1, 1)
+    //
+    // Example 3:
+    //
+    //   def : Pat<(OpC $input0, (either $input1, $input2)), ...>;
+    //
+    //   $input0: (OpC, 0, kInvalidRangeIndex)
+    //   $input1: (OpC, 1, kInvalidRangeIndex)
+    //   $input2: (OpC, 2, kInvalidRangeIndex)
+    //
+    // Example 4:
+    //
+    //   def : Pat<..., (OpWithThreeOutput:$op1 ...)>;
+    //
+    //   $op1: (nullptr, 3, kInvalidRangeIndex)
+    //
+    struct DagAndConstant {
+      // DagNode and DagLeaf are accessed by value which means it can't be used
+      // as identifier here. Use an opaque pointer type instead.
+      const void *dag;
+      int operandIndexOrNumValues;
+      int rangeIndex;
+
+      DagAndConstant(const void *dag, int operandIndexOrNumValues,
+                     int rangeIndex)
+          : dag(dag), operandIndexOrNumValues(operandIndexOrNumValues),
+            rangeIndex(rangeIndex) {}
+
+      bool operator==(const DagAndConstant &rhs) const {
+        return dag == rhs.dag &&
+               operandIndexOrNumValues == rhs.operandIndexOrNumValues &&
+               rangeIndex == rhs.rangeIndex;
+      }
+    };
 
     // What kind of entity this symbol represents:
     // * Attr: op attribute
@@ -288,14 +368,18 @@ public:
 
     // Static methods for creating SymbolInfo.
     static SymbolInfo getAttr(const Operator *op, int index) {
-      return SymbolInfo(op, Kind::Attr, DagAndConstant(nullptr, index));
+      return SymbolInfo(op, Kind::Attr,
+                        DagAndConstant(nullptr, index, kInvalidRangeIndex));
     }
     static SymbolInfo getAttr() {
       return SymbolInfo(nullptr, Kind::Attr, std::nullopt);
     }
-    static SymbolInfo getOperand(DagNode node, const Operator *op, int index) {
-      return SymbolInfo(op, Kind::Operand,
-                        DagAndConstant(node.getAsOpaquePointer(), index));
+    static SymbolInfo getOperand(DagNode node, const Operator *op,
+                                 int operandIndex,
+                                 int rangeIndex = kInvalidRangeIndex) {
+      return SymbolInfo(
+          op, Kind::Operand,
+          DagAndConstant(node.getAsOpaquePointer(), operandIndex, rangeIndex));
     }
     static SymbolInfo getResult(const Operator *op) {
       return SymbolInfo(op, Kind::Result, std::nullopt);
@@ -305,7 +389,7 @@ public:
     }
     static SymbolInfo getMultipleValues(int numValues) {
       return SymbolInfo(nullptr, Kind::MultipleValues,
-                        DagAndConstant(nullptr, numValues));
+                        DagAndConstant(nullptr, numValues, kInvalidRangeIndex));
     }
 
     // Returns the number of static values this symbol corresponds to.
@@ -333,18 +417,22 @@ public:
                                const char *separator) const;
 
     // The argument index (for `Attr` and `Operand` only)
-    int getArgIndex() const { return (*dagAndConstant).second; }
+    int getArgIndex() const { return dagAndConstant->operandIndexOrNumValues; }
 
     // The number of values in the MultipleValue
-    int getSize() const { return (*dagAndConstant).second; }
+    int getSize() const { return dagAndConstant->operandIndexOrNumValues; }
+
+    // The range index (for variadic `Operand` only)
+    int getRangeIndex() const { return dagAndConstant->rangeIndex; }
+    bool hasRangeIndex() const { return getRangeIndex() != kInvalidRangeIndex; }
 
     const Operator *op; // The op where the bound entity belongs
     Kind kind;          // The kind of the bound entity
 
-    // The pair of DagNode pointer and constant value (for `Attr`, `Operand` and
-    // the size of MultipleValue symbol). Note that operands may be bound to the
-    // same symbol, use the DagNode and index to distinguish them. For `Attr`
-    // and MultipleValue, the Dag part will be nullptr.
+    // The tuple of DagNode pointer and two constant values (for `Attr`,
+    // `Operand` and the size of MultipleValue symbol). Note that operands may
+    // be bound to the same symbol, use the DagNode and index to distinguish
+    // them. For `Attr` and MultipleValue, the Dag part will be nullptr.
     std::optional<DagAndConstant> dagAndConstant;
 
     // Alternative name for the symbol. It is used in case the name
@@ -367,7 +455,8 @@ public:
   // Binds the given `symbol` to the `argIndex`-th argument to the given `op`.
   // Returns false if `symbol` is already bound and symbols are not operands.
   bool bindOpArgument(DagNode node, StringRef symbol, const Operator &op,
-                      int argIndex);
+                      int argIndex,
+                      int rangeIndex = SymbolInfo::kInvalidRangeIndex);
 
   // Binds the given `symbol` to the results the given `op`. Returns false if
   // `symbol` is already bound.
@@ -397,7 +486,8 @@ public:
   // Returns an iterator to the information of the given symbol named as `key`,
   // with index `argIndex` for operator `op`.
   const_iterator findBoundSymbol(StringRef key, DagNode node,
-                                 const Operator &op, int argIndex) const;
+                                 const Operator &op, int argIndex,
+                                 int rangeIndex) const;
   const_iterator findBoundSymbol(StringRef key,
                                  const SymbolInfo &symbolInfo) const;
 

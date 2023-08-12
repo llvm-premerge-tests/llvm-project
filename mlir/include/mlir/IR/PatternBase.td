@@ -211,6 +211,22 @@ def returnType;
 // `either` while pattern matching.
 def either;
 
+// Directive used to match variadic operands. This directive only matches if
+// the variadic operand has the same length as the specified formal
+// sub-dags.
+//
+// ```
+// (VariadicOp (variadic:$input1 $input1_0, $input1_1),
+//             (variadic:$input2 $input2_0, $input2_1, $input2_2),
+//             $attr1, $attr2)
+// ```
+//
+// The pattern above only matches if the `$input1` operand is of length 2,
+// `$input2` is of length 3, and all sub-dags match respectively. The `$input1`
+// symbol denotes the full variadic operand range. The `$input1_0` symbol
+// denotes the first operand in the variadic sub-operands.
+def variadic;
+
 //===----------------------------------------------------------------------===//
 // Common value constraints
 //===----------------------------------------------------------------------===//
