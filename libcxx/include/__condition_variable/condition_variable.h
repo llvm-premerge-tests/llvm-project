@@ -92,8 +92,8 @@ private:
 };
 #endif // !_LIBCPP_HAS_NO_THREADS
 
-template <class _Rep, class _Period>
-inline _LIBCPP_HIDE_FROM_ABI __enable_if_t<is_floating_point<_Rep>::value, chrono::nanoseconds>
+template <class _Rep, class _Period, __enable_if_t<is_floating_point<_Rep>::value, int> = 0>
+inline _LIBCPP_HIDE_FROM_ABI chrono::nanoseconds
 __safe_nanosecond_cast(chrono::duration<_Rep, _Period> __d) {
   using namespace chrono;
   using __ratio       = ratio_divide<_Period, nano>;
@@ -113,8 +113,8 @@ __safe_nanosecond_cast(chrono::duration<_Rep, _Period> __d) {
   return nanoseconds(static_cast<__ns_rep>(__result_float));
 }
 
-template <class _Rep, class _Period>
-inline _LIBCPP_HIDE_FROM_ABI __enable_if_t<!is_floating_point<_Rep>::value, chrono::nanoseconds>
+template <class _Rep, class _Period, __enable_if_t<!is_floating_point<_Rep>::value, int> = 0>
+inline _LIBCPP_HIDE_FROM_ABI chrono::nanoseconds
 __safe_nanosecond_cast(chrono::duration<_Rep, _Period> __d) {
   using namespace chrono;
   if (__d.count() == 0) {
