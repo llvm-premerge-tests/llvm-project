@@ -4,25 +4,8 @@
 define i1 @common_instr_with_unreachable(i64 %a, i64 %b, i64 %c) {
 ; CHECK-LABEL: @common_instr_with_unreachable(
 ; CHECK-NEXT:  start:
-; CHECK-NEXT:    switch i64 [[A:%.*]], label [[UNREACHABLE:%.*]] [
-; CHECK-NEXT:    i64 0, label [[BB0:%.*]]
-; CHECK-NEXT:    i64 1, label [[BB1:%.*]]
-; CHECK-NEXT:    i64 2, label [[BB2:%.*]]
-; CHECK-NEXT:    ]
-; CHECK:       unreachable:
-; CHECK-NEXT:    unreachable
-; CHECK:       bb0:
 ; CHECK-NEXT:    [[TMP0:%.*]] = icmp eq i64 [[B:%.*]], [[C:%.*]]
-; CHECK-NEXT:    br label [[EXIT:%.*]]
-; CHECK:       bb1:
-; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq i64 [[B]], [[C]]
-; CHECK-NEXT:    br label [[EXIT]]
-; CHECK:       bb2:
-; CHECK-NEXT:    [[TMP2:%.*]] = icmp eq i64 [[B]], [[C]]
-; CHECK-NEXT:    br label [[EXIT]]
-; CHECK:       exit:
-; CHECK-NEXT:    [[RESULT:%.*]] = phi i1 [ [[TMP0]], [[BB0]] ], [ [[TMP1]], [[BB1]] ], [ [[TMP2]], [[BB2]] ]
-; CHECK-NEXT:    ret i1 [[RESULT]]
+; CHECK-NEXT:    ret i1 [[TMP0]]
 ;
 start:
   switch i64 %a, label %unreachable [
@@ -54,22 +37,8 @@ exit:                                             ; preds = %bb2, %bb1, %bb0
 define i1 @common_instr_with_unreachable_2(i64 %a, i64 %b, i64 %c) {
 ; CHECK-LABEL: @common_instr_with_unreachable_2(
 ; CHECK-NEXT:  start:
-; CHECK-NEXT:    switch i64 [[A:%.*]], label [[BB1:%.*]] [
-; CHECK-NEXT:    i64 0, label [[BB0:%.*]]
-; CHECK-NEXT:    i64 2, label [[BB2:%.*]]
-; CHECK-NEXT:    ]
-; CHECK:       bb0:
 ; CHECK-NEXT:    [[TMP0:%.*]] = icmp eq i64 [[B:%.*]], [[C:%.*]]
-; CHECK-NEXT:    br label [[EXIT:%.*]]
-; CHECK:       bb1:
-; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq i64 [[B]], [[C]]
-; CHECK-NEXT:    br label [[EXIT]]
-; CHECK:       bb2:
-; CHECK-NEXT:    [[TMP2:%.*]] = icmp eq i64 [[B]], [[C]]
-; CHECK-NEXT:    br label [[EXIT]]
-; CHECK:       exit:
-; CHECK-NEXT:    [[RESULT:%.*]] = phi i1 [ [[TMP0]], [[BB0]] ], [ [[TMP1]], [[BB1]] ], [ [[TMP2]], [[BB2]] ]
-; CHECK-NEXT:    ret i1 [[RESULT]]
+; CHECK-NEXT:    ret i1 [[TMP0]]
 ;
 start:
   switch i64 %a, label %bb1 [
