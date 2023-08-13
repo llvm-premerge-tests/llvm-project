@@ -16,6 +16,7 @@ add_clang_library(clangInterpreter
   IncrementalExecutor.cpp
   IncrementalParser.cpp
   Interpreter.cpp
+  InterpreterCodeCompletion.cpp
   InterpreterUtils.cpp
   Value.cpp
 
