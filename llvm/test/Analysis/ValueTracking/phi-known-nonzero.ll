@@ -7,9 +7,7 @@ define i1 @phi_ugt_non_zero(i8 %x) {
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp ugt i8 [[X:%.*]], 32
 ; CHECK-NEXT:    br i1 [[CMP]], label [[T:%.*]], label [[F:%.*]]
 ; CHECK:       T:
-; CHECK-NEXT:    [[V:%.*]] = phi i8 [ [[X]], [[ENTRY:%.*]] ], [ -1, [[F]] ]
-; CHECK-NEXT:    [[R:%.*]] = icmp eq i8 [[V]], 0
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 false
 ; CHECK:       F:
 ; CHECK-NEXT:    br i1 true, label [[T]], label [[F]]
 ;
@@ -30,9 +28,7 @@ define i1 @phi_ugeh_non_zero(i8 %x) {
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp uge i8 [[X:%.*]], 32
 ; CHECK-NEXT:    br i1 [[CMP]], label [[T:%.*]], label [[F:%.*]]
 ; CHECK:       T:
-; CHECK-NEXT:    [[V:%.*]] = phi i8 [ [[X]], [[ENTRY:%.*]] ], [ -1, [[F]] ]
-; CHECK-NEXT:    [[R:%.*]] = icmp eq i8 [[V]], 0
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 false
 ; CHECK:       F:
 ; CHECK-NEXT:    br i1 true, label [[T]], label [[F]]
 ;
@@ -78,9 +74,7 @@ define i1 @phi_ult_non_zero(i8 %x) {
 ; CHECK:       T:
 ; CHECK-NEXT:    br i1 true, label [[F]], label [[T]]
 ; CHECK:       F:
-; CHECK-NEXT:    [[V:%.*]] = phi i8 [ [[X]], [[ENTRY:%.*]] ], [ -1, [[T]] ]
-; CHECK-NEXT:    [[R:%.*]] = icmp eq i8 [[V]], 0
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 false
 ;
 entry:
   %cmp = icmp ult i8 %x, 123
@@ -101,9 +95,7 @@ define i1 @phi_ule_non_zero(i8 %x) {
 ; CHECK:       T:
 ; CHECK-NEXT:    br i1 true, label [[F]], label [[T]]
 ; CHECK:       F:
-; CHECK-NEXT:    [[V:%.*]] = phi i8 [ [[X]], [[ENTRY:%.*]] ], [ -1, [[T]] ]
-; CHECK-NEXT:    [[R:%.*]] = icmp eq i8 [[V]], 0
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 false
 ;
 entry:
   %cmp = icmp ule i8 %x, 123
@@ -147,9 +139,7 @@ define i1 @phi_ne_non_zero(i8 %x) {
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp ne i8 [[X:%.*]], 0
 ; CHECK-NEXT:    br i1 [[CMP]], label [[T:%.*]], label [[F:%.*]]
 ; CHECK:       T:
-; CHECK-NEXT:    [[V:%.*]] = phi i8 [ [[X]], [[ENTRY:%.*]] ], [ -1, [[F]] ]
-; CHECK-NEXT:    [[R:%.*]] = icmp eq i8 [[V]], 0
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 false
 ; CHECK:       F:
 ; CHECK-NEXT:    br i1 true, label [[T]], label [[F]]
 ;
@@ -170,9 +160,7 @@ define i1 @phi_eq_non_zero(i8 %x) {
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp eq i8 [[X:%.*]], 44
 ; CHECK-NEXT:    br i1 [[CMP]], label [[T:%.*]], label [[F:%.*]]
 ; CHECK:       T:
-; CHECK-NEXT:    [[V:%.*]] = phi i8 [ [[X]], [[ENTRY:%.*]] ], [ -1, [[F]] ]
-; CHECK-NEXT:    [[R:%.*]] = icmp eq i8 [[V]], 0
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 false
 ; CHECK:       F:
 ; CHECK-NEXT:    br i1 true, label [[T]], label [[F]]
 ;
@@ -195,9 +183,7 @@ define i1 @phi_eq_non_zero2(i8 %x) {
 ; CHECK:       T:
 ; CHECK-NEXT:    br i1 true, label [[F]], label [[T]]
 ; CHECK:       F:
-; CHECK-NEXT:    [[V:%.*]] = phi i8 [ [[X]], [[ENTRY:%.*]] ], [ -1, [[T]] ]
-; CHECK-NEXT:    [[R:%.*]] = icmp eq i8 [[V]], 0
-; CHECK-NEXT:    ret i1 [[R]]
+; CHECK-NEXT:    ret i1 false
 ;
 entry:
   %cmp = icmp eq i8 %x, 0
