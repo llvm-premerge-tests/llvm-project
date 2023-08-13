@@ -45,7 +45,7 @@ RecordTy *addTopLevelRecord(DenseMap<StringRef, APIRecord *> &USRLookupTable,
 } // namespace
 
 GlobalVariableRecord *
-APISet::addGlobalVar(StringRef Name, StringRef USR, PresumedLoc Loc,
+APISet::addGlobalVar(StringRef Name, StringRef USR, RecordLocation Loc,
                      AvailabilitySet Availabilities, LinkageInfo Linkage,
                      const DocComment &Comment, DeclarationFragments Fragments,
                      DeclarationFragments SubHeading, bool IsFromSystemHeader) {
@@ -55,7 +55,7 @@ APISet::addGlobalVar(StringRef Name, StringRef USR, PresumedLoc Loc,
 }
 
 GlobalFunctionRecord *APISet::addGlobalFunction(
-    StringRef Name, StringRef USR, PresumedLoc Loc,
+    StringRef Name, StringRef USR, RecordLocation Loc,
     AvailabilitySet Availabilities, LinkageInfo Linkage,
     const DocComment &Comment, DeclarationFragments Fragments,
     DeclarationFragments SubHeading, FunctionSignature Signature,
@@ -67,7 +67,7 @@ GlobalFunctionRecord *APISet::addGlobalFunction(
 }
 
 EnumConstantRecord *APISet::addEnumConstant(EnumRecord *Enum, StringRef Name,
-                                            StringRef USR, PresumedLoc Loc,
+                                            StringRef USR, RecordLocation Loc,
                                             AvailabilitySet Availabilities,
                                             const DocComment &Comment,
                                             DeclarationFragments Declaration,
@@ -82,7 +82,7 @@ EnumConstantRecord *APISet::addEnumConstant(EnumRecord *Enum, StringRef Name,
   return Enum->Constants.emplace_back(std::move(Record)).get();
 }
 
-EnumRecord *APISet::addEnum(StringRef Name, StringRef USR, PresumedLoc Loc,
+EnumRecord *APISet::addEnum(StringRef Name, StringRef USR, RecordLocation Loc,
                             AvailabilitySet Availabilities,
                             const DocComment &Comment,
                             DeclarationFragments Declaration,
@@ -94,7 +94,7 @@ EnumRecord *APISet::addEnum(StringRef Name, StringRef USR, PresumedLoc Loc,
 }
 
 StructFieldRecord *APISet::addStructField(StructRecord *Struct, StringRef Name,
-                                          StringRef USR, PresumedLoc Loc,
+                                          StringRef USR, RecordLocation Loc,
                                           AvailabilitySet Availabilities,
                                           const DocComment &Comment,
                                           DeclarationFragments Declaration,
@@ -109,19 +109,18 @@ StructFieldRecord *APISet::addStructField(StructRecord *Struct, StringRef Name,
   return Struct->Fields.emplace_back(std::move(Record)).get();
 }
 
-StructRecord *APISet::addStruct(StringRef Name, StringRef USR, PresumedLoc Loc,
-                                AvailabilitySet Availabilities,
-                                const DocComment &Comment,
-                                DeclarationFragments Declaration,
-                                DeclarationFragments SubHeading,
-                                bool IsFromSystemHeader) {
+StructRecord *
+APISet::addStruct(StringRef Name, StringRef USR, RecordLocation Loc,
+                  AvailabilitySet Availabilities, const DocComment &Comment,
+                  DeclarationFragments Declaration,
+                  DeclarationFragments SubHeading, bool IsFromSystemHeader) {
   return addTopLevelRecord(USRBasedLookupTable, Structs, USR, Name, Loc,
                            std::move(Availabilities), Comment, Declaration,
                            SubHeading, IsFromSystemHeader);
 }
 
 StaticFieldRecord *
-APISet::addStaticField(StringRef Name, StringRef USR, PresumedLoc Loc,
+APISet::addStaticField(StringRef Name, StringRef USR, RecordLocation Loc,
                        AvailabilitySet Availabilities, LinkageInfo Linkage,
                        const DocComment &Comment,
                        DeclarationFragments Declaration,
@@ -135,7 +134,7 @@ APISet::addStaticField(StringRef Name, StringRef USR, PresumedLoc Loc,
 
 CXXFieldRecord *
 APISet::addCXXField(CXXClassRecord *CXXClass, StringRef Name, StringRef USR,
-                    PresumedLoc Loc, AvailabilitySet Availabilities,
+                    RecordLocation Loc, AvailabilitySet Availabilities,
                     const DocComment &Comment, DeclarationFragments Declaration,
                     DeclarationFragments SubHeading, AccessControl Access,
                     bool IsFromSystemHeader) {
@@ -149,7 +148,7 @@ APISet::addCXXField(CXXClassRecord *CXXClass, StringRef Name, StringRef USR,
 }
 
 CXXClassRecord *
-APISet::addCXXClass(StringRef Name, StringRef USR, PresumedLoc Loc,
+APISet::addCXXClass(StringRef Name, StringRef USR, RecordLocation Loc,
                     AvailabilitySet Availabilities, const DocComment &Comment,
                     DeclarationFragments Declaration,
                     DeclarationFragments SubHeading, APIRecord::RecordKind Kind,
@@ -161,7 +160,7 @@ APISet::addCXXClass(StringRef Name, StringRef USR, PresumedLoc Loc,
 
 CXXMethodRecord *APISet::addCXXMethod(
     CXXClassRecord *CXXClassRecord, StringRef Name, StringRef USR,
-    PresumedLoc Loc, AvailabilitySet Availability, const DocComment &Comment,
+    RecordLocation Loc, AvailabilitySet Availability, const DocComment &Comment,
     DeclarationFragments Declaration, DeclarationFragments SubHeading,
     FunctionSignature Signature, bool IsStatic, AccessControl Access,
     bool IsFromSystemHeader) {
@@ -184,7 +183,7 @@ CXXMethodRecord *APISet::addCXXMethod(
 
 CXXMethodRecord *APISet::addCXXSpecialMethod(
     CXXClassRecord *CXXClassRecord, StringRef Name, StringRef USR,
-    PresumedLoc Loc, AvailabilitySet Availability, const DocComment &Comment,
+    RecordLocation Loc, AvailabilitySet Availability, const DocComment &Comment,
     DeclarationFragments Declaration, DeclarationFragments SubHeading,
     FunctionSignature Signature, bool IsConstructor, AccessControl Access,
     bool IsFromSystemHeader) {
@@ -206,7 +205,7 @@ CXXMethodRecord *APISet::addCXXSpecialMethod(
 }
 
 ObjCCategoryRecord *APISet::addObjCCategory(
-    StringRef Name, StringRef USR, PresumedLoc Loc,
+    StringRef Name, StringRef USR, RecordLocation Loc,
     AvailabilitySet Availabilities, const DocComment &Comment,
     DeclarationFragments Declaration, DeclarationFragments SubHeading,
     SymbolReference Interface, bool IsFromSystemHeader) {
@@ -226,7 +225,7 @@ ObjCCategoryRecord *APISet::addObjCCategory(
 }
 
 ObjCInterfaceRecord *
-APISet::addObjCInterface(StringRef Name, StringRef USR, PresumedLoc Loc,
+APISet::addObjCInterface(StringRef Name, StringRef USR, RecordLocation Loc,
                          AvailabilitySet Availabilities, LinkageInfo Linkage,
                          const DocComment &Comment,
                          DeclarationFragments Declaration,
@@ -240,10 +239,10 @@ APISet::addObjCInterface(StringRef Name, StringRef USR, PresumedLoc Loc,
 
 ObjCMethodRecord *APISet::addObjCMethod(
     ObjCContainerRecord *Container, StringRef Name, StringRef USR,
-    PresumedLoc Loc, AvailabilitySet Availabilities, const DocComment &Comment,
-    DeclarationFragments Declaration, DeclarationFragments SubHeading,
-    FunctionSignature Signature, bool IsInstanceMethod,
-    bool IsFromSystemHeader) {
+    RecordLocation Loc, AvailabilitySet Availabilities,
+    const DocComment &Comment, DeclarationFragments Declaration,
+    DeclarationFragments SubHeading, FunctionSignature Signature,
+    bool IsInstanceMethod, bool IsFromSystemHeader) {
   std::unique_ptr<ObjCMethodRecord> Record;
   if (IsInstanceMethod)
     Record = std::make_unique<ObjCInstanceMethodRecord>(
@@ -262,8 +261,9 @@ ObjCMethodRecord *APISet::addObjCMethod(
 
 ObjCPropertyRecord *APISet::addObjCProperty(
     ObjCContainerRecord *Container, StringRef Name, StringRef USR,
-    PresumedLoc Loc, AvailabilitySet Availabilities, const DocComment &Comment,
-    DeclarationFragments Declaration, DeclarationFragments SubHeading,
+    RecordLocation Loc, AvailabilitySet Availabilities,
+    const DocComment &Comment, DeclarationFragments Declaration,
+    DeclarationFragments SubHeading,
     ObjCPropertyRecord::AttributeKind Attributes, StringRef GetterName,
     StringRef SetterName, bool IsOptional, bool IsInstanceProperty,
     bool IsFromSystemHeader) {
@@ -286,8 +286,9 @@ ObjCPropertyRecord *APISet::addObjCProperty(
 
 ObjCInstanceVariableRecord *APISet::addObjCInstanceVariable(
     ObjCContainerRecord *Container, StringRef Name, StringRef USR,
-    PresumedLoc Loc, AvailabilitySet Availabilities, const DocComment &Comment,
-    DeclarationFragments Declaration, DeclarationFragments SubHeading,
+    RecordLocation Loc, AvailabilitySet Availabilities,
+    const DocComment &Comment, DeclarationFragments Declaration,
+    DeclarationFragments SubHeading,
     ObjCInstanceVariableRecord::AccessControl Access, bool IsFromSystemHeader) {
   auto Record = std::make_unique<ObjCInstanceVariableRecord>(
       USR, Name, Loc, std::move(Availabilities), Comment, Declaration,
@@ -299,7 +300,7 @@ ObjCInstanceVariableRecord *APISet::addObjCInstanceVariable(
 }
 
 ObjCProtocolRecord *APISet::addObjCProtocol(StringRef Name, StringRef USR,
-                                            PresumedLoc Loc,
+                                            RecordLocation Loc,
                                             AvailabilitySet Availabilities,
                                             const DocComment &Comment,
                                             DeclarationFragments Declaration,
@@ -311,7 +312,7 @@ ObjCProtocolRecord *APISet::addObjCProtocol(StringRef Name, StringRef USR,
 }
 
 MacroDefinitionRecord *
-APISet::addMacroDefinition(StringRef Name, StringRef USR, PresumedLoc Loc,
+APISet::addMacroDefinition(StringRef Name, StringRef USR, RecordLocation Loc,
                            DeclarationFragments Declaration,
                            DeclarationFragments SubHeading,
                            bool IsFromSystemHeader) {
@@ -320,7 +321,7 @@ APISet::addMacroDefinition(StringRef Name, StringRef USR, PresumedLoc Loc,
 }
 
 TypedefRecord *
-APISet::addTypedef(StringRef Name, StringRef USR, PresumedLoc Loc,
+APISet::addTypedef(StringRef Name, StringRef USR, RecordLocation Loc,
                    AvailabilitySet Availabilities, const DocComment &Comment,
                    DeclarationFragments Declaration,
                    DeclarationFragments SubHeading,

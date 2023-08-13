@@ -27,6 +27,7 @@
 #include "clang/ExtractAPI/API.h"
 #include "clang/ExtractAPI/TypedefUnderlyingTypeResolver.h"
 #include "llvm/ADT/StringRef.h"
+#include <algorithm>
 #include <type_traits>
 
 namespace clang {
@@ -180,9 +181,12 @@ bool ExtractAPIVisitorBase<Derived>::VisitVarDecl(const VarDecl *Decl) {
   LinkageInfo Linkage = Decl->getLinkageAndVisibility();
   DocComment Comment;
   if (auto *RawComment =
-          getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Decl))
-    Comment = RawComment->getFormattedLines(Context.getSourceManager(),
-                                            Context.getDiagnostics());
+          getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Decl)) {
+    auto RawCommentVec = RawComment->getFormattedLines(
+        Context.getSourceManager(), Context.getDiagnostics());
+    std::copy(RawCommentVec.begin(), RawCommentVec.end(),
+              std::back_inserter(Comment));
+  }
 
   // Build declaration fragments and sub-heading for the variable.
   DeclarationFragments Declaration =
@@ -253,9 +257,12 @@ bool ExtractAPIVisitorBase<Derived>::VisitFunctionDecl(
   LinkageInfo Linkage = Decl->getLinkageAndVisibility();
   DocComment Comment;
   if (auto *RawComment =
-          getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Decl))
-    Comment = RawComment->getFormattedLines(Context.getSourceManager(),
-                                            Context.getDiagnostics());
+          getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Decl)) {
+    auto RawCommentVec = RawComment->getFormattedLines(
+        Context.getSourceManager(), Context.getDiagnostics());
+    std::copy(RawCommentVec.begin(), RawCommentVec.end(),
+              std::back_inserter(Comment));
+  }
 
   // Build declaration fragments, sub-heading, and signature of the function.
   DeclarationFragments Declaration =
@@ -293,9 +300,12 @@ bool ExtractAPIVisitorBase<Derived>::VisitEnumDecl(const EnumDecl *Decl) {
       Context.getSourceManager().getPresumedLoc(Decl->getLocation());
   DocComment Comment;
   if (auto *RawComment =
-          getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Decl))
-    Comment = RawComment->getFormattedLines(Context.getSourceManager(),
-                                            Context.getDiagnostics());
+          getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Decl)) {
+    auto RawCommentVec = RawComment->getFormattedLines(
+        Context.getSourceManager(), Context.getDiagnostics());
+    std::copy(RawCommentVec.begin(), RawCommentVec.end(),
+              std::back_inserter(Comment));
+  }
 
   // Build declaration fragments and sub-heading for the enum.
   DeclarationFragments Declaration =
@@ -344,9 +354,12 @@ bool ExtractAPIVisitorBase<Derived>::VisitRecordDecl(const RecordDecl *Decl) {
       Context.getSourceManager().getPresumedLoc(Decl->getLocation());
   DocComment Comment;
   if (auto *RawComment =
-          getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Decl))
-    Comment = RawComment->getFormattedLines(Context.getSourceManager(),
-                                            Context.getDiagnostics());
+          getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Decl)) {
+    auto RawCommentVec = RawComment->getFormattedLines(
+        Context.getSourceManager(), Context.getDiagnostics());
+    std::copy(RawCommentVec.begin(), RawCommentVec.end(),
+              std::back_inserter(Comment));
+  }
 
   // Build declaration fragments and sub-heading for the struct.
   DeclarationFragments Declaration =
@@ -377,9 +390,12 @@ bool ExtractAPIVisitorBase<Derived>::VisitCXXRecordDecl(
       Context.getSourceManager().getPresumedLoc(Decl->getLocation());
   DocComment Comment;
   if (auto *RawComment =
-          getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Decl))
-    Comment = RawComment->getFormattedLines(Context.getSourceManager(),
-                                            Context.getDiagnostics());
+          getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Decl)) {
+    auto RawCommentVec = RawComment->getFormattedLines(
+        Context.getSourceManager(), Context.getDiagnostics());
+    std::copy(RawCommentVec.begin(), RawCommentVec.end(),
+              std::back_inserter(Comment));
+  }
   DeclarationFragments Declaration =
       DeclarationFragmentsBuilder::getFragmentsForCXXClass(Decl);
   DeclarationFragments SubHeading =
@@ -430,9 +446,12 @@ bool ExtractAPIVisitorBase<Derived>::VisitObjCInterfaceDecl(
   LinkageInfo Linkage = Decl->getLinkageAndVisibility();
   DocComment Comment;
   if (auto *RawComment =
-          getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Decl))
-    Comment = RawComment->getFormattedLines(Context.getSourceManager(),
-                                            Context.getDiagnostics());
+          getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Decl)) {
+    auto RawCommentVec = RawComment->getFormattedLines(
+        Context.getSourceManager(), Context.getDiagnostics());
+    std::copy(RawCommentVec.begin(), RawCommentVec.end(),
+              std::back_inserter(Comment));
+  }
 
   // Build declaration fragments and sub-heading for the interface.
   DeclarationFragments Declaration =
@@ -478,9 +497,12 @@ bool ExtractAPIVisitorBase<Derived>::VisitObjCProtocolDecl(
       Context.getSourceManager().getPresumedLoc(Decl->getLocation());
   DocComment Comment;
   if (auto *RawComment =
-          getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Decl))
-    Comment = RawComment->getFormattedLines(Context.getSourceManager(),
-                                            Context.getDiagnostics());
+          getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Decl)) {
+    auto RawCommentVec = RawComment->getFormattedLines(
+        Context.getSourceManager(), Context.getDiagnostics());
+    std::copy(RawCommentVec.begin(), RawCommentVec.end(),
+              std::back_inserter(Comment));
+  }
 
   // Build declaration fragments and sub-heading for the protocol.
   DeclarationFragments Declaration =
@@ -536,9 +558,12 @@ bool ExtractAPIVisitorBase<Derived>::VisitTypedefNameDecl(
   StringRef USR = API.recordUSR(Decl);
   DocComment Comment;
   if (auto *RawComment =
-          getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Decl))
-    Comment = RawComment->getFormattedLines(Context.getSourceManager(),
-                                            Context.getDiagnostics());
+          getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Decl)) {
+    auto RawCommentVec = RawComment->getFormattedLines(
+        Context.getSourceManager(), Context.getDiagnostics());
+    std::copy(RawCommentVec.begin(), RawCommentVec.end(),
+              std::back_inserter(Comment));
+  }
 
   QualType Type = Decl->getUnderlyingType();
   SymbolReference SymRef =
@@ -565,9 +590,12 @@ bool ExtractAPIVisitorBase<Derived>::VisitObjCCategoryDecl(
       Context.getSourceManager().getPresumedLoc(Decl->getLocation());
   DocComment Comment;
   if (auto *RawComment =
-          getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Decl))
-    Comment = RawComment->getFormattedLines(Context.getSourceManager(),
-                                            Context.getDiagnostics());
+          getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Decl)) {
+    auto RawCommentVec = RawComment->getFormattedLines(
+        Context.getSourceManager(), Context.getDiagnostics());
+    std::copy(RawCommentVec.begin(), RawCommentVec.end(),
+              std::back_inserter(Comment));
+  }
   // Build declaration fragments and sub-heading for the category.
   DeclarationFragments Declaration =
       DeclarationFragmentsBuilder::getFragmentsForObjCCategory(Decl);
@@ -607,9 +635,12 @@ void ExtractAPIVisitorBase<Derived>::recordEnumConstants(
         Context.getSourceManager().getPresumedLoc(Constant->getLocation());
     DocComment Comment;
     if (auto *RawComment =
-            getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Constant))
-      Comment = RawComment->getFormattedLines(Context.getSourceManager(),
-                                              Context.getDiagnostics());
+            getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Constant)) {
+      auto RawCommentVec = RawComment->getFormattedLines(
+          Context.getSourceManager(), Context.getDiagnostics());
+      std::copy(RawCommentVec.begin(), RawCommentVec.end(),
+                std::back_inserter(Comment));
+    }
 
     // Build declaration fragments and sub-heading for the enum constant.
     DeclarationFragments Declaration =
@@ -636,9 +667,12 @@ void ExtractAPIVisitorBase<Derived>::recordStructFields(
         Context.getSourceManager().getPresumedLoc(Field->getLocation());
     DocComment Comment;
     if (auto *RawComment =
-            getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Field))
-      Comment = RawComment->getFormattedLines(Context.getSourceManager(),
-                                              Context.getDiagnostics());
+            getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Field)) {
+      auto RawCommentVec = RawComment->getFormattedLines(
+          Context.getSourceManager(), Context.getDiagnostics());
+      std::copy(RawCommentVec.begin(), RawCommentVec.end(),
+                std::back_inserter(Comment));
+    }
 
     // Build declaration fragments and sub-heading for the struct field.
     DeclarationFragments Declaration =
@@ -664,9 +698,12 @@ void ExtractAPIVisitorBase<Derived>::recordCXXFields(
     Context.getSourceManager().getPresumedLoc(Field->getLocation());
     DocComment Comment;
     if (auto *RawComment =
-            getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Field))
-      Comment = RawComment->getFormattedLines(Context.getSourceManager(),
-                                              Context.getDiagnostics());
+            getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Field)) {
+      auto RawCommentVec = RawComment->getFormattedLines(
+          Context.getSourceManager(), Context.getDiagnostics());
+      std::copy(RawCommentVec.begin(), RawCommentVec.end(),
+                std::back_inserter(Comment));
+    }
 
     // Build declaration fragments and sub-heading for the struct field.
     DeclarationFragments Declaration =
@@ -701,9 +738,12 @@ void ExtractAPIVisitorBase<Derived>::recordSpecialCXXMethod(
       CXXSpecialMethod->getLocation());
   DocComment Comment;
   if (auto *RawComment = getDerivedExtractAPIVisitor().fetchRawCommentForDecl(
-          CXXSpecialMethod))
-    Comment = RawComment->getFormattedLines(Context.getSourceManager(),
-                                            Context.getDiagnostics());
+          CXXSpecialMethod)) {
+    auto RawCommentVec = RawComment->getFormattedLines(
+        Context.getSourceManager(), Context.getDiagnostics());
+    std::copy(RawCommentVec.begin(), RawCommentVec.end(),
+              std::back_inserter(Comment));
+  }
 
   // Build declaration fragments, sub-heading, and signature for the method.
   DeclarationFragments Declaration =
@@ -731,9 +771,12 @@ void ExtractAPIVisitorBase<Derived>::recordConversionMethod(
       SpecialCXXMethod->getLocation());
   DocComment Comment;
   if (auto *RawComment = getDerivedExtractAPIVisitor().fetchRawCommentForDecl(
-          SpecialCXXMethod))
-    Comment = RawComment->getFormattedLines(Context.getSourceManager(),
-                                            Context.getDiagnostics());
+          SpecialCXXMethod)) {
+    auto RawCommentVec = RawComment->getFormattedLines(
+        Context.getSourceManager(), Context.getDiagnostics());
+    std::copy(RawCommentVec.begin(), RawCommentVec.end(),
+              std::back_inserter(Comment));
+  }
 
   // Build declaration fragments, sub-heading, and signature for the method.
   DeclarationFragments Declaration =
@@ -783,9 +826,12 @@ void ExtractAPIVisitorBase<Derived>::recordCXXMethods(
         Context.getSourceManager().getPresumedLoc(Method->getLocation());
     DocComment Comment;
     if (auto *RawComment =
-            getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Method))
-      Comment = RawComment->getFormattedLines(Context.getSourceManager(),
-                                              Context.getDiagnostics());
+            getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Method)) {
+      auto RawCommentVec = RawComment->getFormattedLines(
+          Context.getSourceManager(), Context.getDiagnostics());
+      std::copy(RawCommentVec.begin(), RawCommentVec.end(),
+                std::back_inserter(Comment));
+    }
 
     // Build declaration fragments, sub-heading, and signature for the method.
     DeclarationFragments SubHeading =
@@ -818,9 +864,12 @@ void ExtractAPIVisitorBase<Derived>::recordObjCMethods(
         Context.getSourceManager().getPresumedLoc(Method->getLocation());
     DocComment Comment;
     if (auto *RawComment =
-            getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Method))
-      Comment = RawComment->getFormattedLines(Context.getSourceManager(),
-                                              Context.getDiagnostics());
+            getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Method)) {
+      auto RawCommentVec = RawComment->getFormattedLines(
+          Context.getSourceManager(), Context.getDiagnostics());
+      std::copy(RawCommentVec.begin(), RawCommentVec.end(),
+                std::back_inserter(Comment));
+    }
 
     // Build declaration fragments, sub-heading, and signature for the method.
     DeclarationFragments Declaration =
@@ -847,9 +896,12 @@ void ExtractAPIVisitorBase<Derived>::recordObjCProperties(
         Context.getSourceManager().getPresumedLoc(Property->getLocation());
     DocComment Comment;
     if (auto *RawComment =
-            getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Property))
-      Comment = RawComment->getFormattedLines(Context.getSourceManager(),
-                                              Context.getDiagnostics());
+            getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Property)) {
+      auto RawCommentVec = RawComment->getFormattedLines(
+          Context.getSourceManager(), Context.getDiagnostics());
+      std::copy(RawCommentVec.begin(), RawCommentVec.end(),
+                std::back_inserter(Comment));
+    }
 
     // Build declaration fragments and sub-heading for the property.
     DeclarationFragments Declaration =
@@ -892,9 +944,12 @@ void ExtractAPIVisitorBase<Derived>::recordObjCInstanceVariables(
         Context.getSourceManager().getPresumedLoc(Ivar->getLocation());
     DocComment Comment;
     if (auto *RawComment =
-            getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Ivar))
-      Comment = RawComment->getFormattedLines(Context.getSourceManager(),
-                                              Context.getDiagnostics());
+            getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Ivar)) {
+      auto RawCommentVec = RawComment->getFormattedLines(
+          Context.getSourceManager(), Context.getDiagnostics());
+      std::copy(RawCommentVec.begin(), RawCommentVec.end(),
+                std::back_inserter(Comment));
+    }
 
     // Build declaration fragments and sub-heading for the instance variable.
     DeclarationFragments Declaration =
