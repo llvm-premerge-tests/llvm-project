@@ -33,6 +33,7 @@
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Target/TargetOptions.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include "llvm/Transforms/IPO.h"
 #include <optional>
 using namespace llvm;
@@ -95,7 +96,8 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeRISCVTarget() {
 static StringRef computeDataLayout(const Triple &TT) {
   if (TT.isArch64Bit())
     return "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128";
-  assert(TT.isArch32Bit() && "only RV32 and RV64 are currently supported");
+  assert(llvm::TripleUtils::isArch32Bit(TT) &&
+         "only RV32 and RV64 are currently supported");
   return "e-m:e-p:32:32-i64:64-n32-S128";
 }
 

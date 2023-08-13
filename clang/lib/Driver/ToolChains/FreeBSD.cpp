@@ -18,6 +18,7 @@
 #include "clang/Driver/SanitizerArgs.h"
 #include "llvm/Option/ArgList.h"
 #include "llvm/Support/VirtualFileSystem.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 using namespace clang::driver;
 using namespace clang::driver::tools;
@@ -376,7 +377,7 @@ FreeBSD::FreeBSD(const Driver &D, const llvm::Triple &Triple,
 
   // When targeting 32-bit platforms, look for '/usr/lib32/crt1.o' and fall
   // back to '/usr/lib' if it doesn't exist.
-  if (Triple.isArch32Bit() &&
+  if (llvm::TripleUtils::isArch32Bit(Triple) &&
       D.getVFS().exists(concat(getDriver().SysRoot, "/usr/lib32/crt1.o")))
     getFilePaths().push_back(concat(getDriver().SysRoot, "/usr/lib32"));
   else

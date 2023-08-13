@@ -27,6 +27,7 @@
 #include "llvm/Support/VirtualFileSystem.h"
 #include "llvm/TargetParser/TargetParser.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <cstdlib> // ::getenv
 
 using namespace clang::driver;
@@ -2285,7 +2286,7 @@ void Darwin::AddDeploymentTarget(DerivedArgList &Args) const {
     }
     // For 32-bit targets, the deployment target for iOS has to be earlier than
     // iOS 11.
-    if (getTriple().isArch32Bit() && Major >= 11) {
+    if (llvm::TripleUtils::isArch32Bit(getTriple()) && Major >= 11) {
       // If the deployment target is explicitly specified, print a diagnostic.
       if (OSTarget->isExplicitlySpecified()) {
         if (OSTarget->getEnvironment() == MacCatalyst)

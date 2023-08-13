@@ -19,6 +19,7 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/VirtualFileSystem.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 using namespace clang::driver;
 using namespace clang::driver::tools;
@@ -173,7 +174,7 @@ WebAssembly::WebAssembly(const Driver &D, const llvm::Triple &Triple,
                          const llvm::opt::ArgList &Args)
     : ToolChain(D, Triple, Args) {
 
-  assert(Triple.isArch32Bit() != Triple.isArch64Bit());
+  assert(llvm::TripleUtils::isArch32Bit(Triple) != Triple.isArch64Bit());
 
   getProgramPaths().push_back(getDriver().getInstalledDir());
 

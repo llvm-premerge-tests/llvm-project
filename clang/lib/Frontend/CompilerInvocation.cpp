@@ -87,6 +87,7 @@
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/TargetParser/Host.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <algorithm>
 #include <atomic>
 #include <cassert>
@@ -3843,9 +3844,9 @@ bool CompilerInvocation::ParseLangArgs(LangOptions &Opts, ArgList &Args,
   if (Arg *A = Args.getLastArg(options::OPT_fopenmp_targets_EQ)) {
     enum ArchPtrSize { Arch16Bit, Arch32Bit, Arch64Bit };
     auto getArchPtrSize = [](const llvm::Triple &T) {
-      if (T.isArch16Bit())
+      if (llvm::TripleUtils::isArch16Bit(T))
         return Arch16Bit;
-      if (T.isArch32Bit())
+      if (llvm::TripleUtils::isArch32Bit(T))
         return Arch32Bit;
       assert(T.isArch64Bit() && "Expected 64-bit architecture");
       return Arch64Bit;

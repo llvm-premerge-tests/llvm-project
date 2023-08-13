@@ -14,6 +14,7 @@
 #include "ROCm.h"
 #include "clang/Driver/Tool.h"
 #include "clang/Driver/ToolChain.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <set>
 
 namespace clang {
@@ -319,7 +320,9 @@ protected:
   bool isTarget64Bit() const { return getTriple().isArch64Bit(); }
 
   /// Check whether the target triple's architecture is 32-bits.
-  bool isTarget32Bit() const { return getTriple().isArch32Bit(); }
+  bool isTarget32Bit() const {
+    return llvm::TripleUtils::isArch32Bit(getTriple());
+  }
 
   void PushPPaths(ToolChain::path_list &PPaths);
   void AddMultilibPaths(const Driver &D, const std::string &SysRoot,

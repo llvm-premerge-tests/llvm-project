@@ -19,6 +19,7 @@
 #include "llvm/ADT/StringSwitch.h"
 #include "llvm/TargetParser/AArch64TargetParser.h"
 #include "llvm/TargetParser/ARMTargetParserCommon.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <optional>
 
 using namespace clang;
@@ -1374,7 +1375,7 @@ AArch64leTargetInfo::AArch64leTargetInfo(const llvm::Triple &Triple,
 
 void AArch64leTargetInfo::setDataLayout() {
   if (getTriple().isOSBinFormatMachO()) {
-    if(getTriple().isArch32Bit())
+    if (llvm::TripleUtils::isArch32Bit(getTriple()))
       resetDataLayout("e-m:o-p:32:32-i64:64-i128:128-n32:64-S128", "_");
     else
       resetDataLayout("e-m:o-i64:64-i128:128-n32:64-S128", "_");
@@ -1500,7 +1501,7 @@ DarwinAArch64TargetInfo::DarwinAArch64TargetInfo(const llvm::Triple &Triple,
                                                  const TargetOptions &Opts)
     : DarwinTargetInfo<AArch64leTargetInfo>(Triple, Opts) {
   Int64Type = SignedLongLong;
-  if (getTriple().isArch32Bit())
+  if (llvm::TripleUtils::isArch32Bit(getTriple()))
     IntMaxType = SignedLongLong;
 
   WCharType = SignedInt;
@@ -1511,7 +1512,7 @@ DarwinAArch64TargetInfo::DarwinAArch64TargetInfo(const llvm::Triple &Triple,
 
   UseZeroLengthBitfieldAlignment = false;
 
-  if (getTriple().isArch32Bit()) {
+  if (llvm::TripleUtils::isArch32Bit(getTriple())) {
     UseBitFieldTypeAlignment = false;
     ZeroLengthBitfieldBoundary = 32;
     UseZeroLengthBitfieldAlignment = true;
@@ -1524,7 +1525,7 @@ void DarwinAArch64TargetInfo::getOSDefines(const LangOptions &Opts,
                                            const llvm::Triple &Triple,
                                            MacroBuilder &Builder) const {
   Builder.defineMacro("__AARCH64_SIMD__");
-  if (Triple.isArch32Bit())
+  if (llvm::TripleUtils::isArch32Bit(Triple))
     Builder.defineMacro("__ARM64_ARCH_8_32__");
   else
     Builder.defineMacro("__ARM64_ARCH_8__");

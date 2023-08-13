@@ -19,6 +19,7 @@
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include "llvm/TargetParser/X86TargetParser.h"
 #include <string.h>
 
@@ -1950,7 +1951,7 @@ std::string sys::getProcessTriple() {
   PT = withHostArch(PT);
 #endif
 
-  if (sizeof(void *) == 8 && PT.isArch32Bit())
+  if (sizeof(void *) == 8 && llvm::TripleUtils::isArch32Bit(PT))
     PT = PT.get64BitArchVariant();
   if (sizeof(void *) == 4 && PT.isArch64Bit())
     PT = PT.get32BitArchVariant();

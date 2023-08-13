@@ -43,6 +43,7 @@
 #include "llvm/Target/TargetLoweringObjectFile.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include "llvm/Transforms/Scalar.h"
 #include <cassert>
 #include <memory>
@@ -291,7 +292,7 @@ getEffectivePPCCodeModel(const Triple &TT, std::optional<CodeModel::Model> CM,
 
   assert(TT.isOSBinFormatELF() && "All remaining PPC OSes are ELF based.");
 
-  if (TT.isArch32Bit())
+  if (TripleUtils::isArch32Bit(TT))
     return CodeModel::Small;
 
   assert(TT.isArch64Bit() && "Unsupported PPC architecture.");

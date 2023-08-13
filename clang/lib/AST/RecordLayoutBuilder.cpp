@@ -14,12 +14,13 @@
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/DeclObjC.h"
 #include "clang/AST/Expr.h"
-#include "clang/AST/VTableBuilder.h"
 #include "clang/AST/RecordLayout.h"
+#include "clang/AST/VTableBuilder.h"
 #include "clang/Basic/TargetInfo.h"
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/MathExtras.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 using namespace clang;
 
@@ -1624,7 +1625,8 @@ void ItaniumRecordLayoutBuilder::LayoutBitField(const FieldDecl *D) {
       // as [unsigned].
       StorageUnitSize = Context.getTypeSize(Context.UnsignedIntTy);
     } else if (StorageUnitSize > Context.getTypeSize(Context.UnsignedIntTy) &&
-               Context.getTargetInfo().getTriple().isArch32Bit() &&
+               llvm::TripleUtils::isArch32Bit(
+                   Context.getTargetInfo().getTriple()) &&
                FieldSize <= 32) {
       // Under 32-bit compile mode, the bitcontainer is 32 bits if a single
       // long long bitfield has length no greater than 32 bits.

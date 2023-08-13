@@ -9,12 +9,13 @@
 #include "llvm/BinaryFormat/MachO.h"
 #include "llvm/TargetParser/ARMTargetParser.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 using namespace llvm;
 
 static MachO::CPUSubTypeX86 getX86SubType(const Triple &T) {
   assert(T.isX86());
-  if (T.isArch32Bit())
+  if (TripleUtils::isArch32Bit(T))
     return MachO::CPU_SUBTYPE_I386_ALL;
 
   assert(T.isArch64Bit());
@@ -56,7 +57,7 @@ static MachO::CPUSubTypeARM getARMSubType(const Triple &T) {
 
 static MachO::CPUSubTypeARM64 getARM64SubType(const Triple &T) {
   assert(T.isAArch64());
-  if (T.isArch32Bit())
+  if (TripleUtils::isArch32Bit(T))
     return (MachO::CPUSubTypeARM64)MachO::CPU_SUBTYPE_ARM64_32_V8;
   if (T.isArm64e())
     return MachO::CPU_SUBTYPE_ARM64E;
@@ -77,14 +78,15 @@ static Error unsupported(const char *Str, const Triple &T) {
 Expected<uint32_t> MachO::getCPUType(const Triple &T) {
   if (!T.isOSBinFormatMachO())
     return unsupported("type", T);
-  if (T.isX86() && T.isArch32Bit())
+  if (T.isX86() && TripleUtils::isArch32Bit(T))
     return MachO::CPU_TYPE_X86;
   if (T.isX86() && T.isArch64Bit())
     return MachO::CPU_TYPE_X86_64;
   if (T.isARM() || T.isThumb())
     return MachO::CPU_TYPE_ARM;
   if (T.isAArch64())
-    return T.isArch32Bit() ? MachO::CPU_TYPE_ARM64_32 : MachO::CPU_TYPE_ARM64;
+    return TripleUtils::isArch32Bit(T) ? MachO::CPU_TYPE_ARM64_32
+                                       : MachO::CPU_TYPE_ARM64;
   if (T.getArch() == Triple::ppc)
     return MachO::CPU_TYPE_POWERPC;
   if (T.getArch() == Triple::ppc64)

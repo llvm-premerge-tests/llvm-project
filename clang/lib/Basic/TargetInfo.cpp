@@ -20,6 +20,7 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/TargetParser/TargetParser.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <cstdlib>
 using namespace clang;
 
@@ -102,7 +103,9 @@ TargetInfo::TargetInfo(const llvm::Triple &T) : Triple(T) {
   // and OpenBSD, the alignment is 16 bytes on both 64-bit and 32-bit systems.
   if (T.isGNUEnvironment() || T.isWindowsMSVCEnvironment() || T.isAndroid() ||
       T.isOHOSFamily())
-    NewAlign = Triple.isArch64Bit() ? 128 : Triple.isArch32Bit() ? 64 : 0;
+    NewAlign = Triple.isArch64Bit()                     ? 128
+               : llvm::TripleUtils::isArch32Bit(Triple) ? 64
+                                                        : 0;
   else if (T.isOSDarwin() || T.isOSOpenBSD())
     NewAlign = 128;
   else

@@ -13,6 +13,7 @@
 #include "clang/Driver/Options.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/VirtualFileSystem.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 using namespace clang::driver;
 using namespace clang::driver::toolchains;
@@ -58,7 +59,7 @@ static StringRef getOSLibDir(const llvm::Triple &Triple, const ArgList &Args) {
   if (Triple.getArch() == llvm::Triple::x86)
     return "lib32";
 
-  return Triple.isArch32Bit() ? "lib" : "lib64";
+  return llvm::TripleUtils::isArch32Bit(Triple) ? "lib" : "lib64";
 }
 
 Hurd::Hurd(const Driver &D, const llvm::Triple &Triple, const ArgList &Args)

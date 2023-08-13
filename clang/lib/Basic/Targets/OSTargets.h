@@ -13,6 +13,7 @@
 #define LLVM_CLANG_LIB_BASIC_TARGETS_OSTARGETS_H
 
 #include "Targets.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 namespace clang {
 namespace targets {
@@ -91,7 +92,7 @@ public:
       // 32-bit simulator from 10 onwards.
       if (Triple.isArch64Bit())
         this->TLSSupported = !Triple.isOSVersionLT(8);
-      else if (Triple.isArch32Bit()) {
+      else if (llvm::TripleUtils::isArch32Bit(Triple)) {
         if (!Triple.isSimulatorEnvironment())
           this->TLSSupported = !Triple.isOSVersionLT(9);
         else

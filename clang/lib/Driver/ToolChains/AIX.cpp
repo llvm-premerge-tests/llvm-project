@@ -16,6 +16,7 @@
 #include "llvm/Option/ArgList.h"
 #include "llvm/ProfileData/InstrProf.h"
 #include "llvm/Support/Path.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 using AIX = clang::driver::toolchains::AIX;
 using namespace clang::driver;
@@ -32,7 +33,8 @@ void aix::Assembler::ConstructJob(Compilation &C, const JobAction &JA,
                                   const char *LinkingOutput) const {
   ArgStringList CmdArgs;
 
-  const bool IsArch32Bit = getToolChain().getTriple().isArch32Bit();
+  const bool IsArch32Bit =
+      llvm::TripleUtils::isArch32Bit(getToolChain().getTriple());
   const bool IsArch64Bit = getToolChain().getTriple().isArch64Bit();
   // Only support 32 and 64 bit.
   if (!IsArch32Bit && !IsArch64Bit)
@@ -107,7 +109,8 @@ void aix::Linker::ConstructJob(Compilation &C, const JobAction &JA,
   const Driver &D = ToolChain.getDriver();
   ArgStringList CmdArgs;
 
-  const bool IsArch32Bit = ToolChain.getTriple().isArch32Bit();
+  const bool IsArch32Bit =
+      llvm::TripleUtils::isArch32Bit(ToolChain.getTriple());
   const bool IsArch64Bit = ToolChain.getTriple().isArch64Bit();
   // Only support 32 and 64 bit.
   if (!(IsArch32Bit || IsArch64Bit))

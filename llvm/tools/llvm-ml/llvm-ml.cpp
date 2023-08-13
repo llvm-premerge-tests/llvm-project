@@ -43,6 +43,7 @@
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Support/WithColor.h"
 #include "llvm/TargetParser/Host.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <ctime>
 #include <optional>
 
@@ -275,7 +276,7 @@ int main(int Argc, char **Argv) {
   const std::string &TripleName = TheTriple.getTriple();
 
   bool SafeSEH = InputArgs.hasArg(OPT_safeseh);
-  if (SafeSEH && !(TheTriple.isArch32Bit() && TheTriple.isX86())) {
+  if (SafeSEH && !(TripleUtils::isArch32Bit(TheTriple) && TheTriple.isX86())) {
     WithColor::warning()
         << "/safeseh applies only to 32-bit X86 platforms; ignoring.\n";
     SafeSEH = false;

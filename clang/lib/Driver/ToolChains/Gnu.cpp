@@ -1889,9 +1889,9 @@ static bool findBiarchMultilibs(const Driver &D,
   // Also handle cases such as 64 on 32, 32 on 64, etc.
   enum { UNKNOWN, WANT32, WANT64, WANTX32 } Want = UNKNOWN;
   const bool IsX32 = TargetTriple.isX32();
-  if (TargetTriple.isArch32Bit() && !NonExistent(Alt32))
+  if (llvm::TripleUtils::isArch32Bit(TargetTriple) && !NonExistent(Alt32))
     Want = WANT64;
-  if (TargetTriple.isArch32Bit() && !NonExistent(Alt32sparc))
+  if (llvm::TripleUtils::isArch32Bit(TargetTriple) && !NonExistent(Alt32sparc))
     Want = WANT64;
   else if (TargetTriple.isArch64Bit() && IsX32 && !NonExistent(Altx32))
     Want = WANT64;
@@ -1900,7 +1900,7 @@ static bool findBiarchMultilibs(const Driver &D,
   else if (TargetTriple.isArch64Bit() && !NonExistent(Alt32sparc))
     Want = WANT64;
   else {
-    if (TargetTriple.isArch32Bit())
+    if (llvm::TripleUtils::isArch32Bit(TargetTriple))
       Want = NeedsBiarchSuffix ? WANT64 : WANT32;
     else if (IsX32)
       Want = NeedsBiarchSuffix ? WANT64 : WANTX32;
@@ -1935,7 +1935,7 @@ static bool findBiarchMultilibs(const Driver &D,
 
   Multilib::flags_list Flags;
   addMultilibFlag(TargetTriple.isArch64Bit() && !IsX32, "-m64", Flags);
-  addMultilibFlag(TargetTriple.isArch32Bit(), "-m32", Flags);
+  addMultilibFlag(llvm::TripleUtils::isArch32Bit(TargetTriple), "-m32", Flags);
   addMultilibFlag(TargetTriple.isArch64Bit() && IsX32, "-mx32", Flags);
 
   if (!Result.Multilibs.select(Flags, Result.SelectedMultilibs))
@@ -2073,9 +2073,10 @@ static llvm::StringRef getGCCToolchainDir(const ArgList &Args,
 void Generic_GCC::GCCInstallationDetector::init(
     const llvm::Triple &TargetTriple, const ArgList &Args,
     ArrayRef<std::string> ExtraTripleAliases) {
-  llvm::Triple BiarchVariantTriple = TargetTriple.isArch32Bit()
-                                         ? TargetTriple.get64BitArchVariant()
-                                         : TargetTriple.get32BitArchVariant();
+  llvm::Triple BiarchVariantTriple =
+      llvm::TripleUtils::isArch32Bit(TargetTriple)
+          ? TargetTriple.get64BitArchVariant()
+          : TargetTriple.get32BitArchVariant();
   // The library directories which may contain GCC installations.
   SmallVector<StringRef, 4> CandidateLibDirs, CandidateBiarchLibDirs;
   // The compatible GCC triples for this particular architecture.

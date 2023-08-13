@@ -23,6 +23,7 @@
 #include "llvm/Support/Path.h"
 #include "llvm/Support/ScopedPrinter.h"
 #include "llvm/Support/VirtualFileSystem.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <system_error>
 
 using namespace clang::driver;
@@ -184,7 +185,7 @@ static StringRef getOSLibDir(const llvm::Triple &Triple, const ArgList &Args) {
     // code for N32 ABI only.
     if (tools::mips::hasMipsAbiArg(Args, "n32"))
       return "lib32";
-    return Triple.isArch32Bit() ? "lib" : "lib64";
+    return llvm::TripleUtils::isArch32Bit(Triple) ? "lib" : "lib64";
   }
 
   // It happens that only x86, PPC and SPARC use the 'lib32' variant of
@@ -206,7 +207,7 @@ static StringRef getOSLibDir(const llvm::Triple &Triple, const ArgList &Args) {
   if (Triple.getArch() == llvm::Triple::riscv32)
     return "lib32";
 
-  return Triple.isArch32Bit() ? "lib" : "lib64";
+  return llvm::TripleUtils::isArch32Bit(Triple) ? "lib" : "lib64";
 }
 
 Linux::Linux(const Driver &D, const llvm::Triple &Triple, const ArgList &Args)
