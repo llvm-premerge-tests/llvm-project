@@ -6049,6 +6049,10 @@ bool X86TTIImpl::areInlineCompatible(const Function *Caller,
   if (RealCallerBits == RealCalleeBits)
     return true;
 
+  // If the callee is only missing VLX, they are compatible.
+  if (RealCallerBits == (RealCalleeBits | FeatureBitset{X86::FeatureVLX}))
+    return true;
+
   // If the features are a subset, we need to additionally check for calls
   // that may become ABI-incompatible as a result of inlining.
   if ((RealCallerBits & RealCalleeBits) != RealCalleeBits)

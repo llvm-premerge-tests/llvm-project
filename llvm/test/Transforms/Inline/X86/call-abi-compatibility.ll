@@ -93,3 +93,21 @@ define internal void @caller_not_avx4() {
 }
 
 declare i64 @caller_unknown_simple(i64)
+
+; This call should get inlined, because the callee is only missing VLX.
+define void @caller_vlx() "target-features"="+avx512f,+avx512vl" {
+; CHECK-LABEL: define {{[^@]+}}@caller_vlx
+; CHECK-SAME: () #[[ATTR2:[0-9]+]] {
+; CHECK-NEXT:    call void @callee_not_vlx(<8 x i64> <i64 0, i64 1, i64 2, i64 3, i64 4, i64 5, i64 6, i64 7>)
+; CHECK-NEXT:    ret void
+;
+  call void @caller_not_vlx(<8 x i64> <i64 0, i64 1, i64 2, i64 3, i64 4, i64 5, i64 6, i64 7>)
+  ret void
+}
+
+define internal void @caller_not_vlx(<8 x i64> %arg) "target-features"="+avx512f" {
+  call void @callee_not_vlx(<8 x i64> %arg)
+  ret void
+}
+
+declare void @callee_not_vlx(<8 x i64>)
