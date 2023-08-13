@@ -1472,7 +1472,7 @@ static void computeKnownBitsFromOperator(const Operator *I,
                     m_Br(m_c_ICmp(Pred, m_Specific(IncValue), m_APInt(RHSC)),
                          m_BasicBlock(TrueSucc), m_BasicBlock(FalseSucc)))) {
             // Check for cases of duplicate successors.
-            if ((TrueSucc == P->getParent()) != (FalseSucc == P->getParent())) {
+            if (TrueSucc != FalseSucc) {
               // If we're using the false successor, invert the predicate.
               if (FalseSucc == P->getParent())
                 Pred = CmpInst::getInversePredicate(Pred);
@@ -2682,7 +2682,7 @@ static bool isKnownNonZeroFromOperator(const Operator *I,
                 m_Br(m_c_ICmp(Pred, m_Specific(U.get()), m_Value(X)),
                      m_BasicBlock(TrueSucc), m_BasicBlock(FalseSucc)))) {
         // Check for cases of duplicate successors.
-        if ((TrueSucc == PN->getParent()) != (FalseSucc == PN->getParent())) {
+        if (TrueSucc != FalseSucc) {
           // If we're using the false successor, invert the predicate.
           if (FalseSucc == PN->getParent())
             Pred = CmpInst::getInversePredicate(Pred);
