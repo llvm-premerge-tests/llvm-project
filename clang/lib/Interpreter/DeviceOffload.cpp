@@ -15,6 +15,7 @@
 #include "clang/Basic/TargetOptions.h"
 #include "clang/CodeGen/ModuleBuilder.h"
 #include "clang/Frontend/CompilerInstance.h"
+#include "clang/Sema/CodeCompleteConsumer.h"
 
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/MC/TargetRegistry.h"

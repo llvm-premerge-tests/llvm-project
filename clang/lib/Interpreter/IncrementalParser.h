@@ -13,9 +13,10 @@
 #ifndef LLVM_CLANG_LIB_INTERPRETER_INCREMENTALPARSER_H
 #define LLVM_CLANG_LIB_INTERPRETER_INCREMENTALPARSER_H
 
+#include "clang/AST/GlobalDecl.h"
+#include "clang/Frontend/FrontendActions.h"
 #include "clang/Interpreter/PartialTranslationUnit.h"
 
-#include "clang/AST/GlobalDecl.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Error.h"
@@ -24,7 +25,7 @@
 #include <memory>
 namespace llvm {
 class LLVMContext;
-}
+} // namespace llvm
 
 namespace clang {
 class ASTConsumer;
@@ -86,6 +87,18 @@ public:
 private:
   llvm::Expected<PartialTranslationUnit &> ParseOrWrapTopLevelDecl();
 };
+
+class IncrementalSyntaxOnlyAction : public SyntaxOnlyAction {
+  const CompilerInstance *ParentCI;
+
+public:
+  IncrementalSyntaxOnlyAction(const CompilerInstance *ParentCI)
+      : ParentCI(ParentCI) {}
+
+protected:
+  void ExecuteAction() override;
+};
+
 } // end namespace clang
 
 #endif // LLVM_CLANG_LIB_INTERPRETER_INCREMENTALPARSER_H

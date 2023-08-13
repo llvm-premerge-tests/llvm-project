@@ -11,6 +11,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "IncrementalParser.h"
+#include "ExternalSource.h"
+
 #include "clang/AST/DeclContextInternals.h"
 #include "clang/CodeGen/BackendUtil.h"
 #include "clang/CodeGen/CodeGenAction.h"
@@ -157,15 +159,10 @@ public:
   TranslationUnitKind getTranslationUnitKind() override {
     return TU_Incremental;
   }
+
   void ExecuteAction() override {
     CompilerInstance &CI = getCompilerInstance();
     assert(CI.hasPreprocessor() && "No PP!");
-
-    // FIXME: Move the truncation aspect of this into Sema, we delayed this till
-    // here so the source manager would be initialized.
-    if (hasCodeCompletionSupport() &&
-        !CI.getFrontendOpts().CodeCompletionAt.FileName.empty())
-      CI.createCodeCompletionConsumer();
 
     // Use a code completion consumer?
     CodeCompleteConsumer *CompletionConsumer = nullptr;
@@ -399,4 +396,19 @@ llvm::StringRef IncrementalParser::GetMangledName(GlobalDecl GD) const {
   return CG->GetMangledName(GD);
 }
 
+// This method is intended to set up `ExternalASTSource` to the running compiler
+// instance before the super `ExecuteAction` triggers parsing
+void IncrementalSyntaxOnlyAction::ExecuteAction() {
+  CompilerInstance &CI = getCompilerInstance();
+  ExternalSource *myExternalSource =
+      new ExternalSource(CI.getASTContext(), CI.getFileManager(),
+                         ParentCI->getASTContext(), ParentCI->getFileManager());
+  llvm::IntrusiveRefCntPtr<clang::ExternalASTSource> astContextExternalSource(
+      myExternalSource);
+  CI.getASTContext().setExternalSource(astContextExternalSource);
+  CI.getASTContext().getTranslationUnitDecl()->setHasExternalVisibleStorage(
+      true);
+
+  SyntaxOnlyAction::ExecuteAction();
+}
 } // end namespace clang
