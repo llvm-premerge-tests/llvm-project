@@ -904,20 +904,23 @@ bool RISCVInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
     return true;
 
   // Handle a single unconditional branch.
-  if (NumTerminators == 1 && I->getDesc().isUnconditionalBranch()) {
+  if (NumTerminators == 1 && I->getDesc().isUnconditionalBranch() &&
+      !I->isPreISelOpcode()) {
     TBB = getBranchDestBlock(*I);
     return false;
   }
 
   // Handle a single conditional branch.
-  if (NumTerminators == 1 && I->getDesc().isConditionalBranch()) {
+  if (NumTerminators == 1 && I->getDesc().isConditionalBranch() &&
+      !I->isPreISelOpcode()) {
     parseCondBranch(*I, TBB, Cond);
     return false;
   }
 
   // Handle a conditional branch followed by an unconditional branch.
   if (NumTerminators == 2 && std::prev(I)->getDesc().isConditionalBranch() &&
-      I->getDesc().isUnconditionalBranch()) {
+      !std::prev(I)->isPreISelOpcode() &&
+      I->getDesc().isUnconditionalBranch() && !I->isPreISelOpcode()) {
     parseCondBranch(*std::prev(I), TBB, Cond);
     FBB = getBranchDestBlock(*I);
     return false;
