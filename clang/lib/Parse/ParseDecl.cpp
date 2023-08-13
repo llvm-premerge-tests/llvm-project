@@ -18,6 +18,7 @@
 #include "clang/Basic/Attributes.h"
 #include "clang/Basic/CharInfo.h"
 #include "clang/Basic/TargetInfo.h"
+#include "clang/Basic/TokenKinds.h"
 #include "clang/Parse/ParseDiagnostic.h"
 #include "clang/Parse/Parser.h"
 #include "clang/Parse/RAIIObjectsForParser.h"
@@ -6644,6 +6645,18 @@ void Parser::ParseDirectDeclarator(Declarator &D) {
 
   while (true) {
     if (Tok.is(tok::l_paren)) {
+      if (PP.isIncrementalProcessingEnabled() &&
+          NextToken().is(tok::code_completion)) {
+        // In clang-repl, code completion for input like `void foo(<tab>` should
+        // not trigger a parsing error. So we make the declarator malformed and
+        // exits the loop.
+        ConsumeParen();
+        cutOffParsing();
+        D.SetIdentifier(nullptr, Tok.getLocation());
+        D.setInvalidType(true);
+        break;
+      }
+
       bool IsFunctionDeclaration = D.isFunctionDeclaratorAFunctionDeclaration();
       // Enter function-declaration scope, limiting any declarators to the
       // function prototype scope, including parameter declarators.
