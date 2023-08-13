@@ -22,6 +22,7 @@ using namespace llvm;
 RISCVLegalizerInfo::RISCVLegalizerInfo(const RISCVSubtarget &ST) {
   const unsigned XLen = ST.getXLen();
   const LLT XLenLLT = LLT::scalar(XLen);
+  const LLT p0 = LLT::pointer(0, XLen);
 
   using namespace TargetOpcode;
 
@@ -86,7 +87,7 @@ RISCVLegalizerInfo::RISCVLegalizerInfo(const RISCVSubtarget &ST) {
       .clampScalar(0, XLenLLT, XLenLLT);
 
   getActionDefinitionsBuilder(G_ICMP)
-      .legalFor({{XLenLLT, XLenLLT}})
+      .legalFor({{XLenLLT, XLenLLT}, {XLenLLT, p0}})
       .widenScalarToNextPow2(1)
       .clampScalar(1, XLenLLT, XLenLLT)
       .clampScalar(0, XLenLLT, XLenLLT);
