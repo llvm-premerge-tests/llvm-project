@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <deque>
 #include <vector>
 #include <type_traits>
 
@@ -113,6 +114,49 @@ struct TestTypes {
   }
 };
 
+void test_deque() {
+  { // empty deque
+    std::deque<int> data;
+    assert(std::find(data.begin(), data.end(), 4) == data.end());
+  }
+
+  { // single element - match
+    std::deque<int> data = {4};
+    assert(std::find(data.begin(), data.end(), 4) == data.begin());
+  }
+
+  { // single element - no match
+    std::deque<int> data = {3};
+    assert(std::find(data.begin(), data.end(), 4) == data.end());
+  }
+
+  // many elements
+  for (auto size : {2, 3, 1023, 1024, 1025, 2047, 2048, 2049}) {
+    { // last element match
+      std::deque<int> data;
+      data.resize(size);
+      std::fill(data.begin(), data.end(), 3);
+      data[size - 1] = 4;
+      assert(std::find(data.begin(), data.end(), 4) == data.end() - 1);
+    }
+
+    { // second-last element match
+      std::deque<int> data;
+      data.resize(size);
+      std::fill(data.begin(), data.end(), 3);
+      data[size - 2] = 4;
+      assert(std::find(data.begin(), data.end(), 4) == data.end() - 2);
+    }
+
+    { // no match
+      std::deque<int> data;
+      data.resize(size);
+      std::fill(data.begin(), data.end(), 3);
+      assert(std::find(data.begin(), data.end(), 4) == data.end());
+    }
+  }
+}
+
 TEST_CONSTEXPR_CXX20 bool test() {
   types::for_each(types::integer_types(), TestTypes<char>());
   types::for_each(types::integer_types(), TestTypes<int>());
@@ -126,6 +170,7 @@ TEST_CONSTEXPR_CXX20 bool test() {
 }
 
 int main(int, char**) {
+  test_deque();
   test();
 #if TEST_STD_VER >= 20
   static_assert(test());
