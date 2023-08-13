@@ -476,16 +476,20 @@ class LOADi64<BPFWidthModifer SizeOp, BPFModeModifer ModOp, string OpcodeStr, Pa
     : LOAD<SizeOp, ModOp, OpcodeStr, [(set i64:$dst, (OpNode ADDRri:$addr))]>;
 
 let isCodeGenOnly = 1 in {
-  def CORE_MEM : TYPE_LD_ST<BPF_MEM.Value, BPF_W.Value,
-                            (outs GPR:$dst),
-                            (ins u64imm:$opcode, GPR:$src, u64imm:$offset),
-                            "$dst = core_mem($opcode, $src, $offset)",
-                            []>;
-  def CORE_ALU32_MEM : TYPE_LD_ST<BPF_MEM.Value, BPF_W.Value,
-                                  (outs GPR32:$dst),
-                                  (ins u64imm:$opcode, GPR:$src, u64imm:$offset),
-                                  "$dst = core_alu32_mem($opcode, $src, $offset)",
-                                  []>;
+  multiclass CORE_LD_ST<RegisterClass RegClass, string Sz> {
+    def CORE_LD#Sz : TYPE_LD_ST<BPF_MEM.Value, BPF_W.Value,
+                             (outs RegClass:$dst),
+                             (ins u64imm:$opcode, GPR:$src, u64imm:$offset),
+                             "$dst = core_ld"#Sz#"($opcode, $src, $offset)",
+                             []>;
+    def CORE_ST#Sz : TYPE_LD_ST<BPF_MEM.Value, BPF_W.Value,
+                             (outs),
+                             (ins RegClass:$src, u64imm:$opcode, GPR:$ptr, u64imm:$offset),
+                             "core_st"#Sz#"($src, $opcode, $ptr, $offset)",
+                             []>;
+  }
+  defm "" : CORE_LD_ST<GPR, "">;
+  defm "" : CORE_LD_ST<GPR32, "32">;
   let Constraints = "$dst = $src" in {
     def CORE_SHIFT : ALU_RR<BPF_ALU64, BPF_LSH, 0,
                              (outs GPR:$dst),
