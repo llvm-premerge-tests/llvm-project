@@ -34,6 +34,7 @@
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/Endian.h"
 #include "llvm/Support/SourceMgr.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 using namespace llvm;
 
@@ -247,7 +248,8 @@ public:
   WebAssemblyAsmParser(const MCSubtargetInfo &STI, MCAsmParser &Parser,
                        const MCInstrInfo &MII, const MCTargetOptions &Options)
       : MCTargetAsmParser(Options, STI, MII), Parser(Parser),
-        Lexer(Parser.getLexer()), is64(STI.getTargetTriple().isArch64Bit()),
+        Lexer(Parser.getLexer()),
+        is64(TripleUtils::isArch64Bit(STI.getTargetTriple())),
         TC(Parser, MII, is64), SkipTypeCheck(Options.MCNoTypeCheck) {
     setAvailableFeatures(ComputeAvailableFeatures(STI.getFeatureBits()));
     // Don't type check if this is inline asm, since that is a naked sequence of

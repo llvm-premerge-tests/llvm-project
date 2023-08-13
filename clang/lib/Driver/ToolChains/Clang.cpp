@@ -4181,7 +4181,7 @@ static void renderDwarfFormat(const Driver &D, const llvm::Triple &T,
     if (DwarfVersion < 3)
       D.Diag(diag::err_drv_argument_only_allowed_with)
           << DwarfFormatArg->getAsString(Args) << "DWARFv3 or greater";
-    else if (!T.isArch64Bit())
+    else if (!llvm::TripleUtils::isArch64Bit(T))
       D.Diag(diag::err_drv_argument_only_allowed_with)
           << DwarfFormatArg->getAsString(Args) << "64 bit architecture";
     else if (!T.isOSBinFormatELF())

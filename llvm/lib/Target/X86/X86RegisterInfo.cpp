@@ -35,6 +35,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 using namespace llvm;
 
@@ -46,14 +47,14 @@ EnableBasePointer("x86-use-base-pointer", cl::Hidden, cl::init(true),
           cl::desc("Enable use of a base pointer for complex stack frames"));
 
 X86RegisterInfo::X86RegisterInfo(const Triple &TT)
-    : X86GenRegisterInfo((TT.isArch64Bit() ? X86::RIP : X86::EIP),
+    : X86GenRegisterInfo((TripleUtils::isArch64Bit(TT) ? X86::RIP : X86::EIP),
                          X86_MC::getDwarfRegFlavour(TT, false),
                          X86_MC::getDwarfRegFlavour(TT, true),
-                         (TT.isArch64Bit() ? X86::RIP : X86::EIP)) {
+                         (TripleUtils::isArch64Bit(TT) ? X86::RIP : X86::EIP)) {
   X86_MC::initLLVMToSEHAndCVRegMapping(this);
 
   // Cache some information.
-  Is64Bit = TT.isArch64Bit();
+  Is64Bit = TripleUtils::isArch64Bit(TT);
   IsWin64 = Is64Bit && TT.isOSWindows();
 
   // Use a callee-saved register as the base pointer.  These registers must

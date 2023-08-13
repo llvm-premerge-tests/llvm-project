@@ -13,6 +13,7 @@
 #include "LoongArchSubtarget.h"
 #include "LoongArchFrameLowering.h"
 #include "MCTargetDesc/LoongArchBaseInfo.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 using namespace llvm;
 
@@ -27,7 +28,7 @@ void LoongArchSubtarget::anchor() {}
 LoongArchSubtarget &LoongArchSubtarget::initializeSubtargetDependencies(
     const Triple &TT, StringRef CPU, StringRef TuneCPU, StringRef FS,
     StringRef ABIName) {
-  bool Is64Bit = TT.isArch64Bit();
+  bool Is64Bit = TripleUtils::isArch64Bit(TT);
   if (CPU.empty() || CPU == "generic")
     CPU = Is64Bit ? "generic-la64" : "generic-la32";
 

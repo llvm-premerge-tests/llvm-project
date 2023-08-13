@@ -15,12 +15,14 @@
 #include "llvm/BinaryFormat/Dwarf.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 using namespace llvm;
 
 void RISCVMCAsmInfo::anchor() {}
 
 RISCVMCAsmInfo::RISCVMCAsmInfo(const Triple &TT) {
-  CodePointerSize = CalleeSaveStackSlotSize = TT.isArch64Bit() ? 8 : 4;
+  CodePointerSize = CalleeSaveStackSlotSize =
+      TripleUtils::isArch64Bit(TT) ? 8 : 4;
   CommentString = "#";
   AlignmentIsInBytes = false;
   SupportsDebugInformation = true;

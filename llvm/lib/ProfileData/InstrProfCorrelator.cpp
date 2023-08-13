@@ -16,6 +16,7 @@
 #include "llvm/DebugInfo/DWARF/DWARFUnit.h"
 #include "llvm/Object/MachO.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <optional>
 
 #define DEBUG_TYPE "correlator"
@@ -85,9 +86,9 @@ InstrProfCorrelator::get(std::unique_ptr<MemoryBuffer> Buffer) {
     if (auto Err = CtxOrErr.takeError())
       return std::move(Err);
     auto T = Obj->makeTriple();
-    if (T.isArch64Bit())
+    if (TripleUtils::isArch64Bit(T))
       return InstrProfCorrelatorImpl<uint64_t>::get(std::move(*CtxOrErr), *Obj);
-    if (T.isArch32Bit())
+    if (TripleUtils::isArch32Bit(T))
       return InstrProfCorrelatorImpl<uint32_t>::get(std::move(*CtxOrErr), *Obj);
   }
   return make_error<InstrProfError>(

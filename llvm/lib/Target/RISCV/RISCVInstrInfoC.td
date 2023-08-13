@@ -32,7 +32,7 @@ def uimmlog2xlennonzero : Operand<XLenVT>, ImmLeaf<XLenVT, [{
     int64_t Imm;
     if (!MCOp.evaluateAsConstantImm(Imm))
       return false;
-    if (STI.getTargetTriple().isArch64Bit())
+    if (llvm::TripleUtils::isArch64Bit(STI.getTargetTriple()))
       return  isUInt<6>(Imm) && (Imm != 0);
     return isUInt<5>(Imm) && (Imm != 0);
   }];

@@ -31,6 +31,7 @@
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 #define GET_INSTRINFO_MC_DESC
 #define ENABLE_INSTR_PREDICATE_VERIFIER
@@ -79,7 +80,7 @@ createRISCVMCObjectFileInfo(MCContext &Ctx, bool PIC,
 static MCSubtargetInfo *createRISCVMCSubtargetInfo(const Triple &TT,
                                                    StringRef CPU, StringRef FS) {
   if (CPU.empty() || CPU == "generic")
-    CPU = TT.isArch64Bit() ? "generic-rv64" : "generic-rv32";
+    CPU = TripleUtils::isArch64Bit(TT) ? "generic-rv64" : "generic-rv32";
 
   return createRISCVMCSubtargetInfoImpl(TT, CPU, /*TuneCPU*/ CPU, FS);
 }

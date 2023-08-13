@@ -25,6 +25,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FormatVariadic.h"
 #include "llvm/TargetParser/Host.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 #include <memory>
 #include <string>
@@ -846,7 +847,7 @@ void ExegesisX86Target::addTargetSpecificPasses(PassManagerBase &PM) const {
 }
 
 unsigned ExegesisX86Target::getScratchMemoryRegister(const Triple &TT) const {
-  if (!TT.isArch64Bit()) {
+  if (!TripleUtils::isArch64Bit(TT)) {
     // FIXME: This would require popping from the stack, so we would have to
     // add some additional setup code.
     return 0;
@@ -855,7 +856,7 @@ unsigned ExegesisX86Target::getScratchMemoryRegister(const Triple &TT) const {
 }
 
 unsigned ExegesisX86Target::getLoopCounterRegister(const Triple &TT) const {
-  if (!TT.isArch64Bit()) {
+  if (!TripleUtils::isArch64Bit(TT)) {
     return 0;
   }
   return kLoopCounterReg;

@@ -30,6 +30,7 @@
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Target/TargetOptions.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/LowerAtomicPass.h"
 #include "llvm/Transforms/Utils.h"
@@ -110,7 +111,7 @@ WebAssemblyTargetMachine::WebAssemblyTargetMachine(
     std::optional<CodeModel::Model> CM, CodeGenOpt::Level OL, bool JIT)
     : LLVMTargetMachine(
           T,
-          TT.isArch64Bit()
+          TripleUtils::isArch64Bit(TT)
               ? (TT.isOSEmscripten() ? "e-m:e-p:64:64-p10:8:8-p20:8:8-i64:64-"
                                        "f128:64-n32:64-S128-ni:1:10:20"
                                      : "e-m:e-p:64:64-p10:8:8-p20:8:8-i64:64-"

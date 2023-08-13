@@ -20,6 +20,7 @@
 #include "WebAssemblyInstrInfo.h"
 #include "WebAssemblySelectionDAGInfo.h"
 #include "llvm/CodeGen/TargetSubtargetInfo.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <string>
 
 #define GET_SUBTARGETINFO_ENUM
@@ -89,7 +90,7 @@ public:
   bool useAA() const override;
 
   // Predicates used by WebAssemblyInstrInfo.td.
-  bool hasAddr64() const { return TargetTriple.isArch64Bit(); }
+  bool hasAddr64() const { return TripleUtils::isArch64Bit(TargetTriple); }
   bool hasSIMD128() const { return SIMDLevel >= SIMD128; }
   bool hasRelaxedSIMD() const { return SIMDLevel >= RelaxedSIMD; }
   bool hasAtomics() const { return HasAtomics; }

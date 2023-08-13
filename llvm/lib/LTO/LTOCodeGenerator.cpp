@@ -57,6 +57,7 @@
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/TargetParser/Host.h"
 #include "llvm/TargetParser/SubtargetFeature.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/Internalize.h"
 #include "llvm/Transforms/IPO/WholeProgramDevirt.h"
@@ -269,7 +270,7 @@ bool LTOCodeGenerator::runAIXSystemAssembler(SmallString<128> &AssemblyFile) {
 
   // Prepare inputs for the assember.
   const auto &Triple = TargetMach->getTargetTriple();
-  const char *Arch = Triple.isArch64Bit() ? "-a64" : "-a32";
+  const char *Arch = TripleUtils::isArch64Bit(Triple) ? "-a64" : "-a32";
   std::string ObjectFileName(AssemblyFile);
   ObjectFileName[ObjectFileName.size() - 1] = 'o';
   SmallVector<StringRef, 8> Args = {

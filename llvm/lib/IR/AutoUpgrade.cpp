@@ -41,6 +41,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/Regex.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <cstring>
 
 using namespace llvm;
@@ -5295,7 +5296,7 @@ std::string llvm::UpgradeDataLayoutString(StringRef DL, StringRef TT) {
   // For 32-bit MSVC targets, raise the alignment of f80 values to 16 bytes.
   // Raising the alignment is safe because Clang did not produce f80 values in
   // the MSVC environment before this upgrade was added.
-  if (T.isWindowsMSVCEnvironment() && !T.isArch64Bit()) {
+  if (T.isWindowsMSVCEnvironment() && !TripleUtils::isArch64Bit(T)) {
     StringRef Ref = Res;
     auto I = Ref.find("-f80:32-");
     if (I != StringRef::npos)

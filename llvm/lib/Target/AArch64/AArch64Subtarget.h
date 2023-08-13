@@ -25,6 +25,7 @@
 #include "llvm/CodeGen/RegisterBankInfo.h"
 #include "llvm/CodeGen/TargetSubtargetInfo.h"
 #include "llvm/IR/DataLayout.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <string>
 
 #define GET_SUBTARGETINFO_HEADER
@@ -285,7 +286,7 @@ public:
   bool isTargetMachO() const { return TargetTriple.isOSBinFormatMachO(); }
 
   bool isTargetILP32() const {
-    return TargetTriple.isArch32Bit() ||
+    return llvm::TripleUtils::isArch32Bit(TargetTriple) ||
            TargetTriple.getEnvironment() == Triple::GNUILP32;
   }
 

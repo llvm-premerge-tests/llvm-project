@@ -132,8 +132,9 @@ static std::optional<llvm::Triple>
 getNVIDIAOffloadTargetTriple(const Driver &D, const ArgList &Args,
                              const llvm::Triple &HostTriple) {
   if (!Args.hasArg(options::OPT_offload_EQ)) {
-    return llvm::Triple(HostTriple.isArch64Bit() ? "nvptx64-nvidia-cuda"
-                                                 : "nvptx-nvidia-cuda");
+    return llvm::Triple(llvm::TripleUtils::isArch64Bit(HostTriple)
+                            ? "nvptx64-nvidia-cuda"
+                            : "nvptx-nvidia-cuda");
   }
   auto TT = getOffloadTargetTriple(D, Args);
   if (TT && (TT->getArch() == llvm::Triple::spirv32 ||

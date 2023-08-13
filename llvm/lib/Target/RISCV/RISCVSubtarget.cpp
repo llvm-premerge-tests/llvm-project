@@ -20,6 +20,7 @@
 #include "RISCVTargetMachine.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 using namespace llvm;
 
@@ -55,7 +56,7 @@ RISCVSubtarget::initializeSubtargetDependencies(const Triple &TT, StringRef CPU,
                                                 StringRef TuneCPU, StringRef FS,
                                                 StringRef ABIName) {
   // Determine default and user-specified characteristics
-  bool Is64Bit = TT.isArch64Bit();
+  bool Is64Bit = TripleUtils::isArch64Bit(TT);
   if (CPU.empty() || CPU == "generic")
     CPU = Is64Bit ? "generic-rv64" : "generic-rv32";
 

@@ -17,6 +17,7 @@
 #include "llvm/ADT/StringSwitch.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/TargetParser/RISCVTargetParser.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <optional>
 
 using namespace clang;
@@ -302,7 +303,7 @@ bool RISCVTargetInfo::hasFeature(StringRef Feature) const {
 /// Perform initialization based on the user configured set of features.
 bool RISCVTargetInfo::handleTargetFeatures(std::vector<std::string> &Features,
                                            DiagnosticsEngine &Diags) {
-  unsigned XLen = getTriple().isArch64Bit() ? 64 : 32;
+  unsigned XLen = llvm::TripleUtils::isArch64Bit(getTriple()) ? 64 : 32;
   auto ParseResult = llvm::RISCVISAInfo::parseFeatures(XLen, Features);
   if (!ParseResult) {
     std::string Buffer;
@@ -326,23 +327,23 @@ bool RISCVTargetInfo::handleTargetFeatures(std::vector<std::string> &Features,
 }
 
 bool RISCVTargetInfo::isValidCPUName(StringRef Name) const {
-  bool Is64Bit = getTriple().isArch64Bit();
+  bool Is64Bit = llvm::TripleUtils::isArch64Bit(getTriple());
   return llvm::RISCV::parseCPU(Name, Is64Bit);
 }
 
 void RISCVTargetInfo::fillValidCPUList(
     SmallVectorImpl<StringRef> &Values) const {
-  bool Is64Bit = getTriple().isArch64Bit();
+  bool Is64Bit = llvm::TripleUtils::isArch64Bit(getTriple());
   llvm::RISCV::fillValidCPUArchList(Values, Is64Bit);
 }
 
 bool RISCVTargetInfo::isValidTuneCPUName(StringRef Name) const {
-  bool Is64Bit = getTriple().isArch64Bit();
+  bool Is64Bit = llvm::TripleUtils::isArch64Bit(getTriple());
   return llvm::RISCV::parseTuneCPU(Name, Is64Bit);
 }
 
 void RISCVTargetInfo::fillValidTuneCPUList(
     SmallVectorImpl<StringRef> &Values) const {
-  bool Is64Bit = getTriple().isArch64Bit();
+  bool Is64Bit = llvm::TripleUtils::isArch64Bit(getTriple());
   llvm::RISCV::fillValidTuneCPUArchList(Values, Is64Bit);
 }

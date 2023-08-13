@@ -15,6 +15,7 @@
 #include "WebAssemblyMCAsmInfo.h"
 #include "WebAssemblyMCTargetDesc.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 using namespace llvm;
 
@@ -24,7 +25,8 @@ WebAssemblyMCAsmInfo::~WebAssemblyMCAsmInfo() = default; // anchor.
 
 WebAssemblyMCAsmInfo::WebAssemblyMCAsmInfo(const Triple &T,
                                            const MCTargetOptions &Options) {
-  CodePointerSize = CalleeSaveStackSlotSize = T.isArch64Bit() ? 8 : 4;
+  CodePointerSize = CalleeSaveStackSlotSize =
+      TripleUtils::isArch64Bit(T) ? 8 : 4;
 
   // TODO: What should MaxInstLength be?
 

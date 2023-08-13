@@ -41,6 +41,7 @@
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <bitset>
 #include <optional>
 
@@ -8151,7 +8152,8 @@ static bool isPermittedNeonBaseType(QualType &Ty,
 
   // Non-polynomial vector types: the usual suspects are allowed, as well as
   // float64_t on AArch64.
-  if ((Triple.isArch64Bit() || Triple.getArch() == llvm::Triple::aarch64_32) &&
+  if ((llvm::TripleUtils::isArch64Bit(Triple) ||
+       Triple.getArch() == llvm::Triple::aarch64_32) &&
       BTy->getKind() == BuiltinType::Double)
     return true;
 

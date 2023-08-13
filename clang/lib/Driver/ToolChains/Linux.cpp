@@ -23,6 +23,7 @@
 #include "llvm/Support/Path.h"
 #include "llvm/Support/ScopedPrinter.h"
 #include "llvm/Support/VirtualFileSystem.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <system_error>
 
 using namespace clang::driver;
@@ -184,7 +185,7 @@ static StringRef getOSLibDir(const llvm::Triple &Triple, const ArgList &Args) {
     // code for N32 ABI only.
     if (tools::mips::hasMipsAbiArg(Args, "n32"))
       return "lib32";
-    return Triple.isArch32Bit() ? "lib" : "lib64";
+    return llvm::TripleUtils::isArch32Bit(Triple) ? "lib" : "lib64";
   }
 
   // It happens that only x86, PPC and SPARC use the 'lib32' variant of
@@ -206,7 +207,7 @@ static StringRef getOSLibDir(const llvm::Triple &Triple, const ArgList &Args) {
   if (Triple.getArch() == llvm::Triple::riscv32)
     return "lib32";
 
-  return Triple.isArch32Bit() ? "lib" : "lib64";
+  return llvm::TripleUtils::isArch32Bit(Triple) ? "lib" : "lib64";
 }
 
 Linux::Linux(const Driver &D, const llvm::Triple &Triple, const ArgList &Args)
@@ -320,7 +321,7 @@ Linux::Linux(const Driver &D, const llvm::Triple &Triple, const ArgList &Args)
   // find /usr/lib64 as it is referenced as /usr/lib/../lib64. So we handle
   // this here.
   if (Triple.getVendor() == llvm::Triple::OpenEmbedded &&
-      Triple.isArch64Bit())
+      llvm::TripleUtils::isArch64Bit(Triple))
     addPathIfExists(D, concat(SysRoot, "/usr", OSLibDir), Paths);
   else
     addPathIfExists(D, concat(SysRoot, "/usr/lib/..", OSLibDir), Paths);
@@ -428,14 +429,16 @@ std::string Linux::getDynamicLinker(const ArgList &Args) const {
 
   if (Triple.isAndroid()) {
     if (getSanitizerArgs(Args).needsHwasanRt() &&
-        !Triple.isAndroidVersionLT(34) && Triple.isArch64Bit()) {
+        !Triple.isAndroidVersionLT(34) &&
+        llvm::TripleUtils::isArch64Bit(Triple)) {
       // On Android 14 and newer, there is a special linker_hwasan64 that
       // allows to run HWASan binaries on non-HWASan system images. This
       // is also available on HWASan system images, so we can just always
       // use that instead.
       return "/system/bin/linker_hwasan64";
     }
-    return Triple.isArch64Bit() ? "/system/bin/linker64" : "/system/bin/linker";
+    return llvm::TripleUtils::isArch64Bit(Triple) ? "/system/bin/linker64"
+                                                  : "/system/bin/linker";
   }
   if (Triple.isMusl()) {
     std::string ArchName;

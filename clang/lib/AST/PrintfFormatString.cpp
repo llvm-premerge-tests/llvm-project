@@ -16,6 +16,7 @@
 #include "clang/AST/OSLog.h"
 #include "clang/Basic/TargetInfo.h"
 #include "llvm/Support/Regex.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 using clang::analyze_format_string::ArgType;
 using clang::analyze_format_string::FormatStringHandler;
@@ -529,7 +530,7 @@ ArgType PrintfSpecifier::getScalarArgType(ASTContext &Ctx,
       case LengthModifier::AsSizeT:
         return ArgType::makeSizeT(ArgType(Ctx.getSignedSizeType(), "ssize_t"));
       case LengthModifier::AsInt3264:
-        return Ctx.getTargetInfo().getTriple().isArch64Bit()
+        return llvm::TripleUtils::isArch64Bit(Ctx.getTargetInfo().getTriple())
                    ? ArgType(Ctx.LongLongTy, "__int64")
                    : ArgType(Ctx.IntTy, "__int32");
       case LengthModifier::AsPtrDiff:
@@ -564,7 +565,7 @@ ArgType PrintfSpecifier::getScalarArgType(ASTContext &Ctx,
       case LengthModifier::AsSizeT:
         return ArgType::makeSizeT(ArgType(Ctx.getSizeType(), "size_t"));
       case LengthModifier::AsInt3264:
-        return Ctx.getTargetInfo().getTriple().isArch64Bit()
+        return llvm::TripleUtils::isArch64Bit(Ctx.getTargetInfo().getTriple())
                    ? ArgType(Ctx.UnsignedLongLongTy, "unsigned __int64")
                    : ArgType(Ctx.UnsignedIntTy, "unsigned __int32");
       case LengthModifier::AsPtrDiff:
