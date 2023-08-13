@@ -1112,6 +1112,11 @@ def POSIX : StandardSpec<"POSIX"> {
       [], // Enumerations
       [
           FunctionSpec<
+              "fileno",
+              RetValSpec<IntType>,
+              [ArgSpec<FILEPtr>]
+          >,
+          FunctionSpec<
               "flockfile",
               RetValSpec<VoidType>,
               [ArgSpec<FILEPtr>]

@@ -150,6 +150,19 @@ add_entrypoint_object(
 )
 
 add_entrypoint_object(
+  fileno
+  SRCS
+    fileno.cpp
+  HDRS
+    fileno.h
+  DEPENDS
+    libc.src.errno.errno
+    libc.include.stdio
+    libc.src.__support.File.file
+    libc.src.__support.File.platform_file
+)
+
+add_entrypoint_object(
   getc
   SRCS
     getc.cpp
