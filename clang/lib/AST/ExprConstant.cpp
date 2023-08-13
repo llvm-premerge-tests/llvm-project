@@ -6990,10 +6990,11 @@ class APValueToBufferConverter {
       return visitArray(Val, Ty, Offset);
     case APValue::Struct:
       return visitRecord(Val, Ty, Offset);
+    case APValue::Vector:
+      return visitVector(Val, Ty, Offset);
 
     case APValue::ComplexInt:
     case APValue::ComplexFloat:
-    case APValue::Vector:
     case APValue::FixedPoint:
       // FIXME: We should support these.
 
@@ -7075,6 +7076,21 @@ class APValueToBufferConverter {
         if (!visit(Filler, CAT->getElementType(), Offset + I * ElemWidth))
           return false;
       }
+    }
+
+    return true;
+  }
+
+  bool visitVector(const APValue &Val, QualType Ty, CharUnits Offset) {
+    const auto *VT = Ty->castAs<VectorType>();
+
+    CharUnits ElemWidth = Info.Ctx.getTypeSizeInChars(VT->getElementType());
+    unsigned VectorLength = Val.getVectorLength();
+    // Visit each of the vector elements
+    for (unsigned I = 0; I != VectorLength; ++I) {
+      const APValue &SubObj = Val.getVectorElt(I);
+      if (!visit(SubObj, VT->getElementType(), Offset + I * ElemWidth))
+        return false;
     }
 
     return true;
@@ -7287,6 +7303,22 @@ class BufferToAPValueConverter {
     }
 
     return ArrayValue;
+  }
+
+  std::optional<APValue> visit(const VectorType *Ty, CharUnits Offset) {
+    size_t NumElements = Ty->getNumElements();
+    CharUnits ElementWidth = Info.Ctx.getTypeSizeInChars(Ty->getElementType());
+
+    SmallVector<APValue, 4> Elts;
+    for (size_t I = 0; I != NumElements; ++I) {
+      std::optional<APValue> ElementValue =
+          visitType(Ty->getElementType(), Offset + I * ElementWidth);
+      if (!ElementValue)
+        return std::nullopt;
+      Elts.push_back(std::move(*ElementValue));
+    }
+
+    return APValue(Elts.data(), Elts.size());
   }
 
   std::optional<APValue> visit(const Type *Ty, CharUnits Offset) {

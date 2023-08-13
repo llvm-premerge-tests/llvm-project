@@ -463,3 +463,19 @@ static_assert(bit_cast<long double>(ld539) == fivehundredandthirtynine, "");
 static_assert(round_trip<__int128_t>(34.0L));
 #endif
 }
+
+namespace test_vector {
+
+typedef unsigned uint2 __attribute__((vector_size(2 * sizeof(unsigned))));
+typedef char byte8 __attribute__((vector_size(sizeof(unsigned long long))));
+
+constexpr uint2 test_vector = { 0x0C05FEFE, 0xCAFEBABE };
+
+static_assert(bit_cast<unsigned long long>(test_vector) == (LITTLE_END
+                                                                ? 0xCAFEBABE0C05FEFE
+                                                                : 0x0C05FEFECAFEBABE), "");
+
+static_assert(round_trip<uint2>(0xCAFEBABE0C05FEFEULL), "");
+static_assert(round_trip<byte8>(0xCAFEBABE0C05FEFEULL), "");
+
+}
