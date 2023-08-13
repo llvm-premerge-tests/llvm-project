@@ -96,6 +96,34 @@ add_mlir_upstream_c_api_library(MLIRCAPIMLProgram
   MLIRMLProgramDialect
 )
 
+add_mlir_upstream_c_api_library(MLIRCAPINVGPU
+  NVGPU.cpp
+
+  PARTIAL_SOURCES_INTENDED
+  LINK_LIBS PUBLIC
+  MLIRCAPIIR
+  MLIRNVGPUDialect
+)
+
+add_mlir_upstream_c_api_library(MLIRCAPINVVM
+  NVVM.cpp
+
+  PARTIAL_SOURCES_INTENDED
+  LINK_LIBS PUBLIC
+  MLIRCAPIIR
+  MLIRNVVMDialect
+)
+
+add_mlir_upstream_c_api_library(MLIRCAPIROCDL
+  ROCDL.cpp
+
+  PARTIAL_SOURCES_INTENDED
+  LINK_LIBS PUBLIC
+  MLIRCAPIIR
+  MLIRROCDLDialect
+)
+
+
 add_mlir_upstream_c_api_library(MLIRCAPISCF
   SCF.cpp
 

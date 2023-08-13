@@ -264,6 +264,30 @@ declare_mlir_dialect_python_bindings(
     dialects/_ml_program_ops_ext.py
   DIALECT_NAME ml_program)
 
+declare_mlir_dialect_python_bindings(
+  ADD_TO_PARENT MLIRPythonSources.Dialects
+  ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/mlir"
+  TD_FILE dialects/NVGPUOps.td
+  SOURCES
+    dialects/nvgpu.py
+  DIALECT_NAME nvgpu)
+
+declare_mlir_dialect_python_bindings(
+  ADD_TO_PARENT MLIRPythonSources.Dialects
+  ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/mlir"
+  TD_FILE dialects/NVVMOps.td
+  SOURCES
+    dialects/nvvm.py
+  DIALECT_NAME nvvm)
+
+declare_mlir_dialect_python_bindings(
+  ADD_TO_PARENT MLIRPythonSources.Dialects
+  ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/mlir"
+  TD_FILE dialects/ROCDLOps.td
+  SOURCES
+    dialects/rocdl.py
+  DIALECT_NAME rocdl)
+
 declare_mlir_python_sources(
   MLIRPythonSources.Dialects.quant
   ADD_TO_PARENT MLIRPythonSources.Dialects
