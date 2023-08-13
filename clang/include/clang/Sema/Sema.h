@@ -1353,6 +1353,21 @@ public:
 
     bool IsCurrentlyCheckingDefaultArgumentOrInitializer = false;
 
+    /// Whether we are currently checking C++ for-range-init variable.
+    /// Eg. Parsing the init expression or extending the lifetime of temporaries
+    /// in the init expression.
+    bool IsCheckingCXXForRangeInitVariable = false;
+
+    /// Whether we should materialize temporary the non `cv void` prvalue in
+    /// discard statement.
+    ///
+    /// [6.7.7.2.6] when a prvalue that has type other than cv void appears as a
+    /// discarded-value expression ([expr.context]).
+    ///
+    /// We do not materialize temporay by default in order to avoid creating
+    /// unnecessary temporary objects.
+    bool MaterializePRValueInDiscardStatement = false;
+
     // When evaluating immediate functions in the initializer of a default
     // argument or default member initializer, this is the declaration whose
     // default initializer is being evaluated and the location of the call
@@ -9833,6 +9848,18 @@ public:
     assert(!ExprEvalContexts.empty() &&
            "Must be in an expression evaluation context");
     return ExprEvalContexts.back().isImmediateFunctionContext();
+  }
+
+  bool isCheckingCXXForRangeInitVariable() const {
+    assert(!ExprEvalContexts.empty() &&
+           "Must be in an expression evaluation context");
+    return ExprEvalContexts.back().IsCheckingCXXForRangeInitVariable;
+  }
+
+  bool isMaterializePRValueInDiscardStatement() const {
+    assert(!ExprEvalContexts.empty() &&
+           "Must be in an expression evaluation context");
+    return ExprEvalContexts.back().MaterializePRValueInDiscardStatement;
   }
 
   bool isCheckingDefaultArgumentOrInitializer() const {
