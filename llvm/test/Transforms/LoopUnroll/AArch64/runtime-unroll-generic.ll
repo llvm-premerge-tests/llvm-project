@@ -93,7 +93,7 @@ define void @runtime_unroll_generic(i32 %arg_0, ptr %arg_1, ptr %arg_2, ptr %arg
 ; CHECK-A55-NEXT:    [[EPIL_ITER_CMP_NOT:%.*]] = icmp eq i32 [[XTRAITER]], 1
 ; CHECK-A55-NEXT:    br i1 [[EPIL_ITER_CMP_NOT]], label [[FOR_END]], label [[FOR_BODY6_EPIL_1:%.*]]
 ; CHECK-A55:       for.body6.epil.1:
-; CHECK-A55-NEXT:    [[INC_EPIL:%.*]] = add nuw i32 [[K_03_UNR]], 1
+; CHECK-A55-NEXT:    [[INC_EPIL:%.*]] = or i32 [[K_03_UNR]], 1
 ; CHECK-A55-NEXT:    [[IDX_EXT_EPIL_1:%.*]] = zext i32 [[INC_EPIL]] to i64
 ; CHECK-A55-NEXT:    [[ARRAYIDX10_EPIL_1:%.*]] = getelementptr inbounds i16, ptr [[ARG_2]], i64 [[IDX_EXT_EPIL_1]]
 ; CHECK-A55-NEXT:    [[TMP16:%.*]] = load i16, ptr [[ARRAYIDX10_EPIL_1]], align 2
@@ -109,7 +109,7 @@ define void @runtime_unroll_generic(i32 %arg_0, ptr %arg_1, ptr %arg_2, ptr %arg
 ; CHECK-A55-NEXT:    [[EPIL_ITER_CMP_1_NOT:%.*]] = icmp eq i32 [[XTRAITER]], 2
 ; CHECK-A55-NEXT:    br i1 [[EPIL_ITER_CMP_1_NOT]], label [[FOR_END]], label [[FOR_BODY6_EPIL_2:%.*]]
 ; CHECK-A55:       for.body6.epil.2:
-; CHECK-A55-NEXT:    [[INC_EPIL_1:%.*]] = add nuw i32 [[K_03_UNR]], 2
+; CHECK-A55-NEXT:    [[INC_EPIL_1:%.*]] = or i32 [[K_03_UNR]], 2
 ; CHECK-A55-NEXT:    [[IDX_EXT_EPIL_2:%.*]] = zext i32 [[INC_EPIL_1]] to i64
 ; CHECK-A55-NEXT:    [[ARRAYIDX10_EPIL_2:%.*]] = getelementptr inbounds i16, ptr [[ARG_2]], i64 [[IDX_EXT_EPIL_2]]
 ; CHECK-A55-NEXT:    [[TMP19:%.*]] = load i16, ptr [[ARRAYIDX10_EPIL_2]], align 2

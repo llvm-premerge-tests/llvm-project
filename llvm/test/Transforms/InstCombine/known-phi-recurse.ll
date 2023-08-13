@@ -43,8 +43,7 @@ define i32 @two_entry_phi_with_constant(i64 %x, i1 %c) {
 ; CHECK-NEXT:    br label [[END]]
 ; CHECK:       end:
 ; CHECK-NEXT:    [[PHI:%.*]] = phi i32 [ [[TRUNC]], [[ENTRY:%.*]] ], [ 255, [[BODY]] ]
-; CHECK-NEXT:    [[RES:%.*]] = and i32 [[PHI]], 255
-; CHECK-NEXT:    ret i32 [[RES]]
+; CHECK-NEXT:    ret i32 [[PHI]]
 ;
 entry:
   %y = call i64 @llvm.ctpop.i64(i64 %x)
@@ -70,8 +69,7 @@ define i32 @two_entry_phi_non_constant(i64 %x, i64 %x2, i1 %c) {
 ; CHECK-NEXT:    br label [[END]]
 ; CHECK:       end:
 ; CHECK-NEXT:    [[PHI:%.*]] = phi i32 [ [[TRUNC]], [[ENTRY:%.*]] ], [ [[TRUNC2]], [[BODY]] ]
-; CHECK-NEXT:    [[RES:%.*]] = and i32 [[PHI]], 255
-; CHECK-NEXT:    ret i32 [[RES]]
+; CHECK-NEXT:    ret i32 [[PHI]]
 ;
 entry:
   %y = call i64 @llvm.ctpop.i64(i64 %x)

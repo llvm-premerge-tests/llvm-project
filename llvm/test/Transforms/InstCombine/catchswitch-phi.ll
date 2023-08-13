@@ -120,8 +120,7 @@ define void @test1() personality ptr @__gxx_wasm_personality_v0 {
 ; CHECK-NEXT:    [[TMP2:%.*]] = catchswitch within none [label %catch.start1] unwind to caller
 ; CHECK:       catch.start1:
 ; CHECK-NEXT:    [[TMP3:%.*]] = catchpad within [[TMP2]] [ptr null]
-; CHECK-NEXT:    [[TMP0:%.*]] = and i8 [[AP_2]], 1
-; CHECK-NEXT:    [[TOBOOL1_NOT:%.*]] = icmp eq i8 [[TMP0]], 0
+; CHECK-NEXT:    [[TOBOOL1_NOT:%.*]] = icmp eq i8 [[AP_2]], 0
 ; CHECK-NEXT:    br i1 [[TOBOOL1_NOT]], label [[IF_END1:%.*]], label [[IF_THEN1:%.*]]
 ; CHECK:       if.then1:
 ; CHECK-NEXT:    br label [[IF_END1]]
