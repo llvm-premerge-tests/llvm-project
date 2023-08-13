@@ -61,7 +61,7 @@ def shfl_uimm : Operand<XLenVT>, ImmLeaf<XLenVT, [{
     int64_t Imm;
     if (!MCOp.evaluateAsConstantImm(Imm))
       return false;
-    if (STI.getTargetTriple().isArch64Bit())
+    if (llvm::TripleUtils::isArch64Bit(STI.getTargetTriple()))
       return  isUInt<5>(Imm);
     return isUInt<4>(Imm);
   }];

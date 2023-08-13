@@ -5,11 +5,12 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
-#include "../Error.h"
 #include "../Target.h"
+#include "../Error.h"
 #include "MCTargetDesc/MipsBaseInfo.h"
 #include "Mips.h"
 #include "MipsRegisterInfo.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 #define GET_AVAILABLE_OPCODE_CHECKER
 #include "MipsGenInstrInfo.inc"
@@ -135,7 +136,7 @@ static std::vector<MCInst> loadImmediate(unsigned Reg, bool IsGPR32,
 }
 
 unsigned ExegesisMipsTarget::getScratchMemoryRegister(const Triple &TT) const {
-  return TT.isArch64Bit() ? Mips::A0_64 : Mips::A0;
+  return TripleUtils::isArch64Bit(TT) ? Mips::A0_64 : Mips::A0;
 }
 
 void ExegesisMipsTarget::fillMemoryOperands(InstructionTemplate &IT,

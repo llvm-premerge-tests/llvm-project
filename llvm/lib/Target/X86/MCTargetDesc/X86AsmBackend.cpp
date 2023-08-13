@@ -7,8 +7,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "MCTargetDesc/X86BaseInfo.h"
-#include "MCTargetDesc/X86FixupKinds.h"
 #include "MCTargetDesc/X86EncodingOptimization.h"
+#include "MCTargetDesc/X86FixupKinds.h"
 #include "llvm/ADT/StringSwitch.h"
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/BinaryFormat/MachO.h"
@@ -34,6 +34,7 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 using namespace llvm;
 
@@ -1311,7 +1312,7 @@ public:
   DarwinX86AsmBackend(const Target &T, const MCRegisterInfo &MRI,
                       const MCSubtargetInfo &STI)
       : X86AsmBackend(T, STI), MRI(MRI), TT(STI.getTargetTriple()),
-        Is64Bit(TT.isArch64Bit()) {
+        Is64Bit(TripleUtils::isArch64Bit(TT)) {
     memset(SavedRegs, 0, sizeof(SavedRegs));
     OffsetSize = Is64Bit ? 8 : 4;
     MoveInstrSize = Is64Bit ? 3 : 2;

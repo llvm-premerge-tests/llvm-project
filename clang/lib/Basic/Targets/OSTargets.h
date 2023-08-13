@@ -13,6 +13,7 @@
 #define LLVM_CLANG_LIB_BASIC_TARGETS_OSTARGETS_H
 
 #include "Targets.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 namespace clang {
 namespace targets {
@@ -89,9 +90,9 @@ public:
     else if (Triple.isiOS()) {
       // 64-bit iOS supported it from 8 onwards, 32-bit device from 9 onwards,
       // 32-bit simulator from 10 onwards.
-      if (Triple.isArch64Bit())
+      if (llvm::TripleUtils::isArch64Bit(Triple))
         this->TLSSupported = !Triple.isOSVersionLT(8);
-      else if (Triple.isArch32Bit()) {
+      else if (llvm::TripleUtils::isArch32Bit(Triple)) {
         if (!Triple.isSimulatorEnvironment())
           this->TLSSupported = !Triple.isOSVersionLT(9);
         else

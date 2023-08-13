@@ -20,6 +20,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/TargetParser/TargetParser.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 namespace llvm {
 
@@ -40,7 +41,7 @@ namespace RISCVABI {
 ABI computeTargetABI(const Triple &TT, const FeatureBitset &FeatureBits,
                      StringRef ABIName) {
   auto TargetABI = getTargetABI(ABIName);
-  bool IsRV64 = TT.isArch64Bit();
+  bool IsRV64 = TripleUtils::isArch64Bit(TT);
   bool IsRVE = FeatureBits[RISCV::FeatureRVE];
 
   if (!ABIName.empty() && TargetABI == ABI_Unknown) {
@@ -106,9 +107,9 @@ MCRegister getSCSPReg() { return RISCV::X3; }
 namespace RISCVFeatures {
 
 void validate(const Triple &TT, const FeatureBitset &FeatureBits) {
-  if (TT.isArch64Bit() && !FeatureBits[RISCV::Feature64Bit])
+  if (TripleUtils::isArch64Bit(TT) && !FeatureBits[RISCV::Feature64Bit])
     report_fatal_error("RV64 target requires an RV64 CPU");
-  if (!TT.isArch64Bit() && !FeatureBits[RISCV::Feature32Bit])
+  if (!TripleUtils::isArch64Bit(TT) && !FeatureBits[RISCV::Feature32Bit])
     report_fatal_error("RV32 target requires an RV32 CPU");
   if (FeatureBits[RISCV::Feature32Bit] &&
       FeatureBits[RISCV::Feature64Bit])

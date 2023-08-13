@@ -23,6 +23,7 @@
 #include "llvm/MC/MCValue.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/TargetParser/TripleUtils.h"
 using namespace llvm;
 
 static uint64_t adjustFixupValue(unsigned Kind, uint64_t Value) {
@@ -240,7 +241,7 @@ public:
 
   std::unique_ptr<MCObjectTargetWriter>
   createObjectTargetWriter() const override {
-    return createPPCXCOFFObjectWriter(TT.isArch64Bit());
+    return createPPCXCOFFObjectWriter(TripleUtils::isArch64Bit(TT));
   }
 
   std::optional<MCFixupKind> getFixupKind(StringRef Name) const override;

@@ -48,6 +48,7 @@
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
@@ -504,7 +505,7 @@ public:
       return false;
 
     Triple TargetTriple = TM.getTargetTriple();
-    if (!TargetTriple.isArch64Bit())
+    if (!TripleUtils::isArch64Bit(TargetTriple))
       return false;
 
     // TODO: Triggers issues on aarch64 on darwin, so temporarily disable it

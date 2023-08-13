@@ -19,6 +19,7 @@
 #include "llvm/MC/MCValue.h"
 #include "llvm/Support/Endian.h"
 #include "llvm/Support/EndianStream.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 #define DEBUG_TYPE "loongarch-asmbackend"
 
@@ -202,5 +203,6 @@ MCAsmBackend *llvm::createLoongArchAsmBackend(const Target &T,
                                               const MCTargetOptions &Options) {
   const Triple &TT = STI.getTargetTriple();
   uint8_t OSABI = MCELFObjectTargetWriter::getOSABI(TT.getOS());
-  return new LoongArchAsmBackend(STI, OSABI, TT.isArch64Bit(), Options);
+  return new LoongArchAsmBackend(STI, OSABI, TripleUtils::isArch64Bit(TT),
+                                 Options);
 }

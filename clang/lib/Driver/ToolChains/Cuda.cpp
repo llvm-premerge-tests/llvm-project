@@ -27,6 +27,7 @@
 #include "llvm/Support/VirtualFileSystem.h"
 #include "llvm/TargetParser/Host.h"
 #include "llvm/TargetParser/TargetParser.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <system_error>
 
 using namespace clang::driver;
@@ -399,7 +400,8 @@ void NVPTX::Assembler::ConstructJob(Compilation &C, const JobAction &JA,
   }
 
   ArgStringList CmdArgs;
-  CmdArgs.push_back(TC.getTriple().isArch64Bit() ? "-m64" : "-m32");
+  CmdArgs.push_back(llvm::TripleUtils::isArch64Bit(TC.getTriple()) ? "-m64"
+                                                                   : "-m32");
   DeviceDebugInfoLevel DIKind = mustEmitDebugInfo(Args);
   if (DIKind == EmitSameDebugInfoAsHost) {
     // ptxas does not accept -g option if optimization is enabled, so
@@ -526,7 +528,8 @@ void NVPTX::FatBinary::ConstructJob(Compilation &C, const JobAction &JA,
   ArgStringList CmdArgs;
   if (TC.CudaInstallation.version() <= CudaVersion::CUDA_100)
     CmdArgs.push_back("--cuda");
-  CmdArgs.push_back(TC.getTriple().isArch64Bit() ? "-64" : "-32");
+  CmdArgs.push_back(llvm::TripleUtils::isArch64Bit(TC.getTriple()) ? "-64"
+                                                                   : "-32");
   CmdArgs.push_back(Args.MakeArgString("--create"));
   CmdArgs.push_back(Args.MakeArgString(Output.getFilename()));
   if (mustEmitDebugInfo(Args) == EmitSameDebugInfoAsHost)

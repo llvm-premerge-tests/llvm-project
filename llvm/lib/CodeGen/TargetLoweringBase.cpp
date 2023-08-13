@@ -53,6 +53,7 @@
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include "llvm/Transforms/Utils/SizeOpts.h"
 #include <algorithm>
 #include <cassert>
@@ -105,7 +106,7 @@ static bool darwinHasSinCos(const Triple &TT) {
     return false;
   // Macos < 10.9 has no sincos_stret.
   if (TT.isMacOSX())
-    return !TT.isMacOSXVersionLT(10, 9) && TT.isArch64Bit();
+    return !TT.isMacOSXVersionLT(10, 9) && TripleUtils::isArch64Bit(TT);
   // iOS < 7.0 has no sincos_stret.
   if (TT.isiOS())
     return !TT.isOSVersionLT(7, 0);

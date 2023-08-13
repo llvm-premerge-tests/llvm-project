@@ -28,6 +28,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/MathExtras.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 using namespace llvm;
 
 namespace {
@@ -561,7 +562,7 @@ public:
     uint32_t CPUType = cantFail(MachO::getCPUType(TheTriple));
     uint32_t CPUSubType = cantFail(MachO::getCPUSubType(TheTriple));
     return createAArch64MachObjectWriter(CPUType, CPUSubType,
-                                         TheTriple.isArch32Bit());
+                                         TripleUtils::isArch32Bit(TheTriple));
   }
 
   /// Generate the compact unwind encoding from the CFI directives.

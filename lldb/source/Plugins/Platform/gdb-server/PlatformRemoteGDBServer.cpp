@@ -33,6 +33,7 @@
 
 #include "Plugins/Process/Utility/GDBRemoteSignals.h"
 #include "Plugins/Process/gdb-remote/ProcessGDBRemote.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <optional>
 
 using namespace lldb;
@@ -257,7 +258,7 @@ Status PlatformRemoteGDBServer::ConnectRemote(Args &args) {
     ArchSpec remote_arch = m_gdb_client_up->GetSystemArchitecture();
     if (remote_arch) {
       m_supported_architectures.push_back(remote_arch);
-      if (remote_arch.GetTriple().isArch64Bit())
+      if (llvm::TripleUtils::isArch64Bit(remote_arch.GetTriple()))
         m_supported_architectures.push_back(
             ArchSpec(remote_arch.GetTriple().get32BitArchVariant()));
     }

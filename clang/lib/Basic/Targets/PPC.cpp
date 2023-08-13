@@ -563,11 +563,11 @@ bool PPCTargetInfo::initFeatureMap(
   Features["isa-v30-instructions"] =
       llvm::StringSwitch<bool>(CPU).Case("pwr9", true).Default(false);
 
-  Features["quadword-atomics"] =
-      getTriple().isArch64Bit() && llvm::StringSwitch<bool>(CPU)
-                                       .Case("pwr9", true)
-                                       .Case("pwr8", true)
-                                       .Default(false);
+  Features["quadword-atomics"] = llvm::TripleUtils::isArch64Bit(getTriple()) &&
+                                 llvm::StringSwitch<bool>(CPU)
+                                     .Case("pwr9", true)
+                                     .Case("pwr8", true)
+                                     .Default(false);
 
   // Power10 includes all the same features as Power9 plus any features specific
   // to the Power10 core.

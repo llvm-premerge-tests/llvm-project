@@ -16,6 +16,7 @@
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 namespace llvm {
 
@@ -23,7 +24,7 @@ namespace LoongArchABI {
 
 ABI computeTargetABI(const Triple &TT, StringRef ABIName) {
   ABI ArgProvidedABI = getTargetABI(ABIName);
-  bool Is64Bit = TT.isArch64Bit();
+  bool Is64Bit = TripleUtils::isArch64Bit(TT);
   ABI TripleABI;
 
   // Figure out the ABI explicitly requested via the triple's environment type.

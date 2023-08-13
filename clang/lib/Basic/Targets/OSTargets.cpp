@@ -126,7 +126,7 @@ static void addMinGWDefines(const llvm::Triple &Triple, const LangOptions &Opts,
                             MacroBuilder &Builder) {
   DefineStd(Builder, "WIN32", Opts);
   DefineStd(Builder, "WINNT", Opts);
-  if (Triple.isArch64Bit()) {
+  if (llvm::TripleUtils::isArch64Bit(Triple)) {
     DefineStd(Builder, "WIN64", Opts);
     Builder.defineMacro("__MINGW64__");
   }
@@ -257,7 +257,7 @@ static void addVisualCDefines(const LangOptions &Opts, MacroBuilder &Builder) {
 void addWindowsDefines(const llvm::Triple &Triple, const LangOptions &Opts,
                        MacroBuilder &Builder) {
   Builder.defineMacro("_WIN32");
-  if (Triple.isArch64Bit())
+  if (llvm::TripleUtils::isArch64Bit(Triple))
     Builder.defineMacro("_WIN64");
   if (Triple.isWindowsGNUEnvironment())
     addMinGWDefines(Triple, Opts, Builder);

@@ -21,6 +21,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
@@ -665,8 +666,8 @@ bool MipsELFObjectWriter::needsRelocateWithSymbol(const MCSymbol &Sym,
 std::unique_ptr<MCObjectTargetWriter>
 llvm::createMipsELFObjectWriter(const Triple &TT, bool IsN32) {
   uint8_t OSABI = MCELFObjectTargetWriter::getOSABI(TT.getOS());
-  bool IsN64 = TT.isArch64Bit() && !IsN32;
-  bool HasRelocationAddend = TT.isArch64Bit();
+  bool IsN64 = TripleUtils::isArch64Bit(TT) && !IsN32;
+  bool HasRelocationAddend = TripleUtils::isArch64Bit(TT);
   return std::make_unique<MipsELFObjectWriter>(OSABI, HasRelocationAddend,
                                                 IsN64);
 }

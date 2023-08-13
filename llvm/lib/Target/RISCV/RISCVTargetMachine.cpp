@@ -33,6 +33,7 @@
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Target/TargetOptions.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include "llvm/Transforms/IPO.h"
 #include <optional>
 using namespace llvm;
@@ -93,9 +94,10 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeRISCVTarget() {
 }
 
 static StringRef computeDataLayout(const Triple &TT) {
-  if (TT.isArch64Bit())
+  if (TripleUtils::isArch64Bit(TT))
     return "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128";
-  assert(TT.isArch32Bit() && "only RV32 and RV64 are currently supported");
+  assert(TripleUtils::isArch32Bit(TT) &&
+         "only RV32 and RV64 are currently supported");
   return "e-m:e-p:32:32-i64:64-n32-S128";
 }
 
@@ -120,7 +122,7 @@ RISCVTargetMachine::RISCVTargetMachine(const Target &T, const Triple &TT,
   setMachineOutliner(true);
   setSupportsDefaultOutlining(true);
 
-  if (TT.isOSFuchsia() && !TT.isArch64Bit())
+  if (TT.isOSFuchsia() && !TripleUtils::isArch64Bit(TT))
     report_fatal_error("Fuchsia is only supported for 64-bit");
 }
 

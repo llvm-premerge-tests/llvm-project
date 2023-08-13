@@ -12,6 +12,7 @@
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/TargetParser/Host.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 using namespace llvm;
 
@@ -40,9 +41,9 @@ Triple llvm::dwarf::utils::getDefaultTargetTripleForAddrSize(uint8_t AddrSize) {
 
   // If a 32-bit/64-bit address size was specified, try to convert the triple
   // if it is for the wrong variant.
-  if (AddrSize == 8 && T.isArch32Bit())
+  if (AddrSize == 8 && TripleUtils::isArch32Bit(T))
     return T.get64BitArchVariant();
-  if (AddrSize == 4 && T.isArch64Bit())
+  if (AddrSize == 4 && TripleUtils::isArch64Bit(T))
     return T.get32BitArchVariant();
   return T;
 }

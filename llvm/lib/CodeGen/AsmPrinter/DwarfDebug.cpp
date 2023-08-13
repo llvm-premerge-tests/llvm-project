@@ -54,6 +54,7 @@
 #include "llvm/Target/TargetLoweringObjectFile.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <algorithm>
 #include <cstddef>
 #include <iterator>
@@ -391,8 +392,9 @@ DwarfDebug::DwarfDebug(AsmPrinter *A)
   DwarfVersion =
       TT.isNVPTX() ? 2 : (DwarfVersion ? DwarfVersion : dwarf::DWARF_VERSION);
 
-  bool Dwarf64 = DwarfVersion >= 3 && // DWARF64 was introduced in DWARFv3.
-                 TT.isArch64Bit();    // DWARF64 requires 64-bit relocations.
+  bool Dwarf64 =
+      DwarfVersion >= 3 &&          // DWARF64 was introduced in DWARFv3.
+      TripleUtils::isArch64Bit(TT); // DWARF64 requires 64-bit relocations.
 
   // Support DWARF64
   // 1: For ELF when requested.
@@ -404,7 +406,7 @@ DwarfDebug::DwarfDebug(AsmPrinter *A)
        TT.isOSBinFormatELF()) ||
       TT.isOSBinFormatXCOFF();
 
-  if (!Dwarf64 && TT.isArch64Bit() && TT.isOSBinFormatXCOFF())
+  if (!Dwarf64 && TripleUtils::isArch64Bit(TT) && TT.isOSBinFormatXCOFF())
     report_fatal_error("XCOFF requires DWARF64 for 64-bit mode!");
 
   UseRangesSection = !NoDwarfRangesSection && !TT.isNVPTX();

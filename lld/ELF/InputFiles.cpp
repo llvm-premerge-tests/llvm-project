@@ -30,6 +30,7 @@
 #include "llvm/Support/RISCVAttributeParser.h"
 #include "llvm/Support/TarWriter.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 using namespace llvm;
 using namespace llvm::ELF;
@@ -1556,8 +1557,8 @@ template <class ELFT> void SharedFile::parse() {
 
 static ELFKind getBitcodeELFKind(const Triple &t) {
   if (t.isLittleEndian())
-    return t.isArch64Bit() ? ELF64LEKind : ELF32LEKind;
-  return t.isArch64Bit() ? ELF64BEKind : ELF32BEKind;
+    return TripleUtils::isArch64Bit(t) ? ELF64LEKind : ELF32LEKind;
+  return TripleUtils::isArch64Bit(t) ? ELF64BEKind : ELF32BEKind;
 }
 
 static uint16_t getBitcodeMachineKind(StringRef path, const Triple &t) {

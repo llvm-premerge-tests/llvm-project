@@ -14,13 +14,15 @@
 #include "llvm/BinaryFormat/Dwarf.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 using namespace llvm;
 
 void LoongArchMCAsmInfo::anchor() {}
 
 LoongArchMCAsmInfo::LoongArchMCAsmInfo(const Triple &TT) {
-  CodePointerSize = CalleeSaveStackSlotSize = TT.isArch64Bit() ? 8 : 4;
+  CodePointerSize = CalleeSaveStackSlotSize =
+      TripleUtils::isArch64Bit(TT) ? 8 : 4;
   AlignmentIsInBytes = false;
   Data8bitsDirective = "\t.byte\t";
   Data16bitsDirective = "\t.half\t";

@@ -64,6 +64,7 @@
 #include "llvm/Support/WithColor.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include "llvm/Transforms/Instrumentation.h"
 #include <cerrno>
 #include <optional>
@@ -388,7 +389,7 @@ static void addCygMingExtraModule(ExecutionEngine &EE, LLVMContext &Context,
 
   // Create an empty function named "__main".
   Type *ReturnTy;
-  if (TargetTriple.isArch64Bit())
+  if (TripleUtils::isArch64Bit(TargetTriple))
     ReturnTy = Type::getInt64Ty(Context);
   else
     ReturnTy = Type::getInt32Ty(Context);

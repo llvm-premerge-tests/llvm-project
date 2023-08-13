@@ -16,6 +16,7 @@
 #include "llvm/TargetParser/ARMTargetParser.h"
 #include "llvm/TargetParser/ARMTargetParserCommon.h"
 #include "llvm/TargetParser/Host.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <cassert>
 #include <cstring>
 using namespace llvm;
@@ -326,6 +327,18 @@ static Triple::ArchType parseBPFArch(StringRef ArchName) {
   } else {
     return Triple::UnknownArch;
   }
+}
+
+bool Triple::isAndroidVersionLT(unsigned Major) const {
+  assert(isAndroid() && "Not an Android triple!");
+
+  VersionTuple Version = getEnvironmentVersion();
+
+  // 64-bit targets did not exist before API level 21 (Lollipop).
+  if (TripleUtils::isArch64Bit(*this) && Version.getMajor() < 21)
+    return VersionTuple(21) < VersionTuple(Major);
+
+  return Version < VersionTuple(Major);
 }
 
 Triple::ArchType Triple::getArchTypeForLLVMName(StringRef Name) {

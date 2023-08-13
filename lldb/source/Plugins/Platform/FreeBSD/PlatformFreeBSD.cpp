@@ -30,6 +30,7 @@
 
 #include "llvm/TargetParser/Host.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 // Define these constants from FreeBSD mman.h for use when targeting remote
 // FreeBSD systems even when host has different values.
@@ -116,7 +117,7 @@ PlatformFreeBSD::PlatformFreeBSD(bool is_host)
   if (is_host) {
     ArchSpec hostArch = HostInfo::GetArchitecture(HostInfo::eArchKindDefault);
     m_supported_architectures.push_back(hostArch);
-    if (hostArch.GetTriple().isArch64Bit()) {
+    if (llvm::TripleUtils::isArch64Bit(hostArch.GetTriple())) {
       m_supported_architectures.push_back(
           HostInfo::GetArchitecture(HostInfo::eArchKind32));
     }

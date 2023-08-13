@@ -44,6 +44,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Target/TargetMachine.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 using namespace llvm;
 
@@ -766,7 +767,7 @@ void X86AsmPrinter::emitStartOfAsmFile(Module &M) {
 
     if (FeatureFlagsAnd) {
       // Emit a .note.gnu.property section with the flags.
-      if (!TT.isArch32Bit() && !TT.isArch64Bit())
+      if (!TripleUtils::isArch32Bit(TT) && !TripleUtils::isArch64Bit(TT))
         llvm_unreachable("CFProtection used on invalid architecture!");
       MCSection *Cur = OutStreamer->getCurrentSectionOnly();
       MCSection *Nt = MMI->getContext().getELFSection(
@@ -774,7 +775,7 @@ void X86AsmPrinter::emitStartOfAsmFile(Module &M) {
       OutStreamer->switchSection(Nt);
 
       // Emitting note header.
-      const int WordSize = TT.isArch64Bit() && !TT.isX32() ? 8 : 4;
+      const int WordSize = TripleUtils::isArch64Bit(TT) && !TT.isX32() ? 8 : 4;
       emitAlignment(WordSize == 4 ? Align(4) : Align(8));
       OutStreamer->emitIntValue(4, 4 /*size*/); // data size for "GNU\0"
       OutStreamer->emitIntValue(8 + WordSize, 4 /*size*/); // Elf_Prop size
