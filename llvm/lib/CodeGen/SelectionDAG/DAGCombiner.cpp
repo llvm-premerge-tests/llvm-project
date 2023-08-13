@@ -20187,8 +20187,7 @@ bool DAGCombiner::tryStoreMergeOfLoads(SmallVectorImpl<MemOpLink> &StoreNodes,
     // type. If they are the same, use integers.
     bool UseVectorTy =
         LastLegalVectorType > LastLegalIntegerType && AllowVectors;
-    unsigned LastLegalType =
-        std::max(LastLegalVectorType, LastLegalIntegerType);
+    unsigned LastLegalType = UseVectorTy ? LastLegalVectorType : LastLegalIntegerType;
 
     // We add +1 here because the LastXXX variables refer to location while
     // the NumElem refers to array/index size.
