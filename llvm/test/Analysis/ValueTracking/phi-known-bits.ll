@@ -7,9 +7,7 @@ define i8 @phi_ugt_high_bits(i8 %x) {
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp ugt i8 [[X:%.*]], -65
 ; CHECK-NEXT:    br i1 [[CMP]], label [[T:%.*]], label [[F:%.*]]
 ; CHECK:       T:
-; CHECK-NEXT:    [[V:%.*]] = phi i8 [ [[X]], [[ENTRY:%.*]] ], [ -1, [[F]] ]
-; CHECK-NEXT:    [[R:%.*]] = and i8 [[V]], 64
-; CHECK-NEXT:    ret i8 [[R]]
+; CHECK-NEXT:    ret i8 64
 ; CHECK:       F:
 ; CHECK-NEXT:    br i1 true, label [[T]], label [[F]]
 ;
@@ -53,9 +51,7 @@ define i8 @phi_uge_high_bits(i8 %x) {
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp ugt i8 [[X:%.*]], -65
 ; CHECK-NEXT:    br i1 [[CMP]], label [[T:%.*]], label [[F:%.*]]
 ; CHECK:       T:
-; CHECK-NEXT:    [[V:%.*]] = phi i8 [ [[X]], [[ENTRY:%.*]] ], [ -1, [[F]] ]
-; CHECK-NEXT:    [[R:%.*]] = and i8 [[V]], 64
-; CHECK-NEXT:    ret i8 [[R]]
+; CHECK-NEXT:    ret i8 64
 ; CHECK:       F:
 ; CHECK-NEXT:    br i1 true, label [[T]], label [[F]]
 ;
@@ -99,9 +95,7 @@ define i8 @phi_sge_high_bits(i8 %x) {
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp sgt i8 [[X:%.*]], 95
 ; CHECK-NEXT:    br i1 [[CMP]], label [[T:%.*]], label [[F:%.*]]
 ; CHECK:       T:
-; CHECK-NEXT:    [[V:%.*]] = phi i8 [ [[X]], [[ENTRY:%.*]] ], [ -1, [[F]] ]
-; CHECK-NEXT:    [[R:%.*]] = and i8 [[V]], 96
-; CHECK-NEXT:    ret i8 [[R]]
+; CHECK-NEXT:    ret i8 96
 ; CHECK:       F:
 ; CHECK-NEXT:    br i1 true, label [[T]], label [[F]]
 ;
@@ -145,9 +139,7 @@ define i8 @phi_sgt_high_bits(i8 %x) {
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp sgt i8 [[X:%.*]], -1
 ; CHECK-NEXT:    br i1 [[CMP]], label [[T:%.*]], label [[F:%.*]]
 ; CHECK:       T:
-; CHECK-NEXT:    [[V:%.*]] = phi i8 [ [[X]], [[ENTRY:%.*]] ], [ 0, [[F]] ]
-; CHECK-NEXT:    [[R:%.*]] = and i8 [[V]], -128
-; CHECK-NEXT:    ret i8 [[R]]
+; CHECK-NEXT:    ret i8 0
 ; CHECK:       F:
 ; CHECK-NEXT:    br i1 true, label [[T]], label [[F]]
 ;
@@ -168,9 +160,7 @@ define i8 @phi_sgt_high_bits2(i8 %x) {
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp sgt i8 [[X:%.*]], 63
 ; CHECK-NEXT:    br i1 [[CMP]], label [[T:%.*]], label [[F:%.*]]
 ; CHECK:       T:
-; CHECK-NEXT:    [[V:%.*]] = phi i8 [ [[X]], [[ENTRY:%.*]] ], [ -1, [[F]] ]
-; CHECK-NEXT:    [[R:%.*]] = and i8 [[V]], 64
-; CHECK-NEXT:    ret i8 [[R]]
+; CHECK-NEXT:    ret i8 64
 ; CHECK:       F:
 ; CHECK-NEXT:    br i1 true, label [[T]], label [[F]]
 ;
@@ -214,9 +204,7 @@ define i8 @phi_slt_high_bits(i8 %x) {
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp slt i8 [[X:%.*]], 0
 ; CHECK-NEXT:    br i1 [[CMP]], label [[T:%.*]], label [[F:%.*]]
 ; CHECK:       T:
-; CHECK-NEXT:    [[V:%.*]] = phi i8 [ [[X]], [[ENTRY:%.*]] ], [ -1, [[F]] ]
-; CHECK-NEXT:    [[R:%.*]] = and i8 [[V]], -128
-; CHECK-NEXT:    ret i8 [[R]]
+; CHECK-NEXT:    ret i8 -128
 ; CHECK:       F:
 ; CHECK-NEXT:    br i1 true, label [[T]], label [[F]]
 ;
@@ -237,9 +225,7 @@ define i8 @phi_slt_high_bits2(i8 %x) {
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp slt i8 [[X:%.*]], -64
 ; CHECK-NEXT:    br i1 [[CMP]], label [[T:%.*]], label [[F:%.*]]
 ; CHECK:       T:
-; CHECK-NEXT:    [[V:%.*]] = phi i8 [ [[X]], [[ENTRY:%.*]] ], [ 0, [[F]] ]
-; CHECK-NEXT:    [[R:%.*]] = and i8 [[V]], 64
-; CHECK-NEXT:    ret i8 [[R]]
+; CHECK-NEXT:    ret i8 0
 ; CHECK:       F:
 ; CHECK-NEXT:    br i1 true, label [[T]], label [[F]]
 ;
@@ -283,9 +269,7 @@ define i8 @phi_sle_high_bits(i8 %x) {
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp slt i8 [[X:%.*]], -64
 ; CHECK-NEXT:    br i1 [[CMP]], label [[T:%.*]], label [[F:%.*]]
 ; CHECK:       T:
-; CHECK-NEXT:    [[V:%.*]] = phi i8 [ [[X]], [[ENTRY:%.*]] ], [ 0, [[F]] ]
-; CHECK-NEXT:    [[R:%.*]] = and i8 [[V]], 64
-; CHECK-NEXT:    ret i8 [[R]]
+; CHECK-NEXT:    ret i8 0
 ; CHECK:       F:
 ; CHECK-NEXT:    br i1 true, label [[T]], label [[F]]
 ;
