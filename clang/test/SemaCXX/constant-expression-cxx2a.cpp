@@ -1492,3 +1492,33 @@ class B{
 class D : B{}; // expected-error {{deleted function '~D' cannot override a non-deleted function}}
 // expected-note@-1 {{destructor of 'D' is implicitly deleted because base class 'B' has an inaccessible destructor}}
 }
+
+namespace UninitCompoundAssign {
+constexpr int scalar(int a) {
+  int sum;
+  sum += a; // expected-note {{read of uninitialized object}};
+  return 0;
+}
+static_assert(scalar(3)); // expected-error {{constant expression}} \
+                          // expected-note {{in call to 'scalar(3)'}}
+
+constexpr int array(int a) {
+  int arr[3];
+  arr[1] += a; // expected-note {{read of uninitialized object}};
+  return 0;
+}
+static_assert(array(3)); // expected-error {{constant expression}} \
+                         // expected-note {{in call to 'array(3)'}}
+
+struct Foo {
+  int val;
+  constexpr Foo() {}
+};
+constexpr int field(int a) {
+  Foo f;
+  f.val += a; // expected-note {{read of uninitialized object}};
+  return 0;
+}
+static_assert(field(3)); // expected-error {{constant expression}} \
+                         // expected-note {{in call to 'field(3)'}}
+}
