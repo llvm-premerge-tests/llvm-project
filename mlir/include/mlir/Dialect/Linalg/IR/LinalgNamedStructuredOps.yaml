@@ -519,8 +519,8 @@ metadata: !LinalgOpMetadata
   name: div
   cpp_class_name: DivOp
   doc: |-
-    Divides the first tensor by the second tensor, elementwise. For integer
-    types, performs a signed division.
+    Divides the first tensor by the second tensor, elementwise.
+    For integer types, performs a signed division.
 
     The shapes and element types must be identical. The appropriate casts,
     broadcasts and reductions should be done previously to calling this op.
@@ -569,8 +569,8 @@ metadata: !LinalgOpMetadata
   name: div_unsigned
   cpp_class_name: DivUOp
   doc: |-
-    Divides the first tensor by the second tensor, elementwise. For integer
-    types, performs an unsigned division.
+    Divides the first tensor by the second tensor, elementwise.
+    For integer types, performs an unsigned division.
 
     The shapes and element types must be identical. The appropriate casts,
     broadcasts and reductions should be done previously to calling this op.
@@ -916,8 +916,7 @@ metadata: !LinalgOpMetadata
   name: matmul_transpose_a
   cpp_class_name: MatmulTransposeAOp
   doc: |-
-    Performs a matrix multiplication of two 2D inputs with lhs operand
-    transposed.
+    Performs a matrix multiplication of two 2D inputs with lhs operand transposed.
 
     Numeric casting is performed on the operands to the inner multiply, promoting
     them to the same data type as the accumulator/output.
@@ -989,8 +988,7 @@ metadata: !LinalgOpMetadata
   name: matmul_transpose_b
   cpp_class_name: MatmulTransposeBOp
   doc: |-
-    Performs a matrix multiplication of two 2D inputs with rhs operand
-    transposed.
+    Performs a matrix multiplication of two 2D inputs with rhs operand transposed.
 
     Numeric casting is performed on the operands to the inner multiply, promoting
     them to the same data type as the accumulator/output.
@@ -1140,11 +1138,13 @@ structured_op: !LinalgStructuredOpConfig
 metadata: !LinalgOpMetadata
   name: batch_mmt4d
   cpp_class_name: BatchMmt4DOp
-  doc: "Performs a batched matrix-matrix-transpose multiplication of two\nbatched-4D\
-    \ (5D) inputs.\n\nBesides the outermost batch dimension has the same semantic\
-    \ as\nlinalg.batch_matmul, the differences from linalg.batch_matmul in the\nnon-batch\
-    \ dimensions are the same as linalg.mmt4d vs. linalg.matmul. See the\ndescription\
-    \ of lingalg.mmt4d."
+  doc: |-
+    Performs a batched matrix-matrix-transpose multiplication of two batched-4D (5D) inputs.
+
+    Besides the outermost batch dimension has the same semantic as
+    linalg.batch_matmul, the differences from linalg.batch_matmul in the
+    non-batch dimensions are the same as linalg.mmt4d vs. linalg.matmul. See the
+    description of lingalg.mmt4d.
   implements:
   - LinalgContractionOpInterface
 structured_op: !LinalgStructuredOpConfig
@@ -1285,8 +1285,7 @@ metadata: !LinalgOpMetadata
   name: batch_matmul_transpose_a
   cpp_class_name: BatchMatmulTransposeAOp
   doc: |-
-    Performs a batched matrix multiplication of two 3D inputs where lhs operand
-    has its non-batch dimensions transposed.
+    Performs a batched matrix multiplication of two 3D inputs where lhs operand has its non-batch dimensions transposed.
 
     Numeric casting is performed on the operands to the inner multiply, promoting
     them to the same data type as the accumulator/output.
@@ -1355,8 +1354,7 @@ metadata: !LinalgOpMetadata
   name: batch_matmul_transpose_b
   cpp_class_name: BatchMatmulTransposeBOp
   doc: |-
-    Performs a batched matrix multiplication of two 3D inputs where rhs operand
-    has its non-batch dimensions transposed.
+    Performs a batched matrix multiplication of two 3D inputs where rhs operand has its non-batch dimensions transposed.
 
     Numeric casting is performed on the operands to the inner multiply, promoting
     them to the same data type as the accumulator/output.
