@@ -137,6 +137,8 @@ def GPR : GPRRegisterClass<(add (sequence "X%u", 10, 17),
                                 (sequence "X%u", 0, 4))>;
 
 def GPRX0 : GPRRegisterClass<(add X0)>;
+def GPRX1 : GPRRegisterClass<(add X1)>;
+def GPRX5 : GPRRegisterClass<(add X5)>;
 
 def GPRNoX0 : GPRRegisterClass<(sub GPR, X0)>;
 
@@ -164,6 +166,10 @@ def SP : GPRRegisterClass<(add X2)>;
 // Saved Registers from s0 to s7, for C.MVA01S07 instruction in Zcmp extension
 def SR07 : GPRRegisterClass<(add (sequence "X%u", 8, 9),
                                  (sequence "X%u", 18, 23))>;
+
+def GPRRA : RegisterClass<"RISCV", [XLenVT], 32, (add X1, X5)> {
+  let RegInfos = XLenRI;
+}
 
 // Floating point registers
 let RegAltNameIndices = [ABIRegAltName] in {
@@ -597,3 +603,6 @@ foreach m = LMULList in {
 // Special registers
 def FFLAGS : RISCVReg<0, "fflags">;
 def FRM    : RISCVReg<0, "frm">;
+
+// Shadow Stack register
+def SSP    : RISCVReg<0, "ssp">;
