@@ -65,6 +65,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <cassert>
 #include <string>
 
@@ -2535,10 +2536,10 @@ MCSection *TargetLoweringObjectFileXCOFF::getSectionForConstant(
 void TargetLoweringObjectFileXCOFF::Initialize(MCContext &Ctx,
                                                const TargetMachine &TgtM) {
   TargetLoweringObjectFile::Initialize(Ctx, TgtM);
-  TTypeEncoding =
-      dwarf::DW_EH_PE_indirect | dwarf::DW_EH_PE_datarel |
-      (TgtM.getTargetTriple().isArch32Bit() ? dwarf::DW_EH_PE_sdata4
-                                            : dwarf::DW_EH_PE_sdata8);
+  TTypeEncoding = dwarf::DW_EH_PE_indirect | dwarf::DW_EH_PE_datarel |
+                  (llvm::TripleUtils::isArch32Bit(TgtM.getTargetTriple())
+                       ? dwarf::DW_EH_PE_sdata4
+                       : dwarf::DW_EH_PE_sdata8);
   PersonalityEncoding = 0;
   LSDAEncoding = 0;
   CallSiteEncoding = dwarf::DW_EH_PE_udata4;

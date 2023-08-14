@@ -14,12 +14,13 @@
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/DeclObjC.h"
 #include "clang/AST/Expr.h"
-#include "clang/AST/VTableBuilder.h"
 #include "clang/AST/RecordLayout.h"
+#include "clang/AST/VTableBuilder.h"
 #include "clang/Basic/TargetInfo.h"
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/MathExtras.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 using namespace clang;
 
@@ -1624,7 +1625,8 @@ void ItaniumRecordLayoutBuilder::LayoutBitField(const FieldDecl *D) {
       // as [unsigned].
       StorageUnitSize = Context.getTypeSize(Context.UnsignedIntTy);
     } else if (StorageUnitSize > Context.getTypeSize(Context.UnsignedIntTy) &&
-               Context.getTargetInfo().getTriple().isArch32Bit() &&
+               llvm::TripleUtils::isArch32Bit(
+                   Context.getTargetInfo().getTriple()) &&
                FieldSize <= 32) {
       // Under 32-bit compile mode, the bitcontainer is 32 bits if a single
       // long long bitfield has length no greater than 32 bits.
@@ -2758,9 +2760,10 @@ void MicrosoftRecordLayoutBuilder::initializeLayout(const RecordDecl *RD) {
   // In 64-bit mode we always perform an alignment step after laying out vbases.
   // In 32-bit mode we do not.  The check to see if we need to perform alignment
   // checks the RequiredAlignment field and performs alignment if it isn't 0.
-  RequiredAlignment = Context.getTargetInfo().getTriple().isArch64Bit()
-                          ? CharUnits::One()
-                          : CharUnits::Zero();
+  RequiredAlignment =
+      llvm::TripleUtils::isArch64Bit(Context.getTargetInfo().getTriple())
+          ? CharUnits::One()
+          : CharUnits::Zero();
   // Compute the maximum field alignment.
   MaxFieldAlignment = CharUnits::Zero();
   // Honor the default struct packing maximum alignment flag.

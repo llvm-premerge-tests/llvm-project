@@ -17,6 +17,7 @@
 #include "llvm/Support/LineIterator.h"
 #include "llvm/Support/YAMLTraits.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <functional>
 #include <optional>
 
@@ -314,8 +315,9 @@ IFSTarget ifs::parseTriple(StringRef TripleStr) {
   }
   RetTarget.Endianness = IFSTriple.isLittleEndian() ? IFSEndiannessType::Little
                                                     : IFSEndiannessType::Big;
-  RetTarget.BitWidth =
-      IFSTriple.isArch64Bit() ? IFSBitWidthType::IFS64 : IFSBitWidthType::IFS32;
+  RetTarget.BitWidth = TripleUtils::isArch64Bit(IFSTriple)
+                           ? IFSBitWidthType::IFS64
+                           : IFSBitWidthType::IFS32;
   return RetTarget;
 }
 

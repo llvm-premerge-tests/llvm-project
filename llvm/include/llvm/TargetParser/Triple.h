@@ -448,17 +448,23 @@ public:
   /// 16-bit. The inner details of pointer width for particular architectures
   /// is not summed up in the triple, and so only a coarse grained predicate
   /// system is provided.
-  bool isArch64Bit() const;
+  [[deprecated("Use TripleUtils::isArch64Bit(const llvm::Triple& tripleImpl) "
+               "instead.")]] bool
+  isArch64Bit() const;
 
   /// Test whether the architecture is 32-bit
   ///
   /// Note that this tests for 32-bit pointer width, and nothing else.
-  bool isArch32Bit() const;
+  [[deprecated("Use TripleUtils::isArch32Bit(const llvm::Triple& tripleImpl) "
+               "instead.")]] bool
+  isArch32Bit() const;
 
   /// Test whether the architecture is 16-bit
   ///
   /// Note that this tests for 16-bit pointer width, and nothing else.
-  bool isArch16Bit() const;
+  [[deprecated("Use TripleUtils::isArch16Bit(const llvm::Triple& tripleImpl) "
+               "instead.")]] bool
+  isArch16Bit() const;
 
   /// Helper function for doing comparisons against version numbers included in
   /// the target triple.
@@ -730,17 +736,7 @@ public:
   /// Tests whether the target is Android
   bool isAndroid() const { return getEnvironment() == Triple::Android; }
 
-  bool isAndroidVersionLT(unsigned Major) const {
-    assert(isAndroid() && "Not an Android triple!");
-
-    VersionTuple Version = getEnvironmentVersion();
-
-    // 64-bit targets did not exist before API level 21 (Lollipop).
-    if (isArch64Bit() && Version.getMajor() < 21)
-      return VersionTuple(21) < VersionTuple(Major);
-
-    return Version < VersionTuple(Major);
-  }
+  bool isAndroidVersionLT(unsigned Major) const;
 
   /// Tests whether the environment is musl-libc
   bool isMusl() const {

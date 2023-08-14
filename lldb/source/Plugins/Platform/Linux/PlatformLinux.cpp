@@ -27,6 +27,7 @@
 #include "lldb/Utility/State.h"
 #include "lldb/Utility/Status.h"
 #include "lldb/Utility/StreamString.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 // Define these constants from Linux mman.h for use when targeting remote linux
 // systems even when host has different values.
@@ -114,7 +115,7 @@ PlatformLinux::PlatformLinux(bool is_host)
   if (is_host) {
     ArchSpec hostArch = HostInfo::GetArchitecture(HostInfo::eArchKindDefault);
     m_supported_architectures.push_back(hostArch);
-    if (hostArch.GetTriple().isArch64Bit()) {
+    if (llvm::TripleUtils::isArch64Bit(hostArch.GetTriple())) {
       m_supported_architectures.push_back(
           HostInfo::GetArchitecture(HostInfo::eArchKind32));
     }
@@ -393,7 +394,7 @@ CompilerType PlatformLinux::GetSiginfoType(const llvm::Triple &triple) {
   }
 
   // the structure is padded on 64-bit arches to fix alignment
-  if (triple.isArch64Bit())
+  if (llvm::TripleUtils::isArch64Bit(triple))
     ast->AddFieldToRecordType(siginfo_type, "__pad0", int_type,
                               lldb::eAccessPublic, 0);
 

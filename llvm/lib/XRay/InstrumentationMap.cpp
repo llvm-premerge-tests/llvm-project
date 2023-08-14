@@ -24,6 +24,7 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/YAMLTraits.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -144,7 +145,7 @@ loadObj(StringRef Filename, object::OwningBinary<object::ObjectFile> &ObjFile,
 
   // Copy the instrumentation map data into the Sleds data structure.
   auto C = Contents.bytes_begin();
-  bool Is32Bit = ObjFile.getBinary()->makeTriple().isArch32Bit();
+  bool Is32Bit = TripleUtils::isArch32Bit(ObjFile.getBinary()->makeTriple());
   size_t ELFSledEntrySize = Is32Bit ? 16 : 32;
 
   if ((C - Contents.bytes_end()) % ELFSledEntrySize != 0)

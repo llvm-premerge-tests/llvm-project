@@ -24,6 +24,7 @@
 #include "llvm/MC/MCWasmObjectWriter.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 using namespace llvm;
 
@@ -125,5 +126,6 @@ WebAssemblyAsmBackend::createObjectTargetWriter() const {
 } // end anonymous namespace
 
 MCAsmBackend *llvm::createWebAssemblyAsmBackend(const Triple &TT) {
-  return new WebAssemblyAsmBackend(TT.isArch64Bit(), TT.isOSEmscripten());
+  return new WebAssemblyAsmBackend(TripleUtils::isArch64Bit(TT),
+                                   TT.isOSEmscripten());
 }

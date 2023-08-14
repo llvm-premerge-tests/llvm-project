@@ -25,6 +25,7 @@
 #include "lldb/Utility/State.h"
 #include "lldb/Utility/Status.h"
 #include "lldb/Utility/StreamString.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 // Define these constants from NetBSD mman.h for use when targeting remote
 // netbsd systems even when host has different values.
@@ -105,7 +106,7 @@ PlatformNetBSD::PlatformNetBSD(bool is_host)
   if (is_host) {
     ArchSpec hostArch = HostInfo::GetArchitecture(HostInfo::eArchKindDefault);
     m_supported_architectures.push_back(hostArch);
-    if (hostArch.GetTriple().isArch64Bit()) {
+    if (llvm::TripleUtils::isArch64Bit(hostArch.GetTriple())) {
       m_supported_architectures.push_back(
           HostInfo::GetArchitecture(HostInfo::eArchKind32));
     }
@@ -265,7 +266,7 @@ CompilerType PlatformNetBSD::GetSiginfoType(const llvm::Triple &triple) {
                             lldb::eAccessPublic, 0);
 
   // the structure is padded on 64-bit arches to fix alignment
-  if (triple.isArch64Bit())
+  if (llvm::TripleUtils::isArch64Bit(triple))
     ast->AddFieldToRecordType(ksiginfo_type, "__pad0", int_type,
                               lldb::eAccessPublic, 0);
 

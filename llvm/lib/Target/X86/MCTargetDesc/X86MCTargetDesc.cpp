@@ -30,6 +30,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/TargetParser/Host.h"
 #include "llvm/TargetParser/Triple.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 using namespace llvm;
 
@@ -48,7 +49,7 @@ std::string X86_MC::ParseX86Triple(const Triple &TT) {
   std::string FS;
   // SSE2 should default to enabled in 64-bit mode, but can be turned off
   // explicitly.
-  if (TT.isArch64Bit())
+  if (TripleUtils::isArch64Bit(TT))
     FS = "+64bit-mode,-32bit-mode,-16bit-mode,+sse2";
   else if (TT.getEnvironment() != Triple::CODE16)
     FS = "-64bit-mode,+32bit-mode,-16bit-mode";

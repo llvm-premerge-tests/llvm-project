@@ -17,6 +17,7 @@
 #include "llvm/Object/IRSymtab.h"
 #include "llvm/Object/ModuleSymbolTable.h"
 #include "llvm/Object/SymbolicFile.h"
+#include "llvm/TargetParser/TripleUtils.h"
 
 namespace llvm {
 class Module;
@@ -38,7 +39,7 @@ public:
   basic_symbol_iterator symbol_begin() const override;
   basic_symbol_iterator symbol_end() const override;
   bool is64Bit() const override {
-    return Triple(getTargetTriple()).isArch64Bit();
+    return TripleUtils::isArch64Bit(Triple(getTargetTriple()));
   }
   StringRef getTargetTriple() const;
 

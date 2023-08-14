@@ -22,6 +22,7 @@
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/CodeGen.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include "llvm/Transforms/Scalar.h"
 #include <optional>
 
@@ -44,9 +45,10 @@ static cl::opt<bool>
                            cl::init(false));
 
 static std::string computeDataLayout(const Triple &TT) {
-  if (TT.isArch64Bit())
+  if (llvm::TripleUtils::isArch64Bit(TT))
     return "e-m:e-p:64:64-i64:64-i128:128-n64-S128";
-  assert(TT.isArch32Bit() && "only LA32 and LA64 are currently supported");
+  assert(llvm::TripleUtils::isArch32Bit(TT) &&
+         "only LA32 and LA64 are currently supported");
   return "e-m:e-p:32:32-i64:64-n32-S128";
 }
 
@@ -66,7 +68,7 @@ getEffectiveLoongArchCodeModel(const Triple &TT,
   case CodeModel::Medium:
     return *CM;
   case CodeModel::Large:
-    if (!TT.isArch64Bit())
+    if (!TripleUtils::isArch64Bit(TT))
       report_fatal_error("Large code model requires LA64");
     return *CM;
   default:

@@ -52,6 +52,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/TargetParser/Host.h"
+#include "llvm/TargetParser/TripleUtils.h"
 #include <atomic>
 #include <optional>
 
@@ -292,7 +293,7 @@ fatbinary(ArrayRef<std::pair<StringRef, StringRef>> InputFiles,
 
   SmallVector<StringRef, 16> CmdArgs;
   CmdArgs.push_back(*FatBinaryPath);
-  CmdArgs.push_back(Triple.isArch64Bit() ? "-64" : "-32");
+  CmdArgs.push_back(llvm::TripleUtils::isArch64Bit(Triple) ? "-64" : "-32");
   CmdArgs.push_back("--create");
   CmdArgs.push_back(*TempFileOrErr);
   for (const auto &[File, Arch] : InputFiles)
