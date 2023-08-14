@@ -1426,6 +1426,10 @@ def SymbolicateCrashLog(crash_log, options):
             print()
 
     for thread in crash_log.threads:
+        if options.crashed_only and not (
+            thread.crashed or thread.app_specific_backtrace
+        ):
+            continue
         thread.dump_symbolicated(crash_log, options)
         print()
 
