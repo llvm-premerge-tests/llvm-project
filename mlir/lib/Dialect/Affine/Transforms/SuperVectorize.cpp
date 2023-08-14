@@ -1733,6 +1733,11 @@ void Vectorize::runOnOperation() {
     return signalPassFailure();
   }
 
+  if (llvm::any_of(vectorSizes, [](int64_t size) { return size == 0; })) {
+    f.emitError("Vectorization factor must be greater than zero.");
+    return signalPassFailure();
+  }
+
   DenseSet<Operation *> parallelLoops;
   ReductionLoopMap reductionLoops;
 
