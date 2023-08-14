@@ -442,78 +442,68 @@ CGRecordLowering::accumulateBitFields(RecordDecl::field_iterator Field,
     return;
   }
 
-  // Check if OffsetInRecord (the size in bits of the current run) is better
-  // as a single field run. When OffsetInRecord has legal integer width, and
-  // its bitfield offset is naturally aligned, it is better to make the
-  // bitfield a separate storage component so as it can be accessed directly
-  // with lower cost.
-  auto IsBetterAsSingleFieldRun = [&](uint64_t OffsetInRecord,
-                                      uint64_t StartBitOffset) {
+  // Check if RunBits (the size in bits of the current run) is profitable to
+  // concatenate to. When RunBits has legal integer width, and its bitfield
+  // offset is naturally aligned, it is better to make the bitfield a separate
+  // storage component so as it can be accessed directly with lower cost.
+  auto CanConcatenateTo = [&](uint64_t RunBits, uint64_t StartBitOfRun) {
     if (!Types.getCodeGenOpts().FineGrainedBitfieldAccesses)
-      return false;
-    if (OffsetInRecord < 8 || !llvm::isPowerOf2_64(OffsetInRecord) ||
-        !DataLayout.fitsInLegalInteger(OffsetInRecord))
-      return false;
-    // Make sure StartBitOffset is naturally aligned if it is treated as an
-    // IType integer.
-    if (StartBitOffset %
-            Context.toBits(getAlignment(getIntNType(OffsetInRecord))) !=
-        0)
-      return false;
-    return true;
+      return true;
+
+    if (RunBits < 8 || !llvm::isPowerOf2_64(RunBits) ||
+        !DataLayout.fitsInLegalInteger(RunBits))
+      return true;
+
+    // Make sure StartBitOfRun is naturally aligned if it is treated as an IType
+    // integer.
+    if (StartBitOfRun % Context.toBits(getAlignment(getIntNType(RunBits))) != 0)
+      return true;
+
+    return false;
   };
 
   // The start field is better as a single field run.
-  bool StartFieldAsSingleRun = false;
   for (;;) {
-    // Check to see if we need to start a new run.
     if (Run == FieldEnd) {
-      // If we're out of fields, return.
+      // We're starting a new run.
       if (Field == FieldEnd)
-        break;
-      // Any non-zero-length bitfield can start a new run.
+        break; // We're done.
       if (!Field->isZeroLengthBitField(Context)) {
+        // Any non-zero-length bitfield starts a run.
         Run = Field;
         StartBitOffset = getFieldBitOffset(*Field);
         Tail = StartBitOffset + Field->getBitWidthValue(Context);
-        StartFieldAsSingleRun = IsBetterAsSingleFieldRun(Tail - StartBitOffset,
-                                                         StartBitOffset);
       }
       ++Field;
       continue;
     }
 
-    // If the start field of a new run is better as a single run, or
-    // if current field (or consecutive fields) is better as a single run, or
-    // if current field has zero width bitfield and either
-    // UseZeroLengthBitfieldAlignment or UseBitFieldTypeAlignment is set to
-    // true, or
-    // if the offset of current field is inconsistent with the offset of
-    // previous field plus its offset,
-    // skip the block below and go ahead to emit the storage.
-    // Otherwise, try to add bitfields to the run.
-    if (!StartFieldAsSingleRun && Field != FieldEnd &&
-        !IsBetterAsSingleFieldRun(Tail - StartBitOffset, StartBitOffset) &&
-        (!Field->isZeroLengthBitField(Context) ||
-         (!Context.getTargetInfo().useZeroLengthBitfieldAlignment() &&
-          !Context.getTargetInfo().useBitFieldTypeAlignment())) &&
+    // If it can be profitable to append to the current run,
+    // And the current field is not zero-width with either
+    // UseZeroLengthBitfieldAlignment or UseBitFieldTypeAlignment true,
+    // And the current field's offset abuts the current run end,
+    // Then extend the run.
+    if (Field != FieldEnd &&
+        CanConcatenateTo(Tail - StartBitOffset, StartBitOffset) &&
+        !(Field->isZeroLengthBitField(Context) &&
+          (Context.getTargetInfo().useZeroLengthBitfieldAlignment() ||
+           Context.getTargetInfo().useBitFieldTypeAlignment())) &&
         Tail == getFieldBitOffset(*Field)) {
       Tail += Field->getBitWidthValue(Context);
       ++Field;
       continue;
     }
 
-    // We've hit a break-point in the run and need to emit a storage field.
+    // The run is done, emit a storage field for it.
     llvm::Type *Type = getIntNType(Tail - StartBitOffset);
     // Add the storage member to the record and set the bitfield info for all of
-    // the bitfields in the run.  Bitfields get the offset of their storage but
+    // the bitfields in the run. Bitfields get the offset of their storage but
     // come afterward and remain there after a stable sort.
     Members.push_back(StorageInfo(bitsToCharUnits(StartBitOffset), Type));
     for (; Run != Field; ++Run)
       Members.push_back(MemberInfo(bitsToCharUnits(StartBitOffset),
                                    MemberInfo::Field, nullptr, *Run));
     Run = FieldEnd;
-    StartFieldAsSingleRun = false;
   }
 }
 
