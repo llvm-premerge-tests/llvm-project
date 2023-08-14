@@ -1,0 +1,51 @@
+/// Check that clang uses the latest available Solaris GCC installation.
+
+/// Check sparc-sun-solaris2.11, 32-bit
+// RUN: %clang -v 2>&1 --target=sparc-sun-solaris2.11 \
+// RUN:     --gcc-toolchain="" \
+// RUN:     --sysroot=%S/Inputs/solaris_multi_gcc_tree \
+// RUN:   | FileCheck --check-prefix=CHECK-SPARC %s
+// CHECK-SPARC: Found candidate GCC installation: {{.*}}11/lib/gcc/sparcv9-sun-solaris2.11/11.4.0
+// CHECK-SPARC-NEXT: Selected GCC installation: {{.*}}11/lib/gcc/sparcv9-sun-solaris2.11/11.4.0
+// CHECK-SPARC-NEXT: Candidate multilib: .;@m64
+// CHECK-SPARC-NEXT: Candidate multilib: sparcv8plus;@m32
+// CHECK-SPARC-NEXT: Selected multilib: sparcv8plus;@m32
+
+/// Check i386-pc-solaris2.11, 32-bit
+// RUN: %clang -v 2>&1 --target=i386-pc-solaris2.11 \
+// RUN:     --gcc-toolchain="" \
+// RUN:     --sysroot=%S/Inputs/solaris_multi_gcc_tree \
+// RUN:   | FileCheck --check-prefix=CHECK-I386 %s
+// CHECK-I386: Found candidate GCC installation: {{.*}}11/lib/gcc/x86_64-pc-solaris2.11/11.4.0
+// CHECK-I386-NEXT: Selected GCC installation: {{.*}}11/lib/gcc/x86_64-pc-solaris2.11/11.4.0
+// CHECK-I386-NEXT: Candidate multilib: .;@m64
+// CHECK-I386-NEXT: Candidate multilib: 32;@m32
+// CHECK-I386-NEXT: Selected multilib: 32;@m32
+
+/// Check sparcv9-sun-solaris2.11, 64-bit
+// RUN: %clang -v 2>&1 --target=sparcv9-sun-solaris2.11 \
+// RUN:     --gcc-toolchain="" \
+// RUN:     --sysroot=%S/Inputs/solaris_multi_gcc_tree \
+// RUN:   | FileCheck --check-prefix=CHECK-SPARCV9 %s
+// CHECK-SPARCV9: Found candidate GCC installation: {{.*}}11/lib/gcc/sparcv9-sun-solaris2.11/11.4.0
+// CHECK-SPARCV9-NEXT: Selected GCC installation: {{.*}}11/lib/gcc/sparcv9-sun-solaris2.11/11.4.0
+// CHECK-SPARCV9-NEXT: Candidate multilib: .;@m64
+// CHECK-SPARCV9-NEXT: Candidate multilib: sparcv8plus;@m32
+// CHECK-SPARCV9-NEXT: Selected multilib: .;@m64
+
+/// Check x86_64-pc-solaris2.11, 64-bit
+// RUN: %clang -v 2>&1 --target=x86_64-pc-solaris2.11 \
+// RUN:     --gcc-toolchain="" \
+// RUN:     --sysroot=%S/Inputs/solaris_multi_gcc_tree \
+// RUN:   | FileCheck --check-prefix=CHECK-X86_64 %s
+
+/// Check amd64-pc-solaris2.11, 64-bit
+// RUN: %clang -v 2>&1 --target=amd64-pc-solaris2.11 \
+// RUN:     --gcc-toolchain="" \
+// RUN:     --sysroot=%S/Inputs/solaris_multi_gcc_tree \
+// RUN:   | FileCheck --check-prefix=CHECK-X86_64 %s
+// CHECK-X86_64: Found candidate GCC installation: {{.*}}11/lib/gcc/x86_64-pc-solaris2.11/11.4.0
+// CHECK-X86_64-NEXT: Selected GCC installation: {{.*}}11/lib/gcc/x86_64-pc-solaris2.11/11.4.0
+// CHECK-X86_64-NEXT: Candidate multilib: .;@m64
+// CHECK-X86_64-NEXT: Candidate multilib: 32;@m32
+// CHECK-X86_64-NEXT: Selected multilib: .;@m64

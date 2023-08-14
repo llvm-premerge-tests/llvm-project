@@ -2217,6 +2217,16 @@ bool Generic_GCC::GCCInstallationDetector::getBiarchSibling(Multilib &M) const {
   return false;
 }
 
+static bool CmpGCCPrefix(std::string PrefixA, std::string PrefixB) {
+  StringRef VersionAText = llvm::sys::path::filename(PrefixA);
+  StringRef VersionBText = llvm::sys::path::filename(PrefixB);
+  Generic_GCC::GCCVersion VersionA =
+      Generic_GCC::GCCVersion::Parse(VersionAText);
+  Generic_GCC::GCCVersion VersionB =
+      Generic_GCC::GCCVersion::Parse(VersionBText);
+  return VersionA < VersionB;
+}
+
 void Generic_GCC::GCCInstallationDetector::AddDefaultGCCPrefixes(
     const llvm::Triple &TargetTriple, SmallVectorImpl<std::string> &Prefixes,
     StringRef SysRoot) {
@@ -2227,6 +2237,7 @@ void Generic_GCC::GCCInstallationDetector::AddDefaultGCCPrefixes(
     // so we need to find those /usr/gcc/*/lib/gcc libdirs and go with
     // /usr/gcc/<version> as a prefix.
 
+    SmallVector<std::string, 8> SolarisPrefixes;
     std::string PrefixDir = concat(SysRoot, "/usr/gcc");
     std::error_code EC;
     for (llvm::vfs::directory_iterator LI = D.getVFS().dir_begin(PrefixDir, EC),
@@ -2244,8 +2255,11 @@ void Generic_GCC::GCCInstallationDetector::AddDefaultGCCPrefixes(
       if (!D.getVFS().exists(CandidateLibPath))
         continue;
 
-      Prefixes.push_back(CandidatePrefix);
+      SolarisPrefixes.push_back(CandidatePrefix);
     }
+    // Sort in reverse order so GCCInstallationDetector::init picks the latest.
+    std::sort(SolarisPrefixes.rbegin(), SolarisPrefixes.rend(), CmpGCCPrefix);
+    Prefixes.append(SolarisPrefixes);
     return;
   }
 
