@@ -1731,7 +1731,11 @@ SymbolFileDWARF::GetDwoSymbolFileForCompileUnit(
   const char *comp_dir = nullptr;
   FileSpec dwo_file(dwo_name);
   FileSystem::Instance().Resolve(dwo_file);
-  if (dwo_file.IsRelative()) {
+  bool found = false;
+
+  if (!dwo_file.IsRelative()) {
+    found = FileSystem::Instance().Exists(dwo_file);
+  } else {
     comp_dir = cu_die.GetAttributeValueAsString(dwarf_cu, DW_AT_comp_dir,
                                                 nullptr);
     if (!comp_dir) {
@@ -1744,18 +1748,51 @@ SymbolFileDWARF::GetDwoSymbolFileForCompileUnit(
     }
 
     dwo_file.SetFile(comp_dir, FileSpec::Style::native);
-    if (dwo_file.IsRelative()) {
+
+    if (!dwo_file.IsRelative()) {
+      FileSystem::Instance().Resolve(dwo_file);
+      dwo_file.AppendPathComponent(dwo_name);
+      found = FileSystem::Instance().Exists(dwo_file);
+    } else {
+      FileSpecList dwo_paths;
+
       // if DW_AT_comp_dir is relative, it should be relative to the location
       // of the executable, not to the location from which the debugger was
       // launched.
-      dwo_file.PrependPathComponent(
+      FileSpec relative_to_binary = dwo_file;
+      relative_to_binary.PrependPathComponent(
           m_objfile_sp->GetFileSpec().GetDirectory().GetStringRef());
+      FileSystem::Instance().Resolve(relative_to_binary);
+      relative_to_binary.AppendPathComponent(dwo_name);
+      dwo_paths.Append(relative_to_binary);
+
+      // Or it's relative to one of the user specified debug directories.
+      const FileSpecList &debug_file_search_paths =
+          Target::GetDefaultDebugFileSearchPaths();
+      size_t num_directories = debug_file_search_paths.GetSize();
+      for (size_t idx = 0; idx < num_directories; ++idx) {
+        FileSpec dirspec = debug_file_search_paths.GetFileSpecAtIndex(idx);
+        dirspec.AppendPathComponent(comp_dir);
+        FileSystem::Instance().Resolve(dirspec);
+        if (!FileSystem::Instance().IsDirectory(dirspec))
+          continue;
+
+        dirspec.AppendPathComponent(dwo_name);
+        dwo_paths.Append(dirspec);
+      }
+
+      size_t num_possible = dwo_paths.GetSize();
+      for (size_t idx = 0; idx < num_possible && !found; ++idx) {
+        FileSpec dwo_spec = dwo_paths.GetFileSpecAtIndex(idx);
+        if (FileSystem::Instance().Exists(dwo_spec)) {
+          dwo_file = dwo_spec;
+          found = true;
+        }
+      }
     }
-    FileSystem::Instance().Resolve(dwo_file);
-    dwo_file.AppendPathComponent(dwo_name);
   }
 
-  if (!FileSystem::Instance().Exists(dwo_file)) {
+  if (!found) {
     unit.SetDwoError(Status::createWithFormat(
         "unable to locate .dwo debug file \"{0}\" for skeleton DIE "
         "{1:x16}",
