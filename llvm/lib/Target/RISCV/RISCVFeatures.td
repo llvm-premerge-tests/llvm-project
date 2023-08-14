@@ -925,3 +925,13 @@ def FeatureTaggedGlobals : SubtargetFeature<"tagged-globals",
     "AllowTaggedGlobals",
     "true", "Use an instruction sequence for taking the address of a global "
     "that allows a memory tag in the upper address bits">;
+
+foreach i = {1-8} in {
+  defvar align = !shl(1, i);
+  def TunePrefFunctionAlignment # align :
+      SubtargetFeature<"pref-func-align-" # align, "PrefFunctionAlignment",
+                       "Align(" # align # ")", "Set preferred function alignment to " # align # " bytes">;
+  def TunePrefLoopAlignment # align :
+      SubtargetFeature<"pref-loop-align-" # align, "PrefLoopAlignment",
+                       "Align(" # align # ")", "Set preferred loop alignment to " # align # " bytes">;
+}
