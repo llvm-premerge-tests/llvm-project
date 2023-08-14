@@ -138,6 +138,10 @@ Bug Fixes in This Version
   class, which can result in miscompiles in some cases.
 - Fix crash on use of a variadic overloaded operator.
   (`#42535 <https://github.com/llvm/llvm-project/issues/42535>_`)
+- Clang now respects ``-fwrapv`` and ``-ftrapv`` for ``__builtin_abs`` and
+  ``abs`` builtins.
+  (`#45129 <https://github.com/llvm/llvm-project/issues/45129>`_,
+  `#45794 <https://github.com/llvm/llvm-project/issues/45794>`_)
 
 Bug Fixes to Compiler Builtins
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -265,6 +269,9 @@ Static Analyzer
 
 Sanitizers
 ----------
+
+- ``-fsanitize=signed-integer-overflow`` now instruments ``__builtin_abs`` and
+  ``abs`` builtins.
 
 Python Binding Changes
 ----------------------
