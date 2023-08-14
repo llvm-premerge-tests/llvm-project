@@ -137,7 +137,7 @@ void BPFInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
         .addFrameIndex(FI)
         .addImm(0);
   else if (RC == &BPF::GPR32RegClass)
-    BuildMI(MBB, I, DL, get(BPF::STW32))
+    BuildMI(MBB, I, DL, get(BPF::STW))
         .addReg(SrcReg, getKillRegState(IsKill))
         .addFrameIndex(FI)
         .addImm(0);
@@ -158,7 +158,7 @@ void BPFInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
   if (RC == &BPF::GPRRegClass)
     BuildMI(MBB, I, DL, get(BPF::LDD), DestReg).addFrameIndex(FI).addImm(0);
   else if (RC == &BPF::GPR32RegClass)
-    BuildMI(MBB, I, DL, get(BPF::LDW32), DestReg).addFrameIndex(FI).addImm(0);
+    BuildMI(MBB, I, DL, get(BPF::LDW), DestReg).addFrameIndex(FI).addImm(0);
   else
     llvm_unreachable("Can't load this register from stack slot");
 }

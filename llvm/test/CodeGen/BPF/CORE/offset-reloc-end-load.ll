@@ -1,6 +1,6 @@
 ; RUN: opt -O2 %s | llvm-dis > %t1
-; RUN: llc -filetype=asm -o - %t1 | FileCheck -check-prefixes=CHECK,CHECK-ALU64 %s
-; RUN: llc -mattr=+alu32 -filetype=asm -o - %t1 | FileCheck -check-prefixes=CHECK,CHECK-ALU32 %s
+; RUN: llc -filetype=asm -o - %t1 | FileCheck %s
+; RUN: llc -mattr=+alu32 -filetype=asm -o - %t1 | FileCheck %s
 ;
 ; Source Code:
 ;   #define _(x) (__builtin_preserve_access_index(x))
@@ -23,8 +23,7 @@ entry:
 }
 
 ; CHECK-LABEL: test
-; CHECK-ALU64: r0 = *(u32 *)(r1 + 4)
-; CHECK-ALU32: w0 = *(u32 *)(r1 + 4)
+; CHECK:       r0 = *(u32 *)(r1 + 4)
 ; CHECK:       exit
 ;
 ; CHECK:       .long   1                       # BTF_KIND_STRUCT(id = 2)

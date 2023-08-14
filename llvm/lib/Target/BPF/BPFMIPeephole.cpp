@@ -91,6 +91,13 @@ void BPFMIPeephole::initialize(MachineFunction &MFParm) {
   LLVM_DEBUG(dbgs() << "*** BPF MachineSSA ZEXT Elim peephole pass ***\n\n");
 }
 
+static bool isSmallLoad(MachineInstr *MI) {
+  unsigned Opcode = MI->getOpcode() == BPF::CORE_MEM
+                        ? MI->getOperand(1).getImm()
+                        : MI->getOpcode();
+  return Opcode == BPF::LDB || Opcode == BPF::LDH || Opcode == BPF::LDW;
+}
+
 bool BPFMIPeephole::isCopyFrom32Def(MachineInstr *CopyMI)
 {
   MachineOperand &opnd = CopyMI->getOperand(1);
@@ -105,10 +112,16 @@ bool BPFMIPeephole::isCopyFrom32Def(MachineInstr *CopyMI)
   if (!Reg.isVirtual())
     return false;
 
+  MachineInstr *DefInsn = MRI->getVRegDef(Reg);
+
+  // 8/16/32-bit loads have GPRRegclass but there is no need to
+  // zero-extend values coming from such loads.
+  if (isSmallLoad(DefInsn))
+    return true;
+
   if (MRI->getRegClass(Reg) == &BPF::GPRRegClass)
     return false;
 
-  MachineInstr *DefInsn = MRI->getVRegDef(Reg);
   if (!isInsnFrom32Def(DefInsn))
     return false;
 
@@ -644,13 +657,13 @@ public:
 static bool TruncSizeCompatible(int TruncSize, unsigned opcode)
 {
   if (TruncSize == 1)
-    return opcode == BPF::LDB || opcode == BPF::LDB32;
+    return opcode == BPF::LDB;
 
   if (TruncSize == 2)
-    return opcode == BPF::LDH || opcode == BPF::LDH32;
+    return opcode == BPF::LDH;
 
   if (TruncSize == 4)
-    return opcode == BPF::LDW || opcode == BPF::LDW32;
+    return opcode == BPF::LDW;
 
   return false;
 }
