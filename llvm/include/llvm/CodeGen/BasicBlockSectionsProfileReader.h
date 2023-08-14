@@ -30,17 +30,46 @@ using namespace llvm;
 
 namespace llvm {
 
-// The cluster information for a machine basic block.
-struct BBClusterInfo {
-  // Unique ID for this basic block.
+struct ProfileBBID {
   unsigned BBID;
+  unsigned CloneID;
+};
+
+// Provide DenseMapInfo for ProfileBBID
+template <> struct DenseMapInfo<ProfileBBID> {
+  static inline ProfileBBID getEmptyKey() {
+    unsigned EmptyKey = DenseMapInfo<unsigned>::getEmptyKey();
+    return ProfileBBID{EmptyKey, EmptyKey};
+  }
+  static inline ProfileBBID getTombstoneKey() {
+    unsigned TombstoneKey = DenseMapInfo<unsigned>::getTombstoneKey();
+    return ProfileBBID{TombstoneKey, TombstoneKey};
+  }
+  static unsigned getHashValue(const ProfileBBID &Val) {
+    std::pair<unsigned, unsigned> PairVal =
+        std::make_pair(Val.BBID, Val.CloneID);
+    return DenseMapInfo<std::pair<unsigned, unsigned>>::getHashValue(PairVal);
+  }
+  static bool isEqual(const ProfileBBID &LHS, const ProfileBBID &RHS) {
+    return DenseMapInfo<unsigned>::isEqual(LHS.BBID, RHS.BBID) &&
+           DenseMapInfo<unsigned>::isEqual(LHS.CloneID, RHS.CloneID);
+  }
+};
+
+// This struct represents the cluster information for a machine basic block.
+struct RawBBProfile {
+  // MachineBasicBlock ID.
+  ProfileBBID BBID;
   // Cluster ID this basic block belongs to.
   unsigned ClusterID;
   // Position of basic block within the cluster.
   unsigned PositionInCluster;
 };
 
-using ProgramBBClusterInfoMapTy = StringMap<SmallVector<BBClusterInfo>>;
+struct RawFunctionProfile {
+  SmallVector<RawBBProfile> RawBBProfiles;
+  SmallVector<SmallVector<unsigned>> ClonePaths;
+};
 
 class BasicBlockSectionsProfileReader : public ImmutablePass {
 public:
@@ -71,8 +100,8 @@ public:
   // function. If the first element is true and the second element is empty, it
   // means unique basic block sections are desired for all basic blocks of the
   // function.
-  std::pair<bool, SmallVector<BBClusterInfo>>
-  getBBClusterInfoForFunction(StringRef FuncName) const;
+  std::pair<bool, RawFunctionProfile>
+  getRawProfileForFunction(StringRef FuncName) const;
 
   // Initializes the FunctionNameToDIFilename map for the current module and
   // then reads the profile for matching functions.
@@ -100,7 +129,9 @@ private:
   // some of) its basic blocks. The cluster information for every basic block
   // includes its cluster ID along with the position of the basic block in that
   // cluster.
-  ProgramBBClusterInfoMapTy ProgramBBClusterInfo;
+  // ProgramBBClusterInfoMapTy ProgramBBClusterInfo;
+
+  StringMap<RawFunctionProfile> RawProgramProfile;
 
   // Some functions have alias names. We use this map to find the main alias
   // name for which we have mapping in ProgramBBClusterInfo.
