@@ -334,6 +334,7 @@ public:
   struct CGCoroInfo {
     std::unique_ptr<CGCoroData> Data;
     bool InSuspendBlock = false;
+    bool MaySuspendLeak = false;
     CGCoroInfo();
     ~CGCoroInfo();
   };
@@ -345,6 +346,10 @@ public:
 
   bool inSuspendBlock() const {
     return isCoroutine() && CurCoro.InSuspendBlock;
+  }
+
+  bool maySuspendLeakCoroutineHandle() const {
+    return isCoroutine() && CurCoro.MaySuspendLeak;
   }
 
   /// CurGD - The GlobalDecl for the current function being compiled.
