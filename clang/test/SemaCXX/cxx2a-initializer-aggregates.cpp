@@ -4,6 +4,7 @@
 // RUN: %clang_cc1 -std=c++20 %s -verify=cxx20,expected,reorder -Wno-c99-designator -Werror=reorder-init-list -Wno-initializer-overrides
 // RUN: %clang_cc1 -std=c++20 %s -verify=cxx20,expected,override -Wno-c99-designator -Wno-reorder-init-list -Werror=initializer-overrides
 // RUN: %clang_cc1 -std=c++20 %s -verify=cxx20,expected -Wno-c99-designator -Wno-reorder-init-list -Wno-initializer-overrides
+// RUN: %clang_cc1 -std=c++20 %s -verify=cxx20,expected,wmissing -Wmissing-field-initializers -Wno-c99-designator -Wno-reorder-init-list -Wno-initializer-overrides
 
 
 namespace class_with_ctor {
@@ -49,15 +50,18 @@ A a3 = {
 A a4 = {
   .x = 1, // override-note {{previous}}
   .x = 1 // override-error {{overrides prior initialization}}
-};
+}; // wmissing-warning {{missing field 'y' initializer}}
 A a5 = {
   .y = 1, // override-note {{previous}}
   .y = 1 // override-error {{overrides prior initialization}}
-};
+}; // wmissing-warning {{missing field 'x' initializer}}
 B b2 = {.a = 1}; // pedantic-error {{brace elision for designated initializer is a C99 extension}}
+                 // wmissing-warning@-1 {{missing field 'y' initializer}}
 B b3 = {.a = 1, 2}; // pedantic-error {{mixture of designated and non-designated}} pedantic-note {{first non-designated}} pedantic-error {{brace elision}}
 B b4 = {.a = 1, 2, 3}; // pedantic-error {{mixture of designated and non-designated}} pedantic-note {{first non-designated}} pedantic-error {{brace elision}} expected-error {{excess elements}}
 B b5 = {.a = nullptr}; // expected-error {{cannot initialize}}
+                       // wmissing-warning@-1 {{missing field 'y' initializer}}
+                       // wmissing-warning@-2 {{missing field 'a' initializer}}
 struct C { int :0, x, :0, y, :0; };
 C c = {
   .x = 1, // override-note {{previous}}
@@ -66,7 +70,14 @@ C c = {
   .y = 1, // override-error {{overrides prior initialization}} // reorder-note {{previous initialization for field 'y' is here}}
   .x = 1, // reorder-error {{declaration order}} override-error {{overrides prior initialization}} override-note {{previous}}
   .x = 1, // override-error {{overrides prior initialization}}
-};
+}; //wmissing-warning {{missing field 'x' initializer}}
+
+struct Foo { int a, b; };
+
+struct Foo foo0 = { 1 }; // wmissing-warning {{missing field 'b' initializer}}
+struct Foo foo1 = { .a = 1 }; // wmissing-warning {{missing field 'b' initializer}}
+struct Foo foo2 = { .b = 1 }; // wmissing-warning {{missing field 'a' initializer}}
+
 }
 
 namespace base_class {
@@ -215,5 +226,5 @@ struct : public A, public B {
     .c = 1, // reorder-error {{field 'd' will be initialized after field 'c'}} // reorder-note {{previous initialization for field 'c' is here}}
     .b = 1, // reorder-error {{field 'c' will be initialized after field 'b'}} // reorder-note {{previous initialization for field 'b' is here}}
     .a = 1, // reorder-error {{field 'b' will be initialized after field 'a'}}
-};
+}; // wmissing-warning {{missing field 'a' initializer}}
 }
