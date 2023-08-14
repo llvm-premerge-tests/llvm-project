@@ -25,6 +25,7 @@
 #include "clang/Frontend/TextDiagnosticPrinter.h"
 #include "clang/Frontend/Utils.h"
 #include "clang/FrontendTool/Utils.h"
+#include "clang/Tooling/ModuleBuildDaemon/Protocall.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/LinkAllPasses.h"
@@ -45,6 +46,14 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
 #include <cstdio>
+#include <filesystem>
+#include <iostream>
+
+// to communicate with module build daemon
+#include <string>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
 
 #ifdef CLANG_HAVE_RLIMITS
 #include <sys/resource.h>
@@ -242,6 +251,24 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
     Clang->getDiagnosticClient().finish();
     return 1;
   }
+
+#if LLVM_ON_UNIX
+  // handle module build daemon functionality if enabled
+  if (Clang->getInvocation().getFrontendOpts().ModuleBuildDaemon) {
+
+    SmallString<128> BasePath = cc1modbuildd::GetBasePath();
+
+    // start module build daemon if not already running
+    if (!cc1modbuildd::ModuleBuildDaemonExists(BasePath)) {
+      Expected<bool> SpawnedDaemon =
+          cc1modbuildd::SpawnModuleBuildDaemon(BasePath, Argv0);
+      std::cout << toString(std::move(SpawnedDaemon.takeError())) << std::endl;
+      sleep(10);
+    }
+    std::string CWD = std::filesystem::current_path().string();
+    cc1modbuildd::SendMessage(*Clang, Argv0, Argv, CWD, BasePath);
+  }
+#endif
 
   // Execute the frontend actions.
   {

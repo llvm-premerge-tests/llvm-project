@@ -2507,6 +2507,12 @@ defm declspec : BoolOption<"f", "declspec",
   PosFlag<SetTrue, [], "Allow", [fms_extensions.KeyPath, fborland_extensions.KeyPath, cuda.KeyPath]>,
   NegFlag<SetFalse, [], "Disallow">,
   BothFlags<[CC1Option], " __declspec as a keyword">>, Group<f_clang_Group>;
+
+def fmodule_build_daemon : Flag<["-"], "fmodule-build-daemon">, Group<f_Group>,
+  Flags<[NoXarchOption, CC1Option]>,
+  HelpText<"Enables module build daemon functionality">,
+  MarshallingInfoFlag<FrontendOpts<"ModuleBuildDaemon">>;
+
 def fmodules_cache_path : Joined<["-"], "fmodules-cache-path=">, Group<i_Group>,
   Flags<[NoXarchOption, CC1Option]>, MetaVarName<"<directory>">,
   HelpText<"Specify the module cache path">;
