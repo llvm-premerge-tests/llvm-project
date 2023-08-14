@@ -250,12 +250,17 @@ bool RISCVTargetInfo::initFeatureMap(
 
   // RISCVISAInfo makes implications for ISA features
   std::vector<std::string> ImpliedFeatures = (*ParseResult)->toFeatureVector();
+  std::vector<std::string> UpdatedFeatures;
+
   // Add non-ISA features like `relax` and `save-restore` back
   for (const std::string &Feature : FeaturesVec)
     if (!llvm::is_contained(ImpliedFeatures, Feature))
-      ImpliedFeatures.push_back(Feature);
+      UpdatedFeatures.push_back(Feature);
 
-  return TargetInfo::initFeatureMap(Features, Diags, CPU, ImpliedFeatures);
+  UpdatedFeatures.insert(UpdatedFeatures.end(), ImpliedFeatures.begin(),
+                         ImpliedFeatures.end());
+
+  return TargetInfo::initFeatureMap(Features, Diags, CPU, UpdatedFeatures);
 }
 
 std::optional<std::pair<unsigned, unsigned>>
@@ -345,4 +350,78 @@ void RISCVTargetInfo::fillValidTuneCPUList(
     SmallVectorImpl<StringRef> &Values) const {
   bool Is64Bit = getTriple().isArch64Bit();
   llvm::RISCV::fillValidTuneCPUArchList(Values, Is64Bit);
+}
+
+// Parse RISC-V Target attributes, which are a comma separated list of:
+//  "arch=<arch>" - parsed to features as per -march=..
+//  "cpu=<cpu>" - parsed to features as per -mcpu=.., with CPU set to <cpu>
+//  "tune=<cpu>" - TuneCPU set to <cpu>
+ParsedTargetAttr RISCVTargetInfo::parseTargetAttr(StringRef Features) const {
+  ParsedTargetAttr Ret;
+  if (Features == "default")
+    return Ret;
+  SmallVector<StringRef, 1> AttrFeatures;
+  Features.split(AttrFeatures, ";");
+  bool FoundArch = false;
+
+  for (auto &Feature : AttrFeatures) {
+    Feature = Feature.trim();
+    StringRef AttrString = Feature.split("=").second.trim();
+
+    if (Feature.startswith("arch=")) {
+      if (FoundArch)
+        Ret.Duplicate = "arch=";
+      FoundArch = true;
+
+      if (AttrString.startswith("+") || AttrString.startswith("-")) {
+        // EXTENSION like arch=+v,+zbb,-c
+        SmallVector<StringRef, 1> Exts;
+        AttrString.split(Exts, ",");
+        for (auto Ext : Exts) {
+          if (Ext.empty())
+            continue;
+
+          StringRef ExtName = Ext.substr(1);
+          std::string TargetFeature =
+              llvm::RISCVISAInfo::getTargetFeatureForExtension(ExtName);
+          if (!TargetFeature.empty())
+            Ret.Features.push_back(Ext.front() + TargetFeature);
+          else
+            Ret.Features.push_back(Ext.str());
+        }
+      } else {
+        // full-arch-string like arch=rv64gcv
+        auto RII = llvm::RISCVISAInfo::parseArchString(
+            AttrString, /* EnableExperimentalExtension */ true);
+        if (!RII) {
+          consumeError(RII.takeError());
+        } else {
+          std::vector<std::string> FeatStrings = (*RII)->toFeatureVector();
+          for (auto FeatString : FeatStrings)
+            Ret.Features.push_back(FeatString);
+        }
+      }
+      continue;
+    } else if (Feature.startswith("cpu=")) {
+      if (!Ret.CPU.empty())
+        Ret.Duplicate = "cpu=";
+      else
+        Ret.CPU = AttrString;
+      continue;
+    } else if (Feature.startswith("tune=")) {
+      if (!Ret.Tune.empty())
+        Ret.Duplicate = "tune=";
+      else
+        Ret.Tune = AttrString;
+      continue;
+    } else if (Feature.startswith("no-"))
+      Ret.Features.push_back("-" + Feature.split("-").second.str());
+    else
+      Ret.Features.push_back("+" + Feature.str());
+  }
+  return Ret;
+}
+
+bool RISCVTargetInfo::validateCpuSupports(StringRef FeatureStr) const {
+  return ISAInfo->isSupportedExtensionFeature(FeatureStr);
 }
