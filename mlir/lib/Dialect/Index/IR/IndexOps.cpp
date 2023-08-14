@@ -549,6 +549,38 @@ OpFoldResult CmpOp::fold(FoldAdaptor adaptor) {
   return {};
 }
 
+LogicalResult CmpOp::canonicalize(CmpOp op, ::mlir::PatternRewriter &rewriter) {
+  /// Canonicalize
+  /// `x - y cmp 0` to `x cmp y`. or `x - y cmp 0` to `x cmp y`.
+  /// `0 cmp x - y` to `y cmp x`. or `0 cmp x - y` to `y cmp x`.
+  IntegerAttr cmpRhs;
+  IntegerAttr cmpLhs;
+  if (mlir::matchPattern(op.getRhs(), mlir::m_Constant(&cmpRhs)) &&
+      cmpRhs.getValue().isZero()) {
+    auto subOp = op.getLhs().getDefiningOp<mlir::index::SubOp>();
+    if (!subOp)
+      return rewriter.notifyMatchFailure(op.getLoc(), "LHS is not subtraction");
+
+    auto newCmp = rewriter.create<mlir::index::CmpOp>(
+        op.getLoc(), op.getPred(), subOp.getLhs(), subOp.getRhs());
+    rewriter.replaceOp(op, newCmp);
+    return success();
+  } else if (mlir::matchPattern(op.getLhs(), mlir::m_Constant(&cmpLhs)) &&
+             cmpLhs.getValue().isZero()) {
+
+    auto subOp = op.getRhs().getDefiningOp<mlir::index::SubOp>();
+    if (!subOp)
+      return rewriter.notifyMatchFailure(op.getLoc(), "RHS is not subtraction");
+
+    auto newCmp = rewriter.create<mlir::index::CmpOp>(op.getLoc(), op.getPred(),
+                                               subOp.getRhs(), subOp.getLhs());
+
+    rewriter.replaceOp(op, newCmp);
+    return success();
+  }
+  return rewriter.notifyMatchFailure(op.getLoc(), "cmp is not with 0.");
+}
+
 //===----------------------------------------------------------------------===//
 // ConstantOp
 //===----------------------------------------------------------------------===//

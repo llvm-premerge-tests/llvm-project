@@ -542,6 +542,8 @@ def Index_CmpOp : IndexOp<"cmp"> {
   let results = (outs I1:$result);
   let assemblyFormat = "`` $pred `(` $lhs `,` $rhs `)` attr-dict";
   let hasFolder = 1;
+
+  let hasCanonicalizeMethod = 1;
 }
 
 //===----------------------------------------------------------------------===//
