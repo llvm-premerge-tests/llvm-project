@@ -71,7 +71,10 @@ def SparseTensor_PackOp : SparseTensor_Op<"pack", [Pure]>,
       the corresponding level as specifed by `sparse_tensor::StorageLayout`.
 
     This operation can be used to materialize a sparse tensor from external
-    sources; e.g., when passing two numpy arrays from Python.
+    sources; e.g., when passing two numpy arrays from Python. Note that directly
+    reading from or writing to the supplied buffers in the IR is undefined
+    behavior (i.e. the compiler assumes the buffers are not aliased to the
+    underlying storage of the materialized sparse tensor).
 
     Disclaimer: This is the user's responsibility to provide input that can be
     correctly interpreted by the sparse compiler, which does not perform
