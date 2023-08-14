@@ -1085,3 +1085,37 @@ steps:
           - exit_status: -1  # Agent was lost
             limit: 2
       timeout_in_minutes: 120
+
+  - group: ":android: Android"
+    steps:
+    - label: "Android 5.0, x86 NDK"
+      command: "libcxx/utils/ci/vendor/android/stop-emulator-after-run.sh libcxx/utils/ci/run-buildbot android-ndk"
+      artifact_paths:
+        - "**/test-results.xml"
+        - "**/*.abilist"
+      env:
+          ANDROID_EMU_IMG: "21-def-x86"
+      agents:
+        queue: "libcxx-builders"
+        os: "android"
+      retry:
+        automatic:
+          - exit_status: -1  # Agent was lost
+            limit: 2
+      timeout_in_minutes: 120
+
+    - label: "Android 13, x86_64 NDK"
+      command: "libcxx/utils/ci/vendor/android/stop-emulator-after-run.sh libcxx/utils/ci/run-buildbot android-ndk"
+      artifact_paths:
+        - "**/test-results.xml"
+        - "**/*.abilist"
+      env:
+          ANDROID_EMU_IMG: "33-goog-x86_64"
+      agents:
+        queue: "libcxx-builders"
+        os: "android"
+      retry:
+        automatic:
+          - exit_status: -1  # Agent was lost
+            limit: 2
+      timeout_in_minutes: 120
