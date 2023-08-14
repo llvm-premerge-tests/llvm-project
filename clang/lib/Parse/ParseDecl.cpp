@@ -2238,6 +2238,23 @@ Parser::DeclGroupPtrTy Parser::ParseDeclGroup(ParsingDeclSpec &DS,
     bool IsForRangeLoop = false;
     if (TryConsumeToken(tok::colon, FRI->ColonLoc)) {
       IsForRangeLoop = true;
+      EnterExpressionEvaluationContext ForRangeInitContext(
+          Actions, Sema::ExpressionEvaluationContext::PotentiallyEvaluated,
+          /*LambdaContextDecl=*/nullptr,
+          Sema::ExpressionEvaluationContextRecord::EK_Other,
+          getLangOpts().CPlusPlus23);
+
+      // P2718R0 - Lifetime extension in range-based for loops.
+      if (getLangOpts().CPlusPlus23) {
+        auto &LastRecord = Actions.ExprEvalContexts.back();
+        LastRecord.IsCheckingCXXForRangeInitVariable = true;
+
+        // Materialize non-`cv void` prvalue temporaries in discard statement
+        // during parsing. These materialized temporaries may be extented
+        // lifetime.
+        LastRecord.MaterializePRValueInDiscardStatement = true;
+      }
+
       if (getLangOpts().OpenMP)
         Actions.startOpenMPCXXRangeFor();
       if (Tok.is(tok::l_brace))
