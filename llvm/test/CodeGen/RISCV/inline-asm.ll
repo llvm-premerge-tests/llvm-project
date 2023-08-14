@@ -128,6 +128,26 @@ define i32 @constraint_m_with_offset(ptr %a) nounwind {
   ret i32 %2
 }
 
+define void @constraint_m_with_global() nounwind {
+; RV32I-LABEL: constraint_m_with_global:
+; RV32I:       # %bb.0:
+; RV32I-NEXT:    lui a0, %hi(gi)
+; RV32I-NEXT:    #APP
+; RV32I-NEXT:    sw zero, %lo(gi)(a0)
+; RV32I-NEXT:    #NO_APP
+; RV32I-NEXT:    ret
+;
+; RV64I-LABEL: constraint_m_with_global:
+; RV64I:       # %bb.0:
+; RV64I-NEXT:    lui a0, %hi(gi)
+; RV64I-NEXT:    #APP
+; RV64I-NEXT:    sw zero, %lo(gi)(a0)
+; RV64I-NEXT:    #NO_APP
+; RV64I-NEXT:    ret
+  call void asm "sw zero, $0", "=*m"(ptr elementtype(i32) @gi)
+  ret void
+}
+
 define void @constraint_o(ptr %a) nounwind {
 ; RV32I-LABEL: constraint_o:
 ; RV32I:       # %bb.0:

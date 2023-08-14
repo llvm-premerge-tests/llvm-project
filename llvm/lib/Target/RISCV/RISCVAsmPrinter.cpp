@@ -237,11 +237,14 @@ bool RISCVAsmPrinter::PrintAsmMemoryOperand(const MachineInstr *MI,
   // RISCVDAGToDAGISel::SelectInlineAsmMemoryOperand).
   if (!AddrReg.isReg())
     return true;
-  if (!DispImm.isImm())
+  if (!DispImm.isImm() && !DispImm.isGlobal())
     return true;
 
-  OS << DispImm.getImm() << "("
-     << RISCVInstPrinter::getRegisterName(AddrReg.getReg()) << ")";
+  if (DispImm.isImm())
+    OS << DispImm.getImm();
+  else if (DispImm.isGlobal())
+    OS << "%lo(" << DispImm.getGlobal()->getGlobalIdentifier() << ")";
+  OS << "(" << RISCVInstPrinter::getRegisterName(AddrReg.getReg()) << ")";
   return false;
 }
 
