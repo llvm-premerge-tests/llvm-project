@@ -499,6 +499,30 @@ Status NativeRegisterContextLinux_arm64::WriteRegister(
   return Status("Failed to write register value");
 }
 
+enum SavedRegistersKind : uint32_t {
+  GPR,
+  SVE, // Used for SVE and SSVE.
+  FPR, // When there is no SVE, or SVE in FPSIMD mode.
+  MTE,
+  TLS,
+};
+
+static uint8_t *AddSavedRegistersKind(uint8_t *dst, SavedRegistersKind kind) {
+  *(reinterpret_cast<uint32_t *>(dst)) = kind;
+  return dst + sizeof(uint32_t);
+}
+
+static uint8_t *AddSavedRegistersData(uint8_t *dst, void *src, size_t size) {
+  ::memcpy(dst, src, size);
+  return dst + size;
+}
+
+static uint8_t *AddSavedRegisters(uint8_t *dst, enum SavedRegistersKind kind,
+                                  void *src, size_t size) {
+  dst = AddSavedRegistersKind(dst, kind);
+  return AddSavedRegistersData(dst, src, size);
+}
+
 Status NativeRegisterContextLinux_arm64::ReadAllRegisterValues(
     lldb::WritableDataBufferSP &data_sp) {
   // AArch64 register data must contain GPRs and either FPR or SVE registers.
@@ -512,33 +536,33 @@ Status NativeRegisterContextLinux_arm64::ReadAllRegisterValues(
   // corresponds to register sets enabled by current register context.
 
   Status error;
-  uint32_t reg_data_byte_size = GetGPRBufferSize();
+  uint32_t reg_data_byte_size = sizeof(SavedRegistersKind) + GetGPRBufferSize();
   error = ReadGPR();
   if (error.Fail())
     return error;
 
   // If SVE is enabled we need not copy FPR separately.
   if (GetRegisterInfo().IsSVEEnabled() || GetRegisterInfo().IsSSVEEnabled()) {
-    reg_data_byte_size += GetSVEBufferSize();
-    // Also store the current SVE mode.
-    reg_data_byte_size += sizeof(uint32_t);
+    // Store mode and register data.
+    reg_data_byte_size +=
+        sizeof(SavedRegistersKind) + sizeof(m_sve_state) + GetSVEBufferSize();
     error = ReadAllSVE();
   } else {
-    reg_data_byte_size += GetFPRSize();
+    reg_data_byte_size += sizeof(SavedRegistersKind) + GetFPRSize();
     error = ReadFPR();
   }
   if (error.Fail())
     return error;
 
   if (GetRegisterInfo().IsMTEEnabled()) {
-    reg_data_byte_size += GetMTEControlSize();
+    reg_data_byte_size += sizeof(SavedRegistersKind) + GetMTEControlSize();
     error = ReadMTEControl();
     if (error.Fail())
       return error;
   }
 
   // tpidr is always present but tpidr2 depends on SME.
-  reg_data_byte_size += GetTLSBufferSize();
+  reg_data_byte_size += sizeof(SavedRegistersKind) + GetTLSBufferSize();
   error = ReadTLS();
   if (error.Fail())
     return error;
@@ -546,25 +570,26 @@ Status NativeRegisterContextLinux_arm64::ReadAllRegisterValues(
   data_sp.reset(new DataBufferHeap(reg_data_byte_size, 0));
   uint8_t *dst = data_sp->GetBytes();
 
-  ::memcpy(dst, GetGPRBuffer(), GetGPRBufferSize());
-  dst += GetGPRBufferSize();
+  dst = AddSavedRegisters(dst, SavedRegistersKind::GPR, GetGPRBuffer(),
+                          GetGPRBufferSize());
 
   if (GetRegisterInfo().IsSVEEnabled() || GetRegisterInfo().IsSSVEEnabled()) {
-    *dst = static_cast<uint8_t>(m_sve_state);
+    dst = AddSavedRegistersKind(dst, SavedRegistersKind::SVE);
+    *(reinterpret_cast<SVEState *>(dst)) = m_sve_state;
     dst += sizeof(m_sve_state);
-    ::memcpy(dst, GetSVEBuffer(), GetSVEBufferSize());
-    dst += GetSVEBufferSize();
+    dst = AddSavedRegistersData(dst, GetSVEBuffer(), GetSVEBufferSize());
   } else {
-    ::memcpy(dst, GetFPRBuffer(), GetFPRSize());
-    dst += GetFPRSize();
+    dst = AddSavedRegisters(dst, SavedRegistersKind::FPR, GetFPRBuffer(),
+                            GetFPRSize());
   }
 
   if (GetRegisterInfo().IsMTEEnabled()) {
-    ::memcpy(dst, GetMTEControl(), GetMTEControlSize());
-    dst += GetMTEControlSize();
+    dst = AddSavedRegisters(dst, SavedRegistersKind::MTE, GetMTEControl(),
+                            GetMTEControlSize());
   }
 
-  ::memcpy(dst, GetTLSBuffer(), GetTLSBufferSize());
+  dst = AddSavedRegisters(dst, SavedRegistersKind::TLS, GetTLSBuffer(),
+                          GetTLSBufferSize());
 
   return error;
 }
@@ -599,7 +624,8 @@ Status NativeRegisterContextLinux_arm64::WriteAllRegisterValues(
     return error;
   }
 
-  uint64_t reg_data_min_size = GetGPRBufferSize() + GetFPRSize();
+  uint64_t reg_data_min_size =
+      GetGPRBufferSize() + GetFPRSize() + 2 * (sizeof(SavedRegistersKind));
   if (data_sp->GetByteSize() < reg_data_min_size) {
     error.SetErrorStringWithFormat(
         "NativeRegisterContextLinux_arm64::%s data_sp contained insufficient "
@@ -608,81 +634,84 @@ Status NativeRegisterContextLinux_arm64::WriteAllRegisterValues(
     return error;
   }
 
-  // Register data starts with GPRs
-  ::memcpy(GetGPRBuffer(), src, GetGPRBufferSize());
-  m_gpr_is_valid = true;
+  const uint8_t *end = src + data_sp->GetByteSize();
+  while (src < end) {
+    const SavedRegistersKind kind =
+        *reinterpret_cast<const SavedRegistersKind *>(src);
+    src += sizeof(SavedRegistersKind);
 
-  error = WriteGPR();
-  if (error.Fail())
-    return error;
+    switch (kind) {
+    case SavedRegistersKind::GPR:
+      ::memcpy(GetGPRBuffer(), src, GetGPRBufferSize());
+      m_gpr_is_valid = true;
 
-  src += GetGPRBufferSize();
+      error = WriteGPR();
+      if (error.Fail())
+        return error;
 
-  // Verify if register data may contain SVE register values.
-  bool contains_sve_reg_data =
-      (data_sp->GetByteSize() > (reg_data_min_size + GetSVEHeaderSize()));
+      src += GetGPRBufferSize();
 
-  if (contains_sve_reg_data) {
-    // Restore to the correct mode, streaming or not.
-    m_sve_state = static_cast<SVEState>(*src);
-    src += sizeof(m_sve_state);
+      break;
+    case SavedRegistersKind::SVE:
+      // Restore to the correct mode, streaming or not.
+      m_sve_state = static_cast<SVEState>(*src);
+      src += sizeof(m_sve_state);
 
-    // We have SVE register data first write SVE header.
-    ::memcpy(GetSVEHeader(), src, GetSVEHeaderSize());
-    if (!sve::vl_valid(m_sve_header.vl)) {
-      m_sve_header_is_valid = false;
-      error.SetErrorStringWithFormat("NativeRegisterContextLinux_arm64::%s "
-                                     "Invalid SVE header in data_sp",
-                                     __FUNCTION__);
-      return error;
+      // First write SVE header.
+      ::memcpy(GetSVEHeader(), src, GetSVEHeaderSize());
+      if (!sve::vl_valid(m_sve_header.vl)) {
+        m_sve_header_is_valid = false;
+        error.SetErrorStringWithFormat("NativeRegisterContextLinux_arm64::%s "
+                                       "Invalid SVE header in data_sp",
+                                       __FUNCTION__);
+        return error;
+      }
+      m_sve_header_is_valid = true;
+      error = WriteSVEHeader();
+      if (error.Fail())
+        return error;
+
+      // SVE header has been written configure SVE vector length if needed.
+      ConfigureRegisterContext();
+
+      ::memcpy(GetSVEBuffer(), src, GetSVEBufferSize());
+      m_sve_buffer_is_valid = true;
+      error = WriteAllSVE();
+      if (error.Fail())
+        return error;
+      src += GetSVEBufferSize();
+
+      break;
+    case SavedRegistersKind::FPR:
+      m_fpu_is_valid = true;
+      error = WriteFPR();
+      if (error.Fail())
+        return error;
+      src += GetFPRSize();
+
+      break;
+    case SavedRegistersKind::MTE:
+      ::memcpy(GetMTEControl(), src, GetMTEControlSize());
+      m_mte_ctrl_is_valid = true;
+      error = WriteMTEControl();
+      if (error.Fail())
+        return error;
+      src += GetMTEControlSize();
+
+      break;
+    case SavedRegistersKind::TLS:
+    ::memcpy(GetTLSBuffer(), src, GetTLSBufferSize());
+      m_tls_is_valid = true;
+      error = WriteTLS();
+      if (error.Fail())
+        return error;
+      src += GetTLSBufferSize();
+
+      break;
     }
-    m_sve_header_is_valid = true;
-    error = WriteSVEHeader();
-    if (error.Fail())
-      return error;
-
-    // SVE header has been written configure SVE vector length if needed.
-    ConfigureRegisterContext();
-
-    // Make sure data_sp contains sufficient data to write all SVE registers.
-    reg_data_min_size = GetGPRBufferSize() + GetSVEBufferSize();
-    if (data_sp->GetByteSize() < reg_data_min_size) {
-      error.SetErrorStringWithFormat(
-          "NativeRegisterContextLinux_arm64::%s data_sp contained insufficient "
-          "register data bytes, expected %" PRIu64 ", actual %" PRIu64,
-          __FUNCTION__, reg_data_min_size, data_sp->GetByteSize());
-      return error;
-    }
-
-    ::memcpy(GetSVEBuffer(), src, GetSVEBufferSize());
-    m_sve_buffer_is_valid = true;
-    error = WriteAllSVE();
-    src += GetSVEBufferSize();
-  } else {
-    ::memcpy(GetFPRBuffer(), src, GetFPRSize());
-    m_fpu_is_valid = true;
-    error = WriteFPR();
-    src += GetFPRSize();
   }
 
-  if (error.Fail())
-    return error;
 
-  if (GetRegisterInfo().IsMTEEnabled() &&
-      data_sp->GetByteSize() > reg_data_min_size) {
-    ::memcpy(GetMTEControl(), src, GetMTEControlSize());
-    m_mte_ctrl_is_valid = true;
-    error = WriteMTEControl();
-    if (error.Fail())
-      return error;
-    src += GetMTEControlSize();
-  }
-
-  // There is always a TLS set. It changes size based on system properties, it's
-  // not something an expression can change.
-  ::memcpy(GetTLSBuffer(), src, GetTLSBufferSize());
-  m_tls_is_valid = true;
-  error = WriteTLS();
 
   return error;
 }
