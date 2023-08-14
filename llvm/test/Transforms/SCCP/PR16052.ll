@@ -5,11 +5,9 @@ target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
 
 define i64 @fn2() {
-; CHECK-LABEL: define {{[^@]+}}@fn2()
+; CHECK-LABEL: define {{[^@]+}}@fn2() {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[CONV:%.*]] = sext i32 undef to i64
-; CHECK-NEXT:    [[DIV:%.*]] = sdiv i64 8, [[CONV]]
-; CHECK-NEXT:    [[CALL2:%.*]] = call i64 @fn1(i64 [[DIV]])
+; CHECK-NEXT:    [[CALL2:%.*]] = call i64 @fn1(i64 poison)
 ; CHECK-NEXT:    ret i64 [[CALL2]]
 ;
 entry:
@@ -21,10 +19,10 @@ entry:
 
 define internal i64 @fn1(i64 %p1) {
 ; CHECK-LABEL: define {{[^@]+}}@fn1
-; CHECK-SAME: (i64 [[P1:%.*]])
+; CHECK-SAME: (i64 [[P1:%.*]]) {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[TOBOOL:%.*]] = icmp ne i64 [[P1]], 0
-; CHECK-NEXT:    [[COND:%.*]] = select i1 [[TOBOOL]], i64 [[P1]], i64 [[P1]]
+; CHECK-NEXT:    [[TOBOOL:%.*]] = icmp ne i64 poison, 0
+; CHECK-NEXT:    [[COND:%.*]] = select i1 [[TOBOOL]], i64 poison, i64 poison
 ; CHECK-NEXT:    ret i64 [[COND]]
 ;
 entry:

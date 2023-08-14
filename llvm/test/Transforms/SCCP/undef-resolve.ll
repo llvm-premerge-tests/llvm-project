@@ -5,8 +5,7 @@
 ; PR6940
 define double @test1() {
 ; CHECK-LABEL: @test1(
-; CHECK-NEXT:    [[T:%.*]] = sitofp i32 undef to double
-; CHECK-NEXT:    ret double [[T]]
+; CHECK-NEXT:    ret double 0.000000e+00
 ;
   %t = sitofp i32 undef to double
   ret double %t
@@ -195,8 +194,7 @@ define double @test4(double %x) {
 ; Make sure casts produce a possible value
 define i32 @test5() {
 ; CHECK-LABEL: @test5(
-; CHECK-NEXT:    [[T:%.*]] = sext i8 undef to i32
-; CHECK-NEXT:    ret i32 [[T]]
+; CHECK-NEXT:    ret i32 0
 ;
   %t = sext i8 undef to i32
   ret i32 %t
@@ -269,8 +267,7 @@ entry:
 ; Test unary ops
 define double @test12(double %x) {
 ; CHECK-LABEL: @test12(
-; CHECK-NEXT:    [[T:%.*]] = fneg double undef
-; CHECK-NEXT:    ret double [[T]]
+; CHECK-NEXT:    ret double undef
 ;
   %t = fneg double undef
   ret double %t

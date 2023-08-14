@@ -44,6 +44,10 @@ class ValueLatticeElement {
     ///  overdefined
     undef,
 
+    /// The same as undef state except it is an PoisonValue constant or produces
+    /// poison.
+    poison,
+
     /// This Value has a specific constant value.  The constant cannot be undef.
     /// (For constant integers, constantrange is used instead. Integer typed
     /// constantexprs can appear as constant.) Note that the constant state
@@ -96,6 +100,7 @@ class ValueLatticeElement {
     case overdefined:
     case unknown:
     case undef:
+    case poison:
     case constant:
     case notconstant:
       break;
@@ -164,6 +169,7 @@ public:
     case overdefined:
     case unknown:
     case undef:
+    case poison:
       break;
     }
   }
@@ -183,6 +189,7 @@ public:
     case overdefined:
     case unknown:
     case undef:
+    case poison:
       break;
     }
     Other.Tag = unknown;
@@ -238,8 +245,11 @@ public:
   }
 
   bool isUndef() const { return Tag == undef; }
+  bool isPoison() const { return Tag == poison; }
   bool isUnknown() const { return Tag == unknown; }
-  bool isUnknownOrUndef() const { return Tag == unknown || Tag == undef; }
+  bool isUnknownOrUndefOrPoison() const {
+    return Tag == unknown || Tag == undef || Tag == poison;
+  }
   bool isConstant() const { return Tag == constant; }
   bool isNotConstant() const { return Tag == notconstant; }
   bool isConstantRangeIncludingUndef() const {
@@ -292,6 +302,15 @@ public:
     return true;
   }
 
+  bool markPoison() {
+    if (isPoison())
+      return false;
+
+    assert(isUnknown());
+    Tag = poison;
+    return true;
+  }
+
   bool markUndef() {
     if (isUndef())
       return false;
@@ -302,6 +321,9 @@ public:
   }
 
   bool markConstant(Constant *V, bool MayIncludeUndef = false) {
+    if (isa<PoisonValue>(V))
+      return markPoison();
+
     if (isa<UndefValue>(V))
       return markUndef();
 
@@ -375,7 +397,7 @@ public:
       return true;
     }
 
-    assert(isUnknown() || isUndef());
+    assert(isUnknownOrUndefOrPoison());
 
     NumRangeExtensions = 0;
     Tag = NewTag;
@@ -394,9 +416,11 @@ public:
       return true;
     }
 
-    if (isUndef()) {
+    if (isUndef() || isPoison()) {
       assert(!RHS.isUnknown());
-      if (RHS.isUndef())
+      if (isPoison() && RHS.isUndef())
+        return markUndef();
+      if (RHS.isUndef() || RHS.isPoison())
         return false;
       if (RHS.isConstant())
         return markConstant(RHS.getConstant(), true);

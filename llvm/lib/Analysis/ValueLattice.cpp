@@ -57,6 +57,8 @@ raw_ostream &operator<<(raw_ostream &OS, const ValueLatticeElement &Val) {
     return OS << "unknown";
   if (Val.isUndef())
     return OS << "undef";
+  if (Val.isPoison())
+    return OS << "poison";
   if (Val.isOverdefined())
     return OS << "overdefined";
 

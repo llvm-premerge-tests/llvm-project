@@ -435,75 +435,15 @@ exit:
 define void @foo(ptr %arg) {
 ; SCCP-LABEL: @foo(
 ; SCCP-NEXT:  bb:
-; SCCP-NEXT:    [[TMP:%.*]] = zext i8 undef to i32
 ; SCCP-NEXT:    [[TMP2:%.*]] = load i64, ptr [[ARG:%.*]], align 8
-; SCCP-NEXT:    switch i32 [[TMP]], label [[BB20:%.*]] [
-; SCCP-NEXT:    i32 1, label [[BB3:%.*]]
-; SCCP-NEXT:    i32 2, label [[BB4:%.*]]
-; SCCP-NEXT:    i32 4, label [[BB19:%.*]]
-; SCCP-NEXT:    ]
-; SCCP:       bb3:
-; SCCP-NEXT:    unreachable
-; SCCP:       bb4:
-; SCCP-NEXT:    [[TMP5:%.*]] = add i64 [[TMP2]], 3
-; SCCP-NEXT:    [[TMP6:%.*]] = and i64 [[TMP5]], 3
-; SCCP-NEXT:    [[TMP7:%.*]] = sub nuw nsw i64 3, [[TMP6]]
-; SCCP-NEXT:    [[TMP8:%.*]] = shl nuw nsw i64 [[TMP7]], 1
-; SCCP-NEXT:    [[TMP9:%.*]] = trunc i64 [[TMP8]] to i32
-; SCCP-NEXT:    [[TMP10:%.*]] = zext i32 [[TMP9]] to i64
-; SCCP-NEXT:    br label [[BB11:%.*]]
-; SCCP:       bb11:
-; SCCP-NEXT:    [[TMP12:%.*]] = phi i64 [ [[TMP10]], [[BB4]] ], [ [[TMP17:%.*]], [[BB18:%.*]] ]
-; SCCP-NEXT:    br label [[BB13:%.*]]
-; SCCP:       bb13:
-; SCCP-NEXT:    [[C_1:%.*]] = icmp eq i64 [[TMP12]], 6
-; SCCP-NEXT:    br i1 [[C_1]], label [[BB15:%.*]], label [[BB16:%.*]]
-; SCCP:       bb15:
-; SCCP-NEXT:    unreachable
-; SCCP:       bb16:
-; SCCP-NEXT:    [[TMP17]] = add i64 [[TMP12]], 2
-; SCCP-NEXT:    br label [[BB18]]
-; SCCP:       bb18:
-; SCCP-NEXT:    br label [[BB11]]
-; SCCP:       bb19:
-; SCCP-NEXT:    unreachable
+; SCCP-NEXT:    br label [[BB20:%.*]]
 ; SCCP:       bb20:
 ; SCCP-NEXT:    ret void
 ;
 ; IPSCCP-LABEL: @foo(
 ; IPSCCP-NEXT:  bb:
-; IPSCCP-NEXT:    [[TMP:%.*]] = zext i8 undef to i32
 ; IPSCCP-NEXT:    [[TMP2:%.*]] = load i64, ptr [[ARG:%.*]], align 8
-; IPSCCP-NEXT:    switch i32 [[TMP]], label [[BB20:%.*]] [
-; IPSCCP-NEXT:    i32 1, label [[BB3:%.*]]
-; IPSCCP-NEXT:    i32 2, label [[BB4:%.*]]
-; IPSCCP-NEXT:    i32 4, label [[BB19:%.*]]
-; IPSCCP-NEXT:    ]
-; IPSCCP:       bb3:
-; IPSCCP-NEXT:    unreachable
-; IPSCCP:       bb4:
-; IPSCCP-NEXT:    [[TMP5:%.*]] = add i64 [[TMP2]], 3
-; IPSCCP-NEXT:    [[TMP6:%.*]] = and i64 [[TMP5]], 3
-; IPSCCP-NEXT:    [[TMP7:%.*]] = sub nuw nsw i64 3, [[TMP6]]
-; IPSCCP-NEXT:    [[TMP8:%.*]] = shl nuw nsw i64 [[TMP7]], 1
-; IPSCCP-NEXT:    [[TMP9:%.*]] = trunc i64 [[TMP8]] to i32
-; IPSCCP-NEXT:    [[TMP10:%.*]] = zext i32 [[TMP9]] to i64
-; IPSCCP-NEXT:    br label [[BB11:%.*]]
-; IPSCCP:       bb11:
-; IPSCCP-NEXT:    [[TMP12:%.*]] = phi i64 [ [[TMP10]], [[BB4]] ], [ [[TMP17:%.*]], [[BB18:%.*]] ]
-; IPSCCP-NEXT:    br label [[BB13:%.*]]
-; IPSCCP:       bb13:
-; IPSCCP-NEXT:    [[C_1:%.*]] = icmp eq i64 [[TMP12]], 6
-; IPSCCP-NEXT:    br i1 [[C_1]], label [[BB15:%.*]], label [[BB16:%.*]]
-; IPSCCP:       bb15:
-; IPSCCP-NEXT:    unreachable
-; IPSCCP:       bb16:
-; IPSCCP-NEXT:    [[TMP17]] = add i64 [[TMP12]], 2
-; IPSCCP-NEXT:    br label [[BB18]]
-; IPSCCP:       bb18:
-; IPSCCP-NEXT:    br label [[BB11]]
-; IPSCCP:       bb19:
-; IPSCCP-NEXT:    unreachable
+; IPSCCP-NEXT:    br label [[BB20:%.*]]
 ; IPSCCP:       bb20:
 ; IPSCCP-NEXT:    ret void
 ;

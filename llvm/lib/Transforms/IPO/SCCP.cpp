@@ -311,7 +311,8 @@ static bool runIPSCCP(
     }
     if (F->getReturnType()->isVoidTy())
       continue;
-    if (SCCPSolver::isConstant(ReturnValue) || ReturnValue.isUnknownOrUndef())
+    if (SCCPSolver::isConstant(ReturnValue) ||
+        ReturnValue.isUnknownOrUndefOrPoison())
       findReturnsToZap(*F, ReturnsToZap, Solver);
   }
 

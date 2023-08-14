@@ -56,11 +56,11 @@ define internal i32 @f2(i32 %x, i32 %y, i32 %z, i1 %cmp.1, i1 %cmp.2) {
 ; CHECK-NEXT:    [[V_2:%.*]] = select i1 [[C_2]], i32 20, i32 200
 ; CHECK-NEXT:    [[V_3:%.*]] = select i1 [[C_3]], i32 30, i32 300
 ; CHECK-NEXT:    [[R_1:%.*]] = add nuw nsw i32 [[V_1]], [[V_2]]
-; CHECK-NEXT:    [[R_2:%.*]] = add nuw nsw i32 [[R_1]], [[V_3]]
-; CHECK-NEXT:    [[R_3:%.*]] = add nuw nsw i32 [[R_2]], 400
-; CHECK-NEXT:    [[R_4:%.*]] = add nuw nsw i32 [[R_3]], 50
-; CHECK-NEXT:    [[R_5:%.*]] = add nuw nsw i32 [[R_4]], 60
-; CHECK-NEXT:    [[R_6:%.*]] = add nuw nsw i32 [[R_4]], 700
+; CHECK-NEXT:    [[R_2:%.*]] = add i32 [[R_1]], [[V_3]]
+; CHECK-NEXT:    [[R_3:%.*]] = add i32 [[R_2]], 400
+; CHECK-NEXT:    [[R_4:%.*]] = add i32 [[R_3]], 50
+; CHECK-NEXT:    [[R_5:%.*]] = add i32 [[R_4]], 60
+; CHECK-NEXT:    [[R_6:%.*]] = add i32 [[R_4]], 700
 ; CHECK-NEXT:    ret i32 [[R_6]]
 ;
 
@@ -204,7 +204,7 @@ define i32 @caller3(i32 %y, i1 %cmp.1) {
 ; CHECK-NEXT:    br label [[END]]
 ; CHECK:       end:
 ; CHECK-NEXT:    [[P1:%.*]] = phi i32 [ 0, [[ENTRY:%.*]] ], [ 5, [[IF_TRUE]] ]
-; CHECK-NEXT:    [[CALL1:%.*]] = tail call i32 @f3(i32 [[P1]], i32 [[Y]], i1 [[CMP_1]])
+; CHECK-NEXT:    [[CALL1:%.*]] = tail call i32 @f3(i32 [[P1]], i32 [[Y]], i1 [[CMP_1]]), !range [[RNG0:![0-9]+]]
 ; CHECK-NEXT:    ret i32 [[CALL1]]
 ;
 

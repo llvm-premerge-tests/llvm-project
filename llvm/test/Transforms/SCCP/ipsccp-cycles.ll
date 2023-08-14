@@ -89,12 +89,12 @@ bb.false:
 define i32 @test3b(i32 %a) {
 ; CHECK-LABEL: @test3b(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[V1:%.*]] = call i32 @test3a(i32 0)
+; CHECK-NEXT:    [[V1:%.*]] = call i32 @test3a(i32 0), !range [[RNG0:![0-9]+]]
 ; CHECK-NEXT:    br label [[LOOP:%.*]]
 ; CHECK:       loop:
-; CHECK-NEXT:    [[V2:%.*]] = call i32 @test3a(i32 [[V1]])
+; CHECK-NEXT:    [[V2:%.*]] = call i32 @test3a(i32 [[V1]]), !range [[RNG0]]
 ; CHECK-NEXT:    [[V3:%.*]] = add i32 [[V2]], 1
-; CHECK-NEXT:    [[V4:%.*]] = call i32 @test3a(i32 [[V3]])
+; CHECK-NEXT:    [[V4:%.*]] = call i32 @test3a(i32 [[V3]]), !range [[RNG0]]
 ; CHECK-NEXT:    [[C:%.*]] = icmp eq i32 [[V4]], [[A:%.*]]
 ; CHECK-NEXT:    br i1 [[C]], label [[EXIT:%.*]], label [[LOOP]]
 ; CHECK:       exit:
@@ -120,14 +120,14 @@ exit:
 ; Check for a range extension cycle through a  struct argument.
 define internal i32 @test4a(%struct.S %s) {
 ; CHECK-LABEL: @test4a(
-; CHECK-NEXT:    [[A:%.*]] = extractvalue [[STRUCT_S:%.*]] %s, 0
-; CHECK-NEXT:    [[B:%.*]] = extractvalue [[STRUCT_S]] %s, 1
+; CHECK-NEXT:    [[A:%.*]] = extractvalue [[STRUCT_S:%.*]] [[S:%.*]], 0
+; CHECK-NEXT:    [[B:%.*]] = extractvalue [[STRUCT_S]] [[S]], 1
 ; CHECK-NEXT:    [[X:%.*]] = add i32 [[A]], 1
 ; CHECK-NEXT:    [[C:%.*]] = icmp eq i32 [[X]], [[B]]
 ; CHECK-NEXT:    br i1 [[C]], label [[BB_TRUE:%.*]], label [[BB_FALSE:%.*]]
 ; CHECK:       bb.true:
-; CHECK-NEXT:    [[S2:%.*]] = insertvalue [[STRUCT_S]] %s, i32 [[X]], 0
-; CHECK-NEXT:    [[R:%.*]] = call i32 @test4a(%struct.S [[S2]])
+; CHECK-NEXT:    [[S2:%.*]] = insertvalue [[STRUCT_S]] [[S]], i32 [[X]], 0
+; CHECK-NEXT:    [[R:%.*]] = call i32 @test4a([[STRUCT_S]] [[S2]])
 ; CHECK-NEXT:    ret i32 [[R]]
 ; CHECK:       bb.false:
 ; CHECK-NEXT:    ret i32 [[A]]
@@ -151,7 +151,7 @@ bb.false:
 define i32 @test4b(i32 %b) {
 ; CHECK-LABEL: @test4b(
 ; CHECK-NEXT:    [[S2:%.*]] = insertvalue [[STRUCT_S:%.*]] { i32 17, i32 undef }, i32 [[B:%.*]], 1
-; CHECK-NEXT:    [[X:%.*]] = call i32 @test4a(%struct.S [[S2]])
+; CHECK-NEXT:    [[X:%.*]] = call i32 @test4a([[STRUCT_S]] [[S2]])
 ; CHECK-NEXT:    ret i32 [[X]]
 ;
   %s1 = insertvalue %struct.S undef, i32 17, 0
@@ -207,10 +207,10 @@ define internal %struct @test6a(ptr %arg, i32 %arg1, i32 %arg2) {
 ; CHECK-NEXT:    br i1 [[TMP]], label [[BB6:%.*]], label [[BB3:%.*]]
 ; CHECK:       bb3:
 ; CHECK-NEXT:    [[S1:%.*]] = tail call [[STRUCT:%.*]] @test6a(ptr [[ARG]], i32 0, i32 -1)
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[STRUCT]] %s1, 0
+; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[STRUCT]] [[S1]], 0
 ; CHECK-NEXT:    [[TMP5:%.*]] = add nsw i32 [[TMP4]], -1
-; CHECK-NEXT:    [[S2:%.*]] = insertvalue [[STRUCT]] %s1, i32 [[TMP5]], 0
-; CHECK-NEXT:    ret [[STRUCT]] %s2
+; CHECK-NEXT:    [[S2:%.*]] = insertvalue [[STRUCT]] [[S1]], i32 [[TMP5]], 0
+; CHECK-NEXT:    ret [[STRUCT]] [[S2]]
 ; CHECK:       bb6:
 ; CHECK-NEXT:    ret [[STRUCT]] { i32 0, i32 undef }
 ;

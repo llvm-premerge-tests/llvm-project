@@ -53,12 +53,12 @@ static ConstantRange getConstantRange(const ValueLatticeElement &LV, Type *Ty,
 namespace llvm {
 
 bool SCCPSolver::isConstant(const ValueLatticeElement &LV) {
-  return LV.isConstant() ||
+  return LV.isConstant() || LV.isPoison() || LV.isUndef() ||
          (LV.isConstantRange() && LV.getConstantRange().isSingleElement());
 }
 
 bool SCCPSolver::isOverdefined(const ValueLatticeElement &LV) {
-  return !LV.isUnknownOrUndef() && !SCCPSolver::isConstant(LV);
+  return !LV.isUnknownOrUndefOrPoison() && !SCCPSolver::isConstant(LV);
 }
 
 static bool canRemoveInstruction(Instruction *I) {
@@ -887,6 +887,12 @@ bool SCCPInstVisitor::isStructLatticeConstant(Function *F, StructType *STy) {
 
 Constant *SCCPInstVisitor::getConstant(const ValueLatticeElement &LV,
                                        Type *Ty) const {
+  if (LV.isPoison())
+    return PoisonValue::get(Ty);
+
+  if (LV.isUndef())
+    return UndefValue::get(Ty);
+
   if (LV.isConstant()) {
     Constant *C = LV.getConstant();
     assert(C->getType() == Ty && "Type mismatch");
@@ -1019,7 +1025,7 @@ void SCCPInstVisitor::getFeasibleSuccessors(Instruction &TI,
     if (!CI) {
       // Overdefined condition variables, and branches on unfoldable constant
       // conditions, mean the branch could go either way.
-      if (!BCValue.isUnknownOrUndef())
+      if (!BCValue.isUnknownOrUndefOrPoison())
         Succs[0] = Succs[1] = true;
       return;
     }
@@ -1063,7 +1069,7 @@ void SCCPInstVisitor::getFeasibleSuccessors(Instruction &TI,
     }
 
     // Overdefined or unknown condition? All destinations are executable!
-    if (!SCValue.isUnknownOrUndef())
+    if (!SCValue.isUnknownOrUndefOrPoison())
       Succs.assign(TI.getNumSuccessors(), true);
     return;
   }
@@ -1077,7 +1083,7 @@ void SCCPInstVisitor::getFeasibleSuccessors(Instruction &TI,
         getConstant(IBRValue, IBR->getAddress()->getType()));
     if (!Addr) { // Overdefined or unknown condition?
       // All destinations are executable!
-      if (!IBRValue.isUnknownOrUndef())
+      if (!IBRValue.isUnknownOrUndefOrPoison())
         Succs.assign(TI.getNumSuccessors(), true);
       return;
     }
@@ -1226,7 +1232,7 @@ void SCCPInstVisitor::visitCastInst(CastInst &I) {
     return;
 
   ValueLatticeElement OpSt = getValueState(I.getOperand(0));
-  if (OpSt.isUnknownOrUndef())
+  if (OpSt.isUnknown())
     return;
 
   if (Constant *OpC = getConstant(OpSt, I.getOperand(0)->getType())) {
@@ -1264,7 +1270,7 @@ void SCCPInstVisitor::handleExtractOfWithOverflow(ExtractValueInst &EVI,
   ValueLatticeElement R = getValueState(RHS);
   addAdditionalUser(LHS, &EVI);
   addAdditionalUser(RHS, &EVI);
-  if (L.isUnknownOrUndef() || R.isUnknownOrUndef())
+  if (L.isUnknownOrUndefOrPoison() || R.isUnknownOrUndefOrPoison())
     return; // Wait to resolve.
 
   Type *Ty = LHS->getType();
@@ -1361,7 +1367,7 @@ void SCCPInstVisitor::visitSelectInst(SelectInst &I) {
     return (void)markOverdefined(&I);
 
   ValueLatticeElement CondValue = getValueState(I.getCondition());
-  if (CondValue.isUnknownOrUndef())
+  if (CondValue.isUnknownOrUndefOrPoison())
     return;
 
   if (ConstantInt *CondCB =
@@ -1394,7 +1400,7 @@ void SCCPInstVisitor::visitUnaryOperator(Instruction &I) {
     return (void)markOverdefined(&I);
 
   // If something is unknown/undef, wait for it to resolve.
-  if (V0State.isUnknownOrUndef())
+  if (V0State.isUnknown())
     return;
 
   if (SCCPSolver::isConstant(V0State))
@@ -1419,7 +1425,7 @@ void SCCPInstVisitor::visitFreezeInst(FreezeInst &I) {
     return (void)markOverdefined(&I);
 
   // If something is unknown/undef, wait for it to resolve.
-  if (V0State.isUnknownOrUndef())
+  if (V0State.isUnknownOrUndefOrPoison())
     return;
 
   if (SCCPSolver::isConstant(V0State) &&
@@ -1439,7 +1445,7 @@ void SCCPInstVisitor::visitBinaryOperator(Instruction &I) {
     return;
 
   // If something is undef, wait for it to resolve.
-  if (V1State.isUnknownOrUndef() || V2State.isUnknownOrUndef())
+  if (V1State.isUnknownOrUndefOrPoison() || V2State.isUnknownOrUndefOrPoison())
     return;
 
   if (V1State.isOverdefined() && V2State.isOverdefined())
@@ -1447,7 +1453,7 @@ void SCCPInstVisitor::visitBinaryOperator(Instruction &I) {
 
   // If either of the operands is a constant, try to fold it to a constant.
   // TODO: Use information from notconstant better.
-  if ((V1State.isConstant() || V2State.isConstant())) {
+  if ((SCCPSolver::isConstant(V1State) || SCCPSolver::isConstant(V2State))) {
     Value *V1 = SCCPSolver::isConstant(V1State)
                     ? getConstant(V1State, I.getOperand(0)->getType())
                     : I.getOperand(0);
@@ -1507,7 +1513,8 @@ void SCCPInstVisitor::visitCmpInst(CmpInst &I) {
   }
 
   // If operands are still unknown, wait for it to resolve.
-  if ((V1State.isUnknownOrUndef() || V2State.isUnknownOrUndef()) &&
+  if ((V1State.isUnknownOrUndefOrPoison() ||
+       V2State.isUnknownOrUndefOrPoison()) &&
       !SCCPSolver::isConstant(ValueState[&I]))
     return;
 
@@ -1525,7 +1532,7 @@ void SCCPInstVisitor::visitGetElementPtrInst(GetElementPtrInst &I) {
 
   for (unsigned i = 0, e = I.getNumOperands(); i != e; ++i) {
     ValueLatticeElement State = getValueState(I.getOperand(i));
-    if (State.isUnknownOrUndef())
+    if (State.isUnknownOrUndefOrPoison())
       return; // Operands are not resolved yet.
 
     if (SCCPSolver::isOverdefined(State))
@@ -1591,7 +1598,7 @@ void SCCPInstVisitor::visitLoadInst(LoadInst &I) {
     return (void)markOverdefined(&I);
 
   ValueLatticeElement PtrVal = getValueState(I.getOperand(0));
-  if (PtrVal.isUnknownOrUndef())
+  if (PtrVal.isUnknownOrUndefOrPoison())
     return; // The pointer is not resolved yet!
 
   ValueLatticeElement &IV = ValueState[&I];
@@ -1655,7 +1662,7 @@ void SCCPInstVisitor::handleCallOverdefined(CallBase &CB) {
         continue;                    // Carried in CB, not allowed in Operands.
       ValueLatticeElement State = getValueState(A);
 
-      if (State.isUnknownOrUndef())
+      if (State.isUnknownOrUndefOrPoison())
         return; // Operands are not resolved yet.
       if (SCCPSolver::isOverdefined(State))
         return (void)markOverdefined(&CB);
@@ -1792,7 +1799,7 @@ void SCCPInstVisitor::handleCallResult(CallBase &CB) {
       SmallVector<ConstantRange, 2> OpRanges;
       for (Value *Op : II->args()) {
         const ValueLatticeElement &State = getValueState(Op);
-        if (State.isUnknownOrUndef())
+        if (State.isUnknownOrUndefOrPoison())
           return;
         OpRanges.push_back(getConstantRange(State, Op->getType()));
       }
