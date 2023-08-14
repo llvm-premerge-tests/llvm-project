@@ -159,7 +159,23 @@ std::string getMainExecutable(const char *argv0, void *MainExecAddr) {
 
 UniqueID file_status::getUniqueID() const {
   // The file is uniquely identified by the volume serial number along
-  // with the 64-bit file identifier.
+  // with the 64-bit file identifier, as long as the handle that produced
+  // the file index is open. After closing the handle, the file index may
+  // be reused.
+  //
+  // The actual stability of file indices depends on the filesystem driver.
+  // For modern file systems (NTFS), the indices generally are stable. (For
+  // ReFS, the full file index actually is 128 bit.) For FAT, the indices
+  // change if the file system is defragmented. However, some network mounts
+  // reuse file indices very eagerly when handles are closed. (In particular,
+  // this happens with mounts used for directory sharing in Remote Desktop
+  // and VirtualBox.)
+  //
+  // If we believe the file index isn't reliable, use a hash of the
+  // canonicalized path instead, as a more stable identifier.
+  if (!ReliableFileIndex)
+    return UniqueID(VolumeSerialNumber, PathHash);
+
   uint64_t FileID = (static_cast<uint64_t>(FileIndexHigh) << 32ULL) |
                     static_cast<uint64_t>(FileIndexLow);
 
@@ -647,12 +663,7 @@ bool can_execute(const Twine &Path) {
 
 bool equivalent(file_status A, file_status B) {
   assert(status_known(A) && status_known(B));
-  return A.FileIndexHigh == B.FileIndexHigh &&
-         A.FileIndexLow == B.FileIndexLow && A.FileSizeHigh == B.FileSizeHigh &&
-         A.FileSizeLow == B.FileSizeLow &&
-         A.LastWriteTimeHigh == B.LastWriteTimeHigh &&
-         A.LastWriteTimeLow == B.LastWriteTimeLow &&
-         A.VolumeSerialNumber == B.VolumeSerialNumber;
+  return A.getUniqueID() == B.getUniqueID();
 }
 
 std::error_code equivalent(const Twine &A, const Twine &B, bool &result) {
@@ -697,7 +708,9 @@ static perms perms_from_attrs(DWORD Attrs) {
   return (Attrs & FILE_ATTRIBUTE_READONLY) ? (all_read | all_exe) : all_all;
 }
 
-static std::error_code getStatus(HANDLE FileHandle, file_status &Result) {
+static std::error_code getStatus(HANDLE FileHandle,
+                                 SmallVectorImpl<wchar_t> &Path,
+                                 file_status &Result) {
   if (FileHandle == INVALID_HANDLE_VALUE)
     goto handle_status_error;
 
@@ -725,13 +738,43 @@ static std::error_code getStatus(HANDLE FileHandle, file_status &Result) {
   if (!::GetFileInformationByHandle(FileHandle, &Info))
     goto handle_status_error;
 
+  bool PathCanonicalized;
+  PathCanonicalized = false;
+  if (Path.empty()) {
+    realPathFromHandle(FileHandle, Path);
+    PathCanonicalized = true;
+  }
+
+  bool IsLocal;
+  if (std::error_code EC = is_local_internal(Path, IsLocal))
+    return EC;
+
+  bool ReliableFileIndex;
+  uint64_t PathHash;
+  ReliableFileIndex = true;
+  PathHash = 0;
+  if (!IsLocal) {
+    // File indices aren't necessarily stable after closing the file handle.
+    //
+    // As a heuristic, consider files that are local to have stable (enough)
+    // file indicies. Some network mounts are known to eagerly reuse file
+    // indices.
+    //
+    // If the index isn't considered reliable, hash the canonicalized path
+    // instead.
+    ReliableFileIndex = false;
+    if (!PathCanonicalized)
+      realPathFromHandle(FileHandle, Path);
+    PathHash = hash_combine_range(Path.begin(), Path.end());
+  }
+
   Result = file_status(
       file_type_from_attrs(Info.dwFileAttributes),
       perms_from_attrs(Info.dwFileAttributes), Info.nNumberOfLinks,
       Info.ftLastAccessTime.dwHighDateTime, Info.ftLastAccessTime.dwLowDateTime,
       Info.ftLastWriteTime.dwHighDateTime, Info.ftLastWriteTime.dwLowDateTime,
       Info.dwVolumeSerialNumber, Info.nFileSizeHigh, Info.nFileSizeLow,
-      Info.nFileIndexHigh, Info.nFileIndexLow);
+      Info.nFileIndexHigh, Info.nFileIndexLow, ReliableFileIndex, PathHash);
   return std::error_code();
 
 handle_status_error:
@@ -743,6 +786,11 @@ handle_status_error:
   else
     Result = file_status(file_type::status_error);
   return mapWindowsError(LastError);
+}
+
+static std::error_code getStatus(HANDLE FileHandle, file_status &Result) {
+  SmallVector<wchar_t, 128> path_utf16;
+  return getStatus(FileHandle, path_utf16, Result);
 }
 
 std::error_code status(const Twine &path, file_status &result, bool Follow) {
@@ -774,7 +822,7 @@ std::error_code status(const Twine &path, file_status &result, bool Follow) {
   if (!h)
     return getStatus(INVALID_HANDLE_VALUE, result);
 
-  return getStatus(h, result);
+  return getStatus(h, path_utf16, result);
 }
 
 std::error_code status(int FD, file_status &Result) {

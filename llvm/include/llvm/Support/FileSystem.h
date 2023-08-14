@@ -235,6 +235,9 @@ class file_status : public basic_file_status {
   uint32_t VolumeSerialNumber = 0;
   uint32_t FileIndexHigh = 0;
   uint32_t FileIndexLow = 0;
+  // The PathHash field is only valid if ReliableFileIndex is false.
+  uint64_t PathHash = 0;
+  bool ReliableFileIndex = true;
   #endif
 
 public:
@@ -256,12 +259,13 @@ public:
               uint32_t LastWriteTimeHigh, uint32_t LastWriteTimeLow,
               uint32_t VolumeSerialNumber, uint32_t FileSizeHigh,
               uint32_t FileSizeLow, uint32_t FileIndexHigh,
-              uint32_t FileIndexLow)
+              uint32_t FileIndexLow, bool ReliableFileIndex, uint64_t PathHash)
       : basic_file_status(Type, Perms, LastAccessTimeHigh, LastAccessTimeLow,
                           LastWriteTimeHigh, LastWriteTimeLow, FileSizeHigh,
                           FileSizeLow),
         NumLinks(LinkCount), VolumeSerialNumber(VolumeSerialNumber),
-        FileIndexHigh(FileIndexHigh), FileIndexLow(FileIndexLow) {}
+        FileIndexHigh(FileIndexHigh), FileIndexLow(FileIndexLow),
+        PathHash(PathHash), ReliableFileIndex(ReliableFileIndex) {}
   #endif
 
   UniqueID getUniqueID() const;
