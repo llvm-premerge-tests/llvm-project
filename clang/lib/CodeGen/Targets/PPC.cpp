@@ -271,16 +271,21 @@ namespace {
 class PPC32_SVR4_ABIInfo : public DefaultABIInfo {
   bool IsSoftFloatABI;
   bool IsRetSmallStructInRegABI;
+  bool isComplexInRegABI;
 
   CharUnits getParamTypeAlignment(QualType Ty) const;
+  ABIArgInfo handleComplex(QualType Ty) const;
 
 public:
   PPC32_SVR4_ABIInfo(CodeGen::CodeGenTypes &CGT, bool SoftFloatABI,
-                     bool RetSmallStructInRegABI)
+                     bool RetSmallStructInRegABI,
+                     bool ComplexInRegABI)
       : DefaultABIInfo(CGT), IsSoftFloatABI(SoftFloatABI),
-        IsRetSmallStructInRegABI(RetSmallStructInRegABI) {}
+        IsRetSmallStructInRegABI(RetSmallStructInRegABI),
+        isComplexInRegABI(ComplexInRegABI) {}
 
   ABIArgInfo classifyReturnType(QualType RetTy) const;
+  ABIArgInfo classifyArgumentType(QualType Ty) const;
 
   void computeInfo(CGFunctionInfo &FI) const override {
     if (!getCXXABI().classifyReturnType(FI))
@@ -296,9 +301,11 @@ public:
 class PPC32TargetCodeGenInfo : public TargetCodeGenInfo {
 public:
   PPC32TargetCodeGenInfo(CodeGenTypes &CGT, bool SoftFloatABI,
-                         bool RetSmallStructInRegABI)
+                         bool RetSmallStructInRegABI,
+                         bool ComplexInRegABI)
       : TargetCodeGenInfo(std::make_unique<PPC32_SVR4_ABIInfo>(
-            CGT, SoftFloatABI, RetSmallStructInRegABI)) {}
+            CGT, SoftFloatABI, RetSmallStructInRegABI,
+            ComplexInRegABI)) {}
 
   static bool isStructReturnInRegABI(const llvm::Triple &Triple,
                                      const CodeGenOptions &Opts);
@@ -337,6 +344,32 @@ CharUnits PPC32_SVR4_ABIInfo::getParamTypeAlignment(QualType Ty) const {
   return CharUnits::fromQuantity(4);
 }
 
+ABIArgInfo PPC32_SVR4_ABIInfo::handleComplex(QualType Ty) const{
+
+    assert(Ty->isAnyComplexType());
+    uint64_t TypeSize = getContext().getTypeSize(Ty);
+    llvm::Type* ElemTy;
+    unsigned SizeRegs;
+
+    if (TypeSize == 64) {
+      ElemTy = llvm::Type::getInt64Ty(getVMContext());
+      SizeRegs = 1;
+    } else {
+      ElemTy = llvm::Type::getInt32Ty(getVMContext());
+      SizeRegs = (TypeSize + 31) / 32;
+    }
+    return ABIArgInfo::getDirect(llvm::ArrayType::get(ElemTy, SizeRegs));
+}
+
+ABIArgInfo PPC32_SVR4_ABIInfo::classifyArgumentType(QualType Ty) const{
+  Ty = useFirstFieldIfTransparentUnion(Ty);
+
+  if (isComplexInRegABI && Ty->isAnyComplexType()) {
+    return handleComplex(Ty);
+  }
+  return DefaultABIInfo::classifyArgumentType(Ty);
+}
+
 ABIArgInfo PPC32_SVR4_ABIInfo::classifyReturnType(QualType RetTy) const {
   uint64_t Size;
 
@@ -360,6 +393,9 @@ ABIArgInfo PPC32_SVR4_ABIInfo::classifyReturnType(QualType RetTy) const {
       llvm::Type *CoerceTy = llvm::Type::getIntNTy(getVMContext(), Size);
       return ABIArgInfo::getDirect(CoerceTy);
     }
+  }
+  if(isComplexInRegABI && RetTy->isAnyComplexType()) {
+    return handleComplex(RetTy);
   }
 
   return DefaultABIInfo::classifyReturnType(RetTy);
@@ -956,8 +992,10 @@ std::unique_ptr<TargetCodeGenInfo>
 CodeGen::createPPC32TargetCodeGenInfo(CodeGenModule &CGM, bool SoftFloatABI) {
   bool RetSmallStructInRegABI = PPC32TargetCodeGenInfo::isStructReturnInRegABI(
       CGM.getTriple(), CGM.getCodeGenOpts());
+  bool isComplexInRegABI = (CGM.getCodeGenOpts().getComplexInRegABI() == CodeGenOptions::CMPLX_OnGPR);
   return std::make_unique<PPC32TargetCodeGenInfo>(CGM.getTypes(), SoftFloatABI,
-                                                  RetSmallStructInRegABI);
+                                                  RetSmallStructInRegABI,
+                                                  isComplexInRegABI);
 }
 
 std::unique_ptr<TargetCodeGenInfo>
