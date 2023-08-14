@@ -1532,6 +1532,18 @@ Currently, only the following parameter attributes are defined:
     If a function reads from a writeonly pointer argument, the behavior is
     undefined.
 
+``dead_on_unwind``
+    This indicates that the underlying object of a pointer argument is dead if
+    the call unwinds, in the sense that the caller does not depend on the
+    contents of the memory. As such, stores to the object that are only visible
+    on unwind paths can be elided.
+
+    More precisely, the behavior is as-if the object were filled with poison
+    during unwinding. The caller is allowed to access the object, but all
+    loads that are not preceded by a store will return poison.
+
+    This attribute cannot be applied to return values.
+
 .. _gc:
 
 Garbage Collector Strategy Names

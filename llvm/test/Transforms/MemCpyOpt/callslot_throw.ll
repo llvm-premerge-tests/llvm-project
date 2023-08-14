@@ -56,14 +56,11 @@ entry:
   ret void
 }
 
-; TODO: With updated semantics, sret could also be invisible on unwind.
-define void @test_sret(ptr nocapture noalias dereferenceable(4) sret(i32) %x) {
-; CHECK-LABEL: @test_sret(
+define void @test_dead_on_unwind(ptr nocapture noalias dead_on_unwind dereferenceable(4) %x) {
+; CHECK-LABEL: @test_dead_on_unwind(
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[T:%.*]] = alloca i32, align 4
-; CHECK-NEXT:    call void @may_throw(ptr nonnull [[T]])
-; CHECK-NEXT:    [[LOAD:%.*]] = load i32, ptr [[T]], align 4
-; CHECK-NEXT:    store i32 [[LOAD]], ptr [[X:%.*]], align 4
+; CHECK-NEXT:    call void @may_throw(ptr nonnull [[X:%.*]])
 ; CHECK-NEXT:    ret void
 ;
 entry:
