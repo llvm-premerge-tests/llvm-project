@@ -32,6 +32,9 @@ enum class VecOp {
   Ld,
   Lde,
   Ldl,
+  Lvsl,
+  Lvsr,
+  Lxv,
   Lxvp,
   Mergeh,
   Mergel,
@@ -57,6 +60,8 @@ enum class VecOp {
   Stxv,
   Stxvp,
   Sub,
+  Xl,
+  Xlbe,
   Xld2,
   Xlw4,
   Xor,
@@ -211,9 +216,20 @@ struct PPCIntrinsicLibrary : IntrinsicLibrary {
   fir::ExtendedValue genVecPerm(mlir::Type resultType,
                                 llvm::ArrayRef<fir::ExtendedValue> args);
 
+  fir::ExtendedValue genVecXlGrp(mlir::Type resultType,
+                                 llvm::ArrayRef<fir::ExtendedValue> args);
+
   template <VecOp>
   fir::ExtendedValue genVecLdCallGrp(mlir::Type resultType,
                                      llvm::ArrayRef<fir::ExtendedValue> args);
+
+  template <VecOp>
+  fir::ExtendedValue genVecLdNoCallGrp(mlir::Type resultType,
+                                       llvm::ArrayRef<fir::ExtendedValue> args);
+
+  template <VecOp>
+  fir::ExtendedValue genVecLvsGrp(mlir::Type resultType,
+                                  llvm::ArrayRef<fir::ExtendedValue> args);
 
   template <VecOp>
   fir::ExtendedValue genVecNmaddMsub(mlir::Type resultType,
@@ -235,6 +251,9 @@ struct PPCIntrinsicLibrary : IntrinsicLibrary {
   template <VecOp vop>
   fir::ExtendedValue genVecSplat(mlir::Type resultType,
                                  llvm::ArrayRef<fir::ExtendedValue> args);
+
+  fir::ExtendedValue genVecXlds(mlir::Type resultType,
+                                llvm::ArrayRef<fir::ExtendedValue> args);
 };
 
 const IntrinsicHandler *findPPCIntrinsicHandler(llvm::StringRef name);
