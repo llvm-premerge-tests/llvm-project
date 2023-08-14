@@ -35,9 +35,11 @@
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/CodeGen/Passes.h"
+#include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/Function.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Support/CommandLine.h"
+#include "llvm/TargetParser/Triple.h"
 #include <optional>
 
 using namespace llvm;
@@ -82,6 +84,11 @@ public:
   void getAnalysisUsage(AnalysisUsage &AU) const override;
 
   bool runOnMachineFunction(MachineFunction &F) override;
+
+  bool doInitialization(Module &) override;
+
+private:
+  bool UnsupportedTriple = false;
 };
 } // end anonymous namespace
 
@@ -127,7 +134,20 @@ static bool isColdBlock(const MachineBasicBlock &MBB,
   return (*Count < ColdCountThreshold);
 }
 
+bool MachineFunctionSplitter::doInitialization(Module &M) {
+  StringRef TripleStr = M.getTargetTriple();
+  if (!Triple(TripleStr).isX86()) {
+    UnsupportedTriple = true;
+    M.getContext().diagnose(
+        DiagnosticInfoMachineFunctionSplit(TripleStr, DS_Warning));
+    return false;
+  }
+  return MachineFunctionPass::doInitialization(M);
+}
+
 bool MachineFunctionSplitter::runOnMachineFunction(MachineFunction &MF) {
+  if (UnsupportedTriple)
+    return false;
   // We target functions with profile data. Static information in the form
   // of exception handling code may be split to cold if user passes the
   // mfs-split-ehcode flag.
