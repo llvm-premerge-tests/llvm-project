@@ -77,6 +77,10 @@ check_c_compiler_flag("-Werror=mismatched-tags" C_SUPPORTS_WERROR_MISMATCHED_TAG
 append_if(C_SUPPORTS_WERROR_MISMATCHED_TAGS "-Werror=mismatched-tags" CMAKE_C_FLAGS)
 append_if(C_SUPPORTS_WERROR_MISMATCHED_TAGS "-Werror=mismatched-tags" CMAKE_CXX_FLAGS)
 
+check_c_compiler_flag("-march=mips32r2" TARGET_IS_MIPS)
+append_if(TARGET_IS_MIPS "-mxgot" CMAKE_C_FLAGS)
+append_if(TARGET_IS_MIPS "-mxgot" CMAKE_CXX_FLAGS)
+
 # Installing the headers and docs needs to depend on generating any public
 # tablegen'd targets.
 # mlir-generic-headers are dialect-independent.
