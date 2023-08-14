@@ -168,6 +168,11 @@ struct AsmPrinterOptions {
       "mlir-print-value-users", llvm::cl::init(false),
       llvm::cl::desc(
           "Print users of operation results and block arguments as a comment")};
+
+  llvm::cl::opt<bool> disablePrintingResourceValues{
+      "mlir-disable-printing-resource-values", llvm::cl::init(false),
+      llvm::cl::desc(
+          "Whether to elide the printing of the value of resources")};
 };
 } // namespace
 
@@ -197,6 +202,7 @@ OpPrintingFlags::OpPrintingFlags()
   assumeVerifiedFlag = clOptions->assumeVerifiedOpt;
   printLocalScope = clOptions->printLocalScopeOpt;
   printValueUsersFlag = clOptions->printValueUsers;
+  disablePrintResourceValuesFlag = clOptions->disablePrintingResourceValues;
 }
 
 /// Enable the elision of large elements attributes, by printing a '...'
@@ -291,6 +297,11 @@ bool OpPrintingFlags::shouldUseLocalScope() const { return printLocalScope; }
 /// Return if the printer should print users of values.
 bool OpPrintingFlags::shouldPrintValueUsers() const {
   return printValueUsersFlag;
+}
+
+/// Return if the printer should print the value of resources.
+bool OpPrintingFlags::shouldPrintResourceValues() const {
+  return !disablePrintResourceValuesFlag;
 }
 
 /// Returns true if an ElementsAttr with the given number of elements should be
@@ -3192,7 +3203,11 @@ void OperationPrinter::printResourceFileMetadata(
       }
 
       os << "      " << key << ": ";
-      valueFn(os);
+
+      if (printerFlags.shouldPrintResourceValues())
+        valueFn(os);
+      else
+        os << "\"__elided__\"";
     };
     ResourceBuilder entryBuilder(*this, printFn);
     provider.buildResources(op, providerArgs..., entryBuilder);
