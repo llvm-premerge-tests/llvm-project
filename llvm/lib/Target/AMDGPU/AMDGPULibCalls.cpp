@@ -99,12 +99,14 @@ private:
   /// AllowMinSize is true, allow the replacement in a minsize function.
   bool shouldReplaceLibcallWithIntrinsic(const CallInst *CI,
                                          bool AllowMinSizeF32 = false,
-                                         bool AllowF64 = false);
+                                         bool AllowF64 = false,
+                                         bool AllowStrictFP = false);
   void replaceLibCallWithSimpleIntrinsic(CallInst *CI, Intrinsic::ID IntrID);
 
   bool tryReplaceLibcallWithSimpleIntrinsic(CallInst *CI, Intrinsic::ID IntrID,
                                             bool AllowMinSizeF32 = false,
-                                            bool AllowF64 = false);
+                                            bool AllowF64 = false,
+                                            bool AllowStrictFP = false);
 
 protected:
   bool isUnsafeMath(const FPMathOperator *FPOp) const;
@@ -579,8 +581,8 @@ bool AMDGPULibCalls::fold(CallInst *CI) {
 
     // Specialized optimizations for each function call.
     //
-    // TODO: Handle other simple intrinsic wrappers. Sqrt, copysign, fabs,
-    // ldexp, rounding intrinsics.
+    // TODO: Handle other simple intrinsic wrappers. Sqrt, ldexp, rounding
+    // intrinsics.
     //
     // TODO: Handle native functions
     switch (FInfo.getId()) {
@@ -621,6 +623,12 @@ bool AMDGPULibCalls::fold(CallInst *CI) {
     case AMDGPULibFunc::EI_MAD:
       return tryReplaceLibcallWithSimpleIntrinsic(CI, Intrinsic::fmuladd, true,
                                                   true);
+    case AMDGPULibFunc::EI_FABS:
+      return tryReplaceLibcallWithSimpleIntrinsic(CI, Intrinsic::fabs, true,
+                                                  true, true);
+    case AMDGPULibFunc::EI_COPYSIGN:
+      return tryReplaceLibcallWithSimpleIntrinsic(CI, Intrinsic::copysign, true,
+                                                  true, true);
     case AMDGPULibFunc::EI_POW:
     case AMDGPULibFunc::EI_POWR:
     case AMDGPULibFunc::EI_POWN:
@@ -1077,7 +1085,8 @@ FunctionCallee AMDGPULibCalls::getNativeFunction(Module *M,
 // substituting them with direct calls with all the flags.
 bool AMDGPULibCalls::shouldReplaceLibcallWithIntrinsic(const CallInst *CI,
                                                        bool AllowMinSizeF32,
-                                                       bool AllowF64) {
+                                                       bool AllowF64,
+                                                       bool AllowStrictFP) {
   Type *FltTy = CI->getType()->getScalarType();
   const bool IsF32 = FltTy->isFloatTy();
 
@@ -1092,7 +1101,7 @@ bool AMDGPULibCalls::shouldReplaceLibcallWithIntrinsic(const CallInst *CI,
 
   const Function *ParentF = CI->getFunction();
   // TODO: Handle strictfp
-  if (ParentF->hasFnAttribute(Attribute::StrictFP))
+  if (!AllowStrictFP && ParentF->hasFnAttribute(Attribute::StrictFP))
     return false;
 
   if (IsF32 && !AllowMinSizeF32 && ParentF->hasMinSize())
@@ -1109,8 +1118,10 @@ void AMDGPULibCalls::replaceLibCallWithSimpleIntrinsic(CallInst *CI,
 bool AMDGPULibCalls::tryReplaceLibcallWithSimpleIntrinsic(CallInst *CI,
                                                           Intrinsic::ID IntrID,
                                                           bool AllowMinSizeF32,
-                                                          bool AllowF64) {
-  if (!shouldReplaceLibcallWithIntrinsic(CI, AllowMinSizeF32, AllowF64))
+                                                          bool AllowF64,
+                                                          bool AllowStrictFP) {
+  if (!shouldReplaceLibcallWithIntrinsic(CI, AllowMinSizeF32, AllowF64,
+                                         AllowStrictFP))
     return false;
   replaceLibCallWithSimpleIntrinsic(CI, IntrID);
   return true;
