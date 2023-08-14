@@ -27,6 +27,7 @@
 #include "llvm/Option/Option.h"
 #include "llvm/Support/BuryPointer.h"
 #include "llvm/Support/CommandLine.h"
+#include <clang/Basic/DiagnosticFrontend.h>
 
 namespace Fortran::frontend {
 
@@ -100,6 +101,61 @@ createFrontendAction(CompilerInstance &ci) {
   llvm_unreachable("Invalid program action!");
 }
 
+// Emit a warning and typo hint for unknown warning opts
+static void emitUnknownDiagWarning(clang::DiagnosticsEngine &diags,
+                                   clang::diag::Flavor flavor,
+                                   llvm::StringRef prefix,
+                                   llvm::StringRef opt) {
+  llvm::StringRef suggestion =
+      clang::DiagnosticIDs::getNearestOption(flavor, opt);
+  diags.Report(clang::diag::warn_unknown_diag_option)
+      << (flavor == clang::diag::Flavor::WarningOrError ? 0 : 1)
+      << (prefix.str() += std::string(opt)) << !suggestion.empty()
+      << (prefix.str() += std::string(suggestion));
+}
+
+void processWarningOptions(clang::DiagnosticsEngine &diags,
+                           const clang::DiagnosticOptions &opts,
+                           bool reportDiags = true) {
+
+  llvm::SmallVector<clang::diag::kind, 10> _diags;
+  const llvm::IntrusiveRefCntPtr<clang::DiagnosticIDs> diagIDs =
+      diags.getDiagnosticIDs();
+  // We parse the warning options twice.  The first pass sets diagnostic state,
+  // while the second pass reports warnings/errors.  This has the effect that
+  // we follow the more canonical "last option wins" paradigm when there are
+  // conflicting options.
+  for (unsigned report = 0, reportEnd = 2; report != reportEnd; ++report) {
+    bool setDiagnostic = (report == 0);
+
+    // If we've set the diagnostic state and are not reporting diagnostics then
+    // we're done.
+    if (!setDiagnostic && !reportDiags)
+      break;
+
+    for (unsigned i = 0, e = opts.Remarks.size(); i != e; ++i) {
+      llvm::StringRef opt = opts.Remarks[i];
+      const auto flavor = clang::diag::Flavor::Remark;
+
+      // Check to see if this opt starts with "no-", if so, this is a
+      // negative form of the option.
+      bool isPositive = !opt.startswith("no-");
+      if (!isPositive)
+        opt = opt.substr(3);
+
+      if (report) {
+        if (diagIDs->getDiagnosticsInGroup(flavor, opt, _diags))
+          emitUnknownDiagWarning(diags, flavor, isPositive ? "-R" : "-Rno-",
+                                 opt);
+      } else {
+        diags.setSeverityForGroup(flavor, opt,
+                                  isPositive ? clang::diag::Severity::Remark
+                                             : clang::diag::Severity::Ignored);
+      }
+    }
+  }
+}
+
 bool executeCompilerInvocation(CompilerInstance *flang) {
   // Honor -help.
   if (flang->getFrontendOpts().showHelp) {
@@ -165,6 +221,8 @@ bool executeCompilerInvocation(CompilerInstance *flang) {
 
   // Honor color diagnostics.
   flang->getDiagnosticOpts().ShowColors = flang->getFrontendOpts().showColors;
+
+  processWarningOptions(flang->getDiagnostics(), flang->getDiagnosticOpts());
 
   // Create and execute the frontend action.
   std::unique_ptr<FrontendAction> act(createFrontendAction(*flang));
