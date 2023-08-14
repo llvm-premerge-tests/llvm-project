@@ -12,9 +12,10 @@
 
 #include "CGCleanup.h"
 #include "CodeGenFunction.h"
-#include "llvm/ADT/ScopeExit.h"
 #include "clang/AST/StmtCXX.h"
 #include "clang/AST/StmtVisitor.h"
+#include "clang/AST/TypeVisitor.h"
+#include "llvm/ADT/ScopeExit.h"
 
 using namespace clang;
 using namespace CodeGen;
@@ -139,6 +140,164 @@ static bool memberCallExpressionCanThrow(const Expr *E) {
   return true;
 }
 
+namespace {
+// We need a TypeVisitor to find the actual awaiter declaration.
+// We can't use (CoroutineSuspendExpr).getCommonExpr()->getType() directly
+// since its type may be AutoType, ElaboratedType, ...
+class AwaiterTypeFinder : public TypeVisitor<AwaiterTypeFinder> {
+  CXXRecordDecl *Result = nullptr;
+
+public:
+  typedef TypeVisitor<AwaiterTypeFinder> Inherited;
+
+  void Visit(const CoroutineSuspendExpr &S) {
+    Visit(S.getCommonExpr()->getType());
+  }
+
+  bool IsRecordEmpty() {
+    assert(Result && "Why can't we find the record type from the common "
+                     "expression of a coroutine suspend expression? "
+                     "Maybe we missed some types or the Sema get something "
+                     "incorrect");
+
+    // In a release build without assertions enabled, return false directly
+    // to give users better user experience. It doesn't matter with the
+    // correctness but 1 byte memory overhead.
+#ifdef NDEBUG
+    if (!Result)
+      return false;
+#endif
+
+    return Result->field_empty();
+  }
+
+  // Following off should only be called by Inherited.
+public:
+  void Visit(QualType Type) { Visit(Type.getTypePtr()); }
+
+  void Visit(const Type *T) { Inherited::Visit(T); }
+
+  void VisitDeducedType(const DeducedType *T) { Visit(T->getDeducedType()); }
+
+  void VisitTypedefType(const TypedefType *T) {
+    Visit(T->getDecl()->getUnderlyingType());
+  }
+
+  void VisitElaboratedType(const ElaboratedType *T) {
+    Visit(T->getNamedType());
+  }
+
+  void VisitReferenceType(const ReferenceType *T) {
+    Visit(T->getPointeeType());
+  }
+
+  void VisitTemplateSpecializationType(const TemplateSpecializationType *T) {
+    // In the case the type is sugared, we can only see InjectedClassNameType,
+    // which doesn't contain the definition information we need.
+    if (T->desugar().getTypePtr() != T) {
+      Visit(T->desugar().getTypePtr());
+      return;
+    }
+
+    TemplateName Name = T->getTemplateName();
+    TemplateDecl *TD = Name.getAsTemplateDecl();
+
+    if (!TD)
+      return;
+
+    if (auto *TypedD = dyn_cast<TypeDecl>(TD->getTemplatedDecl()))
+      Visit(TypedD->getTypeForDecl());
+  }
+
+  void VisitSubstTemplateTypeParmType(const SubstTemplateTypeParmType *T) {
+    Visit(T->getReplacementType());
+  }
+
+  void VisitInjectedClassNameType(const InjectedClassNameType *T) {
+    VisitCXXRecordDecl(T->getDecl());
+  }
+
+  void VisitCXXRecordDecl(CXXRecordDecl *Candidate) {
+    assert(Candidate);
+
+#ifdef NDEBUG
+    Result = Candidate;
+#else
+    // Double check that the type we found is an awaiter class type.
+    // We only do this in debug mode since:
+    // The Sema should diagnose earlier in such cases. So this may
+    // be a waste of time in most cases.
+    // We just want to make sure our assumption is correct.
+
+    auto HasMember = [](CXXRecordDecl *Candidate, llvm::StringRef Name,
+                        auto HasMember) {
+      Candidate = Candidate->getDefinition();
+      if (!Candidate)
+        return false;
+
+      ASTContext &Context = Candidate->getASTContext();
+
+      auto IdenIter = Context.Idents.find(Name);
+      if (IdenIter == Context.Idents.end())
+        return false;
+
+      if (!Candidate->lookup(DeclarationName(IdenIter->second)).empty())
+        return true;
+
+      return llvm::any_of(
+          Candidate->bases(), [Name, &HasMember](CXXBaseSpecifier &Specifier) {
+            auto *RD = cast<CXXRecordDecl>(
+                Specifier.getType()->getAs<RecordType>()->getDecl());
+            return HasMember(RD, Name, HasMember);
+          });
+    };
+
+    bool FoundAwaitReady = HasMember(Candidate, "await_ready", HasMember);
+    bool FoundAwaitSuspend = HasMember(Candidate, "await_suspend", HasMember);
+    bool FoundAwaitResume = HasMember(Candidate, "await_resume", HasMember);
+
+    assert(FoundAwaitReady && FoundAwaitSuspend && FoundAwaitResume);
+    Result = Candidate;
+#endif
+  }
+
+  void VisitRecordType(const RecordType *RT) {
+    assert(isa<CXXRecordDecl>(RT->getDecl()));
+    VisitCXXRecordDecl(cast<CXXRecordDecl>(RT->getDecl()));
+  }
+
+  void VisitType(const Type *T) {}
+};
+} // namespace
+
+/// Return true when the await-suspend
+/// (`awaiter.await_suspend(std::coroutine_handle)` expression) may leak the
+/// coroutine handle. Return false only when the await-suspend won't leak the
+/// coroutine handle for sure.
+///
+/// While it is always safe to return true, return falses can bring better
+/// performances.
+///
+/// The middle end can't understand that the relationship between local
+/// variables between local variables with the coroutine handle until CoroSplit
+/// pass. However, there are a lot optimizations before CoroSplit. Luckily, it
+/// is not so bothering since the C++ languages doesn't allow the programmers to
+/// access the coroutine handle except in await_suspend.
+///
+/// See https://github.com/llvm/llvm-project/issues/56301 and
+/// https://reviews.llvm.org/D157070 for the example and the full discussion.
+static bool MaySuspendLeak(CoroutineSuspendExpr const &S) {
+  AwaiterTypeFinder Finder;
+  Finder.Visit(S);
+  // In case the awaiter type is empty, the suspend wouldn't leak the coroutine
+  // handle.
+  //
+  // TODO: We can improve this by looking into the implementation of
+  // await-suspend and see if the coroutine handle is passed to foreign
+  // functions.
+  return !Finder.IsRecordEmpty();
+}
+
 // Emit suspend expression which roughly looks like:
 //
 //   auto && x = CommonExpr();
@@ -199,8 +358,11 @@ static LValueOrRValue emitSuspendExpression(CodeGenFunction &CGF, CGCoroData &Co
   auto *SaveCall = Builder.CreateCall(CoroSave, {NullPtr});
 
   CGF.CurCoro.InSuspendBlock = true;
+  CGF.CurCoro.MaySuspendLeak = MaySuspendLeak(S);
   auto *SuspendRet = CGF.EmitScalarExpr(S.getSuspendExpr());
   CGF.CurCoro.InSuspendBlock = false;
+  CGF.CurCoro.MaySuspendLeak = false;
+
   if (SuspendRet != nullptr && SuspendRet->getType()->isIntegerTy(1)) {
     // Veto suspension if requested by bool returning await_suspend.
     BasicBlock *RealSuspendBlock =

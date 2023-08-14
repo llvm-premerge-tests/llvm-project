@@ -5488,6 +5488,26 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
         Attrs.addFnAttribute(getLLVMContext(), llvm::Attribute::AlwaysInline);
   }
 
+  // When we're emitting suspend block for C++20 coroutines, we need to be sure
+  // that the call to the `await_suspend()` may not get inlined until the
+  // coroutine got splitted in case the `await_suspend` may leak the coroutine
+  // handle.
+  //
+  // This is necessary since the standards specifies that the coroutine is
+  // considered to be suspended after we enter the await_suspend block. So that
+  // we need to make sure we don't update the coroutine handle during the
+  // execution of the await_suspend. To achieve this, we need to prevent the
+  // await_suspend get inlined before CoroSplit pass.
+  //
+  // We can omit the `NoInline` attribute in case we are sure the await_suspend
+  // call won't leak the coroutine handle so that the middle end can get more
+  // optimization opportunities.
+  //
+  // TODO: We should try to remove the `NoInline` attribute after CoroSplit
+  // pass.
+  if (inSuspendBlock() && maySuspendLeakCoroutineHandle())
+    Attrs = Attrs.addFnAttribute(getLLVMContext(), llvm::Attribute::NoInline);
+
   // Disable inlining inside SEH __try blocks.
   if (isSEHTryScope()) {
     Attrs = Attrs.addFnAttribute(getLLVMContext(), llvm::Attribute::NoInline);
