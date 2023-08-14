@@ -1663,17 +1663,19 @@ ThreadSP ProcessGDBRemote::SetThreadStopInfo(
     gdb_thread->PrivateSetRegisterValue(lldb_regnum, buffer_sp->GetData());
   }
 
-  // AArch64 SVE specific code below calls AArch64SVEReconfigure to update
-  // SVE register sizes and offsets if value of VG register has changed
-  // since last stop.
+  // AArch64 SVE/SME specific code below updates SVE and ZA register sizes and
+  // offsets if value of VG or SVG registers has changed since last stop.
   const ArchSpec &arch = GetTarget().GetArchitecture();
   if (arch.IsValid() && arch.GetTriple().isAArch64()) {
     GDBRemoteRegisterContext *reg_ctx_sp =
         static_cast<GDBRemoteRegisterContext *>(
             gdb_thread->GetRegisterContext().get());
 
-    if (reg_ctx_sp)
+    if (reg_ctx_sp) {
       reg_ctx_sp->AArch64SVEReconfigure();
+      reg_ctx_sp->AArch64SMEReconfigure();
+      reg_ctx_sp->InvalidateAllRegisters();
+    }
   }
 
   thread_sp->SetName(thread_name.empty() ? nullptr : thread_name.c_str());
