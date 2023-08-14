@@ -15,13 +15,3 @@ entry:
   %.fca.1.insert = insertvalue { i64, i32 } %.fca.0.insert, i32 %retval.sroa.2.0.copyload, 1
   ret { i64, i32 } %.fca.1.insert
 }
-
-; CHECK: error: <unknown>:0:0: in function baz void (ptr): aggregate returns are not supported
-
-%struct.B = type { [100 x i64] }
-
-; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
-define dso_local void @baz(ptr noalias nocapture sret(%struct.B) align 8 %agg.result) local_unnamed_addr #0 {
-entry:
-  ret void
-}
