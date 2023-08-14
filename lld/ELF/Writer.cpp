@@ -1650,6 +1650,8 @@ template <class ELFT> void Writer<ELFT>::finalizeAddressDependentContent() {
       changed |= a32p.createFixes();
     }
 
+    if (in.got)
+      in.got->updateAllocSize();
     if (in.mipsGot)
       in.mipsGot->updateAllocSize();
 
@@ -2149,6 +2151,8 @@ template <class ELFT> void Writer<ELFT>::finalizeSections() {
     // finalizeAddressDependentContent may have added local symbols to the
     // static symbol table.
     finalizeSynthetic(in.symTab.get());
+    // finalizeAddressDependentContent may have added GOT entries.
+    finalizeSynthetic(in.got.get());
     finalizeSynthetic(in.ppc64LongBranchTarget.get());
     finalizeSynthetic(in.armCmseSGSection.get());
   }
