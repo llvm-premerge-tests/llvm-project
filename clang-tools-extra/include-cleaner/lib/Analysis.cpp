@@ -28,9 +28,28 @@
 #include "llvm/ADT/StringSet.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/ErrorHandling.h"
+#include <cassert>
 #include <string>
 
 namespace clang::include_cleaner {
+
+namespace {
+bool shouldSkipMacro(const Macro &M) {
+  static const auto *MacroNamesToIgnore = new llvm::StringSet<>{
+      // C standard says these are implementation defined macros, hence most of
+      // the standard library providers implement it by defining these as macros
+      // that resolve to themselves.
+      // This results in surprising behavior from users point of view (we
+      // generate a usage of stdio.h, in places unrelated to standard library).
+      // FIXME: Also eliminate the false positives by treating declarations
+      // resulting from these expansions as used.
+      "stdin",
+      "stdout",
+      "stderr",
+  };
+  return MacroNamesToIgnore->contains(M.Name->getName());
+}
+} // namespace
 
 void walkUsed(llvm::ArrayRef<Decl *> ASTRoots,
               llvm::ArrayRef<SymbolReference> MacroRefs,
@@ -51,7 +70,8 @@ void walkUsed(llvm::ArrayRef<Decl *> ASTRoots,
   }
   for (const SymbolReference &MacroRef : MacroRefs) {
     assert(MacroRef.Target.kind() == Symbol::Macro);
-    if (!SM.isWrittenInMainFile(SM.getSpellingLoc(MacroRef.RefLocation)))
+    if (!SM.isWrittenInMainFile(SM.getSpellingLoc(MacroRef.RefLocation)) ||
+        shouldSkipMacro(MacroRef.Target.macro()))
       continue;
     CB(MacroRef, headersForSymbol(MacroRef.Target, SM, PI));
   }
