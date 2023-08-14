@@ -29,442 +29,135 @@ endif()
 # will link in identity metadata from both libraries. This silences the warning.
 list(APPEND bitcode_link_flags "-Wno-linker-warnings")
 
-add_entrypoint_object(
-  acosf
-  SRCS
-    acosf.cpp
-  HDRS
-    ../../acosf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
+function(add_math_entrypoint_gpu_vendor_object name)
+  # If the user did not specify to use vendor implementations of the math
+  # functions, we check if a built-in or a generic implementation exists. If 
+  # the do not, we have to rely on the vendor version.
+  if(NOT ${LIBC_GPU_VENDOR_MATH})
+    get_filename_component(generic_file_path
+      "${CMAKE_CURRENT_LIST_DIR}/../../generic/${name}.cpp" ABSOLUTE)
+    get_filename_component(builtin_file_path
+      "${CMAKE_CURRENT_LIST_DIR}/../${name}.cpp" ABSOLUTE)
+    if ((EXISTS ${generic_file_path}) OR (EXISTS ${builtin_file_path}))
+      return()
+    endif()
+  endif()
 
-add_entrypoint_object(
-  acoshf
-  SRCS
-    acoshf.cpp
-  HDRS
-    ../../acoshf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
+  add_entrypoint_object(
+    ${name}
+    SRCS
+      ${name}.cpp
+    HDRS
+      ../../${name}.h
+    COMPILE_OPTIONS
+      ${bitcode_link_flags}
+      -O2
+  )
+endfunction()
 
-add_entrypoint_object(
-  asinf
-  SRCS
-    asinf.cpp
-  HDRS
-    ../../asinf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  asinhf
-  SRCS
-    asinhf.cpp
-  HDRS
-    ../../asinhf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  atanf
-  SRCS
-    atanf.cpp
-  HDRS
-    ../../atanf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  atanhf
-  SRCS
-    atanhf.cpp
-  HDRS
-    ../../atanhf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  cos
-  SRCS
-    cos.cpp
-  HDRS
-    ../../cos.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  cosf
-  SRCS
-    cosf.cpp
-  HDRS
-    ../../cosf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  cosh
-  SRCS
-    cosh.cpp
-  HDRS
-    ../../cosh.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  coshf
-  SRCS
-    coshf.cpp
-  HDRS
-    ../../coshf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  exp10f
-  SRCS
-    exp10f.cpp
-  HDRS
-    ../../exp10f.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  exp2f
-  SRCS
-    exp2f.cpp
-  HDRS
-    ../../exp2f.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  expf
-  SRCS
-    expf.cpp
-  HDRS
-    ../../expf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  expm1f
-  SRCS
-    expm1f.cpp
-  HDRS
-    ../../expm1f.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  fdim
-  SRCS
-    fdim.cpp
-  HDRS
-    ../../fdim.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  fdimf
-  SRCS
-    fdimf.cpp
-  HDRS
-    ../../fdimf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  hypot
-  SRCS
-    hypot.cpp
-  HDRS
-    ../../hypot.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  hypotf
-  SRCS
-    hypotf.cpp
-  HDRS
-    ../../hypotf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  ilogb
-  SRCS
-    ilogb.cpp
-  HDRS
-    ../../ilogb.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  ilogbf
-  SRCS
-    ilogbf.cpp
-  HDRS
-    ../../ilogbf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  ldexp
-  SRCS
-    ldexp.cpp
-  HDRS
-    ../../ldexp.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  ldexpf
-  SRCS
-    ldexpf.cpp
-  HDRS
-    ../../ldexpf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  llrint
-  SRCS
-    llrint.cpp
-  HDRS
-    ../../llrint.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  llrintf
-  SRCS
-    llrintf.cpp
-  HDRS
-    ../../llrintf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  llround
-  SRCS
-    llround.cpp
-  HDRS
-    ../../llround.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  llroundf
-  SRCS
-    llroundf.cpp
-  HDRS
-    ../../llroundf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  nextafter
-  SRCS
-    nextafter.cpp
-  HDRS
-    ../../nextafter.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  nextafterf
-  SRCS
-    nextafterf.cpp
-  HDRS
-    ../../nextafterf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  pow
-  SRCS
-    pow.cpp
-  HDRS
-    ../../pow.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  powf
-  SRCS
-    powf.cpp
-  HDRS
-    ../../powf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  sin
-  SRCS
-    sin.cpp
-  HDRS
-    ../../sin.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  sinf
-  SRCS
-    sinf.cpp
-  HDRS
-    ../../sinf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  sincos
-  SRCS
-    sincos.cpp
-  HDRS
-    ../../sincos.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  sincosf
-  SRCS
-    sincosf.cpp
-  HDRS
-    ../../sincosf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  sinh
-  SRCS
-    sinh.cpp
-  HDRS
-    ../../sinh.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  sinhf
-  SRCS
-    sinhf.cpp
-  HDRS
-    ../../sinhf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  tan
-  SRCS
-    tan.cpp
-  HDRS
-    ../../tan.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  tanf
-  SRCS
-    tanf.cpp
-  HDRS
-    ../../tanf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  tanh
-  SRCS
-    tanh.cpp
-  HDRS
-    ../../tanh.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
-
-add_entrypoint_object(
-  tanhf
-  SRCS
-    tanhf.cpp
-  HDRS
-    ../../tanhf.h
-  COMPILE_OPTIONS
-    ${bitcode_link_flags}
-    -O2
-)
+add_math_entrypoint_gpu_vendor_object(acos)
+add_math_entrypoint_gpu_vendor_object(acosf)
+add_math_entrypoint_gpu_vendor_object(acosh)
+add_math_entrypoint_gpu_vendor_object(acoshf)
+add_math_entrypoint_gpu_vendor_object(asin)
+add_math_entrypoint_gpu_vendor_object(asinf)
+add_math_entrypoint_gpu_vendor_object(asinh)
+add_math_entrypoint_gpu_vendor_object(asinhf)
+add_math_entrypoint_gpu_vendor_object(atan)
+add_math_entrypoint_gpu_vendor_object(atanf)
+add_math_entrypoint_gpu_vendor_object(atan2)
+add_math_entrypoint_gpu_vendor_object(atan2f)
+add_math_entrypoint_gpu_vendor_object(atanh)
+add_math_entrypoint_gpu_vendor_object(atanhf)
+add_math_entrypoint_gpu_vendor_object(ceil)
+add_math_entrypoint_gpu_vendor_object(ceilf)
+add_math_entrypoint_gpu_vendor_object(copysign)
+add_math_entrypoint_gpu_vendor_object(copysignf)
+add_math_entrypoint_gpu_vendor_object(cos)
+add_math_entrypoint_gpu_vendor_object(cosf)
+add_math_entrypoint_gpu_vendor_object(cosh)
+add_math_entrypoint_gpu_vendor_object(coshf)
+add_math_entrypoint_gpu_vendor_object(erf)
+add_math_entrypoint_gpu_vendor_object(erff)
+add_math_entrypoint_gpu_vendor_object(exp)
+add_math_entrypoint_gpu_vendor_object(exp10)
+add_math_entrypoint_gpu_vendor_object(exp10f)
+add_math_entrypoint_gpu_vendor_object(exp2)
+add_math_entrypoint_gpu_vendor_object(exp2f)
+add_math_entrypoint_gpu_vendor_object(expf)
+add_math_entrypoint_gpu_vendor_object(expm1)
+add_math_entrypoint_gpu_vendor_object(expm1f)
+add_math_entrypoint_gpu_vendor_object(fabs)
+add_math_entrypoint_gpu_vendor_object(fabsf)
+add_math_entrypoint_gpu_vendor_object(fdim)
+add_math_entrypoint_gpu_vendor_object(fdimf)
+add_math_entrypoint_gpu_vendor_object(fma)
+add_math_entrypoint_gpu_vendor_object(fmaf)
+add_math_entrypoint_gpu_vendor_object(fmax)
+add_math_entrypoint_gpu_vendor_object(fmaxf)
+add_math_entrypoint_gpu_vendor_object(fmin)
+add_math_entrypoint_gpu_vendor_object(fminf)
+add_math_entrypoint_gpu_vendor_object(fmod)
+add_math_entrypoint_gpu_vendor_object(fmodf)
+add_math_entrypoint_gpu_vendor_object(floor)
+add_math_entrypoint_gpu_vendor_object(floorf)
+add_math_entrypoint_gpu_vendor_object(frexp)
+add_math_entrypoint_gpu_vendor_object(frexpf)
+add_math_entrypoint_gpu_vendor_object(hypot)
+add_math_entrypoint_gpu_vendor_object(hypotf)
+add_math_entrypoint_gpu_vendor_object(ilogb)
+add_math_entrypoint_gpu_vendor_object(ilogbf)
+add_math_entrypoint_gpu_vendor_object(ldexp)
+add_math_entrypoint_gpu_vendor_object(ldexpf)
+add_math_entrypoint_gpu_vendor_object(llrint)
+add_math_entrypoint_gpu_vendor_object(llrintf)
+add_math_entrypoint_gpu_vendor_object(llround)
+add_math_entrypoint_gpu_vendor_object(llroundf)
+add_math_entrypoint_gpu_vendor_object(log10)
+add_math_entrypoint_gpu_vendor_object(log10f)
+add_math_entrypoint_gpu_vendor_object(log1p)
+add_math_entrypoint_gpu_vendor_object(log1pf)
+add_math_entrypoint_gpu_vendor_object(log2)
+add_math_entrypoint_gpu_vendor_object(log2f)
+add_math_entrypoint_gpu_vendor_object(logb)
+add_math_entrypoint_gpu_vendor_object(logbf)
+add_math_entrypoint_gpu_vendor_object(log)
+add_math_entrypoint_gpu_vendor_object(logf)
+add_math_entrypoint_gpu_vendor_object(lrint)
+add_math_entrypoint_gpu_vendor_object(lrintf)
+add_math_entrypoint_gpu_vendor_object(lround)
+add_math_entrypoint_gpu_vendor_object(lroundf)
+add_math_entrypoint_gpu_vendor_object(modf)
+add_math_entrypoint_gpu_vendor_object(modff)
+add_math_entrypoint_gpu_vendor_object(nearbyint)
+add_math_entrypoint_gpu_vendor_object(nearbyintf)
+add_math_entrypoint_gpu_vendor_object(nextafter)
+add_math_entrypoint_gpu_vendor_object(nextafterf)
+add_math_entrypoint_gpu_vendor_object(pow)
+add_math_entrypoint_gpu_vendor_object(powf)
+add_math_entrypoint_gpu_vendor_object(remainder)
+add_math_entrypoint_gpu_vendor_object(remainderf)
+add_math_entrypoint_gpu_vendor_object(remquo)
+add_math_entrypoint_gpu_vendor_object(remquof)
+add_math_entrypoint_gpu_vendor_object(rint)
+add_math_entrypoint_gpu_vendor_object(rintf)
+add_math_entrypoint_gpu_vendor_object(round)
+add_math_entrypoint_gpu_vendor_object(roundf)
+add_math_entrypoint_gpu_vendor_object(scalbn)
+add_math_entrypoint_gpu_vendor_object(scalbnf)
+add_math_entrypoint_gpu_vendor_object(sin)
+add_math_entrypoint_gpu_vendor_object(sinf)
+add_math_entrypoint_gpu_vendor_object(sinh)
+add_math_entrypoint_gpu_vendor_object(sinhf)
+add_math_entrypoint_gpu_vendor_object(sincos)
+add_math_entrypoint_gpu_vendor_object(sincosf)
+add_math_entrypoint_gpu_vendor_object(sqrt)
+add_math_entrypoint_gpu_vendor_object(sqrtf)
+add_math_entrypoint_gpu_vendor_object(tan)
+add_math_entrypoint_gpu_vendor_object(tanf)
+add_math_entrypoint_gpu_vendor_object(tanh)
+add_math_entrypoint_gpu_vendor_object(tanhf)
+add_math_entrypoint_gpu_vendor_object(tgammaf)
+add_math_entrypoint_gpu_vendor_object(tgamma)
+add_math_entrypoint_gpu_vendor_object(trunc)
+add_math_entrypoint_gpu_vendor_object(truncf)
