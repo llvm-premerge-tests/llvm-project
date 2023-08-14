@@ -6959,7 +6959,7 @@ bool ARMAsmParser::ParseInstruction(ParseInstructionInfo &Info, StringRef Name,
   // MatchInstructionImpl(), but that's too late for aliases that include
   // any sort of suffix.
   const FeatureBitset &AvailableFeatures = getAvailableFeatures();
-  unsigned AssemblerDialect = getParser().getAssemblerDialect();
+  AsmDialect::Type AssemblerDialect = getParser().getAssemblerDialect();
   applyMnemonicAliases(Name, AvailableFeatures, AssemblerDialect);
 
   // First check for the ARM-specific .req directive.

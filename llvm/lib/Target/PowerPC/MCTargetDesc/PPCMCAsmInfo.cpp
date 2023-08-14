@@ -50,7 +50,7 @@ PPCELFMCAsmInfo::PPCELFMCAsmInfo(bool is64Bit, const Triple& T) {
 
   ZeroDirective = "\t.space\t";
   Data64bitsDirective = is64Bit ? "\t.quad\t" : nullptr;
-  AssemblerDialect = 1;           // New-Style mnemonics.
+  AssemblerDialect = AsmDialect::PPC_ELF; // New-Style mnemonics.
   LCOMMDirectiveAlignmentType = LCOMM::ByteAlignment;
 }
 

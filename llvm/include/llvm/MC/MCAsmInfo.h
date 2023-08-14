@@ -51,6 +51,41 @@ enum LCOMMType { NoAlignment, ByteAlignment, Log2Alignment };
 
 } // end namespace LCOMM
 
+namespace AsmDialect {
+
+enum Type {
+  Generic = 0,
+  AArch64_Generic = 0,
+  AArch64_Apple = 1,
+  AMDGPU_Generic = 0,
+  ARM_Generic = 0,
+  AVR_Generic = 0,
+  BPF_Generic = 0,
+  Hexagon_Generic = 0,
+  Lanai_Generic = 0,
+  LoongArch_Generic = 0,
+  MSP430_Generic = 0,
+  Mips_Generic = 0,
+  NVPTX_Generic = 0,
+  PPC_XCOFF = 0,
+  PPC_ELF = 1,
+  RISCV_Generic = 0,
+  Sparc_Generic = 0,
+  SystemZ_ATT = 0,
+  SystemZ_HLASM = 1,
+  VE_Generic = 0,
+  WebAssembly_Generic = 0,
+  
+  // Note: This numbering has to match the GCC assembler dialects for inline
+  // asm alternatives to work right.
+  X86_ATT = 0,
+  X86_Intel = 1,
+  
+  XCore_Generic = 0,
+};
+
+}  // end namespace AsmDialect
+
 /// This class is intended to be used as a base class for asm
 /// properties and features specific to the target.
 class MCAsmInfo {
@@ -189,8 +224,8 @@ protected:
   const char *Code32Directive;
   const char *Code64Directive;
 
-  /// Which dialect of an assembler variant to use.  Defaults to 0
-  unsigned AssemblerDialect = 0;
+  /// Which dialect of an assembler variant to use.  Defaults to 0 / Generic
+  AsmDialect::Type AssemblerDialect = AsmDialect::Generic;
 
   /// This is true if the assembler allows @ characters in symbol names.
   /// Defaults to false.
@@ -683,7 +718,7 @@ public:
   const char *getCode16Directive() const { return Code16Directive; }
   const char *getCode32Directive() const { return Code32Directive; }
   const char *getCode64Directive() const { return Code64Directive; }
-  unsigned getAssemblerDialect() const { return AssemblerDialect; }
+  AsmDialect::Type getAssemblerDialect() const { return AssemblerDialect; }
   bool doesAllowAtInName() const { return AllowAtInName; }
   void setAllowAtInName(bool V) { AllowAtInName = V; }
   bool doesAllowQuestionAtStartOfIdentifier() const {

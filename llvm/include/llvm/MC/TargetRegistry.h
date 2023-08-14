@@ -21,6 +21,7 @@
 #include "llvm-c/DisassemblerTypes.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/iterator_range.h"
+#include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCObjectFileInfo.h"
 #include "llvm/Support/CodeGen.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -184,7 +185,7 @@ public:
                                                    const MCSubtargetInfo &STI,
                                                    MCContext &Ctx);
   using MCInstPrinterCtorTy = MCInstPrinter *(*)(const Triple &T,
-                                                 unsigned SyntaxVariant,
+                                                 AsmDialect::Type Variant,
                                                  const MCAsmInfo &MAI,
                                                  const MCInstrInfo &MII,
                                                  const MCRegisterInfo &MRI);
@@ -527,7 +528,8 @@ public:
     return MCDisassemblerCtorFn(*this, STI, Ctx);
   }
 
-  MCInstPrinter *createMCInstPrinter(const Triple &T, unsigned SyntaxVariant,
+  MCInstPrinter *createMCInstPrinter(const Triple &T,
+                                     AsmDialect::Type SyntaxVariant,
                                      const MCAsmInfo &MAI,
                                      const MCInstrInfo &MII,
                                      const MCRegisterInfo &MRI) const {

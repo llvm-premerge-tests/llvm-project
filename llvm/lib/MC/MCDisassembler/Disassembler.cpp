@@ -94,7 +94,7 @@ LLVMCreateDisasmCPUFeatures(const char *TT, const char *CPU,
   DisAsm->setSymbolizer(std::move(Symbolizer));
 
   // Set up the instruction printer.
-  int AsmPrinterVariant = MAI->getAssemblerDialect();
+  AsmDialect::Type AsmPrinterVariant = MAI->getAssemblerDialect();
   std::unique_ptr<MCInstPrinter> IP(TheTarget->createMCInstPrinter(
       Triple(TT), AsmPrinterVariant, *MAI, *MII, *MRI));
   if (!IP)
@@ -320,8 +320,9 @@ int LLVMSetDisasmOptions(LLVMDisasmContextRef DCR, uint64_t Options){
       const MCAsmInfo *MAI = DC->getAsmInfo();
       const MCInstrInfo *MII = DC->getInstrInfo();
       const MCRegisterInfo *MRI = DC->getRegisterInfo();
-      int AsmPrinterVariant = MAI->getAssemblerDialect();
-      AsmPrinterVariant = AsmPrinterVariant == 0 ? 1 : 0;
+      AsmDialect::Type AsmPrinterVariant = MAI->getAssemblerDialect();
+      // what is the following line supposed to achieve? Do we want this?
+      AsmPrinterVariant = (AsmDialect::Type)(AsmPrinterVariant == 0 ? 1 : 0);
       MCInstPrinter *IP = DC->getTarget()->createMCInstPrinter(
           Triple(DC->getTripleName()), AsmPrinterVariant, *MAI, *MII, *MRI);
       if (IP) {

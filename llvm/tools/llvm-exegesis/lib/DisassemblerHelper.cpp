@@ -20,7 +20,7 @@ DisassemblerHelper::DisassemblerHelper(const LLVMState &State) : State_(State) {
   AsmInfo_.reset(TM.getTarget().createMCAsmInfo(State_.getRegInfo(),
                                                 Triple.str(), MCOptions));
   InstPrinter_.reset(TM.getTarget().createMCInstPrinter(
-      Triple, 0 /*default variant*/, *AsmInfo_, State_.getInstrInfo(),
+      Triple, AsmDialect::Generic, *AsmInfo_, State_.getInstrInfo(),
       State_.getRegInfo()));
 
   Context_ = std::make_unique<MCContext>(

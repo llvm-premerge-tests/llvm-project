@@ -377,12 +377,13 @@ createARMMachOStreamer(MCContext &Ctx, std::unique_ptr<MCAsmBackend> &&MAB,
 }
 
 static MCInstPrinter *createARMMCInstPrinter(const Triple &T,
-                                             unsigned SyntaxVariant,
+                                             AsmDialect::Type Variant,
                                              const MCAsmInfo &MAI,
                                              const MCInstrInfo &MII,
                                              const MCRegisterInfo &MRI) {
-  if (SyntaxVariant == 0)
+  if (Variant == AsmDialect::ARM_Generic)
     return new ARMInstPrinter(MAI, MII, MRI);
+  assert(false && "Unknown or unsupported syntax variant.");
   return nullptr;
 }
 

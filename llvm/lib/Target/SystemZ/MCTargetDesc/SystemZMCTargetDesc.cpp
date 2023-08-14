@@ -182,11 +182,15 @@ createSystemZMCSubtargetInfo(const Triple &TT, StringRef CPU, StringRef FS) {
 }
 
 static MCInstPrinter *createSystemZMCInstPrinter(const Triple &T,
-                                                 unsigned SyntaxVariant,
+                                                 AsmDialect::Type Variant,
                                                  const MCAsmInfo &MAI,
                                                  const MCInstrInfo &MII,
                                                  const MCRegisterInfo &MRI) {
-  return new SystemZInstPrinter(MAI, MII, MRI);
+  if (Variant == AsmDialect::SystemZ_ATT || 
+    Variant == AsmDialect::SystemZ_HLASM)
+    return new SystemZInstPrinter(MAI, MII, MRI);
+  assert(false && "Unknown or unsupported syntax variant.");
+  return nullptr;
 }
 
 void SystemZTargetStreamer::emitConstantPools() {

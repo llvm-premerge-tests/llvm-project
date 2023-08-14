@@ -328,15 +328,15 @@ static MCAsmInfo *createHexagonMCAsmInfo(const MCRegisterInfo &MRI,
 }
 
 static MCInstPrinter *createHexagonMCInstPrinter(const Triple &T,
-                                                 unsigned SyntaxVariant,
+                                                 AsmDialect::Type Variant,
                                                  const MCAsmInfo &MAI,
                                                  const MCInstrInfo &MII,
                                                  const MCRegisterInfo &MRI)
 {
-  if (SyntaxVariant == 0)
+  if (Variant == AsmDialect::Hexagon_Generic)
     return new HexagonInstPrinter(MAI, MII, MRI);
-  else
-    return nullptr;
+  assert(false && "Unknown or unsupported syntax variant.");
+  return nullptr;
 }
 
 static MCTargetStreamer *

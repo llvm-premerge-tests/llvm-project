@@ -18,22 +18,19 @@
 #include "llvm/TargetParser/Triple.h"
 using namespace llvm;
 
-enum AsmWriterVariantTy {
-  Default = -1,
-  Generic = 0,
-  Apple = 1
-};
-
-static cl::opt<AsmWriterVariantTy> AsmWriterVariant(
-    "aarch64-neon-syntax", cl::init(Default),
+static cl::opt<AsmDialect::Type> AsmWriterVariant(
+    "aarch64-neon-syntax", cl::init((AsmDialect::Type)-1),
     cl::desc("Choose style of NEON code to emit from AArch64 backend:"),
-    cl::values(clEnumValN(Generic, "generic", "Emit generic NEON assembly"),
-               clEnumValN(Apple, "apple", "Emit Apple-style NEON assembly")));
+    cl::values(clEnumValN(AsmDialect::AArch64_Generic, "generic",
+                          "Emit generic NEON assembly"),
+               clEnumValN(AsmDialect::AArch64_Apple, "apple",
+                          "Emit Apple-style NEON assembly")));
 
 AArch64MCAsmInfoDarwin::AArch64MCAsmInfoDarwin(bool IsILP32) {
   // We prefer NEON instructions to be printed in the short, Apple-specific
   // form when targeting Darwin.
-  AssemblerDialect = AsmWriterVariant == Default ? Apple : AsmWriterVariant;
+  AssemblerDialect = AsmWriterVariant == -1 ? AsmDialect::AArch64_Apple
+                                            : AsmDialect::AArch64_Generic;
 
   PrivateGlobalPrefix = "L";
   PrivateLabelPrefix = "L";
@@ -71,7 +68,7 @@ AArch64MCAsmInfoELF::AArch64MCAsmInfoELF(const Triple &T) {
 
   // We prefer NEON instructions to be printed in the generic form when
   // targeting ELF.
-  AssemblerDialect = AsmWriterVariant == Default ? Generic : AsmWriterVariant;
+  AssemblerDialect = AsmWriterVariant == -1 ? AsmDialect::AArch64_Generic : AsmWriterVariant;
 
   CodePointerSize = T.getEnvironment() == Triple::GNUILP32 ? 4 : 8;
 

@@ -58,14 +58,13 @@ static MCSubtargetInfo *createAVRMCSubtargetInfo(const Triple &TT,
 }
 
 static MCInstPrinter *createAVRMCInstPrinter(const Triple &T,
-                                             unsigned SyntaxVariant,
+                                             AsmDialect::Type Variant,
                                              const MCAsmInfo &MAI,
                                              const MCInstrInfo &MII,
                                              const MCRegisterInfo &MRI) {
-  if (SyntaxVariant == 0) {
+  if (Variant == AsmDialect::AVR_Generic)
     return new AVRInstPrinter(MAI, MII, MRI);
-  }
-
+  assert(false && "Unknown or unsupported syntax variant.");
   return nullptr;
 }
 

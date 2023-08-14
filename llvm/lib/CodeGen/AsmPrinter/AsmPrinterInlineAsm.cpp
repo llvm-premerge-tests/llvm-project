@@ -116,7 +116,26 @@ void AsmPrinter::emitInlineAsm(StringRef Str, const MCSubtargetInfo &STI,
   if (!TAP)
     report_fatal_error("Inline asm not supported by this streamer because"
                        " we don't have an asm parser for this target\n");
-  Parser->setAssemblerDialect(Dialect);
+
+  // Resolve `InlineAsm::AsmDialect` to `AsmDialect`.
+  AsmDialect::Type CorrespondingAsmDialect;
+
+  switch (Dialect) {
+  case InlineAsm::AD_ATT:
+    CorrespondingAsmDialect = AsmDialect::X86_ATT;
+    break;
+
+  case InlineAsm::AD_Intel:
+    CorrespondingAsmDialect = AsmDialect::X86_Intel;
+    break;
+
+  default:
+    assert(false && "Inline Assembly Dialect not supported.");
+    break;
+  }
+
+  Parser->setAssemblerDialect(CorrespondingAsmDialect);
+
   Parser->setTargetParser(*TAP);
   // Enable lexing Masm binary and hex integer literals in intel inline
   // assembly.

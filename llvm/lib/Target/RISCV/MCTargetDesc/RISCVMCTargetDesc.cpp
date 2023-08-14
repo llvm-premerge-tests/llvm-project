@@ -85,11 +85,14 @@ static MCSubtargetInfo *createRISCVMCSubtargetInfo(const Triple &TT,
 }
 
 static MCInstPrinter *createRISCVMCInstPrinter(const Triple &T,
-                                               unsigned SyntaxVariant,
+                                               AsmDialect::Type Variant,
                                                const MCAsmInfo &MAI,
                                                const MCInstrInfo &MII,
                                                const MCRegisterInfo &MRI) {
-  return new RISCVInstPrinter(MAI, MII, MRI);
+  if (Variant == AsmDialect::RISCV_Generic)
+    return new RISCVInstPrinter(MAI, MII, MRI);
+  assert(false && "Unknown or unsupported syntax variant.");
+  return nullptr;
 }
 
 static MCTargetStreamer *

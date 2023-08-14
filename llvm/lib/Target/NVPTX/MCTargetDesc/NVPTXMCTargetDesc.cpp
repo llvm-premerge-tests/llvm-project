@@ -51,12 +51,13 @@ createNVPTXMCSubtargetInfo(const Triple &TT, StringRef CPU, StringRef FS) {
 }
 
 static MCInstPrinter *createNVPTXMCInstPrinter(const Triple &T,
-                                               unsigned SyntaxVariant,
+                                               AsmDialect::Type Variant,
                                                const MCAsmInfo &MAI,
                                                const MCInstrInfo &MII,
                                                const MCRegisterInfo &MRI) {
-  if (SyntaxVariant == 0)
+  if (Variant == AsmDialect::NVPTX_Generic)
     return new NVPTXInstPrinter(MAI, MII, MRI);
+  assert(false && "Unknown or unsupported syntax variant.");
   return nullptr;
 }
 

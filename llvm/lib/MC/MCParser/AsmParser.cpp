@@ -169,7 +169,7 @@ private:
   SmallSet<StringRef, 2> LTODiscardSymbols;
 
   /// AssemblerDialect. ~OU means unset value and use value provided by MAI.
-  unsigned AssemblerDialect = ~0U;
+  AsmDialect::Type AssemblerDialect = (AsmDialect::Type)~0U;
 
   /// is Darwin compatibility enabled?
   bool IsDarwin = false;
@@ -227,13 +227,13 @@ public:
 
   CodeViewContext &getCVContext() { return Ctx.getCVContext(); }
 
-  unsigned getAssemblerDialect() override {
+  AsmDialect::Type getAssemblerDialect() override {
     if (AssemblerDialect == ~0U)
       return MAI.getAssemblerDialect();
     else
       return AssemblerDialect;
   }
-  void setAssemblerDialect(unsigned i) override {
+  void setAssemblerDialect(AsmDialect::Type i) override {
     AssemblerDialect = i;
   }
 

@@ -68,11 +68,14 @@ static MCAsmInfo *createXCoreMCAsmInfo(const MCRegisterInfo &MRI,
 }
 
 static MCInstPrinter *createXCoreMCInstPrinter(const Triple &T,
-                                               unsigned SyntaxVariant,
+                                               AsmDialect::Type Variant,
                                                const MCAsmInfo &MAI,
                                                const MCInstrInfo &MII,
                                                const MCRegisterInfo &MRI) {
-  return new XCoreInstPrinter(MAI, MII, MRI);
+  if (Variant == AsmDialect::XCore_Generic)
+    return new XCoreInstPrinter(MAI, MII, MRI);
+  assert(false && "Unknown or unsupported syntax variant.");
+  return nullptr;
 }
 
 XCoreTargetStreamer::XCoreTargetStreamer(MCStreamer &S) : MCTargetStreamer(S) {}

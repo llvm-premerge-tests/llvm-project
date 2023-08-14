@@ -1243,7 +1243,7 @@ private:
   }
 
   bool isParsingIntelSyntax() {
-    return getParser().getAssemblerDialect();
+    return getParser().getAssemblerDialect() == AsmDialect::X86_Intel;
   }
 
   /// @name Auto-generated Matcher Functions
@@ -4471,10 +4471,10 @@ bool X86AsmParser::ParseDirective(AsmToken DirectiveID) {
                                            "supported: registers must have a "
                                            "'%' prefix in .att_syntax");
     }
-    getParser().setAssemblerDialect(0);
+    getParser().setAssemblerDialect(AsmDialect::X86_ATT);
     return false;
   } else if (IDVal.startswith(".intel_syntax")) {
-    getParser().setAssemblerDialect(1);
+    getParser().setAssemblerDialect(AsmDialect::X86_Intel);
     if (getLexer().isNot(AsmToken::EndOfStatement)) {
       if (Parser.getTok().getString() == "noprefix")
         Parser.Lex();

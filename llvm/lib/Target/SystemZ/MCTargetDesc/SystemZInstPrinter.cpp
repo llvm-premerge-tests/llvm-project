@@ -61,7 +61,7 @@ void SystemZInstPrinter::printFormattedRegName(const MCAsmInfo *MAI,
                                                MCRegister Reg,
                                                raw_ostream &O) const {
   const char *RegName = getRegisterName(Reg);
-  if (MAI->getAssemblerDialect() == AD_HLASM) {
+  if (MAI->getAssemblerDialect() == AsmDialect::SystemZ_HLASM) {
     // Skip register prefix so that only register number is left
     assert(isalpha(RegName[0]) && isdigit(RegName[1]));
     O << markup("<reg:") << (RegName + 1) << markup(">");

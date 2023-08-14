@@ -89,11 +89,14 @@ static MCTargetStreamer *createNullTargetStreamer(MCStreamer &S) {
 }
 
 static MCInstPrinter *createSparcMCInstPrinter(const Triple &T,
-                                               unsigned SyntaxVariant,
+                                               AsmDialect::Type Variant,
                                                const MCAsmInfo &MAI,
                                                const MCInstrInfo &MII,
                                                const MCRegisterInfo &MRI) {
-  return new SparcInstPrinter(MAI, MII, MRI);
+  if (Variant == AsmDialect::Sparc_Generic)
+    return new SparcInstPrinter(MAI, MII, MRI);
+  assert(false && "Unknown or unsupported syntax variant.");
+  return nullptr;
 }
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSparcTargetMC() {

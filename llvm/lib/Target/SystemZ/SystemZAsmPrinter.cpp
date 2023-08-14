@@ -878,7 +878,7 @@ void SystemZAsmPrinter::emitMachineConstantPoolValue(
 static void printFormattedRegName(const MCAsmInfo *MAI, unsigned RegNo,
                                   raw_ostream &OS) {
   const char *RegName = SystemZInstPrinter::getRegisterName(RegNo);
-  if (MAI->getAssemblerDialect() == AD_HLASM) {
+  if (MAI->getAssemblerDialect() == AsmDialect::SystemZ_HLASM) {
     // Skip register prefix so that only register number is left
     assert(isalpha(RegName[0]) && isdigit(RegName[1]));
     OS << (RegName + 1);

@@ -94,11 +94,14 @@ static MCAsmInfo *createMipsMCAsmInfo(const MCRegisterInfo &MRI,
 }
 
 static MCInstPrinter *createMipsMCInstPrinter(const Triple &T,
-                                              unsigned SyntaxVariant,
+                                              AsmDialect::Type Variant,
                                               const MCAsmInfo &MAI,
                                               const MCInstrInfo &MII,
                                               const MCRegisterInfo &MRI) {
-  return new MipsInstPrinter(MAI, MII, MRI);
+  if (Variant == AsmDialect::Mips_Generic)
+    return new MipsInstPrinter(MAI, MII, MRI);
+  assert(false && "Unknown or unsupported syntax variant.");
+  return nullptr;
 }
 
 static MCStreamer *createMCStreamer(const Triple &T, MCContext &Context,

@@ -60,12 +60,13 @@ static MCStreamer *createBPFMCStreamer(const Triple &T, MCContext &Ctx,
 }
 
 static MCInstPrinter *createBPFMCInstPrinter(const Triple &T,
-                                             unsigned SyntaxVariant,
+                                             AsmDialect::Type Variant,
                                              const MCAsmInfo &MAI,
                                              const MCInstrInfo &MII,
                                              const MCRegisterInfo &MRI) {
-  if (SyntaxVariant == 0)
+  if (Variant == AsmDialect::BPF_Generic)
     return new BPFInstPrinter(MAI, MII, MRI);
+  assert(false && "Unknown or unsupported syntax variant.");
   return nullptr;
 }
 

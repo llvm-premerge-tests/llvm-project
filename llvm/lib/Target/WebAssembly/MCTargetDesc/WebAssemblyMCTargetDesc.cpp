@@ -74,12 +74,14 @@ static MCRegisterInfo *createMCRegisterInfo(const Triple & /*T*/) {
 }
 
 static MCInstPrinter *createMCInstPrinter(const Triple & /*T*/,
-                                          unsigned SyntaxVariant,
+                                          AsmDialect::Type Variant,
                                           const MCAsmInfo &MAI,
                                           const MCInstrInfo &MII,
                                           const MCRegisterInfo &MRI) {
-  assert(SyntaxVariant == 0 && "WebAssembly only has one syntax variant");
-  return new WebAssemblyInstPrinter(MAI, MII, MRI);
+  if (Variant == AsmDialect::WebAssembly_Generic)
+    return new WebAssemblyInstPrinter(MAI, MII, MRI);
+  assert(false && "Unknown or unsupported syntax variant.");
+  return nullptr;
 }
 
 static MCCodeEmitter *createCodeEmitter(const MCInstrInfo &MCII,

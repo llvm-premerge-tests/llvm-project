@@ -17,17 +17,13 @@
 #include "llvm/TargetParser/Triple.h"
 using namespace llvm;
 
-enum AsmWriterFlavorTy {
-  // Note: This numbering has to match the GCC assembler dialects for inline
-  // asm alternatives to work right.
-  ATT = 0, Intel = 1
-};
-
-static cl::opt<AsmWriterFlavorTy> AsmWriterFlavor(
-    "x86-asm-syntax", cl::init(ATT), cl::Hidden,
+static cl::opt<AsmDialect::Type> AsmWriterFlavor(
+    "x86-asm-syntax", cl::init(AsmDialect::X86_ATT), cl::Hidden,
     cl::desc("Choose style of code to emit from X86 backend:"),
-    cl::values(clEnumValN(ATT, "att", "Emit AT&T-style assembly"),
-               clEnumValN(Intel, "intel", "Emit Intel-style assembly")));
+    cl::values(clEnumValN(AsmDialect::X86_ATT, "att",
+                          "Emit AT&T-style assembly"),
+               clEnumValN(AsmDialect::X86_Intel, "intel",
+                          "Emit Intel-style assembly")));
 
 static cl::opt<bool>
 MarkedJTDataRegions("mark-data-regions", cl::init(true),

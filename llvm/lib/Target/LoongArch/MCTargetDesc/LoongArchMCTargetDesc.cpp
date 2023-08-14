@@ -73,11 +73,14 @@ static MCAsmInfo *createLoongArchMCAsmInfo(const MCRegisterInfo &MRI,
 }
 
 static MCInstPrinter *createLoongArchMCInstPrinter(const Triple &T,
-                                                   unsigned SyntaxVariant,
+                                                   AsmDialect::Type Variant,
                                                    const MCAsmInfo &MAI,
                                                    const MCInstrInfo &MII,
                                                    const MCRegisterInfo &MRI) {
-  return new LoongArchInstPrinter(MAI, MII, MRI);
+  if (Variant == AsmDialect::LoongArch_Generic)
+    return new LoongArchInstPrinter(MAI, MII, MRI);
+  assert(false && "Unknown or unsupported syntax variant.");
+  return nullptr;
 }
 
 static MCTargetStreamer *

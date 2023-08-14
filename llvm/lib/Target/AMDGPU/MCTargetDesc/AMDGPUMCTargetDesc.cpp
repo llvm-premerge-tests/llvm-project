@@ -82,10 +82,13 @@ createAMDGPUMCSubtargetInfo(const Triple &TT, StringRef CPU, StringRef FS) {
 }
 
 static MCInstPrinter *createAMDGPUMCInstPrinter(const Triple &T,
-                                                unsigned SyntaxVariant,
+                                                AsmDialect::Type Variant,
                                                 const MCAsmInfo &MAI,
                                                 const MCInstrInfo &MII,
                                                 const MCRegisterInfo &MRI) {
+  assert(Variant == AsmDialect::AMDGPU_Generic && 
+    "Unknown or unsupported syntax variant.");
+
   if (T.getArch() == Triple::r600)
     return new R600InstPrinter(MAI, MII, MRI);
   else

@@ -14,6 +14,7 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/Twine.h"
+#include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCAsmMacro.h"
 #include "llvm/Support/SMLoc.h"
 #include <cstdint>
@@ -170,8 +171,11 @@ public:
   MCTargetAsmParser &getTargetParser() const { return *TargetParser; }
   void setTargetParser(MCTargetAsmParser &P);
 
-  virtual unsigned getAssemblerDialect() { return 0;}
-  virtual void setAssemblerDialect(unsigned i) { }
+  virtual AsmDialect::Type getAssemblerDialect() { 
+    return AsmDialect::Generic;
+  }
+
+  virtual void setAssemblerDialect(AsmDialect::Type i) {}
 
   bool getShowParsedOperands() const { return ShowParsedOperands; }
   void setShowParsedOperands(bool Value) { ShowParsedOperands = Value; }

@@ -516,8 +516,9 @@ int main(int argc, char **argv) {
 
   MCInstPrinter *IP = nullptr;
   if (FileType == OFT_AssemblyFile) {
-    IP = TheTarget->createMCInstPrinter(Triple(TripleName), OutputAsmVariant,
-                                        *MAI, *MCII, *MRI);
+    IP = TheTarget->createMCInstPrinter(
+        Triple(TripleName), (AsmDialect::Type)OutputAsmVariant.getValue(),
+        *MAI, *MCII, *MRI);
 
     if (!IP) {
       WithColor::error()

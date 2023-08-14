@@ -13,7 +13,7 @@
 using namespace llvm;
 
 SystemZMCAsmInfoELF::SystemZMCAsmInfoELF(const Triple &TT) {
-  AssemblerDialect = AD_ATT;
+  AssemblerDialect = AsmDialect::SystemZ_ATT;
   CalleeSaveStackSlotSize = 8;
   CodePointerSize = 8;
   Data64bitsDirective = "\t.quad\t";
@@ -31,7 +31,7 @@ SystemZMCAsmInfoGOFF::SystemZMCAsmInfoGOFF(const Triple &TT) {
   AllowAtAtStartOfIdentifier = true;
   AllowDollarAtStartOfIdentifier = true;
   AllowHashAtStartOfIdentifier = true;
-  AssemblerDialect = AD_HLASM;
+  AssemblerDialect = AsmDialect::SystemZ_HLASM;
   CalleeSaveStackSlotSize = 8;
   CodePointerSize = 8;
   CommentString = "*";

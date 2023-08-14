@@ -186,7 +186,7 @@ class AsmCodeRegionGenerator : public virtual CodeRegionGenerator {
   const MCAsmInfo &MAI;
   const MCSubtargetInfo &STI;
   const MCInstrInfo &MCII;
-  unsigned AssemblerDialect; // This is set during parsing.
+  AsmDialect::Type AssemblerDialect; // This is set during parsing.
 
 protected:
   MCContext &Ctx;
@@ -194,13 +194,14 @@ protected:
 public:
   AsmCodeRegionGenerator(const Target &T, MCContext &C, const MCAsmInfo &A,
                          const MCSubtargetInfo &S, const MCInstrInfo &I)
-      : TheTarget(T), MAI(A), STI(S), MCII(I), AssemblerDialect(0), Ctx(C) {}
+      : TheTarget(T), MAI(A), STI(S), MCII(I),
+        AssemblerDialect(AsmDialect::Generic), Ctx(C) {}
 
   virtual MCACommentConsumer *getCommentConsumer() = 0;
   virtual CodeRegions &getRegions() = 0;
   virtual MCStreamerWrapper *getMCStreamer() = 0;
 
-  unsigned getAssemblerDialect() const { return AssemblerDialect; }
+  AsmDialect::Type getAssemblerDialect() const { return AssemblerDialect; }
   Expected<const CodeRegions &>
   parseCodeRegions(const std::unique_ptr<MCInstPrinter> &IP) override;
 };

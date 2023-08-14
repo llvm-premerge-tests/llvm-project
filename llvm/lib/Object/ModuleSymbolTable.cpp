@@ -118,7 +118,7 @@ initializeRecordStreamer(const Module &M,
 
   // Module-level inline asm is assumed to use At&t syntax (see
   // AsmPrinter::doInitialization()).
-  Parser->setAssemblerDialect(InlineAsm::AD_ATT);
+  Parser->setAssemblerDialect(AsmDialect::X86_ATT);
 
   Parser->setTargetParser(*TAP);
   if (Parser->Run(false))

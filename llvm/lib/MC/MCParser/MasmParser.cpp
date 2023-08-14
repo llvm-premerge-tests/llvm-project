@@ -449,8 +449,8 @@ private:
   SmallVector<std::tuple<SMLoc, CppHashInfoTy, MCSymbol *>, 4> DirLabels;
 
   /// AssemblerDialect. ~OU means unset value and use value provided by MAI.
-  /// Defaults to 1U, meaning Intel.
-  unsigned AssemblerDialect = 1U;
+  /// Defaults to Intel.
+  AsmDialect::Type AssemblerDialect = AsmDialect::X86_Intel;
 
   /// is Darwin compatibility enabled?
   bool IsDarwin = false;
@@ -498,13 +498,13 @@ public:
 
   CodeViewContext &getCVContext() { return Ctx.getCVContext(); }
 
-  unsigned getAssemblerDialect() override {
+  AsmDialect::Type getAssemblerDialect() override {
     if (AssemblerDialect == ~0U)
       return MAI.getAssemblerDialect();
     else
       return AssemblerDialect;
   }
-  void setAssemblerDialect(unsigned i) override {
+  void setAssemblerDialect(AsmDialect::Type i) override {
     AssemblerDialect = i;
   }
 

@@ -71,12 +71,13 @@ createMSP430MCSubtargetInfo(const Triple &TT, StringRef CPU, StringRef FS) {
 }
 
 static MCInstPrinter *createMSP430MCInstPrinter(const Triple &T,
-                                                unsigned SyntaxVariant,
+                                                AsmDialect::Type Variant,
                                                 const MCAsmInfo &MAI,
                                                 const MCInstrInfo &MII,
                                                 const MCRegisterInfo &MRI) {
-  if (SyntaxVariant == 0)
+  if (Variant == AsmDialect::MSP430_Generic)
     return new MSP430InstPrinter(MAI, MII, MRI);
+  assert(false && "Unknown or unsupported syntax variant.");
   return nullptr;
 }
 

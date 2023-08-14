@@ -468,14 +468,15 @@ static MCAsmInfo *createX86MCAsmInfo(const MCRegisterInfo &MRI,
 }
 
 static MCInstPrinter *createX86MCInstPrinter(const Triple &T,
-                                             unsigned SyntaxVariant,
+                                             AsmDialect::Type Variant,
                                              const MCAsmInfo &MAI,
                                              const MCInstrInfo &MII,
                                              const MCRegisterInfo &MRI) {
-  if (SyntaxVariant == 0)
+  if (Variant == AsmDialect::X86_ATT)
     return new X86ATTInstPrinter(MAI, MII, MRI);
-  if (SyntaxVariant == 1)
+  else if (Variant == AsmDialect::X86_Intel)
     return new X86IntelInstPrinter(MAI, MII, MRI);
+  assert(false && "Unknown or unsupported syntax variant.");
   return nullptr;
 }
 
