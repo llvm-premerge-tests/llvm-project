@@ -13,6 +13,8 @@
 
 namespace clang::tidy::bugprone {
 
+inline constexpr bool DefaultIgnoreMacros = false;
+
 /// Detect when __func__ or __FUNCTION__ is being used from within a lambda. In
 /// that context, those expressions expand to the name of the call operator
 /// (i.e., `operator()`).
@@ -32,7 +34,8 @@ public:
   using SourceRangeSet = std::set<SourceRange, SourceRangeLessThan>;
 
   LambdaFunctionNameCheck(StringRef Name, ClangTidyContext *Context)
-      : ClangTidyCheck(Name, Context) {}
+      : ClangTidyCheck(Name, Context),
+        IgnoreMacros(Options.get("IgnoreMacros", DefaultIgnoreMacros)) {}
   void registerMatchers(ast_matchers::MatchFinder *Finder) override;
   void registerPPCallbacks(const SourceManager &SM, Preprocessor *PP,
                            Preprocessor *ModuleExpanderPP) override;
@@ -40,6 +43,7 @@ public:
 
 private:
   SourceRangeSet SuppressMacroExpansions;
+  bool IgnoreMacros;
 };
 
 } // namespace clang::tidy::bugprone
