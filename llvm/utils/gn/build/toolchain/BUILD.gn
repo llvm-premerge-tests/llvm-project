@@ -219,10 +219,13 @@ stage2_unix_toolchain("stage2_unix") {
 }
 
 if (android_ndk_path != "") {
+  # Android compiler-rt libraries don't really work with per-target runtime
+  # directories yet so force it off.
   stage2_unix_toolchain("stage2_android_aarch64") {
     toolchain_args = {
       current_os = "android"
       current_cpu = "arm64"
+      clang_enable_per_target_runtime_dir = false
     }
   }
 
@@ -230,6 +233,7 @@ if (android_ndk_path != "") {
     toolchain_args = {
       current_os = "android"
       current_cpu = "arm"
+      clang_enable_per_target_runtime_dir = false
     }
   }
 
@@ -237,6 +241,7 @@ if (android_ndk_path != "") {
     toolchain_args = {
       current_os = "android"
       current_cpu = "x64"
+      clang_enable_per_target_runtime_dir = false
     }
   }
 
@@ -244,6 +249,7 @@ if (android_ndk_path != "") {
     toolchain_args = {
       current_os = "android"
       current_cpu = "x86"
+      clang_enable_per_target_runtime_dir = false
     }
   }
 }
