@@ -1,0 +1,42 @@
+#===----------------------------------------------------------------------===##
+#
+# Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+# See https://llvm.org/LICENSE.txt for license information.
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+#
+#===----------------------------------------------------------------------===##
+
+FROM emulator-base
+
+ARG API  # e.g. 21
+RUN sdkmanager --install "platforms;android-${API}"
+
+ARG TYPE  # one of: default, google_apis, or google_apis_playstore
+ARG ABI   # e.g. armeabi-v7a, x86
+ENV EMU_PACKAGE_NAME="system-images;android-${API};${TYPE};${ABI}"
+RUN sdkmanager --install "${EMU_PACKAGE_NAME}"
+
+COPY ./emulator-wait-for-ready.sh /opt/emulator/bin/emulator-wait-for-ready.sh
+COPY ./emulator-entrypoint.sh /opt/emulator/bin/emulator-entrypoint.sh
+
+# Setup password-less sudo so that /dev/kvm permissions can be changed. Run the
+# emulator in an unprivileged user for reliability (and it might require it?)
+RUN echo "ALL ALL = (ALL) NOPASSWD: ALL" >> /etc/sudoers
+RUN useradd --create-home emulator
+USER emulator
+WORKDIR /home/emulator
+
+ENV ANDROID_HOME /opt/android/sdk
+ENV PATH="${ANDROID_HOME}/cmdline-tools/latest/bin:${PATH}"
+ENV PATH="${ANDROID_HOME}/platform-tools:${PATH}"
+ENV PATH="${ANDROID_HOME}/emulator:${PATH}"
+ENV PATH="/opt/emulator/bin:${PATH}"
+
+# Size of emulator /data partition in megabytes.
+ENV EMU_PARTITION_SIZE=8192
+
+EXPOSE 5037
+
+HEALTHCHECK CMD emulator-wait-for-ready.sh 5
+
+ENTRYPOINT ["emulator-entrypoint.sh"]
