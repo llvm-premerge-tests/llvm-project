@@ -942,6 +942,7 @@ enum NodeType {
   FLOG10,
   FEXP,
   FEXP2,
+  FEXP10,
   FCEIL,
   FTRUNC,
   FRINT,
