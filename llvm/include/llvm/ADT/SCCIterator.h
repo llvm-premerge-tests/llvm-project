@@ -282,7 +282,7 @@ class scc_member_iterator {
       return false;
 
     // Make the smaller rank tree a direct child or the root of high rank tree.
-    if (G1->Rank < G1->Rank)
+    if (G1->Rank < G2->Rank)
       G1->Group = G2;
     else {
       G2->Group = G1;
