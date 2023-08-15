@@ -29,7 +29,13 @@ public:
   void SetAddressableBits(uint32_t lowmem_addressing_bits,
                           uint32_t highmem_addressing_bits);
 
+  void SetLowmemAddressableBits(uint32_t lowmem_addressing_bits);
+
+  void SetHighmemAddressableBits(uint32_t highmem_addressing_bits);
+
   void SetProcessMasks(lldb_private::Process &process);
+
+  bool IsValid();
 
   void Clear();
 
