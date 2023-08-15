@@ -947,7 +947,6 @@ static const CycleT *getExtDivCycle(const CycleT *Cycle,
     return nullptr;
 
   if (Cycle->isReducible()) {
-    assert(Cycle->getHeader() == JoinBlock);
     return nullptr;
   }
 
