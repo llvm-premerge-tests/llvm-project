@@ -272,6 +272,7 @@ endfunction()
 #   SOURCES: Same as declare_mlir_python_sources().
 #   SOURCES_GLOB: Same as declare_mlir_python_sources().
 #   DEPENDS: Additional dependency targets.
+#   ENUM_GEN: Generate enum mappings.
 #
 # TODO: Right now `TD_FILE` can't be the actual dialect tablegen file, since we
 #       use its path to determine where to place the generated python file. If
@@ -279,7 +280,7 @@ endfunction()
 #       need for the separate "wrapper" .td files
 function(declare_mlir_dialect_python_bindings)
   cmake_parse_arguments(ARG
-    ""
+    "ENUM_GEN"
     "ROOT_DIR;ADD_TO_PARENT;TD_FILE;DIALECT_NAME"
     "SOURCES;SOURCES_GLOB;DEPENDS"
     ${ARGN})
@@ -306,11 +307,18 @@ function(declare_mlir_dialect_python_bindings)
     )
     add_public_tablegen_target(${tblgen_target})
 
+    set(_sources ${dialect_filename})
+    if(ARG_ENUM_GEN)
+      set(enum_filename "${relative_td_directory}/_${ARG_DIALECT_NAME}_enum_gen.py")
+      mlir_tablegen(${enum_filename} -gen-python-enum-bindings)
+      list(APPEND _sources ${enum_filename})
+    endif()
+
     # Generated.
     declare_mlir_python_sources("${_dialect_target}.ops_gen"
       ROOT_DIR "${CMAKE_CURRENT_BINARY_DIR}"
       ADD_TO_PARENT "${_dialect_target}"
-      SOURCES "${dialect_filename}"
+      SOURCES ${_sources}
     )
   endif()
 endfunction()
@@ -333,7 +341,7 @@ endfunction()
 #   DEPENDS: Additional dependency targets.
 function(declare_mlir_dialect_extension_python_bindings)
   cmake_parse_arguments(ARG
-    ""
+    "ENUM_GEN"
     "ROOT_DIR;ADD_TO_PARENT;TD_FILE;DIALECT_NAME;EXTENSION_NAME"
     "SOURCES;SOURCES_GLOB;DEPENDS"
     ${ARGN})
@@ -362,10 +370,17 @@ function(declare_mlir_dialect_extension_python_bindings)
       add_dependencies(${tblgen_target} ${ARG_DEPENDS})
     endif()
 
+    set(_sources ${output_filename})
+    if(ARG_ENUM_GEN)
+      set(enum_filename "${relative_td_directory}/_${ARG_EXTENSION_NAME}_enum_gen.py")
+      mlir_tablegen(${enum_filename} -gen-python-enum-bindings)
+      list(APPEND _sources ${enum_filename})
+    endif()
+
     declare_mlir_python_sources("${_extension_target}.ops_gen"
       ROOT_DIR "${CMAKE_CURRENT_BINARY_DIR}"
       ADD_TO_PARENT "${_extension_target}"
-      SOURCES "${output_filename}"
+      SOURCES ${_sources}
     )
   endif()
 endfunction()
