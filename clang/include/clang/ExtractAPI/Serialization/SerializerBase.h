@@ -33,6 +33,14 @@ public:
 
     getDerived()->traverseCXXClassRecords();
 
+    getDerived()->traverseClassTemplateRecords();
+
+    getDerived()->traverseClassTemplateSpecRecords();
+
+    getDerived()->traverseClassTemplatePartialSpecRecords();
+
+    getDerived()->traverseConcepts();
+
     getDerived()->traverseStructRecords();
 
     getDerived()->traverseObjCInterfaces();
@@ -76,6 +84,28 @@ public:
       getDerived()->visitCXXClassRecord(*Class.second);
   }
 
+  void traverseClassTemplateRecords() {
+    for (const auto &ClassTemplate : API.getClassTemplates())
+      getDerived()->visitClassTemplateRecord(*ClassTemplate.second);
+  }
+
+  void traverseClassTemplateSpecRecords() {
+    for (const auto &ClassTemplateSpec : API.getClassTemplateSpecializations())
+      getDerived()->visitClassTemplateSpecRecord(*ClassTemplateSpec.second);
+  }
+
+  void traverseClassTemplatePartialSpecRecords() {
+    for (const auto &ClassTemplatePartialSpec :
+         API.getClassTemplatePartialSpecializations())
+      getDerived()->visitClassTemplatePartialSpecRecord(
+          *ClassTemplatePartialSpec.second);
+  }
+
+  void traverseConcepts() {
+    for (const auto &Concept : API.getConcepts())
+      getDerived()->visitConceptRecord(*Concept.second);
+  }
+
   void traverseObjCInterfaces() {
     for (const auto &Interface : API.getObjCInterfaces())
       getDerived()->visitObjCContainerRecord(*Interface.second);
@@ -116,6 +146,13 @@ public:
   void visitStaticFieldRecord(const StaticFieldRecord &Record){};
 
   void visitCXXClassRecord(const CXXClassRecord &Record){};
+
+  void visitClassTemplateRecord(const ClassTemplateRecord &Record){};
+
+  void visitClassTemplateSpecRecord(const ClassTemplateSpecRecord &Record){};
+
+  void visitClassTemplatePartialSpecRecord(
+      const ClassTemplatePartialSpecRecord &Record){};
 
   /// Visit an Objective-C container record.
   void visitObjCContainerRecord(const ObjCContainerRecord &Record){};
