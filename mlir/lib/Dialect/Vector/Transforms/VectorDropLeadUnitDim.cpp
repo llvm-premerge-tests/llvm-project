@@ -25,10 +25,16 @@ static VectorType trimLeadingOneDims(VectorType oldType) {
   ArrayRef<int64_t> oldShape = oldType.getShape();
   ArrayRef<int64_t> newShape =
       oldShape.drop_while([](int64_t dim) { return dim == 1; });
+
+  auto newScalableDims =
+      oldType.getScalableDims().drop_front(oldShape.size() - newShape.size());
+
   // Make sure we have at least 1 dimension per vector type requirements.
-  if (newShape.empty())
+  if (newShape.empty()) {
     newShape = oldShape.take_back();
-  return VectorType::get(newShape, oldType.getElementType());
+    newScalableDims = oldType.getScalableDims().take_back();
+  }
+  return VectorType::get(newShape, oldType.getElementType(), newScalableDims);
 }
 
 /// Return a smallVector of size `rank` containing all zeros.
