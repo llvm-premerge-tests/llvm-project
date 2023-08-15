@@ -78,6 +78,30 @@ GlobalFunctionRecord *APISet::addGlobalFunction(
                            IsFromSystemHeader);
 }
 
+GlobalFunctionTemplateRecord *APISet::addGlobalFunctionTemplate(
+    StringRef Name, StringRef USR, PresumedLoc Loc,
+    AvailabilitySet Availability, LinkageInfo Linkage,
+    const DocComment &Comment, DeclarationFragments Declaration,
+    DeclarationFragments SubHeading, FunctionSignature Signature,
+    Template Template, bool IsFromSystemHeader) {
+  return addTopLevelRecord(USRBasedLookupTable, GlobalFunctionTemplates, USR,
+                           Name, Loc, std::move(Availability), Linkage, Comment,
+                           Declaration, SubHeading, Signature, Template,
+                           IsFromSystemHeader);
+}
+
+GlobalFunctionTemplateSpecRecord *APISet::addGlobalFunctionTemplateSpec(
+    StringRef Name, StringRef USR, PresumedLoc Loc,
+    AvailabilitySet Availability, LinkageInfo Linkage,
+    const DocComment &Comment, DeclarationFragments Declaration,
+    DeclarationFragments SubHeading, FunctionSignature Signature,
+    bool IsFromSystemHeader) {
+  return addTopLevelRecord(
+      USRBasedLookupTable, GlobalFunctionTemplateSpecializations, USR, Name,
+      Loc, std::move(Availability), Linkage, Comment, Declaration, SubHeading,
+      Signature, IsFromSystemHeader);
+}
+
 EnumConstantRecord *APISet::addEnumConstant(EnumRecord *Enum, StringRef Name,
                                             StringRef USR, PresumedLoc Loc,
                                             AvailabilitySet Availabilities,
