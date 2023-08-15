@@ -23,7 +23,7 @@ define i32 @vec_to_int() {
 ; CHECK-NEXT:  .LBB0_1: @ %bb.1
 ; CHECK-NEXT:    vldmia sp, {d16, d17} @ 16-byte Reload
 ; CHECK-NEXT:    vrev32.16 q8, q8
-; CHECK-NEXT:    vmov.f64 d16, d17
+; CHECK-NEXT:    @ kill: def $d16 killed $d16 killed $q8
 ; CHECK-NEXT:    vmov.32 r0, d16[0]
 ; CHECK-NEXT:    add sp, sp, #28
 ; CHECK-NEXT:    pop {r4}

@@ -487,8 +487,12 @@ def DSubReg_i16_reg : SDNodeXForm<imm, [{
 }]>;
 def DSubReg_i32_reg : SDNodeXForm<imm, [{
   assert(ARM::dsub_7 == ARM::dsub_0+7 && "Unexpected subreg numbering");
-  return CurDAG->getTargetConstant(ARM::dsub_0 + N->getZExtValue()/2, SDLoc(N),
-                                   MVT::i32);
+  if (CurDAG->getDataLayout().isBigEndian())
+    return CurDAG->getTargetConstant(ARM::dsub_1 - N->getZExtValue()/2, SDLoc(N),
+                                    MVT::i32);
+  else
+    return CurDAG->getTargetConstant(ARM::dsub_0 + N->getZExtValue()/2, SDLoc(N),
+                                    MVT::i32);
 }]>;
 def DSubReg_f64_reg : SDNodeXForm<imm, [{
   assert(ARM::dsub_7 == ARM::dsub_0+7 && "Unexpected subreg numbering");
