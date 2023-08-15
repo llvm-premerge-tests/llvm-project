@@ -161,6 +161,31 @@ ErrorOr<File *> openfile(const char *path, const char *mode) {
   return file;
 }
 
+ErrorOr<File *> openfile(int fd, const char *mode) {
+  auto modeflags = File::mode_flags(mode);
+  if (modeflags == 0) {
+    // return {nullptr, EINVAL};
+    return Error(EINVAL);
+  }
+
+  if (fd < 0)
+    return Error(-fd);
+
+  uint8_t *buffer;
+  {
+    AllocChecker ac;
+    buffer = new (ac) uint8_t[File::DEFAULT_BUFFER_SIZE];
+    if (!ac)
+      return Error(ENOMEM);
+  }
+  AllocChecker ac;
+  auto *file = new (ac)
+      LinuxFile(fd, buffer, File::DEFAULT_BUFFER_SIZE, _IOFBF, true, modeflags);
+  if (!ac)
+    return Error(ENOMEM);
+  return file;
+}
+
 int get_fileno(File *f) {
   auto *lf = reinterpret_cast<LinuxFile *>(f);
   return lf->get_fd();
