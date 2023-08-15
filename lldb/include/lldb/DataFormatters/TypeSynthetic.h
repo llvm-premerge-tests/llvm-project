@@ -228,9 +228,9 @@ public:
     uint32_t m_flags = lldb::eTypeOptionCascade;
   };
 
-  SyntheticChildren(const Flags &flags) : m_flags(flags) {}
+  SyntheticChildren(const Flags &flags);
 
-  virtual ~SyntheticChildren() = default;
+  virtual ~SyntheticChildren();
 
   bool Cascades() const { return m_flags.GetCascades(); }
 
@@ -239,8 +239,8 @@ public:
   bool SkipsReferences() const { return m_flags.GetSkipReferences(); }
 
   bool NonCacheable() const { return m_flags.GetNonCacheable(); }
-  
-  bool WantsDereference() const { return m_flags.GetFrontEndWantsDereference();} 
+
+  bool WantsDereference() const { return m_flags.GetFrontEndWantsDereference();}
 
   void SetCascades(bool value) { m_flags.SetCascades(value); }
 
@@ -254,12 +254,12 @@ public:
 
   void SetOptions(uint32_t value) { m_flags.SetValue(value); }
 
-  virtual bool IsScripted() = 0;
+  virtual bool IsScripted();
 
-  virtual std::string GetDescription() = 0;
+  virtual std::string GetDescription();
 
   virtual SyntheticChildrenFrontEnd::AutoPointer
-  GetFrontEnd(ValueObject &backend) = 0;
+  GetFrontEnd(ValueObject &backend);
 
   typedef std::shared_ptr<SyntheticChildren> SharedPointer;
 
@@ -361,9 +361,9 @@ public:
                                                     lldb::ValueObjectSP)>
       CreateFrontEndCallback;
   CXXSyntheticChildren(const SyntheticChildren::Flags &flags,
-                       const char *description, CreateFrontEndCallback callback)
-      : SyntheticChildren(flags), m_create_callback(std::move(callback)),
-        m_description(description ? description : "") {}
+                       const char *description, CreateFrontEndCallback callback);
+
+  virtual ~CXXSyntheticChildren();
 
   bool IsScripted() override { return false; }
 
