@@ -39,9 +39,15 @@ public:
 
     getDerived()->traverseClassTemplatePartialSpecRecords();
 
+    getDerived()->traverseCXXInstanceMethods();
+
+    getDerived()->traverseCXXStaticMethods();
+
     getDerived()->traverseCXXMethodTemplates();
 
     getDerived()->traverseCXXMethodTemplateSpecializations();
+
+    getDerived()->traverseCXXFields();
 
     getDerived()->traverseCXXFieldTemplates();
 
@@ -126,6 +132,21 @@ public:
          API.getClassTemplatePartialSpecializations())
       getDerived()->visitClassTemplatePartialSpecRecord(
           *ClassTemplatePartialSpec.second);
+  }
+
+  void traverseCXXInstanceMethods() {
+    for (const auto &InstanceMethod : API.getCXXInstanceMethods())
+      getDerived()->visitCXXInstanceMethodRecord(*InstanceMethod.second);
+  }
+
+  void traverseCXXStaticMethods() {
+    for (const auto &InstanceMethod : API.getCXXStaticMethods())
+      getDerived()->visitCXXStaticMethodRecord(*InstanceMethod.second);
+  }
+
+  void traverseCXXFields() {
+    for (const auto &CXXField : API.getCXXFields())
+      getDerived()->visitCXXFieldRecord(*CXXField.second);
   }
 
   void traverseCXXFieldTemplates() {
@@ -218,6 +239,10 @@ public:
 
   void visitClassTemplatePartialSpecRecord(
       const ClassTemplatePartialSpecRecord &Record){};
+
+  void visitCXXInstanceRecord(const CXXInstanceMethodRecord &Record){};
+
+  void visitCXXStaticRecord(const CXXStaticMethodRecord &Record){};
 
   void visitMethodTemplateRecord(const CXXMethodTemplateRecord &Record){};
 

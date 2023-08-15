@@ -182,9 +182,15 @@ public:
   void visitClassTemplatePartialSpecRecord(
       const ClassTemplatePartialSpecRecord &Record);
 
+  void visitCXXInstanceMethodRecord(const CXXInstanceMethodRecord &Record);
+
+  void visitCXXStaticMethodRecord(const CXXStaticMethodRecord &Record);
+
   void visitMethodTemplateRecord(const CXXMethodTemplateRecord &Record);
 
   void visitMethodTemplateSpecRecord(const CXXMethodTemplateSpecRecord &Record);
+
+  void visitCXXFieldRecord(const CXXFieldRecord &Record);
 
   void visitCXXFieldTemplateRecord(const CXXFieldTemplateRecord &Record);
 
