@@ -53,6 +53,8 @@ Changes to the LLVM IR
 * The `llvm.stacksave` and `llvm.stackrestore` intrinsics now use
   an overloaded pointer type to support non-0 address spaces.
 
+* Added `llvm.exp10` intrinsic.
+
 Changes to LLVM infrastructure
 ------------------------------
 
