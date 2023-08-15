@@ -193,6 +193,7 @@
 #include "AArch64TargetMachine.h"
 #include "MCTargetDesc/AArch64AddressingModes.h"
 #include "MCTargetDesc/AArch64MCTargetDesc.h"
+#include "Utils/AArch64PointerAuth.h"
 #include "llvm/ADT/ScopeExit.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/Statistic.h"
@@ -258,6 +259,13 @@ cl::opt<bool> EnableHomogeneousPrologEpilog(
     cl::desc("Emit homogeneous prologue and epilogue for the size "
              "optimization (default = off)"));
 
+// TODO Not default to DummyLoad method if execute-only segments are needed.
+cl::opt<AuthCheckMethod> AuthenticatedLRCheckMethod(
+    "aarch64-authenticated-lr-check-method", cl::Hidden,
+    cl::init(AuthCheckMethod::DummyLoad),
+    cl::desc("Variant of check applied to authenticated LR during tail call"),
+    cl::values(AUTH_CHECK_METHOD_CL_VALUES_LR));
+
 STATISTIC(NumRedZoneFunctions, "Number of functions using red zone");
 
 /// Returns how much of the incoming argument stack area (in bytes) we should
@@ -269,14 +277,10 @@ STATISTIC(NumRedZoneFunctions, "Number of functions using red zone");
 static int64_t getArgumentStackToRestore(MachineFunction &MF,
                                          MachineBasicBlock &MBB) {
   MachineBasicBlock::iterator MBBI = MBB.getLastNonDebugInstr();
-  bool IsTailCallReturn = false;
-  if (MBB.end() != MBBI) {
-    unsigned RetOpcode = MBBI->getOpcode();
-    IsTailCallReturn = RetOpcode == AArch64::TCRETURNdi ||
-                       RetOpcode == AArch64::TCRETURNri ||
-                       RetOpcode == AArch64::TCRETURNriBTI;
-  }
   AArch64FunctionInfo *AFI = MF.getInfo<AArch64FunctionInfo>();
+  bool IsTailCallReturn = (MBB.end() != MBBI)
+                              ? AArch64InstrInfo::isTailCallReturnInst(*MBBI)
+                              : false;
 
   int64_t ArgumentPopSize = 0;
   if (IsTailCallReturn) {
@@ -1963,6 +1967,51 @@ void AArch64FrameLowering::authenticateLR(MachineFunction &MF,
   }
 }
 
+MachineBasicBlock &
+AArch64FrameLowering::checkAuthenticatedLR(MachineFunction &MF,
+                                           MachineBasicBlock &MBB) {
+  const auto &Subtarget = MF.getSubtarget<AArch64Subtarget>();
+  const auto *TRI = Subtarget.getRegisterInfo();
+
+  auto TI = MBB.getFirstTerminator();
+  if (TI == MBB.end())
+    return MBB;
+
+  // Only explicitly check LR if we are performing tail call.
+  if (!AArch64InstrInfo::isTailCallReturnInst(*TI))
+    return MBB;
+
+  Register TmpReg =
+      TI->readsRegister(AArch64::X16, TRI) ? AArch64::X17 : AArch64::X16;
+  assert(!TI->readsRegister(TmpReg, TRI) &&
+         "More than a single register is used by TCRETURN");
+
+  // The following code may create a signing oracle:
+  //
+  //   <authenticate LR>
+  //   TCRETURN          ; the callee may sign and spill the LR in its prologue
+  //
+  // To avoid generating a signing oracle, check the authenticated value
+  // before possibly re-signing it in the callee, as follows:
+  //
+  //   <authenticate LR>
+  //   <check if LR contains a valid address>
+  //   b.<cond> break_block
+  // ret_block:
+  //   TCRETURN
+  // break_block:
+  //   brk 0xc471
+  //
+  // or just
+  //
+  //   <authenticate LR>
+  //   ldr tmp, [lr]
+  //   TCRETURN
+
+  return checkAuthenticatedRegister(TI, AuthenticatedLRCheckMethod, AArch64::LR,
+                                    TmpReg, /*UseIKey=*/true, 0xc471);
+}
+
 static bool isFuncletReturnInstr(const MachineInstr &MI) {
   switch (MI.getOpcode()) {
   default:
@@ -1993,14 +2042,22 @@ void AArch64FrameLowering::emitEpilogue(MachineFunction &MF,
   }
 
   auto FinishingTouches = make_scope_exit([&]() {
+    MachineBasicBlock *RetMBB = &MBB;
+
     if (AFI->shouldSignReturnAddress(MF))
       authenticateLR(MF, MBB, NeedsWinCFI, &HasWinCFI);
+
     if (needsShadowCallStackPrologueEpilogue(MF))
       emitShadowCallStackEpilogue(*TII, MF, MBB, MBB.getFirstTerminator(), DL);
+    else if (AFI->shouldSignReturnAddress(MF))
+      RetMBB = &checkAuthenticatedLR(MF, MBB);
+
+    // checkAuthenticatedLR() may have split MBB at this point.
+
     if (EmitCFI)
-      emitCalleeSavedGPRRestores(MBB, MBB.getFirstTerminator());
+      emitCalleeSavedGPRRestores(*RetMBB, RetMBB->getFirstTerminator());
     if (HasWinCFI)
-      BuildMI(MBB, MBB.getFirstTerminator(), DL,
+      BuildMI(*RetMBB, RetMBB->getFirstTerminator(), DL,
               TII->get(AArch64::SEH_EpilogEnd))
           .setMIFlag(MachineInstr::FrameDestroy);
   });

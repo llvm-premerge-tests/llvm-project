@@ -170,6 +170,7 @@ define fastcc void @spill_lr_and_tail_call(i64 %x) "sign-return-address"="all" {
 ; COMPAT-NEXT:    //NO_APP
 ; COMPAT-NEXT:    ldr x30, [sp], #16 // 8-byte Folded Reload
 ; COMPAT-NEXT:    hint #29
+; COMPAT-NEXT:    ldr w16, [x30]
 ; COMPAT-NEXT:    b bar
 ;
 ; V83A-LABEL: spill_lr_and_tail_call:
@@ -184,6 +185,7 @@ define fastcc void @spill_lr_and_tail_call(i64 %x) "sign-return-address"="all" {
 ; V83A-NEXT:    //NO_APP
 ; V83A-NEXT:    ldr x30, [sp], #16 // 8-byte Folded Reload
 ; V83A-NEXT:    autiasp
+; V83A-NEXT:    ldr w16, [x30]
 ; V83A-NEXT:    b bar
   call void asm sideeffect "mov x30, $0", "r,~{lr}"(i64 %x) #1
   tail call fastcc i64 @bar(i64 %x)

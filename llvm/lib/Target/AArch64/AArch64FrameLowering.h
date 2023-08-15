@@ -37,6 +37,13 @@ public:
   static void authenticateLR(MachineFunction &MF, MachineBasicBlock &MBB,
                              bool NeedsWinCFI, bool *HasWinCFI);
 
+  /// Checks authenticated LR just before the TCRETURN* instruction.
+  ///
+  /// This function may split MBB - in that case, the returned basic block
+  /// is the new block containing the return instruction.
+  static MachineBasicBlock &checkAuthenticatedLR(MachineFunction &MF,
+                                                 MachineBasicBlock &MBB);
+
   /// emitProlog/emitEpilog - These methods insert prolog and epilog code into
   /// the function.
   void emitPrologue(MachineFunction &MF, MachineBasicBlock &MBB) const override;

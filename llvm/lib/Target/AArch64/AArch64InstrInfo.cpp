@@ -2454,6 +2454,20 @@ bool AArch64InstrInfo::isPairableLdStInst(const MachineInstr &MI) {
   }
 }
 
+bool AArch64InstrInfo::isTailCallReturnInst(const MachineInstr &MI) {
+  switch (MI.getOpcode()) {
+  default:
+    assert((!MI.isCall() || !MI.isReturn()) &&
+           "Unexpected instruction - was a new tail call opcode introduced?");
+    return false;
+  case AArch64::TCRETURNdi:
+  case AArch64::TCRETURNri:
+  case AArch64::TCRETURNriBTI:
+  case AArch64::TCRETURNriALL:
+    return true;
+  }
+}
+
 unsigned AArch64InstrInfo::convertToFlagSettingOpc(unsigned Opc) {
   switch (Opc) {
   default:

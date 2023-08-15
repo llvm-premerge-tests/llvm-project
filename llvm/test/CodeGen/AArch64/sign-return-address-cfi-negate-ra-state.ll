@@ -75,6 +75,7 @@ define hidden noundef i32 @baz_async(i32 noundef %a) #0 uwtable(async) {
 ; CHECK-V8A-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK-V8A-NEXT:    hint #29
 ; CHECK-V8A-NEXT:    .cfi_negate_ra_state
+; CHECK-V8A-NEXT:    ldr w16, [x30]
 ; CHECK-V8A-NEXT:    .cfi_restore w30
 ; CHECK-V8A-NEXT:    b _Z3bari
 ; CHECK-V8A-NEXT:  .LBB1_2: // %if.else
@@ -104,6 +105,7 @@ define hidden noundef i32 @baz_async(i32 noundef %a) #0 uwtable(async) {
 ; CHECK-V83A-NEXT:    .cfi_def_cfa_offset 0
 ; CHECK-V83A-NEXT:    autiasp
 ; CHECK-V83A-NEXT:    .cfi_negate_ra_state
+; CHECK-V83A-NEXT:    ldr w16, [x30]
 ; CHECK-V83A-NEXT:    .cfi_restore w30
 ; CHECK-V83A-NEXT:    b _Z3bari
 ; CHECK-V83A-NEXT:  .LBB1_2: // %if.else
@@ -151,6 +153,7 @@ define hidden noundef i32 @baz_sync(i32 noundef %a) #0 uwtable(sync) {
 ; CHECK-V8A-NEXT:    bl _Z3bari
 ; CHECK-V8A-NEXT:    ldr x30, [sp], #16 // 8-byte Folded Reload
 ; CHECK-V8A-NEXT:    hint #29
+; CHECK-V8A-NEXT:    ldr w16, [x30]
 ; CHECK-V8A-NEXT:    b _Z3bari
 ; CHECK-V8A-NEXT:  .LBB2_2: // %if.else
 ; CHECK-V8A-NEXT:    bl _Z4quuxi
@@ -172,6 +175,7 @@ define hidden noundef i32 @baz_sync(i32 noundef %a) #0 uwtable(sync) {
 ; CHECK-V83A-NEXT:    bl _Z3bari
 ; CHECK-V83A-NEXT:    ldr x30, [sp], #16 // 8-byte Folded Reload
 ; CHECK-V83A-NEXT:    autiasp
+; CHECK-V83A-NEXT:    ldr w16, [x30]
 ; CHECK-V83A-NEXT:    b _Z3bari
 ; CHECK-V83A-NEXT:  .LBB2_2: // %if.else
 ; CHECK-V83A-NEXT:    bl _Z4quuxi
