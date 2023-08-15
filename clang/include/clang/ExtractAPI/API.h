@@ -73,6 +73,7 @@ struct APIRecord {
     RK_Union,
     RK_StaticField,
     RK_CXXField,
+    RK_CXXFieldTemplate,
     RK_CXXClass,
     RK_ClassTemplate,
     RK_ClassTemplateSpecialization,
@@ -429,6 +430,25 @@ struct CXXFieldRecord : APIRecord {
 
 private:
   virtual void anchor();
+};
+
+struct CXXFieldTemplateRecord : CXXFieldRecord {
+  Template Templ;
+
+  CXXFieldTemplateRecord(StringRef USR, StringRef Name, PresumedLoc Loc,
+                         AvailabilitySet Availabilities,
+                         const DocComment &Comment,
+                         DeclarationFragments Declaration,
+                         DeclarationFragments SubHeading, AccessControl Access,
+                         Template Template, bool IsFromSystemHeader)
+      : CXXFieldRecord(RK_CXXFieldTemplate, USR, Name, Loc,
+                       std::move(Availabilities), Comment, Declaration,
+                       SubHeading, Access, IsFromSystemHeader),
+        Templ(Template) {}
+
+  static bool classof(const APIRecord *Record) {
+    return Record->getKind() == RK_CXXFieldTemplate;
+  }
 };
 
 struct CXXMethodRecord : APIRecord {
@@ -1019,8 +1039,9 @@ template <> struct has_access<CXXFieldRecord> : public std::true_type {};
 template <>
 struct has_access<CXXMethodTemplateRecord> : public std::true_type {};
 template <>
-struct has_access<CXXMethodTemplateSpecRecord>
-    : public std::true_type {};
+struct has_access<CXXMethodTemplateSpecRecord> : public std::true_type {};
+template <>
+struct has_access<CXXFieldTemplateRecord> : public std::true_type {};
 
 template <typename RecordTy> struct has_template : public std::false_type {};
 template <> struct has_template<ClassTemplateRecord> : public std::true_type {};
@@ -1036,6 +1057,8 @@ template <>
 struct has_template<GlobalFunctionTemplateRecord> : public std::true_type {};
 template <>
 struct has_template<CXXMethodTemplateRecord> : public std::true_type {};
+template <>
+struct has_template<CXXFieldTemplateRecord> : public std::true_type {};
 
 /// APISet holds the set of API records collected from given inputs.
 class APISet {
@@ -1149,6 +1172,12 @@ public:
                               DeclarationFragments Declaration,
                               DeclarationFragments SubHeading,
                               AccessControl Access, bool IsFromSystemHeader);
+
+  CXXFieldTemplateRecord *addCXXFieldTemplate(
+      APIRecord *Parent, StringRef Name, StringRef USR, PresumedLoc Loc,
+      AvailabilitySet Availability, const DocComment &Comment,
+      DeclarationFragments Declaration, DeclarationFragments SubHeading,
+      AccessControl Access, Template Template, bool IsFromSystemHeader);
 
   CXXClassRecord *
   addCXXClass(StringRef Name, StringRef USR, PresumedLoc Loc,
@@ -1379,6 +1408,9 @@ public:
   getCXXMethodTemplateSpecializations() const {
     return CXXMethodTemplateSpecializations;
   }
+  const RecordMap<CXXFieldTemplateRecord> &getCXXFieldTemplates() const {
+    return CXXFieldTemplates;
+  }
   const RecordMap<ConceptRecord> &getConcepts() const { return Concepts; }
   const RecordMap<ClassTemplateRecord> &getClassTemplates() const {
     return ClassTemplates;
@@ -1460,6 +1492,7 @@ private:
   RecordMap<CXXClassRecord> CXXClasses;
   RecordMap<CXXMethodTemplateRecord> CXXMethodTemplates;
   RecordMap<CXXMethodTemplateSpecRecord> CXXMethodTemplateSpecializations;
+  RecordMap<CXXFieldTemplateRecord> CXXFieldTemplates;
   RecordMap<ClassTemplateRecord> ClassTemplates;
   RecordMap<ClassTemplateSpecRecord> ClassTemplateSpecializations;
   RecordMap<ClassTemplatePartialSpecRecord> ClassTemplatePartialSpecializations;
