@@ -244,7 +244,12 @@ void llvm::CloneFunctionInto(Function *NewFunc, const Function *OldFunc,
       mapToSelfIfNew(CU);
 
     for (DIType *Type : DIFinder->types())
-      mapToSelfIfNew(Type);
+      // Don't skip subprogram's local types.
+      if (!isa_and_present<DILocalScope>(Type->getScope()) ||
+          SPClonedWithinModule == nullptr ||
+          dyn_cast<DILocalScope>(Type->getScope())->getSubprogram() !=
+              SPClonedWithinModule)
+        mapToSelfIfNew(Type);
   } else {
     assert(!SPClonedWithinModule &&
            "Subprogram should be in DIFinder->subprogram_count()...");
@@ -270,6 +275,32 @@ void llvm::CloneFunctionInto(Function *NewFunc, const Function *OldFunc,
     // Loop over all instructions, fixing each one as we find it...
     for (Instruction &II : *BB)
       RemapInstruction(&II, VMap, RemapFlag, TypeMapper, Materializer);
+
+  if (SPClonedWithinModule != nullptr) {
+    if (DICompileUnit *CU = SPClonedWithinModule->getUnit()) {
+      // If we cloned the type, referenced by DICompileUnit, we must add a
+      // reference on it.
+      SmallVector<Metadata *> TypesToAdd;
+      for (DIScope *S : CU->getRetainedTypes()) {
+        if (DIType *Type = dyn_cast<DIType>(S)) {
+          auto It = VMap.MD().find(Type);
+
+          if (It != VMap.MD().end() && It->first != It->second)
+            TypesToAdd.push_back(It->second.get());
+          else if (It == VMap.MD().end()) {
+            Metadata *Cloned = MDNode::replaceWithDistinct(Type->clone());
+            TypesToAdd.push_back(Cloned);
+            VMap.MD()[Type].reset(Cloned);
+          }
+        }
+      }
+
+      SmallVector<Metadata *> NewTypes(CU->getRetainedTypes().begin(),
+                                       CU->getRetainedTypes().end());
+      NewTypes.append(TypesToAdd);
+      CU->replaceRetainedTypes(MDNode::get(CU->getContext(), NewTypes));
+    }
+  }
 
   // Only update !llvm.dbg.cu for DifferentModule (not CloneModule). In the
   // same module, the compile unit will already be listed (or not). When

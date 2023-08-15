@@ -801,6 +801,118 @@ TEST(CloneFunction, CloneFunctionWithSubprograms) {
   EXPECT_FALSE(verifyModule(*ImplModule, &errs()));
 }
 
+TEST(CloneFunction, CloneFunctionWithRetainedNodes) {
+  StringRef ImplAssembly = R"(
+    declare void @llvm.dbg.declare(metadata, metadata, metadata)
+
+    define void @test() !dbg !3 {
+      call void @llvm.dbg.declare(metadata i8* undef, metadata !5, metadata !DIExpression()), !dbg !7
+      call void @llvm.dbg.declare(metadata i8* undef, metadata !19, metadata !DIExpression()), !dbg !8
+      ret void
+    }
+
+    declare void @cloned()
+
+    !llvm.dbg.cu = !{!0}
+    !llvm.module.flags = !{!2}
+    !0 = distinct !DICompileUnit(language: DW_LANG_C99, file: !1, enums: !{}, retainedTypes: !{!21, !14})
+    !1 = !DIFile(filename: "test.cpp",  directory: "")
+    !2 = !{i32 1, !"Debug Info Version", i32 3}
+    !3 = distinct !DISubprogram(name: "test", scope: !1, unit: !0, retainedNodes: !9)
+    !4 = distinct !DISubprogram(name: "inlined", scope: !1, unit: !0, retainedNodes: !{!5})
+    !5 = !DILocalVariable(name: "awaitables", scope: !4, type: !23)
+    !6 = distinct !DILexicalBlock(scope: !4, file: !1, line: 1)
+    !7 = !DILocation(line: 1, scope: !6, inlinedAt: !8)
+    !8 = !DILocation(line: 10, scope: !3)
+    !9 = !{!12, !15, !17, !18, !20}
+    !12 = distinct !DICompositeType(tag: DW_TAG_enumeration_type, name: "retained_composite", scope: !3, file: !1, line: 13, size: 192, elements: !{})
+    !14 = distinct !DICompositeType(tag: DW_TAG_enumeration_type, scope: !0, file: !1, line: 13, size: 200, elements: !{})
+    !15 = !DILocalVariable(name: "a", scope: !3)
+    !16 = distinct !DICompositeType(tag: DW_TAG_enumeration_type, scope: !3, file: !1, line: 13, size: 208, elements: !{})
+    !17 = !DIImportedEntity(tag: DW_TAG_imported_declaration, name: "imported_l", file: !1, line: 14, scope: !3, entity: !16)
+    !18 = !DILabel(scope: !3, name: "l", file: !1, line: 22)
+    !19 = !DILocalVariable(name: "b", type: !12, scope: !3)
+    !20 = distinct !DICompositeType(tag: DW_TAG_enumeration_type, name: "other_sp", scope: !4, file: !1, line: 13, size: 216, elements: !{})
+    !21 = !DICompositeType(tag: DW_TAG_array_type, baseType: !22, size: 32, align: 32, elements: !{}, dataLocation: !16, rank: 7, name: "cu_local", scope: !3)
+    !22 = !DIBasicType(name: "real", size: 32, align: 32, encoding: DW_ATE_float)
+    !23 = !DIDerivedType(name: "local_float", tag: DW_TAG_const_type, baseType: !22, scope: !3)
+    !float_type = !{!23}
+  )";
+
+  LLVMContext Context;
+  SMDiagnostic Error;
+
+  auto ImplModule = parseAssemblyString(ImplAssembly, Error, Context);
+  EXPECT_TRUE(ImplModule != nullptr);
+  auto *Func = ImplModule->getFunction("test");
+  EXPECT_TRUE(Func != nullptr);
+  auto *ClonedFunc = ImplModule->getFunction("cloned");
+  EXPECT_TRUE(ClonedFunc != nullptr);
+
+  EXPECT_FALSE(verifyModule(*ImplModule, &errs()));
+
+  ValueToValueMapTy VMap;
+  SmallVector<ReturnInst *, 8> Returns;
+  ClonedCodeInfo CCI;
+  CloneFunctionInto(ClonedFunc, Func, VMap,
+                    CloneFunctionChangeType::GlobalChanges, Returns, "", &CCI);
+
+  EXPECT_FALSE(verifyModule(*ImplModule, &errs()));
+
+  // Check that retained and local types are copied.
+  DISubprogram *FuncSP = Func->getSubprogram();
+  DISubprogram *ClonedSP = ClonedFunc->getSubprogram();
+  DICompileUnit *CU = FuncSP->getUnit();
+  EXPECT_NE(FuncSP, nullptr);
+  EXPECT_NE(ClonedSP, nullptr);
+  EXPECT_EQ(FuncSP->getRetainedNodes().size(), 5u);
+  EXPECT_EQ(FuncSP->getRetainedNodes().size(),
+            ClonedSP->getRetainedNodes().size());
+  for (unsigned I = 0; I < FuncSP->getRetainedNodes().size(); ++I) {
+    auto *Node = FuncSP->getRetainedNodes()[I];
+    auto *Copy = ClonedSP->getRetainedNodes()[I];
+
+    // Check that the order of retainedNodes is preserved by
+    // checking that the corresponding node has the same name.
+    if (auto *Var = dyn_cast<DILocalVariable>(Node)) {
+      auto *VarCopy = dyn_cast<DILocalVariable>(Copy);
+      EXPECT_NE(VarCopy, nullptr);
+      EXPECT_EQ(Var->getName(), VarCopy->getName());
+    } else if (auto *Label = dyn_cast<DILabel>(Node)) {
+      auto *LabelCopy = dyn_cast<DILabel>(Copy);
+      EXPECT_NE(LabelCopy, nullptr);
+      EXPECT_EQ(Label->getName(), LabelCopy->getName());
+    } else if (auto *IE = dyn_cast<DIImportedEntity>(Node)) {
+      auto *IECopy = dyn_cast<DIImportedEntity>(Copy);
+      EXPECT_NE(IECopy, nullptr);
+      EXPECT_EQ(IE->getName(), IECopy->getName());
+    } else if (auto *T = dyn_cast<DIType>(Node)) {
+      auto *TCopy = dyn_cast<DIType>(Copy);
+      EXPECT_NE(TCopy, nullptr);
+      EXPECT_EQ(T->getName(), TCopy->getName());
+      // Check that node belonging to another subprogram wasn't copied.
+      if (T->getName() == "other_sp") {
+        EXPECT_EQ(Node, Copy);
+        continue;
+      }
+    }
+
+    // Check that node was copied
+    EXPECT_NE(Node, Copy);
+  }
+
+  // Check that list of types of CU is updated when variable is cloned.
+  EXPECT_EQ(CU->getRetainedTypes().size(), 3u);
+  EXPECT_EQ((*(CU->getRetainedTypes().begin()))->getName(),
+            (*(++ ++CU->getRetainedTypes().begin()))->getName());
+
+  auto *FloatType = dyn_cast<DIType>(
+      ImplModule->getNamedMetadata("float_type")->getOperand(0));
+  EXPECT_EQ(FloatType->getName(), "local_float");
+  EXPECT_TRUE(VMap.MD().contains(FloatType));
+  EXPECT_NE(FloatType, VMap.MD()[FloatType]);
+}
+
 TEST(CloneFunction, CloneFunctionWithInlinedSubprograms) {
   StringRef ImplAssembly = R"(
     declare void @llvm.dbg.declare(metadata, metadata, metadata)
