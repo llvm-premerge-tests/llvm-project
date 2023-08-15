@@ -367,6 +367,18 @@ add_libc_unittest(
 )
 
 add_libc_unittest(
+  fileno_test
+  SUITE
+    libc_stdio_unittests
+  SRCS
+    fileno_test.cpp
+  DEPENDS
+    libc.include.stdio
+    libc.src.stdio.fopen
+    libc.src.stdio.fileno
+)
+
+add_libc_unittest(
   ftell_test
   SUITE
     libc_stdio_unittests
