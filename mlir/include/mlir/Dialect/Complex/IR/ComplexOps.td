@@ -9,6 +9,8 @@
 #ifndef COMPLEX_OPS
 #define COMPLEX_OPS
 
+include "mlir/Dialect/Arith/IR/ArithBase.td"
+include "mlir/Dialect/Arith/IR/ArithOpsInterfaces.td"
 include "mlir/Dialect/Complex/IR/ComplexBase.td"
 include "mlir/IR/OpAsmInterface.td"
 include "mlir/Interfaces/InferTypeOpInterface.td"
@@ -22,10 +24,11 @@ class Complex_Op<string mnemonic, list<Trait> traits = []>
 // one result, all of which must be complex numbers of the same type.
 class ComplexArithmeticOp<string mnemonic, list<Trait> traits = []> :
     Complex_Op<mnemonic, traits # [Pure, SameOperandsAndResultType,
-    Elementwise]> {
-  let arguments = (ins Complex<AnyFloat>:$lhs, Complex<AnyFloat>:$rhs);
+    Elementwise, DeclareOpInterfaceMethods<ArithFastMathInterface>]> {
+  let arguments = (ins Complex<AnyFloat>:$lhs, Complex<AnyFloat>:$rhs, DefaultValuedAttr<
+        Arith_FastMathAttr, "::mlir::arith::FastMathFlags::none">:$fastmath);
   let results = (outs Complex<AnyFloat>:$result);
-  let assemblyFormat = "$lhs `,` $rhs  attr-dict `:` type($result)";
+  let assemblyFormat = "$lhs `,` $rhs (`fastmath` `` $fastmath^)? attr-dict `:` type($result)";
 }
 
 // Base class for standard unary operations on complex numbers with a
@@ -33,8 +36,9 @@ class ComplexArithmeticOp<string mnemonic, list<Trait> traits = []> :
 // one result; the operand must be a complex number.
 class ComplexUnaryOp<string mnemonic, list<Trait> traits = []> :
     Complex_Op<mnemonic, traits # [Pure, Elementwise]> {
-  let arguments = (ins Complex<AnyFloat>:$complex);
-  let assemblyFormat = "$complex attr-dict `:` type($complex)";
+  let arguments = (ins Complex<AnyFloat>:$complex, DefaultValuedAttr<
+        Arith_FastMathAttr, "::mlir::arith::FastMathFlags::none">:$fastmath);
+  let assemblyFormat = "$complex (`fastmath` `` $fastmath^)? attr-dict `:` type($complex)";
 }
 
 //===----------------------------------------------------------------------===//
