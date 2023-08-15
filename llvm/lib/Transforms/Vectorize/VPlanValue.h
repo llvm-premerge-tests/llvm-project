@@ -337,6 +337,7 @@ public:
   using VPRecipeTy = enum {
     VPBranchOnMaskSC,
     VPDerivedIVSC,
+    VPEVLSC,
     VPExpandSCEVSC,
     VPInstructionSC,
     VPInterleaveSC,
