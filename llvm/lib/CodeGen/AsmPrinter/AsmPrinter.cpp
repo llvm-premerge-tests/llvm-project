@@ -516,7 +516,7 @@ bool AsmPrinter::doInitialization(Module &M) {
                             CodeViewLineTablesGroupDescription);
     }
     if (!EmitCodeView || M.getDwarfVersion()) {
-      if (MMI->hasDebugInfo()) {
+      if (MMI && MMI->hasDebugInfo()) {
         DD = new DwarfDebug(this);
         Handlers.emplace_back(std::unique_ptr<DwarfDebug>(DD), DbgTimerName,
                               DbgTimerDescription, DWARFGroupName,
@@ -573,7 +573,8 @@ bool AsmPrinter::doInitialization(Module &M) {
       break;
     case WinEH::EncodingType::X86:
     case WinEH::EncodingType::Itanium:
-      ES = new WinException(this);
+      if (MMI)
+        ES = new WinException(this);
       break;
     }
     break;
