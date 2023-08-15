@@ -28,3 +28,11 @@ my_awesome_nonstandard_integer_type value2;
 #  error "bool was not defined!"
 #endif
 
+// Supplied by compiler, which forwards to the "/usr/include" version.
+@import cstd.inttypes;
+#ifndef __CLANG_INTTYPES_H
+#error "__CLANG_INTTYPES_H was not defined!"
+#endif
+#ifndef MY_PRIi32
+#error "MY_PRIi32 was not defined!"
+#endif

@@ -379,6 +379,7 @@ static StringRef sanitizeFilenameAsIdentifier(StringRef Name,
 bool ModuleMap::isBuiltinHeader(StringRef FileName) {
   return llvm::StringSwitch<bool>(FileName)
            .Case("float.h", true)
+           .Case("inttypes.h", true)
            .Case("iso646.h", true)
            .Case("limits.h", true)
            .Case("stdalign.h", true)
