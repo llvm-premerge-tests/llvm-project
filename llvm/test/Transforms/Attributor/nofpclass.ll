@@ -598,8 +598,7 @@ define half @assume_fcmp_fabs_with_other_fabs_assume_fallback(half %arg) {
 ; CHECK-NEXT:    call void @llvm.assume(i1 noundef true) #[[ATTR14]]
 ; CHECK-NEXT:    [[UNRELATED_FABS:%.*]] = fcmp oeq half [[FABS]], 0xH0000
 ; CHECK-NEXT:    call void @llvm.assume(i1 noundef [[UNRELATED_FABS]]) #[[ATTR14]]
-; CHECK-NEXT:    [[IS_SUBNORMAL:%.*]] = fcmp olt half [[FABS]], 0xH0400
-; CHECK-NEXT:    call void @llvm.assume(i1 noundef [[IS_SUBNORMAL]]) #[[ATTR14]]
+; CHECK-NEXT:    call void @llvm.assume(i1 noundef true) #[[ATTR14]]
 ; CHECK-NEXT:    call void @extern.use.f16(half nofpclass(nan inf norm) [[ARG]])
 ; CHECK-NEXT:    call void @extern.use.f16(half nofpclass(nan inf nzero sub norm) [[FABS]])
 ; CHECK-NEXT:    ret half [[ARG]]
