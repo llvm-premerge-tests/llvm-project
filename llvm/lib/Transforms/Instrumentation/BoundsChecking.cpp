@@ -37,6 +37,10 @@ using namespace llvm;
 static cl::opt<bool> SingleTrapBB("bounds-checking-single-trap",
                                   cl::desc("Use one trap block per function"));
 
+static cl::opt<bool>
+    DebugTrapBB("bounds-checking-debug-trap",
+                cl::desc("Use one trap block per check despite optimizations"));
+
 STATISTIC(ChecksAdded, "Bounds checks added");
 STATISTIC(ChecksSkipped, "Bounds checks skipped");
 STATISTIC(ChecksUnable, "Bounds checks unable to add");
@@ -180,24 +184,39 @@ static bool addBoundsChecking(Function &F, TargetLibraryInfo &TLI,
   // will create a fresh block every time it is called.
   BasicBlock *TrapBB = nullptr;
   auto GetTrapBB = [&TrapBB](BuilderTy &IRB) {
-    if (TrapBB && SingleTrapBB)
-      return TrapBB;
+    if (DebugTrapBB) {
+      Function *Fn = IRB.GetInsertBlock()->getParent();
+      auto DebugLoc = IRB.getCurrentDebugLocation();
+      IRBuilder<>::InsertPointGuard Guard(IRB);
+      TrapBB = BasicBlock::Create(Fn->getContext(), "trap", Fn);
+      IRB.SetInsertPoint(TrapBB);
+      auto *F =
+          Intrinsic::getDeclaration(Fn->getParent(), Intrinsic::ubsantrap);
+      CallInst *TrapCall =
+          IRB.CreateCall(F, ConstantInt::get(IRB.getInt8Ty(), Fn->size()));
+      TrapCall->setDoesNotReturn();
+      TrapCall->setDoesNotThrow();
+      TrapCall->setDebugLoc(DebugLoc);
+      IRB.CreateUnreachable();
+    } else {
+      if (TrapBB && SingleTrapBB)
+        return TrapBB;
 
-    Function *Fn = IRB.GetInsertBlock()->getParent();
-    // FIXME: This debug location doesn't make a lot of sense in the
-    // `SingleTrapBB` case.
-    auto DebugLoc = IRB.getCurrentDebugLocation();
-    IRBuilder<>::InsertPointGuard Guard(IRB);
-    TrapBB = BasicBlock::Create(Fn->getContext(), "trap", Fn);
-    IRB.SetInsertPoint(TrapBB);
+      Function *Fn = IRB.GetInsertBlock()->getParent();
+      // FIXME: This debug location doesn't make a lot of sense in the
+      // `SingleTrapBB` case.
+      auto DebugLoc = IRB.getCurrentDebugLocation();
+      IRBuilder<>::InsertPointGuard Guard(IRB);
+      TrapBB = BasicBlock::Create(Fn->getContext(), "trap", Fn);
+      IRB.SetInsertPoint(TrapBB);
 
-    auto *F = Intrinsic::getDeclaration(Fn->getParent(), Intrinsic::trap);
-    CallInst *TrapCall = IRB.CreateCall(F, {});
-    TrapCall->setDoesNotReturn();
-    TrapCall->setDoesNotThrow();
-    TrapCall->setDebugLoc(DebugLoc);
-    IRB.CreateUnreachable();
-
+      auto *F = Intrinsic::getDeclaration(Fn->getParent(), Intrinsic::trap);
+      CallInst *TrapCall = IRB.CreateCall(F, {});
+      TrapCall->setDoesNotReturn();
+      TrapCall->setDoesNotThrow();
+      TrapCall->setDebugLoc(DebugLoc);
+      IRB.CreateUnreachable();
+    }
     return TrapBB;
   };
 
