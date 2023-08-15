@@ -132,6 +132,9 @@ Improvements to Clang's diagnostics
 - Clang now warns on unused variables declared and initialized in condition
   expressions.
   (`#61681: <https://github.com/llvm/llvm-project/issues/61681>`_)
+- Clang constexpr evaluator now diagnoses compound assignment operators against
+  uninitialized variables as a read of uninitialized object.
+  (`#51536 <https://github.com/llvm/llvm-project/issues/51536>_`)
 
 Bug Fixes in This Version
 -------------------------
