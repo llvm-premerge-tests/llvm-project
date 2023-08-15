@@ -193,6 +193,12 @@ public:
   void visitGlobalVariableTemplatePartialSpecRecord(
       const GlobalVariableTemplatePartialSpecRecord &Record);
 
+  void
+  visitGlobalFunctionTemplateRecord(const GlobalFunctionTemplateRecord &Record);
+
+  void visitGlobalFunctionTemplateSpecRecord(
+      const GlobalFunctionTemplateSpecRecord &Record);
+
   /// Visit an Objective-C container record.
   void visitObjCContainerRecord(const ObjCContainerRecord &Record);
 
