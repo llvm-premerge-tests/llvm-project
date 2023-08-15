@@ -46,6 +46,7 @@
 #include "llvm/ADT/ScopeExit.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/StringExtras.h"
+#include "llvm/Support/ConvertUTF.h"
 #include "llvm/Support/SaveAndRestore.h"
 #include <map>
 #include <optional>
@@ -16863,10 +16864,52 @@ Decl *Sema::ActOnStaticAssertDeclaration(SourceLocation StaticAssertLoc,
                                       AssertMessageExpr, RParenLoc, false);
 }
 
+/// Convert character's code unit value to a string.
+/// The code point needs to be zero-extended to 32-bits.
+static void WriteCharValueForDiagnostic(uint32_t Value, const BuiltinType *BTy,
+                                        unsigned TyWidth,
+                                        llvm::raw_ostream &OS) {
+  char Arr[UNI_MAX_UTF8_BYTES_PER_CODE_POINT];
+  char *Ptr = Arr;
+  BuiltinType::Kind K = BTy->getKind();
+
+  // This should catch Char_S, Char_U, Char8, and use of escaped characters in
+  // other types.
+  if (K == BuiltinType::Char_S || K == BuiltinType::Char_U ||
+      K == BuiltinType::Char8 || Value <= 0x7F) {
+    StringRef Escaped = escapeCStyle<EscapeChar::Single>(Value);
+    if (!Escaped.empty())
+      OS << Escaped;
+    else
+      OS << static_cast<char>(Value);
+    return;
+  }
+
+  switch (K) {
+  case BuiltinType::Char16:
+  case BuiltinType::Char32:
+  case BuiltinType::WChar_S:
+  case BuiltinType::WChar_U: {
+    if (llvm::ConvertCodePointToUTF8(Value, Ptr)) {
+      for (char *I = Arr; I != Ptr; ++I)
+        OS << *I;
+    } else {
+      // FIXME: This assumes Unicode literal encodings
+      OS << "\\x"
+         << llvm::format_hex_no_prefix(Value, TyWidth / 4, /*Upper=*/true);
+    }
+    break;
+  }
+  default:
+    llvm_unreachable("Non-character type is passed");
+  }
+}
+
 /// Convert \V to a string we can present to the user in a diagnostic
 /// \T is the type of the expression that has been evaluated into \V
 static bool ConvertAPValueToString(const APValue &V, QualType T,
-                                   SmallVectorImpl<char> &Str) {
+                                   SmallVectorImpl<char> &Str,
+                                   ASTContext &Context) {
   if (!V.hasValue())
     return false;
 
@@ -16881,13 +16924,37 @@ static bool ConvertAPValueToString(const APValue &V, QualType T,
              "Bool type, but value is not 0 or 1");
       llvm::raw_svector_ostream OS(Str);
       OS << (BoolValue ? "true" : "false");
-    } else if (T->isCharType()) {
+    } else {
+      llvm::raw_svector_ostream OS(Str);
       // Same is true for chars.
-      Str.push_back('\'');
-      Str.push_back(V.getInt().getExtValue());
-      Str.push_back('\'');
-    } else
+      // We want to print the character representation for textual types
+      const auto *BTy = T->getAs<BuiltinType>();
+      if (BTy) {
+        switch (BTy->getKind()) {
+        case BuiltinType::Char_S:
+        case BuiltinType::Char_U:
+        case BuiltinType::Char8:
+        case BuiltinType::Char16:
+        case BuiltinType::Char32:
+        case BuiltinType::WChar_S:
+        case BuiltinType::WChar_U: {
+          unsigned TyWidth = Context.getIntWidth(T);
+          assert(8 <= TyWidth && TyWidth <= 32 && "Unexpected integer width");
+          uint32_t CodeUnit = static_cast<uint32_t>(V.getInt().getZExtValue());
+          OS << '\'';
+          WriteCharValueForDiagnostic(CodeUnit, BTy, TyWidth, OS);
+          OS << "' (0x"
+             << llvm::format_hex_no_prefix(CodeUnit, /*Width=*/2,
+                                           /*Upper=*/true)
+             << ", " << V.getInt() << ')';
+          return true;
+        }
+        default:
+          break;
+        }
+      }
       V.getInt().toString(Str);
+    }
 
     break;
 
@@ -16984,8 +17051,9 @@ void Sema::DiagnoseStaticAssertDetails(const Expr *E) {
 
       Side->EvaluateAsRValue(DiagSide[I].Result, Context, true);
 
-      DiagSide[I].Print = ConvertAPValueToString(
-          DiagSide[I].Result.Val, Side->getType(), DiagSide[I].ValueString);
+      DiagSide[I].Print =
+          ConvertAPValueToString(DiagSide[I].Result.Val, Side->getType(),
+                                 DiagSide[I].ValueString, Context);
     }
     if (DiagSide[0].Print && DiagSide[1].Print) {
       Diag(Op->getExprLoc(), diag::note_expr_evaluates_to)
