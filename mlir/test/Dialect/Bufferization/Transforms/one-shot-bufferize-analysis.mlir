@@ -98,3 +98,45 @@ func.func @to_memref_read_only(%idx : index, %f: f32) -> f32 {
   %2 = tensor.extract %t[%idx] : tensor<5xf32>
   return %2 : f32
 }
+
+// -----
+
+// CHECK-LABEL: func @bbarg_of_unknown_op(
+func.func @bbarg_of_unknown_op(%f: f32) {
+  %0 = tensor.empty() : tensor<10xf32>
+  // CHECK: linalg.fill {__inplace_operands_attr__ = ["none", "true"]}
+  %1 = linalg.fill ins(%f : f32) outs(%0 : tensor<10xf32>) -> tensor<10xf32>
+
+  // The op is not bufferizable because %1 is assumed to alias with %arg1.
+  // BlockArguments are considered "not writable" by default. So %1 is also
+  // considered "not writable".
+
+  // CHECK: "dummy.dummy_op"
+  // CHECK: {__inplace_operands_attr__ = ["false"]} : (tensor<10xf32>) -> ()
+  "dummy.dummy_op"(%1) ({
+  ^bb0(%arg1: tensor<10xf32>):
+  }) : (tensor<10xf32>) -> ()
+  return
+}
+
+// -----
+
+// CHECK-LABEL: func @bbarg_of_unknown_op_2(
+func.func @bbarg_of_unknown_op_2(%f: f32) {
+  %0 = tensor.empty() : tensor<10xf32>
+  // CHECK: linalg.fill {__inplace_operands_attr__ = ["none", "true"]}
+  %1 = linalg.fill ins(%f : f32) outs(%0 : tensor<10xf32>) -> tensor<10xf32>
+
+  // The op is not bufferizable because %1 is assumed to alias with %arg1.
+  // BlockArguments are considered "not writable" by default. So %1 is also
+  // considered "not writable".
+
+  // CHECK: "dummy.dummy_op"
+  "dummy.dummy_op"(%1) ({
+  ^bb0(%arg1: tensor<10xf32>):
+    // CHECK: "dummy.another_op"(%{{.*}}) {__inplace_operands_attr__ = ["false"]}
+    "dummy.another_op"(%arg1) : (tensor<10xf32>) -> ()
+  }) : (tensor<10xf32>) -> ()
+  // CHECK: {__inplace_operands_attr__ = ["false"]} : (tensor<10xf32>) -> ()
+  return
+}

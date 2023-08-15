@@ -161,8 +161,8 @@ void OneShotAnalysisState::bufferizeInPlace(OpOperand &operand) {
   if (inplaceBufferized.contains(&operand))
     return;
   inplaceBufferized.insert(&operand);
-  for (AliasingOpResult alias : getAliasingOpResults(operand))
-    aliasInfo.unionSets(alias.opResult, operand.get());
+  for (AliasingValue alias : getAliasingValues(operand))
+    aliasInfo.unionSets(alias.value, operand.get());
   ++statNumTensorInPlace;
 }
 
@@ -258,14 +258,10 @@ bool OneShotAnalysisState::isValueWritten(Value value) const {
 
 bool OneShotAnalysisState::isWritable(Value value) const {
   // TODO: Out-of-place bufferized value could be considered writable.
-  if (auto bufferizableOp = getOptions().dynCastBufferizableOp(value))
-    return bufferizableOp.isWritable(value, *this);
-
   // Query BufferizableOpInterface to see if the BlockArgument is writable.
-  if (auto bbArg = dyn_cast<BlockArgument>(value))
-    if (auto bufferizableOp =
-            getOptions().dynCastBufferizableOp(bbArg.getOwner()->getParentOp()))
-      return bufferizableOp.isWritable(bbArg, *this);
+  if (auto bufferizableOp =
+          getOptions().dynCastBufferizableOp(getOwnerOfValue(value)))
+    return bufferizableOp.isWritable(value, *this);
 
   // Not a bufferizable op: The conservative answer is "not writable".
   return false;
@@ -614,10 +610,9 @@ hasReadAfterWriteInterference(const DenseSet<OpOperand *> &usesRead,
 
         // No conflict if the conflicting write and the definition are the same
         // use.
-        AliasingOpResultList aliases =
-            state.getAliasingOpResults(*uConflictingWrite);
+        AliasingValueList aliases = state.getAliasingValues(*uConflictingWrite);
         if (aliases.getNumAliases() == 1 &&
-            aliases.getAliases()[0].opResult == definition) {
+            aliases.getAliases()[0].value == definition) {
           LLVM_DEBUG(llvm::dbgs()
                      << "    no conflict: definition and write are same\n");
           continue;
@@ -674,9 +669,9 @@ static void getAliasingReads(DenseSet<OpOperand *> &res, Value root,
       // there would then be no flow of data from the extract_slice operand to
       // its result's uses.)
       if (!state.bufferizesToMemoryWrite(use)) {
-        AliasingOpResultList aliases = state.getAliasingOpResults(use);
-        if (llvm::any_of(aliases, [&](AliasingOpResult a) {
-              return state.isValueRead(a.opResult);
+        AliasingValueList aliases = state.getAliasingValues(use);
+        if (llvm::any_of(aliases, [&](AliasingValue a) {
+              return state.isValueRead(a.value);
             }))
           res.insert(&use);
       }
@@ -720,9 +715,9 @@ static bool wouldCreateReadAfterWriteInterference(
   DenseSet<OpOperand *> usesRead, usesWrite;
   getAliasingReads(usesRead, operand.get(), state);
   getAliasingInplaceWrites(usesWrite, operand.get(), state);
-  for (AliasingOpResult alias : state.getAliasingOpResults(operand)) {
-    getAliasingReads(usesRead, alias.opResult, state);
-    getAliasingInplaceWrites(usesWrite, alias.opResult, state);
+  for (AliasingValue alias : state.getAliasingValues(operand)) {
+    getAliasingReads(usesRead, alias.value, state);
+    getAliasingInplaceWrites(usesWrite, alias.value, state);
   }
   if (!checkConsistencyOnly && state.bufferizesToMemoryWrite(operand))
     usesWrite.insert(&operand);
@@ -760,8 +755,8 @@ wouldCreateWriteToNonWritableBuffer(OpOperand &operand,
     // Collect writes of all aliases of OpOperand and OpResult.
     DenseSet<OpOperand *> usesWrite;
     getAliasingInplaceWrites(usesWrite, operand.get(), state);
-    for (AliasingOpResult alias : state.getAliasingOpResults(operand))
-      getAliasingInplaceWrites(usesWrite, alias.opResult, state);
+    for (AliasingValue alias : state.getAliasingValues(operand))
+      getAliasingInplaceWrites(usesWrite, alias.value, state);
     foundWrite = !usesWrite.empty();
   }
 
@@ -778,8 +773,8 @@ wouldCreateWriteToNonWritableBuffer(OpOperand &operand,
     }
   };
   state.applyOnAliases(operand.get(), checkReadOnly);
-  for (AliasingOpResult alias : state.getAliasingOpResults(operand))
-    state.applyOnAliases(alias.opResult, checkReadOnly);
+  for (AliasingValue alias : state.getAliasingValues(operand))
+    state.applyOnAliases(alias.value, checkReadOnly);
   if (foundReadOnly) {
     LLVM_DEBUG(llvm::dbgs() << "=> NOT WRITABLE\n");
     return true;
@@ -881,8 +876,8 @@ static void equivalenceAnalysis(SmallVector<Operation *> &ops,
         // allocation, it is a definite, equivalent alias. E.g.:
         //
         // aliasingOpOperands(%r) = {(%t0, EQUIV, MAYBE), (%t1, EQUIV, MAYBE)}
-        // aliasingOpResults(%t0) = {(%r, EQUIV, MAYBE)}
-        // aliasingOpResults(%t1) = {(%r, EQUIV, MAYBE)}
+        // aliasingValues(%t0) = {(%r, EQUIV, MAYBE)}
+        // aliasingValues(%t1) = {(%r, EQUIV, MAYBE)}
         // %r = arith.select %c, %t0, %t1 : tensor<?xf32>
         //
         // If %t0 and %t1 are equivalent, it is safe to union the equivalence
