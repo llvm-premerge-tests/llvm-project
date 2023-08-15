@@ -115,6 +115,8 @@ void AMDGCN::Linker::constructLldCommand(Compilation &C, const JobAction &JA,
                         "--no-undefined",
                         "-shared",
                         "-plugin-opt=-amdgpu-internalize-symbols"};
+  if (Args.hasArg(options::OPT_stdpar))
+    LldArgs.push_back("-plugin-opt=-amdgpu-enable-stdpar");
 
   auto &TC = getToolChain();
   auto &D = TC.getDriver();
@@ -246,6 +248,8 @@ void HIPAMDToolChain::addClangTargetOptions(
   if (!DriverArgs.hasFlag(options::OPT_fgpu_rdc, options::OPT_fno_gpu_rdc,
                           false))
     CC1Args.append({"-mllvm", "-amdgpu-internalize-symbols"});
+  if (DriverArgs.hasArgNoClaim(options::OPT_stdpar))
+    CC1Args.append({"-mllvm", "-amdgpu-enable-stdpar"});
 
   StringRef MaxThreadsPerBlock =
       DriverArgs.getLastArgValue(options::OPT_gpu_max_threads_per_block_EQ);
