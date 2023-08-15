@@ -529,7 +529,7 @@ __OMP_ATTRS_SET(
         ? AttributeSet(EnumAttr(NoUnwind), EnumAttr(NoSync), EnumAttr(NoFree),
                        EnumAttr(WillReturn),
                        MemoryAttr(MemoryEffects::argMemOnly() | MemoryEffects::inaccessibleMemOnly(ModRefInfo::Ref)))
-        : AttributeSet(EnumAttr(NoUnwind)))
+        : AttributeSet())
 __OMP_ATTRS_SET(
   SetterAttrs,
   OptimisticAttributes
@@ -556,7 +556,7 @@ __OMP_ATTRS_SET(
          ? AttributeSet(EnumAttr(NoUnwind), EnumAttr(NoSync), EnumAttr(NoFree),
                         EnumAttr(WillReturn),
                         MemoryAttr(MemoryEffects::inaccessibleOrArgMemOnly()))
-         : AttributeSet(EnumAttr(NoUnwind)))
+         : AttributeSet())
 
 __OMP_ATTRS_SET(AlwaysInlineAttrs,
                 OptimisticAttributes
