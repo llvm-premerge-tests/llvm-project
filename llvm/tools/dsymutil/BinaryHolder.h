@@ -126,6 +126,7 @@ public:
   getObjectEntry(StringRef Filename, TimestampTy Timestamp = TimestampTy());
 
   void clear();
+  void eraseObjectEntry(StringRef Filename);
 
 private:
   /// Cache of static archives. Objects that are part of a static archive are
