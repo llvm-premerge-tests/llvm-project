@@ -23,6 +23,10 @@
 #include "llvm/Support/MD5.h"
 #include <optional>
 
+namespace llvm {
+extern cl::opt<bool> EnableSingleByteCoverage;
+} // namespace llvm
+
 static llvm::cl::opt<bool>
     EnableValueProfiling("enable-value-profiling",
                          llvm::cl::desc("Enable value profiling"),
@@ -219,6 +223,14 @@ struct MapRegionCounters : public RecursiveASTVisitor<MapRegionCounters> {
     return Base::VisitBinaryOperator(S);
   }
 
+  bool VisitConditionalOperator(ConditionalOperator *S) {
+    if (llvm::EnableSingleByteCoverage && S->getTrueExpr())
+      CounterMap[S->getTrueExpr()] = NextCounter++;
+    if (llvm::EnableSingleByteCoverage && S->getFalseExpr())
+      CounterMap[S->getFalseExpr()] = NextCounter++;
+    return Base::VisitConditionalOperator(S);
+  }
+
   /// Include \p S in the function hash.
   bool VisitStmt(Stmt *S) {
     auto Type = updateCounterMappings(S);
@@ -236,15 +248,111 @@ struct MapRegionCounters : public RecursiveASTVisitor<MapRegionCounters> {
 
     // Otherwise, keep track of which branch we're in while traversing.
     VisitStmt(If);
+
     for (Stmt *CS : If->children()) {
       if (!CS)
         continue;
-      if (CS == If->getThen())
+      if (CS == If->getThen()) {
         Hash.combine(PGOHash::IfThenBranch);
-      else if (CS == If->getElse())
+        if (llvm::EnableSingleByteCoverage)
+          CounterMap[If->getThen()] = NextCounter++;
+      } else if (CS == If->getElse()) {
         Hash.combine(PGOHash::IfElseBranch);
+        if (llvm::EnableSingleByteCoverage)
+          CounterMap[If->getElse()] = NextCounter++;
+      }
       TraverseStmt(CS);
     }
+    Hash.combine(PGOHash::EndOfScope);
+    return true;
+  }
+
+  bool TraverseWhileStmt(WhileStmt *While) {
+    // If we used the V1 hash, use the default traversal.
+    if (Hash.getHashVersion() == PGO_HASH_V1)
+      return Base::TraverseWhileStmt(While);
+
+    VisitStmt(While);
+
+    for (Stmt *CS : While->children()) {
+      if (!CS)
+        continue;
+      if (llvm::EnableSingleByteCoverage) {
+        if (CS == While->getCond())
+          CounterMap[While->getCond()] = NextCounter++;
+        else if (CS == While->getBody())
+          CounterMap[While->getBody()] = NextCounter++;
+      }
+      TraverseStmt(CS);
+    }
+
+    Hash.combine(PGOHash::EndOfScope);
+    return true;
+  }
+
+  bool TraverseDoStmt(DoStmt *Do) {
+    // If we used the V1 hash, use the default traversal.
+    if (Hash.getHashVersion() == PGO_HASH_V1)
+      return Base::TraverseDoStmt(Do);
+
+    VisitStmt(Do);
+
+    for (Stmt *CS : Do->children()) {
+      if (!CS)
+        continue;
+      if (llvm::EnableSingleByteCoverage) {
+        if (CS == Do->getCond())
+          CounterMap[Do->getCond()] = NextCounter++;
+        else if (CS == Do->getBody())
+          CounterMap[Do->getBody()] = NextCounter++;
+      }
+      TraverseStmt(CS);
+    }
+
+    Hash.combine(PGOHash::EndOfScope);
+    return true;
+  }
+
+  bool TraverseForStmt(ForStmt *For) {
+    // If we used the V1 hash, use the default traversal.
+    if (Hash.getHashVersion() == PGO_HASH_V1)
+      return Base::TraverseForStmt(For);
+
+    VisitStmt(For);
+
+    for (Stmt *CS : For->children()) {
+      if (!CS)
+        continue;
+      if (llvm::EnableSingleByteCoverage) {
+        if (CS == For->getCond())
+          CounterMap[For->getCond()] = NextCounter++;
+        else if (CS == For->getInc())
+          CounterMap[For->getInc()] = NextCounter++;
+        else if (CS == For->getBody())
+          CounterMap[For->getBody()] = NextCounter++;
+      }
+      TraverseStmt(CS);
+    }
+
+    Hash.combine(PGOHash::EndOfScope);
+    return true;
+  }
+
+  bool TraverseCXXForRangeStmt(CXXForRangeStmt *For) {
+    // If we used the V1 hash, use the default traversal.
+    if (Hash.getHashVersion() == PGO_HASH_V1)
+      return Base::TraverseCXXForRangeStmt(For);
+
+    VisitStmt(For);
+
+    for (Stmt *CS : For->children()) {
+      if (!CS)
+        continue;
+      if (llvm::EnableSingleByteCoverage && CS == For->getBody())
+        CounterMap[For->getBody()] = NextCounter++;
+      TraverseStmt(CS);
+    }
+
     Hash.combine(PGOHash::EndOfScope);
     return true;
   }
@@ -260,10 +368,6 @@ struct MapRegionCounters : public RecursiveASTVisitor<MapRegionCounters> {
     return true;                                                               \
   }
 
-  DEFINE_NESTABLE_TRAVERSAL(WhileStmt)
-  DEFINE_NESTABLE_TRAVERSAL(DoStmt)
-  DEFINE_NESTABLE_TRAVERSAL(ForStmt)
-  DEFINE_NESTABLE_TRAVERSAL(CXXForRangeStmt)
   DEFINE_NESTABLE_TRAVERSAL(ObjCForCollectionStmt)
   DEFINE_NESTABLE_TRAVERSAL(CXXTryStmt)
   DEFINE_NESTABLE_TRAVERSAL(CXXCatchStmt)
@@ -950,8 +1054,8 @@ CodeGenPGO::applyFunctionAttributes(llvm::IndexedInstrProfReader *PGOReader,
   Fn->setEntryCount(FunctionCount);
 }
 
-void CodeGenPGO::emitCounterIncrement(CGBuilderTy &Builder, const Stmt *S,
-                                      llvm::Value *StepV) {
+void CodeGenPGO::emitCounterSetOrIncrement(CGBuilderTy &Builder, const Stmt *S,
+                                           llvm::Value *StepV) {
   if (!CGM.getCodeGenOpts().hasProfileClangInstr() || !RegionCounterMap)
     return;
   if (!Builder.GetInsertBlock())
@@ -964,19 +1068,48 @@ void CodeGenPGO::emitCounterIncrement(CGBuilderTy &Builder, const Stmt *S,
                          Builder.getInt64(FunctionHash),
                          Builder.getInt32(NumRegionCounters),
                          Builder.getInt32(Counter), StepV};
-  if (!StepV)
-    Builder.CreateCall(CGM.getIntrinsic(llvm::Intrinsic::instrprof_increment),
+
+  if (llvm::EnableSingleByteCoverage)
+    Builder.CreateCall(CGM.getIntrinsic(llvm::Intrinsic::instrprof_cover),
                        ArrayRef(Args, 4));
-  else
-    Builder.CreateCall(
-        CGM.getIntrinsic(llvm::Intrinsic::instrprof_increment_step),
-        ArrayRef(Args));
+  else {
+    if (!StepV)
+      Builder.CreateCall(CGM.getIntrinsic(llvm::Intrinsic::instrprof_increment),
+                         ArrayRef(Args, 4));
+    else
+      Builder.CreateCall(
+          CGM.getIntrinsic(llvm::Intrinsic::instrprof_increment_step),
+          ArrayRef(Args));
+  }
 }
 
 void CodeGenPGO::setValueProfilingFlag(llvm::Module &M) {
   if (CGM.getCodeGenOpts().hasProfileClangInstr())
     M.addModuleFlag(llvm::Module::Warning, "EnableValueProfiling",
                     uint32_t(EnableValueProfiling));
+}
+
+void CodeGenPGO::setProfileVersion(llvm::Module &M) {
+  if (CGM.getCodeGenOpts().hasProfileClangInstr() &&
+      llvm::EnableSingleByteCoverage) {
+    const StringRef VarName(INSTR_PROF_QUOTE(INSTR_PROF_RAW_VERSION_VAR));
+    llvm::Type *IntTy64 = llvm::Type::getInt64Ty(M.getContext());
+    uint64_t ProfileVersion =
+        (INSTR_PROF_RAW_VERSION | VARIANT_MASK_BYTE_COVERAGE);
+
+    auto IRLevelVersionVariable = new llvm::GlobalVariable(
+        M, IntTy64, true, llvm::GlobalValue::WeakAnyLinkage,
+        llvm::Constant::getIntegerValue(IntTy64,
+                                        llvm::APInt(64, ProfileVersion)),
+        VarName);
+
+    IRLevelVersionVariable->setVisibility(llvm::GlobalValue::DefaultVisibility);
+    llvm::Triple TT(M.getTargetTriple());
+    if (TT.supportsCOMDAT()) {
+      IRLevelVersionVariable->setLinkage(llvm::GlobalValue::ExternalLinkage);
+      IRLevelVersionVariable->setComdat(M.getOrInsertComdat(VarName));
+    }
+  }
 }
 
 // This method either inserts a call to the profile run-time during
