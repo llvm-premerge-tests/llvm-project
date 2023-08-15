@@ -6,6 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "llvm/Object/COFF.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/ProfileData/InstrProf.h"
 #include "llvm/Support/Alignment.h"
@@ -51,6 +52,27 @@ int convertForTestingMain(int argc, const char *argv[]) {
   int FoundSectionCount = 0;
   SectionRef ProfileNames, CoverageMapping, CoverageRecords;
   auto ObjFormat = OF->getTripleObjectFormat();
+
+  // On COFF, the object file section name may end in "$M". This tells the
+  // linker to sort these sections between "$A" and "$Z". The linker removes the
+  // dollar and everything after it in the final binary. Do the same to match.
+  auto ProfileNamesSection = getInstrProfSectionName(IPSK_name, ObjFormat,
+                                                     /*AddSegmentInfo=*/false);
+  auto CoverageMappingSection =
+      getInstrProfSectionName(IPSK_covmap, ObjFormat, /*AddSegmentInfo=*/false);
+  auto CoverageRecordsSection =
+      getInstrProfSectionName(IPSK_covfun, ObjFormat, /*AddSegmentInfo=*/false);
+  if (isa<object::COFFObjectFile>(OF)) {
+    auto Strip = [](std::string &Str) {
+      auto Pos = Str.find('$');
+      if (Pos != std::string::npos)
+        Str.resize(Pos);
+    };
+    Strip(ProfileNamesSection);
+    Strip(CoverageMappingSection);
+    Strip(CoverageRecordsSection);
+  }
+
   for (const auto &Section : OF->sections()) {
     StringRef Name;
     if (Expected<StringRef> NameOrErr = Section.getName()) {
@@ -60,16 +82,13 @@ int convertForTestingMain(int argc, const char *argv[]) {
       return 1;
     }
 
-    if (Name == llvm::getInstrProfSectionName(IPSK_name, ObjFormat,
-                                              /*AddSegmentInfo=*/false)) {
+    if (Name == ProfileNamesSection)
       ProfileNames = Section;
-    } else if (Name == llvm::getInstrProfSectionName(
-                           IPSK_covmap, ObjFormat, /*AddSegmentInfo=*/false)) {
+    else if (Name == CoverageMappingSection)
       CoverageMapping = Section;
-    } else if (Name == llvm::getInstrProfSectionName(
-                           IPSK_covfun, ObjFormat, /*AddSegmentInfo=*/false)) {
+    else if (Name == CoverageRecordsSection)
       CoverageRecords = Section;
-    } else
+    else
       continue;
     ++FoundSectionCount;
   }
