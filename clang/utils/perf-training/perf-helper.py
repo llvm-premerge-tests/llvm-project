@@ -69,10 +69,14 @@ def merge_fdata(args):
 
 def perf(args):
     parser = argparse.ArgumentParser(
-        prog="perf-helper perf", description="perf wrapper for BOLT profile collection"
+        prog="perf-helper perf",
+        description="perf wrapper for BOLT/CSSPGO profile collection"
     )
     parser.add_argument(
         "--lbr", action="store_true", help="Use perf with branch stacks"
+    )
+    parser.add_argument(
+        "--call-graph", action="store_true", help="Collect call graph"
     )
     parser.add_argument("cmd", nargs="*", help="")
 
@@ -93,6 +97,8 @@ def perf(args):
     ]
     if opts.lbr:
         perf_args += ["--branch-filter=any,u"]
+    if opts.call_graph:
+        perf_args += ["--call-graph=fp"]
     perf_args.extend(cmd)
 
     start_time = time.time()
@@ -127,6 +133,26 @@ def perf2bolt(args):
     p2b_args += ["-p"]
     for filename in findFilesWithExtension(opts.path, "perf.data"):
         subprocess.check_call(p2b_args + [filename, "-o", filename + ".fdata"])
+    return 0
+
+
+def perf2prof(args):
+    parser = argparse.ArgumentParser(
+            prog="perf-helper perf2prof",
+            description="perf to CSSPGO prof conversion wrapper",
+            )
+    parser.add_argument("profgen", help="Path to llvm-profgen binary")
+    parser.add_argument("binary", help="Input binary")
+    parser.add_argument("path", help="Path containing perf.data files")
+    opts = parser.parse_args(args)
+
+    perf_args = shlex.split("perf script -F ip,brstack --show-mmap-event -i")
+    profgen_args = [opts.profgen, "--format=text", f"--binary={opts.binary}"]
+    for filename in findFilesWithExtension(opts.path, "perf.data"):
+        perfscript = f"{filename}.perfscript"
+        profraw = f"{filename}.profraw"
+        subprocess.check_call(perf_args + [filename, "-o", perfscript])
+        subprocess.check_call(profgen_args + [f"--perfscript={perfscript}", f"--output={profraw}"])
     return 0
 
 
