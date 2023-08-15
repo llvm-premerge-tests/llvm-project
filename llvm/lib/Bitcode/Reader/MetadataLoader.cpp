@@ -555,12 +555,12 @@ class MetadataLoader::MetadataLoaderImpl {
         if (!CU)
           continue;
 
-        if (auto *RawImported = CU->getRawImportedEntities()) {
+        if (CU->getRawImportedEntities()) {
           // Collect a set of imported entities to be moved.
           SetVector<Metadata *> EntitiesToRemove;
           for (Metadata *Op : CU->getImportedEntities()->operands()) {
             auto *IE = cast<DIImportedEntity>(Op);
-            if (auto *S = dyn_cast_or_null<DILocalScope>(IE->getScope())) {
+            if (isa_and_present<DILocalScope>(IE->getScope())) {
               EntitiesToRemove.insert(IE);
             }
           }
