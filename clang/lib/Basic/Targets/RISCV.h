@@ -101,6 +101,8 @@ public:
 
   bool hasBitIntType() const override { return true; }
 
+  CallingConvCheckResult checkCallingConvention(CallingConv CC) const override;
+
   bool useFP16ConversionIntrinsics() const override {
     return false;
   }
