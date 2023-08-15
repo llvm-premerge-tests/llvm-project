@@ -6195,7 +6195,7 @@ bool AArch64InstructionSelector::isWorthFoldingIntoExtendedReg(
 
   // It's better to avoid folding and recomputing shifts when we don't have a
   // fastpath.
-  if (!STI.hasLSLFast())
+  if (!STI.hasAddrLSLFast())
     return false;
 
   // We have a fastpath, so folding a shift in and potentially computing it
