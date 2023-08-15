@@ -2031,6 +2031,7 @@ void LLParser::parseOptionalDLLStorageClass(unsigned &Res) {
 ///   ::= 'amdgpu_cs_chain_preserve'
 ///   ::= 'amdgpu_kernel'
 ///   ::= 'tailcc'
+///   ::= 'riscv_vector_cc'
 ///   ::= 'cc' UINT
 ///
 bool LLParser::parseOptionalCallingConv(unsigned &CC) {
@@ -2099,6 +2100,7 @@ bool LLParser::parseOptionalCallingConv(unsigned &CC) {
     break;
   case lltok::kw_amdgpu_kernel:  CC = CallingConv::AMDGPU_KERNEL; break;
   case lltok::kw_tailcc:         CC = CallingConv::Tail; break;
+  case lltok::kw_riscv_vector_cc:CC = CallingConv::RISCV_VectorCall; break;
   case lltok::kw_cc: {
       Lex.Lex();
       return parseUInt32(CC);

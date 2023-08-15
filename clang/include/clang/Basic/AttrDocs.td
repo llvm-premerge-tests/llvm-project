@@ -5193,6 +5193,16 @@ for clang builtin functions.
   }];
 }
 
+def RISCVVectorCCDocs : Documentation {
+ let Category = DocCatCallingConvs;
+ let Content = [{
+The ``riscv_vector_cc`` attribute can be applied to a function. It preserves 15
+registers namely, v1-v7 and v24-v31 as callee-saved. Callers thus don't need
+to save these registers before function calls, and callees only need to save
+them only if they use them.
+ }];
+}
+
 def PreferredNameDocs : Documentation {
   let Category = DocCatDecl;
   let Content = [{

@@ -2748,6 +2748,11 @@ def PreserveAll : DeclOrTypeAttr {
   let Documentation = [PreserveAllDocs];
 }
 
+def RISCVVectorCC: DeclOrTypeAttr {
+ let Spellings = [Clang<"riscv_vector_cc">];
+ let Documentation = [RISCVVectorCCDocs];
+}
+
 def Target : InheritableAttr {
   let Spellings = [GCC<"target">];
   let Args = [StringArgument<"featuresStr">];

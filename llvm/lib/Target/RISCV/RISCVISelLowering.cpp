@@ -14899,6 +14899,7 @@ SDValue RISCVTargetLowering::LowerFormalArguments(
     report_fatal_error("Unsupported calling convention");
   case CallingConv::C:
   case CallingConv::Fast:
+  case CallingConv::RISCV_VectorCall:
     break;
   case CallingConv::GHC:
     if (!Subtarget.hasStdExtF() || !Subtarget.hasStdExtD())
