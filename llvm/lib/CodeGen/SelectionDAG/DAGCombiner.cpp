@@ -10136,6 +10136,7 @@ SDValue DAGCombiner::visitSRA(SDNode *N) {
 
   // fold (sra (shl x, c1), c1) -> sext_inreg for some c1 and target supports
   // sext_inreg.
+  // TODO: Remove this and use SimplifyDemandedBits instead.
   ConstantSDNode *N1C = isConstOrConstSplat(N1);
   if (N1C && N0.getOpcode() == ISD::SHL && N1 == N0.getOperand(1)) {
     unsigned LowBits = OpSizeInBits - (unsigned)N1C->getZExtValue();
@@ -14374,7 +14375,7 @@ SDValue DAGCombiner::visitTRUNCATE(SDNode *N) {
     SDValue X = N0.getOperand(0);
     SDValue ExtVal = N0.getOperand(1);
     EVT ExtVT = cast<VTSDNode>(ExtVal)->getVT();
-    if (ExtVT.bitsLT(VT)) {
+    if (ExtVT.bitsLT(VT) && TLI.preferSextInRegOfTruncate(VT, SrcVT, ExtVT)) {
       SDValue TrX = DAG.getNode(ISD::TRUNCATE, SDLoc(N), VT, X);
       return DAG.getNode(ISD::SIGN_EXTEND_INREG, SDLoc(N), VT, TrX, ExtVal);
     }
