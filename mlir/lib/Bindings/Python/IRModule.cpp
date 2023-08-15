@@ -65,9 +65,11 @@ void PyGlobals::loadDialectModule(llvm::StringRef dialectNamespace) {
 void PyGlobals::registerAttributeBuilder(const std::string &attributeKind,
                                          py::function pyFunc) {
   py::object &found = attributeBuilderMap[attributeKind];
-  if (found) {
+  if (found && !found.is_none()) {
     throw std::runtime_error((llvm::Twine("Attribute builder for '") +
-                              attributeKind + "' is already registered")
+                              attributeKind +
+                              "' is already registered with func: " +
+                              py::str(found).operator std::string())
                                  .str());
   }
   found = std::move(pyFunc);
