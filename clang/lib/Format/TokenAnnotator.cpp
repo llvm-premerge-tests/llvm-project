@@ -3096,6 +3096,98 @@ static unsigned maxNestingDepth(const AnnotatedLine &Line) {
   return Result;
 }
 
+// Returns the first token on the line that is not a comment.
+static FormatToken *getFirstNonComment(const AnnotatedLine &Line) {
+  FormatToken *Next = Line.First;
+  if (!Next)
+    return Next;
+  if (Next->is(tok::comment))
+    Next = Next->getNextNonComment();
+  return Next;
+}
+
+// Returns the name of a function with no return type, e.g. a constructor or
+// destructor.
+static FormatToken *getFunctionName(const AnnotatedLine &Line) {
+  auto *Tok = getFirstNonComment(Line);
+  if (!Tok)
+    return nullptr;
+
+  FormatToken *Name = nullptr;
+
+  for (bool SeenName = false; Tok; Tok = Tok->getNextNonComment()) {
+    // Skip C++11 attributes before and after the function name.
+    if (Tok->is(tok::l_square) && Tok->is(TT_AttributeSquare)) {
+      Tok = Tok->MatchingParen;
+      if (!Tok)
+        break;
+      continue;
+    }
+
+    // Name found. Make sure it's followed by a pair of parentheses.
+    if (SeenName) {
+      if (Tok->isNot(tok::l_paren))
+        return nullptr;
+      Tok = Tok->MatchingParen;
+      if (!Tok)
+        break;
+      return Name;
+    }
+
+    // Keywords that may precede the constructor/destructor name.
+    if (Tok->isOneOf(tok::kw_friend, tok::kw_inline, tok::kw_virtual,
+                     tok::kw_constexpr, tok::kw_consteval, tok::kw_explicit)) {
+      continue;
+    }
+
+    // A qualified name may start at the global namespace.
+    if (Tok->is(tok::coloncolon)) {
+      Tok = Tok->Next;
+      if (!Tok)
+        break;
+    }
+
+    // Skip to the unqualified part of the name.
+    while (Tok->startsSequence(tok::identifier, tok::coloncolon)) {
+      Tok = Tok->Next->Next;
+      if (!Tok)
+        break;
+    }
+
+    // Skip the `~` if a destructor name.
+    if (Tok->is(tok::tilde)) {
+      Tok = Tok->Next;
+      if (!Tok)
+        break;
+    }
+
+    // Make sure the name is not already annotated, e.g. as NamespaceMacro.
+    if (Tok->isNot(tok::identifier) || Tok->isNot(TT_Unknown))
+      break;
+
+    Name = Tok;
+    SeenName = true;
+  }
+
+  return nullptr;
+}
+
+// Checks if Tok is a constructor/destructor name qualified by its class name.
+static bool isCtorOrDtorName(const FormatToken *Tok) {
+  assert(Tok);
+
+  const auto *Prev = Tok->Previous;
+  if (Prev && Prev->is(tok::tilde))
+    Prev = Prev->Previous;
+
+  if (!Prev || Prev->isNot(tok::coloncolon))
+    return false;
+
+  Prev = Prev->Previous;
+
+  return Prev && Prev->TokenText == Tok->TokenText;
+}
+
 void TokenAnnotator::annotate(AnnotatedLine &Line) {
   for (auto &Child : Line.Children)
     annotate(*Child);
@@ -3116,6 +3208,15 @@ void TokenAnnotator::annotate(AnnotatedLine &Line) {
   ExpressionParser ExprParser(Style, Keywords, Line);
   ExprParser.parse();
 
+  if (Style.isCpp()) {
+    auto *Tok = getFunctionName(Line);
+    if (Tok && (Line.endsWith(TT_FunctionLBrace) ||
+                (!Scopes.empty() && Scopes.back() == ST_Class) ||
+                isCtorOrDtorName(Tok))) {
+      Tok->setFinalizedType(TT_FunctionDeclarationName);
+    }
+  }
+
   if (Line.startsWith(TT_ObjCMethodSpecifier))
     Line.Type = LT_ObjCMethodDecl;
   else if (Line.startsWith(TT_ObjCDecl))
@@ -3132,6 +3233,10 @@ void TokenAnnotator::annotate(AnnotatedLine &Line) {
 static bool isFunctionDeclarationName(bool IsCpp, const FormatToken &Current,
                                       const AnnotatedLine &Line) {
   assert(Current.Previous);
+
+  if (Current.is(TT_FunctionDeclarationName))
+    return true;
+
   if (!Current.Tok.getIdentifierInfo())
     return false;
 
@@ -3312,9 +3417,11 @@ void TokenAnnotator::calculateFormattingInformation(AnnotatedLine &Line) const {
   bool LineIsFunctionDeclaration = false;
   for (FormatToken *Tok = Current, *AfterLastAttribute = nullptr; Tok;
        Tok = Tok->Next) {
+    if (Tok->Previous->EndsCppAttributeGroup)
+      AfterLastAttribute = Tok;
     if (isFunctionDeclarationName(Style.isCpp(), *Tok, Line)) {
       LineIsFunctionDeclaration = true;
-      Tok->setType(TT_FunctionDeclarationName);
+      Tok->setFinalizedType(TT_FunctionDeclarationName);
       if (AfterLastAttribute &&
           mustBreakAfterAttributes(*AfterLastAttribute, Style)) {
         AfterLastAttribute->MustBreakBefore = true;
@@ -3322,8 +3429,6 @@ void TokenAnnotator::calculateFormattingInformation(AnnotatedLine &Line) const {
       }
       break;
     }
-    if (Tok->Previous->EndsCppAttributeGroup)
-      AfterLastAttribute = Tok;
   }
 
   if (Style.isCpp() && !LineIsFunctionDeclaration) {
@@ -4761,16 +4866,6 @@ isItAnEmptyLambdaAllowed(const FormatToken &Tok,
 static bool isAllmanLambdaBrace(const FormatToken &Tok) {
   return Tok.is(tok::l_brace) && Tok.is(BK_Block) &&
          !Tok.isOneOf(TT_ObjCBlockLBrace, TT_DictLiteral);
-}
-
-// Returns the first token on the line that is not a comment.
-static const FormatToken *getFirstNonComment(const AnnotatedLine &Line) {
-  const FormatToken *Next = Line.First;
-  if (!Next)
-    return Next;
-  if (Next->is(tok::comment))
-    Next = Next->getNextNonComment();
-  return Next;
 }
 
 bool TokenAnnotator::mustBreakBefore(const AnnotatedLine &Line,
