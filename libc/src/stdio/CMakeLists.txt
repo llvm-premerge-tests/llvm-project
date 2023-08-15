@@ -39,6 +39,18 @@ add_entrypoint_object(
 )
 
 add_entrypoint_object(
+  fdopen
+  SRCS
+    fdopen.cpp
+  HDRS
+    fdopen.h
+  DEPENDS
+    libc.include.stdio
+    libc.src.__support.File.file
+    libc.src.__support.File.platform_file
+)
+
+add_entrypoint_object(
   fclose
   SRCS
     fclose.cpp

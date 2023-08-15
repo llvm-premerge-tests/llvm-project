@@ -102,6 +102,31 @@ int close_func(File *f) {
 
 } // anonymous namespace
 
+ErrorOr<File *> openfile(int fd, const char *mode) {
+  auto modeflags = File::mode_flags(mode);
+  if (modeflags == 0) {
+    // return {nullptr, EINVAL};
+    return Error(EINVAL);
+  }
+
+  if (fd < 0)
+    return Error(-fd);
+
+  uint8_t *buffer;
+  {
+    AllocChecker ac;
+    buffer = new (ac) uint8_t[File::DEFAULT_BUFFER_SIZE];
+    if (!ac)
+      return Error(ENOMEM);
+  }
+  AllocChecker ac;
+  auto *file = new (ac)
+      LinuxFile(fd, buffer, File::DEFAULT_BUFFER_SIZE, _IOFBF, true, modeflags);
+  if (!ac)
+    return Error(ENOMEM);
+  return file;
+}
+
 ErrorOr<File *> openfile(const char *path, const char *mode) {
   using ModeFlags = File::ModeFlags;
   auto modeflags = File::mode_flags(mode);
@@ -143,22 +168,7 @@ ErrorOr<File *> openfile(const char *path, const char *mode) {
 #error "open and openat syscalls not available."
 #endif
 
-  if (fd < 0)
-    return Error(-fd);
-
-  uint8_t *buffer;
-  {
-    AllocChecker ac;
-    buffer = new (ac) uint8_t[File::DEFAULT_BUFFER_SIZE];
-    if (!ac)
-      return Error(ENOMEM);
-  }
-  AllocChecker ac;
-  auto *file = new (ac)
-      LinuxFile(fd, buffer, File::DEFAULT_BUFFER_SIZE, _IOFBF, true, modeflags);
-  if (!ac)
-    return Error(ENOMEM);
-  return file;
+  return openfile(fd, mode);
 }
 
 int get_fileno(File *f) {
