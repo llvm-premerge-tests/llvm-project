@@ -792,12 +792,12 @@ rnb_err_t RNBRemote::GetPacketPayload(std::string &return_packet) {
   // m_rx_packets.size());
   return_packet.swap(m_rx_packets.front());
   m_rx_packets.pop_front();
-  locker.Reset(); // Release our lock on the mutex
 
   if (m_rx_packets.empty()) {
     // Reset the remote command available event if we have no more packets
     m_ctx.Events().ResetEvents(RNBContext::event_read_packet_available);
   }
+  locker.Reset(); // Release our lock on the mutex
 
   // DNBLogThreadedIf (LOG_RNB_MEDIUM, "%8u RNBRemote::%s: '%s'",
   // (uint32_t)m_comm.Timer().ElapsedMicroSeconds(true), __FUNCTION__,
