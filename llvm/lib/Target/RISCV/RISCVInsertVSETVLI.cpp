@@ -75,7 +75,17 @@ static uint16_t getRVVMCOpcode(uint16_t RVVPseudoOpcode) {
   return RVV->BaseInstr;
 }
 
-static bool isScalarMoveInstr(const MachineInstr &MI) {
+static bool isScalarExtractInstr(const MachineInstr &MI) {
+  switch (getRVVMCOpcode(MI.getOpcode())) {
+  default:
+    return false;
+  case RISCV::VMV_X_S:
+  case RISCV::VFMV_F_S:
+    return true;
+  }
+}
+
+static bool isScalarInsertInstr(const MachineInstr &MI) {
   switch (getRVVMCOpcode(MI.getOpcode())) {
   default:
     return false;
@@ -358,7 +368,7 @@ DemandedFields getDemanded(const MachineInstr &MI,
   }
 
   // For vmv.s.x and vfmv.s.f, there are only two behaviors, VL = 0 and VL > 0.
-  if (isScalarMoveInstr(MI)) {
+  if (isScalarInsertInstr(MI)) {
     Res.LMUL = false;
     Res.SEWLMULRatio = false;
     Res.VLAny = false;
@@ -372,6 +382,14 @@ DemandedFields getDemanded(const MachineInstr &MI,
       Res.SEW = DemandedFields::SEWGreaterThanOrEqual;
       Res.TailPolicy = false;
     }
+  }
+
+  // vmv.x.s, and vmv.f.s are unconditional and ignore VL and LMUL
+  if (isScalarExtractInstr(MI)) {
+    Res.LMUL = false;
+    Res.SEWLMULRatio = false;
+    Res.VLAny = false;
+    Res.VLZeroness = false;
   }
 
   return Res;
@@ -999,7 +1017,7 @@ void RISCVInsertVSETVLI::transferBefore(VSETVLIInfo &Info, const MachineInstr &M
   // the 'vsetvli x0, x0, vtype" variant, so we avoid the transform to
   // prevent extending live range of an avl register operand.
   // TODO: We can probably relax this for immediates.
-  if (isScalarMoveInstr(MI) && PrevInfo.isValid() &&
+  if (isScalarInsertInstr(MI) && PrevInfo.isValid() &&
       PrevInfo.hasEquallyZeroAVL(Info, *MRI) &&
       Info.hasSameVLMAX(PrevInfo)) {
     if (PrevInfo.hasAVLImm())
