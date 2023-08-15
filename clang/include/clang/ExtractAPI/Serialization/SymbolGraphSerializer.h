@@ -186,6 +186,8 @@ public:
 
   void visitMethodTemplateSpecRecord(const CXXMethodTemplateSpecRecord &Record);
 
+  void visitCXXFieldTemplateRecord(const CXXFieldTemplateRecord &Record);
+
   void visitConceptRecord(const ConceptRecord &Record);
 
   void
