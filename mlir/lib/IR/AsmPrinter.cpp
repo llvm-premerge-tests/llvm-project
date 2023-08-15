@@ -43,6 +43,7 @@
 #include "llvm/Support/Regex.h"
 #include "llvm/Support/SaveAndRestore.h"
 #include "llvm/Support/Threading.h"
+#include "llvm/Support/raw_ostream.h"
 
 #include <optional>
 #include <tuple>
@@ -140,6 +141,11 @@ struct AsmPrinterOptions {
       llvm::cl::desc("Elide ElementsAttrs with \"...\" that have "
                      "more elements than the given upper limit")};
 
+  llvm::cl::opt<unsigned> elideResourceStringsIfLarger{
+      "mlir-elide-resource-strings-if-larger",
+      llvm::cl::desc(
+          "Elide printing value of resources if string is too long in chars.")};
+
   llvm::cl::opt<bool> printDebugInfoOpt{
       "mlir-print-debuginfo", llvm::cl::init(false),
       llvm::cl::desc("Print debug info in MLIR output")};
@@ -191,6 +197,8 @@ OpPrintingFlags::OpPrintingFlags()
     return;
   if (clOptions->elideElementsAttrIfLarger.getNumOccurrences())
     elementsAttrElementLimit = clOptions->elideElementsAttrIfLarger;
+  if (clOptions->elideResourceStringsIfLarger.getNumOccurrences())
+    resourceStringCharLimit = clOptions->elideResourceStringsIfLarger;
   printDebugInfoFlag = clOptions->printDebugInfoOpt;
   printDebugInfoPrettyFormFlag = clOptions->printPrettyDebugInfoOpt;
   printGenericOpFormFlag = clOptions->printGenericOpFormOpt;
@@ -260,6 +268,11 @@ bool OpPrintingFlags::shouldElideElementsAttr(ElementsAttr attr) const {
 /// Return the size limit for printing large ElementsAttr.
 std::optional<int64_t> OpPrintingFlags::getLargeElementsAttrLimit() const {
   return elementsAttrElementLimit;
+}
+
+/// Return the size limit for printing large ElementsAttr.
+std::optional<int64_t> OpPrintingFlags::getLargeResourceStringLimit() const {
+  return resourceStringCharLimit;
 }
 
 /// Return if debug information should be printed.
@@ -3192,7 +3205,21 @@ void OperationPrinter::printResourceFileMetadata(
       }
 
       os << "      " << key << ": ";
-      valueFn(os);
+
+      // Print only if the character limit is met
+      std::optional<int64_t> charLimit =
+          printerFlags.getLargeResourceStringLimit();
+      if (charLimit.has_value()) {
+        std::string s;
+        llvm::raw_string_ostream ss(s);
+        valueFn(ss);
+        if (s.size() > charLimit)
+          os << "\"__elided__\"";
+        else
+          os << s;
+      } else {
+        valueFn(os);
+      }
     };
     ResourceBuilder entryBuilder(*this, printFn);
     provider.buildResources(op, providerArgs..., entryBuilder);
