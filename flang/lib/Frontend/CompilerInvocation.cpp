@@ -153,6 +153,36 @@ static bool parseDebugArgs(Fortran::frontend::CodeGenOptions &opts,
   return true;
 }
 
+static CodeGenOptions::OptRemark
+parseOptimizationRemark(clang::DiagnosticsEngine &diags,
+                        llvm::opt::ArgList &args, llvm::opt::OptSpecifier optEq,
+                        llvm::StringRef name) {
+  CodeGenOptions::OptRemark result;
+
+  for (llvm::opt::Arg *a : args) {
+    if (a->getOption().matches(clang::driver::options::OPT_R_Joined)) {
+      llvm::StringRef value = a->getValue();
+
+      if (value == name)
+        result.Kind = CodeGenOptions::RemarkKind::RK_Enabled;
+      else if (value.split('-') == std::make_pair(llvm::StringRef("no"), name))
+        result.Kind = CodeGenOptions::RemarkKind::RK_Disabled;
+      else
+        continue;
+
+      if (result.Kind == CodeGenOptions::RemarkKind::RK_Disabled) {
+        result.Pattern = "";
+        result.Regex = nullptr;
+      } else {
+        result.Pattern = ".*";
+        result.Regex = std::make_shared<llvm::Regex>(result.Pattern);
+      }
+    }
+  }
+
+  return result;
+}
+
 static void parseCodeGenArgs(Fortran::frontend::CodeGenOptions &opts,
                              llvm::opt::ArgList &args,
                              clang::DiagnosticsEngine &diags) {
@@ -194,13 +224,55 @@ static void parseCodeGenArgs(Fortran::frontend::CodeGenOptions &opts,
           args.getLastArg(clang::driver::options::OPT_opt_record_file))
     opts.OptRecordFile = a->getValue();
 
+  // Specifies, using a regex, which successful optimization passes done,
+  // to include in the final optimization record file generated. If not provided
+  // -fsave-optimization-record will include all passes.
+  if (const llvm::opt::Arg *a =
+          args.getLastArg(clang::driver::options::OPT_opt_record_passes))
+    opts.OptRecordPasses = a->getValue();
+
+  // Optimization file format. Defaults to yaml
   if (const llvm::opt::Arg *a =
           args.getLastArg(clang::driver::options::OPT_opt_record_format))
     opts.OptRecordFormat = a->getValue();
 
-  if (const llvm::opt::Arg *a =
-          args.getLastArg(clang::driver::options::OPT_opt_record_passes))
-    opts.OptRecordPasses = a->getValue();
+  // OptimizationRemark, OptimizationRemarkMissed and OptimizationRemarkAnalysis
+  // contain regex values which are used in optimizationRemarkHandler in
+  // FrontendActions.cpp to determine which remarks generated should be outputed
+  // to console. They all have the type OptRemark
+
+  // Get -Rpass option regex. If empty, "".*"" is used. From all successful
+  // optimization passes applied, the regex will return only pass names that
+  // match it.
+  opts.OptimizationRemark = parseOptimizationRemark(
+      diags, args, clang::driver::options::OPT_Rpass_EQ, "pass");
+
+  // Get -Rpass-missed option regex. If empty, "".*"" is used. From all
+  // optimization passes that failed to be applied, the regex will return only
+  // pass names that match it.
+  opts.OptimizationRemarkMissed = parseOptimizationRemark(
+      diags, args, clang::driver::options::OPT_Rpass_missed_EQ, "pass-missed");
+
+  // Specify which passes, with additional information,
+  // should be reported using a regex.
+  opts.OptimizationRemarkAnalysis = parseOptimizationRemark(
+      diags, args, clang::driver::options::OPT_Rpass_analysis_EQ,
+      "pass-analysis");
+
+  if (opts.getDebugInfo() == llvm::codegenoptions::NoDebugInfo) {
+    // If the user requested a flag that requires source locations available in
+    // the backend, make sure that the backend tracks source location
+    // information.
+    bool needLocTracking = !opts.OptRecordFile.empty() ||
+                           !opts.OptRecordPasses.empty() ||
+                           !opts.OptRecordFormat.empty() ||
+                           opts.OptimizationRemark.hasValidPattern() ||
+                           opts.OptimizationRemarkMissed.hasValidPattern() ||
+                           opts.OptimizationRemarkAnalysis.hasValidPattern();
+
+    if (needLocTracking)
+      opts.setDebugInfo(llvm::codegenoptions::LocTrackingOnly);
+  }
 
   if (auto *a = args.getLastArg(clang::driver::options::OPT_save_temps_EQ))
     opts.SaveTempsDir = a->getValue();
@@ -958,6 +1030,13 @@ bool CompilerInvocation::createFromArgs(
   if (args.hasArg(clang::driver::options::OPT_fno_ppc_native_vec_elem_order)) {
     res.loweringOpts.setNoPPCNativeVecElemOrder(true);
   }
+
+  // Add the remark option requested i.e. pass, pass-missed or pass-analysis.
+  // This will be used later during processing warnings and remarks to give
+  // messages specific to a remark argument. That happens in
+  // processWarningOptions in ExecuteCompilerInvocation.cpp
+  for (auto *a : args.filtered(clang::driver::options::OPT_R_Group))
+    res.getDiagnosticOpts().Remarks.push_back(a->getValue());
 
   success &= parseFrontendArgs(res.getFrontendOpts(), args, diags);
   parseTargetArgs(res.getTargetOpts(), args);
