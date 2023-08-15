@@ -16,17 +16,16 @@
 
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/DeclTemplate.h"
-#include "clang/Basic/OperatorKinds.h"
-#include "clang/Basic/Specifiers.h"
-#include "clang/ExtractAPI/DeclarationFragments.h"
-#include "llvm/ADT/FunctionExtras.h"
-
-#include "clang/AST/ASTContext.h"
 #include "clang/AST/ParentMapContext.h"
 #include "clang/AST/RecursiveASTVisitor.h"
+#include "clang/Basic/OperatorKinds.h"
 #include "clang/Basic/SourceManager.h"
+#include "clang/Basic/Specifiers.h"
 #include "clang/ExtractAPI/API.h"
+#include "clang/ExtractAPI/DeclarationFragments.h"
 #include "clang/ExtractAPI/TypedefUnderlyingTypeResolver.h"
+#include "clang/Index/USRGeneration.h"
+#include "llvm/ADT/FunctionExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include <type_traits>
 
@@ -53,6 +52,8 @@ public:
 
   bool WalkUpFromCXXRecordDecl(const CXXRecordDecl *Decl);
 
+  bool WalkUpFromCXXMethodDecl(const CXXMethodDecl *Decl);
+
   bool WalkUpFromClassTemplateSpecializationDecl(
       const ClassTemplateSpecializationDecl *Decl);
 
@@ -72,6 +73,8 @@ public:
   bool VisitRecordDecl(const RecordDecl *Decl);
 
   bool VisitCXXRecordDecl(const CXXRecordDecl *Decl);
+
+  bool VisitCXXMethodDecl(const CXXMethodDecl *Decl);
 
   bool VisitConceptDecl(const ConceptDecl *Decl);
 
@@ -264,11 +267,11 @@ bool ExtractAPIVisitorBase<Derived>::VisitFunctionDecl(
   switch (Decl->getTemplatedKind()) {
   case FunctionDecl::TK_NonTemplate:
   case FunctionDecl::TK_DependentNonTemplate:
-  case FunctionDecl::TK_MemberSpecialization:
   case FunctionDecl::TK_FunctionTemplateSpecialization:
     break;
   case FunctionDecl::TK_FunctionTemplate:
   case FunctionDecl::TK_DependentFunctionTemplateSpecialization:
+  case FunctionDecl::TK_MemberSpecialization:
     return true;
   }
 
@@ -361,6 +364,13 @@ template <typename Derived>
 bool ExtractAPIVisitorBase<Derived>::WalkUpFromCXXRecordDecl(
     const CXXRecordDecl *Decl) {
   getDerivedExtractAPIVisitor().VisitCXXRecordDecl(Decl);
+  return true;
+}
+
+template <typename Derived>
+bool ExtractAPIVisitorBase<Derived>::WalkUpFromCXXMethodDecl(
+    const CXXMethodDecl *Decl) {
+  getDerivedExtractAPIVisitor().VisitCXXMethodDecl(Decl);
   return true;
 }
 
@@ -509,6 +519,60 @@ bool ExtractAPIVisitorBase<Derived>::VisitCXXRecordDecl(
   getDerivedExtractAPIVisitor().recordCXXFields(CXXClassRecord, Decl->fields());
   getDerivedExtractAPIVisitor().recordCXXMethods(CXXClassRecord,
                                                  Decl->methods());
+  return true;
+}
+
+template <typename Derived>
+bool ExtractAPIVisitorBase<Derived>::VisitCXXMethodDecl(
+    const CXXMethodDecl *Decl) {
+  if (!getDerivedExtractAPIVisitor().shouldDeclBeIncluded(Decl) ||
+      Decl->isImplicit())
+    return true;
+  switch (Decl->getTemplatedKind()) {
+  case FunctionDecl::TK_MemberSpecialization:
+  case FunctionDecl::TK_FunctionTemplateSpecialization:
+  case FunctionDecl::TK_FunctionTemplate:
+  case FunctionDecl::TK_DependentFunctionTemplateSpecialization:
+    break;
+  case FunctionDecl::TK_NonTemplate:
+  case FunctionDecl::TK_DependentNonTemplate:
+    return true;
+  }
+
+  StringRef Name = Decl->getName();
+  StringRef USR = API.recordUSR(Decl);
+  PresumedLoc Loc =
+      Context.getSourceManager().getPresumedLoc(Decl->getLocation());
+  DocComment Comment;
+  if (auto *RawComment =
+          getDerivedExtractAPIVisitor().fetchRawCommentForDecl(Decl))
+    Comment = RawComment->getFormattedLines(Context.getSourceManager(),
+                                            Context.getDiagnostics());
+  DeclarationFragments SubHeading =
+      DeclarationFragmentsBuilder::getSubHeading(Decl);
+
+  SmallString<128> ParentUSR;
+  index::generateUSRForDecl(dyn_cast<CXXRecordDecl>(Decl->getDeclContext()),
+                            ParentUSR);
+  if (Decl->isTemplated()) {
+    FunctionTemplateDecl *Template = Decl->getDescribedFunctionTemplate();
+    API.addCXXMethodTemplate(
+        API.findRecordForUSR(ParentUSR), Name, USR, Loc, AvailabilitySet(Decl),
+        Comment,
+        DeclarationFragmentsBuilder::getFragmentsForFunctionTemplate(Template),
+        SubHeading, DeclarationFragmentsBuilder::getFunctionSignature(Decl),
+        DeclarationFragmentsBuilder::getAccessControl(Template),
+        DeclarationFragmentsBuilder::getTemplate(Template),
+        isInSystemHeader(Decl));
+  } else if (Decl->getTemplateSpecializationInfo())
+    API.addCXXMethodTemplateSpec(
+        API.findRecordForUSR(ParentUSR), Name, USR, Loc, AvailabilitySet(Decl),
+        Comment,
+        DeclarationFragmentsBuilder::
+            getFragmentsForFunctionTemplateSpecialization(Decl),
+        SubHeading, DeclarationFragmentsBuilder::getFunctionSignature(Decl),
+        DeclarationFragmentsBuilder::getAccessControl(Decl),
+        isInSystemHeader(Decl));
   return true;
 }
 
@@ -724,6 +788,8 @@ bool ExtractAPIVisitorBase<Derived>::VisitVarTemplatePartialSpecializationDecl(
 template <typename Derived>
 bool ExtractAPIVisitorBase<Derived>::VisitFunctionTemplateDecl(
     const FunctionTemplateDecl *Decl) {
+  if (isa<CXXMethodDecl>(Decl->getTemplatedDecl()))
+    return true;
   if (!getDerivedExtractAPIVisitor().shouldDeclBeIncluded(Decl))
     return true;
 
@@ -1111,6 +1177,9 @@ void ExtractAPIVisitorBase<Derived>::recordCXXMethods(
       recordConversionMethod(CXXClassRecord, Method);
       continue;
     }
+
+    if (Method->isFunctionTemplateSpecialization())
+      return;
 
     StringRef Name;
     DeclarationFragments Declaration;
