@@ -1,0 +1,11 @@
+main:30:0
+ 1: 0
+ 12: 10 matched:10
+ 20: 10 bar:10
+ 13: bar:10
+  1: 10
+  !CFGChecksum: 42949672950
+ !CFGChecksum: 844635331715433
+bar:11:11
+ 1: 11
+ !CFGChecksum: 42949672950
