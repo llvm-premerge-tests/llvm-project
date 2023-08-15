@@ -1,5 +1,6 @@
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/ASTStructuralEquivalence.h"
+#include "clang/AST/DeclTemplate.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/Testing/CommandLineArgs.h"
@@ -130,15 +131,18 @@ struct StructuralEquivalenceTest : ::testing::Test {
     return makeStmts(Wrap(SrcCode0), Wrap(SrcCode1), Lang, AMatcher);
   }
 
-  bool testStructuralMatch(Decl *D0, Decl *D1) {
+  bool testStructuralMatch(Decl *D0, Decl *D1,
+                           bool IgnoreTemplateParmDepth = false) {
     llvm::DenseSet<std::pair<Decl *, Decl *>> NonEquivalentDecls01;
     llvm::DenseSet<std::pair<Decl *, Decl *>> NonEquivalentDecls10;
     StructuralEquivalenceContext Ctx01(
-        D0->getASTContext(), D1->getASTContext(),
-        NonEquivalentDecls01, StructuralEquivalenceKind::Default, false, false);
+        D0->getASTContext(), D1->getASTContext(), NonEquivalentDecls01,
+        StructuralEquivalenceKind::Default, false, false, false,
+        IgnoreTemplateParmDepth);
     StructuralEquivalenceContext Ctx10(
-        D1->getASTContext(), D0->getASTContext(),
-        NonEquivalentDecls10, StructuralEquivalenceKind::Default, false, false);
+        D1->getASTContext(), D0->getASTContext(), NonEquivalentDecls10,
+        StructuralEquivalenceKind::Default, false, false, false,
+        IgnoreTemplateParmDepth);
     bool Eq01 = Ctx01.IsEquivalent(D0, D1);
     bool Eq10 = Ctx10.IsEquivalent(D1, D0);
     EXPECT_EQ(Eq01, Eq10);
@@ -1687,6 +1691,45 @@ TEST_F(
       )",
       Lang_CXX03, classTemplateSpecializationDecl(hasName("Primary")));
   EXPECT_FALSE(testStructuralMatch(t));
+}
+
+TEST_F(StructuralEquivalenceTemplateTest,
+       ClassTemplateEquivalentFriendClassTemplate) {
+  auto t = makeDecls<Decl>(
+      R"(
+      template <class T, T U>
+      class A {
+      public:
+        template <class P, P Q>
+        friend class A;
+
+        A(T x)  :x(x) {}
+
+      private:
+        T x;
+      };
+      )",
+
+      R"(
+      template <class T, T U>
+      class A {
+      public:
+        template <class P, P Q>
+        friend class A;
+
+        A(T x) : x(x) {}
+
+      private:
+        T x;
+      };
+
+      A<int,3> a1(0);
+      )",
+      Lang_CXX03, friendDecl(),
+      classTemplateDecl(has(cxxRecordDecl(hasDefinition(), hasName("A")))));
+  auto *Friend = cast<FriendDecl>(get<0>(t));
+  EXPECT_FALSE(testStructuralMatch(Friend->getFriendDecl(), get<1>(t)));
+  EXPECT_TRUE(testStructuralMatch(Friend->getFriendDecl(), get<1>(t), true));
 }
 
 TEST_F(
