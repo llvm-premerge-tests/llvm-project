@@ -4,6 +4,11 @@ module cstd [system] {
     header "float.h"
   }
 
+  // In both directories (compiler support version wins, forwards)
+  module inttypes {
+    header "inttypes.h"
+  }
+
   // Only in system headers directory
   module stdio {
     header "stdio.h"
