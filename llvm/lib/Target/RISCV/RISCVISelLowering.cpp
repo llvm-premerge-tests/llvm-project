@@ -17576,6 +17576,17 @@ bool RISCVTargetLowering::isIntDivCheap(EVT VT, AttributeList Attr) const {
   return OptSize && !VT.isVector();
 }
 
+bool RISCVTargetLowering::canMergeStoresTo(unsigned AddressSpace, EVT MemVT,
+                                           const MachineFunction &MF) const {
+  // Do not merge to greater than XLen  if no implicit float attribute is set.
+
+  bool NoFloat = MF.getFunction().hasFnAttribute(Attribute::NoImplicitFloat);
+
+  if (NoFloat)
+    return (MemVT.getSizeInBits() <= Subtarget.getXLen());
+  return true;
+}
+
 bool RISCVTargetLowering::preferScalarizeSplat(SDNode *N) const {
   // Scalarize zero_ext and sign_ext might stop match to widening instruction in
   // some situation.
