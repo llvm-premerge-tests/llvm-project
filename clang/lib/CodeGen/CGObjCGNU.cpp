@@ -1614,32 +1614,24 @@ class CGObjCGNUstep2 : public CGObjCGNUstep {
     if (!CGM.getTriple().isOSBinFormatCOFF()) {
       createNullGlobal(".objc_null_selector", {NULLPtr, NULLPtr},
           sectionName<SelectorSection>());
-      if (Categories.empty())
-        createNullGlobal(".objc_null_category", {NULLPtr, NULLPtr,
-                      NULLPtr, NULLPtr, NULLPtr, NULLPtr, NULLPtr},
-            sectionName<CategorySection>());
-      if (!EmittedClass) {
-        createNullGlobal(".objc_null_cls_init_ref", NULLPtr,
-            sectionName<ClassSection>());
-        createNullGlobal(".objc_null_class_ref", { NULLPtr, NULLPtr },
-            sectionName<ClassReferenceSection>());
-      }
-      if (!EmittedProtocol)
-        createNullGlobal(".objc_null_protocol", {NULLPtr, NULLPtr, NULLPtr,
-            NULLPtr, NULLPtr, NULLPtr, NULLPtr, NULLPtr, NULLPtr, NULLPtr,
-            NULLPtr}, sectionName<ProtocolSection>());
-      if (!EmittedProtocolRef)
-        createNullGlobal(".objc_null_protocol_ref", {NULLPtr},
-            sectionName<ProtocolReferenceSection>());
-      if (ClassAliases.empty())
-        createNullGlobal(".objc_null_class_alias", { NULLPtr, NULLPtr },
-            sectionName<ClassAliasSection>());
-      if (ConstantStrings.empty()) {
-        auto i32Zero = llvm::ConstantInt::get(Int32Ty, 0);
-        createNullGlobal(".objc_null_constant_string", { NULLPtr, i32Zero,
-            i32Zero, i32Zero, i32Zero, NULLPtr },
-            sectionName<ConstantStringSection>());
-      }
+      createNullGlobal(".objc_null_category", {NULLPtr, NULLPtr,
+                    NULLPtr, NULLPtr, NULLPtr, NULLPtr, NULLPtr},
+          sectionName<CategorySection>());
+      createNullGlobal(".objc_null_cls_init_ref", NULLPtr,
+          sectionName<ClassSection>());
+      createNullGlobal(".objc_null_class_ref", { NULLPtr, NULLPtr },
+          sectionName<ClassReferenceSection>());
+      createNullGlobal(".objc_null_protocol", {NULLPtr, NULLPtr, NULLPtr,
+          NULLPtr, NULLPtr, NULLPtr, NULLPtr, NULLPtr, NULLPtr, NULLPtr,
+          NULLPtr}, sectionName<ProtocolSection>());
+      createNullGlobal(".objc_null_protocol_ref", {NULLPtr},
+          sectionName<ProtocolReferenceSection>());
+      createNullGlobal(".objc_null_class_alias", { NULLPtr, NULLPtr },
+          sectionName<ClassAliasSection>());
+      auto i32Zero = llvm::ConstantInt::get(Int32Ty, 0);
+      createNullGlobal(".objc_null_constant_string", { NULLPtr, i32Zero,
+          i32Zero, i32Zero, i32Zero, NULLPtr },
+          sectionName<ConstantStringSection>());
     }
     ConstantStrings.clear();
     Categories.clear();

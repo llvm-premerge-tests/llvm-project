@@ -52,7 +52,8 @@
 // CHECK-NEW: @.objc_null_class_alias = linkonce_odr hidden global { ptr, ptr } zeroinitializer, section "__objc_class_aliases", comdat, align 8
 // CHECK-NEW: @.objc_null_constant_string = linkonce_odr hidden global { ptr, i32, i32, i32, i32, ptr } zeroinitializer, section "__objc_constant_string", comdat, align 8
 // Make sure that the null symbols are not going to be removed, even by linking.
-// CHECK-NEW: @llvm.used = appending global [8 x ptr] [ptr @._OBJC_INIT_CLASS_X, ptr @.objc_ctor, ptr @.objc_null_selector, ptr @.objc_null_category, ptr @.objc_null_protocol, ptr @.objc_null_protocol_ref, ptr @.objc_null_class_alias, ptr @.objc_null_constant_string], section "llvm.metadata"
+// CHECK-NEW: @llvm.used = appending global [10 x ptr] [ptr @._OBJC_INIT_CLASS_X, ptr @.objc_ctor, ptr @.objc_null_selector, ptr @.objc_null_category, ptr @.objc_null_cls_init_ref, ptr @.objc_null_class_ref, ptr @.objc_null_protocol, ptr @.objc_null_protocol_ref, ptr @.objc_null_class_alias, ptr @.objc_null_constant_string], section "llvm.metadata"
+
 // Make sure that the load function and the reference to it are marked as used.
 // CHECK-NEW: @llvm.compiler.used = appending global [1 x ptr] [ptr @.objcv2_load_function], section "llvm.metadata"
 
