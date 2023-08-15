@@ -45,21 +45,6 @@ define <4 x float> @hang_when_merging_stores_after_legalization(<8 x float> %x, 
 ; LMULMAX1-NEXT:    vmv.v.v v11, v12
 ; LMULMAX1-NEXT:    vmv1r.v v8, v11
 ; LMULMAX1-NEXT:    ret
-;
-; LMULMAX2-LABEL: hang_when_merging_stores_after_legalization:
-; LMULMAX2:       # %bb.0:
-; LMULMAX2-NEXT:    vsetivli zero, 8, e32, m2, ta, ma
-; LMULMAX2-NEXT:    vid.v v12
-; LMULMAX2-NEXT:    li a0, 7
-; LMULMAX2-NEXT:    vmul.vx v14, v12, a0
-; LMULMAX2-NEXT:    vrgather.vv v12, v8, v14
-; LMULMAX2-NEXT:    vadd.vi v8, v14, -14
-; LMULMAX2-NEXT:    vsetivli zero, 1, e8, mf8, ta, ma
-; LMULMAX2-NEXT:    vmv.v.i v0, 12
-; LMULMAX2-NEXT:    vsetivli zero, 8, e32, m2, ta, mu
-; LMULMAX2-NEXT:    vrgather.vv v12, v10, v8, v0.t
-; LMULMAX2-NEXT:    vmv1r.v v8, v12
-; LMULMAX2-NEXT:    ret
   %z = shufflevector <8 x float> %x, <8 x float> %y, <4 x i32> <i32 0, i32 7, i32 8, i32 15>
   ret <4 x float> %z
 }

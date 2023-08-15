@@ -414,38 +414,25 @@ define <64 x i32> @interleave_v32i32(<32 x i32> %x, <32 x i32> %y) {
 ; RV32-V128-NEXT:    addi sp, sp, -16
 ; RV32-V128-NEXT:    .cfi_def_cfa_offset 16
 ; RV32-V128-NEXT:    csrr a0, vlenb
-; RV32-V128-NEXT:    slli a0, a0, 4
+; RV32-V128-NEXT:    slli a0, a0, 3
 ; RV32-V128-NEXT:    sub sp, sp, a0
-; RV32-V128-NEXT:    .cfi_escape 0x0f, 0x0d, 0x72, 0x00, 0x11, 0x10, 0x22, 0x11, 0x10, 0x92, 0xa2, 0x38, 0x00, 0x1e, 0x22 # sp + 16 + 16 * vlenb
-; RV32-V128-NEXT:    lui a0, %hi(.LCPI17_0)
-; RV32-V128-NEXT:    addi a0, a0, %lo(.LCPI17_0)
-; RV32-V128-NEXT:    li a1, 32
-; RV32-V128-NEXT:    vsetvli zero, a1, e32, m8, ta, ma
-; RV32-V128-NEXT:    vle32.v v0, (a0)
-; RV32-V128-NEXT:    vmv8r.v v24, v8
+; RV32-V128-NEXT:    .cfi_escape 0x0f, 0x0d, 0x72, 0x00, 0x11, 0x10, 0x22, 0x11, 0x08, 0x92, 0xa2, 0x38, 0x00, 0x1e, 0x22 # sp + 16 + 8 * vlenb
+; RV32-V128-NEXT:    vmv8r.v v0, v8
 ; RV32-V128-NEXT:    addi a0, sp, 16
 ; RV32-V128-NEXT:    vs8r.v v8, (a0) # Unknown-size Folded Spill
-; RV32-V128-NEXT:    vrgather.vv v8, v24, v0
-; RV32-V128-NEXT:    lui a0, %hi(.LCPI17_1)
-; RV32-V128-NEXT:    addi a0, a0, %lo(.LCPI17_1)
-; RV32-V128-NEXT:    vle32.v v24, (a0)
-; RV32-V128-NEXT:    csrr a0, vlenb
-; RV32-V128-NEXT:    slli a0, a0, 3
-; RV32-V128-NEXT:    add a0, sp, a0
-; RV32-V128-NEXT:    addi a0, a0, 16
-; RV32-V128-NEXT:    vs8r.v v24, (a0) # Unknown-size Folded Spill
-; RV32-V128-NEXT:    lui a0, 699051
-; RV32-V128-NEXT:    addi a0, a0, -1366
+; RV32-V128-NEXT:    li a0, 32
+; RV32-V128-NEXT:    vsetvli zero, a0, e32, m8, ta, ma
+; RV32-V128-NEXT:    vid.v v8
+; RV32-V128-NEXT:    vsrl.vi v8, v8, 1
+; RV32-V128-NEXT:    li a1, 16
+; RV32-V128-NEXT:    vadd.vx v8, v8, a1
+; RV32-V128-NEXT:    vrgather.vv v24, v0, v8
+; RV32-V128-NEXT:    lui a1, 699051
+; RV32-V128-NEXT:    addi a1, a1, -1366
 ; RV32-V128-NEXT:    vsetivli zero, 1, e32, mf2, ta, ma
-; RV32-V128-NEXT:    vmv.v.x v0, a0
-; RV32-V128-NEXT:    vsetvli zero, a1, e32, m8, ta, mu
-; RV32-V128-NEXT:    csrr a0, vlenb
-; RV32-V128-NEXT:    slli a0, a0, 3
-; RV32-V128-NEXT:    add a0, sp, a0
-; RV32-V128-NEXT:    addi a0, a0, 16
-; RV32-V128-NEXT:    vl8r.v v24, (a0) # Unknown-size Folded Reload
-; RV32-V128-NEXT:    vrgather.vv v8, v16, v24, v0.t
-; RV32-V128-NEXT:    vmv.v.v v24, v8
+; RV32-V128-NEXT:    vmv.v.x v0, a1
+; RV32-V128-NEXT:    vsetvli zero, a0, e32, m8, ta, mu
+; RV32-V128-NEXT:    vrgather.vv v24, v16, v8, v0.t
 ; RV32-V128-NEXT:    vsetivli zero, 16, e32, m4, ta, ma
 ; RV32-V128-NEXT:    addi a0, sp, 16
 ; RV32-V128-NEXT:    vl8r.v v8, (a0) # Unknown-size Folded Reload
@@ -455,7 +442,7 @@ define <64 x i32> @interleave_v32i32(<32 x i32> %x, <32 x i32> %y) {
 ; RV32-V128-NEXT:    vmv8r.v v8, v0
 ; RV32-V128-NEXT:    vmv8r.v v16, v24
 ; RV32-V128-NEXT:    csrr a0, vlenb
-; RV32-V128-NEXT:    slli a0, a0, 4
+; RV32-V128-NEXT:    slli a0, a0, 3
 ; RV32-V128-NEXT:    add sp, sp, a0
 ; RV32-V128-NEXT:    addi sp, sp, 16
 ; RV32-V128-NEXT:    ret
@@ -465,38 +452,25 @@ define <64 x i32> @interleave_v32i32(<32 x i32> %x, <32 x i32> %y) {
 ; RV64-V128-NEXT:    addi sp, sp, -16
 ; RV64-V128-NEXT:    .cfi_def_cfa_offset 16
 ; RV64-V128-NEXT:    csrr a0, vlenb
-; RV64-V128-NEXT:    slli a0, a0, 4
+; RV64-V128-NEXT:    slli a0, a0, 3
 ; RV64-V128-NEXT:    sub sp, sp, a0
-; RV64-V128-NEXT:    .cfi_escape 0x0f, 0x0d, 0x72, 0x00, 0x11, 0x10, 0x22, 0x11, 0x10, 0x92, 0xa2, 0x38, 0x00, 0x1e, 0x22 # sp + 16 + 16 * vlenb
-; RV64-V128-NEXT:    lui a0, %hi(.LCPI17_0)
-; RV64-V128-NEXT:    addi a0, a0, %lo(.LCPI17_0)
-; RV64-V128-NEXT:    li a1, 32
-; RV64-V128-NEXT:    vsetvli zero, a1, e32, m8, ta, ma
-; RV64-V128-NEXT:    vle32.v v0, (a0)
-; RV64-V128-NEXT:    vmv8r.v v24, v8
+; RV64-V128-NEXT:    .cfi_escape 0x0f, 0x0d, 0x72, 0x00, 0x11, 0x10, 0x22, 0x11, 0x08, 0x92, 0xa2, 0x38, 0x00, 0x1e, 0x22 # sp + 16 + 8 * vlenb
+; RV64-V128-NEXT:    vmv8r.v v0, v8
 ; RV64-V128-NEXT:    addi a0, sp, 16
 ; RV64-V128-NEXT:    vs8r.v v8, (a0) # Unknown-size Folded Spill
-; RV64-V128-NEXT:    vrgather.vv v8, v24, v0
-; RV64-V128-NEXT:    lui a0, %hi(.LCPI17_1)
-; RV64-V128-NEXT:    addi a0, a0, %lo(.LCPI17_1)
-; RV64-V128-NEXT:    vle32.v v24, (a0)
-; RV64-V128-NEXT:    csrr a0, vlenb
-; RV64-V128-NEXT:    slli a0, a0, 3
-; RV64-V128-NEXT:    add a0, sp, a0
-; RV64-V128-NEXT:    addi a0, a0, 16
-; RV64-V128-NEXT:    vs8r.v v24, (a0) # Unknown-size Folded Spill
-; RV64-V128-NEXT:    lui a0, 699051
-; RV64-V128-NEXT:    addiw a0, a0, -1366
+; RV64-V128-NEXT:    li a0, 32
+; RV64-V128-NEXT:    vsetvli zero, a0, e32, m8, ta, ma
+; RV64-V128-NEXT:    vid.v v8
+; RV64-V128-NEXT:    vsrl.vi v8, v8, 1
+; RV64-V128-NEXT:    li a1, 16
+; RV64-V128-NEXT:    vadd.vx v8, v8, a1
+; RV64-V128-NEXT:    vrgather.vv v24, v0, v8
+; RV64-V128-NEXT:    lui a1, 699051
+; RV64-V128-NEXT:    addiw a1, a1, -1366
 ; RV64-V128-NEXT:    vsetivli zero, 1, e32, mf2, ta, ma
-; RV64-V128-NEXT:    vmv.v.x v0, a0
-; RV64-V128-NEXT:    vsetvli zero, a1, e32, m8, ta, mu
-; RV64-V128-NEXT:    csrr a0, vlenb
-; RV64-V128-NEXT:    slli a0, a0, 3
-; RV64-V128-NEXT:    add a0, sp, a0
-; RV64-V128-NEXT:    addi a0, a0, 16
-; RV64-V128-NEXT:    vl8r.v v24, (a0) # Unknown-size Folded Reload
-; RV64-V128-NEXT:    vrgather.vv v8, v16, v24, v0.t
-; RV64-V128-NEXT:    vmv.v.v v24, v8
+; RV64-V128-NEXT:    vmv.v.x v0, a1
+; RV64-V128-NEXT:    vsetvli zero, a0, e32, m8, ta, mu
+; RV64-V128-NEXT:    vrgather.vv v24, v16, v8, v0.t
 ; RV64-V128-NEXT:    vsetivli zero, 16, e32, m4, ta, ma
 ; RV64-V128-NEXT:    addi a0, sp, 16
 ; RV64-V128-NEXT:    vl8r.v v8, (a0) # Unknown-size Folded Reload
@@ -506,7 +480,7 @@ define <64 x i32> @interleave_v32i32(<32 x i32> %x, <32 x i32> %y) {
 ; RV64-V128-NEXT:    vmv8r.v v8, v0
 ; RV64-V128-NEXT:    vmv8r.v v16, v24
 ; RV64-V128-NEXT:    csrr a0, vlenb
-; RV64-V128-NEXT:    slli a0, a0, 4
+; RV64-V128-NEXT:    slli a0, a0, 3
 ; RV64-V128-NEXT:    add sp, sp, a0
 ; RV64-V128-NEXT:    addi sp, sp, 16
 ; RV64-V128-NEXT:    ret
@@ -773,18 +747,18 @@ define <8 x i32> @unary_interleave_v8i32(<8 x i32> %x) {
 define <4 x i8> @unary_interleave_10uu_v4i8(<4 x i8> %x) {
 ; V128-LABEL: unary_interleave_10uu_v4i8:
 ; V128:       # %bb.0:
+; V128-NEXT:    vsetivli zero, 2, e16, mf4, ta, ma
+; V128-NEXT:    vmv.v.i v10, 1
 ; V128-NEXT:    vsetivli zero, 4, e8, mf4, ta, ma
-; V128-NEXT:    vid.v v9
-; V128-NEXT:    vrsub.vi v10, v9, 1
 ; V128-NEXT:    vrgather.vv v9, v8, v10
 ; V128-NEXT:    vmv1r.v v8, v9
 ; V128-NEXT:    ret
 ;
 ; V512-LABEL: unary_interleave_10uu_v4i8:
 ; V512:       # %bb.0:
+; V512-NEXT:    vsetivli zero, 2, e16, mf4, ta, ma
+; V512-NEXT:    vmv.v.i v10, 1
 ; V512-NEXT:    vsetivli zero, 4, e8, mf8, ta, ma
-; V512-NEXT:    vid.v v9
-; V512-NEXT:    vrsub.vi v10, v9, 1
 ; V512-NEXT:    vrgather.vv v9, v8, v10
 ; V512-NEXT:    vmv1r.v v8, v9
 ; V512-NEXT:    ret

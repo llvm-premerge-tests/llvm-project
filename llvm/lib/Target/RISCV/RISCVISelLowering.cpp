@@ -3130,7 +3130,10 @@ static SDValue lowerBuildVectorOfConstants(SDValue Op, SelectionDAG &DAG,
   MVT ContainerVT = getContainerForFixedLengthVector(DAG, VT, Subtarget);
 
   SDLoc DL(Op);
-  auto [Mask, VL] = getDefaultVLOps(VT, ContainerVT, DL, DAG, Subtarget);
+  // TODO: Need to manually binding Mask and VL because they're captured in
+  // lambdas below. Use structured binding if/when we move to C++20.
+  auto DefVLOps = getDefaultVLOps(VT, ContainerVT, DL, DAG, Subtarget);
+  SDValue Mask = DefVLOps.first, VL = DefVLOps.second;
 
   MVT XLenVT = Subtarget.getXLenVT();
   unsigned NumElts = Op.getNumOperands();
@@ -3220,6 +3223,22 @@ static SDValue lowerBuildVectorOfConstants(SDValue Op, SelectionDAG &DAG,
     return convertFromScalableVector(VT, Splat, DAG, Subtarget);
   }
 
+  std::function<SDValue()> CheapestLowering;
+  // TODO: Substitute this with the cost of a constant pool load.
+  const unsigned MaxCost = 4;
+  auto AddLowering = [&CheapestLowering,
+                      CurCost = -1u](unsigned Cost,
+                                     std::function<SDValue()> Lowering) mutable {
+    if (Cost > MaxCost)
+      return;
+    if (!CheapestLowering || Cost < CurCost) {
+      CheapestLowering = Lowering;
+      CurCost = Cost;
+    }
+  };
+
+  const unsigned EltBitSize = VT.getScalarSizeInBits();
+
   // Try and match index sequences, which we can lower to the vid instruction
   // with optional modifications. An all-undef vector is matched by
   // getSplatValue, above.
@@ -3240,52 +3259,78 @@ static SDValue lowerBuildVectorOfConstants(SDValue Op, SelectionDAG &DAG,
       }
     }
 
+    unsigned Cost = 1; // Base cost of 1 for vid
+    if (Addend || Negate) {
+      Cost++;
+      // Add the constant materialization cost if it won't fit into vadd.vi
+      if (!isInt<5>(Addend))
+        Cost += RISCVMatInt::getIntMatCost(
+            APInt(64, Addend), EltBitSize, Subtarget.getFeatureBits());
+    }
+    if (StepOpcode == ISD::MUL && SplatStepVal != 1) {
+      Cost++;
+      // There's no vmul.vi so always include the materialization cost.
+      Cost +=
+          RISCVMatInt::getIntMatCost(APInt(64, SplatStepVal),
+                                     EltBitSize, Subtarget.getFeatureBits());
+    }
+    if (StepOpcode == ISD::SHL && SplatStepVal != 0) {
+      Cost++;
+      // Add the constant materialization cost if it won't fit into vsll.vi.
+      if (!isUInt<5>(SplatStepVal))
+        Cost +=
+            RISCVMatInt::getIntMatCost(APInt(64, SplatStepVal),
+                                       EltBitSize, Subtarget.getFeatureBits());
+    }
+    // May have to emit a vfwcvt.
+    if (VT.isFloatingPoint())
+      Cost++;
+
     // Only emit VIDs with suitably-small steps/addends. We use imm5 is a
     // threshold since it's the immediate value many RVV instructions accept.
     // There is no vmul.vi instruction so ensure multiply constant can fit in
     // a single addi instruction.
-    if (((StepOpcode == ISD::MUL && isInt<12>(SplatStepVal)) ||
-         (StepOpcode == ISD::SHL && isUInt<5>(SplatStepVal))) &&
-        isPowerOf2_32(StepDenominator) &&
-        (SplatStepVal >= 0 || StepDenominator == 1) && isInt<5>(Addend)) {
-      MVT VIDVT =
-          VT.isFloatingPoint() ? VT.changeVectorElementTypeToInteger() : VT;
-      MVT VIDContainerVT =
-          getContainerForFixedLengthVector(DAG, VIDVT, Subtarget);
-      SDValue VID = DAG.getNode(RISCVISD::VID_VL, DL, VIDContainerVT, Mask, VL);
-      // Convert right out of the scalable type so we can use standard ISD
-      // nodes for the rest of the computation. If we used scalable types with
-      // these, we'd lose the fixed-length vector info and generate worse
-      // vsetvli code.
-      VID = convertFromScalableVector(VIDVT, VID, DAG, Subtarget);
-      if ((StepOpcode == ISD::MUL && SplatStepVal != 1) ||
-          (StepOpcode == ISD::SHL && SplatStepVal != 0)) {
-        SDValue SplatStep = DAG.getSplatBuildVector(
-            VIDVT, DL, DAG.getConstant(SplatStepVal, DL, XLenVT));
-        VID = DAG.getNode(StepOpcode, DL, VIDVT, VID, SplatStep);
-      }
-      if (StepDenominator != 1) {
-        SDValue SplatStep = DAG.getSplatBuildVector(
-            VIDVT, DL, DAG.getConstant(Log2_64(StepDenominator), DL, XLenVT));
-        VID = DAG.getNode(ISD::SRL, DL, VIDVT, VID, SplatStep);
-      }
-      if (Addend != 0 || Negate) {
-        SDValue SplatAddend = DAG.getSplatBuildVector(
-            VIDVT, DL, DAG.getConstant(Addend, DL, XLenVT));
-        VID = DAG.getNode(Negate ? ISD::SUB : ISD::ADD, DL, VIDVT, SplatAddend,
-                          VID);
-      }
-      if (VT.isFloatingPoint()) {
-        // TODO: Use vfwcvt to reduce register pressure.
-        VID = DAG.getNode(ISD::SINT_TO_FP, DL, VT, VID);
-      }
-      return VID;
+    if (isPowerOf2_32(StepDenominator) && (SplatStepVal >= 0 || StepDenominator == 1)) {
+      AddLowering(Cost, [=, &DAG, &Subtarget]() {
+        MVT VIDVT =
+            VT.isFloatingPoint() ? VT.changeVectorElementTypeToInteger() : VT;
+        MVT VIDContainerVT =
+            getContainerForFixedLengthVector(DAG, VIDVT, Subtarget);
+        SDValue VID =
+            DAG.getNode(RISCVISD::VID_VL, DL, VIDContainerVT, Mask, VL);
+        // Convert right out of the scalable type so we can use standard ISD
+        // nodes for the rest of the computation. If we used scalable types with
+        // these, we'd lose the fixed-length vector info and generate worse
+        // vsetvli code.
+        VID = convertFromScalableVector(VIDVT, VID, DAG, Subtarget);
+        if ((StepOpcode == ISD::MUL && SplatStepVal != 1) ||
+            (StepOpcode == ISD::SHL && SplatStepVal != 0)) {
+          SDValue SplatStep = DAG.getSplatBuildVector(
+              VIDVT, DL, DAG.getConstant(SplatStepVal, DL, XLenVT));
+          VID = DAG.getNode(StepOpcode, DL, VIDVT, VID, SplatStep);
+        }
+        if (StepDenominator != 1) {
+          SDValue SplatStep = DAG.getSplatBuildVector(
+              VIDVT, DL, DAG.getConstant(Log2_64(StepDenominator), DL, XLenVT));
+          VID = DAG.getNode(ISD::SRL, DL, VIDVT, VID, SplatStep);
+        }
+        if (Addend != 0 || Negate) {
+          SDValue SplatAddend = DAG.getSplatBuildVector(
+              VIDVT, DL, DAG.getConstant(Addend, DL, XLenVT));
+          VID = DAG.getNode(Negate ? ISD::SUB : ISD::ADD, DL, VIDVT,
+                            SplatAddend, VID);
+        }
+        if (VT.isFloatingPoint()) {
+          // TODO: Use vfwcvt to reduce register pressure.
+          VID = DAG.getNode(ISD::SINT_TO_FP, DL, VT, VID);
+        }
+        return VID;
+      });
     }
   }
 
   // For very small build_vectors, use a single scalar insert of a constant.
   // TODO: Base this on constant rematerialization cost, not size.
-  const unsigned EltBitSize = VT.getScalarSizeInBits();
   if (VT.getSizeInBits() <= 32 &&
       ISD::isBuildVectorOfConstantSDNodes(Op.getNode())) {
     MVT ViaIntVT = MVT::getIntegerVT(VT.getSizeInBits());
@@ -3305,7 +3350,7 @@ static SDValue lowerBuildVectorOfConstants(SDValue Op, SelectionDAG &DAG,
       const auto &SeqV = OpIdx.value();
       if (!SeqV.isUndef())
         SplatValue |= ((cast<ConstantSDNode>(SeqV)->getZExtValue() & EltMask)
-                       << (OpIdx.index() * EltBitSize));
+                        << (OpIdx.index() * EltBitSize));
     }
 
     // On RV64, sign-extend from 32 to 64 bits where possible in order to
@@ -3313,15 +3358,22 @@ static SDValue lowerBuildVectorOfConstants(SDValue Op, SelectionDAG &DAG,
     if (Subtarget.is64Bit() && ViaIntVT == MVT::i32)
       SplatValue = SignExtend64<32>(SplatValue);
 
-    SDValue Vec = DAG.getNode(ISD::INSERT_VECTOR_ELT, DL, ViaVecVT,
-                              DAG.getUNDEF(ViaVecVT),
-                              DAG.getConstant(SplatValue, DL, XLenVT),
-                              DAG.getConstant(0, DL, XLenVT));
-    if (ViaVecLen != 1)
-      Vec = DAG.getNode(ISD::EXTRACT_SUBVECTOR, DL,
-                        MVT::getVectorVT(ViaIntVT, 1), Vec,
-                        DAG.getConstant(0, DL, XLenVT));
-    return DAG.getBitcast(VT, Vec);
+    // Base cost of 1 for vmv.s.x.
+    unsigned Cost = 1;
+    // We always have to materialize the constant since there's no vmv.s.i.
+    Cost += RISCVMatInt::getIntMatCost(APInt(64, SplatValue), EltBitSize, Subtarget.getFeatureBits());
+
+    AddLowering(Cost, [=, &DAG]() {
+      SDValue Vec = DAG.getNode(ISD::INSERT_VECTOR_ELT, DL, ViaVecVT,
+                                DAG.getUNDEF(ViaVecVT),
+                                DAG.getConstant(SplatValue, DL, XLenVT),
+                                DAG.getConstant(0, DL, XLenVT));
+      if (ViaVecLen != 1)
+        Vec = DAG.getNode(ISD::EXTRACT_SUBVECTOR, DL,
+                          MVT::getVectorVT(ViaIntVT, 1), Vec,
+                          DAG.getConstant(0, DL, XLenVT));
+      return DAG.getBitcast(VT, Vec);
+    });
   }
 
 
@@ -3369,18 +3421,28 @@ static SDValue lowerBuildVectorOfConstants(SDValue Op, SelectionDAG &DAG,
             (!Subtarget.is64Bit() && ViaIntVT == MVT::i64)) &&
            "Unexpected bitcast sequence");
     if (ViaIntVT.bitsLE(XLenVT) || isInt<32>(SplatValue)) {
-      SDValue ViaVL =
-          DAG.getConstant(ViaVecVT.getVectorNumElements(), DL, XLenVT);
-      MVT ViaContainerVT =
-          getContainerForFixedLengthVector(DAG, ViaVecVT, Subtarget);
-      SDValue Splat =
-          DAG.getNode(RISCVISD::VMV_V_X_VL, DL, ViaContainerVT,
-                      DAG.getUNDEF(ViaContainerVT),
-                      DAG.getConstant(SplatValue, DL, XLenVT), ViaVL);
-      Splat = convertFromScalableVector(ViaVecVT, Splat, DAG, Subtarget);
-      return DAG.getBitcast(VT, Splat);
+      // Base cost of 1 for vmv.v.x
+      unsigned Cost = 1;
+      if (!isInt<5>(SplatValue))
+	Cost += RISCVMatInt::getIntMatCost(APInt(64, SplatValue), EltBitSize, Subtarget.getFeatureBits());
+
+      AddLowering(Cost, [=, &DAG, &Subtarget]() {
+        SDValue ViaVL =
+            DAG.getConstant(ViaVecVT.getVectorNumElements(), DL, XLenVT);
+        MVT ViaContainerVT =
+            getContainerForFixedLengthVector(DAG, ViaVecVT, Subtarget);
+        SDValue Splat =
+            DAG.getNode(RISCVISD::VMV_V_X_VL, DL, ViaContainerVT,
+                        DAG.getUNDEF(ViaContainerVT),
+                        DAG.getConstant(SplatValue, DL, XLenVT), ViaVL);
+        Splat = convertFromScalableVector(ViaVecVT, Splat, DAG, Subtarget);
+        return DAG.getBitcast(VT, Splat);
+      });
     }
   }
+
+  if (CheapestLowering)
+    return CheapestLowering();
 
   if (SDValue Res = lowerBuildVectorViaDominantValues(Op, DAG, Subtarget))
     return Res;
