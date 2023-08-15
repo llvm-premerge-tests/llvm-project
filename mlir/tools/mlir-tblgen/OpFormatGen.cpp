@@ -2678,9 +2678,10 @@ OpFormatParser::verifyAttributeColonType(SMLoc loc,
     // If we encounter `:`, the range is known to be invalid.
     (void)emitError(
         loc,
-        llvm::formatv("format ambiguity caused by `:` literal found after "
-                      "attribute `{0}` which does not have a buildable type",
-                      cast<AttributeVariable>(base)->getVar()->name));
+        llvm::formatv(
+            "format ambiguity caused by `:` literal found after "
+            "attribute `{0}` which does not have a (default) buildable type",
+            cast<AttributeVariable>(base)->getVar()->name));
     return true;
   };
   return verifyAdjacentElements(isBase, isInvalid, elements);
@@ -2745,7 +2746,8 @@ LogicalResult OpFormatParser::verifyOperands(
       return emitErrorAndNote(
           loc,
           "type of operand #" + Twine(i) + ", named '" + operand.name +
-              "', is not buildable and a buildable type cannot be inferred",
+              "', is not (default) buildable and a buildable type cannot be "
+              "inferred",
           "suggest adding a type constraint to the operation or adding a "
           "'type($" +
               operand.name + ")' directive to the " + "custom assembly format");
@@ -2810,7 +2812,8 @@ LogicalResult OpFormatParser::verifyResults(
       return emitErrorAndNote(
           loc,
           "type of result #" + Twine(i) + ", named '" + result.name +
-              "', is not buildable and a buildable type cannot be inferred",
+              "', is not (default) buildable and a buildable type cannot be "
+              "inferred",
           "suggest adding a type constraint to the operation or adding a "
           "'type($" +
               result.name + ")' directive to the " + "custom assembly format");
