@@ -22,6 +22,7 @@
 #include "mlir/IR/AsmState.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/Pass/PassManager.h"
+#include "clang/Basic/DiagnosticFrontend.h"
 #include "clang/Driver/Options.h"
 #include "llvm/Option/OptTable.h"
 #include "llvm/Option/Option.h"
@@ -100,6 +101,50 @@ createFrontendAction(CompilerInstance &ci) {
   llvm_unreachable("Invalid program action!");
 }
 
+// Emit a warning and typo hint for unknown warning opts
+static void emitUnknownDiagWarning(clang::DiagnosticsEngine &diags,
+                                   clang::diag::Flavor flavor,
+                                   llvm::StringRef prefix,
+                                   llvm::StringRef opt) {
+  llvm::StringRef suggestion =
+      clang::DiagnosticIDs::getNearestOption(flavor, opt);
+  diags.Report(clang::diag::warn_unknown_diag_option)
+      << (flavor == clang::diag::Flavor::WarningOrError ? 0 : 1)
+      << (prefix.str() += std::string(opt)) << !suggestion.empty()
+      << (prefix.str() += std::string(suggestion));
+}
+
+// Remarks are ignored by default in Diagnostic.td, hence, we have to
+// enable them here before execution. Clang follows same idea using
+// ProcessWarningOptions in Warnings.cpp
+// This function is also responsible for emitting early warnings for
+// invalid -R options.
+static void processRemarkOptions(clang::DiagnosticsEngine &diags,
+                                 const clang::DiagnosticOptions &opts,
+                                 bool reportDiags = true) {
+  llvm::SmallVector<clang::diag::kind, 10> _diags;
+  const llvm::IntrusiveRefCntPtr<clang::DiagnosticIDs> diagIDs =
+      diags.getDiagnosticIDs();
+
+  for (unsigned i = 0; i < opts.Remarks.size(); i++) {
+    llvm::StringRef opt = opts.Remarks[i];
+    const auto flavor = clang::diag::Flavor::Remark;
+
+    // Check to see if this opt starts with "no-", if so, this is a
+    // negative form of the option.
+    bool isPositive = !opt.startswith("no-");
+    if (!isPositive)
+      opt = opt.substr(3);
+
+    if (reportDiags && diagIDs->getDiagnosticsInGroup(flavor, opt, _diags))
+      emitUnknownDiagWarning(diags, flavor, isPositive ? "-R" : "-Rno-", opt);
+    else
+      diags.setSeverityForGroup(flavor, opt,
+                                isPositive ? clang::diag::Severity::Remark
+                                           : clang::diag::Severity::Ignored);
+  }
+}
+
 bool executeCompilerInvocation(CompilerInstance *flang) {
   // Honor -help.
   if (flang->getFrontendOpts().showHelp) {
@@ -165,6 +210,8 @@ bool executeCompilerInvocation(CompilerInstance *flang) {
 
   // Honor color diagnostics.
   flang->getDiagnosticOpts().ShowColors = flang->getFrontendOpts().showColors;
+
+  processRemarkOptions(flang->getDiagnostics(), flang->getDiagnosticOpts());
 
   // Create and execute the frontend action.
   std::unique_ptr<FrontendAction> act(createFrontendAction(*flang));
