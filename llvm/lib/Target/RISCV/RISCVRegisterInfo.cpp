@@ -29,6 +29,8 @@
 
 using namespace llvm;
 
+extern cl::opt<bool> DeduceVectorCC;
+
 static cl::opt<bool>
     DisableRegAllocHints("riscv-disable-regalloc-hints", cl::Hidden,
                          cl::init(false),
@@ -67,7 +69,9 @@ RISCVRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
   }
 
   bool HasVectorCSR =
-      MF->getFunction().getCallingConv() == CallingConv::RISCV_VectorCall;
+      MF->getFunction().getCallingConv() == CallingConv::RISCV_VectorCall ||
+      (MF->getInfo<RISCVMachineFunctionInfo>()->isVectorCall() &&
+       DeduceVectorCC);
 
   switch (Subtarget.getTargetABI()) {
   default:

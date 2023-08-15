@@ -73,6 +73,13 @@ static cl::opt<int>
                        "use for creating a floating-point immediate value"),
               cl::init(2));
 
+cl::opt<bool>
+    DeduceVectorCC(DEBUG_TYPE "-deduce-vector-cc", cl::Hidden,
+                   cl::desc("Automatically turn on vector calling convention "
+                            "for every function that has RVV argument/return "
+                            "type."),
+                   cl::init(false));
+
 RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
                                          const RISCVSubtarget &STI)
     : TargetLowering(TM), Subtarget(STI) {
@@ -15125,7 +15132,7 @@ SDValue RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
   SDValue Chain = CLI.Chain;
   SDValue Callee = CLI.Callee;
   bool &IsTailCall = CLI.IsTailCall;
-  CallingConv::ID CallConv = CLI.CallConv;
+  CallingConv::ID &CallConv = CLI.CallConv;
   bool IsVarArg = CLI.IsVarArg;
   EVT PtrVT = getPointerTy(DAG.getDataLayout());
   MVT XLenVT = Subtarget.getXLenVT();
@@ -15142,6 +15149,28 @@ SDValue RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
     analyzeOutputArgs(MF, ArgCCInfo, Outs, /*IsRet=*/false, &CLI,
                       CallConv == CallingConv::Fast ? RISCV::CC_RISCV_FastCC
                                                     : RISCV::CC_RISCV);
+
+  // Assign locations to each value returned by this call.
+  SmallVector<CCValAssign, 16> RVLocs;
+  CCState RetCCInfo(CallConv, IsVarArg, MF, RVLocs, *DAG.getContext());
+  analyzeInputArgs(MF, RetCCInfo, Ins, /*IsRet=*/true, RISCV::CC_RISCV);
+
+  // Check callee args/returns for RVV registers and set calling convention
+  // accordingly.
+  if (DeduceVectorCC && (CallConv == CallingConv::C || CallConv == CallingConv::Fast)) {
+    auto HasRVVRegLoc = [](CCValAssign &Loc) {
+      if (!Loc.isRegLoc())
+        return false;
+
+      const auto RegClasses = {&RISCV::VRRegClass, &RISCV::VRM2RegClass,
+                               &RISCV::VRM4RegClass, &RISCV::VRM8RegClass};
+      return any_of(RegClasses, [&](const auto *RC)
+                                    { return RC->contains(Loc.getLocReg()); });
+    };
+    if (any_of(RVLocs, HasRVVRegLoc) || any_of(ArgLocs, HasRVVRegLoc)) {
+      CallConv = CallingConv::RISCV_VectorCall;
+    }
+  }
 
   // Check if it's really possible to do a tail call.
   if (IsTailCall)
@@ -15388,11 +15417,6 @@ SDValue RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
   // Mark the end of the call, which is glued to the call itself.
   Chain = DAG.getCALLSEQ_END(Chain, NumBytes, 0, Glue, DL);
   Glue = Chain.getValue(1);
-
-  // Assign locations to each value returned by this call.
-  SmallVector<CCValAssign, 16> RVLocs;
-  CCState RetCCInfo(CallConv, IsVarArg, MF, RVLocs, *DAG.getContext());
-  analyzeInputArgs(MF, RetCCInfo, Ins, /*IsRet=*/true, RISCV::CC_RISCV);
 
   // Copy all of the result registers out of their specified physreg.
   for (auto &VA : RVLocs) {
