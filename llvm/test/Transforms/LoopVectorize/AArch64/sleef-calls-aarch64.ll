@@ -1,14 +1,12 @@
 ; Do NOT use -O3. It will lower exp2 to ldexp, and the test will fail.
-; RUN: opt -vector-library=sleefgnuabi -replace-with-veclib < %s | opt -vector-library=sleefgnuabi -passes=inject-tli-mappings,loop-unroll,loop-vectorize -S | FileCheck %s --check-prefixes=CHECK,NEON
-; RUN: opt -mattr=+sve -vector-library=sleefgnuabi -replace-with-veclib < %s | opt -vector-library=sleefgnuabi -passes=inject-tli-mappings,loop-unroll,loop-vectorize -S | FileCheck %s --check-prefixes=CHECK,SVE
+; RUN: opt -vector-library=sleefgnuabi -passes=inject-tli-mappings,loop-vectorize -S < %s | FileCheck %s --check-prefixes=CHECK,NEON
+; RUN: opt -mattr=+sve -vector-library=sleefgnuabi -passes=inject-tli-mappings,loop-vectorize -S < %s | FileCheck %s --check-prefixes=CHECK,SVE
 
 target datalayout = "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128"
 target triple = "aarch64-unknown-linux-gnu"
 
 declare double @acos(double) #0
 declare float @acosf(float) #0
-declare double @llvm.acos.f64(double) #0
-declare float @llvm.acos.f32(float) #0
 
 define void @acos_f64(double* nocapture %varray) {
   ; CHECK-LABEL: @acos_f64(
@@ -60,8 +58,6 @@ define void @acos_f32(float* nocapture %varray) {
 
 declare double @asin(double) #0
 declare float @asinf(float) #0
-declare double @llvm.asin.f64(double) #0
-declare float @llvm.asin.f32(float) #0
 
 define void @asin_f64(double* nocapture %varray) {
   ; CHECK-LABEL: @asin_f64(
@@ -113,8 +109,6 @@ define void @asin_f32(float* nocapture %varray) {
 
 declare double @atan(double) #0
 declare float @atanf(float) #0
-declare double @llvm.atan.f64(double) #0
-declare float @llvm.atan.f32(float) #0
 
 define void @atan_f64(double* nocapture %varray) {
   ; CHECK-LABEL: @atan_f64(
@@ -166,8 +160,6 @@ define void @atan_f32(float* nocapture %varray) {
 
 declare double @atan2(double, double) #0
 declare float @atan2f(float, float) #0
-declare double @llvm.atan2.f64(double, double) #0
-declare float @llvm.atan2.f32(float, float) #0
 
 define void @atan2_f64(double* nocapture %varray) {
   ; CHECK-LABEL: @atan2_f64(
@@ -219,8 +211,6 @@ define void @atan2_f32(float* nocapture %varray) {
 
 declare double @atanh(double) #0
 declare float @atanhf(float) #0
-declare double @llvm.atanh.f64(double) #0
-declare float @llvm.atanh.f32(float) #0
 
 define void @atanh_f64(double* nocapture %varray) {
   ; CHECK-LABEL: @atanh_f64(
@@ -272,8 +262,6 @@ define void @atanh_f32(float* nocapture %varray) {
 
 declare double @cos(double) #0
 declare float @cosf(float) #0
-declare double @llvm.cos.f64(double) #0
-declare float @llvm.cos.f32(float) #0
 
 define void @cos_f64(double* nocapture %varray) {
   ; CHECK-LABEL: @cos_f64(
@@ -325,8 +313,6 @@ define void @cos_f32(float* nocapture %varray) {
 
 declare double @cosh(double) #0
 declare float @coshf(float) #0
-declare double @llvm.cosh.f64(double) #0
-declare float @llvm.cosh.f32(float) #0
 
 define void @cosh_f64(double* nocapture %varray) {
   ; CHECK-LABEL: @cosh_f64(
@@ -378,8 +364,6 @@ define void @cosh_f32(float* nocapture %varray) {
 
 declare double @exp(double) #0
 declare float @expf(float) #0
-declare double @llvm.exp.f64(double) #0
-declare float @llvm.exp.f32(float) #0
 
 define void @exp_f64(double* nocapture %varray) {
   ; CHECK-LABEL: @exp_f64(
@@ -431,8 +415,6 @@ define void @exp_f32(float* nocapture %varray) {
 
 declare double @exp2(double) #0
 declare float @exp2f(float) #0
-declare double @llvm.exp2.f64(double) #0
-declare float @llvm.exp2.f32(float) #0
 
 define void @exp2_f64(double* nocapture %varray) {
   ; CHECK-LABEL: @exp2_f64(
@@ -484,8 +466,6 @@ define void @exp2_f32(float* nocapture %varray) {
 
 declare double @exp10(double) #0
 declare float @exp10f(float) #0
-declare double @llvm.exp10.f64(double) #0
-declare float @llvm.exp10.f32(float) #0
 
 define void @exp10_f64(double* nocapture %varray) {
   ; CHECK-LABEL: @exp10_f64(
@@ -586,8 +566,6 @@ define void @fmod_f32(float* nocapture %varray) {
 
 declare double @lgamma(double) #0
 declare float @lgammaf(float) #0
-declare double @llvm.lgamma.f64(double) #0
-declare float @llvm.lgamma.f32(float) #0
 
 define void @lgamma_f64(double* nocapture %varray) {
   ; CHECK-LABEL: @lgamma_f64(
@@ -639,8 +617,6 @@ define void @lgamma_f32(float* nocapture %varray) {
 
 declare double @log10(double) #0
 declare float @log10f(float) #0
-declare double @llvm.log10.f64(double) #0
-declare float @llvm.log10.f32(float) #0
 
 define void @log10_f64(double* nocapture %varray) {
   ; CHECK-LABEL: @log10_f64(
@@ -692,8 +668,6 @@ define void @log10_f32(float* nocapture %varray) {
 
 declare double @log2(double) #0
 declare float @log2f(float) #0
-declare double @llvm.log2.f64(double) #0
-declare float @llvm.log2.f32(float) #0
 
 define void @log2_f64(double* nocapture %varray) {
   ; CHECK-LABEL: @log2_f64(
@@ -745,8 +719,6 @@ define void @log2_f32(float* nocapture %varray) {
 
 declare double @log(double) #0
 declare float @logf(float) #0
-declare double @llvm.log.f64(double) #0
-declare float @llvm.log.f32(float) #0
 
 define void @log_f64(double* nocapture %varray) {
   ; CHECK-LABEL: @log_f64(
@@ -798,8 +770,6 @@ define void @log_f32(float* nocapture %varray) {
 
 declare double @pow(double, double) #0
 declare float @powf(float, float) #0
-declare double @llvm.pow.f64(double, double) #0
-declare float @llvm.pow.f32(float, float) #0
 
 define void @pow_f64(double* nocapture %varray) {
   ; CHECK-LABEL: @pow_f64(
@@ -851,8 +821,6 @@ define void @pow_f32(float* nocapture %varray) {
 
 declare double @sin(double) #0
 declare float @sinf(float) #0
-declare double @llvm.sin.f64(double) #0
-declare float @llvm.sin.f32(float) #0
 
 define void @sin_f64(double* nocapture %varray) {
   ; CHECK-LABEL: @sin_f64(
@@ -904,8 +872,6 @@ define void @sin_f32(float* nocapture %varray) {
 
 declare double @sinh(double) #0
 declare float @sinhf(float) #0
-declare double @llvm.sinh.f64(double) #0
-declare float @llvm.sinh.f32(float) #0
 
 define void @sinh_f64(double* nocapture %varray) {
   ; CHECK-LABEL: @sinh_f64(
@@ -957,8 +923,6 @@ define void @sinh_f32(float* nocapture %varray) {
 
 declare double @sqrt(double) #0
 declare float @sqrtf(float) #0
-declare double @llvm.sqrt.f64(double) #0
-declare float @llvm.sqrt.f32(float) #0
 
 define void @sqrt_f64(double* nocapture %varray) {
   ; CHECK-LABEL: @sqrt_f64(
@@ -1008,58 +972,8 @@ define void @sqrt_f32(float* nocapture %varray) {
   ret void
 }
 
-define void @llvm_sqrt_f64(double* nocapture %varray) {
-  ; CHECK-LABEL: @llvm_sqrt_f64(
-  ; NEON:     [[TMP5:%.*]] = call fast <2 x double> @llvm.sqrt.v2f64(<2 x double> [[TMP4:%.*]])
-  ; SVE:      [[TMP5:%.*]] = call fast <vscale x 2 x double> @llvm.sqrt.nxv2f64(<vscale x 2 x double> [[TMP4:%.*]])
-  ; CHECK:    ret void
-  ;
-  entry:
-  br label %for.body
-
-  for.body:
-  %iv = phi i64 [ 0, %entry ], [ %iv.next, %for.body ]
-  %tmp = trunc i64 %iv to i32
-  %conv = sitofp i32 %tmp to double
-  %call = tail call fast double @llvm.sqrt.f64(double %conv)
-  %arrayidx = getelementptr inbounds double, double* %varray, i64 %iv
-  store double %call, double* %arrayidx, align 8
-  %iv.next = add nuw nsw i64 %iv, 1
-  %exitcond = icmp eq i64 %iv.next, 1000
-  br i1 %exitcond, label %for.end, label %for.body
-
-  for.end:
-  ret void
-}
-
-define void @llvm_sqrt_f32(float* nocapture %varray) {
-  ; CHECK-LABEL: @llvm_sqrt_f32(
-  ; NEON:     [[TMP5:%.*]] = call fast <4 x float> @llvm.sqrt.v4f32(<4 x float> [[TMP4:%.*]])
-  ; SVE:      [[TMP5:%.*]] = call fast <vscale x 4 x float> @llvm.sqrt.nxv4f32(<vscale x 4 x float> [[TMP4:%.*]])
-  ; CHECK:    ret void
-  ;
-  entry:
-  br label %for.body
-
-  for.body:
-  %iv = phi i64 [ 0, %entry ], [ %iv.next, %for.body ]
-  %tmp = trunc i64 %iv to i32
-  %conv = sitofp i32 %tmp to float
-  %call = tail call fast float @llvm.sqrt.f32(float %conv)
-  %arrayidx = getelementptr inbounds float, float* %varray, i64 %iv
-  store float %call, float* %arrayidx, align 4
-  %iv.next = add nuw nsw i64 %iv, 1
-  %exitcond = icmp eq i64 %iv.next, 1000
-  br i1 %exitcond, label %for.end, label %for.body
-
-  for.end:
-  ret void
-}
-
 declare double @tan(double) #0
 declare float @tanf(float) #0
-declare double @llvm.tan.f64(double) #0
-declare float @llvm.tan.f32(float) #0
 
 define void @tan_f64(double* nocapture %varray) {
   ; CHECK-LABEL: @tan_f64(
@@ -1111,8 +1025,6 @@ define void @tan_f32(float* nocapture %varray) {
 
 declare double @tanh(double) #0
 declare float @tanhf(float) #0
-declare double @llvm.tanh.f64(double) #0
-declare float @llvm.tanh.f32(float) #0
 
 define void @tanh_f64(double* nocapture %varray) {
   ; CHECK-LABEL: @tanh_f64(
@@ -1164,8 +1076,6 @@ define void @tanh_f32(float* nocapture %varray) {
 
 declare double @tgamma(double) #0
 declare float @tgammaf(float) #0
-declare double @llvm.tgamma.f64(double) #0
-declare float @llvm.tgamma.f32(float) #0
 
 define void @tgamma_f64(double* nocapture %varray) {
   ; CHECK-LABEL: @tgamma_f64(
