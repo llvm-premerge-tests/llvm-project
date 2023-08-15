@@ -90,7 +90,7 @@ define void @test6_2(ptr %p, ptr %q) {
 define void @test7_1(ptr inalloca(i32) %a) {
 ; CHECK: Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
 ; CHECK-LABEL: define {{[^@]+}}@test7_1
-; CHECK-SAME: (ptr nocapture nofree nonnull writeonly inalloca(i32) dereferenceable(4) [[A:%.*]]) #[[ATTR1]] {
+; CHECK-SAME: (ptr nocapture nofree noundef nonnull writeonly inalloca(i32) dereferenceable(4) [[A:%.*]]) #[[ATTR1]] {
 ; CHECK-NEXT:    ret void
 ;
   ret void
@@ -273,8 +273,8 @@ declare void @escape_i8(ptr %ptr)
 define void @byval_not_readonly_1(ptr byval(i8) %written) readonly {
 ; CHECK: Function Attrs: nosync memory(read)
 ; CHECK-LABEL: define {{[^@]+}}@byval_not_readonly_1
-; CHECK-SAME: (ptr noalias nonnull byval(i8) dereferenceable(1) [[WRITTEN:%.*]]) #[[ATTR3]] {
-; CHECK-NEXT:    call void @escape_i8(ptr nonnull dereferenceable(1) [[WRITTEN]])
+; CHECK-SAME: (ptr noalias noundef nonnull byval(i8) dereferenceable(1) [[WRITTEN:%.*]]) #[[ATTR3]] {
+; CHECK-NEXT:    call void @escape_i8(ptr noundef nonnull dereferenceable(1) [[WRITTEN]])
 ; CHECK-NEXT:    ret void
 ;
   call void @escape_i8(ptr %written)
@@ -295,14 +295,14 @@ define void @byval_not_readonly_2(ptr byval(i8) %written) readonly {
 define void @byval_not_readnone_1(ptr byval(i8) %written) readnone {
 ; TUNIT: Function Attrs: nosync memory(none)
 ; TUNIT-LABEL: define {{[^@]+}}@byval_not_readnone_1
-; TUNIT-SAME: (ptr noalias nonnull byval(i8) dereferenceable(1) [[WRITTEN:%.*]]) #[[ATTR12:[0-9]+]] {
-; TUNIT-NEXT:    call void @escape_i8(ptr nonnull dereferenceable(1) [[WRITTEN]])
+; TUNIT-SAME: (ptr noalias noundef nonnull byval(i8) dereferenceable(1) [[WRITTEN:%.*]]) #[[ATTR12:[0-9]+]] {
+; TUNIT-NEXT:    call void @escape_i8(ptr noundef nonnull dereferenceable(1) [[WRITTEN]])
 ; TUNIT-NEXT:    ret void
 ;
 ; CGSCC: Function Attrs: nosync memory(none)
 ; CGSCC-LABEL: define {{[^@]+}}@byval_not_readnone_1
-; CGSCC-SAME: (ptr noalias nonnull byval(i8) dereferenceable(1) [[WRITTEN:%.*]]) #[[ATTR13:[0-9]+]] {
-; CGSCC-NEXT:    call void @escape_i8(ptr nonnull dereferenceable(1) [[WRITTEN]])
+; CGSCC-SAME: (ptr noalias noundef nonnull byval(i8) dereferenceable(1) [[WRITTEN:%.*]]) #[[ATTR13:[0-9]+]] {
+; CGSCC-NEXT:    call void @escape_i8(ptr noundef nonnull dereferenceable(1) [[WRITTEN]])
 ; CGSCC-NEXT:    ret void
 ;
   call void @escape_i8(ptr %written)
@@ -335,8 +335,8 @@ define void @testbyval(ptr %read_only) {
 ; TUNIT: Function Attrs: nosync
 ; TUNIT-LABEL: define {{[^@]+}}@testbyval
 ; TUNIT-SAME: (ptr nocapture nonnull readonly [[READ_ONLY:%.*]]) #[[ATTR13:[0-9]+]] {
-; TUNIT-NEXT:    call void @byval_not_readonly_1(ptr noalias nocapture nonnull readonly byval(i8) [[READ_ONLY]]) #[[ATTR3]]
-; TUNIT-NEXT:    call void @byval_not_readnone_1(ptr noalias nocapture nonnull readnone byval(i8) [[READ_ONLY]]) #[[ATTR13]]
+; TUNIT-NEXT:    call void @byval_not_readonly_1(ptr noalias nocapture noundef nonnull readonly byval(i8) [[READ_ONLY]]) #[[ATTR3]]
+; TUNIT-NEXT:    call void @byval_not_readnone_1(ptr noalias nocapture noundef nonnull readnone byval(i8) [[READ_ONLY]]) #[[ATTR13]]
 ; TUNIT-NEXT:    call void @byval_no_fnarg(ptr noalias nocapture nofree noundef nonnull readonly byval(i8) [[READ_ONLY]]) #[[ATTR19:[0-9]+]]
 ; TUNIT-NEXT:    ret void
 ;

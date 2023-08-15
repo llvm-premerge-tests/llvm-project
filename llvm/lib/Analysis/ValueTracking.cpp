@@ -6710,7 +6710,8 @@ static bool isGuaranteedNotToBeUndefOrPoison(const Value *V,
     return false;
 
   if (const auto *A = dyn_cast<Argument>(V)) {
-    if (A->hasAttribute(Attribute::NoUndef) ||
+    if (A->hasPassPointeeByValueCopyAttr() ||
+        A->hasAttribute(Attribute::NoUndef) ||
         A->hasAttribute(Attribute::Dereferenceable) ||
         A->hasAttribute(Attribute::DereferenceableOrNull))
       return true;

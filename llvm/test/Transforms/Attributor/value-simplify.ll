@@ -449,7 +449,7 @@ f:
 define internal ptr @test_inalloca(ptr inalloca(i32) %a) {
 ; TUNIT: Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
 ; TUNIT-LABEL: define {{[^@]+}}@test_inalloca
-; TUNIT-SAME: (ptr noalias nofree nonnull returned writeonly inalloca(i32) dereferenceable(4) "no-capture-maybe-returned" [[A:%.*]]) #[[ATTR2]] {
+; TUNIT-SAME: (ptr noalias nofree noundef nonnull returned writeonly inalloca(i32) dereferenceable(4) "no-capture-maybe-returned" [[A:%.*]]) #[[ATTR2]] {
 ; TUNIT-NEXT:    ret ptr [[A]]
 ;
 ; CGSCC: Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
@@ -463,7 +463,7 @@ define ptr @complicated_args_inalloca(ptr %arg) {
 ; TUNIT: Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none)
 ; TUNIT-LABEL: define {{[^@]+}}@complicated_args_inalloca
 ; TUNIT-SAME: (ptr nofree nonnull readnone "no-capture-maybe-returned" [[ARG:%.*]]) #[[ATTR2]] {
-; TUNIT-NEXT:    [[CALL:%.*]] = call nonnull dereferenceable(4) ptr @test_inalloca(ptr noalias nofree nonnull writeonly inalloca(i32) "no-capture-maybe-returned" [[ARG]]) #[[ATTR9:[0-9]+]]
+; TUNIT-NEXT:    [[CALL:%.*]] = call noundef nonnull dereferenceable(4) ptr @test_inalloca(ptr noalias nofree noundef nonnull writeonly inalloca(i32) "no-capture-maybe-returned" [[ARG]]) #[[ATTR9:[0-9]+]]
 ; TUNIT-NEXT:    ret ptr [[CALL]]
 ;
 ; CGSCC: Function Attrs: mustprogress nofree nosync nounwind willreturn memory(none)
