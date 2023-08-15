@@ -6070,6 +6070,10 @@ static FunctionProtoTypeLoc GetPrototypeLoc(Expr *Fn) {
     Target = P.getPointeeLoc();
   }
 
+  if (auto A = Target.getAs<AttributedTypeLoc>()) {
+    Target = A.getModifiedLoc();
+  }
+
   if (auto P = Target.getAs<ParenTypeLoc>()) {
     Target = P.getInnerLoc();
   }
