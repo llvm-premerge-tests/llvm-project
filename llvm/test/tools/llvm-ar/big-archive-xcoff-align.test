@@ -1,0 +1,44 @@
+## Test the alignment of XCOFF object files in the big archive format.
+
+## Test that the contents of an XCOFF object file, which has an auxiliary
+## header, is aligned in a big archive based on the MAX(maximum alignment
+## of .text, maximum alignment of .data)
+
+# RUN: rm -rf %t && mkdir %t
+# RUN: cp %p/../llvm-readobj/XCOFF/Inputs/needed-libs*.o %t
+# RUN: cd %t
+# RUN: env OBJECT_MODE=32_64 llvm-ar -q t1.a needed-libs-64.o needed-libs-32.o
+# RUN: env OBJECT_MODE=32_64 llvm-ar -q t2.a needed-libs-32.o needed-libs-64.o
+# RUN: %python -c 'f=open("t1.a","rb");f.seek(384);print(f.read(2));f.close()' | FileCheck -check-prefix=MAGIC64 %s
+# RUN: %python -c 'f=open("t1.a","rb");f.seek(7296);print(f.read(2));f.close()' | FileCheck -check-prefix=MAGIC32 %s
+# RUN: %python -c 'f=open("t2.a","rb");f.seek(384);print(f.read(2));f.close()' | FileCheck -check-prefix=MAGIC32 %s
+# RUN: %python -c 'f=open("t2.a","rb");f.seek(6144);print(f.read(2));f.close()' | FileCheck -check-prefix=MAGIC64 %s
+
+## Test that the contents of XCOFF object files, which do not have an auxiliary header, are aligned at 2 within a big archive.
+# RUN: yaml2obj --docnum=1 -DFLAG=0x1DF %s -o t32_1.o
+# RUN: yaml2obj --docnum=1 -DFLAG=0x1F7 %s -o t64_1.o
+# RUN: yaml2obj --docnum=2 -DFLAG=0x1DF %s -o t32_2.o
+# RUN: yaml2obj --docnum=2 -DFLAG=0x1F7 %s -o t64_2.o
+
+# RUN: env OBJECT_MODE=32_64 llvm-ar -q t3.a t32_1.o t64_1.o t32_2.o t64_2.o
+# RUN: %python -c 'f=open("t3.a","rb");f.seek(250);print(f.read(2));f.close()' | FileCheck -check-prefix=MAGIC32 %s
+# RUN: %python -c 'f=open("t3.a","rb");f.seek(432);print(f.read(2));f.close()' | FileCheck -check-prefix=MAGIC64 %s
+# RUN: %python -c 'f=open("t3.a","rb");f.seek(650);print(f.read(2));f.close()' | FileCheck -check-prefix=MAGIC32 %s
+# RUN: %python -c 'f=open("t3.a","rb");f.seek(832);print(f.read(2));f.close()' | FileCheck -check-prefix=MAGIC64 %s
+
+# MAGIC64: b'\x01\xf7'
+# MAGIC32: b'\x01\xdf'
+
+--- !XCOFF
+FileHeader:
+  MagicNumber:       [[FLAG]]
+Sections:
+  - Name:            .data
+    Flags:           [ STYP_DATA ]
+
+--- !XCOFF
+FileHeader:
+  MagicNumber:       [[FLAG]]
+Sections:
+  - Name:            .text
+    Flags:           [ STYP_DATA ]
