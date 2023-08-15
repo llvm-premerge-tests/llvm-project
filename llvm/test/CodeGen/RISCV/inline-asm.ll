@@ -128,6 +128,72 @@ define i32 @constraint_m_with_offset(ptr %a) nounwind {
   ret i32 %2
 }
 
+@ga1 = dso_local global [4000 x i32] zeroinitializer, align 4
+
+define void @constraint_m_with_global1() nounwind {
+; RV32I-LABEL: constraint_m_with_global1:
+; RV32I:       # %bb.0:
+; RV32I-NEXT:    lui a0, %hi(ga1)
+; RV32I-NEXT:    #APP
+; RV32I-NEXT:    sw zero, %lo(ga1)(a0)
+; RV32I-NEXT:    #NO_APP
+; RV32I-NEXT:    ret
+;
+; RV64I-LABEL: constraint_m_with_global1:
+; RV64I:       # %bb.0:
+; RV64I-NEXT:    lui a0, %hi(ga1)
+; RV64I-NEXT:    #APP
+; RV64I-NEXT:    sw zero, %lo(ga1)(a0)
+; RV64I-NEXT:    #NO_APP
+; RV64I-NEXT:    ret
+  call void asm "sw zero, $0", "=*m"(ptr elementtype(i32) @ga1)
+  ret void
+}
+
+define void @constraint_m_with_global2() nounwind {
+; RV32I-LABEL: constraint_m_with_global2:
+; RV32I:       # %bb.0:
+; RV32I-NEXT:    lui a0, %hi(ga1)
+; RV32I-NEXT:    addi a0, a0, %lo(ga1)
+; RV32I-NEXT:    #APP
+; RV32I-NEXT:    sw zero, 4(a0)
+; RV32I-NEXT:    #NO_APP
+; RV32I-NEXT:    ret
+;
+; RV64I-LABEL: constraint_m_with_global2:
+; RV64I:       # %bb.0:
+; RV64I-NEXT:    lui a0, %hi(ga1)
+; RV64I-NEXT:    addi a0, a0, %lo(ga1)
+; RV64I-NEXT:    #APP
+; RV64I-NEXT:    sw zero, 4(a0)
+; RV64I-NEXT:    #NO_APP
+; RV64I-NEXT:    ret
+  call void asm "sw zero, $0", "=*m"(ptr nonnull elementtype(i32) getelementptr inbounds ([400000 x i32], ptr @ga1, i32 0, i32 1))
+  ret void
+}
+
+define void @constraint_m_with_global3() nounwind {
+; RV32I-LABEL: constraint_m_with_global3:
+; RV32I:       # %bb.0:
+; RV32I-NEXT:    lui a0, %hi(ga1+8000)
+; RV32I-NEXT:    addi a0, a0, %lo(ga1+8000)
+; RV32I-NEXT:    #APP
+; RV32I-NEXT:    sw zero, 0(a0)
+; RV32I-NEXT:    #NO_APP
+; RV32I-NEXT:    ret
+;
+; RV64I-LABEL: constraint_m_with_global3:
+; RV64I:       # %bb.0:
+; RV64I-NEXT:    lui a0, %hi(ga1+8000)
+; RV64I-NEXT:    addi a0, a0, %lo(ga1+8000)
+; RV64I-NEXT:    #APP
+; RV64I-NEXT:    sw zero, 0(a0)
+; RV64I-NEXT:    #NO_APP
+; RV64I-NEXT:    ret
+  call void asm "sw zero, $0", "=*m"(ptr nonnull elementtype(i32) getelementptr inbounds ([400000 x i32], ptr @ga1, i32 0, i32 2000))
+  ret void
+}
+
 define void @constraint_o(ptr %a) nounwind {
 ; RV32I-LABEL: constraint_o:
 ; RV32I:       # %bb.0:
