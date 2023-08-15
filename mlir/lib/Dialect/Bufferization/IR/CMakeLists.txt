@@ -18,6 +18,7 @@ add_mlir_dialect_library(MLIRBufferizationDialect
   MLIRDestinationStyleOpInterface
   MLIRDialect
   MLIRFuncDialect
+  MLIRFunctionInterfaces
   MLIRIR
   MLIRSparseTensorDialect
   MLIRTensorDialect

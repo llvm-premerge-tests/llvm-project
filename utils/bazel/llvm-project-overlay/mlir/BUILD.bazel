@@ -225,7 +225,7 @@ gentbl_cc_library(
     td_file = "include/mlir/IR/BuiltinOps.td",
     deps = [
         ":BuiltinDialectTdFiles",
-        ":FunctionInterfacesTdFiles",
+        ":OpBaseTdFiles",
     ],
 )
 
@@ -267,9 +267,12 @@ gentbl_cc_library(
 
 td_library(
     name = "FunctionInterfacesTdFiles",
-    srcs = ["include/mlir/IR/FunctionInterfaces.td"],
+    srcs = ["include/mlir/Interfaces/FunctionInterfaces.td"],
     includes = ["include"],
-    deps = [":OpBaseTdFiles"],
+    deps = [
+        ":CallInterfacesTdFiles",
+        ":OpBaseTdFiles",
+    ],
 )
 
 gentbl_cc_library(
@@ -277,17 +280,36 @@ gentbl_cc_library(
     tbl_outs = [
         (
             ["-gen-op-interface-decls"],
-            "include/mlir/IR/FunctionOpInterfaces.h.inc",
+            "include/mlir/Interfaces/FunctionOpInterfaces.h.inc",
         ),
         (
             ["-gen-op-interface-defs"],
-            "include/mlir/IR/FunctionOpInterfaces.cpp.inc",
+            "include/mlir/Interfaces/FunctionOpInterfaces.cpp.inc",
         ),
     ],
     tblgen = ":mlir-tblgen",
-    td_file = "include/mlir/IR/FunctionInterfaces.td",
+    td_file = "include/mlir/Interfaces/FunctionInterfaces.td",
     deps = [
-        ":OpBaseTdFiles",
+        ":FunctionInterfacesTdFiles",
+    ],
+)
+
+cc_library(
+    name = "FunctionOpInterfaces",
+    srcs = [
+        "lib/Interfaces/FunctionImplementation.cpp",
+        "lib/Interfaces/FunctionInterfaces.cpp",
+    ],
+    hdrs = [
+        "include/mlir/Interfaces/FunctionImplementation.h",
+        "include/mlir/Interfaces/FunctionInterfaces.h",
+    ],
+    includes = ["include"],
+    deps = [
+        ":CallOpInterfaces",
+        ":FunctionInterfacesIncGen",
+        ":IR",
+        "//llvm:Support",
     ],
 )
 
@@ -324,7 +346,6 @@ cc_library(
         ":BytecodeOpInterfaceIncGen",
         ":CallOpInterfacesIncGen",
         ":DataLayoutInterfacesIncGen",
-        ":FunctionInterfacesIncGen",
         ":InferTypeOpInterfaceIncGen",
         ":OpAsmInterfaceIncGen",
         ":RegionKindInterfaceIncGen",
@@ -3261,6 +3282,7 @@ cc_library(
     deps = [
         ":AsyncOpsIncGen",
         ":ControlFlowInterfaces",
+        ":FunctionOpInterfaces",
         ":IR",
         ":InferTypeOpInterface",
         ":SideEffectInterfaces",
@@ -3591,6 +3613,7 @@ cc_library(
         ":ControlFlowDialect",
         ":ControlFlowInterfaces",
         ":FuncDialect",
+        ":FunctionOpInterfaces",
         ":IR",
         ":InferTypeOpInterface",
         ":LoopLikeInterface",
@@ -3669,6 +3692,7 @@ cc_library(
     hdrs = ["include/mlir/Interfaces/LoopLikeInterface.h"],
     includes = ["include"],
     deps = [
+        ":FunctionOpInterfaces",
         ":IR",
         ":LoopLikeInterfaceIncGen",
         "//llvm:Support",
@@ -3836,6 +3860,7 @@ cc_library(
         ":ControlFlowInterfaces",
         ":Dialect",
         ":FuncDialect",
+        ":FunctionOpInterfaces",
         ":IR",
         ":InferTypeOpInterface",
         ":MLIRShapeCanonicalizationIncGen",
@@ -4027,6 +4052,7 @@ cc_library(
         ":ControlFlowDialect",
         ":ControlFlowInterfaces",
         ":FuncIncGen",
+        ":FunctionOpInterfaces",
         ":IR",
         ":InferTypeOpInterface",
         ":SideEffectInterfaces",
@@ -4402,6 +4428,7 @@ cc_library(
     deps = [
         ":AsmParser",
         ":BytecodeWriter",
+        ":FunctionOpInterfaces",
         ":IR",
         ":MlirLspServerSupportLib",
         ":Parser",
@@ -4582,6 +4609,7 @@ cc_library(
         ":CallOpInterfaces",
         ":ControlFlowInterfaces",
         ":DataLayoutInterfaces",
+        ":FunctionOpInterfaces",
         ":IR",
         ":InferTypeOpInterface",
         ":LLVMDialectInterfaceIncGen",
@@ -4782,6 +4810,7 @@ cc_library(
     deps = [
         ":ArithDialect",
         ":DLTIDialect",
+        ":FunctionOpInterfaces",
         ":GPUBaseIncGen",
         ":GPUCompilationAttrInterfacesIncGen",
         ":GPUOpsIncGen",
@@ -5866,6 +5895,7 @@ cc_library(
     ]),
     includes = ["include"],
     deps = [
+        ":FunctionOpInterfaces",
         ":IR",
         ":InferTypeOpInterface",
         ":PDLDialect",
@@ -6073,6 +6103,7 @@ cc_library(
     deps = [
         ":CommonFolders",
         ":ControlFlowInterfaces",
+        ":FunctionOpInterfaces",
         ":IR",
         ":InferTypeOpInterface",
         ":Parser",
@@ -6668,6 +6699,7 @@ cc_library(
     includes = ["include"],
     deps = [
         ":ControlFlowInterfaces",
+        ":FunctionOpInterfaces",
         ":IR",
         ":LoopLikeInterface",
         ":MemorySlotInterfaces",
@@ -7032,6 +7064,7 @@ cc_library(
         ":ComplexDialect",
         ":ConversionPassIncGen",
         ":FuncDialect",
+        ":FunctionOpInterfaces",
         ":GPUDialect",
         ":GPUTransforms",
         ":IR",
@@ -7320,6 +7353,7 @@ cc_library(
         ":ArithDialect",
         ":ConversionPassIncGen",
         ":FuncDialect",
+        ":FunctionOpInterfaces",
         ":IR",
         ":MemRefDialect",
         ":Pass",
@@ -7631,6 +7665,7 @@ cc_library(
         ":CallOpInterfaces",
         ":ControlFlowInterfaces",
         ":DataLayoutInterfaces",
+        ":FunctionOpInterfaces",
         ":IR",
         ":InferIntRangeInterface",
         ":LoopLikeInterface",
@@ -9676,6 +9711,7 @@ cc_library(
         ":DestinationStyleOpInterface",
         ":DialectUtils",
         ":FuncDialect",
+        ":FunctionOpInterfaces",
         ":IR",
         ":InferTypeOpInterface",
         ":LinalgEnumsIncGen",
@@ -9716,6 +9752,7 @@ cc_library(
         ":BufferizationTransforms",
         ":DialectUtils",
         ":FuncDialect",
+        ":FunctionOpInterfaces",
         ":GPUDialect",
         ":IR",
         ":LinalgDialect",
@@ -10647,6 +10684,7 @@ cc_library(
         ":CastInterfaces",
         ":ControlFlowInterfaces",
         ":ConvertToLLVM",
+        ":FunctionOpInterfaces",
         ":IR",
         ":LLVMCommonConversion",
         ":LLVMDialect",
@@ -10745,6 +10783,7 @@ cc_library(
     hdrs = glob(["include/mlir/Dialect/Transform/Transforms/*.h"]),
     deps = [
         ":Analysis",
+        ":FunctionOpInterfaces",
         ":IR",
         ":Parser",
         ":Pass",
@@ -11662,6 +11701,7 @@ cc_library(
     includes = ["include"],
     deps = [
         ":ControlFlowInterfaces",
+        ":FunctionOpInterfaces",
         ":IR",
         ":MLProgramAttributesIncGen",
         ":MLProgramOpsIncGen",
@@ -11824,6 +11864,7 @@ cc_library(
         ":BufferizationEnumsIncGen",
         ":BufferizationTransformOpsIncGen",
         ":BufferizationTransforms",
+        ":FunctionOpInterfaces",
         ":IR",
         ":LinalgDialect",
         ":MemRefDialect",
@@ -11880,6 +11921,7 @@ cc_library(
         ":CopyOpInterface",
         ":DestinationStyleOpInterface",
         ":FuncDialect",
+        ":FunctionOpInterfaces",
         ":IR",
         ":InferTypeOpInterface",
         ":MemRefDialect",

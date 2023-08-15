@@ -4,6 +4,7 @@ add_mlir_interface(ControlFlowInterfaces)
 add_mlir_interface(CopyOpInterface)
 add_mlir_interface(DerivedAttributeOpInterface)
 add_mlir_interface(DestinationStyleOpInterface)
+add_mlir_interface(FunctionInterfaces)
 add_mlir_interface(InferIntRangeInterface)
 add_mlir_interface(InferTypeOpInterface)
 add_mlir_interface(LoopLikeInterface)
@@ -48,3 +49,9 @@ add_mlir_doc(DataLayoutInterfaces
   DataLayoutOpInterface
   Interfaces/
   -gen-op-interface-docs)
+
+set(LLVM_TARGET_DEFINITIONS FunctionInterfaces.td)
+mlir_tablegen(FunctionOpInterfaces.h.inc -gen-op-interface-decls)
+mlir_tablegen(FunctionOpInterfaces.cpp.inc -gen-op-interface-defs)
+add_public_tablegen_target(MLIRFunctionInterfacesIncGen)
+add_dependencies(mlir-generic-headers MLIRFunctionInterfacesIncGen)
