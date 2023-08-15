@@ -8,6 +8,7 @@
 
 #include "mlir/Conversion/ComplexToLLVM/ComplexToLLVM.h"
 
+#include "mlir/Conversion/ArithCommon/AttrToLLVMConverter.h"
 #include "mlir/Conversion/LLVMCommon/ConversionTarget.h"
 #include "mlir/Conversion/LLVMCommon/Pattern.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
@@ -22,6 +23,7 @@ namespace mlir {
 
 using namespace mlir;
 using namespace mlir::LLVM;
+using namespace mlir::arith;
 
 //===----------------------------------------------------------------------===//
 // ComplexStructBuilder implementation.
@@ -180,7 +182,10 @@ struct AddOpConversion : public ConvertOpToLLVMPattern<complex::AddOp> {
     auto result = ComplexStructBuilder::undef(rewriter, loc, structType);
 
     // Emit IR to add complex numbers.
-    auto fmf = LLVM::FastmathFlagsAttr::get(op.getContext(), {});
+    auto complexFMFAttr = op.getFastMathFlagsAttr();
+    auto fmf = LLVM::FastmathFlagsAttr::get(
+        op.getContext(),
+        convertArithFastMathFlagsToLLVM(complexFMFAttr.getValue()));
     Value real =
         rewriter.create<LLVM::FAddOp>(loc, arg.lhs.real(), arg.rhs.real(), fmf);
     Value imag =
@@ -208,7 +213,10 @@ struct DivOpConversion : public ConvertOpToLLVMPattern<complex::DivOp> {
     auto result = ComplexStructBuilder::undef(rewriter, loc, structType);
 
     // Emit IR to add complex numbers.
-    auto fmf = LLVM::FastmathFlagsAttr::get(op.getContext(), {});
+    auto complexFMFAttr = op.getFastMathFlagsAttr();
+    auto fmf = LLVM::FastmathFlagsAttr::get(
+        op.getContext(),
+        convertArithFastMathFlagsToLLVM(complexFMFAttr.getValue()));
     Value rhsRe = arg.rhs.real();
     Value rhsIm = arg.rhs.imag();
     Value lhsRe = arg.lhs.real();
@@ -253,7 +261,10 @@ struct MulOpConversion : public ConvertOpToLLVMPattern<complex::MulOp> {
     auto result = ComplexStructBuilder::undef(rewriter, loc, structType);
 
     // Emit IR to add complex numbers.
-    auto fmf = LLVM::FastmathFlagsAttr::get(op.getContext(), {});
+    auto complexFMFAttr = op.getFastMathFlagsAttr();
+    auto fmf = LLVM::FastmathFlagsAttr::get(
+        op.getContext(),
+        convertArithFastMathFlagsToLLVM(complexFMFAttr.getValue()));
     Value rhsRe = arg.rhs.real();
     Value rhsIm = arg.rhs.imag();
     Value lhsRe = arg.lhs.real();
@@ -290,7 +301,10 @@ struct SubOpConversion : public ConvertOpToLLVMPattern<complex::SubOp> {
     auto result = ComplexStructBuilder::undef(rewriter, loc, structType);
 
     // Emit IR to substract complex numbers.
-    auto fmf = LLVM::FastmathFlagsAttr::get(op.getContext(), {});
+    auto complexFMFAttr = op.getFastMathFlagsAttr();
+    auto fmf = LLVM::FastmathFlagsAttr::get(
+        op.getContext(),
+        convertArithFastMathFlagsToLLVM(complexFMFAttr.getValue()));
     Value real =
         rewriter.create<LLVM::FSubOp>(loc, arg.lhs.real(), arg.rhs.real(), fmf);
     Value imag =
