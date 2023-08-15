@@ -489,6 +489,9 @@ if( MSVC )
     _UNICODE
   )
 
+  # Tell MSVC the LLVM sources are UTF-8 encoded.
+  append("/source-charset:utf-8" CMAKE_C_FLAGS CMAKE_CXX_FLAGS)
+
   if (LLVM_WINSYSROOT)
     if (NOT CLANG_CL)
       message(ERROR "LLVM_WINSYSROOT requires clang-cl")
