@@ -23,7 +23,6 @@ class TestInteractiveScriptedProcess(TestBase):
         self.script_file = self.script_module + ".py"
 
     @skipUnlessDarwin
-    @skipIfDarwin
     def test_passthrough_launch(self):
         """Test a simple pass-through process launch"""
         self.passthrough_launch()
@@ -35,6 +34,15 @@ class TestInteractiveScriptedProcess(TestBase):
         self.assertTrue(self.mux_process.IsValid(), "Got a valid process")
 
         event = lldbutil.fetch_next_event(
+            self, self.dbg.GetListener(), self.mux_process.GetBroadcaster(), timeout=20
+        )
+        self.assertState(lldb.SBProcess.GetStateFromEvent(event), lldb.eStateRunning)
+        event = lldbutil.fetch_next_event(
+            self, self.dbg.GetListener(), self.mux_process.GetBroadcaster()
+        )
+        self.assertState(lldb.SBProcess.GetStateFromEvent(event), lldb.eStateStopped)
+
+        event = lldbutil.fetch_next_event(
             self, self.mux_process_listener, self.mux_process.GetBroadcaster()
         )
         self.assertState(lldb.SBProcess.GetStateFromEvent(event), lldb.eStateRunning)
@@ -44,7 +52,6 @@ class TestInteractiveScriptedProcess(TestBase):
         self.assertState(lldb.SBProcess.GetStateFromEvent(event), lldb.eStateStopped)
 
     @skipUnlessDarwin
-    @skipIfDarwin
     def test_multiplexed_launch(self):
         """Test a multiple interactive scripted process debugging"""
         self.passthrough_launch()
@@ -178,6 +185,13 @@ class TestInteractiveScriptedProcess(TestBase):
             )
             execution_events[event_target_idx][state] = True
 
+        for _ in range((self.dbg.GetNumTargets() - 1) * 2):
+            fetch_process_event(self, execution_events)
+
+        for target_index, event_states in execution_events.items():
+            for state, is_set in event_states.items():
+                self.assertTrue(is_set, f"Target {target_index} has state {state} set")
+
         event = lldbutil.fetch_next_event(
             self, self.mux_process_listener, self.mux_process.GetBroadcaster()
         )
@@ -187,13 +201,6 @@ class TestInteractiveScriptedProcess(TestBase):
             self, self.mux_process_listener, self.mux_process.GetBroadcaster()
         )
         self.assertState(lldb.SBProcess.GetStateFromEvent(event), lldb.eStateStopped)
-
-        for _ in range((self.dbg.GetNumTargets() - 1) * 2):
-            fetch_process_event(self, execution_events)
-
-        for target_index, event_states in execution_events.items():
-            for state, is_set in event_states.items():
-                self.assertTrue(is_set, f"Target {target_index} has state {state} set")
 
     def duplicate_target(self, driving_target):
         exe = driving_target.executable.fullpath
@@ -248,14 +255,14 @@ class TestInteractiveScriptedProcess(TestBase):
         self.assertSuccess(error, "Launched multiplexer scripted process")
         self.assertTrue(self.mux_process.IsValid(), "Got a valid process")
 
-        # Check that the mux process started running
-        event = lldbutil.fetch_next_event(
-            self, self.mux_process_listener, self.mux_process.GetBroadcaster()
-        )
-        self.assertState(lldb.SBProcess.GetStateFromEvent(event), lldb.eStateRunning)
         # Check that the real process started running
         event = lldbutil.fetch_next_event(
             self, self.dbg.GetListener(), self.mux_process.GetBroadcaster()
+        )
+        self.assertState(lldb.SBProcess.GetStateFromEvent(event), lldb.eStateRunning)
+        # Check that the mux process started running
+        event = lldbutil.fetch_next_event(
+            self, self.mux_process_listener, self.mux_process.GetBroadcaster()
         )
         self.assertState(lldb.SBProcess.GetStateFromEvent(event), lldb.eStateRunning)
 
