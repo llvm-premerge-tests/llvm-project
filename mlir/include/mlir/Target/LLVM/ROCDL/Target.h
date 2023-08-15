@@ -18,11 +18,11 @@ class DialectRegistry;
 class MLIRContext;
 /// Registers the `TargetAttrInterface` for the `#rocdl.target` attribute in the
 /// given registry.
-void registerROCDLTarget(DialectRegistry &registry);
+void registerROCDLTargetInterfaceExtension(DialectRegistry &registry);
 
 /// Registers the `TargetAttrInterface` for the `#rocdl.target` attribute in the
 /// registry associated with the given context.
-void registerROCDLTarget(MLIRContext &context);
+void registerROCDLTargetInterfaceExtension(MLIRContext &context);
 } // namespace mlir
 
 #endif // MLIR_TARGET_LLVM_ROCDL_TARGET_H

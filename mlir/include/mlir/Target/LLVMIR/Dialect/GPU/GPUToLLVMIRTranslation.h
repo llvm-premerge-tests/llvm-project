@@ -29,7 +29,7 @@ void registerGPUDialectTranslation(MLIRContext &context);
 namespace gpu {
 /// Registers the offloading LLVM translation interfaces for
 /// `gpu.select_object`.
-void registerOffloadingLLVMTranslationInterfacesExternalModels(
+void registerOffloadingLLVMTranslationInterfaceExtension(
     mlir::DialectRegistry &registry);
 } // namespace gpu
 

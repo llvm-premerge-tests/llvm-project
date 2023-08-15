@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Dialect/GPU/Transforms/Passes.h"
+#include "mlir/Dialect/LLVMIR/ROCDLDialect.h"
 #include "mlir/IR/Location.h"
 #include "mlir/IR/MLIRContext.h"
 
@@ -147,7 +148,7 @@ SerializeToHsacoPass::SerializeToHsacoPass(StringRef triple, StringRef arch,
 
 void SerializeToHsacoPass::getDependentDialects(
     DialectRegistry &registry) const {
-  registerROCDLDialectTranslation(registry);
+  registry.insert<ROCDL::ROCDLDialect>();
   gpu::SerializeToBlobPass::getDependentDialects(registry);
 }
 

@@ -51,16 +51,15 @@ public:
 } // namespace
 
 // Register the NVVM dialect, the NVVM translation & the target interface.
-void mlir::registerNVVMTarget(DialectRegistry &registry) {
-  registerNVVMDialectTranslation(registry);
+void mlir::registerNVVMTargetInterfaceExtension(DialectRegistry &registry) {
   registry.addExtension(+[](MLIRContext *ctx, NVVM::NVVMDialect *dialect) {
     NVVMTargetAttr::attachInterface<NVVMTargetAttrImpl>(*ctx);
   });
 }
 
-void mlir::registerNVVMTarget(MLIRContext &context) {
+void mlir::registerNVVMTargetInterfaceExtension(MLIRContext &context) {
   DialectRegistry registry;
-  registerNVVMTarget(registry);
+  registerNVVMTargetInterfaceExtension(registry);
   context.appendDialectRegistry(registry);
 }
 

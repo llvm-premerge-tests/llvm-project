@@ -64,16 +64,15 @@ public:
 } // namespace
 
 // Register the ROCDL dialect, the ROCDL translation and the target interface.
-void mlir::registerROCDLTarget(DialectRegistry &registry) {
-  registerROCDLDialectTranslation(registry);
+void mlir::registerROCDLTargetInterfaceExtension(DialectRegistry &registry) {
   registry.addExtension(+[](MLIRContext *ctx, ROCDL::ROCDLDialect *dialect) {
     ROCDLTargetAttr::attachInterface<ROCDLTargetAttrImpl>(*ctx);
   });
 }
 
-void mlir::registerROCDLTarget(MLIRContext &context) {
+void mlir::registerROCDLTargetInterfaceExtension(MLIRContext &context) {
   DialectRegistry registry;
-  registerROCDLTarget(registry);
+  registerROCDLTargetInterfaceExtension(registry);
   context.appendDialectRegistry(registry);
 }
 
