@@ -71,11 +71,13 @@ void IRPrinterInstrumentation::runBeforePass(Pass *pass, Operation *op) {
     beforePassFingerPrints.try_emplace(pass, op);
 
   config->printBeforeIfEnabled(pass, op, [&](raw_ostream &out) {
+    out.SetBuffered();
     out << "// -----// IR Dump Before " << pass->getName() << " ("
         << pass->getArgument() << ")";
     printIR(op, config->shouldPrintAtModuleScope(), out,
             config->getOpPrintingFlags());
     out << "\n\n";
+    out.SetUnbuffered();
   });
 }
 
@@ -102,11 +104,13 @@ void IRPrinterInstrumentation::runAfterPass(Pass *pass, Operation *op) {
   }
 
   config->printAfterIfEnabled(pass, op, [&](raw_ostream &out) {
+    out.SetBuffered();
     out << "// -----// IR Dump After " << pass->getName() << " ("
         << pass->getArgument() << ")";
     printIR(op, config->shouldPrintAtModuleScope(), out,
             config->getOpPrintingFlags());
     out << "\n\n";
+    out.SetUnbuffered();
   });
 }
 
@@ -117,10 +121,13 @@ void IRPrinterInstrumentation::runAfterPassFailed(Pass *pass, Operation *op) {
     beforePassFingerPrints.erase(pass);
 
   config->printAfterIfEnabled(pass, op, [&](raw_ostream &out) {
+    out.SetBuffered();
     out << formatv("// -----// IR Dump After {0} Failed ({1})", pass->getName(),
                    pass->getArgument());
-    printIR(op, config->shouldPrintAtModuleScope(), out, OpPrintingFlags());
+    printIR(op, config->shouldPrintAtModuleScope(), out,
+            config->getOpPrintingFlags());
     out << "\n\n";
+    out.SetUnbuffered();
   });
 }
 
