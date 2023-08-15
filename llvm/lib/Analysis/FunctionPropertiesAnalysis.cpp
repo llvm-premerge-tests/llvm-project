@@ -17,7 +17,9 @@
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/Dominators.h"
+#include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/Metadata.h"
 #include "llvm/Support/CommandLine.h"
 #include <deque>
 
@@ -113,12 +115,27 @@ void FunctionPropertiesInfo::updateForBB(const BasicBlock &BB,
 
       for (unsigned int OperandIndex = 0; OperandIndex < I.getNumOperands();
            ++OperandIndex) {
-        if (const Constant *C =
-                dyn_cast<Constant>(I.getOperand(OperandIndex))) {
+        Value *Operand = I.getOperand(OperandIndex);
+        if (const GlobalValue *GV = dyn_cast<GlobalValue>(Operand)) {
+          // Global values are constants, so we need to check first if we have
+          // a global value before checking if we have a more generic constant.
+          GlobalValueOperandCount += Direction;
+        } else if (const Constant *C = dyn_cast<Constant>(Operand)) {
           if (C->getType()->isIntegerTy())
-            IntegerConstantCount += Direction;
+            ConstantIntegerOperandCount += Direction;
           else if (C->getType()->isFloatTy())
-            FloatingPointConstantCount += Direction;
+            ConstantFloatingPointOperandCount += Direction;
+          ConstantOperandCount += Direction;
+        } else if (const Instruction *I = dyn_cast<Instruction>(Operand)) {
+          InstructionOperandCount += Direction;
+        } else if (const BasicBlock *BB = dyn_cast<BasicBlock>(Operand)) {
+          BasicBlockOperandCount += Direction;
+        } else if (isa<InlineAsm>(Operand)) {
+          InlineASMOperandCount += Direction;
+        } else if (isa<Argument>(Operand)) {
+          ArgumentOperandCount += Direction;
+        } else {
+          UnknownOperandCount += Direction;
         }
       }
     }
@@ -191,8 +208,16 @@ void FunctionPropertiesInfo::print(raw_ostream &OS) const {
        << "FloatingPointInstructionCount: " << FloatingPointInstructionCount
        << "\n"
        << "IntegerInstructionCount: " << IntegerInstructionCount << "\n"
-       << "IntegerConstantCount: " << IntegerConstantCount << "\n"
-       << "FloatingPointConstantCount: " << FloatingPointConstantCount << "\n";
+       << "IntegerConstantCount: " << ConstantIntegerOperandCount << "\n"
+       << "FloatingPointConstantCount: " << ConstantFloatingPointOperandCount
+       << "\n"
+       << "ConstantOperandCount: " << ConstantOperandCount << "\n"
+       << "InstructionOperandCount: " << InstructionOperandCount << "\n"
+       << "BasicBlockOperandCount: " << BasicBlockOperandCount << "\n"
+       << "GlobalValueOperandCount: " << GlobalValueOperandCount << "\n"
+       << "InlineASMOperandCount: " << InlineASMOperandCount << "\n"
+       << "ArgumentOperandCount: " << ArgumentOperandCount << "\n"
+       << "UnknownOperandCount: " << UnknownOperandCount << "\n";
   }
   OS << "\n";
 }

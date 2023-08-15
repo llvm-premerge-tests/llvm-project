@@ -50,6 +50,12 @@ entry:
 ; DETAILED-PROPERTIES-DAG: IntegerInstructionCount: 0
 ; DETAILED-PROPERTIES-DAG: IntegerConstantCount: 14
 ; DETAILED-PROPERTIES-DAG: FloatingPointConstantCount: 0
+; DETAILED-PROPERTIES-DAG: ConstantOperandCount: 14
+; DETAILED-PROPERTIES-DAG: InstructionOperandCount: 7
+; DETAILED-PROPERTIES-DAG: BasicBlockOperandCount: 0
+; DETAILED-PROPERTIES-DAG: GlobalValueOperandCount: 1
+; DETAILED-PROPERTIES-DAG: InlineASMOperandCount: 0
+; DETAILED-PROPERTIES-DAG: ArgumentOperandCount: 0
 
 define void @multiply([2 x i32]* %mat1, [2 x i32]* %mat2, [2 x i32]* %res) {
 ; CHECK-DAG: Printing analysis results of CFA for function 'multiply':
@@ -187,3 +193,10 @@ for.end26:                                        ; preds = %for.cond
 ; DETAILED-PROPERTIES-DAG: IntegerInstructionCount: 33
 ; DETAILED-PROPERTIES-DAG: IntegerConstantCount: 20
 ; DETAILED-PROPERTIES-DAG: FloatingPointConstantCount: 0
+; DETAILED-PROPERTIES-DAG: ConstantOperandCount: 20
+; DETAILED-PROPERTIES-DAG: InstructionOperandCount: 73
+; DETAILED-PROPERTIES-DAG: BasicBlockOperandCount: 15
+; DETAILED-PROPERTIES-DAG: GlobalValueOperandCount: 0
+; DETAILED-PROPERTIES-DAG: InlineASMOperandCount: 0
+; DETAILED-PROPERTIES-DAG: ArgumentOperandCount: 3
+
