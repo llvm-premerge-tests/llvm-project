@@ -110,6 +110,9 @@ Deprecated Compiler Flags
 
 Modified Compiler Flags
 -----------------------
+- ``-fms-extensions`` now defines the ``_MSC_EXTENSIONS`` macro regardless of
+  whether or not the ``-fms-compatibility`` flag is set and regardless of the
+  target triple.
 
 Removed Compiler Flags
 -------------------------

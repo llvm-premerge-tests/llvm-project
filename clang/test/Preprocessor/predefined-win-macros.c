@@ -120,6 +120,11 @@
 // CHECK-AMD64-MINGW: #define _WIN32 1
 // CHECK-AMD64-MINGW: #define _WIN64 1
 
+// RUN: %clang_cc1 -triple x86_64-windows-gnu %s -E -dM -o - -fms-extensions \
+// RUN:   | FileCheck -match-full-lines %s --check-prefix=CHECK-AMD64-MINGW-MSE
+
+// CHECK-AMD64-MINGW-MSE: #define _MSC_EXTENSIONS 1
+
 // RUN: %clang_cc1 -triple aarch64-windows-gnu %s -E -dM -o - \
 // RUN:   | FileCheck -match-full-lines %s --check-prefix=CHECK-ARM64-MINGW
 
