@@ -3,3 +3,4 @@
 #  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 from ._memref_ops_gen import *
+from ._memref_enum_gen import *
