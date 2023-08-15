@@ -112,6 +112,14 @@ public:
 
   // The number of floating point constant operands inside the function.
   int64_t FloatingPointConstantCount = 0;
+
+  // Operand type couns
+  int64_t ConstantOperandCount = 0;
+  int64_t InstructionOperandCount = 0;
+  int64_t BasicBlockOperandCount = 0;
+  int64_t GlobalValueOperandCount = 0;
+  int64_t InlineASMOperandCount = 0;
+  int64_t ArgumentOperandCount = 0;
 };
 
 // Analysis pass
