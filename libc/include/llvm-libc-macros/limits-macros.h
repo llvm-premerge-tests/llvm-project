@@ -2,6 +2,10 @@
 #define __LLVM_LIBC_MACROS_LIMITS_MACROS_H
 
 #ifdef __linux__
+#if !defined _GCC_LIMITS_H_ && !defined __CLANG_LIMITS_H &&                    \
+    __has_include_next(<limits.h>)
+#include_next <limits.h>
+#endif
 #include <linux/limits.h>
 #endif
 
