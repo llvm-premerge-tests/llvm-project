@@ -2225,7 +2225,22 @@ Value *ScalarExprEmitter::VisitCastExpr(CastExpr *CE) {
     return Visit(const_cast<Expr*>(E));
 
   case CK_NoOp: {
+    // Propagate the volatileness if Casted to volatile like
+    //
+    // |-ImplicitCastExpr 'int' <LValueToRValue>
+    // | `-CXXStaticCastExpr 'volatile int' lvalue static_cast<volatile int &> <NoOp>
+    // |   `-ImplicitCastExpr  'volatile int' lvalue <NoOp> part_of_explicit_cast
+    // |     `-DeclRefExpr 'int' lvalue Var 0x55556b04caa0 'x' 'int'
+    //
+    // Later required to emit the load inst accrodingly.
+    if (!CGF.isVolatileCastStmt && CE->getType().isVolatileQualified())
+      CGF.isVolatileCastStmt= true;
+    
     llvm::Value *V = Visit(const_cast<Expr *>(E));
+    
+    // Reset ,so that we don't effect any other address loads.
+    if (CGF.isVolatileCastStmt)
+      CGF.isVolatileCastStmt= false;
     if (V) {
       // CK_NoOp can model a pointer qualification conversion, which can remove
       // an array bound and change the IR type.

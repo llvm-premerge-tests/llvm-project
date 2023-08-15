@@ -545,6 +545,10 @@ public:
   /// potentially set the return value.
   bool SawAsmBlock = false;
 
+  /// Propagate the volatileness to the reference decl node in the CastStmt
+  /// Note that the decl node may not have the volatile qualifier.
+  bool isVolatileCastStmt = false;
+
   GlobalDecl CurSEHParent;
 
   /// True if the current function is an outlined SEH helper. This can be a
