@@ -8,6 +8,9 @@
 ; RUN: llc -mtriple=riscv64 -relocation-model=pic -verify-machineinstrs -no-integrated-as < %s \
 ; RUN:   | FileCheck -check-prefixes=RV64I-PIC %s
 
+@ga = external global [4000 x i32], align 4
+@la = internal global [4000 x i32] zeroinitializer, align 4
+
 define void @constraint_m_1(ptr %a) nounwind {
 ; RV32I-LABEL: constraint_m_1:
 ; RV32I:       # %bb.0:
@@ -101,6 +104,260 @@ define i32 @constraint_m_with_offset(ptr %a) nounwind {
   ret i32 %2
 }
 
+define void @constraint_m_with_global_address_1() nounwind {
+; RV32I-LABEL: constraint_m_with_global_address_1:
+; RV32I:       # %bb.0:
+; RV32I-NEXT:    lui a0, %hi(ga)
+; RV32I-NEXT:    #APP
+; RV32I-NEXT:    sw zero, %lo(ga)(a0)
+; RV32I-NEXT:    #NO_APP
+; RV32I-NEXT:    ret
+;
+; RV64I-LABEL: constraint_m_with_global_address_1:
+; RV64I:       # %bb.0:
+; RV64I-NEXT:    lui a0, %hi(ga)
+; RV64I-NEXT:    #APP
+; RV64I-NEXT:    sw zero, %lo(ga)(a0)
+; RV64I-NEXT:    #NO_APP
+; RV64I-NEXT:    ret
+;
+; RV32I-PIC-LABEL: constraint_m_with_global_address_1:
+; RV32I-PIC:       # %bb.0:
+; RV32I-PIC-NEXT:  .Lpcrel_hi0:
+; RV32I-PIC-NEXT:    auipc a0, %got_pcrel_hi(ga)
+; RV32I-PIC-NEXT:    lw a0, %pcrel_lo(.Lpcrel_hi0)(a0)
+; RV32I-PIC-NEXT:    #APP
+; RV32I-PIC-NEXT:    sw zero, 0(a0)
+; RV32I-PIC-NEXT:    #NO_APP
+; RV32I-PIC-NEXT:    ret
+;
+; RV64I-PIC-LABEL: constraint_m_with_global_address_1:
+; RV64I-PIC:       # %bb.0:
+; RV64I-PIC-NEXT:  .Lpcrel_hi0:
+; RV64I-PIC-NEXT:    auipc a0, %got_pcrel_hi(ga)
+; RV64I-PIC-NEXT:    ld a0, %pcrel_lo(.Lpcrel_hi0)(a0)
+; RV64I-PIC-NEXT:    #APP
+; RV64I-PIC-NEXT:    sw zero, 0(a0)
+; RV64I-PIC-NEXT:    #NO_APP
+; RV64I-PIC-NEXT:    ret
+  call void asm "sw zero, $0", "=*m"(ptr elementtype(i32) @ga)
+  ret void
+}
+
+define void @constraint_m_with_global_address_2() nounwind {
+; RV32I-LABEL: constraint_m_with_global_address_2:
+; RV32I:       # %bb.0:
+; RV32I-NEXT:    lui a0, %hi(ga)
+; RV32I-NEXT:    addi a0, a0, %lo(ga)
+; RV32I-NEXT:    #APP
+; RV32I-NEXT:    sw zero, 4(a0)
+; RV32I-NEXT:    #NO_APP
+; RV32I-NEXT:    ret
+;
+; RV64I-LABEL: constraint_m_with_global_address_2:
+; RV64I:       # %bb.0:
+; RV64I-NEXT:    lui a0, %hi(ga)
+; RV64I-NEXT:    addi a0, a0, %lo(ga)
+; RV64I-NEXT:    #APP
+; RV64I-NEXT:    sw zero, 4(a0)
+; RV64I-NEXT:    #NO_APP
+; RV64I-NEXT:    ret
+;
+; RV32I-PIC-LABEL: constraint_m_with_global_address_2:
+; RV32I-PIC:       # %bb.0:
+; RV32I-PIC-NEXT:  .Lpcrel_hi1:
+; RV32I-PIC-NEXT:    auipc a0, %got_pcrel_hi(ga)
+; RV32I-PIC-NEXT:    lw a0, %pcrel_lo(.Lpcrel_hi1)(a0)
+; RV32I-PIC-NEXT:    #APP
+; RV32I-PIC-NEXT:    sw zero, 4(a0)
+; RV32I-PIC-NEXT:    #NO_APP
+; RV32I-PIC-NEXT:    ret
+;
+; RV64I-PIC-LABEL: constraint_m_with_global_address_2:
+; RV64I-PIC:       # %bb.0:
+; RV64I-PIC-NEXT:  .Lpcrel_hi1:
+; RV64I-PIC-NEXT:    auipc a0, %got_pcrel_hi(ga)
+; RV64I-PIC-NEXT:    ld a0, %pcrel_lo(.Lpcrel_hi1)(a0)
+; RV64I-PIC-NEXT:    #APP
+; RV64I-PIC-NEXT:    sw zero, 4(a0)
+; RV64I-PIC-NEXT:    #NO_APP
+; RV64I-PIC-NEXT:    ret
+  call void asm "sw zero, $0", "=*m"(ptr nonnull elementtype(i32) getelementptr inbounds ([400000 x i32], ptr @ga, i32 0, i32 1))
+  ret void
+}
+
+define void @constraint_m_with_global_address_3() nounwind {
+; RV32I-LABEL: constraint_m_with_global_address_3:
+; RV32I:       # %bb.0:
+; RV32I-NEXT:    lui a0, %hi(ga+8000)
+; RV32I-NEXT:    addi a0, a0, %lo(ga+8000)
+; RV32I-NEXT:    #APP
+; RV32I-NEXT:    sw zero, 0(a0)
+; RV32I-NEXT:    #NO_APP
+; RV32I-NEXT:    ret
+;
+; RV64I-LABEL: constraint_m_with_global_address_3:
+; RV64I:       # %bb.0:
+; RV64I-NEXT:    lui a0, %hi(ga+8000)
+; RV64I-NEXT:    addi a0, a0, %lo(ga+8000)
+; RV64I-NEXT:    #APP
+; RV64I-NEXT:    sw zero, 0(a0)
+; RV64I-NEXT:    #NO_APP
+; RV64I-NEXT:    ret
+;
+; RV32I-PIC-LABEL: constraint_m_with_global_address_3:
+; RV32I-PIC:       # %bb.0:
+; RV32I-PIC-NEXT:  .Lpcrel_hi2:
+; RV32I-PIC-NEXT:    auipc a0, %got_pcrel_hi(ga)
+; RV32I-PIC-NEXT:    lw a0, %pcrel_lo(.Lpcrel_hi2)(a0)
+; RV32I-PIC-NEXT:    lui a1, 2
+; RV32I-PIC-NEXT:    addi a1, a1, -192
+; RV32I-PIC-NEXT:    add a0, a0, a1
+; RV32I-PIC-NEXT:    #APP
+; RV32I-PIC-NEXT:    sw zero, 0(a0)
+; RV32I-PIC-NEXT:    #NO_APP
+; RV32I-PIC-NEXT:    ret
+;
+; RV64I-PIC-LABEL: constraint_m_with_global_address_3:
+; RV64I-PIC:       # %bb.0:
+; RV64I-PIC-NEXT:  .Lpcrel_hi2:
+; RV64I-PIC-NEXT:    auipc a0, %got_pcrel_hi(ga)
+; RV64I-PIC-NEXT:    ld a0, %pcrel_lo(.Lpcrel_hi2)(a0)
+; RV64I-PIC-NEXT:    lui a1, 2
+; RV64I-PIC-NEXT:    addiw a1, a1, -192
+; RV64I-PIC-NEXT:    add a0, a0, a1
+; RV64I-PIC-NEXT:    #APP
+; RV64I-PIC-NEXT:    sw zero, 0(a0)
+; RV64I-PIC-NEXT:    #NO_APP
+; RV64I-PIC-NEXT:    ret
+  call void asm "sw zero, $0", "=*m"(ptr nonnull elementtype(i32) getelementptr inbounds ([400000 x i32], ptr @ga, i32 0, i32 2000))
+  ret void
+}
+
+define void @constraint_m_with_local_address_1() nounwind {
+; RV32I-LABEL: constraint_m_with_local_address_1:
+; RV32I:       # %bb.0:
+; RV32I-NEXT:    lui a0, %hi(la)
+; RV32I-NEXT:    #APP
+; RV32I-NEXT:    sw zero, %lo(la)(a0)
+; RV32I-NEXT:    #NO_APP
+; RV32I-NEXT:    ret
+;
+; RV64I-LABEL: constraint_m_with_local_address_1:
+; RV64I:       # %bb.0:
+; RV64I-NEXT:    lui a0, %hi(la)
+; RV64I-NEXT:    #APP
+; RV64I-NEXT:    sw zero, %lo(la)(a0)
+; RV64I-NEXT:    #NO_APP
+; RV64I-NEXT:    ret
+;
+; RV32I-PIC-LABEL: constraint_m_with_local_address_1:
+; RV32I-PIC:       # %bb.0:
+; RV32I-PIC-NEXT:  .Lpcrel_hi3:
+; RV32I-PIC-NEXT:    auipc a0, %pcrel_hi(la)
+; RV32I-PIC-NEXT:    addi a0, a0, %pcrel_lo(.Lpcrel_hi3)
+; RV32I-PIC-NEXT:    #APP
+; RV32I-PIC-NEXT:    sw zero, 0(a0)
+; RV32I-PIC-NEXT:    #NO_APP
+; RV32I-PIC-NEXT:    ret
+;
+; RV64I-PIC-LABEL: constraint_m_with_local_address_1:
+; RV64I-PIC:       # %bb.0:
+; RV64I-PIC-NEXT:  .Lpcrel_hi3:
+; RV64I-PIC-NEXT:    auipc a0, %pcrel_hi(la)
+; RV64I-PIC-NEXT:    addi a0, a0, %pcrel_lo(.Lpcrel_hi3)
+; RV64I-PIC-NEXT:    #APP
+; RV64I-PIC-NEXT:    sw zero, 0(a0)
+; RV64I-PIC-NEXT:    #NO_APP
+; RV64I-PIC-NEXT:    ret
+  call void asm "sw zero, $0", "=*m"(ptr elementtype(i32) @la)
+  ret void
+}
+
+define void @constraint_m_with_local_address_2() nounwind {
+; RV32I-LABEL: constraint_m_with_local_address_2:
+; RV32I:       # %bb.0:
+; RV32I-NEXT:    lui a0, %hi(la)
+; RV32I-NEXT:    addi a0, a0, %lo(la)
+; RV32I-NEXT:    #APP
+; RV32I-NEXT:    sw zero, 4(a0)
+; RV32I-NEXT:    #NO_APP
+; RV32I-NEXT:    ret
+;
+; RV64I-LABEL: constraint_m_with_local_address_2:
+; RV64I:       # %bb.0:
+; RV64I-NEXT:    lui a0, %hi(la)
+; RV64I-NEXT:    addi a0, a0, %lo(la)
+; RV64I-NEXT:    #APP
+; RV64I-NEXT:    sw zero, 4(a0)
+; RV64I-NEXT:    #NO_APP
+; RV64I-NEXT:    ret
+;
+; RV32I-PIC-LABEL: constraint_m_with_local_address_2:
+; RV32I-PIC:       # %bb.0:
+; RV32I-PIC-NEXT:  .Lpcrel_hi4:
+; RV32I-PIC-NEXT:    auipc a0, %pcrel_hi(la)
+; RV32I-PIC-NEXT:    addi a0, a0, %pcrel_lo(.Lpcrel_hi4)
+; RV32I-PIC-NEXT:    #APP
+; RV32I-PIC-NEXT:    sw zero, 4(a0)
+; RV32I-PIC-NEXT:    #NO_APP
+; RV32I-PIC-NEXT:    ret
+;
+; RV64I-PIC-LABEL: constraint_m_with_local_address_2:
+; RV64I-PIC:       # %bb.0:
+; RV64I-PIC-NEXT:  .Lpcrel_hi4:
+; RV64I-PIC-NEXT:    auipc a0, %pcrel_hi(la)
+; RV64I-PIC-NEXT:    addi a0, a0, %pcrel_lo(.Lpcrel_hi4)
+; RV64I-PIC-NEXT:    #APP
+; RV64I-PIC-NEXT:    sw zero, 4(a0)
+; RV64I-PIC-NEXT:    #NO_APP
+; RV64I-PIC-NEXT:    ret
+  call void asm "sw zero, $0", "=*m"(ptr nonnull elementtype(i32) getelementptr inbounds ([400000 x i32], ptr @la, i32 0, i32 1))
+  ret void
+}
+
+define void @constraint_m_with_local_address_3() nounwind {
+; RV32I-LABEL: constraint_m_with_local_address_3:
+; RV32I:       # %bb.0:
+; RV32I-NEXT:    lui a0, %hi(la+8000)
+; RV32I-NEXT:    addi a0, a0, %lo(la+8000)
+; RV32I-NEXT:    #APP
+; RV32I-NEXT:    sw zero, 0(a0)
+; RV32I-NEXT:    #NO_APP
+; RV32I-NEXT:    ret
+;
+; RV64I-LABEL: constraint_m_with_local_address_3:
+; RV64I:       # %bb.0:
+; RV64I-NEXT:    lui a0, %hi(la+8000)
+; RV64I-NEXT:    addi a0, a0, %lo(la+8000)
+; RV64I-NEXT:    #APP
+; RV64I-NEXT:    sw zero, 0(a0)
+; RV64I-NEXT:    #NO_APP
+; RV64I-NEXT:    ret
+;
+; RV32I-PIC-LABEL: constraint_m_with_local_address_3:
+; RV32I-PIC:       # %bb.0:
+; RV32I-PIC-NEXT:  .Lpcrel_hi5:
+; RV32I-PIC-NEXT:    auipc a0, %pcrel_hi(la+8000)
+; RV32I-PIC-NEXT:    addi a0, a0, %pcrel_lo(.Lpcrel_hi5)
+; RV32I-PIC-NEXT:    #APP
+; RV32I-PIC-NEXT:    sw zero, 0(a0)
+; RV32I-PIC-NEXT:    #NO_APP
+; RV32I-PIC-NEXT:    ret
+;
+; RV64I-PIC-LABEL: constraint_m_with_local_address_3:
+; RV64I-PIC:       # %bb.0:
+; RV64I-PIC-NEXT:  .Lpcrel_hi5:
+; RV64I-PIC-NEXT:    auipc a0, %pcrel_hi(la+8000)
+; RV64I-PIC-NEXT:    addi a0, a0, %pcrel_lo(.Lpcrel_hi5)
+; RV64I-PIC-NEXT:    #APP
+; RV64I-PIC-NEXT:    sw zero, 0(a0)
+; RV64I-PIC-NEXT:    #NO_APP
+; RV64I-PIC-NEXT:    ret
+  call void asm "sw zero, $0", "=*m"(ptr nonnull elementtype(i32) getelementptr inbounds ([400000 x i32], ptr @la, i32 0, i32 2000))
+  ret void
+}
+
 define void @constraint_o_1(ptr %a) nounwind {
 ; RV32I-LABEL: constraint_o_1:
 ; RV32I:       # %bb.0:
@@ -192,4 +449,258 @@ define i32 @constraint_o_with_offset(ptr %a) nounwind {
   %1 = getelementptr i32, ptr %a, i32 1
   %2 = tail call i32 asm "lw $0, $1", "=r,*o"(ptr elementtype(i32) %1)
   ret i32 %2
+}
+
+define void @constraint_o_with_global_address_1() nounwind {
+; RV32I-LABEL: constraint_o_with_global_address_1:
+; RV32I:       # %bb.0:
+; RV32I-NEXT:    lui a0, %hi(ga)
+; RV32I-NEXT:    #APP
+; RV32I-NEXT:    sw zero, %lo(ga)(a0)
+; RV32I-NEXT:    #NO_APP
+; RV32I-NEXT:    ret
+;
+; RV64I-LABEL: constraint_o_with_global_address_1:
+; RV64I:       # %bb.0:
+; RV64I-NEXT:    lui a0, %hi(ga)
+; RV64I-NEXT:    #APP
+; RV64I-NEXT:    sw zero, %lo(ga)(a0)
+; RV64I-NEXT:    #NO_APP
+; RV64I-NEXT:    ret
+;
+; RV32I-PIC-LABEL: constraint_o_with_global_address_1:
+; RV32I-PIC:       # %bb.0:
+; RV32I-PIC-NEXT:  .Lpcrel_hi6:
+; RV32I-PIC-NEXT:    auipc a0, %got_pcrel_hi(ga)
+; RV32I-PIC-NEXT:    lw a0, %pcrel_lo(.Lpcrel_hi6)(a0)
+; RV32I-PIC-NEXT:    #APP
+; RV32I-PIC-NEXT:    sw zero, 0(a0)
+; RV32I-PIC-NEXT:    #NO_APP
+; RV32I-PIC-NEXT:    ret
+;
+; RV64I-PIC-LABEL: constraint_o_with_global_address_1:
+; RV64I-PIC:       # %bb.0:
+; RV64I-PIC-NEXT:  .Lpcrel_hi6:
+; RV64I-PIC-NEXT:    auipc a0, %got_pcrel_hi(ga)
+; RV64I-PIC-NEXT:    ld a0, %pcrel_lo(.Lpcrel_hi6)(a0)
+; RV64I-PIC-NEXT:    #APP
+; RV64I-PIC-NEXT:    sw zero, 0(a0)
+; RV64I-PIC-NEXT:    #NO_APP
+; RV64I-PIC-NEXT:    ret
+  call void asm "sw zero, $0", "=*o"(ptr elementtype(i32) @ga)
+  ret void
+}
+
+define void @constraint_o_with_global_address_2() nounwind {
+; RV32I-LABEL: constraint_o_with_global_address_2:
+; RV32I:       # %bb.0:
+; RV32I-NEXT:    lui a0, %hi(ga)
+; RV32I-NEXT:    addi a0, a0, %lo(ga)
+; RV32I-NEXT:    #APP
+; RV32I-NEXT:    sw zero, 4(a0)
+; RV32I-NEXT:    #NO_APP
+; RV32I-NEXT:    ret
+;
+; RV64I-LABEL: constraint_o_with_global_address_2:
+; RV64I:       # %bb.0:
+; RV64I-NEXT:    lui a0, %hi(ga)
+; RV64I-NEXT:    addi a0, a0, %lo(ga)
+; RV64I-NEXT:    #APP
+; RV64I-NEXT:    sw zero, 4(a0)
+; RV64I-NEXT:    #NO_APP
+; RV64I-NEXT:    ret
+;
+; RV32I-PIC-LABEL: constraint_o_with_global_address_2:
+; RV32I-PIC:       # %bb.0:
+; RV32I-PIC-NEXT:  .Lpcrel_hi7:
+; RV32I-PIC-NEXT:    auipc a0, %got_pcrel_hi(ga)
+; RV32I-PIC-NEXT:    lw a0, %pcrel_lo(.Lpcrel_hi7)(a0)
+; RV32I-PIC-NEXT:    #APP
+; RV32I-PIC-NEXT:    sw zero, 4(a0)
+; RV32I-PIC-NEXT:    #NO_APP
+; RV32I-PIC-NEXT:    ret
+;
+; RV64I-PIC-LABEL: constraint_o_with_global_address_2:
+; RV64I-PIC:       # %bb.0:
+; RV64I-PIC-NEXT:  .Lpcrel_hi7:
+; RV64I-PIC-NEXT:    auipc a0, %got_pcrel_hi(ga)
+; RV64I-PIC-NEXT:    ld a0, %pcrel_lo(.Lpcrel_hi7)(a0)
+; RV64I-PIC-NEXT:    #APP
+; RV64I-PIC-NEXT:    sw zero, 4(a0)
+; RV64I-PIC-NEXT:    #NO_APP
+; RV64I-PIC-NEXT:    ret
+  call void asm "sw zero, $0", "=*o"(ptr nonnull elementtype(i32) getelementptr inbounds ([400000 x i32], ptr @ga, i32 0, i32 1))
+  ret void
+}
+
+define void @constraint_o_with_global_address_3() nounwind {
+; RV32I-LABEL: constraint_o_with_global_address_3:
+; RV32I:       # %bb.0:
+; RV32I-NEXT:    lui a0, %hi(ga+8000)
+; RV32I-NEXT:    addi a0, a0, %lo(ga+8000)
+; RV32I-NEXT:    #APP
+; RV32I-NEXT:    sw zero, 0(a0)
+; RV32I-NEXT:    #NO_APP
+; RV32I-NEXT:    ret
+;
+; RV64I-LABEL: constraint_o_with_global_address_3:
+; RV64I:       # %bb.0:
+; RV64I-NEXT:    lui a0, %hi(ga+8000)
+; RV64I-NEXT:    addi a0, a0, %lo(ga+8000)
+; RV64I-NEXT:    #APP
+; RV64I-NEXT:    sw zero, 0(a0)
+; RV64I-NEXT:    #NO_APP
+; RV64I-NEXT:    ret
+;
+; RV32I-PIC-LABEL: constraint_o_with_global_address_3:
+; RV32I-PIC:       # %bb.0:
+; RV32I-PIC-NEXT:  .Lpcrel_hi8:
+; RV32I-PIC-NEXT:    auipc a0, %got_pcrel_hi(ga)
+; RV32I-PIC-NEXT:    lw a0, %pcrel_lo(.Lpcrel_hi8)(a0)
+; RV32I-PIC-NEXT:    lui a1, 2
+; RV32I-PIC-NEXT:    addi a1, a1, -192
+; RV32I-PIC-NEXT:    add a0, a0, a1
+; RV32I-PIC-NEXT:    #APP
+; RV32I-PIC-NEXT:    sw zero, 0(a0)
+; RV32I-PIC-NEXT:    #NO_APP
+; RV32I-PIC-NEXT:    ret
+;
+; RV64I-PIC-LABEL: constraint_o_with_global_address_3:
+; RV64I-PIC:       # %bb.0:
+; RV64I-PIC-NEXT:  .Lpcrel_hi8:
+; RV64I-PIC-NEXT:    auipc a0, %got_pcrel_hi(ga)
+; RV64I-PIC-NEXT:    ld a0, %pcrel_lo(.Lpcrel_hi8)(a0)
+; RV64I-PIC-NEXT:    lui a1, 2
+; RV64I-PIC-NEXT:    addiw a1, a1, -192
+; RV64I-PIC-NEXT:    add a0, a0, a1
+; RV64I-PIC-NEXT:    #APP
+; RV64I-PIC-NEXT:    sw zero, 0(a0)
+; RV64I-PIC-NEXT:    #NO_APP
+; RV64I-PIC-NEXT:    ret
+  call void asm "sw zero, $0", "=*o"(ptr nonnull elementtype(i32) getelementptr inbounds ([400000 x i32], ptr @ga, i32 0, i32 2000))
+  ret void
+}
+
+define void @constraint_o_with_local_address_1() nounwind {
+; RV32I-LABEL: constraint_o_with_local_address_1:
+; RV32I:       # %bb.0:
+; RV32I-NEXT:    lui a0, %hi(la)
+; RV32I-NEXT:    #APP
+; RV32I-NEXT:    sw zero, %lo(la)(a0)
+; RV32I-NEXT:    #NO_APP
+; RV32I-NEXT:    ret
+;
+; RV64I-LABEL: constraint_o_with_local_address_1:
+; RV64I:       # %bb.0:
+; RV64I-NEXT:    lui a0, %hi(la)
+; RV64I-NEXT:    #APP
+; RV64I-NEXT:    sw zero, %lo(la)(a0)
+; RV64I-NEXT:    #NO_APP
+; RV64I-NEXT:    ret
+;
+; RV32I-PIC-LABEL: constraint_o_with_local_address_1:
+; RV32I-PIC:       # %bb.0:
+; RV32I-PIC-NEXT:  .Lpcrel_hi9:
+; RV32I-PIC-NEXT:    auipc a0, %pcrel_hi(la)
+; RV32I-PIC-NEXT:    addi a0, a0, %pcrel_lo(.Lpcrel_hi9)
+; RV32I-PIC-NEXT:    #APP
+; RV32I-PIC-NEXT:    sw zero, 0(a0)
+; RV32I-PIC-NEXT:    #NO_APP
+; RV32I-PIC-NEXT:    ret
+;
+; RV64I-PIC-LABEL: constraint_o_with_local_address_1:
+; RV64I-PIC:       # %bb.0:
+; RV64I-PIC-NEXT:  .Lpcrel_hi9:
+; RV64I-PIC-NEXT:    auipc a0, %pcrel_hi(la)
+; RV64I-PIC-NEXT:    addi a0, a0, %pcrel_lo(.Lpcrel_hi9)
+; RV64I-PIC-NEXT:    #APP
+; RV64I-PIC-NEXT:    sw zero, 0(a0)
+; RV64I-PIC-NEXT:    #NO_APP
+; RV64I-PIC-NEXT:    ret
+  call void asm "sw zero, $0", "=*o"(ptr elementtype(i32) @la)
+  ret void
+}
+
+define void @constraint_o_with_local_address_2() nounwind {
+; RV32I-LABEL: constraint_o_with_local_address_2:
+; RV32I:       # %bb.0:
+; RV32I-NEXT:    lui a0, %hi(la)
+; RV32I-NEXT:    addi a0, a0, %lo(la)
+; RV32I-NEXT:    #APP
+; RV32I-NEXT:    sw zero, 4(a0)
+; RV32I-NEXT:    #NO_APP
+; RV32I-NEXT:    ret
+;
+; RV64I-LABEL: constraint_o_with_local_address_2:
+; RV64I:       # %bb.0:
+; RV64I-NEXT:    lui a0, %hi(la)
+; RV64I-NEXT:    addi a0, a0, %lo(la)
+; RV64I-NEXT:    #APP
+; RV64I-NEXT:    sw zero, 4(a0)
+; RV64I-NEXT:    #NO_APP
+; RV64I-NEXT:    ret
+;
+; RV32I-PIC-LABEL: constraint_o_with_local_address_2:
+; RV32I-PIC:       # %bb.0:
+; RV32I-PIC-NEXT:  .Lpcrel_hi10:
+; RV32I-PIC-NEXT:    auipc a0, %pcrel_hi(la)
+; RV32I-PIC-NEXT:    addi a0, a0, %pcrel_lo(.Lpcrel_hi10)
+; RV32I-PIC-NEXT:    #APP
+; RV32I-PIC-NEXT:    sw zero, 4(a0)
+; RV32I-PIC-NEXT:    #NO_APP
+; RV32I-PIC-NEXT:    ret
+;
+; RV64I-PIC-LABEL: constraint_o_with_local_address_2:
+; RV64I-PIC:       # %bb.0:
+; RV64I-PIC-NEXT:  .Lpcrel_hi10:
+; RV64I-PIC-NEXT:    auipc a0, %pcrel_hi(la)
+; RV64I-PIC-NEXT:    addi a0, a0, %pcrel_lo(.Lpcrel_hi10)
+; RV64I-PIC-NEXT:    #APP
+; RV64I-PIC-NEXT:    sw zero, 4(a0)
+; RV64I-PIC-NEXT:    #NO_APP
+; RV64I-PIC-NEXT:    ret
+  call void asm "sw zero, $0", "=*o"(ptr nonnull elementtype(i32) getelementptr inbounds ([400000 x i32], ptr @la, i32 0, i32 1))
+  ret void
+}
+
+define void @constraint_o_with_local_address_3() nounwind {
+; RV32I-LABEL: constraint_o_with_local_address_3:
+; RV32I:       # %bb.0:
+; RV32I-NEXT:    lui a0, %hi(la+8000)
+; RV32I-NEXT:    addi a0, a0, %lo(la+8000)
+; RV32I-NEXT:    #APP
+; RV32I-NEXT:    sw zero, 0(a0)
+; RV32I-NEXT:    #NO_APP
+; RV32I-NEXT:    ret
+;
+; RV64I-LABEL: constraint_o_with_local_address_3:
+; RV64I:       # %bb.0:
+; RV64I-NEXT:    lui a0, %hi(la+8000)
+; RV64I-NEXT:    addi a0, a0, %lo(la+8000)
+; RV64I-NEXT:    #APP
+; RV64I-NEXT:    sw zero, 0(a0)
+; RV64I-NEXT:    #NO_APP
+; RV64I-NEXT:    ret
+;
+; RV32I-PIC-LABEL: constraint_o_with_local_address_3:
+; RV32I-PIC:       # %bb.0:
+; RV32I-PIC-NEXT:  .Lpcrel_hi11:
+; RV32I-PIC-NEXT:    auipc a0, %pcrel_hi(la+8000)
+; RV32I-PIC-NEXT:    addi a0, a0, %pcrel_lo(.Lpcrel_hi11)
+; RV32I-PIC-NEXT:    #APP
+; RV32I-PIC-NEXT:    sw zero, 0(a0)
+; RV32I-PIC-NEXT:    #NO_APP
+; RV32I-PIC-NEXT:    ret
+;
+; RV64I-PIC-LABEL: constraint_o_with_local_address_3:
+; RV64I-PIC:       # %bb.0:
+; RV64I-PIC-NEXT:  .Lpcrel_hi11:
+; RV64I-PIC-NEXT:    auipc a0, %pcrel_hi(la+8000)
+; RV64I-PIC-NEXT:    addi a0, a0, %pcrel_lo(.Lpcrel_hi11)
+; RV64I-PIC-NEXT:    #APP
+; RV64I-PIC-NEXT:    sw zero, 0(a0)
+; RV64I-PIC-NEXT:    #NO_APP
+; RV64I-PIC-NEXT:    ret
+  call void asm "sw zero, $0", "=*o"(ptr nonnull elementtype(i32) getelementptr inbounds ([400000 x i32], ptr @la, i32 0, i32 2000))
+  ret void
 }
