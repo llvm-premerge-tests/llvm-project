@@ -277,6 +277,19 @@ add_libc_test(
     libc.src.stdio.fopen
 )
 
+add_libc_test(
+  fdopen_test
+  SUITE
+    libc_stdio_unittests
+  SRCS
+    fdopen_test.cpp
+  DEPENDS
+    libc.src.errno.errno
+    libc.src.fcntl.open
+    libc.src.stdio.fclose
+    libc.src.stdio.fdopen
+)
+
 add_libc_unittest(
   putc_test
   SUITE
