@@ -135,8 +135,10 @@ struct PackOpInterface
                                       const AnalysisState &state) const {
     assert(op->getNumResults() == 1);
     // PackOp reuses the input tensors as values/coordinates instead of
-    // creating new ones when packing into a COO format.
-    return {{op->getOpResult(0), BufferRelation::Equivalent}};
+    // creating new ones when packing into a COO format. However, the
+    // description of the operation expliclity marks aliasing the buffers
+    // as undefined behavior, so we can safely discard that possibility.
+    return {};
   }
 
   BufferRelation bufferRelation(Operation *oo, OpResult opResult,
