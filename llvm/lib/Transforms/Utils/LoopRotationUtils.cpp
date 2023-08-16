@@ -25,6 +25,8 @@
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/IntrinsicInst.h"
+#include "llvm/IR/MDBuilder.h"
+#include "llvm/IR/ProfDataUtils.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
@@ -244,6 +246,94 @@ static bool canRotateDeoptimizingLatchExit(Loop *L) {
   return false;
 }
 
+static void updateBranchWeights(BranchInst &PreHeaderBI, BranchInst &LoopBI,
+                                bool ConditionalPreHeader, bool SuccsSwapped) {
+  MDNode *WeightMD = getBranchWeightMDNode(PreHeaderBI);
+  if (WeightMD == nullptr)
+    return;
+
+  // LoopBI should currently be a clone of PreHeaderBI with the same
+  // metadata. But we double check to make sure we don't have a degenerate case
+  // where instsimplify changed the instructions.
+  if (WeightMD != getBranchWeightMDNode(LoopBI))
+    return;
+
+  SmallVector<uint32_t, 2> Weights;
+  extractFromBranchWeightMD(WeightMD, Weights);
+  if (Weights.size() != 2)
+    return;
+  uint32_t OrigLoopExitCount = Weights[0];
+  uint32_t OrigLoopBackedgeCount = Weights[1];
+
+  if (SuccsSwapped)
+    std::swap(OrigLoopExitCount, OrigLoopBackedgeCount);
+
+  // Update branch weights. Consider the following edge-counts:
+  //
+  //    |  |--------             |
+  //    V  V       |             V
+  //   Br i1 ...   |            Br i1 ...
+  //   |       |   |            |     |
+  //  x|      y|   |  becomes:  |   y0|  |-----
+  //   V       V   |            |     V  V    |
+  // Exit    Loop  |            |    Loop     |
+  //           |   |            |   Br i1 ... |
+  //           -----            |   |      |  |
+  //                          x0| x1|   y1 |  |
+  //                            V   V      ----
+  //                            Exit
+  //
+  // The following must hold:
+  //  -  x == x0 + x1        # counts to "exit" must stay the same.
+  //  - y0 == x - x0 == x1   # how often loop was entered at all.
+  //  - y1 == y - y0         # How often loop was repeated (after first iter.).
+  //
+  // We cannot generally deduce how often we had a zero-trip count loop so we
+  // have to make a guess for how to distribute x among the new x0 and x1.
+
+  uint32_t ExitCount0; // aka x0
+  if (!ConditionalPreHeader) {
+    // pre-header turned into an unconditional jump.
+    ExitCount0 = 0;
+  } else {
+    // Here we cannot know how many 0-trip count loops we have, so we guess:
+    if (OrigLoopBackedgeCount > OrigLoopExitCount) {
+      // If the loop count is bigger than the exit count then we set
+      // probabilities as if 0-trip count nearly never happens.
+      ExitCount0 = 1;
+      // Scale up counts so we hit a 1 : 64 or higher ratio...
+      while (OrigLoopExitCount < 128) {
+        // ... but don't overflow.
+        uint32_t const high_bit = uint32_t{1} << (sizeof(uint32_t)*8 - 1);
+        if (OrigLoopBackedgeCount + OrigLoopExitCount >= high_bit) {
+          break;
+        }
+        OrigLoopBackedgeCount <<= 1;
+        OrigLoopExitCount <<= 1;
+      }
+    } else {
+      // If there's a higher exit-count than backedge-count then we set
+      // probabilities as if there are only 0-trip and 1-trip cases.
+      ExitCount0 = OrigLoopExitCount - OrigLoopBackedgeCount;
+    }
+  }
+  uint32_t ExitCount1 = OrigLoopExitCount - ExitCount0;        // aka x1
+  uint32_t EnterCount = ExitCount1;                            // aka y0
+  uint32_t LoopBackCount = OrigLoopBackedgeCount - EnterCount; // aka y1
+
+  MDBuilder MDB(LoopBI.getContext());
+  MDNode *LoopWeightMD =
+      MDB.createBranchWeights(SuccsSwapped ? LoopBackCount : ExitCount1,
+                              SuccsSwapped ? ExitCount1 : LoopBackCount);
+  LoopBI.setMetadata(LLVMContext::MD_prof, LoopWeightMD);
+  if (ConditionalPreHeader) {
+    MDNode *PreHeaderWeightMD =
+        MDB.createBranchWeights(SuccsSwapped ? EnterCount : ExitCount0,
+                                SuccsSwapped ? ExitCount0 : EnterCount);
+    PreHeaderBI.setMetadata(LLVMContext::MD_prof, PreHeaderWeightMD);
+  }
+}
+
 /// Rotate loop LP. Return true if the loop is rotated.
 ///
 /// \param SimplifiedLatch is true if the latch was just folded into the final
@@ -363,7 +453,8 @@ bool LoopRotate::rotateLoop(Loop *L, bool SimplifiedLatch) {
     // loop.  Otherwise loop is not suitable for rotation.
     BasicBlock *Exit = BI->getSuccessor(0);
     BasicBlock *NewHeader = BI->getSuccessor(1);
-    if (L->contains(Exit))
+    bool BISuccsSwapped = L->contains(Exit);
+    if (BISuccsSwapped)
       std::swap(Exit, NewHeader);
     assert(NewHeader && "Unable to determine new loop header");
     assert(L->contains(NewHeader) && !L->contains(Exit) &&
@@ -605,9 +696,14 @@ bool LoopRotate::rotateLoop(Loop *L, bool SimplifiedLatch) {
     // to split as many edges.
     BranchInst *PHBI = cast<BranchInst>(OrigPreheader->getTerminator());
     assert(PHBI->isConditional() && "Should be clone of BI condbr!");
-    if (!isa<ConstantInt>(PHBI->getCondition()) ||
+    bool ConditionalPreHeader =
+        !isa<ConstantInt>(PHBI->getCondition()) ||
         PHBI->getSuccessor(cast<ConstantInt>(PHBI->getCondition())->isZero()) !=
-        NewHeader) {
+            NewHeader;
+
+    updateBranchWeights(*PHBI, *BI, ConditionalPreHeader, BISuccsSwapped);
+
+    if (ConditionalPreHeader) {
       // The conditional branch can't be folded, handle the general case.
       // Split edges as necessary to preserve LoopSimplify form.
 
