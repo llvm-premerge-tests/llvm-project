@@ -1029,6 +1029,44 @@ Instruction *InstCombinerImpl::foldSquareSumInts(BinaryOperator &I) {
   return nullptr;
 }
 
+// Fold variations of a^2 + 2*a*b + b^2 -> (a + b)^2
+// Requires `nsz` and `reassoc`.
+Instruction *InstCombinerImpl::foldSquareSumFloat(BinaryOperator &I) {
+  Value *A, *B;
+
+  assert(I.hasAllowReassoc() && I.hasNoSignedZeros() && "Assumption mismatch");
+
+  // (a * a) + (((a * 2) + b) * b)
+  bool Matches = match(
+      &I, m_c_FAdd(
+              m_OneUse(m_FMul(m_Value(A), m_Deferred(A))),
+              m_OneUse(m_FMul(m_c_FAdd(m_FMul(m_Deferred(A), m_SpecificFP(2.0)),
+                                       m_Value(B)),
+                              m_Deferred(B)))));
+
+  // ((a * b) * 2)  or ((a * 2) * b)
+  // +
+  // (a * a + b * b) or (b * b + a * a)
+  if (!Matches) {
+    Matches = match(
+        &I, m_c_FAdd(m_CombineOr(
+                         m_OneUse(m_FMul(m_FMul(m_Value(A), m_Value(B)),
+                                         m_SpecificFP(2.0))),
+                         m_OneUse(m_FMul(m_FMul(m_Value(A), m_SpecificFP(2.0)),
+                                         m_Value(B)))),
+                     m_OneUse(m_c_FAdd(m_FMul(m_Deferred(A), m_Deferred(A)),
+                                       m_FMul(m_Deferred(B), m_Deferred(B))))));
+  }
+
+  // if one of them matches: -> (a + b)^2
+  if (Matches) {
+    Value *AB = Builder.CreateFAddFMF(A, B, &I);
+    return BinaryOperator::CreateFMulFMF(AB, AB, &I);
+  }
+
+  return nullptr;
+}
+
 // Matches multiplication expression Op * C where C is a constant. Returns the
 // constant value in C and the other operand in Op. Returns true if such a
 // match is found.
@@ -1829,6 +1867,9 @@ Instruction *InstCombinerImpl::visitFAdd(BinaryOperator &I) {
 
   if (I.hasAllowReassoc() && I.hasNoSignedZeros()) {
     if (Instruction *F = factorizeFAddFSub(I, Builder))
+      return F;
+
+    if (Instruction *F = foldSquareSumFloat(I))
       return F;
 
     // Try to fold fadd into start value of reduction intrinsic.
