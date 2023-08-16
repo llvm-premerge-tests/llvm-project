@@ -26088,3 +26088,37 @@ bool AArch64TargetLowering::preferScalarizeSplat(SDNode *N) const {
   }
   return true;
 }
+
+bool AArch64TargetLowering::hasInlineStackProbe(
+    const MachineFunction &MF) const {
+  // If the function specifically requests inline stack probes, emit them.
+  if (MF.getFunction().hasFnAttribute("probe-stack")) {
+    if (MF.getFunction().getFnAttribute("probe-stack").getValueAsString() ==
+        "inline-asm")
+      return true;
+    else
+      llvm_unreachable("Unsupported stack probing method");
+  }
+
+  return false;
+}
+
+unsigned
+AArch64TargetLowering::getStackProbeSize(const MachineFunction &MF) const {
+  const TargetFrameLowering *TFI = Subtarget->getFrameLowering();
+  unsigned StackAlign = TFI->getStackAlignment();
+  assert(StackAlign >= 1 && isPowerOf2_32(StackAlign) &&
+         "Unexpected stack alignment");
+  // The default stack probe size is 4096 if the function has no
+  // stack-probe-size attribute. This is a safe default because it is the
+  // smallest possible guard page size.
+  unsigned StackProbeSize = 4096;
+  const Function &Fn = MF.getFunction();
+  if (Fn.hasFnAttribute("stack-probe-size"))
+    Fn.getFnAttribute("stack-probe-size")
+        .getValueAsString()
+        .getAsInteger(0, StackProbeSize);
+  // Round down to the stack alignment.
+  StackProbeSize &= ~(StackAlign - 1);
+  return StackProbeSize ? StackProbeSize : StackAlign;
+}
