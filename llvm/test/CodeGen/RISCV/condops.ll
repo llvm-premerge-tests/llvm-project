@@ -1264,33 +1264,33 @@ define i64 @setge(i64 %a, i64 %b, i64 %rs1, i64 %rs2) {
 ; RV32I-NEXT:    beq a1, a3, .LBB24_2
 ; RV32I-NEXT:  # %bb.1:
 ; RV32I-NEXT:    slt a0, a1, a3
-; RV32I-NEXT:    bnez a0, .LBB24_3
+; RV32I-NEXT:    beqz a0, .LBB24_3
 ; RV32I-NEXT:    j .LBB24_4
 ; RV32I-NEXT:  .LBB24_2:
 ; RV32I-NEXT:    sltu a0, a0, a2
-; RV32I-NEXT:    beqz a0, .LBB24_4
+; RV32I-NEXT:    bnez a0, .LBB24_4
 ; RV32I-NEXT:  .LBB24_3:
-; RV32I-NEXT:    mv a4, a6
-; RV32I-NEXT:    mv a5, a7
+; RV32I-NEXT:    mv a6, a4
+; RV32I-NEXT:    mv a7, a5
 ; RV32I-NEXT:  .LBB24_4:
-; RV32I-NEXT:    mv a0, a4
-; RV32I-NEXT:    mv a1, a5
+; RV32I-NEXT:    mv a0, a6
+; RV32I-NEXT:    mv a1, a7
 ; RV32I-NEXT:    ret
 ;
 ; RV64I-LABEL: setge:
 ; RV64I:       # %bb.0:
-; RV64I-NEXT:    bge a0, a1, .LBB24_2
+; RV64I-NEXT:    blt a0, a1, .LBB24_2
 ; RV64I-NEXT:  # %bb.1:
-; RV64I-NEXT:    mv a2, a3
+; RV64I-NEXT:    mv a3, a2
 ; RV64I-NEXT:  .LBB24_2:
-; RV64I-NEXT:    mv a0, a2
+; RV64I-NEXT:    mv a0, a3
 ; RV64I-NEXT:    ret
 ;
 ; RV64XVENTANACONDOPS-LABEL: setge:
 ; RV64XVENTANACONDOPS:       # %bb.0:
 ; RV64XVENTANACONDOPS-NEXT:    slt a0, a0, a1
-; RV64XVENTANACONDOPS-NEXT:    vt.maskc a1, a3, a0
-; RV64XVENTANACONDOPS-NEXT:    vt.maskcn a0, a2, a0
+; RV64XVENTANACONDOPS-NEXT:    vt.maskcn a1, a2, a0
+; RV64XVENTANACONDOPS-NEXT:    vt.maskc a0, a3, a0
 ; RV64XVENTANACONDOPS-NEXT:    or a0, a0, a1
 ; RV64XVENTANACONDOPS-NEXT:    ret
 ;
@@ -1309,19 +1309,19 @@ define i64 @setge(i64 %a, i64 %b, i64 %rs1, i64 %rs2) {
 ; RV32ZICOND-NEXT:    sltu a0, a0, a2
 ; RV32ZICOND-NEXT:    czero.nez a0, a0, t0
 ; RV32ZICOND-NEXT:    or a1, a0, a1
-; RV32ZICOND-NEXT:    czero.eqz a0, a6, a1
-; RV32ZICOND-NEXT:    czero.nez a2, a4, a1
+; RV32ZICOND-NEXT:    czero.nez a0, a4, a1
+; RV32ZICOND-NEXT:    czero.eqz a2, a6, a1
 ; RV32ZICOND-NEXT:    or a0, a2, a0
-; RV32ZICOND-NEXT:    czero.eqz a2, a7, a1
-; RV32ZICOND-NEXT:    czero.nez a1, a5, a1
+; RV32ZICOND-NEXT:    czero.nez a2, a5, a1
+; RV32ZICOND-NEXT:    czero.eqz a1, a7, a1
 ; RV32ZICOND-NEXT:    or a1, a1, a2
 ; RV32ZICOND-NEXT:    ret
 ;
 ; RV64ZICOND-LABEL: setge:
 ; RV64ZICOND:       # %bb.0:
 ; RV64ZICOND-NEXT:    slt a0, a0, a1
-; RV64ZICOND-NEXT:    czero.eqz a1, a3, a0
-; RV64ZICOND-NEXT:    czero.nez a0, a2, a0
+; RV64ZICOND-NEXT:    czero.nez a1, a2, a0
+; RV64ZICOND-NEXT:    czero.eqz a0, a3, a0
 ; RV64ZICOND-NEXT:    or a0, a0, a1
 ; RV64ZICOND-NEXT:    ret
   %rc = icmp sge i64 %a, %b
@@ -1406,33 +1406,33 @@ define i64 @setle(i64 %a, i64 %b, i64 %rs1, i64 %rs2) {
 ; RV32I-NEXT:    beq a1, a3, .LBB26_2
 ; RV32I-NEXT:  # %bb.1:
 ; RV32I-NEXT:    slt a0, a3, a1
-; RV32I-NEXT:    bnez a0, .LBB26_3
+; RV32I-NEXT:    beqz a0, .LBB26_3
 ; RV32I-NEXT:    j .LBB26_4
 ; RV32I-NEXT:  .LBB26_2:
 ; RV32I-NEXT:    sltu a0, a2, a0
-; RV32I-NEXT:    beqz a0, .LBB26_4
+; RV32I-NEXT:    bnez a0, .LBB26_4
 ; RV32I-NEXT:  .LBB26_3:
-; RV32I-NEXT:    mv a4, a6
-; RV32I-NEXT:    mv a5, a7
+; RV32I-NEXT:    mv a6, a4
+; RV32I-NEXT:    mv a7, a5
 ; RV32I-NEXT:  .LBB26_4:
-; RV32I-NEXT:    mv a0, a4
-; RV32I-NEXT:    mv a1, a5
+; RV32I-NEXT:    mv a0, a6
+; RV32I-NEXT:    mv a1, a7
 ; RV32I-NEXT:    ret
 ;
 ; RV64I-LABEL: setle:
 ; RV64I:       # %bb.0:
-; RV64I-NEXT:    bge a1, a0, .LBB26_2
+; RV64I-NEXT:    blt a1, a0, .LBB26_2
 ; RV64I-NEXT:  # %bb.1:
-; RV64I-NEXT:    mv a2, a3
+; RV64I-NEXT:    mv a3, a2
 ; RV64I-NEXT:  .LBB26_2:
-; RV64I-NEXT:    mv a0, a2
+; RV64I-NEXT:    mv a0, a3
 ; RV64I-NEXT:    ret
 ;
 ; RV64XVENTANACONDOPS-LABEL: setle:
 ; RV64XVENTANACONDOPS:       # %bb.0:
 ; RV64XVENTANACONDOPS-NEXT:    slt a0, a1, a0
-; RV64XVENTANACONDOPS-NEXT:    vt.maskc a1, a3, a0
-; RV64XVENTANACONDOPS-NEXT:    vt.maskcn a0, a2, a0
+; RV64XVENTANACONDOPS-NEXT:    vt.maskcn a1, a2, a0
+; RV64XVENTANACONDOPS-NEXT:    vt.maskc a0, a3, a0
 ; RV64XVENTANACONDOPS-NEXT:    or a0, a0, a1
 ; RV64XVENTANACONDOPS-NEXT:    ret
 ;
@@ -1451,19 +1451,19 @@ define i64 @setle(i64 %a, i64 %b, i64 %rs1, i64 %rs2) {
 ; RV32ZICOND-NEXT:    sltu a0, a2, a0
 ; RV32ZICOND-NEXT:    czero.nez a0, a0, t0
 ; RV32ZICOND-NEXT:    or a1, a0, a1
-; RV32ZICOND-NEXT:    czero.eqz a0, a6, a1
-; RV32ZICOND-NEXT:    czero.nez a2, a4, a1
+; RV32ZICOND-NEXT:    czero.nez a0, a4, a1
+; RV32ZICOND-NEXT:    czero.eqz a2, a6, a1
 ; RV32ZICOND-NEXT:    or a0, a2, a0
-; RV32ZICOND-NEXT:    czero.eqz a2, a7, a1
-; RV32ZICOND-NEXT:    czero.nez a1, a5, a1
+; RV32ZICOND-NEXT:    czero.nez a2, a5, a1
+; RV32ZICOND-NEXT:    czero.eqz a1, a7, a1
 ; RV32ZICOND-NEXT:    or a1, a1, a2
 ; RV32ZICOND-NEXT:    ret
 ;
 ; RV64ZICOND-LABEL: setle:
 ; RV64ZICOND:       # %bb.0:
 ; RV64ZICOND-NEXT:    slt a0, a1, a0
-; RV64ZICOND-NEXT:    czero.eqz a1, a3, a0
-; RV64ZICOND-NEXT:    czero.nez a0, a2, a0
+; RV64ZICOND-NEXT:    czero.nez a1, a2, a0
+; RV64ZICOND-NEXT:    czero.eqz a0, a3, a0
 ; RV64ZICOND-NEXT:    or a0, a0, a1
 ; RV64ZICOND-NEXT:    ret
   %rc = icmp sle i64 %a, %b
@@ -1548,33 +1548,33 @@ define i64 @setuge(i64 %a, i64 %b, i64 %rs1, i64 %rs2) {
 ; RV32I-NEXT:    beq a1, a3, .LBB28_2
 ; RV32I-NEXT:  # %bb.1:
 ; RV32I-NEXT:    sltu a0, a1, a3
-; RV32I-NEXT:    bnez a0, .LBB28_3
+; RV32I-NEXT:    beqz a0, .LBB28_3
 ; RV32I-NEXT:    j .LBB28_4
 ; RV32I-NEXT:  .LBB28_2:
 ; RV32I-NEXT:    sltu a0, a0, a2
-; RV32I-NEXT:    beqz a0, .LBB28_4
+; RV32I-NEXT:    bnez a0, .LBB28_4
 ; RV32I-NEXT:  .LBB28_3:
-; RV32I-NEXT:    mv a4, a6
-; RV32I-NEXT:    mv a5, a7
+; RV32I-NEXT:    mv a6, a4
+; RV32I-NEXT:    mv a7, a5
 ; RV32I-NEXT:  .LBB28_4:
-; RV32I-NEXT:    mv a0, a4
-; RV32I-NEXT:    mv a1, a5
+; RV32I-NEXT:    mv a0, a6
+; RV32I-NEXT:    mv a1, a7
 ; RV32I-NEXT:    ret
 ;
 ; RV64I-LABEL: setuge:
 ; RV64I:       # %bb.0:
-; RV64I-NEXT:    bgeu a0, a1, .LBB28_2
+; RV64I-NEXT:    bltu a0, a1, .LBB28_2
 ; RV64I-NEXT:  # %bb.1:
-; RV64I-NEXT:    mv a2, a3
+; RV64I-NEXT:    mv a3, a2
 ; RV64I-NEXT:  .LBB28_2:
-; RV64I-NEXT:    mv a0, a2
+; RV64I-NEXT:    mv a0, a3
 ; RV64I-NEXT:    ret
 ;
 ; RV64XVENTANACONDOPS-LABEL: setuge:
 ; RV64XVENTANACONDOPS:       # %bb.0:
 ; RV64XVENTANACONDOPS-NEXT:    sltu a0, a0, a1
-; RV64XVENTANACONDOPS-NEXT:    vt.maskc a1, a3, a0
-; RV64XVENTANACONDOPS-NEXT:    vt.maskcn a0, a2, a0
+; RV64XVENTANACONDOPS-NEXT:    vt.maskcn a1, a2, a0
+; RV64XVENTANACONDOPS-NEXT:    vt.maskc a0, a3, a0
 ; RV64XVENTANACONDOPS-NEXT:    or a0, a0, a1
 ; RV64XVENTANACONDOPS-NEXT:    ret
 ;
@@ -1593,19 +1593,19 @@ define i64 @setuge(i64 %a, i64 %b, i64 %rs1, i64 %rs2) {
 ; RV32ZICOND-NEXT:    sltu a0, a0, a2
 ; RV32ZICOND-NEXT:    czero.nez a0, a0, t0
 ; RV32ZICOND-NEXT:    or a1, a0, a1
-; RV32ZICOND-NEXT:    czero.eqz a0, a6, a1
-; RV32ZICOND-NEXT:    czero.nez a2, a4, a1
+; RV32ZICOND-NEXT:    czero.nez a0, a4, a1
+; RV32ZICOND-NEXT:    czero.eqz a2, a6, a1
 ; RV32ZICOND-NEXT:    or a0, a2, a0
-; RV32ZICOND-NEXT:    czero.eqz a2, a7, a1
-; RV32ZICOND-NEXT:    czero.nez a1, a5, a1
+; RV32ZICOND-NEXT:    czero.nez a2, a5, a1
+; RV32ZICOND-NEXT:    czero.eqz a1, a7, a1
 ; RV32ZICOND-NEXT:    or a1, a1, a2
 ; RV32ZICOND-NEXT:    ret
 ;
 ; RV64ZICOND-LABEL: setuge:
 ; RV64ZICOND:       # %bb.0:
 ; RV64ZICOND-NEXT:    sltu a0, a0, a1
-; RV64ZICOND-NEXT:    czero.eqz a1, a3, a0
-; RV64ZICOND-NEXT:    czero.nez a0, a2, a0
+; RV64ZICOND-NEXT:    czero.nez a1, a2, a0
+; RV64ZICOND-NEXT:    czero.eqz a0, a3, a0
 ; RV64ZICOND-NEXT:    or a0, a0, a1
 ; RV64ZICOND-NEXT:    ret
   %rc = icmp uge i64 %a, %b
@@ -1690,33 +1690,33 @@ define i64 @setule(i64 %a, i64 %b, i64 %rs1, i64 %rs2) {
 ; RV32I-NEXT:    beq a1, a3, .LBB30_2
 ; RV32I-NEXT:  # %bb.1:
 ; RV32I-NEXT:    sltu a0, a3, a1
-; RV32I-NEXT:    bnez a0, .LBB30_3
+; RV32I-NEXT:    beqz a0, .LBB30_3
 ; RV32I-NEXT:    j .LBB30_4
 ; RV32I-NEXT:  .LBB30_2:
 ; RV32I-NEXT:    sltu a0, a2, a0
-; RV32I-NEXT:    beqz a0, .LBB30_4
+; RV32I-NEXT:    bnez a0, .LBB30_4
 ; RV32I-NEXT:  .LBB30_3:
-; RV32I-NEXT:    mv a4, a6
-; RV32I-NEXT:    mv a5, a7
+; RV32I-NEXT:    mv a6, a4
+; RV32I-NEXT:    mv a7, a5
 ; RV32I-NEXT:  .LBB30_4:
-; RV32I-NEXT:    mv a0, a4
-; RV32I-NEXT:    mv a1, a5
+; RV32I-NEXT:    mv a0, a6
+; RV32I-NEXT:    mv a1, a7
 ; RV32I-NEXT:    ret
 ;
 ; RV64I-LABEL: setule:
 ; RV64I:       # %bb.0:
-; RV64I-NEXT:    bgeu a1, a0, .LBB30_2
+; RV64I-NEXT:    bltu a1, a0, .LBB30_2
 ; RV64I-NEXT:  # %bb.1:
-; RV64I-NEXT:    mv a2, a3
+; RV64I-NEXT:    mv a3, a2
 ; RV64I-NEXT:  .LBB30_2:
-; RV64I-NEXT:    mv a0, a2
+; RV64I-NEXT:    mv a0, a3
 ; RV64I-NEXT:    ret
 ;
 ; RV64XVENTANACONDOPS-LABEL: setule:
 ; RV64XVENTANACONDOPS:       # %bb.0:
 ; RV64XVENTANACONDOPS-NEXT:    sltu a0, a1, a0
-; RV64XVENTANACONDOPS-NEXT:    vt.maskc a1, a3, a0
-; RV64XVENTANACONDOPS-NEXT:    vt.maskcn a0, a2, a0
+; RV64XVENTANACONDOPS-NEXT:    vt.maskcn a1, a2, a0
+; RV64XVENTANACONDOPS-NEXT:    vt.maskc a0, a3, a0
 ; RV64XVENTANACONDOPS-NEXT:    or a0, a0, a1
 ; RV64XVENTANACONDOPS-NEXT:    ret
 ;
@@ -1735,19 +1735,19 @@ define i64 @setule(i64 %a, i64 %b, i64 %rs1, i64 %rs2) {
 ; RV32ZICOND-NEXT:    sltu a0, a2, a0
 ; RV32ZICOND-NEXT:    czero.nez a0, a0, t0
 ; RV32ZICOND-NEXT:    or a1, a0, a1
-; RV32ZICOND-NEXT:    czero.eqz a0, a6, a1
-; RV32ZICOND-NEXT:    czero.nez a2, a4, a1
+; RV32ZICOND-NEXT:    czero.nez a0, a4, a1
+; RV32ZICOND-NEXT:    czero.eqz a2, a6, a1
 ; RV32ZICOND-NEXT:    or a0, a2, a0
-; RV32ZICOND-NEXT:    czero.eqz a2, a7, a1
-; RV32ZICOND-NEXT:    czero.nez a1, a5, a1
+; RV32ZICOND-NEXT:    czero.nez a2, a5, a1
+; RV32ZICOND-NEXT:    czero.eqz a1, a7, a1
 ; RV32ZICOND-NEXT:    or a1, a1, a2
 ; RV32ZICOND-NEXT:    ret
 ;
 ; RV64ZICOND-LABEL: setule:
 ; RV64ZICOND:       # %bb.0:
 ; RV64ZICOND-NEXT:    sltu a0, a1, a0
-; RV64ZICOND-NEXT:    czero.eqz a1, a3, a0
-; RV64ZICOND-NEXT:    czero.nez a0, a2, a0
+; RV64ZICOND-NEXT:    czero.nez a1, a2, a0
+; RV64ZICOND-NEXT:    czero.eqz a0, a3, a0
 ; RV64ZICOND-NEXT:    or a0, a0, a1
 ; RV64ZICOND-NEXT:    ret
   %rc = icmp ule i64 %a, %b

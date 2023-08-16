@@ -23,17 +23,17 @@ define signext i32 @foo(i32 signext %a, ptr %b) nounwind {
 ; RV32I-NEXT:    mv a0, a2
 ; RV32I-NEXT:  .LBB0_6:
 ; RV32I-NEXT:    lw a2, 0(a1)
-; RV32I-NEXT:    bgeu a0, a2, .LBB0_8
+; RV32I-NEXT:    bltu a0, a2, .LBB0_8
 ; RV32I-NEXT:  # %bb.7:
-; RV32I-NEXT:    mv a0, a2
+; RV32I-NEXT:    mv a2, a0
 ; RV32I-NEXT:  .LBB0_8:
-; RV32I-NEXT:    lw a2, 0(a1)
-; RV32I-NEXT:    bltu a0, a2, .LBB0_10
+; RV32I-NEXT:    lw a0, 0(a1)
+; RV32I-NEXT:    bltu a2, a0, .LBB0_10
 ; RV32I-NEXT:  # %bb.9:
-; RV32I-NEXT:    mv a0, a2
+; RV32I-NEXT:    mv a2, a0
 ; RV32I-NEXT:  .LBB0_10:
-; RV32I-NEXT:    lw a2, 0(a1)
-; RV32I-NEXT:    bgeu a2, a0, .LBB0_12
+; RV32I-NEXT:    lw a0, 0(a1)
+; RV32I-NEXT:    bltu a0, a2, .LBB0_12
 ; RV32I-NEXT:  # %bb.11:
 ; RV32I-NEXT:    mv a0, a2
 ; RV32I-NEXT:  .LBB0_12:
@@ -43,17 +43,17 @@ define signext i32 @foo(i32 signext %a, ptr %b) nounwind {
 ; RV32I-NEXT:    mv a0, a2
 ; RV32I-NEXT:  .LBB0_14:
 ; RV32I-NEXT:    lw a2, 0(a1)
-; RV32I-NEXT:    bge a0, a2, .LBB0_16
+; RV32I-NEXT:    blt a0, a2, .LBB0_16
 ; RV32I-NEXT:  # %bb.15:
-; RV32I-NEXT:    mv a0, a2
+; RV32I-NEXT:    mv a2, a0
 ; RV32I-NEXT:  .LBB0_16:
-; RV32I-NEXT:    lw a2, 0(a1)
-; RV32I-NEXT:    blt a0, a2, .LBB0_18
+; RV32I-NEXT:    lw a0, 0(a1)
+; RV32I-NEXT:    blt a2, a0, .LBB0_18
 ; RV32I-NEXT:  # %bb.17:
-; RV32I-NEXT:    mv a0, a2
+; RV32I-NEXT:    mv a2, a0
 ; RV32I-NEXT:  .LBB0_18:
-; RV32I-NEXT:    lw a2, 0(a1)
-; RV32I-NEXT:    bge a2, a0, .LBB0_20
+; RV32I-NEXT:    lw a0, 0(a1)
+; RV32I-NEXT:    blt a0, a2, .LBB0_20
 ; RV32I-NEXT:  # %bb.19:
 ; RV32I-NEXT:    mv a0, a2
 ; RV32I-NEXT:  .LBB0_20:
@@ -99,17 +99,17 @@ define signext i32 @foo(i32 signext %a, ptr %b) nounwind {
 ; RV64I-NEXT:    mv a0, a2
 ; RV64I-NEXT:  .LBB0_6:
 ; RV64I-NEXT:    lw a2, 0(a1)
-; RV64I-NEXT:    bgeu a0, a2, .LBB0_8
+; RV64I-NEXT:    bltu a0, a2, .LBB0_8
 ; RV64I-NEXT:  # %bb.7:
-; RV64I-NEXT:    mv a0, a2
+; RV64I-NEXT:    mv a2, a0
 ; RV64I-NEXT:  .LBB0_8:
-; RV64I-NEXT:    lw a2, 0(a1)
-; RV64I-NEXT:    bltu a0, a2, .LBB0_10
+; RV64I-NEXT:    lw a0, 0(a1)
+; RV64I-NEXT:    bltu a2, a0, .LBB0_10
 ; RV64I-NEXT:  # %bb.9:
-; RV64I-NEXT:    mv a0, a2
+; RV64I-NEXT:    mv a2, a0
 ; RV64I-NEXT:  .LBB0_10:
-; RV64I-NEXT:    lw a2, 0(a1)
-; RV64I-NEXT:    bgeu a2, a0, .LBB0_12
+; RV64I-NEXT:    lw a0, 0(a1)
+; RV64I-NEXT:    bltu a0, a2, .LBB0_12
 ; RV64I-NEXT:  # %bb.11:
 ; RV64I-NEXT:    mv a0, a2
 ; RV64I-NEXT:  .LBB0_12:
@@ -119,17 +119,17 @@ define signext i32 @foo(i32 signext %a, ptr %b) nounwind {
 ; RV64I-NEXT:    mv a0, a2
 ; RV64I-NEXT:  .LBB0_14:
 ; RV64I-NEXT:    lw a2, 0(a1)
-; RV64I-NEXT:    bge a0, a2, .LBB0_16
+; RV64I-NEXT:    blt a0, a2, .LBB0_16
 ; RV64I-NEXT:  # %bb.15:
-; RV64I-NEXT:    mv a0, a2
+; RV64I-NEXT:    mv a2, a0
 ; RV64I-NEXT:  .LBB0_16:
-; RV64I-NEXT:    lw a2, 0(a1)
-; RV64I-NEXT:    blt a0, a2, .LBB0_18
+; RV64I-NEXT:    lw a0, 0(a1)
+; RV64I-NEXT:    blt a2, a0, .LBB0_18
 ; RV64I-NEXT:  # %bb.17:
-; RV64I-NEXT:    mv a0, a2
+; RV64I-NEXT:    mv a2, a0
 ; RV64I-NEXT:  .LBB0_18:
-; RV64I-NEXT:    lw a2, 0(a1)
-; RV64I-NEXT:    bge a2, a0, .LBB0_20
+; RV64I-NEXT:    lw a0, 0(a1)
+; RV64I-NEXT:    blt a0, a2, .LBB0_20
 ; RV64I-NEXT:  # %bb.19:
 ; RV64I-NEXT:    mv a0, a2
 ; RV64I-NEXT:  .LBB0_20:
@@ -277,23 +277,21 @@ define i32 @select_sge_int16min(i32 signext %x, i32 signext %y, i32 signext %z) 
 ; RV32I-LABEL: select_sge_int16min:
 ; RV32I:       # %bb.0:
 ; RV32I-NEXT:    lui a3, 1048560
-; RV32I-NEXT:    addi a3, a3, -1
-; RV32I-NEXT:    blt a3, a0, .LBB2_2
+; RV32I-NEXT:    blt a0, a3, .LBB2_2
 ; RV32I-NEXT:  # %bb.1:
-; RV32I-NEXT:    mv a1, a2
+; RV32I-NEXT:    mv a2, a1
 ; RV32I-NEXT:  .LBB2_2:
-; RV32I-NEXT:    mv a0, a1
+; RV32I-NEXT:    mv a0, a2
 ; RV32I-NEXT:    ret
 ;
 ; RV64I-LABEL: select_sge_int16min:
 ; RV64I:       # %bb.0:
 ; RV64I-NEXT:    lui a3, 1048560
-; RV64I-NEXT:    addiw a3, a3, -1
-; RV64I-NEXT:    blt a3, a0, .LBB2_2
+; RV64I-NEXT:    blt a0, a3, .LBB2_2
 ; RV64I-NEXT:  # %bb.1:
-; RV64I-NEXT:    mv a1, a2
+; RV64I-NEXT:    mv a2, a1
 ; RV64I-NEXT:  .LBB2_2:
-; RV64I-NEXT:    mv a0, a1
+; RV64I-NEXT:    mv a0, a2
 ; RV64I-NEXT:    ret
   %a = icmp sge i32 %x, -65536
   %b = select i1 %a, i32 %y, i32 %z
@@ -307,29 +305,28 @@ define i64 @select_sge_int32min(i64 %x, i64 %y, i64 %z) {
 ; RV32I-NEXT:    bne a1, a6, .LBB3_2
 ; RV32I-NEXT:  # %bb.1:
 ; RV32I-NEXT:    slti a0, a0, 0
+; RV32I-NEXT:    xori a0, a0, 1
 ; RV32I-NEXT:    j .LBB3_3
 ; RV32I-NEXT:  .LBB3_2:
-; RV32I-NEXT:    slti a0, a1, 0
-; RV32I-NEXT:    xori a0, a0, 1
+; RV32I-NEXT:    slti a0, a1, -1
 ; RV32I-NEXT:  .LBB3_3:
 ; RV32I-NEXT:    bnez a0, .LBB3_5
 ; RV32I-NEXT:  # %bb.4:
-; RV32I-NEXT:    mv a2, a4
-; RV32I-NEXT:    mv a3, a5
+; RV32I-NEXT:    mv a4, a2
+; RV32I-NEXT:    mv a5, a3
 ; RV32I-NEXT:  .LBB3_5:
-; RV32I-NEXT:    mv a0, a2
-; RV32I-NEXT:    mv a1, a3
+; RV32I-NEXT:    mv a0, a4
+; RV32I-NEXT:    mv a1, a5
 ; RV32I-NEXT:    ret
 ;
 ; RV64I-LABEL: select_sge_int32min:
 ; RV64I:       # %bb.0:
 ; RV64I-NEXT:    lui a3, 524288
-; RV64I-NEXT:    addi a3, a3, -1
-; RV64I-NEXT:    blt a3, a0, .LBB3_2
+; RV64I-NEXT:    blt a0, a3, .LBB3_2
 ; RV64I-NEXT:  # %bb.1:
-; RV64I-NEXT:    mv a1, a2
+; RV64I-NEXT:    mv a2, a1
 ; RV64I-NEXT:  .LBB3_2:
-; RV64I-NEXT:    mv a0, a1
+; RV64I-NEXT:    mv a0, a2
 ; RV64I-NEXT:    ret
   %a = icmp sge i64 %x, -2147483648
   %b = select i1 %a, i64 %y, i64 %z

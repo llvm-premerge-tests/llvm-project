@@ -12823,6 +12823,14 @@ static SDValue foldSelectOfCTTZOrCTLZ(SDNode *N, SelectionDAG &DAG) {
   return DAG.getZExtOrTrunc(AndNode, SDLoc(N), N->getValueType(0));
 }
 
+static bool setCCWillBeInvertedWhenLegalized(SDValue V) {
+  assert(V.getOpcode() == ISD::SETCC && "Unexpected opcode.");
+  ISD::CondCode CCVal = cast<CondCodeSDNode>(V.getOperand(2))->get();
+  return V.getOperand(0).getValueType().isInteger() &&
+         (CCVal == ISD::SETGE || CCVal == ISD::SETLE || CCVal == ISD::SETUGE ||
+          CCVal == ISD::SETULE);
+}
+
 static SDValue performSELECTCombine(SDNode *N, SelectionDAG &DAG,
                                     const RISCVSubtarget &Subtarget) {
   if (SDValue Folded = foldSelectOfCTTZOrCTLZ(N, DAG))
@@ -12831,8 +12839,25 @@ static SDValue performSELECTCombine(SDNode *N, SelectionDAG &DAG,
   if (Subtarget.hasShortForwardBranchOpt())
     return SDValue();
 
+  SDValue CondVal = N->getOperand(0);
   SDValue TrueVal = N->getOperand(1);
   SDValue FalseVal = N->getOperand(2);
+  // If CondVal is a setcc that will be inverted when legalized, take
+  // advantage of the freedom to swap TrueVal and FalseVal and convert the
+  // setcc to one that is natively supported.
+  if (CondVal.getOpcode() == ISD::SETCC &&
+      setCCWillBeInvertedWhenLegalized(CondVal)) {
+    SDLoc DL(N);
+    EVT VT = N->getValueType(0);
+    ISD::CondCode NewCCVal =
+        ISD::getSetCCInverse(cast<CondCodeSDNode>(CondVal.getOperand(2))->get(),
+                             CondVal.getOperand(0).getValueType());
+    return DAG.getSelect(DL, VT,
+                         DAG.getSetCC(DL, CondVal.getValueType(),
+                                      CondVal.getOperand(0),
+                                      CondVal.getOperand(1), NewCCVal),
+                         FalseVal, TrueVal);
+  }
   if (SDValue V = tryFoldSelectIntoOp(N, DAG, TrueVal, FalseVal, /*Swapped*/false))
     return V;
   return tryFoldSelectIntoOp(N, DAG, FalseVal, TrueVal, /*Swapped*/true);

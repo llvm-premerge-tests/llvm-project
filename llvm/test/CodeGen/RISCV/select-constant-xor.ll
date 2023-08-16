@@ -215,11 +215,11 @@ define i32 @oneusecmp(i32 %a, i32 %b, i32 %d) {
 ; RV32:       # %bb.0:
 ; RV32-NEXT:    srai a3, a0, 31
 ; RV32-NEXT:    xori a3, a3, 127
-; RV32-NEXT:    bltz a0, .LBB10_2
+; RV32-NEXT:    bgez a0, .LBB10_2
 ; RV32-NEXT:  # %bb.1:
-; RV32-NEXT:    mv a2, a1
+; RV32-NEXT:    mv a1, a2
 ; RV32-NEXT:  .LBB10_2:
-; RV32-NEXT:    add a0, a3, a2
+; RV32-NEXT:    add a0, a3, a1
 ; RV32-NEXT:    ret
 ;
 ; RV64-LABEL: oneusecmp:
@@ -227,11 +227,11 @@ define i32 @oneusecmp(i32 %a, i32 %b, i32 %d) {
 ; RV64-NEXT:    sext.w a3, a0
 ; RV64-NEXT:    sraiw a0, a0, 31
 ; RV64-NEXT:    xori a0, a0, 127
-; RV64-NEXT:    bltz a3, .LBB10_2
+; RV64-NEXT:    bgez a3, .LBB10_2
 ; RV64-NEXT:  # %bb.1:
-; RV64-NEXT:    mv a2, a1
+; RV64-NEXT:    mv a1, a2
 ; RV64-NEXT:  .LBB10_2:
-; RV64-NEXT:    addw a0, a0, a2
+; RV64-NEXT:    addw a0, a0, a1
 ; RV64-NEXT:    ret
   %c = icmp sle i32 %a, -1
   %s = select i1 %c, i32 -128, i32 127

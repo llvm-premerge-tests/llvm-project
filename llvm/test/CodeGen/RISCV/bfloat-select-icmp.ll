@@ -58,13 +58,13 @@ define bfloat @select_icmp_ugt(i32 signext %a, i32 signext %b, bfloat %c, bfloat
 define bfloat @select_icmp_uge(i32 signext %a, i32 signext %b, bfloat %c, bfloat %d) {
 ; CHECK-LABEL: select_icmp_uge:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    bgeu a0, a1, .LBB3_2
+; CHECK-NEXT:    bltu a0, a1, .LBB3_2
 ; CHECK-NEXT:  # %bb.1:
-; CHECK-NEXT:    fcvt.s.bf16 fa5, fa1
+; CHECK-NEXT:    fcvt.s.bf16 fa5, fa0
 ; CHECK-NEXT:    fcvt.bf16.s fa0, fa5
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .LBB3_2:
-; CHECK-NEXT:    fcvt.s.bf16 fa5, fa0
+; CHECK-NEXT:    fcvt.s.bf16 fa5, fa1
 ; CHECK-NEXT:    fcvt.bf16.s fa0, fa5
 ; CHECK-NEXT:    ret
   %1 = icmp uge i32 %a, %b
@@ -92,13 +92,13 @@ define bfloat @select_icmp_ult(i32 signext %a, i32 signext %b, bfloat %c, bfloat
 define bfloat @select_icmp_ule(i32 signext %a, i32 signext %b, bfloat %c, bfloat %d) {
 ; CHECK-LABEL: select_icmp_ule:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    bgeu a1, a0, .LBB5_2
+; CHECK-NEXT:    bltu a1, a0, .LBB5_2
 ; CHECK-NEXT:  # %bb.1:
-; CHECK-NEXT:    fcvt.s.bf16 fa5, fa1
+; CHECK-NEXT:    fcvt.s.bf16 fa5, fa0
 ; CHECK-NEXT:    fcvt.bf16.s fa0, fa5
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .LBB5_2:
-; CHECK-NEXT:    fcvt.s.bf16 fa5, fa0
+; CHECK-NEXT:    fcvt.s.bf16 fa5, fa1
 ; CHECK-NEXT:    fcvt.bf16.s fa0, fa5
 ; CHECK-NEXT:    ret
   %1 = icmp ule i32 %a, %b
@@ -126,13 +126,13 @@ define bfloat @select_icmp_sgt(i32 signext %a, i32 signext %b, bfloat %c, bfloat
 define bfloat @select_icmp_sge(i32 signext %a, i32 signext %b, bfloat %c, bfloat %d) {
 ; CHECK-LABEL: select_icmp_sge:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    bge a0, a1, .LBB7_2
+; CHECK-NEXT:    blt a0, a1, .LBB7_2
 ; CHECK-NEXT:  # %bb.1:
-; CHECK-NEXT:    fcvt.s.bf16 fa5, fa1
+; CHECK-NEXT:    fcvt.s.bf16 fa5, fa0
 ; CHECK-NEXT:    fcvt.bf16.s fa0, fa5
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .LBB7_2:
-; CHECK-NEXT:    fcvt.s.bf16 fa5, fa0
+; CHECK-NEXT:    fcvt.s.bf16 fa5, fa1
 ; CHECK-NEXT:    fcvt.bf16.s fa0, fa5
 ; CHECK-NEXT:    ret
   %1 = icmp sge i32 %a, %b
@@ -160,13 +160,13 @@ define bfloat @select_icmp_slt(i32 signext %a, i32 signext %b, bfloat %c, bfloat
 define bfloat @select_icmp_sle(i32 signext %a, i32 signext %b, bfloat %c, bfloat %d) {
 ; CHECK-LABEL: select_icmp_sle:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    bge a1, a0, .LBB9_2
+; CHECK-NEXT:    blt a1, a0, .LBB9_2
 ; CHECK-NEXT:  # %bb.1:
-; CHECK-NEXT:    fcvt.s.bf16 fa5, fa1
+; CHECK-NEXT:    fcvt.s.bf16 fa5, fa0
 ; CHECK-NEXT:    fcvt.bf16.s fa0, fa5
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .LBB9_2:
-; CHECK-NEXT:    fcvt.s.bf16 fa5, fa0
+; CHECK-NEXT:    fcvt.s.bf16 fa5, fa1
 ; CHECK-NEXT:    fcvt.bf16.s fa0, fa5
 ; CHECK-NEXT:    ret
   %1 = icmp sle i32 %a, %b

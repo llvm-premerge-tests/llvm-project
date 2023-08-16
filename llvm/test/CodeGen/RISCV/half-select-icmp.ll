@@ -157,42 +157,43 @@ define half @select_icmp_ugt(i32 signext %a, i32 signext %b, half %c, half %d) {
 define half @select_icmp_uge(i32 signext %a, i32 signext %b, half %c, half %d) {
 ; CHECK-LABEL: select_icmp_uge:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    bgeu a0, a1, .LBB3_2
+; CHECK-NEXT:    bltu a0, a1, .LBB3_2
 ; CHECK-NEXT:  # %bb.1:
-; CHECK-NEXT:    fmv.h fa0, fa1
+; CHECK-NEXT:    fmv.h fa1, fa0
 ; CHECK-NEXT:  .LBB3_2:
+; CHECK-NEXT:    fmv.h fa0, fa1
 ; CHECK-NEXT:    ret
 ;
 ; CHECKIZHINX-LABEL: select_icmp_uge:
 ; CHECKIZHINX:       # %bb.0:
-; CHECKIZHINX-NEXT:    bgeu a0, a1, .LBB3_2
+; CHECKIZHINX-NEXT:    bltu a0, a1, .LBB3_2
 ; CHECKIZHINX-NEXT:  # %bb.1:
-; CHECKIZHINX-NEXT:    mv a2, a3
+; CHECKIZHINX-NEXT:    mv a3, a2
 ; CHECKIZHINX-NEXT:  .LBB3_2:
-; CHECKIZHINX-NEXT:    mv a0, a2
+; CHECKIZHINX-NEXT:    mv a0, a3
 ; CHECKIZHINX-NEXT:    ret
 ;
 ; CHECKIZFHMIN-LABEL: select_icmp_uge:
 ; CHECKIZFHMIN:       # %bb.0:
-; CHECKIZFHMIN-NEXT:    bgeu a0, a1, .LBB3_2
+; CHECKIZFHMIN-NEXT:    bltu a0, a1, .LBB3_2
 ; CHECKIZFHMIN-NEXT:  # %bb.1:
-; CHECKIZFHMIN-NEXT:    fcvt.s.h fa5, fa1
+; CHECKIZFHMIN-NEXT:    fcvt.s.h fa5, fa0
 ; CHECKIZFHMIN-NEXT:    fcvt.h.s fa0, fa5
 ; CHECKIZFHMIN-NEXT:    ret
 ; CHECKIZFHMIN-NEXT:  .LBB3_2:
-; CHECKIZFHMIN-NEXT:    fcvt.s.h fa5, fa0
+; CHECKIZFHMIN-NEXT:    fcvt.s.h fa5, fa1
 ; CHECKIZFHMIN-NEXT:    fcvt.h.s fa0, fa5
 ; CHECKIZFHMIN-NEXT:    ret
 ;
 ; CHECKIZHINXMIN-LABEL: select_icmp_uge:
 ; CHECKIZHINXMIN:       # %bb.0:
-; CHECKIZHINXMIN-NEXT:    bgeu a0, a1, .LBB3_2
+; CHECKIZHINXMIN-NEXT:    bltu a0, a1, .LBB3_2
 ; CHECKIZHINXMIN-NEXT:  # %bb.1:
-; CHECKIZHINXMIN-NEXT:    fcvt.s.h a0, a3
+; CHECKIZHINXMIN-NEXT:    fcvt.s.h a0, a2
 ; CHECKIZHINXMIN-NEXT:    fcvt.h.s a0, a0
 ; CHECKIZHINXMIN-NEXT:    ret
 ; CHECKIZHINXMIN-NEXT:  .LBB3_2:
-; CHECKIZHINXMIN-NEXT:    fcvt.s.h a0, a2
+; CHECKIZHINXMIN-NEXT:    fcvt.s.h a0, a3
 ; CHECKIZHINXMIN-NEXT:    fcvt.h.s a0, a0
 ; CHECKIZHINXMIN-NEXT:    ret
   %1 = icmp uge i32 %a, %b
@@ -249,42 +250,43 @@ define half @select_icmp_ult(i32 signext %a, i32 signext %b, half %c, half %d) {
 define half @select_icmp_ule(i32 signext %a, i32 signext %b, half %c, half %d) {
 ; CHECK-LABEL: select_icmp_ule:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    bgeu a1, a0, .LBB5_2
+; CHECK-NEXT:    bltu a1, a0, .LBB5_2
 ; CHECK-NEXT:  # %bb.1:
-; CHECK-NEXT:    fmv.h fa0, fa1
+; CHECK-NEXT:    fmv.h fa1, fa0
 ; CHECK-NEXT:  .LBB5_2:
+; CHECK-NEXT:    fmv.h fa0, fa1
 ; CHECK-NEXT:    ret
 ;
 ; CHECKIZHINX-LABEL: select_icmp_ule:
 ; CHECKIZHINX:       # %bb.0:
-; CHECKIZHINX-NEXT:    bgeu a1, a0, .LBB5_2
+; CHECKIZHINX-NEXT:    bltu a1, a0, .LBB5_2
 ; CHECKIZHINX-NEXT:  # %bb.1:
-; CHECKIZHINX-NEXT:    mv a2, a3
+; CHECKIZHINX-NEXT:    mv a3, a2
 ; CHECKIZHINX-NEXT:  .LBB5_2:
-; CHECKIZHINX-NEXT:    mv a0, a2
+; CHECKIZHINX-NEXT:    mv a0, a3
 ; CHECKIZHINX-NEXT:    ret
 ;
 ; CHECKIZFHMIN-LABEL: select_icmp_ule:
 ; CHECKIZFHMIN:       # %bb.0:
-; CHECKIZFHMIN-NEXT:    bgeu a1, a0, .LBB5_2
+; CHECKIZFHMIN-NEXT:    bltu a1, a0, .LBB5_2
 ; CHECKIZFHMIN-NEXT:  # %bb.1:
-; CHECKIZFHMIN-NEXT:    fcvt.s.h fa5, fa1
+; CHECKIZFHMIN-NEXT:    fcvt.s.h fa5, fa0
 ; CHECKIZFHMIN-NEXT:    fcvt.h.s fa0, fa5
 ; CHECKIZFHMIN-NEXT:    ret
 ; CHECKIZFHMIN-NEXT:  .LBB5_2:
-; CHECKIZFHMIN-NEXT:    fcvt.s.h fa5, fa0
+; CHECKIZFHMIN-NEXT:    fcvt.s.h fa5, fa1
 ; CHECKIZFHMIN-NEXT:    fcvt.h.s fa0, fa5
 ; CHECKIZFHMIN-NEXT:    ret
 ;
 ; CHECKIZHINXMIN-LABEL: select_icmp_ule:
 ; CHECKIZHINXMIN:       # %bb.0:
-; CHECKIZHINXMIN-NEXT:    bgeu a1, a0, .LBB5_2
+; CHECKIZHINXMIN-NEXT:    bltu a1, a0, .LBB5_2
 ; CHECKIZHINXMIN-NEXT:  # %bb.1:
-; CHECKIZHINXMIN-NEXT:    fcvt.s.h a0, a3
+; CHECKIZHINXMIN-NEXT:    fcvt.s.h a0, a2
 ; CHECKIZHINXMIN-NEXT:    fcvt.h.s a0, a0
 ; CHECKIZHINXMIN-NEXT:    ret
 ; CHECKIZHINXMIN-NEXT:  .LBB5_2:
-; CHECKIZHINXMIN-NEXT:    fcvt.s.h a0, a2
+; CHECKIZHINXMIN-NEXT:    fcvt.s.h a0, a3
 ; CHECKIZHINXMIN-NEXT:    fcvt.h.s a0, a0
 ; CHECKIZHINXMIN-NEXT:    ret
   %1 = icmp ule i32 %a, %b
@@ -341,42 +343,43 @@ define half @select_icmp_sgt(i32 signext %a, i32 signext %b, half %c, half %d) {
 define half @select_icmp_sge(i32 signext %a, i32 signext %b, half %c, half %d) {
 ; CHECK-LABEL: select_icmp_sge:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    bge a0, a1, .LBB7_2
+; CHECK-NEXT:    blt a0, a1, .LBB7_2
 ; CHECK-NEXT:  # %bb.1:
-; CHECK-NEXT:    fmv.h fa0, fa1
+; CHECK-NEXT:    fmv.h fa1, fa0
 ; CHECK-NEXT:  .LBB7_2:
+; CHECK-NEXT:    fmv.h fa0, fa1
 ; CHECK-NEXT:    ret
 ;
 ; CHECKIZHINX-LABEL: select_icmp_sge:
 ; CHECKIZHINX:       # %bb.0:
-; CHECKIZHINX-NEXT:    bge a0, a1, .LBB7_2
+; CHECKIZHINX-NEXT:    blt a0, a1, .LBB7_2
 ; CHECKIZHINX-NEXT:  # %bb.1:
-; CHECKIZHINX-NEXT:    mv a2, a3
+; CHECKIZHINX-NEXT:    mv a3, a2
 ; CHECKIZHINX-NEXT:  .LBB7_2:
-; CHECKIZHINX-NEXT:    mv a0, a2
+; CHECKIZHINX-NEXT:    mv a0, a3
 ; CHECKIZHINX-NEXT:    ret
 ;
 ; CHECKIZFHMIN-LABEL: select_icmp_sge:
 ; CHECKIZFHMIN:       # %bb.0:
-; CHECKIZFHMIN-NEXT:    bge a0, a1, .LBB7_2
+; CHECKIZFHMIN-NEXT:    blt a0, a1, .LBB7_2
 ; CHECKIZFHMIN-NEXT:  # %bb.1:
-; CHECKIZFHMIN-NEXT:    fcvt.s.h fa5, fa1
+; CHECKIZFHMIN-NEXT:    fcvt.s.h fa5, fa0
 ; CHECKIZFHMIN-NEXT:    fcvt.h.s fa0, fa5
 ; CHECKIZFHMIN-NEXT:    ret
 ; CHECKIZFHMIN-NEXT:  .LBB7_2:
-; CHECKIZFHMIN-NEXT:    fcvt.s.h fa5, fa0
+; CHECKIZFHMIN-NEXT:    fcvt.s.h fa5, fa1
 ; CHECKIZFHMIN-NEXT:    fcvt.h.s fa0, fa5
 ; CHECKIZFHMIN-NEXT:    ret
 ;
 ; CHECKIZHINXMIN-LABEL: select_icmp_sge:
 ; CHECKIZHINXMIN:       # %bb.0:
-; CHECKIZHINXMIN-NEXT:    bge a0, a1, .LBB7_2
+; CHECKIZHINXMIN-NEXT:    blt a0, a1, .LBB7_2
 ; CHECKIZHINXMIN-NEXT:  # %bb.1:
-; CHECKIZHINXMIN-NEXT:    fcvt.s.h a0, a3
+; CHECKIZHINXMIN-NEXT:    fcvt.s.h a0, a2
 ; CHECKIZHINXMIN-NEXT:    fcvt.h.s a0, a0
 ; CHECKIZHINXMIN-NEXT:    ret
 ; CHECKIZHINXMIN-NEXT:  .LBB7_2:
-; CHECKIZHINXMIN-NEXT:    fcvt.s.h a0, a2
+; CHECKIZHINXMIN-NEXT:    fcvt.s.h a0, a3
 ; CHECKIZHINXMIN-NEXT:    fcvt.h.s a0, a0
 ; CHECKIZHINXMIN-NEXT:    ret
   %1 = icmp sge i32 %a, %b
@@ -433,42 +436,43 @@ define half @select_icmp_slt(i32 signext %a, i32 signext %b, half %c, half %d) {
 define half @select_icmp_sle(i32 signext %a, i32 signext %b, half %c, half %d) {
 ; CHECK-LABEL: select_icmp_sle:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    bge a1, a0, .LBB9_2
+; CHECK-NEXT:    blt a1, a0, .LBB9_2
 ; CHECK-NEXT:  # %bb.1:
-; CHECK-NEXT:    fmv.h fa0, fa1
+; CHECK-NEXT:    fmv.h fa1, fa0
 ; CHECK-NEXT:  .LBB9_2:
+; CHECK-NEXT:    fmv.h fa0, fa1
 ; CHECK-NEXT:    ret
 ;
 ; CHECKIZHINX-LABEL: select_icmp_sle:
 ; CHECKIZHINX:       # %bb.0:
-; CHECKIZHINX-NEXT:    bge a1, a0, .LBB9_2
+; CHECKIZHINX-NEXT:    blt a1, a0, .LBB9_2
 ; CHECKIZHINX-NEXT:  # %bb.1:
-; CHECKIZHINX-NEXT:    mv a2, a3
+; CHECKIZHINX-NEXT:    mv a3, a2
 ; CHECKIZHINX-NEXT:  .LBB9_2:
-; CHECKIZHINX-NEXT:    mv a0, a2
+; CHECKIZHINX-NEXT:    mv a0, a3
 ; CHECKIZHINX-NEXT:    ret
 ;
 ; CHECKIZFHMIN-LABEL: select_icmp_sle:
 ; CHECKIZFHMIN:       # %bb.0:
-; CHECKIZFHMIN-NEXT:    bge a1, a0, .LBB9_2
+; CHECKIZFHMIN-NEXT:    blt a1, a0, .LBB9_2
 ; CHECKIZFHMIN-NEXT:  # %bb.1:
-; CHECKIZFHMIN-NEXT:    fcvt.s.h fa5, fa1
+; CHECKIZFHMIN-NEXT:    fcvt.s.h fa5, fa0
 ; CHECKIZFHMIN-NEXT:    fcvt.h.s fa0, fa5
 ; CHECKIZFHMIN-NEXT:    ret
 ; CHECKIZFHMIN-NEXT:  .LBB9_2:
-; CHECKIZFHMIN-NEXT:    fcvt.s.h fa5, fa0
+; CHECKIZFHMIN-NEXT:    fcvt.s.h fa5, fa1
 ; CHECKIZFHMIN-NEXT:    fcvt.h.s fa0, fa5
 ; CHECKIZFHMIN-NEXT:    ret
 ;
 ; CHECKIZHINXMIN-LABEL: select_icmp_sle:
 ; CHECKIZHINXMIN:       # %bb.0:
-; CHECKIZHINXMIN-NEXT:    bge a1, a0, .LBB9_2
+; CHECKIZHINXMIN-NEXT:    blt a1, a0, .LBB9_2
 ; CHECKIZHINXMIN-NEXT:  # %bb.1:
-; CHECKIZHINXMIN-NEXT:    fcvt.s.h a0, a3
+; CHECKIZHINXMIN-NEXT:    fcvt.s.h a0, a2
 ; CHECKIZHINXMIN-NEXT:    fcvt.h.s a0, a0
 ; CHECKIZHINXMIN-NEXT:    ret
 ; CHECKIZHINXMIN-NEXT:  .LBB9_2:
-; CHECKIZHINXMIN-NEXT:    fcvt.s.h a0, a2
+; CHECKIZHINXMIN-NEXT:    fcvt.s.h a0, a3
 ; CHECKIZHINXMIN-NEXT:    fcvt.h.s a0, a0
 ; CHECKIZHINXMIN-NEXT:    ret
   %1 = icmp sle i32 %a, %b
