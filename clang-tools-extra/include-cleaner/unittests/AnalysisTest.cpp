@@ -483,5 +483,29 @@ TEST_F(WalkUsedTest, TemplateDecls) {
                 Pair(Code.point("partial"), UnorderedElementsAre(Partial)))));
 }
 
+TEST_F(WalkUsedTest, IgnoresIdentityMacros) {
+  llvm::Annotations Code(R"cpp(
+  #include "header.h"
+  void $bar^bar() {
+    $stdin^stdin();
+  }
+  )cpp");
+  Inputs.Code = Code.code();
+  Inputs.ExtraFiles["header.h"] = guard(R"cpp(
+  #include "inner.h"
+  void stdin();
+  )cpp");
+  Inputs.ExtraFiles["inner.h"] = guard(R"cpp(
+  #define stdin stdin
+  )cpp");
+
+  TestAST AST(Inputs);
+  auto &SM = AST.sourceManager();
+  auto MainFile = Header(SM.getFileEntryForID(SM.getMainFileID()));
+  EXPECT_THAT(offsetToProviders(AST, SM),
+              UnorderedElementsAre(
+                  // FIXME: we should have a reference from stdin to header.h
+                  Pair(Code.point("bar"), UnorderedElementsAre(MainFile))));
+}
 } // namespace
 } // namespace clang::include_cleaner
