@@ -36,6 +36,8 @@ scripting support.
 * `Python <http://www.python.org/>`_
 * `SWIG <http://swig.org/>`_ 4 or later.
 
+.. _Optional Dependencies:
+
 Optional Dependencies
 *********************
 
@@ -458,6 +460,8 @@ further by passing the appropriate cmake options, such as:
   -DLLDB_ENABLE_CURSES=0
   -DLLVM_ENABLE_TERMINFO=0
 
+(see :ref:`Optional Dependencies` for more)
+
 In this case you, will often not need anything other than the standard C and
 C++ libraries.
 
@@ -465,26 +469,29 @@ Once all of the dependencies are in place, it's just a matter of configuring
 the build system with the locations and arguments of all the necessary tools.
 The most important cmake options here are:
 
-* ``CMAKE_CROSSCOMPILING`` : Set to 1 to enable cross-compilation.
-* ``CMAKE_LIBRARY_ARCHITECTURE`` : Affects the cmake search path when looking
-  for libraries. You may need to set this to your architecture triple if you do
-  not specify all your include and library paths explicitly.
+* ``CMAKE_SYSTEM_NAME`` and ``CMAKE_SYSTEM_PROCESSOR``: This tells CMake what
+  the build target is and from this it will infer that you are cross compiling.
 * ``CMAKE_C_COMPILER``, ``CMAKE_CXX_COMPILER`` : C and C++ compilers for the
-  target architecture
+  target architecture.
 * ``CMAKE_C_FLAGS``, ``CMAKE_CXX_FLAGS`` : The flags for the C and C++ target
-  compilers. You may need to specify the exact target cpu and abi besides the
+  compilers. You may need to specify the exact target cpu and ABI besides the
   include paths for the target headers.
 * ``CMAKE_EXE_LINKER_FLAGS`` : The flags to be passed to the linker. Usually
   just a list of library search paths referencing the target libraries.
-* ``LLVM_TABLEGEN``, ``CLANG_TABLEGEN`` : Paths to llvm-tblgen and clang-tblgen
-  for the host architecture. If you already have built clang for the host, you
-  can point these variables to the executables in your build directory. If not,
-  you will need to build the llvm-tblgen and clang-tblgen host targets at
-  least.
 * ``LLVM_HOST_TRIPLE`` : The triple of the system that lldb (or lldb-server)
   will run on. Not setting this (or setting it incorrectly) can cause a lot of
   issues with remote debugging as a lot of the choices lldb makes depend on the
   triple reported by the remote platform.
+* ``LLVM_NATIVE_TOOL_DIR`` : Is a path to the llvm tools compiled for the host.
+  Any tool that must be run on the host during a cross build will be configured
+  from this path, so you do not need to set them all individually. If you are
+  doing a host build just for the purpose of a cross build, you will need it
+  to include at least ``llvm-tblgen``, ``clang-tblgen`` and ``lldb-tblgen``.
+  Please be aware that that list may grow over time.
+* ``CMAKE_LIBRARY_ARCHITECTURE`` : Affects the cmake search path when looking
+  for libraries. You may need to set this to your architecture triple if you do
+  not specify all your include and library paths explicitly.
+
 
 You can of course also specify the usual cmake options like
 ``CMAKE_BUILD_TYPE``, etc.
@@ -499,12 +506,12 @@ to prepare the cmake build with the following parameters:
 
 ::
 
-  -DCMAKE_CROSSCOMPILING=1 \
+  -DCMAKE_SYSTEM_NAME=Linux \
+  -DCMAKE_SYSTEM_PROCESSOR=AArch64 \
   -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
   -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
   -DLLVM_HOST_TRIPLE=aarch64-unknown-linux-gnu \
-  -DLLVM_TABLEGEN=<path-to-host>/bin/llvm-tblgen \
-  -DCLANG_TABLEGEN=<path-to-host>/bin/clang-tblgen \
+  -DLLVM_NATIVE_TOOL_DIR=<path-to-host>/bin/ \
   -DLLDB_ENABLE_PYTHON=0 \
   -DLLDB_ENABLE_LIBEDIT=0 \
   -DLLDB_ENABLE_CURSES=0
