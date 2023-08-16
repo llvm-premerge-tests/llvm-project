@@ -141,14 +141,17 @@ void llvm::ComputeValueVTs(const TargetLowering &TLI, const DataLayout &DL,
                            uint64_t StartingOffset) {
   TypeSize Offset = TypeSize::get(StartingOffset, Ty->isScalableTy());
   SmallVector<TypeSize, 4> Offsets;
-  if (FixedOffsets)
+  if (FixedOffsets) {
     ComputeValueVTs(TLI, DL, Ty, ValueVTs, &Offsets, Offset);
-  else
+    for (TypeSize Offset : Offsets) {
+      // Treat scalable zero as if it is fixed. Otherwise use getFixedValued
+      // to get an assert for scalable offsets.
+      FixedOffsets->push_back(Offset.isZero() ? Offset.getKnownMinValue()
+                                              : Offset.getFixedValue());
+    }
+  } else {
     ComputeValueVTs(TLI, DL, Ty, ValueVTs, nullptr, Offset);
-
-  if (FixedOffsets)
-    for (TypeSize Offset : Offsets)
-      FixedOffsets->push_back(Offset.getKnownMinValue());
+  }
 }
 
 void llvm::ComputeValueVTs(const TargetLowering &TLI, const DataLayout &DL,
@@ -167,14 +170,17 @@ void llvm::ComputeValueVTs(const TargetLowering &TLI, const DataLayout &DL,
                            uint64_t StartingOffset) {
   TypeSize Offset = TypeSize::get(StartingOffset, Ty->isScalableTy());
   SmallVector<TypeSize, 4> Offsets;
-  if (FixedOffsets)
+  if (FixedOffsets) {
     ComputeValueVTs(TLI, DL, Ty, ValueVTs, MemVTs, &Offsets, Offset);
-  else
+    for (TypeSize Offset : Offsets) {
+      // Treat scalable zero as if it is fixed. Otherwise use getFixedValued
+      // to get an assert for scalable offsets.
+      FixedOffsets->push_back(Offset.isZero() ? Offset.getKnownMinValue()
+                                              : Offset.getFixedValue());
+    }
+  } else {
     ComputeValueVTs(TLI, DL, Ty, ValueVTs, MemVTs, nullptr, Offset);
-
-  if (FixedOffsets)
-    for (TypeSize Offset : Offsets)
-      FixedOffsets->push_back(Offset.getKnownMinValue());
+  }
 }
 
 void llvm::computeValueLLTs(const DataLayout &DL, Type &Ty,
