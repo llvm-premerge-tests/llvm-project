@@ -11,6 +11,7 @@
 #include "mlir/Analysis/DataLayoutAnalysis.h"
 #include "mlir/Conversion/ConvertToLLVM/ToLLVMInterface.h"
 #include "mlir/Conversion/LLVMCommon/ConversionTarget.h"
+#include "mlir/Conversion/LLVMCommon/MemRefBuilder.h"
 #include "mlir/Conversion/LLVMCommon/Pattern.h"
 #include "mlir/Conversion/LLVMCommon/TypeConverter.h"
 #include "mlir/Conversion/MemRefToLLVM/AllocLikeConversion.h"
@@ -22,6 +23,7 @@
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/MemRef/Utils/MemRefUtils.h"
 #include "mlir/IR/AffineMap.h"
+#include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/IRMapping.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Support/MathExtras.h"
@@ -754,6 +756,27 @@ struct GetGlobalMemrefOpLowering : public AllocLikeOpLLVMLowering {
     return std::make_tuple(deadBeefPtr, gep);
   }
 };
+
+// Lifetime marker operations are lowered to their associated intrinsic.
+template <typename MemRefOp, typename LLVMOp>
+struct LifetimeOpLowering : public ConvertOpToLLVMPattern<MemRefOp> {
+  using ConvertOpToLLVMPattern<MemRefOp>::ConvertOpToLLVMPattern;
+
+  LogicalResult
+  matchAndRewrite(MemRefOp op, typename MemRefOp::Adaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    MemRefDescriptor desc = MemRefDescriptor(adaptor.getMemref());
+    Value ptr = desc.alignedPtr(rewriter, op.getLoc());
+    IntegerAttr size = rewriter.getI64IntegerAttr(op.getSize());
+    rewriter.replaceOpWithNewOp<LLVMOp>(op, size, ptr);
+    return success();
+  }
+};
+
+using LifetimeStartOpLowering =
+    LifetimeOpLowering<memref::LifetimeStartOp, LLVM::LifetimeStartOp>;
+using LifetimeEndOpLowering =
+    LifetimeOpLowering<memref::LifetimeEndOp, LLVM::LifetimeEndOp>;
 
 // Load operation is lowered to obtaining a pointer to the indexed element
 // and loading it.
@@ -1878,6 +1901,8 @@ void mlir::populateFinalizeMemRefToLLVMConversionPatterns(
       GenericAtomicRMWOpLowering,
       GlobalMemrefOpLowering,
       GetGlobalMemrefOpLowering,
+      LifetimeEndOpLowering,
+      LifetimeStartOpLowering,
       LoadOpLowering,
       MemRefCastOpLowering,
       MemRefCopyOpLowering,

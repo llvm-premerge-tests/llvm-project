@@ -386,3 +386,13 @@ func.func @memref_memory_space_cast(%src : memref<?xf32>) -> memref<?xf32, 1> {
   %dst = memref.memory_space_cast %src : memref<?xf32> to memref<?xf32, 1>
   return %dst : memref<?xf32, 1>
 }
+
+// CHECK-LABEL: func @memref_lifetime
+func.func @memref_lifetime(%d : index) {
+  %0 = memref.alloca() : memref<32xf32>
+  // CHECK: memref.lifetime_start %{{.*}} : memref<32xf32>
+  memref.lifetime_start %0 : memref<32xf32>
+  // CHECK-NEXT: memref.lifetime_end %{{.*}} : memref<32xf32>
+  memref.lifetime_end %0 : memref<32xf32>
+  return
+}

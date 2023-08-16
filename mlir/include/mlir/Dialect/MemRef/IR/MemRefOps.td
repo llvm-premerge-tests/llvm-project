@@ -1158,6 +1158,90 @@ def MemRef_GlobalOp : MemRef_Op<"global", [Symbol]> {
 }
 
 //===----------------------------------------------------------------------===//
+// Lifetime[Start/End]Op
+//===----------------------------------------------------------------------===//
+
+class MemRef_LifetimeBaseOp<string mnemonic> : MemRef_Op<mnemonic> {
+  let arguments = (ins AnyMemRef:$memref);
+
+  let assemblyFormat = "$memref attr-dict `:` type($memref)";
+
+  let extraClassDeclaration = [{
+    MemRefType getMemRefType() {
+      return ::llvm::cast<MemRefType>(getMemref().getType());
+    }
+    int64_t getSize() {
+      MemRefType ty = getMemRefType();
+      if (ty.hasStaticShape())
+        return ty.getNumElements() * ty.getElementTypeBitWidth() / 8;
+      return -1;
+    }
+  }];
+}
+
+def MemRef_LifetimeStartOp : MemRef_LifetimeBaseOp<"lifetime_start"> {
+  let summary = "mark the start of a MemRef's lifetime";
+  let description = [{
+    The `lifetime_start` op marks the start of a MemRef's lifetime. Prior to
+    the execution of this op (if it exists), the MemRef is considered "dead"
+    and any memory access to it would yield undefined behavior.
+
+    Example:
+
+    ```mlir
+    %0 = memref.alloca() : memref<?xf32>
+    // No expected memory uses of %0
+    memref.lifetime_start %0 : memref<?xf32>
+    // Expected memory uses of %0
+    memref.lifetime_end %0 : memref<?xf32>
+    // No further expected memory uses of %0
+    ```
+
+    The lifetime semantics are not enforced by the op that allocated the MemRef,
+    and instead is used as an assumption for analysis passes used on the MemRef
+    This is useful for lifetime analysis (where the compiler can statically
+    analyze for memory out of bounds reads and writes). It is also useful for
+    transformation passes such as buffer reuse where allocations of MemRefs can
+    be statically analyzed for similar MemRefs with non-overlapping lifetimes to
+    be combined into a single allocation.
+
+    These operations are not expected to "execute" on a device and are used as
+    markers to define sections of execution where the writer of the program (or
+    the compiler) believes that the MemRef should be alive or dead.
+
+    Lifetime in the MemRef dialect uses the following assumptions, designed to
+    be a constrained subset of the assumptions used for
+    [LLVM Object Lifetime](https://llvm.org/docs/LangRef.html#object-lifetime):
+
+    1. Lifetime markers can only take MemRefs that have been allocated using
+       `alloc` or `alloca` ops. They cannot take subviewed MemRefs as operands.
+    2. A MemRef is considered alive at a point of execution if a
+       `lifetime_start` op is never called on this MemRef (within its use chain)
+       *OR* a `lifetime_start` op has executed prior to this point in execution
+       and a `lifetime_end` op has not.
+    3. Loading or storing to a dead MemRef is considered undefined behavior;
+       however, "Pure" ops that do not have memory effects can be called and
+       are expected to return valid results (such as `subview` ops).
+    4. A path of execution within the program cannot execute a `lifetime_start`
+       op on the same MemRef more than once.
+    5. It is possible for a path of execution to not execute a `lifetime_end`
+       op.
+  }];
+}
+
+def MemRef_LifetimeEndOp : MemRef_LifetimeBaseOp<"lifetime_end"> {
+  let summary = "mark the end of a MemRef's lifetime";
+  let description = [{
+    The `lifetime_end` op marks the end of a MemRef's lifetime. After this op is
+    executed, the MemRef is assumed to be "dead". Accessing the MemRef after
+    this point would yield undefined behavior.
+
+    See the  `lifetime_start` op for more information on lifetime within the
+    MemRef dialect.
+  }];
+}
+
+//===----------------------------------------------------------------------===//
 // LoadOp
 //===----------------------------------------------------------------------===//
 
