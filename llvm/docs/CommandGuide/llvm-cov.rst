@@ -249,6 +249,12 @@ OPTIONS
  line, but show the individual regions if there are multiple on the line.
  Defaults to false.
 
+.. option:: -show-directory-coverage
+
+ Generate index files in each level of the directory to show the coverage.
+ Defaults to false and a single index file will be generated in the output
+ directory.
+
 .. option:: -use-color
 
  Enable or disable color output. By default this is autodetected.
