@@ -18,6 +18,8 @@
 #define _LIBCPP___MDSPAN_LAYOUTS_H
 
 #include <__config>
+#include <array>
+#include <span>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header
@@ -42,14 +44,20 @@ struct layout_right {
   class mapping;
 };
 
-/*
-// Will be implemented with follow on revision
 // Layout policy with a unique mapping where strides are arbitrary
 struct layout_stride {
-  template<class Extents>
-    class mapping;
+  template <class _Extents>
+  class mapping;
+
+  // need this explicit deduction guide to silence warning ctad-maybe-unsupported
+  // LIBCPP_CTAD_SUPPORTED_FOR_TYPE does not appear to work for nested classes with
+  // out of class definition
+  template <class _Extents, class _OtherIndexType>
+  [[maybe_unused]] mapping(_Extents, array<_OtherIndexType, _Extents::rank()>) -> mapping<_Extents>;
+
+  template <class _Extents, class _OtherIndexType>
+  [[maybe_unused]] mapping(_Extents, span<_OtherIndexType, _Extents::rank()>) -> mapping<_Extents>;
 };
-*/
 
 #endif // _LIBCPP_STD_VER >= 23
 
