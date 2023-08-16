@@ -2347,31 +2347,39 @@ void Generic_GCC::GCCInstallationDetector::AddDefaultGCCPrefixes(
   static const char *const M68kTriples[] = {
       "m68k-linux-gnu", "m68k-unknown-linux-gnu", "m68k-suse-linux"};
 
+  bool IsMipsR6 = TargetTriple.getSubArch() == llvm::Triple::MipsSubArch_r6;
   static const char *const MIPSLibDirs[] = {"/libo32", "/lib"};
-  static const char *const MIPSTriples[] = {
-      "mips-linux-gnu", "mips-mti-linux", "mips-mti-linux-gnu",
-      "mips-img-linux-gnu", "mipsisa32r6-linux-gnu"};
+  static const char *const MIPSTriples_legacy[] = {"mips-img-linux-gnu",
+                                                   "mipsisa32r6-linux-gnu"};
+  static const char *const MIPSTriples_r6[] = {
+      "mips-linux-gnu", "mips-mti-linux", "mips-mti-linux-gnu"};
   static const char *const MIPSELLibDirs[] = {"/libo32", "/lib"};
-  static const char *const MIPSELTriples[] = {
-      "mipsel-linux-gnu", "mips-img-linux-gnu", "mipsisa32r6el-linux-gnu"};
+  static const char *const MIPSELTriples_legacy[] = {"mipsel-linux-gnu"};
+  static const char *const MIPSELTriples_r6[] = {"mips-img-linux-gnu",
+                                                 "mipsisa32r6el-linux-gnu"};
 
   static const char *const MIPS64LibDirs[] = {"/lib64", "/lib"};
-  static const char *const MIPS64Triples[] = {
-      "mips64-linux-gnu",      "mips-mti-linux-gnu",
-      "mips-img-linux-gnu",    "mips64-linux-gnuabi64",
-      "mipsisa64r6-linux-gnu", "mipsisa64r6-linux-gnuabi64"};
+  static const char *const MIPS64Triples_legacy[] = {
+      "mips64-linux-gnu", "mips-mti-linux-gnu", "mips64-linux-gnuabi64"};
+  static const char *const MIPS64Triples_r6[] = {"mips-img-linux-gnu",
+                                                 "mipsisa64r6-linux-gnu",
+                                                 "mipsisa64r6-linux-gnuabi64"};
   static const char *const MIPS64ELLibDirs[] = {"/lib64", "/lib"};
-  static const char *const MIPS64ELTriples[] = {
-      "mips64el-linux-gnu",      "mips-mti-linux-gnu",
-      "mips-img-linux-gnu",      "mips64el-linux-gnuabi64",
-      "mipsisa64r6el-linux-gnu", "mipsisa64r6el-linux-gnuabi64"};
+  static const char *const MIPS64ELTriples_legacy[] = {
+      "mips64el-linux-gnu", "mips-mti-linux-gnu", "mips64el-linux-gnuabi64"};
+  static const char *const MIPS64ELTriples_r6[] = {
+      "mips-img-linux-gnu", "mipsisa64r6el-linux-gnu",
+      "mipsisa64r6el-linux-gnuabi64"};
 
   static const char *const MIPSN32LibDirs[] = {"/lib32"};
-  static const char *const MIPSN32Triples[] = {"mips64-linux-gnuabin32",
-                                               "mipsisa64r6-linux-gnuabin32"};
+  static const char *const MIPSN32Triples_legacy[] = {"mips64-linux-gnuabin32"};
+  static const char *const MIPSN32Triples_r6[] = {
+      "mipsisa64r6-linux-gnuabin32"};
   static const char *const MIPSN32ELLibDirs[] = {"/lib32"};
-  static const char *const MIPSN32ELTriples[] = {
-      "mips64el-linux-gnuabin32", "mipsisa64r6el-linux-gnuabin32"};
+  static const char *const MIPSN32ELTriples_legacy[] = {
+      "mips64el-linux-gnuabin32"};
+  static const char *const MIPSN32ELTriples_r6[] = {
+      "mipsisa64r6el-linux-gnuabin32"};
 
   static const char *const MSP430LibDirs[] = {"/lib"};
   static const char *const MSP430Triples[] = {"msp430-elf"};
@@ -2580,37 +2588,82 @@ void Generic_GCC::GCCInstallationDetector::AddDefaultGCCPrefixes(
     break;
   case llvm::Triple::mips:
     LibDirs.append(begin(MIPSLibDirs), end(MIPSLibDirs));
-    TripleAliases.append(begin(MIPSTriples), end(MIPSTriples));
     BiarchLibDirs.append(begin(MIPS64LibDirs), end(MIPS64LibDirs));
-    BiarchTripleAliases.append(begin(MIPS64Triples), end(MIPS64Triples));
     BiarchLibDirs.append(begin(MIPSN32LibDirs), end(MIPSN32LibDirs));
-    BiarchTripleAliases.append(begin(MIPSN32Triples), end(MIPSN32Triples));
+    if (IsMipsR6) {
+      TripleAliases.append(begin(MIPSTriples_r6), end(MIPSTriples_r6));
+      BiarchTripleAliases.append(begin(MIPS64Triples_r6),
+                                 end(MIPS64Triples_r6));
+      BiarchTripleAliases.append(begin(MIPSN32Triples_r6),
+                                 end(MIPSN32Triples_r6));
+    } else {
+      TripleAliases.append(begin(MIPSTriples_legacy), end(MIPSTriples_legacy));
+      BiarchTripleAliases.append(begin(MIPS64Triples_legacy),
+                                 end(MIPS64Triples_legacy));
+      BiarchTripleAliases.append(begin(MIPSN32Triples_legacy),
+                                 end(MIPSN32Triples_legacy));
+    }
     break;
   case llvm::Triple::mipsel:
     LibDirs.append(begin(MIPSELLibDirs), end(MIPSELLibDirs));
-    TripleAliases.append(begin(MIPSELTriples), end(MIPSELTriples));
-    TripleAliases.append(begin(MIPSTriples), end(MIPSTriples));
     BiarchLibDirs.append(begin(MIPS64ELLibDirs), end(MIPS64ELLibDirs));
-    BiarchTripleAliases.append(begin(MIPS64ELTriples), end(MIPS64ELTriples));
     BiarchLibDirs.append(begin(MIPSN32ELLibDirs), end(MIPSN32ELLibDirs));
-    BiarchTripleAliases.append(begin(MIPSN32ELTriples), end(MIPSN32ELTriples));
+    if (IsMipsR6) {
+      TripleAliases.append(begin(MIPSELTriples_r6), end(MIPSELTriples_r6));
+      TripleAliases.append(begin(MIPSTriples_r6), end(MIPSTriples_r6));
+      BiarchTripleAliases.append(begin(MIPS64ELTriples_r6),
+                                 end(MIPS64ELTriples_r6));
+      BiarchTripleAliases.append(begin(MIPSN32ELTriples_r6),
+                                 end(MIPSN32ELTriples_r6));
+    } else {
+      TripleAliases.append(begin(MIPSELTriples_legacy),
+                           end(MIPSELTriples_legacy));
+      TripleAliases.append(begin(MIPSTriples_legacy), end(MIPSTriples_legacy));
+      BiarchTripleAliases.append(begin(MIPS64ELTriples_legacy),
+                                 end(MIPS64ELTriples_legacy));
+      BiarchTripleAliases.append(begin(MIPSN32ELTriples_legacy),
+                                 end(MIPSN32ELTriples_legacy));
+    }
     break;
   case llvm::Triple::mips64:
     LibDirs.append(begin(MIPS64LibDirs), end(MIPS64LibDirs));
-    TripleAliases.append(begin(MIPS64Triples), end(MIPS64Triples));
     BiarchLibDirs.append(begin(MIPSLibDirs), end(MIPSLibDirs));
-    BiarchTripleAliases.append(begin(MIPSTriples), end(MIPSTriples));
     BiarchLibDirs.append(begin(MIPSN32LibDirs), end(MIPSN32LibDirs));
-    BiarchTripleAliases.append(begin(MIPSN32Triples), end(MIPSN32Triples));
+    if (IsMipsR6) {
+      TripleAliases.append(begin(MIPS64Triples_r6), end(MIPS64Triples_r6));
+      BiarchTripleAliases.append(begin(MIPSTriples_r6), end(MIPSTriples_r6));
+      BiarchTripleAliases.append(begin(MIPSN32Triples_r6),
+                                 end(MIPSN32Triples_r6));
+    } else {
+      TripleAliases.append(begin(MIPS64Triples_legacy),
+                           end(MIPS64Triples_legacy));
+      BiarchTripleAliases.append(begin(MIPSTriples_legacy),
+                                 end(MIPSTriples_legacy));
+      BiarchTripleAliases.append(begin(MIPSN32Triples_legacy),
+                                 end(MIPSN32Triples_legacy));
+    }
     break;
   case llvm::Triple::mips64el:
     LibDirs.append(begin(MIPS64ELLibDirs), end(MIPS64ELLibDirs));
-    TripleAliases.append(begin(MIPS64ELTriples), end(MIPS64ELTriples));
     BiarchLibDirs.append(begin(MIPSELLibDirs), end(MIPSELLibDirs));
-    BiarchTripleAliases.append(begin(MIPSELTriples), end(MIPSELTriples));
     BiarchLibDirs.append(begin(MIPSN32ELLibDirs), end(MIPSN32ELLibDirs));
-    BiarchTripleAliases.append(begin(MIPSN32ELTriples), end(MIPSN32ELTriples));
-    BiarchTripleAliases.append(begin(MIPSTriples), end(MIPSTriples));
+    if (IsMipsR6) {
+      TripleAliases.append(begin(MIPS64ELTriples_r6), end(MIPS64ELTriples_r6));
+      BiarchTripleAliases.append(begin(MIPSELTriples_r6),
+                                 end(MIPSELTriples_r6));
+      BiarchTripleAliases.append(begin(MIPSN32ELTriples_r6),
+                                 end(MIPSN32ELTriples_r6));
+      BiarchTripleAliases.append(begin(MIPSTriples_r6), end(MIPSTriples_r6));
+    } else {
+      TripleAliases.append(begin(MIPS64ELTriples_legacy),
+                           end(MIPS64ELTriples_legacy));
+      BiarchTripleAliases.append(begin(MIPSELTriples_legacy),
+                                 end(MIPSELTriples_legacy));
+      BiarchTripleAliases.append(begin(MIPSN32ELTriples_legacy),
+                                 end(MIPSN32ELTriples_legacy));
+      BiarchTripleAliases.append(begin(MIPSTriples_legacy),
+                                 end(MIPSTriples_legacy));
+    }
     break;
   case llvm::Triple::msp430:
     LibDirs.append(begin(MSP430LibDirs), end(MSP430LibDirs));
