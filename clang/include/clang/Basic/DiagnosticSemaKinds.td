@@ -240,6 +240,10 @@ def ext_imaginary_constant : Extension<
   "imaginary constants are a GNU extension">, InGroup<GNUImaginaryConstant>;
 def ext_integer_complex : Extension<
   "complex integer types are a GNU extension">, InGroup<GNUComplexInteger>;
+def ext_c23_auto_non_plain_identifier : Extension<
+  "type inference of a declaration other than a plain identifier with optional "
+  "trailing attributes is a Clang extension">,
+  InGroup<DiagGroup<"auto-decl-extensions">>;
 
 def err_invalid_saturation_spec : Error<"'_Sat' specifier is only valid on "
   "'_Fract' or '_Accum', not '%0'">;
@@ -2367,7 +2371,8 @@ def err_auto_not_allowed : Error<
   "|in conversion function type|here|in lambda parameter"
   "|in type allocated by 'new'|in K&R-style function parameter"
   "|in template parameter|in friend declaration|in function prototype that is "
-  "not a function declaration|in requires expression parameter}1">;
+  "not a function declaration|in requires expression parameter"
+  "|in array declaration}1">;
 def err_dependent_deduced_tst : Error<
   "typename specifier refers to "
   "%select{class template|function template|variable template|alias template|"
@@ -2440,7 +2445,7 @@ def err_implied_std_initializer_list_not_found : Error<
 def err_malformed_std_initializer_list : Error<
   "std::initializer_list must be a class template with a single type parameter">;
 def err_auto_init_list_from_c : Error<
-  "cannot use __auto_type with initializer list in C">;
+  "cannot use %select{'auto'|<ERROR>|'__auto_type'}0 with initializer list in C">;
 def err_auto_bitfield : Error<
   "cannot pass bit-field as __auto_type initializer in C">;
 
