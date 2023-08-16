@@ -220,6 +220,12 @@ namespace {
         ArraySize = 2;
         MostDerivedLength = I + 1;
         IsArray = true;
+      } else if (Type->isVectorType()) {
+        const VectorType *VT = Type->castAs<VectorType>();
+        Type = VT->getElementType();
+        ArraySize = VT->getNumElements();
+        MostDerivedLength = I + 1;
+        IsArray = true;
       } else if (const FieldDecl *FD = getAsField(Path[I])) {
         Type = FD->getType();
         ArraySize = 0;
@@ -434,6 +440,17 @@ namespace {
       MostDerivedType = EltTy;
       MostDerivedIsArrayElement = true;
       MostDerivedArraySize = 2;
+      MostDerivedPathLength = Entries.size();
+    }
+    /// Update this designator to refer to the first element within this vector.
+    void addVectorUnchecked(const VectorType *VT) {
+      Entries.push_back(PathEntry::ArrayIndex(0));
+
+      // This is technically a most-derived object, though in practice this
+      // is unlikely to matter.
+      MostDerivedType = VT->getElementType();
+      MostDerivedIsArrayElement = true;
+      MostDerivedArraySize = VT->getNumElements();
       MostDerivedPathLength = Entries.size();
     }
     void diagnoseUnsizedArrayPointerArithmetic(EvalInfo &Info, const Expr *E);
@@ -1713,6 +1730,10 @@ namespace {
     void addComplex(EvalInfo &Info, const Expr *E, QualType EltTy, bool Imag) {
       if (checkSubobject(Info, E, Imag ? CSK_Imag : CSK_Real))
         Designator.addComplexUnchecked(EltTy, Imag);
+    }
+    void addVector(EvalInfo &Info, const Expr *E, const VectorType *VT) {
+      if (checkSubobject(Info, E, CSK_VectorToPointer))
+        Designator.addVectorUnchecked(VT);
     }
     void clearIsNullPointer() {
       IsNullPtr = false;
@@ -3294,6 +3315,19 @@ static bool HandleLValueComplexElement(EvalInfo &Info, const Expr *E,
   return true;
 }
 
+/// Update an lvalue to refer to an element of a vector.
+/// \param Info - Information about the ongoing evaluation.
+/// \param LVal - The lvalue to be updated.
+/// \param EltTy - The vector's element type.
+/// \param Idx - The index of the referenced vector element.
+static bool HandleLValueVectorElement(EvalInfo &Info, const Expr *E,
+                                      LValue &LVal, const VectorType *VT,
+                                      APSInt Idx) {
+  LVal.addVector(Info, E, VT);
+
+  return HandleLValueArrayAdjustment(Info, E, LVal, VT->getElementType(), Idx);
+}
+
 /// Try to evaluate the initializer for a variable declaration.
 ///
 /// \param Info   Information about the ongoing evaluation.
@@ -3836,6 +3870,24 @@ findSubobject(EvalInfo &Info, const Expr *E, const CompleteObject &Obj,
         return handler.found(Index ? O->getComplexFloatImag()
                                    : O->getComplexFloatReal(), ObjType);
       }
+    } else if (ObjType->isVectorType()) {
+      // Next subobject is a vector.
+      const VectorType *VT = ObjType->castAs<VectorType>();
+      uint64_t Index = Sub.Entries[I].getAsArrayIndex();
+      if (Index >= VT->getNumElements()) {
+        if (Info.getLangOpts().CPlusPlus11)
+          Info.FFDiag(E, diag::note_constexpr_access_past_end)
+              << handler.AccessKind;
+        else
+          Info.FFDiag(E);
+        return handler.failed();
+      }
+
+      ObjType = getSubobjectType(ObjType, VT->getElementType());
+
+      assert(I == N - 1 && "extracting subobject of scalar?");
+      assert(O->isVector());
+      return handler.found(O->getVectorElt(Index), ObjType);
     } else if (const FieldDecl *Field = getAsField(Sub.Entries[I])) {
       if (Field->isMutable() &&
           !Obj.mayAccessMutableMembers(Info, handler.AccessKind)) {
@@ -8571,9 +8623,10 @@ bool LValueExprEvaluator::VisitMemberExpr(const MemberExpr *E) {
 
 bool LValueExprEvaluator::VisitArraySubscriptExpr(const ArraySubscriptExpr *E) {
   // FIXME: Deal with vectors as array subscript bases.
-  if (E->getBase()->getType()->isVectorType() ||
-      E->getBase()->getType()->isVLSTBuiltinType())
+  if (E->getBase()->getType()->isVLSTBuiltinType())
     return Error(E);
+
+  bool IsVector = E->getBase()->getType()->isVectorType();
 
   APSInt Index;
   bool Success = true;
@@ -8581,16 +8634,24 @@ bool LValueExprEvaluator::VisitArraySubscriptExpr(const ArraySubscriptExpr *E) {
   // C++17's rules require us to evaluate the LHS first, regardless of which
   // side is the base.
   for (const Expr *SubExpr : {E->getLHS(), E->getRHS()}) {
-    if (SubExpr == E->getBase() ? !evaluatePointer(SubExpr, Result)
-                                : !EvaluateInteger(SubExpr, Index, Info)) {
+    bool IsBase = SubExpr == E->getBase();
+    if (IsBase ? IsVector ? !EvaluateLValue(SubExpr, Result, Info)
+                          : !evaluatePointer(SubExpr, Result)
+               : !EvaluateInteger(SubExpr, Index, Info)) {
       if (!Info.noteFailure())
         return false;
       Success = false;
     }
   }
 
-  return Success &&
-         HandleLValueArrayAdjustment(Info, E, Result, E->getType(), Index);
+  if (!Success)
+    return false;
+
+  return IsVector ? HandleLValueVectorElement(
+                        Info, E, Result,
+                        E->getBase()->getType()->castAs<VectorType>(), Index)
+                  : HandleLValueArrayAdjustment(Info, E, Result, E->getType(),
+                                                Index);
 }
 
 bool LValueExprEvaluator::VisitUnaryDeref(const UnaryOperator *E) {
