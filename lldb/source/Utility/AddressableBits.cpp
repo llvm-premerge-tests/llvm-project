@@ -23,8 +23,14 @@ void AddressableBits::SetAddressableBits(uint32_t lowmem_addressing_bits,
   m_high_memory_addr_bits = highmem_addressing_bits;
 }
 
-void AddressableBits::Clear() {
-  m_low_memory_addr_bits = m_high_memory_addr_bits = 0;
+void AddressableBits::SetLowmemAddressableBits(
+    uint32_t lowmem_addressing_bits) {
+  m_low_memory_addr_bits = lowmem_addressing_bits;
+}
+
+void AddressableBits::SetHighmemAddressableBits(
+    uint32_t highmem_addressing_bits) {
+  m_high_memory_addr_bits = highmem_addressing_bits;
 }
 
 void AddressableBits::SetProcessMasks(Process &process) {
@@ -47,4 +53,12 @@ void AddressableBits::SetProcessMasks(Process &process) {
     process.SetHighmemCodeAddressMask(hi_address_mask);
     process.SetHighmemDataAddressMask(hi_address_mask);
   }
+}
+
+bool AddressableBits::HasValue() const {
+  return m_low_memory_addr_bits != 0 || m_high_memory_addr_bits != 0;
+}
+
+void AddressableBits::Clear() {
+  m_low_memory_addr_bits = m_high_memory_addr_bits = 0;
 }
