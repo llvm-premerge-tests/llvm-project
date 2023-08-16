@@ -123,8 +123,7 @@ public:
   ///     module within a module (.a files and modules that contain
   ///     multiple architectures).
   Module(
-      const FileSpec &file_spec, const ArchSpec &arch,
-      const ConstString *object_name = nullptr,
+      const FileSpec &file_spec, const ArchSpec &arch, ConstString object_name,
       lldb::offset_t object_offset = 0,
       const llvm::sys::TimePoint<> &object_mod_time = llvm::sys::TimePoint<>());
 

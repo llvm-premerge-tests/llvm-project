@@ -802,7 +802,8 @@ bool DynamicLoaderDarwinKernel::KextImageInfo::LoadImageUsingMemoryModule(
                                                  kernel_search_error, true)) {
           if (FileSystem::Instance().Exists(module_spec.GetFileSpec())) {
             m_module_sp = std::make_shared<Module>(module_spec.GetFileSpec(),
-                                                   target.GetArchitecture());
+                                                   target.GetArchitecture(),
+                                                   ConstString());
           }
         }
       }
