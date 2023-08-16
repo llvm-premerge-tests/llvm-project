@@ -84,7 +84,7 @@ static cl::opt<bool> ConstHoistWithBlockFrequency(
              "without hoisting."));
 
 static cl::opt<bool> ConstHoistGEP(
-    "consthoist-gep", cl::init(false), cl::Hidden,
+    "consthoist-gep", cl::init(true), cl::Hidden,
     cl::desc("Try hoisting constant gep expressions"));
 
 static cl::opt<unsigned>
@@ -432,6 +432,22 @@ void ConstantHoistingPass::collectConstantCandidates(
   // to be cheaper than compute it by <Base + Offset>, which can be lowered to
   // an ADD instruction or folded into Load/Store instruction.
   InstructionCost Cost =
+      TTI->getIntImmCostInst(Instruction::GetElementPtr, 0, Offset, OffsetTy,
+                             TargetTransformInfo::TCK_SizeAndLatency, Inst);
+  if (Cost == TTI::TCC_Free) {
+    LLVM_DEBUG(dbgs() << "GEP is free, no need to hoist it\n");
+    return;
+  }
+
+  unsigned AddrSpace = GEPO->getPointerAddressSpace();
+  if (TTI->isLegalAddressingMode(GEPO->getResultElementType(),
+                                   BaseGV, Offset.getLimitedValue(),
+                                   /*HasBaseReg=*/true, /*Scale=*/0,
+                                   AddrSpace)) {
+    LLVM_DEBUG(dbgs() << "This expr can be folded into addressing mode, so no need to hoist it\n");
+    return;
+  }
+  Cost =
       TTI->getIntImmCostInst(Instruction::Add, 1, Offset, OffsetTy,
                              TargetTransformInfo::TCK_SizeAndLatency, Inst);
   ConstCandVecType &ExprCandVec = ConstGEPCandMap[BaseGV];
@@ -646,9 +662,19 @@ void ConstantHoistingPass::findAndMakeBaseConstant(
   ConstInfo.BaseInt = ConstInt;
   ConstInfo.BaseExpr = ConstExpr;
   Type *Ty = ConstInt->getType();
+  unsigned short BaseConstDimentions = ConstExpr ? ConstExpr->getNumOperands() : 0;
 
   // Rebase the constants with respect to the base constant.
   for (auto ConstCand = S; ConstCand != E; ++ConstCand) {
+    if(ConstCand != S && ConstCand->ConstExpr) {
+      unsigned short RebasedConstDimentions = ConstCand->ConstExpr->getNumOperands();
+      if (RebasedConstDimentions == BaseConstDimentions && RebasedConstDimentions <= 3) {
+        //No need to rebase this constant in terms of the base constant;
+        // it will not add value because the address dimention is just <= 3,
+        // which is not complicated address calculation.
+        continue;
+      }
+    }
     APInt Diff = ConstCand->ConstInt->getValue() - ConstInt->getValue();
     Constant *Offset = Diff == 0 ? nullptr : ConstantInt::get(Ty, Diff);
     Type *ConstTy =
@@ -857,6 +883,15 @@ bool ConstantHoistingPass::emitBaseConstants(GlobalVariable *BaseGV) {
     unsigned ReBasesNum = 0;
     unsigned NotRebasedNum = 0;
     for (Instruction *IP : IPSet) {
+      if (ConstInfo.RebasedConstants.size() == 1 &&
+        ConstInfo.RebasedConstants[0].Uses.size() == 1) {
+          if (IP->getParent() == ConstInfo.RebasedConstants[0].Uses[0].Inst->getParent()) {
+            // This means it's only single use for this const expr, and NOT inside a loop.
+            // No need to hoist single use.
+            continue;
+          }
+      }
+
       // First, collect constants depending on this IP of the base.
       UsesNum = 0;
       SmallVector<UserAdjustment, 4> ToBeRebased;
