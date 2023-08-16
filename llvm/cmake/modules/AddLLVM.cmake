@@ -1589,6 +1589,10 @@ function(add_unittest test_suite test_name)
     list(APPEND LLVM_COMPILE_FLAGS "-Wno-gnu-zero-variadic-macro-arguments")
   endif()
 
+  if(MSVC)
+    list(APPEND LLVM_COMPILE_FLAGS "/execution-charset:utf-8")
+  endif()
+
   if (NOT DEFINED LLVM_REQUIRES_RTTI)
     set(LLVM_REQUIRES_RTTI OFF)
   endif()
