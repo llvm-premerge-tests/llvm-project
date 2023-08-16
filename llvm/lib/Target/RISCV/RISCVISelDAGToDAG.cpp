@@ -3340,6 +3340,61 @@ bool RISCVDAGToDAGISel::performCombineVMergeAndVOps(SDNode *N) {
   assert(True.getResNo() == 0 &&
          "Expect True is the first output of an instruction.");
 
+  // True and False may not be the same vector type because of bitcasts, but
+  // they should always be the same size.
+  assert(True.getSimpleValueType().getSizeInBits() ==
+         False.getSimpleValueType().getSizeInBits());
+
+  // We want to be able to handle vmerges and vmv.v.vs where True is a subreg,
+  // e.g:
+  //
+  // t22: nxv4i32 = PseudoVMV_V_V_M2 t42, t38, ...
+  // t38: nxv4i32 = INSERT_SUBREG IMPLICIT_DEF:nxv4i32, t40,
+  // TargetConstant:i32<4>
+  //   t40: v2i32 = COPY_TO_REGCLASS t41, TargetConstant:i64<22>
+  //     t41: nxv1i32,ch = PseudoVLE32_V_MF2 ...
+  //
+  // If we're inserting into the bottom subregister of an implicit_def, then we
+  // can unwrap True (t38) down to the underlying operation, in this case
+  // PseudoVLE32. We just need to make sure to match up the types in False and
+  // Result, and then we end up with something like this:
+  //
+  // t48: nxv4i32 = INSERT_SUBREG t42, t47, TargetConstant:i32<4>
+  // t47: nxv1i32,ch = PseudoVLE32_V_MF2_MASK t46, ...
+  //   t46: nxv1i32 = EXTRACT_SUBREG t42, TargetConstant:i32<4>
+  std::optional<unsigned> SubRegIdx;
+
+  auto UnwrapSubReg = [this, &SubRegIdx](SDValue V) {
+    if (!V->isMachineOpcode())
+      return SDValue();
+    if (V->getMachineOpcode() == TargetOpcode::COPY_TO_REGCLASS)
+      return V->getOperand(0);
+    // If we're inserting into the bottom subreg of a vector register, unwrap
+    // it.
+    if (V->getMachineOpcode() == TargetOpcode::INSERT_SUBREG &&
+        isImplicitDef(V->getOperand(0))) {
+      MVT SubVecVT = V->getOperand(1).getSimpleValueType();
+      if (SubVecVT.isFixedLengthVector())
+        SubVecVT =
+            Subtarget->getTargetLowering()->getContainerForFixedLengthVector(
+                SubVecVT);
+      unsigned LeftoverIdx;
+      std::tie(SubRegIdx, LeftoverIdx) =
+          RISCVTargetLowering::decomposeSubvectorInsertExtractToSubRegs(
+              V->getSimpleValueType(0), SubVecVT, 0,
+              Subtarget->getRegisterInfo());
+      if (SubRegIdx == V->getConstantOperandVal(2) && LeftoverIdx == 0)
+        return V->getOperand(1);
+    }
+    return SDValue();
+  };
+
+  while (SDValue SubRegTrue = UnwrapSubReg(True)) {
+    if (True->use_empty() || !True->use_begin()->isOnlyUserOf(True.getNode()))
+      return false;
+    True = SubRegTrue;
+  }
+
   // Need N is the exactly one using True.
   if (!True.hasOneUse())
     return false;
@@ -3492,9 +3547,14 @@ bool RISCVDAGToDAGISel::performCombineVMergeAndVOps(SDNode *N) {
   SDValue PolicyOp =
     CurDAG->getTargetConstant(Policy, DL, Subtarget->getXLenVT());
 
-
   SmallVector<SDValue, 8> Ops;
-  Ops.push_back(False);
+  // If True is operating on a subreg, then we need to extract out a subreg of
+  // False so the types match.
+  if (SubRegIdx)
+    Ops.push_back(CurDAG->getTargetExtractSubreg(
+        *SubRegIdx, DL, True->getSimpleValueType(0), False));
+  else
+    Ops.push_back(False);
 
   const bool HasRoundingMode = RISCVII::hasRoundModeOp(TrueTSFlags);
   const unsigned NormalOpsEnd = TrueVLIndex - IsMasked - HasRoundingMode;
@@ -3527,7 +3587,16 @@ bool RISCVDAGToDAGISel::performCombineVMergeAndVOps(SDNode *N) {
     CurDAG->setNodeMemRefs(Result, cast<MachineSDNode>(True)->memoperands());
 
   // Replace vmerge.vvm node by Result.
-  ReplaceUses(SDValue(N, 0), SDValue(Result, 0));
+  if (SubRegIdx) {
+    // If True was operating on a subreg, then we need to insert the subreg back
+    // into the full size False.
+    MVT MergeVT = N->getSimpleValueType(0);
+    SDValue Insert = CurDAG->getTargetInsertSubreg(*SubRegIdx, DL, MergeVT,
+                                                   False, SDValue(Result, 0));
+    ReplaceUses(SDValue(N, 0), Insert);
+  } else {
+    ReplaceUses(SDValue(N, 0), SDValue(Result, 0));
+  }
 
   // Replace another value of True. E.g. chain and VL.
   for (unsigned Idx = 1; Idx < True->getNumValues(); ++Idx)
