@@ -4,6 +4,7 @@
 ; RUN: llc < %s -mtriple=x86_64-unknown-unknown -mattr=+avx512bw | FileCheck %s --check-prefix=CHECK --check-prefix=AVX512BW
 ; RUN: llc < %s -mtriple=x86_64-unknown-unknown -mattr=+avx512dq | FileCheck %s --check-prefix=CHECK --check-prefix=AVX512DQ
 ; RUN: llc < %s -mtriple=x86_64-unknown-unknown -mattr=+avx512dq,+avx512bw,+avx512vl | FileCheck %s --check-prefix=CHECK --check-prefix=SKX
+; RUN: llc < %s -mtriple=x86_64-unknown-unknown -mattr=+avx10.1,+avx10-512bit  | FileCheck %s --check-prefix=CHECK --check-prefix=SKX
 
 define <8 x double> @addpd512(<8 x double> %y, <8 x double> %x) {
 ; CHECK-LABEL: addpd512:

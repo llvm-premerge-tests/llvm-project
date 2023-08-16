@@ -369,6 +369,25 @@
 // AVXVNNIINT16: "-target-feature" "+avxvnniint16"
 // NO-AVXVNNIINT16: "-target-feature" "-avxvnniint16"
 
+// RUN: %clang --target=i386 -mavx10.1 %s -### -o %t.o 2>&1 | FileCheck -check-prefix=AVX10_1 %s
+// RUN: %clang --target=i386 -mavx10.1 -mavx512f %s -### -o %t.o 2>&1 | FileCheck -check-prefixes=AVX10_1,AVX10_WARN %s
+// RUN: %clang --target=i386 -mavx10.1 -mno-avx512f %s -### -o %t.o 2>&1 | FileCheck -check-prefixes=AVX10_1,AVX10_WARN %s
+// RUN: %clang --target=i386 -mno-avx10.1 %s -### -o %t.o 2>&1 | FileCheck -check-prefix=NO-AVX10_1 %s
+// RUN: %clang --target=i386 -mno-avx10.1 -mavx512f %s -### -o %t.o 2>&1 | FileCheck -check-prefixes=NO-AVX10_1,AVX10_WARN %s
+// RUN: %clang --target=i386 -mno-avx10.1 -mno-avx512f %s -### -o %t.o 2>&1 | FileCheck -check-prefixes=NO-AVX10_1,AVX10_WARN %s
+// AVX10_WARN: clang: warning: overriding 'avx512*' option with 'avx10.*' [-Woverriding-t-option]
+// AVX10_1: "-target-feature" "+avx10.1"
+// NO-AVX10_1: "-target-feature" "-avx10.1"
+
+// RUN: %clang --target=i386 -mavx10.1-512 %s -### -o %t.o 2>&1 | FileCheck -check-prefix=AVX10_512BIT %s
+// RUN: %clang --target=i386 -mavx10.1-256 %s -### -o %t.o 2>&1 | FileCheck -check-prefix=NO-AVX10_512BIT %s
+// RUN: %clang --target=i386 -mavx10.1-256 -mavx10.1-512 %s -### -o %t.o 2>&1 | FileCheck -check-prefixes=AVX10_512BIT,OVER256_WARN %s
+// RUN: %clang --target=i386 -mavx10.1-512 -mavx10.1-256 %s -### -o %t.o 2>&1 | FileCheck -check-prefixes=NO-AVX10_512BIT,OVER512_WARN %s
+// OVER256_WARN: clang: warning: overriding 'AVX10-256' option with 'AVX10-512' [-Woverriding-t-option]
+// OVER512_WARN: clang: warning: overriding 'AVX10-512' option with 'AVX10-256' [-Woverriding-t-option]
+// AVX10_512BIT: "-target-feature" "+avx10-512bit"
+// NO-AVX10_512BIT: "-target-feature" "-avx10-512bit"
+
 // RUN: %clang --target=i386 -march=i386 -mcrc32 %s -### 2>&1 | FileCheck -check-prefix=CRC32 %s
 // RUN: %clang --target=i386 -march=i386 -mno-crc32 %s -### 2>&1 | FileCheck -check-prefix=NO-CRC32 %s
 // CRC32: "-target-feature" "+crc32"

@@ -231,6 +231,9 @@ void x86::getX86TargetFeatures(const Driver &D, const llvm::Triple &Triple,
 
   // Now add any that the user explicitly requested on the command line,
   // which may override the defaults.
+  bool HasAVX10x = false;
+  int AVXVecSize = 0;
+  std::vector<StringRef> AVX512Cand;
   for (const Arg *A : Args.filtered(options::OPT_m_x86_Features_Group,
                                     options::OPT_mgeneral_regs_only)) {
     StringRef Name = A->getOption().getName();
@@ -249,7 +252,44 @@ void x86::getX86TargetFeatures(const Driver &D, const llvm::Triple &Triple,
     bool IsNegative = Name.startswith("no-");
     if (IsNegative)
       Name = Name.substr(3);
-    Features.push_back(Args.MakeArgString((IsNegative ? "-" : "+") + Name));
+    if (Name.startswith("avx10.")) {
+      HasAVX10x = true;
+      StringRef VecSizeStr;
+      std::tie(Name, VecSizeStr) = Name.split('-');
+      if (VecSizeStr == "512") {
+        if (AVXVecSize == 256)
+          D.Diag(diag::warn_drv_overriding_flag_option) << "AVX10-256"
+                                                        << "AVX10-512";
+        AVXVecSize = 512;
+      } else if (VecSizeStr == "256") {
+        if (AVXVecSize == 512)
+          D.Diag(diag::warn_drv_overriding_flag_option) << "AVX10-512"
+                                                        << "AVX10-256";
+        AVXVecSize = 256;
+      } else if (VecSizeStr != "") {
+        D.Diag(diag::err_drv_unsupported_opt_with_suggestion)
+            << A->getOption().getName() << Name;
+      }
+    }
+    StringRef ArgString = Args.MakeArgString((IsNegative ? "-" : "+") + Name);
+    if (Name.startswith("avx512"))
+      AVX512Cand.push_back(ArgString);
+    else
+      Features.push_back(ArgString);
+  }
+
+  // If -mavx10.x is specified, clear all -m[no-]avx512xxx options and emit a
+  // warning.
+  if (HasAVX10x) {
+    if (AVX512Cand.size())
+      D.Diag(diag::warn_drv_overriding_flag_option) << "avx512*"
+                                                    << "avx10.*";
+    if (AVXVecSize == 256)
+      Features.push_back("-avx10-512bit");
+    if (AVXVecSize == 512)
+      Features.push_back("+avx10-512bit");
+  } else {
+    Features.insert(Features.end(), AVX512Cand.begin(), AVX512Cand.end());
   }
 
   // Enable/disable straight line speculation hardening.

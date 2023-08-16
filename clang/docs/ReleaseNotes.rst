@@ -160,6 +160,8 @@ AMDGPU Support
 X86 Support
 ^^^^^^^^^^^
 
+- Support ISA of ``AVX10.1``.
+
 Arm and AArch64 Support
 ^^^^^^^^^^^^^^^^^^^^^^^
 

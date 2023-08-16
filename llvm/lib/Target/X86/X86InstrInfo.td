@@ -902,6 +902,8 @@ def HasSSE4A     : Predicate<"Subtarget->hasSSE4A()">;
 def NoAVX        : Predicate<"!Subtarget->hasAVX()">;
 def HasAVX       : Predicate<"Subtarget->hasAVX()">;
 def HasAVX2      : Predicate<"Subtarget->hasAVX2()">;
+def HasAVX10_1   : Predicate<"Subtarget->hasAVX10_1()">;
+def HasAVX10_512BIT : Predicate<"Subtarget->hasAVX10_512BIT()">;
 def HasAVX1Only  : Predicate<"Subtarget->hasAVX() && !Subtarget->hasAVX2()">;
 def HasAVX512    : Predicate<"Subtarget->hasAVX512()">;
 def UseAVX       : Predicate<"Subtarget->hasAVX() && !Subtarget->hasAVX512()">;
