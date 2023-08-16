@@ -412,6 +412,11 @@ PPCTargetLowering::PPCTargetLowering(const PPCTargetMachine &TM,
     setOperationAction(ISD::FMA  , MVT::f32, Legal);
   }
 
+  setOperationAction(ISD::FMAXIMUM, MVT::f32, Custom);
+  setOperationAction(ISD::FMINIMUM, MVT::f32, Custom);
+  setOperationAction(ISD::FMAXIMUM, MVT::f64, Custom);
+  setOperationAction(ISD::FMINIMUM, MVT::f64, Custom);
+
   if (Subtarget.hasSPE())
     setLoadExtAction(ISD::EXTLOAD, MVT::f64, MVT::f32, Expand);
 
@@ -784,6 +789,8 @@ PPCTargetLowering::PPCTargetLowering(const PPCTargetMachine &TM,
       if (Subtarget.hasVSX()) {
         setOperationAction(ISD::FMAXNUM, VT, Legal);
         setOperationAction(ISD::FMINNUM, VT, Legal);
+        setOperationAction(ISD::FMAXIMUM, VT, Custom);
+        setOperationAction(ISD::FMINIMUM, VT, Custom);
       }
 
       // Vector instructions introduced in P8
@@ -1220,6 +1227,9 @@ PPCTargetLowering::PPCTargetLowering(const PPCTargetMachine &TM,
       setOperationAction(ISD::FP_ROUND, MVT::f64, Legal);
       setOperationAction(ISD::FP_ROUND, MVT::f32, Legal);
       setOperationAction(ISD::BITCAST, MVT::i128, Custom);
+
+      setOperationAction(ISD::FMAXIMUM, MVT::f128, Custom);
+      setOperationAction(ISD::FMINIMUM, MVT::f128, Custom);
 
       // Handle constrained floating-point operations of fp128
       setOperationAction(ISD::STRICT_FADD, MVT::f128, Legal);
@@ -11627,6 +11637,9 @@ SDValue PPCTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
     return LowerATOMIC_LOAD_STORE(Op, DAG);
   case ISD::IS_FPCLASS:
     return LowerIS_FPCLASS(Op, DAG);
+  case ISD::FMINIMUM:
+  case ISD::FMAXIMUM:
+    return LowerFMINIMUM_FMAXIMUM(Op, DAG);
   }
 }
 
@@ -18199,6 +18212,39 @@ bool PPCTargetLowering::splitValueIntoRegisterParts(
     return true;
   }
   return false;
+}
+
+SDValue
+PPCTargetLowering::LowerFMINIMUM_FMAXIMUM(llvm::SDValue Op,
+                                          llvm::SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  SDValue LHS = Op.getOperand(0);
+  SDValue RHS = Op.getOperand(1);
+  unsigned Opc = Op.getOpcode();
+  EVT CCVT = getSetCCResultType(DAG.getDataLayout(), *DAG.getContext(),
+                                Op.getValueType());
+  bool NoNaN = (Op->getFlags().hasNoNaNs() ||
+                (DAG.isKnownNeverNaN(LHS) && DAG.isKnownNeverNaN(RHS)));
+
+  // Use two-way comparison to propagate NaN.
+  SDValue NaNCheck = DAG.getSetCC(DL, CCVT, LHS, RHS, ISD::SETUO);
+  SDValue MinMax;
+  if (Subtarget.hasVSX() && Op.getValueType() != MVT::f128) {
+    MinMax = DAG.getNode(Opc == ISD::FMAXIMUM ? ISD::FMAXNUM : ISD::FMINNUM, DL,
+                         Op.getValueType(), LHS, RHS);
+  } else {
+    SDValue FPCmp = DAG.getSetCC(
+        DL, CCVT, LHS, RHS, Opc == ISD::FMAXIMUM ? ISD::SETOGT : ISD::SETOLT);
+    MinMax = DAG.getSelect(DL, Op.getValueType(), FPCmp, LHS, RHS);
+  }
+  if (NoNaN)
+    return MinMax;
+  ConstantFP *FPNaN = ConstantFP::get(
+      *DAG.getContext(),
+      APFloat::getNaN(DAG.EVTToAPFloatSemantics(Op.getValueType())));
+  SDValue NaN = DAG.getConstantFP(*FPNaN, DL, Op.getValueType());
+  SDValue Result = DAG.getSelect(DL, Op.getValueType(), NaNCheck, NaN, MinMax);
+  return Result;
 }
 
 SDValue PPCTargetLowering::lowerToLibCall(const char *LibCallName, SDValue Op,
