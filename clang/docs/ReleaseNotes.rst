@@ -103,6 +103,10 @@ C23 Feature Support
   previous placeholder value. Clang continues to accept ``-std=c2x`` and
   ``-std=gnu2x`` as aliases for C23 and GNU C23, respectively.
 
+- Clang now adds <stdckdint.h> which defines several macros for performing
+  checked integer arithmetic. The macro ``__STDC_VERSION_STDCKDINT_H__``
+  is an integer constant expression with a value equivalent to ``202311L``.
+
 Non-comprehensive list of changes in this release
 -------------------------------------------------
 
