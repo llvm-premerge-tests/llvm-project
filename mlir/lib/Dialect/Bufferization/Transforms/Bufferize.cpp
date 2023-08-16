@@ -17,6 +17,7 @@
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/IR/Operation.h"
+#include "mlir/Interfaces/ControlFlowInterfaces.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
@@ -321,6 +322,16 @@ static bool isaTensor(Type t) { return isa<TensorType>(t); }
 
 /// Return true if the given op has a tensor result or a tensor operand.
 static bool hasTensorSemantics(Operation *op) {
+  bool hasTensorBlockArgument = any_of(op->getRegions(), [](Region &r) {
+    return any_of(r.getBlocks(), [](Block &b) {
+      return any_of(b.getArguments(), [](BlockArgument bbArg) {
+        return isaTensor(bbArg.getType());
+      });
+    });
+  });
+  if (hasTensorBlockArgument)
+    return true;
+
   if (auto funcOp = dyn_cast<FunctionOpInterface>(op)) {
     bool hasTensorArg = any_of(funcOp.getArgumentTypes(), isaTensor);
     bool hasTensorResult = any_of(funcOp.getResultTypes(), isaTensor);
@@ -530,6 +541,93 @@ LogicalResult bufferization::bufferizeOp(Operation *op,
     if (isa<ToTensorOp, ToMemrefOp>(op))
       continue;
     return op->emitError("op was not bufferized");
+  }
+
+  return success();
+}
+
+LogicalResult
+bufferization::bufferizeBlockSignature(Block *block, RewriterBase &rewriter,
+                                       const BufferizationOptions &options) {
+  OpBuilder::InsertionGuard g(rewriter);
+  auto bufferizableOp = options.dynCastBufferizableOp(block->getParentOp());
+  if (!bufferizableOp)
+    return failure();
+
+  // Compute the new signature.
+  SmallVector<Type> newTypes;
+  for (BlockArgument &bbArg : block->getArguments()) {
+    auto tensorType = dyn_cast<TensorType>(bbArg.getType());
+    if (!tensorType) {
+      newTypes.push_back(bbArg.getType());
+      continue;
+    }
+
+    FailureOr<BaseMemRefType> memrefType =
+        bufferization::getBufferType(bbArg, options);
+    if (failed(memrefType))
+      return failure();
+    newTypes.push_back(*memrefType);
+  }
+
+  // Change the type of all block arguments.
+  for (auto [bbArg, type] : llvm::zip(block->getArguments(), newTypes)) {
+    if (bbArg.getType() == type)
+      continue;
+
+    // Collect all uses of the bbArg.
+    SmallVector<OpOperand *> bbArgUses;
+    for (OpOperand &use : bbArg.getUses())
+      bbArgUses.push_back(&use);
+
+    // Change the bbArg type to memref.
+    bbArg.setType(type);
+
+    // Replace all uses of the original tensor bbArg.
+    rewriter.setInsertionPointToStart(block);
+    if (!bbArgUses.empty()) {
+      Value toTensorOp =
+          rewriter.create<bufferization::ToTensorOp>(bbArg.getLoc(), bbArg);
+      for (OpOperand *use : bbArgUses)
+        use->set(toTensorOp);
+    }
+  }
+
+  // Bufferize callers of the block.
+  for (Operation *op : block->getUsers()) {
+    auto branchOp = dyn_cast<BranchOpInterface>(op);
+    if (!branchOp)
+      return op->emitOpError("cannot bufferize ops with block references that "
+                             "do not implement BranchOpInterface");
+
+    auto it = llvm::find(op->getSuccessors(), block);
+    assert(it != op->getSuccessors().end() && "could find successor");
+    int64_t successorIdx = std::distance(op->getSuccessors().begin(), it);
+
+    SuccessorOperands operands = branchOp.getSuccessorOperands(successorIdx);
+    SmallVector<Value> newOperands;
+    for (auto [operand, type] :
+         llvm::zip(operands.getForwardedOperands(), newTypes)) {
+      if (operand.getType() == type) {
+        // Not a tensor type. Nothing to do for this operand.
+        newOperands.push_back(operand);
+        continue;
+      }
+      FailureOr<BaseMemRefType> operandBufferType =
+          bufferization::getBufferType(operand, options);
+      if (failed(operandBufferType))
+        return failure();
+      rewriter.setInsertionPointAfterValue(operand);
+      Value bufferizedOperand = rewriter.create<bufferization::ToMemrefOp>(
+          operand.getLoc(), *operandBufferType, operand);
+      // A cast is needed if the operand and the block argument have different
+      // bufferized types.
+      if (type != *operandBufferType)
+        bufferizedOperand = rewriter.create<memref::CastOp>(
+            operand.getLoc(), type, bufferizedOperand);
+      newOperands.push_back(bufferizedOperand);
+    }
+    operands.getMutableForwardedOperands().assign(newOperands);
   }
 
   return success();
