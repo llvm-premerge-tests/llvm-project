@@ -265,6 +265,10 @@ protected:
   /// Profile reader object.
   std::unique_ptr<SampleProfileReader> Reader;
 
+  /// Synthetic samples created by duplicating the samples of inlined functions
+  /// from the original profile as if they were top level sample profiles.
+  SampleProfileMap OutlineFunctionSamples;
+
   // A pseudo probe helper to correlate the imported sample counts.
   std::unique_ptr<PseudoProbeManager> ProbeManager;
 
