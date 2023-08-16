@@ -76,6 +76,8 @@ private:
 
 /// This class represents a specific resource that an effect applies to. This
 /// class represents an abstract interface for a given resource.
+/// A resource can be a separate memory space (the "heap", the "stack", Cuda
+/// "shared memory"), or other more specialized resources (the "filesystem").
 class Resource {
 public:
   virtual ~Resource() = default;
@@ -119,12 +121,22 @@ private:
 };
 
 /// A conservative default resource kind.
+/// Effects touching this resource may potentially interact with effects touching
+/// any other resource. It is advised that other resources are implemented to model
+/// disjoint memory spaces, or to isolate effects touching special entities like
+/// the "filesystem" for example.
 struct DefaultResource : public Resource::Base<DefaultResource> {
   StringRef getName() final { return "<Default>"; }
 };
 
 /// An automatic allocation-scope resource that is valid in the context of a
 /// parent AutomaticAllocationScope trait.
+/// Conceptually, this resource corresponds to the "stack", this is useful so
+/// that effects associated with this resource are known to only touch this
+/// memory and won't alias other effects touching the head for example.
+/// It is also useful to understand the lifetime of an "allocation" effect
+/// on this resource: it'll be tied to the region of the closest enclosing
+/// operation implementing the `AutomaticAllocationScope` trait.
 struct AutomaticAllocationScopeResource
     : public Resource::Base<AutomaticAllocationScopeResource> {
   StringRef getName() final { return "AutomaticAllocationScope"; }
