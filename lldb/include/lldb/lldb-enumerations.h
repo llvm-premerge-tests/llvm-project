@@ -1283,6 +1283,15 @@ enum CompletionType {
   eCustomCompletion = (1u << 25)
 };
 
+enum AddressMaskType {
+  eMaskTypeCode = 0,
+  eMaskTypeData,
+  eMaskTypeHighmemCode,
+  eMaskTypeHighmemData,
+  eMaskTypeAny,
+  eMaskTypeAll = eMaskTypeAny
+};
+
 } // namespace lldb
 
 #endif // LLDB_LLDB_ENUMERATIONS_H

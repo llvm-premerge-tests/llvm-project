@@ -398,6 +398,52 @@ public:
   /// valid.
   lldb::SBProcessInfo GetProcessInfo();
 
+  /// Get the current address mask that may be applied to addresses
+  /// before reading from memory.
+  ///
+  /// \param[in] type
+  ///     lldb may have different address masks for code and data
+  ///     addresses.  And it may have different masks for code
+  ///     and data in high memory, which differ from the low memory
+  ///     code/data masks.  Each of these can be requested, or
+  ///     most commonly, eMaskTypeAny can be requested, with the
+  ///     assumption that the masks are all identical.
+  ///
+  /// \return
+  ///     The address mask currently in use.  Bits which are not used
+  ///     for addressing will be set to 1 in the mask.
+  lldb::addr_t GetAddressMask(lldb::AddressMaskType type);
+
+  /// Set the current address mask that may be applied to addresses
+  /// before reading from memory.
+  ///
+  /// \param[in] type
+  ///     lldb can have different address masks for code and data
+  ///     addresses.  And it can have different masks for code
+  ///     and data in high memory, which differ from the low memory
+  ///     code/data masks.  Each of these can be set, or
+  ///     most commonly, eMaskTypeall can be set, when all masks are
+  ///     identical.
+  ///
+  /// \param[in] mask
+  ///     The address mask to set.  Bits which are not used for addressing
+  ///     should be set to 1 in the mask.
+  void SetAddressMask(lldb::AddressMaskType type, lldb::addr_t mask);
+
+  /// Clear the non-addressable bits of an \a addr value and return a
+  /// virtual address in memory.
+  ///
+  /// Bits that are not used in addressing may be used for other purposes;
+  /// pointer authentication, or metadata in the top byte, or the 0th bit
+  /// of armv7 code addresses to indicate arm/thumb are common examples.
+  ///
+  /// When the target has provided an address mask of which bits are
+  /// valid for addressing, lldb can clear (or set, for high-memory addresses)
+  /// these bits.
+  lldb::addr_t FixCodeAddress(lldb::addr_t addr);
+  lldb::addr_t FixDataAddress(lldb::addr_t addr);
+  lldb::addr_t FixAnyAddress(lldb::addr_t addr);
+
   /// Allocate memory within the process.
   ///
   /// This function will allocate memory in the process's address space.

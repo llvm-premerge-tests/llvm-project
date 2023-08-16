@@ -1244,6 +1244,73 @@ lldb::SBProcessInfo SBProcess::GetProcessInfo() {
   return sb_proc_info;
 }
 
+addr_t SBProcess::GetAddressMask(lldb::AddressMaskType type) {
+  LLDB_INSTRUMENT_VA(this, type);
+  addr_t default_mask = 0;
+  if (ProcessSP process_sp = GetSP()) {
+    switch (type) {
+    case eMaskTypeCode:
+      return process_sp->GetCodeAddressMask();
+    case eMaskTypeData:
+      return process_sp->GetDataAddressMask();
+    case eMaskTypeHighmemCode:
+      return process_sp->GetHighmemCodeAddressMask();
+    case eMaskTypeHighmemData:
+      return process_sp->GetHighmemDataAddressMask();
+    case eMaskTypeAny:
+      return process_sp->GetDataAddressMask();
+    }
+  }
+  return default_mask;
+}
+
+void SBProcess::SetAddressMask(lldb::AddressMaskType type, addr_t mask) {
+  LLDB_INSTRUMENT_VA(this, type, mask);
+  if (ProcessSP process_sp = GetSP()) {
+    switch (type) {
+    case eMaskTypeCode:
+      process_sp->SetCodeAddressMask(mask);
+      break;
+    case eMaskTypeData:
+      process_sp->SetDataAddressMask(mask);
+      break;
+    case eMaskTypeHighmemCode:
+      process_sp->SetHighmemCodeAddressMask(mask);
+      break;
+    case eMaskTypeHighmemData:
+      process_sp->SetHighmemDataAddressMask(mask);
+      break;
+    case eMaskTypeAll:
+      process_sp->SetCodeAddressMask(mask);
+      process_sp->SetDataAddressMask(mask);
+      process_sp->SetHighmemCodeAddressMask(mask);
+      process_sp->SetHighmemDataAddressMask(mask);
+      break;
+    }
+  }
+}
+
+addr_t SBProcess::FixCodeAddress(addr_t addr) {
+  LLDB_INSTRUMENT_VA(this, addr);
+  if (ProcessSP process_sp = GetSP())
+    return process_sp->FixCodeAddress(addr);
+  return addr;
+}
+
+addr_t SBProcess::FixDataAddress(addr_t addr) {
+  LLDB_INSTRUMENT_VA(this, addr);
+  if (ProcessSP process_sp = GetSP())
+    return process_sp->FixDataAddress(addr);
+  return addr;
+}
+
+addr_t SBProcess::FixAnyAddress(addr_t addr) {
+  LLDB_INSTRUMENT_VA(this, addr);
+  if (ProcessSP process_sp = GetSP())
+    return process_sp->FixAnyAddress(addr);
+  return addr;
+}
+
 lldb::addr_t SBProcess::AllocateMemory(size_t size, uint32_t permissions,
                                        lldb::SBError &sb_error) {
   LLDB_INSTRUMENT_VA(this, size, permissions, sb_error);
