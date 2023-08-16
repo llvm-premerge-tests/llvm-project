@@ -1056,6 +1056,11 @@ void ConversionPatternRewriterImpl::applyRewrites() {
   // Drop all of the unresolved materialization operations created during
   // conversion.
   for (auto &mat : unresolvedMaterializations) {
+    // In some cases, such as when a materialization is removed via folding,
+    // the materialization op will already have a replacement, and we need
+    // to avoid a double-drop.
+    if (replacements.count(mat.getOp()))
+      continue;
     mat.getOp()->dropAllUses();
     mat.getOp()->erase();
   }
@@ -3395,7 +3400,8 @@ mlir::applyPartialConversion(Operation *op, const ConversionTarget &target,
 // Full Conversion
 
 LogicalResult
-mlir::applyFullConversion(ArrayRef<Operation *> ops, const ConversionTarget &target,
+mlir::applyFullConversion(ArrayRef<Operation *> ops,
+                          const ConversionTarget &target,
                           const FrozenRewritePatternSet &patterns) {
   OperationConverter opConverter(target, patterns, OpConversionMode::Full);
   return opConverter.convertOperations(ops);

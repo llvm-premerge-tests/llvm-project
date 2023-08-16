@@ -1697,6 +1697,102 @@ struct TestSelectiveReplacementPatternDriver
 } // namespace
 
 //===----------------------------------------------------------------------===//
+// Test Dialect Conversion Materialization Folding
+//===----------------------------------------------------------------------===//
+
+namespace {
+
+class DropDozingTypeConverter : public TypeConverter {
+public:
+  DropDozingTypeConverter() {
+    addConversion([](Type type) { return type; });
+    addConversion(
+        [](TestDozingType type) -> Type { return type.getValueType(); });
+  }
+};
+
+struct ConvertFallAsleep : public OpConversionPattern<FallAsleepOp> {
+  ConvertFallAsleep(mlir::MLIRContext *context)
+      : OpConversionPattern<FallAsleepOp>(context) {}
+
+  using OpConversionPattern::OpConversionPattern;
+
+  LogicalResult
+  matchAndRewrite(FallAsleepOp op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    if (op.getOutput().use_empty()) {
+      rewriter.eraseOp(op);
+      return success();
+    }
+
+    rewriter.replaceAllUsesWith(op.getResult(), adaptor.getInput());
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
+struct ConvertAwaken : public OpConversionPattern<AwakenOp> {
+  ConvertAwaken(::mlir::MLIRContext *context)
+      : OpConversionPattern<AwakenOp>(context) {}
+
+  using OpConversionPattern::OpConversionPattern;
+
+  LogicalResult
+  matchAndRewrite(AwakenOp op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    if (op.getOutput().use_empty()) {
+      rewriter.eraseOp(op);
+      return success();
+    }
+
+    rewriter.replaceAllUsesWith(op.getResult(), adaptor.getInput());
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
+struct TestDialectConversionMaterializationFolding
+    : public PassWrapper<TestDialectConversionMaterializationFolding,
+                         OperationPass<>> {
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(
+      TestDialectConversionMaterializationFolding)
+
+  StringRef getArgument() const final { return "test-drop-dozing"; }
+  StringRef getDescription() const final {
+    return "Test dropping dozing types";
+  }
+  void runOnOperation() override {
+    MLIRContext *context = &getContext();
+    auto *op = getOperation();
+    ::mlir::RewritePatternSet patterns(context);
+    DropDozingTypeConverter typeConverter;
+    ConversionTarget target(*context);
+
+    target.addIllegalOp<AwakenOp, FallAsleepOp>();
+    target.addDynamicallyLegalOp<::mlir::func::FuncOp>(
+        [&](::mlir::func::FuncOp op) {
+          return typeConverter.isSignatureLegal(op.getFunctionType()) &&
+                 typeConverter.isLegal(&op.getBody());
+        });
+    target.addDynamicallyLegalOp<::mlir::func::CallOp>(
+        [&](mlir::func::CallOp op) { return typeConverter.isLegal(op); });
+    target.addDynamicallyLegalOp<::mlir::func::ReturnOp>(
+        [&](::mlir::func::ReturnOp op) { return typeConverter.isLegal(op); });
+
+    patterns.add<ConvertFallAsleep, ConvertAwaken>(typeConverter, context);
+    populateFunctionOpInterfaceTypeConversionPattern<::mlir::func::FuncOp>(
+        patterns, typeConverter);
+    populateReturnOpTypeConversionPattern(patterns, typeConverter);
+    populateCallOpTypeConversionPattern(patterns, typeConverter);
+
+    if (failed(applyPartialConversion(op, target, std::move(patterns)))) {
+      signalPassFailure();
+    }
+  }
+};
+} // namespace
+
+//===----------------------------------------------------------------------===//
 // PassRegistration
 //===----------------------------------------------------------------------===//
 
@@ -1725,6 +1821,7 @@ void registerPatternsTestPass() {
 
   PassRegistration<TestMergeBlocksPatternDriver>();
   PassRegistration<TestSelectiveReplacementPatternDriver>();
+  PassRegistration<TestDialectConversionMaterializationFolding>();
 }
 } // namespace test
 } // namespace mlir

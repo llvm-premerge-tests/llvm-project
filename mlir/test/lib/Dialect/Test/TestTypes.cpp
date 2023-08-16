@@ -482,3 +482,18 @@ void TestDialect::printType(Type type, DialectAsmPrinter &printer) const {
   SetVector<Type> stack;
   printTestType(type, printer, stack);
 }
+
+void TestDozingType::print(AsmPrinter &printer) const {
+  printer << "<";
+  printer.printType(getValueType());
+  printer << '>';
+}
+
+Type TestDozingType::parse(mlir::AsmParser &parser) {
+  Type ty;
+  if (parser.parseLess() || parser.parseType(ty) || parser.parseGreater()) {
+    parser.emitError(parser.getNameLoc(), "failed to parse dozing value type");
+    return Type();
+  }
+  return TestDozingType::get(ty);
+}

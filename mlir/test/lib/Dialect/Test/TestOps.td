@@ -2884,4 +2884,29 @@ def TestStoreWithARegionTerminator : TEST_Op<"store_with_a_region_terminator",
   let assemblyFormat = "attr-dict";
 }
 
+//===----------------------------------------------------------------------===//
+// Test ops for dialect conversion materialization bug regression
+// https://github.com/llvm/llvm-project/issues/64665
+//===----------------------------------------------------------------------===//
+
+def TestDozing_FallAsleepOp : TEST_Op<"fall_asleep", [Pure]> {
+  let summary = "Rock the input value gently to sleep.";
+  let arguments = (ins AnyType:$input);
+  let results = (outs TestDozing:$output);
+  let assemblyFormat = "$input attr-dict `:` type($input) `->` type($output)";
+  let builders = [
+    OpBuilder<(ins "::mlir::Value":$input)>
+  ];
+}
+
+def TestDozing_AwakenOp : TEST_Op<"awaken", [Pure]> {
+  let summary = "Awaken a sleeping value.";
+  let arguments = (ins TestDozing:$input);
+  let results = (outs AnyType:$output);
+  let assemblyFormat = "$input attr-dict `:` type($input) `->` type($output)";
+  let builders = [
+    OpBuilder<(ins "::mlir::Value":$input)>
+  ];
+}
+
 #endif // TEST_OPS
