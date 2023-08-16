@@ -8,6 +8,7 @@
 
 #include "ABIInfoImpl.h"
 #include "TargetInfo.h"
+#include "llvm/TargetParser/RISCVTargetParser.h"
 
 using namespace clang;
 using namespace clang::CodeGen;
@@ -19,6 +20,9 @@ using namespace clang::CodeGen;
 namespace {
 class RISCVABIInfo : public DefaultABIInfo {
 private:
+  using ArgRegPair = std::pair<CGFunctionInfoArgInfo *, unsigned>;
+  using ArgRegPairs = llvm::SmallVector<ArgRegPair>;
+
   // Size of the integer ('x') registers in bits.
   unsigned XLen;
   // Size of the floating point ('f') registers in bits. Note that the target
@@ -27,11 +31,15 @@ private:
   unsigned FLen;
   static const int NumArgGPRs = 8;
   static const int NumArgFPRs = 8;
+  static const int NumArgVRs = 16;
   bool detectFPCCEligibleStructHelper(QualType Ty, CharUnits CurOff,
                                       llvm::Type *&Field1Ty,
                                       CharUnits &Field1Off,
                                       llvm::Type *&Field2Ty,
                                       CharUnits &Field2Off) const;
+  unsigned
+  computeMaxAssignedRegs(ArgRegPairs &RVVArgRegPairs,
+                         std::vector<std::vector<unsigned>> &MaxRegs) const;
 
 public:
   RISCVABIInfo(CodeGen::CodeGenTypes &CGT, unsigned XLen, unsigned FLen)
@@ -40,6 +48,9 @@ public:
   // DefaultABIInfo's classifyReturnType and classifyArgumentType are
   // non-virtual, but computeInfo is virtual, so we overload it.
   void computeInfo(CGFunctionInfo &FI) const override;
+
+  ArgRegPairs calculateRVVArgVRegs(CGFunctionInfo &FI) const;
+  void classifyRVVArgumentType(ArgRegPairs RVVArgRegPairs) const;
 
   ABIArgInfo classifyArgumentType(QualType Ty, bool IsFixed, int &ArgGPRsLeft,
                                   int &ArgFPRsLeft) const;
@@ -92,9 +103,98 @@ void RISCVABIInfo::computeInfo(CGFunctionInfo &FI) const {
   int ArgNum = 0;
   for (auto &ArgInfo : FI.arguments()) {
     bool IsFixed = ArgNum < NumFixedArgs;
+    ArgNum++;
+
+    if (ArgInfo.type.getTypePtr()->isRVVType())
+      continue;
+
     ArgInfo.info =
         classifyArgumentType(ArgInfo.type, IsFixed, ArgGPRsLeft, ArgFPRsLeft);
-    ArgNum++;
+  }
+
+  classifyRVVArgumentType(calculateRVVArgVRegs(FI));
+}
+
+// Calculate total vregs each RVV argument needs.
+RISCVABIInfo::ArgRegPairs
+RISCVABIInfo::calculateRVVArgVRegs(CGFunctionInfo &FI) const {
+  RISCVABIInfo::ArgRegPairs RVVArgRegPairs;
+  for (auto &ArgInfo : FI.arguments()) {
+    const QualType &Ty = ArgInfo.type;
+    if (!Ty->isRVVType())
+      continue;
+
+    // Calcluate the registers needed for each RVV type.
+    unsigned ElemSize = Ty->isRVVType(8, false)    ? 8
+                        : Ty->isRVVType(16, false) ? 16
+                        : Ty->isRVVType(32, false) ? 32
+                                                   : 64;
+    unsigned ElemCount = Ty->isRVVType(1)    ? 1
+                         : Ty->isRVVType(2)  ? 2
+                         : Ty->isRVVType(4)  ? 4
+                         : Ty->isRVVType(8)  ? 8
+                         : Ty->isRVVType(16) ? 16
+                         : Ty->isRVVType(32) ? 32
+                                             : 64;
+    unsigned RegsPerGroup =
+        std::max((ElemSize * ElemCount) / llvm::RISCV::RVVBitsPerBlock, 1U);
+
+    unsigned NumGroups = 1;
+    if (Ty->isRVVTupleType())
+      // Get the number of groups(NF) for each RVV type.
+      NumGroups = Ty->isRVVTupleType(2)   ? 2
+                  : Ty->isRVVTupleType(3) ? 3
+                  : Ty->isRVVTupleType(4) ? 4
+                  : Ty->isRVVTupleType(5) ? 5
+                  : Ty->isRVVTupleType(6) ? 6
+                  : Ty->isRVVTupleType(7) ? 7
+                                          : 8;
+
+    RVVArgRegPairs.push_back(
+        std::make_pair(&ArgInfo, NumGroups * RegsPerGroup));
+  }
+
+  return RVVArgRegPairs;
+}
+
+// Dynamic programming approach for finding the best vector register usages.
+// We can deduce the problem to 0/1 knapsack problem with:
+//   1. capacity == NumArgVRs
+//   2. weight == value == total VRs needed
+unsigned RISCVABIInfo::computeMaxAssignedRegs(
+    ArgRegPairs &RVVArgRegPairs,
+    std::vector<std::vector<unsigned>> &MaxRegs) const {
+  for (unsigned i = 1; i <= RVVArgRegPairs.size(); ++i) {
+    unsigned RegsNeeded = RVVArgRegPairs[i - 1].second;
+    for (unsigned j = 1; j <= NumArgVRs; ++j)
+      if (j < RegsNeeded)
+        MaxRegs[i][j] = MaxRegs[i - 1][j];
+      else
+        MaxRegs[i][j] = std::max(RegsNeeded + MaxRegs[i - 1][j - RegsNeeded],
+                                 MaxRegs[i - 1][j]);
+  }
+
+  return MaxRegs[RVVArgRegPairs.size()][NumArgVRs];
+}
+
+void RISCVABIInfo::classifyRVVArgumentType(ArgRegPairs RVVArgRegPairs) const {
+  unsigned ToBeAssigned = RVVArgRegPairs.size();
+  std::vector<std::vector<unsigned>> MaxRegs(
+      ToBeAssigned + 1, std::vector<unsigned>(NumArgVRs + 1, 0));
+  computeMaxAssignedRegs(RVVArgRegPairs, MaxRegs);
+
+  // Walk back through MaxRegs to determine which argument is passed by
+  // register.
+  unsigned RegsLeft = NumArgVRs;
+  while (ToBeAssigned--) {
+    auto *ArgInfo = RVVArgRegPairs[ToBeAssigned].first;
+    if (!RegsLeft ||
+        MaxRegs[ToBeAssigned + 1][RegsLeft] == MaxRegs[ToBeAssigned][RegsLeft])
+      ArgInfo->info = getNaturalAlignIndirect(ArgInfo->type, /*ByVal=*/false);
+    else {
+      ArgInfo->info = ABIArgInfo::getDirect();
+      RegsLeft -= RVVArgRegPairs[ToBeAssigned].second;
+    }
   }
 }
 
