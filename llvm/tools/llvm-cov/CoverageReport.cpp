@@ -165,6 +165,40 @@ unsigned getRedundantPrefixLen(ArrayRef<std::string> Paths) {
   return PrefixLen;
 }
 
+/// Determine the length of the longest redundant prefix of the substrs starts
+/// from \p LCP in \p Paths. \p Paths can't be empty. If there's only one
+/// element in \p Paths, the length of the substr is returned. Note this is
+/// differnet from the behavior of the function above.
+unsigned getRedundantPrefixLen(ArrayRef<StringRef> Paths, unsigned LCP) {
+  assert(!Paths.empty() && "Paths must have at least one element");
+
+  auto Iter = Paths.begin();
+  auto IterE = Paths.end();
+  auto First = Iter->substr(LCP);
+  SmallVector<StringRef, 16> CommonComponents{sys::path::begin(First),
+                                              sys::path::end(First)};
+  unsigned Len = First.size() - LCP;
+  while (++Iter != IterE) {
+    auto Substr = Iter->substr(LCP);
+    auto I = sys::path::begin(Substr);
+    auto E = sys::path::end(Substr);
+
+    unsigned Index = 0;
+    while (I != E) {
+      if (Index >= CommonComponents.size())
+        break;
+      if (CommonComponents[Index] != *I) {
+        CommonComponents.resize(Index);
+        Len = I - sys::path::begin(Substr);
+        break;
+      }
+      ++Index, ++I;
+    }
+  }
+
+  return Len;
+}
+
 } // end anonymous namespace
 
 namespace llvm {
@@ -179,8 +213,14 @@ void CoverageReport::render(const FileCoverageSummary &File,
       determineCoveragePercentageColor(File.InstantiationCoverage);
   auto LineCoverageColor = determineCoveragePercentageColor(File.LineCoverage);
   SmallString<256> FileName = File.Name;
-  sys::path::remove_dots(FileName, /*remove_dot_dot=*/true);
   sys::path::native(FileName);
+
+  // remove_dots will remove trailing slash, so we need to check before it.
+  auto IsDir = FileName.endswith(sys::path::get_separator());
+  sys::path::remove_dots(FileName, /*remove_dot_dot=*/true);
+  if (IsDir)
+    FileName += sys::path::get_separator();
+
   OS << column(FileName, FileReportColumns[0], Column::NoTrim);
 
   if (Options.ShowRegionSummary) {
@@ -435,7 +475,12 @@ void CoverageReport::renderFileReports(
   FileCoverageSummary Totals("TOTAL");
   auto FileReports =
       prepareFileReports(Coverage, Totals, Files, Options, Filters);
+  renderFileReports(OS, FileReports, Totals, Filters.empty());
+}
 
+void CoverageReport::renderFileReports(
+    raw_ostream &OS, const std::vector<FileCoverageSummary> &FileReports,
+    const FileCoverageSummary &Totals, bool ShowEmptyFiles) const {
   std::vector<StringRef> Filenames;
   Filenames.reserve(FileReports.size());
   for (const FileCoverageSummary &FCS : FileReports)
@@ -466,26 +511,122 @@ void CoverageReport::renderFileReports(
   renderDivider(FileReportColumns, OS);
   OS << "\n";
 
-  bool EmptyFiles = false;
+  std::vector<const FileCoverageSummary *> EmptyFiles;
   for (const FileCoverageSummary &FCS : FileReports) {
     if (FCS.FunctionCoverage.getNumFunctions())
       render(FCS, OS);
     else
-      EmptyFiles = true;
+      EmptyFiles.push_back(&FCS);
   }
 
-  if (EmptyFiles && Filters.empty()) {
+  if (!EmptyFiles.empty() && ShowEmptyFiles) {
     OS << "\n"
        << "Files which contain no functions:\n";
 
-    for (const FileCoverageSummary &FCS : FileReports)
-      if (!FCS.FunctionCoverage.getNumFunctions())
-        render(FCS, OS);
+    for (auto FCS : EmptyFiles)
+      render(*FCS, OS);
   }
 
   renderDivider(FileReportColumns, OS);
   OS << "\n";
   render(Totals, OS);
+}
+
+Expected<FileCoverageSummary> DirectoryCoverageReport::prepareDirectoryReports(
+    ArrayRef<std::string> SourceFiles) {
+  std::vector<StringRef> Files(SourceFiles.begin(), SourceFiles.end());
+
+  unsigned RootLCP = getRedundantPrefixLen(Files, 0);
+  auto LCPath = Files.front().substr(0, RootLCP);
+
+  ThreadPoolStrategy PoolS = hardware_concurrency(Options.NumThreads);
+  if (Options.NumThreads == 0) {
+    PoolS = heavyweight_hardware_concurrency(Files.size());
+    PoolS.Limit = true;
+  }
+  ThreadPool Pool(PoolS);
+
+  TPool = &Pool;
+  LCPStack = {RootLCP};
+  FileCoverageSummary RootTotals(LCPath);
+  if (auto E = prepareSubDirectoryReports(Files, &RootTotals))
+    return {std::move(E)};
+  return {std::move(RootTotals)};
+}
+
+/// Filter out files in `LCPStack.back()`, group others by subdirectory name
+/// and recurse on them. After returning from all subdirectories, call
+/// `operator()`. \p Files must be non-empty. The FileCoverageSummary of this
+/// directory will be added to \p Totals.
+Error DirectoryCoverageReport::prepareSubDirectoryReports(
+    const ArrayRef<StringRef> &Files, FileCoverageSummary *Totals) {
+  assert(!Files.empty() && "Only works when Files is not empty");
+
+  auto LCP = LCPStack.back();
+  auto LCPath = Files.front().substr(0, LCP).str();
+
+  // Use ordered map to keep entries in order.
+  SubFileReports SubFiles;
+  SubDirReports SubDirs;
+  for (auto &&File : Files) {
+    auto SubPath = File.substr(LCPath.size());
+
+    auto I = sys::path::begin(SubPath);
+    auto E = sys::path::end(SubPath);
+    assert(I != E && "Such case should have been filtered out in the caller");
+
+    // What if we report a Windows exe on Linux? In this case, all files will
+    // be considered be directly in the project root directory as Linux allows
+    // file names have backslash in them. So, only one report level will be
+    // generated. We can't distinguish whether a string is a Windows path or a
+    // strange Linux path, although the latter is very rare. So, A choice must
+    // be made: to support such uncommon usage, or to be fully correct. We
+    // choose the latter.
+
+    auto Name = *I;
+    if (++I == E) {
+      auto Iter = SubFiles.insert_or_assign(Name, SubPath).first;
+      // Makes files reporting overlap with subdir reporting.
+      TPool->async(&CoverageReport::prepareSingleFileReport, File, &Coverage,
+                   Options, LCP, &Iter->second, &Filters);
+    } else {
+      SubDirs[Name].second.push_back(File);
+    }
+  }
+
+  // Call recursively on subdirectories.
+  for (auto &&KV : SubDirs) {
+    auto &V = KV.second;
+    if (V.second.size() == 1) {
+      // If there's only one file in that subdirectory, we don't bother to
+      // recurse on it further.
+      V.first.Name = V.second.front().substr(LCP);
+      TPool->async(&CoverageReport::prepareSingleFileReport, V.second.front(),
+                   &Coverage, Options, LCP, &V.first, &Filters);
+    } else {
+      auto SubDirLCP = getRedundantPrefixLen(V.second, LCP);
+      V.first.Name = V.second.front().substr(LCP, SubDirLCP);
+      LCPStack.push_back(LCP + SubDirLCP);
+      if (auto E = prepareSubDirectoryReports(V.second, &V.first))
+        return E;
+    }
+  }
+
+  TPool->wait();
+
+  FileCoverageSummary CurrentTotals(LCPath);
+  for (auto &&KV : SubFiles)
+    CurrentTotals += KV.second;
+  for (auto &&KV : SubDirs)
+    CurrentTotals += KV.second.first;
+  *Totals += CurrentTotals;
+
+  if (auto E = operator()(std::move(SubFiles), std::move(SubDirs),
+                          std::move(CurrentTotals)))
+    return E;
+
+  LCPStack.pop_back();
+  return Error::success();
 }
 
 } // end namespace llvm
