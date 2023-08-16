@@ -233,7 +233,6 @@ void InitHeaderSearch::AddDefaultCIncludePaths(const llvm::Triple &triple,
     switch (os) {
     case llvm::Triple::CloudABI:
     case llvm::Triple::NaCl:
-    case llvm::Triple::ELFIAMCU:
       break;
     case llvm::Triple::Win32:
       if (triple.getEnvironment() != llvm::Triple::Cygnus)
@@ -279,8 +278,6 @@ void InitHeaderSearch::AddDefaultCIncludePaths(const llvm::Triple &triple,
     AddPath(P, System, false);
     break;
   }
-  case llvm::Triple::RTEMS:
-    break;
   case llvm::Triple::Win32:
     switch (triple.getEnvironment()) {
     default: llvm_unreachable("Include management is handled in the driver.");
@@ -297,9 +294,7 @@ void InitHeaderSearch::AddDefaultCIncludePaths(const llvm::Triple &triple,
 
   switch (os) {
   case llvm::Triple::CloudABI:
-  case llvm::Triple::RTEMS:
   case llvm::Triple::NaCl:
-  case llvm::Triple::ELFIAMCU:
     break;
   default:
     AddPath("/usr/include", ExternCSystem, false);
@@ -345,6 +340,7 @@ bool InitHeaderSearch::ShouldAddDefaultIncludePaths(
     const llvm::Triple &triple) {
   switch (triple.getOS()) {
   case llvm::Triple::AIX:
+  case llvm::Triple::ELFIAMCU:
   case llvm::Triple::Emscripten:
   case llvm::Triple::FreeBSD:
   case llvm::Triple::NetBSD:
@@ -355,6 +351,7 @@ bool InitHeaderSearch::ShouldAddDefaultIncludePaths(
   case llvm::Triple::Haiku:
   case llvm::Triple::Hurd:
   case llvm::Triple::Linux:
+  case llvm::Triple::RTEMS:
   case llvm::Triple::Solaris:
   case llvm::Triple::WASI:
     return false;
