@@ -4,7 +4,7 @@
 ; CHECK-LABEL: {{^}}test1:
 ; CHECK-NOT: s_waitcnt
 ; CHECK: image_store
-; CHECK-NEXT: s_waitcnt vmcnt(0) expcnt(0){{$}}
+; CHECK-NEXT: s_waitcnt vmcnt(0){{( expcnt\(0\))?$}}
 ; CHECK-NEXT: image_store
 ; CHECK-NEXT: s_endpgm
 define amdgpu_ps void @test1(<8 x i32> inreg %rsrc, <4 x float> %d0, <4 x float> %d1, i32 %c0, i32 %c1) {
@@ -21,7 +21,7 @@ define amdgpu_ps void @test1(<8 x i32> inreg %rsrc, <4 x float> %d0, <4 x float>
 ; CHECK-NOT: s_waitcnt
 ; CHECK: image_load
 ; CHECK-NEXT: v_lshlrev_b32
-; CHECK-NEXT: s_waitcnt vmcnt(0) expcnt(0){{$}}
+; CHECK-NEXT: s_waitcnt vmcnt(0){{$}}
 ; CHECK-NEXT: image_store
 define amdgpu_ps void @test2(<8 x i32> inreg %rsrc, i32 %c) {
   %t = call <4 x float> @llvm.amdgcn.image.load.1d.v4f32.i32(i32 15, i32 %c, <8 x i32> %rsrc, i32 0, i32 0)
@@ -33,7 +33,7 @@ define amdgpu_ps void @test2(<8 x i32> inreg %rsrc, i32 %c) {
 
 ; CHECK-LABEL: {{^}}test3:
 ; CHECK: image_load
-; CHECK: s_waitcnt vmcnt(0) lgkmcnt(0)
+; CHECK: s_waitcnt vmcnt(0)
 ; CHECK: image_store
 define amdgpu_ps void @test3(<8 x i32> inreg %rsrc, i32 %c) {
   %t = call <4 x float> @llvm.amdgcn.image.load.1d.v4f32.i32(i32 15, i32 %c, <8 x i32> %rsrc, i32 0, i32 0)

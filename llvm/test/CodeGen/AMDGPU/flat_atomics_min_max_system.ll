@@ -21,7 +21,6 @@ define amdgpu_kernel void @atomic_max_i32_offset(ptr %out, i32 %in) {
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    v_max_i32_e32 v0, s4, v1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -50,7 +49,6 @@ define amdgpu_kernel void @atomic_max_i32_offset(ptr %out, i32 %in) {
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    v_max_i32_e32 v0, s4, v1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -77,7 +75,6 @@ define amdgpu_kernel void @atomic_max_i32_offset(ptr %out, i32 %in) {
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    v_max_i32_e32 v0, s4, v1
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s3
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] offset:16 glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -113,7 +110,6 @@ define amdgpu_kernel void @atomic_max_i32_ret_offset(ptr %out, ptr %out2, i32 %i
 ; GCN1-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN1-NEXT:    v_max_i32_e32 v0, s8, v1
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -146,7 +142,6 @@ define amdgpu_kernel void @atomic_max_i32_ret_offset(ptr %out, ptr %out2, i32 %i
 ; GCN2-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN2-NEXT:    v_max_i32_e32 v0, s8, v1
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -177,7 +172,6 @@ define amdgpu_kernel void @atomic_max_i32_ret_offset(ptr %out, ptr %out2, i32 %i
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s4
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s5
 ; GCN3-NEXT:    v_max_i32_e32 v0, s2, v1
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] offset:16 glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -220,7 +214,6 @@ define amdgpu_kernel void @atomic_max_i32_addr64_offset(ptr %out, i32 %in, i64 %
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    v_max_i32_e32 v0, s4, v1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -253,7 +246,6 @@ define amdgpu_kernel void @atomic_max_i32_addr64_offset(ptr %out, i32 %in, i64 %
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    v_max_i32_e32 v0, s4, v1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -284,7 +276,6 @@ define amdgpu_kernel void @atomic_max_i32_addr64_offset(ptr %out, i32 %in, i64 %
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    v_max_i32_e32 v0, s4, v1
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s0
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] offset:16 glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -325,7 +316,6 @@ define amdgpu_kernel void @atomic_max_i32_ret_addr64_offset(ptr %out, ptr %out2,
 ; GCN1-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN1-NEXT:    v_max_i32_e32 v0, s8, v1
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -362,7 +352,6 @@ define amdgpu_kernel void @atomic_max_i32_ret_addr64_offset(ptr %out, ptr %out2,
 ; GCN2-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN2-NEXT:    v_max_i32_e32 v0, s8, v1
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -397,7 +386,6 @@ define amdgpu_kernel void @atomic_max_i32_ret_addr64_offset(ptr %out, ptr %out2,
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN3-NEXT:    v_max_i32_e32 v0, s8, v1
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] offset:16 glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -435,7 +423,6 @@ define amdgpu_kernel void @atomic_max_i32(ptr %out, i32 %in) {
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    v_max_i32_e32 v0, s4, v1
 ; GCN1-NEXT:    v_mov_b32_e32 v3, s3
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -462,7 +449,6 @@ define amdgpu_kernel void @atomic_max_i32(ptr %out, i32 %in) {
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    v_max_i32_e32 v0, s4, v1
 ; GCN2-NEXT:    v_mov_b32_e32 v3, s3
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -489,7 +475,6 @@ define amdgpu_kernel void @atomic_max_i32(ptr %out, i32 %in) {
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    v_max_i32_e32 v0, s4, v1
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s3
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -522,7 +507,6 @@ define amdgpu_kernel void @atomic_max_i32_ret(ptr %out, ptr %out2, i32 %in) {
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s4
 ; GCN1-NEXT:    v_mov_b32_e32 v3, s5
 ; GCN1-NEXT:    v_max_i32_e32 v0, s2, v1
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -553,7 +537,6 @@ define amdgpu_kernel void @atomic_max_i32_ret(ptr %out, ptr %out2, i32 %in) {
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s4
 ; GCN2-NEXT:    v_mov_b32_e32 v3, s5
 ; GCN2-NEXT:    v_max_i32_e32 v0, s2, v1
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -584,7 +567,6 @@ define amdgpu_kernel void @atomic_max_i32_ret(ptr %out, ptr %out2, i32 %in) {
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s4
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s5
 ; GCN3-NEXT:    v_max_i32_e32 v0, s2, v1
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -624,7 +606,6 @@ define amdgpu_kernel void @atomic_max_i32_addr64(ptr %out, i32 %in, i64 %index) 
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    v_max_i32_e32 v0, s4, v1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -655,7 +636,6 @@ define amdgpu_kernel void @atomic_max_i32_addr64(ptr %out, i32 %in, i64 %index) 
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    v_max_i32_e32 v0, s4, v1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -686,7 +666,6 @@ define amdgpu_kernel void @atomic_max_i32_addr64(ptr %out, i32 %in, i64 %index) 
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    v_max_i32_e32 v0, s4, v1
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s0
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -724,7 +703,6 @@ define amdgpu_kernel void @atomic_max_i32_ret_addr64(ptr %out, ptr %out2, i32 %i
 ; GCN1-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN1-NEXT:    v_max_i32_e32 v0, s8, v1
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -759,7 +737,6 @@ define amdgpu_kernel void @atomic_max_i32_ret_addr64(ptr %out, ptr %out2, i32 %i
 ; GCN2-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN2-NEXT:    v_max_i32_e32 v0, s8, v1
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -794,7 +771,6 @@ define amdgpu_kernel void @atomic_max_i32_ret_addr64(ptr %out, ptr %out2, i32 %i
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN3-NEXT:    v_max_i32_e32 v0, s8, v1
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -833,7 +809,6 @@ define amdgpu_kernel void @atomic_umax_i32_offset(ptr %out, i32 %in) {
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    v_max_u32_e32 v0, s4, v1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -862,7 +837,6 @@ define amdgpu_kernel void @atomic_umax_i32_offset(ptr %out, i32 %in) {
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    v_max_u32_e32 v0, s4, v1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -889,7 +863,6 @@ define amdgpu_kernel void @atomic_umax_i32_offset(ptr %out, i32 %in) {
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    v_max_u32_e32 v0, s4, v1
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s3
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] offset:16 glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -925,7 +898,6 @@ define amdgpu_kernel void @atomic_umax_i32_ret_offset(ptr %out, ptr %out2, i32 %
 ; GCN1-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN1-NEXT:    v_max_u32_e32 v0, s8, v1
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -958,7 +930,6 @@ define amdgpu_kernel void @atomic_umax_i32_ret_offset(ptr %out, ptr %out2, i32 %
 ; GCN2-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN2-NEXT:    v_max_u32_e32 v0, s8, v1
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -989,7 +960,6 @@ define amdgpu_kernel void @atomic_umax_i32_ret_offset(ptr %out, ptr %out2, i32 %
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s4
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s5
 ; GCN3-NEXT:    v_max_u32_e32 v0, s2, v1
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] offset:16 glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -1032,7 +1002,6 @@ define amdgpu_kernel void @atomic_umax_i32_addr64_offset(ptr %out, i32 %in, i64 
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    v_max_u32_e32 v0, s4, v1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -1065,7 +1034,6 @@ define amdgpu_kernel void @atomic_umax_i32_addr64_offset(ptr %out, i32 %in, i64 
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    v_max_u32_e32 v0, s4, v1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -1096,7 +1064,6 @@ define amdgpu_kernel void @atomic_umax_i32_addr64_offset(ptr %out, i32 %in, i64 
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    v_max_u32_e32 v0, s4, v1
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s0
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] offset:16 glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -1137,7 +1104,6 @@ define amdgpu_kernel void @atomic_umax_i32_ret_addr64_offset(ptr %out, ptr %out2
 ; GCN1-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN1-NEXT:    v_max_u32_e32 v0, s8, v1
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -1174,7 +1140,6 @@ define amdgpu_kernel void @atomic_umax_i32_ret_addr64_offset(ptr %out, ptr %out2
 ; GCN2-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN2-NEXT:    v_max_u32_e32 v0, s8, v1
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -1209,7 +1174,6 @@ define amdgpu_kernel void @atomic_umax_i32_ret_addr64_offset(ptr %out, ptr %out2
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN3-NEXT:    v_max_u32_e32 v0, s8, v1
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] offset:16 glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -1247,7 +1211,6 @@ define amdgpu_kernel void @atomic_umax_i32(ptr %out, i32 %in) {
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    v_max_u32_e32 v0, s4, v1
 ; GCN1-NEXT:    v_mov_b32_e32 v3, s3
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -1274,7 +1237,6 @@ define amdgpu_kernel void @atomic_umax_i32(ptr %out, i32 %in) {
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    v_max_u32_e32 v0, s4, v1
 ; GCN2-NEXT:    v_mov_b32_e32 v3, s3
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -1301,7 +1263,6 @@ define amdgpu_kernel void @atomic_umax_i32(ptr %out, i32 %in) {
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    v_max_u32_e32 v0, s4, v1
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s3
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -1334,7 +1295,6 @@ define amdgpu_kernel void @atomic_umax_i32_ret(ptr %out, ptr %out2, i32 %in) {
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s4
 ; GCN1-NEXT:    v_mov_b32_e32 v3, s5
 ; GCN1-NEXT:    v_max_u32_e32 v0, s2, v1
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -1365,7 +1325,6 @@ define amdgpu_kernel void @atomic_umax_i32_ret(ptr %out, ptr %out2, i32 %in) {
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s4
 ; GCN2-NEXT:    v_mov_b32_e32 v3, s5
 ; GCN2-NEXT:    v_max_u32_e32 v0, s2, v1
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -1396,7 +1355,6 @@ define amdgpu_kernel void @atomic_umax_i32_ret(ptr %out, ptr %out2, i32 %in) {
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s4
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s5
 ; GCN3-NEXT:    v_max_u32_e32 v0, s2, v1
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -1436,7 +1394,6 @@ define amdgpu_kernel void @atomic_umax_i32_addr64(ptr %out, i32 %in, i64 %index)
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    v_max_u32_e32 v0, s4, v1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -1467,7 +1424,6 @@ define amdgpu_kernel void @atomic_umax_i32_addr64(ptr %out, i32 %in, i64 %index)
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    v_max_u32_e32 v0, s4, v1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -1498,7 +1454,6 @@ define amdgpu_kernel void @atomic_umax_i32_addr64(ptr %out, i32 %in, i64 %index)
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    v_max_u32_e32 v0, s4, v1
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s0
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -1536,7 +1491,6 @@ define amdgpu_kernel void @atomic_umax_i32_ret_addr64(ptr %out, ptr %out2, i32 %
 ; GCN1-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN1-NEXT:    v_max_u32_e32 v0, s8, v1
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -1571,7 +1525,6 @@ define amdgpu_kernel void @atomic_umax_i32_ret_addr64(ptr %out, ptr %out2, i32 %
 ; GCN2-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN2-NEXT:    v_max_u32_e32 v0, s8, v1
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -1606,7 +1559,6 @@ define amdgpu_kernel void @atomic_umax_i32_ret_addr64(ptr %out, ptr %out2, i32 %
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN3-NEXT:    v_max_u32_e32 v0, s8, v1
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -1645,7 +1597,6 @@ define amdgpu_kernel void @atomic_min_i32_offset(ptr %out, i32 %in) {
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    v_min_i32_e32 v0, s4, v1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -1674,7 +1625,6 @@ define amdgpu_kernel void @atomic_min_i32_offset(ptr %out, i32 %in) {
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    v_min_i32_e32 v0, s4, v1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -1701,7 +1651,6 @@ define amdgpu_kernel void @atomic_min_i32_offset(ptr %out, i32 %in) {
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    v_min_i32_e32 v0, s4, v1
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s3
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] offset:16 glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -1737,7 +1686,6 @@ define amdgpu_kernel void @atomic_min_i32_ret_offset(ptr %out, ptr %out2, i32 %i
 ; GCN1-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN1-NEXT:    v_min_i32_e32 v0, s8, v1
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -1770,7 +1718,6 @@ define amdgpu_kernel void @atomic_min_i32_ret_offset(ptr %out, ptr %out2, i32 %i
 ; GCN2-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN2-NEXT:    v_min_i32_e32 v0, s8, v1
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -1801,7 +1748,6 @@ define amdgpu_kernel void @atomic_min_i32_ret_offset(ptr %out, ptr %out2, i32 %i
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s4
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s5
 ; GCN3-NEXT:    v_min_i32_e32 v0, s2, v1
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] offset:16 glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -1844,7 +1790,6 @@ define amdgpu_kernel void @atomic_min_i32_addr64_offset(ptr %out, i32 %in, i64 %
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    v_min_i32_e32 v0, s4, v1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -1877,7 +1822,6 @@ define amdgpu_kernel void @atomic_min_i32_addr64_offset(ptr %out, i32 %in, i64 %
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    v_min_i32_e32 v0, s4, v1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -1908,7 +1852,6 @@ define amdgpu_kernel void @atomic_min_i32_addr64_offset(ptr %out, i32 %in, i64 %
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    v_min_i32_e32 v0, s4, v1
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s0
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] offset:16 glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -1949,7 +1892,6 @@ define amdgpu_kernel void @atomic_min_i32_ret_addr64_offset(ptr %out, ptr %out2,
 ; GCN1-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN1-NEXT:    v_min_i32_e32 v0, s8, v1
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -1986,7 +1928,6 @@ define amdgpu_kernel void @atomic_min_i32_ret_addr64_offset(ptr %out, ptr %out2,
 ; GCN2-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN2-NEXT:    v_min_i32_e32 v0, s8, v1
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -2021,7 +1962,6 @@ define amdgpu_kernel void @atomic_min_i32_ret_addr64_offset(ptr %out, ptr %out2,
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN3-NEXT:    v_min_i32_e32 v0, s8, v1
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] offset:16 glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -2059,7 +1999,6 @@ define amdgpu_kernel void @atomic_min_i32(ptr %out, i32 %in) {
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    v_min_i32_e32 v0, s4, v1
 ; GCN1-NEXT:    v_mov_b32_e32 v3, s3
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -2086,7 +2025,6 @@ define amdgpu_kernel void @atomic_min_i32(ptr %out, i32 %in) {
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    v_min_i32_e32 v0, s4, v1
 ; GCN2-NEXT:    v_mov_b32_e32 v3, s3
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -2113,7 +2051,6 @@ define amdgpu_kernel void @atomic_min_i32(ptr %out, i32 %in) {
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    v_min_i32_e32 v0, s4, v1
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s3
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -2146,7 +2083,6 @@ define amdgpu_kernel void @atomic_min_i32_ret(ptr %out, ptr %out2, i32 %in) {
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s4
 ; GCN1-NEXT:    v_mov_b32_e32 v3, s5
 ; GCN1-NEXT:    v_min_i32_e32 v0, s2, v1
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -2177,7 +2113,6 @@ define amdgpu_kernel void @atomic_min_i32_ret(ptr %out, ptr %out2, i32 %in) {
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s4
 ; GCN2-NEXT:    v_mov_b32_e32 v3, s5
 ; GCN2-NEXT:    v_min_i32_e32 v0, s2, v1
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -2208,7 +2143,6 @@ define amdgpu_kernel void @atomic_min_i32_ret(ptr %out, ptr %out2, i32 %in) {
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s4
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s5
 ; GCN3-NEXT:    v_min_i32_e32 v0, s2, v1
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -2248,7 +2182,6 @@ define amdgpu_kernel void @atomic_min_i32_addr64(ptr %out, i32 %in, i64 %index) 
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    v_min_i32_e32 v0, s4, v1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -2279,7 +2212,6 @@ define amdgpu_kernel void @atomic_min_i32_addr64(ptr %out, i32 %in, i64 %index) 
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    v_min_i32_e32 v0, s4, v1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -2310,7 +2242,6 @@ define amdgpu_kernel void @atomic_min_i32_addr64(ptr %out, i32 %in, i64 %index) 
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    v_min_i32_e32 v0, s4, v1
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s0
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -2348,7 +2279,6 @@ define amdgpu_kernel void @atomic_min_i32_ret_addr64(ptr %out, ptr %out2, i32 %i
 ; GCN1-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN1-NEXT:    v_min_i32_e32 v0, s8, v1
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -2383,7 +2313,6 @@ define amdgpu_kernel void @atomic_min_i32_ret_addr64(ptr %out, ptr %out2, i32 %i
 ; GCN2-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN2-NEXT:    v_min_i32_e32 v0, s8, v1
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -2418,7 +2347,6 @@ define amdgpu_kernel void @atomic_min_i32_ret_addr64(ptr %out, ptr %out2, i32 %i
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN3-NEXT:    v_min_i32_e32 v0, s8, v1
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -2457,7 +2385,6 @@ define amdgpu_kernel void @atomic_umin_i32_offset(ptr %out, i32 %in) {
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    v_min_u32_e32 v0, s4, v1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -2486,7 +2413,6 @@ define amdgpu_kernel void @atomic_umin_i32_offset(ptr %out, i32 %in) {
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    v_min_u32_e32 v0, s4, v1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -2513,7 +2439,6 @@ define amdgpu_kernel void @atomic_umin_i32_offset(ptr %out, i32 %in) {
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    v_min_u32_e32 v0, s4, v1
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s3
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] offset:16 glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -2549,7 +2474,6 @@ define amdgpu_kernel void @atomic_umin_i32_ret_offset(ptr %out, ptr %out2, i32 %
 ; GCN1-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN1-NEXT:    v_min_u32_e32 v0, s8, v1
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -2582,7 +2506,6 @@ define amdgpu_kernel void @atomic_umin_i32_ret_offset(ptr %out, ptr %out2, i32 %
 ; GCN2-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN2-NEXT:    v_min_u32_e32 v0, s8, v1
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -2613,7 +2536,6 @@ define amdgpu_kernel void @atomic_umin_i32_ret_offset(ptr %out, ptr %out2, i32 %
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s4
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s5
 ; GCN3-NEXT:    v_min_u32_e32 v0, s2, v1
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] offset:16 glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -2656,7 +2578,6 @@ define amdgpu_kernel void @atomic_umin_i32_addr64_offset(ptr %out, i32 %in, i64 
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    v_min_u32_e32 v0, s4, v1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -2689,7 +2610,6 @@ define amdgpu_kernel void @atomic_umin_i32_addr64_offset(ptr %out, i32 %in, i64 
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    v_min_u32_e32 v0, s4, v1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -2720,7 +2640,6 @@ define amdgpu_kernel void @atomic_umin_i32_addr64_offset(ptr %out, i32 %in, i64 
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    v_min_u32_e32 v0, s4, v1
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s0
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] offset:16 glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -2761,7 +2680,6 @@ define amdgpu_kernel void @atomic_umin_i32_ret_addr64_offset(ptr %out, ptr %out2
 ; GCN1-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN1-NEXT:    v_min_u32_e32 v0, s8, v1
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -2798,7 +2716,6 @@ define amdgpu_kernel void @atomic_umin_i32_ret_addr64_offset(ptr %out, ptr %out2
 ; GCN2-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN2-NEXT:    v_min_u32_e32 v0, s8, v1
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -2833,7 +2750,6 @@ define amdgpu_kernel void @atomic_umin_i32_ret_addr64_offset(ptr %out, ptr %out2
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN3-NEXT:    v_min_u32_e32 v0, s8, v1
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] offset:16 glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -2871,7 +2787,6 @@ define amdgpu_kernel void @atomic_umin_i32(ptr %out, i32 %in) {
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    v_min_u32_e32 v0, s4, v1
 ; GCN1-NEXT:    v_mov_b32_e32 v3, s3
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -2898,7 +2813,6 @@ define amdgpu_kernel void @atomic_umin_i32(ptr %out, i32 %in) {
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    v_min_u32_e32 v0, s4, v1
 ; GCN2-NEXT:    v_mov_b32_e32 v3, s3
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -2925,7 +2839,6 @@ define amdgpu_kernel void @atomic_umin_i32(ptr %out, i32 %in) {
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    v_min_u32_e32 v0, s4, v1
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s3
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -2958,7 +2871,6 @@ define amdgpu_kernel void @atomic_umin_i32_ret(ptr %out, ptr %out2, i32 %in) {
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s4
 ; GCN1-NEXT:    v_mov_b32_e32 v3, s5
 ; GCN1-NEXT:    v_min_u32_e32 v0, s2, v1
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -2989,7 +2901,6 @@ define amdgpu_kernel void @atomic_umin_i32_ret(ptr %out, ptr %out2, i32 %in) {
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s4
 ; GCN2-NEXT:    v_mov_b32_e32 v3, s5
 ; GCN2-NEXT:    v_min_u32_e32 v0, s2, v1
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -3020,7 +2931,6 @@ define amdgpu_kernel void @atomic_umin_i32_ret(ptr %out, ptr %out2, i32 %in) {
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s4
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s5
 ; GCN3-NEXT:    v_min_u32_e32 v0, s2, v1
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -3060,7 +2970,6 @@ define amdgpu_kernel void @atomic_umin_i32_addr64(ptr %out, i32 %in, i64 %index)
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    v_min_u32_e32 v0, s4, v1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -3091,7 +3000,6 @@ define amdgpu_kernel void @atomic_umin_i32_addr64(ptr %out, i32 %in, i64 %index)
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    v_min_u32_e32 v0, s4, v1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -3122,7 +3030,6 @@ define amdgpu_kernel void @atomic_umin_i32_addr64(ptr %out, i32 %in, i64 %index)
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    v_min_u32_e32 v0, s4, v1
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s0
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
@@ -3160,7 +3067,6 @@ define amdgpu_kernel void @atomic_umin_i32_ret_addr64(ptr %out, ptr %out2, i32 %
 ; GCN1-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN1-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN1-NEXT:    v_min_u32_e32 v0, s8, v1
-; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN1-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN1-NEXT:    buffer_wbinvl1_vol
@@ -3195,7 +3101,6 @@ define amdgpu_kernel void @atomic_umin_i32_ret_addr64(ptr %out, ptr %out2, i32 %
 ; GCN2-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN2-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN2-NEXT:    v_min_u32_e32 v0, s8, v1
-; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN2-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN2-NEXT:    buffer_wbinvl1_vol
@@ -3230,7 +3135,6 @@ define amdgpu_kernel void @atomic_umin_i32_ret_addr64(ptr %out, ptr %out2, i32 %
 ; GCN3-NEXT:    v_mov_b32_e32 v3, s1
 ; GCN3-NEXT:    v_mov_b32_e32 v2, s0
 ; GCN3-NEXT:    v_min_u32_e32 v0, s8, v1
-; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    flat_atomic_cmpswap v0, v[2:3], v[0:1] glc
 ; GCN3-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
 ; GCN3-NEXT:    buffer_wbinvl1_vol
