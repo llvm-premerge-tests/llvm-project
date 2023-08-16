@@ -156,8 +156,8 @@ define i32 @loop_shared_header(i8* %exe, i32 %exesz, i32 %headsize, i32 %min, i3
 ; CHECK-NEXT:    jne .LBB1_28
 ; CHECK-NEXT:  # %bb.11: # %inner_loop_body
 ; CHECK-NEXT:    # in Loop: Header=BB1_10 Depth=2
-; CHECK-NEXT:    testl %eax, %eax
-; CHECK-NEXT:    jns .LBB1_10
+; CHECK-NEXT:    testb %al, %al
+; CHECK-NEXT:    je .LBB1_10
 ; CHECK-NEXT:  # %bb.12: # %if.end96.i
 ; CHECK-NEXT:    # in Loop: Header=BB1_9 Depth=1
 ; CHECK-NEXT:    cmpl $3, %r13d
