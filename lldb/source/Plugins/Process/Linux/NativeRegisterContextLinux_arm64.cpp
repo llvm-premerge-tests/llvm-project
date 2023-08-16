@@ -359,6 +359,9 @@ NativeRegisterContextLinux_arm64::ReadRegister(const RegisterInfo *reg_info,
     if (error.Fail())
       return error;
 
+    // This is a psuedo so it never fails.
+    ReadSMEControl();
+
     offset = reg_info->byte_offset - GetRegisterInfo().GetSMEOffset();
     assert(offset < GetSMEBufferSize());
     src = (uint8_t *)GetSMEBuffer() + offset;
@@ -562,7 +565,7 @@ Status NativeRegisterContextLinux_arm64::WriteRegister(
     // will always be the current length and no reconfigure is needed.
     return WriteZA();
   } else if (IsSME(reg)) {
-    return Status("Writing to SVG is not supported.");
+    return Status("Writing to SVG or SVCR is not supported.");
   }
 
   return Status("Failed to write register value");
@@ -576,7 +579,8 @@ enum SavedRegistersKind : uint32_t {
   MTE,
   TLS,
   ZA,
-  // SME pseudo registers are read only.
+  // SME not here because SVG and SVCR are read only pseudo registers derived
+  // from the other registers.
 };
 
 static uint8_t *AddSavedRegistersKind(uint8_t *dst, SavedRegistersKind kind) {
@@ -1159,6 +1163,24 @@ Status NativeRegisterContextLinux_arm64::WriteAllSVE() {
   m_fpu_is_valid = false;
 
   return WriteRegisterSet(&ioVec, GetSVEBufferSize(), GetSVERegSet());
+}
+
+Status NativeRegisterContextLinux_arm64::ReadSMEControl() {
+  // The real register is SVCR and is accessible from EL0. However we don't want
+  // to have to JIT code into the target process so we'll just recreate it using
+  // what we know from ptrace.
+
+  // Bit 0 indicates whether streaming mode is active.
+  m_sme_regs.ctrl_reg = m_sve_state == SVEState::Streaming;
+
+  // Bit 1 indicates whether the array storage is active.
+  // It is active if we can read the header and the size field tells us that
+  // there is register data following it.
+  Status error = ReadZAHeader();
+  if (error.Success() && (m_za_header.size > sizeof(m_za_header)))
+    m_sme_regs.ctrl_reg |= 2;
+
+  return {};
 }
 
 Status NativeRegisterContextLinux_arm64::ReadMTEControl() {
