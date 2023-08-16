@@ -885,9 +885,8 @@ exit:
   ret void
 }
 
-; TODO: The store can be promoted, as sret memory is writable.
-define void @sret_cond_store(ptr sret(i32) noalias %ptr) {
-; CHECK-LABEL: @sret_cond_store(
+define void @writable_cond_store(ptr sret(i32) noalias writable %ptr) {
+; CHECK-LABEL: @writable_cond_store(
 ; CHECK-NEXT:    [[PTR_PROMOTED:%.*]] = load i32, ptr [[PTR:%.*]], align 4
 ; CHECK-NEXT:    br label [[LOOP:%.*]]
 ; CHECK:       loop:
@@ -896,9 +895,10 @@ define void @sret_cond_store(ptr sret(i32) noalias %ptr) {
 ; CHECK-NEXT:    br i1 [[C]], label [[LOOP_LATCH]], label [[EXIT:%.*]]
 ; CHECK:       loop.latch:
 ; CHECK-NEXT:    [[V_INC]] = add i32 [[V_INC1]], 1
-; CHECK-NEXT:    store i32 [[V_INC]], ptr [[PTR]], align 4
 ; CHECK-NEXT:    br label [[LOOP]]
 ; CHECK:       exit:
+; CHECK-NEXT:    [[V_INC1_LCSSA:%.*]] = phi i32 [ [[V_INC1]], [[LOOP]] ]
+; CHECK-NEXT:    store i32 [[V_INC1_LCSSA]], ptr [[PTR]], align 4
 ; CHECK-NEXT:    ret void
 ;
   br label %loop

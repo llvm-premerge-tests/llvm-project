@@ -917,9 +917,8 @@ bool llvm::isWritableObject(const Value *Object) {
   if (isa<AllocaInst>(Object))
     return true;
 
-  // TODO: Also handle sret.
   if (auto *A = dyn_cast<Argument>(Object))
-    return A->hasByValAttr();
+    return A->hasByValAttr() || A->hasAttribute(Attribute::Writable);
 
   // TODO: Noalias shouldn't imply writability, this should check for an
   // allocator function instead.
