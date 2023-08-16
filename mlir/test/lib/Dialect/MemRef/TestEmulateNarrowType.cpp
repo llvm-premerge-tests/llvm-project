@@ -89,13 +89,13 @@ struct TestEmulateNarrowTypePass
     target.addDynamicallyLegalOp<func::CallOp, func::ReturnOp>(opLegalCallback);
     target.addDynamicallyLegalDialect<
         arith::ArithDialect, vector::VectorDialect, memref::MemRefDialect,
-        affine::AffineDialect>(
-        [&typeConverter](Operation *op) { return typeConverter.isLegal(op); });
+        affine::AffineDialect>(opLegalCallback);
 
     RewritePatternSet patterns(ctx);
 
     arith::populateArithNarrowTypeEmulationPatterns(typeConverter, patterns);
     memref::populateMemRefNarrowTypeEmulationPatterns(typeConverter, patterns);
+    memref::populateResolveExtractStridedMetadataPatterns(patterns);
     vector::populateVectorNarrowTypeEmulationPatterns(typeConverter, patterns);
 
     if (failed(applyPartialConversion(op, target, std::move(patterns))))
