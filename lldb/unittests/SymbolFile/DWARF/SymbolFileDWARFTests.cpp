@@ -57,7 +57,7 @@ TEST_F(SymbolFileDWARFTests, TestAbilitiesForDWARF) {
   // Test that when we have Dwarf debug info, SymbolFileDWARF is used.
   FileSpec fspec(m_dwarf_test_exe);
   ArchSpec aspec("i686-pc-windows");
-  lldb::ModuleSP module = std::make_shared<Module>(fspec, aspec);
+  lldb::ModuleSP module = std::make_shared<Module>(fspec, aspec, ConstString());
 
   SymbolFile *symfile = module->GetSymbolFile();
   ASSERT_NE(nullptr, symfile);

@@ -2386,7 +2386,7 @@ ModuleSP Process::ReadModuleFromMemory(const FileSpec &file_spec,
               "Process::ReadModuleFromMemory reading %s binary from memory",
               file_spec.GetPath().c_str());
   }
-  ModuleSP module_sp(new Module(file_spec, ArchSpec()));
+  ModuleSP module_sp(new Module(file_spec, ArchSpec(), ConstString()));
   if (module_sp) {
     Status error;
     ObjectFile *objfile = module_sp->GetMemoryObjectFile(
