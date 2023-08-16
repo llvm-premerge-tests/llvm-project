@@ -1360,14 +1360,20 @@ void FrameEmitterImpl::emitCFIInstruction(const MCCFIInstruction &Instr) {
     const bool IsRelative =
       Instr.getOperation() == MCCFIInstruction::OpAdjustCfaOffset;
 
-    Streamer.emitInt8(dwarf::DW_CFA_def_cfa_offset);
+    int Offset = Instr.getOffset();
 
     if (IsRelative)
-      CFAOffset += Instr.getOffset();
+      CFAOffset += Offset;
     else
-      CFAOffset = Instr.getOffset();
+      CFAOffset = Offset;
 
-    Streamer.emitULEB128IntValue(CFAOffset);
+    if (Offset < 0) {
+      Streamer.emitInt8(dwarf::DW_CFA_def_cfa_offset_sf);
+      Streamer.emitSLEB128IntValue(CFAOffset / dataAlignmentFactor);
+    } else {
+      Streamer.emitInt8(dwarf::DW_CFA_def_cfa_offset);
+      Streamer.emitULEB128IntValue(CFAOffset);
+    }
 
     return;
   }
