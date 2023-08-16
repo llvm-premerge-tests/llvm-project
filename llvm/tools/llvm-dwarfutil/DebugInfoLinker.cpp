@@ -130,10 +130,15 @@ public:
     return std::nullopt;
   }
 
-  bool applyValidRelocs(MutableArrayRef<char>, uint64_t, bool) override {
+  std::optional<StringRef> getFileName() override { return std::nullopt; }
+
+  bool applyValidRelocs(MutableArrayRef<char>, uint64_t, bool, uint64_t,
+                        int64_t) override {
     // no need to apply relocations to the linked binary.
     return false;
   }
+
+  void addValidRelocs(RelocMap *RM) override {}
 
   void clear() override {}
 

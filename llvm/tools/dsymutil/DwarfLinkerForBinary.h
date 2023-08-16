@@ -13,6 +13,7 @@
 #include "DebugMap.h"
 #include "LinkUtils.h"
 #include "MachOUtils.h"
+#include "RelocationMap.h"
 #include "llvm/DWARFLinker/DWARFLinker.h"
 #include "llvm/DWARFLinker/DWARFLinkerCompileUnit.h"
 #include "llvm/DWARFLinker/DWARFLinkerDeclContext.h"
@@ -21,6 +22,7 @@
 #include "llvm/Remarks/RemarkFormat.h"
 #include "llvm/Remarks/RemarkLinker.h"
 #include <mutex>
+#include <optional>
 
 namespace llvm {
 namespace dsymutil {
@@ -67,32 +69,28 @@ private:
   /// Keeps track of relocations.
   template <typename AddressesMapBase>
   class AddressManager : public AddressesMapBase {
-    struct ValidReloc {
-      uint64_t Offset;
-      uint32_t Size;
-      uint64_t Addend;
-      const DebugMapObject::DebugMapEntry *Mapping;
-
-      ValidReloc(uint64_t Offset, uint32_t Size, uint64_t Addend,
-                 const DebugMapObject::DebugMapEntry *Mapping)
-          : Offset(Offset), Size(Size), Addend(Addend), Mapping(Mapping) {}
-
-      bool operator<(const ValidReloc &RHS) const {
-        return Offset < RHS.Offset;
-      }
-      bool operator<(uint64_t RHS) const { return Offset < RHS; }
-    };
 
     const DwarfLinkerForBinary &Linker;
 
     /// The valid relocations for the current DebugMapObject.
-    /// This vector is sorted by relocation offset.
+    /// These vectors are sorted by relocation offset.
+    /// When auxiliary data is cleaned up in order to work on the next
+    /// objects, their content is stored in different permanent vectors.
+    /// Those additional vectors contain the relocations for
+    /// all the objects, and will be serialied into the RelocationMap.
     /// {
     std::vector<ValidReloc> ValidDebugInfoRelocs;
     std::vector<ValidReloc> ValidDebugAddrRelocs;
+
+    std::vector<ValidReloc> StoredValidDebugInfoRelocs;
+    std::vector<ValidReloc> StoredValidDebugAddrRelocs;
     /// }
 
     StringRef SrcFileName;
+
+    uint8_t DebugMapObjectType;
+
+    std::optional<std::string> LibInstallName;
 
     /// Returns list of valid relocations from \p Relocs,
     /// between \p StartOffset and \p NextOffset.
@@ -116,8 +114,30 @@ private:
   public:
     AddressManager(DwarfLinkerForBinary &Linker, const object::ObjectFile &Obj,
                    const DebugMapObject &DMO)
-        : Linker(Linker), SrcFileName(DMO.getObjectFilename()) {
-      findValidRelocsInDebugSections(Obj, DMO);
+        : Linker(Linker), SrcFileName(DMO.getObjectFilename()),
+          DebugMapObjectType(MachO::N_OSO) {
+      if (DMO.getRelocationMap().has_value()) {
+        DebugMapObjectType = MachO::N_LIB;
+        LibInstallName.emplace(DMO.getInstallName().value());
+        const RelocationMap &RM = DMO.getRelocationMap().value();
+        for (const auto &Reloc : RM.relocations()) {
+          const auto *DebugMapEntry = DMO.lookupSymbol(Reloc.SymbolName);
+          if (!DebugMapEntry)
+            continue;
+          std::optional<uint64_t> ObjAddress;
+          ObjAddress.emplace(
+              (uint64_t)DebugMapEntry->getValue().ObjectAddress.value());
+          ValidDebugInfoRelocs.emplace_back(
+              Reloc.OffsetInCU, Reloc.Offset, Reloc.Size, Reloc.Addend,
+              Reloc.SymbolName,
+              SymbolMapping(ObjAddress, DebugMapEntry->getValue().BinaryAddress,
+                            DebugMapEntry->getValue().Size));
+          // FIXME: Support relocations debug_addr.
+        }
+      } else {
+        findValidRelocsInDebugSections(Obj, DMO);
+      }
+ 
     }
     ~AddressManager() override { clear(); }
 
@@ -158,8 +178,13 @@ private:
     std::optional<int64_t>
     getSubprogramRelocAdjustment(const DWARFDie &DIE) override;
 
+    std::optional<StringRef> getFileName() override;
+
     bool applyValidRelocs(MutableArrayRef<char> Data, uint64_t BaseOffset,
-                          bool IsLittleEndian) override;
+                          bool IsLittleEndian, uint64_t CUOffset,
+                          int64_t RelocSlide) override;
+
+    void addValidRelocs(RelocMap *RM) override;
 
     void clear() override {
       ValidDebugInfoRelocs.clear();
@@ -180,7 +205,6 @@ private:
   /// Attempt to load a debug object from disk.
   ErrorOr<const object::ObjectFile &> loadObject(const DebugMapObject &Obj,
                                                  const Triple &triple);
-
   template <typename OutDWARFFile, typename AddressesMap>
   ErrorOr<std::unique_ptr<OutDWARFFile>> loadObject(const DebugMapObject &Obj,
                                                     const DebugMap &DebugMap,
@@ -206,6 +230,11 @@ private:
   template <typename Linker, typename OutDwarfFile, typename AddressMapBase>
   bool linkImpl(const DebugMap &Map,
                 typename Linker::OutputFileType ObjectType);
+
+  template <typename OutDwarfFile, typename AddressMap>
+  Error emitRelocations(
+      const DebugMap &DM,
+      std::vector<std::unique_ptr<OutDwarfFile>> &ObjectsForLinking);
 
   raw_fd_ostream &OutFile;
   BinaryHolder &BinHolder;
