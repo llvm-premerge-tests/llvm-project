@@ -451,3 +451,53 @@ def testVectorize():
     # CHECK: transform.sequence
     # CHECK: = transform.structured.vectorize
     # CHECK: {vectorize_padding}
+
+
+@run
+def testMatchInterfaceEnum():
+    names = ArrayAttr.get([StringAttr.get("test.dummy")])
+    result_type = transform.AnyOpType.get()
+    sequence = transform.SequenceOp(
+        transform.FailurePropagationMode.PROPAGATE, [], transform.AnyOpType.get()
+    )
+    with InsertionPoint(sequence.body):
+        fused = structured.MatchOp.__base__(
+            result_type,
+            sequence.bodyTarget,
+            ops=names,
+            interface=structured.MatchInterfaceEnum.LINALG_OP,
+        )
+        transform.YieldOp()
+    # CHECK-LABEL: TEST: testMatchInterfaceEnum
+    # CHECK: transform.sequence
+    # CHECK: = transform.structured.match
+    # CHECK: interface{LinalgOp}
+
+
+@run
+def testMatchInterfaceEnumReplaceAttributeBuilder():
+    @register_attribute_builder("MatchInterfaceEnum", replace=True)
+    def match_interface_enum(x, context):
+        if x == "LINALG_OP":
+            y = 0
+        elif x == "TILING_INTERFACE":
+            y = 1
+        return IntegerAttr.get(IntegerType.get_signless(32, context=context), y)
+
+    names = ArrayAttr.get([StringAttr.get("test.dummy")])
+    result_type = transform.AnyOpType.get()
+    sequence = transform.SequenceOp(
+        transform.FailurePropagationMode.PROPAGATE, [], transform.AnyOpType.get()
+    )
+    with InsertionPoint(sequence.body):
+        fused = structured.MatchOp.__base__(
+            result_type,
+            sequence.bodyTarget,
+            ops=names,
+            interface="TILING_INTERFACE",
+        )
+        transform.YieldOp()
+    # CHECK-LABEL: TEST: testMatchInterfaceEnumReplaceAttributeBuilder
+    # CHECK: transform.sequence
+    # CHECK: = transform.structured.match
+    # CHECK: interface{TilingInterface}
