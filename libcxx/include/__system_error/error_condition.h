@@ -58,9 +58,9 @@ public:
       : __val_(__val),
         __cat_(&__cat) {}
 
-  template <class _Ep>
+  template <class _Ep, __enable_if_t<is_error_condition_enum<_Ep>::value, int> = 0>
   _LIBCPP_HIDE_FROM_ABI
-  error_condition(_Ep __e, typename enable_if<is_error_condition_enum<_Ep>::value>::type* = nullptr) _NOEXCEPT {
+  error_condition(_Ep __e) _NOEXCEPT {
     using __adl_only::make_error_condition;
     *this = make_error_condition(__e);
   }
