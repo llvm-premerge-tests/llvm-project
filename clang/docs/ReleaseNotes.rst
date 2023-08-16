@@ -132,6 +132,44 @@ Improvements to Clang's diagnostics
   of a base class is not called in the constructor of its derived class.
 - Clang no longer emits ``-Wmissing-variable-declarations`` for variables declared
   with the ``register`` storage class.
+- Clang now warns on unused variables declared and initialized in condition
+  expressions.
+  (`#61681: <https://github.com/llvm/llvm-project/issues/61681>`_)
+- When describing the failure of static assertion of `==` expression, clang prints the integer
+  representation of the value as well as its character representation when
+  the user-provided expression is of character type. If the character is
+  non-printable, clang now shows the escpaed character.
+  Clang also prints multi-byte characters if the user-provided expression
+  is of multi-byte character type.
+
+  *Example Code*:
+
+  .. code-block:: c++
+
+     static_assert("A\n"[1] == U'🌍');
+
+  *BEFORE*:
+
+  .. code-block:: text
+
+    source:1:15: error: static assertion failed due to requirement '"A\n"[1] == U'\U0001f30d''
+    1 | static_assert("A\n"[1] == U'🌍');
+      |               ^~~~~~~~~~~~~~~~~
+    source:1:24: note: expression evaluates to ''
+    ' == 127757'
+    1 | static_assert("A\n"[1] == U'🌍');
+      |               ~~~~~~~~~^~~~~~~~
+
+  *AFTER*:
+
+  .. code-block:: text
+
+    source:1:15: error: static assertion failed due to requirement '"A\n"[1] == U'\U0001f30d''
+    1 | static_assert("A\n"[1] == U'🌍');
+      |               ^~~~~~~~~~~~~~~~~
+    source:1:24: note: expression evaluates to ''\n' (0x0A, 10) == U'🌍' (0x1F30D, 127757)'
+    1 | static_assert("A\n"[1] == U'🌍');
+      |               ~~~~~~~~~^~~~~~~~
 
 Bug Fixes in This Version
 -------------------------
