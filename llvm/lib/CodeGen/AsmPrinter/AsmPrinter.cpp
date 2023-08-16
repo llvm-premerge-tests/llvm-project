@@ -516,6 +516,7 @@ bool AsmPrinter::doInitialization(Module &M) {
                             CodeViewLineTablesGroupDescription);
     }
     if (!EmitCodeView || M.getDwarfVersion()) {
+      assert(MMI && "MMI could not be nullptr here!");
       if (MMI->hasDebugInfo()) {
         DD = new DwarfDebug(this);
         Handlers.emplace_back(std::unique_ptr<DwarfDebug>(DD), DbgTimerName,
@@ -573,6 +574,7 @@ bool AsmPrinter::doInitialization(Module &M) {
       break;
     case WinEH::EncodingType::X86:
     case WinEH::EncodingType::Itanium:
+      assert(MMI && "MMI could not be nullptr!");
       ES = new WinException(this);
       break;
     }
