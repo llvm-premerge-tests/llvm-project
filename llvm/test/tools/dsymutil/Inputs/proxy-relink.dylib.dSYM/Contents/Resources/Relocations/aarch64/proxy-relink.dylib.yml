@@ -1,0 +1,14 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     proxy-relink.dylib
+relocations:
+  - { offsetInCU: 0x26, offset: 0x26, size: 0x8, addend: 0x0, symName: _display, symObjAddr: 0x0, symBinAddr: 0x3F2C, symSize: 0x1C }
+  - { offsetInCU: 0x41, offset: 0x41, size: 0x8, addend: 0x0, symName: _display, symObjAddr: 0x0, symBinAddr: 0x3F2C, symSize: 0x1C }
+  - { offsetInCU: 0x26, offset: 0x7C, size: 0x8, addend: 0x0, symName: _bar, symObjAddr: 0x3FB4, symBinAddr: 0x3F48, symSize: 0x8 }
+  - { offsetInCU: 0x43, offset: 0x99, size: 0x8, addend: 0x0, symName: _baz, symObjAddr: 0x4000, symBinAddr: 0x8000, symSize: 0x0 }
+  - { offsetInCU: 0x53, offset: 0xA9, size: 0x8, addend: 0x0, symName: _bar, symObjAddr: 0x3FB4, symBinAddr: 0x3F48, symSize: 0x8 }
+  - { offsetInCU: 0x26, offset: 0xE8, size: 0x8, addend: 0x0, symName: _foo, symObjAddr: 0x3F74, symBinAddr: 0x3F50, symSize: 0x24 }
+  - { offsetInCU: 0x37, offset: 0xF9, size: 0x8, addend: 0x0, symName: _foo, symObjAddr: 0x3F74, symBinAddr: 0x3F50, symSize: 0x24 }
+  - { offsetInCU: 0x26, offset: 0x14E, size: 0x8, addend: 0x0, symName: _altfoo, symObjAddr: 0x3F98, symBinAddr: 0x3F74, symSize: 0x24 }
+  - { offsetInCU: 0x37, offset: 0x15F, size: 0x8, addend: 0x0, symName: _altfoo, symObjAddr: 0x3F98, symBinAddr: 0x3F74, symSize: 0x24 }
+...
