@@ -102,6 +102,44 @@ int close_func(File *f) {
 
 } // anonymous namespace
 
+ErrorOr<File *> allocatefile(int fd, File::ModeFlags modeflags) {
+  if (fd < 0)
+    return Error(-fd);
+
+  uint8_t *buffer;
+  {
+    AllocChecker ac;
+    buffer = new (ac) uint8_t[File::DEFAULT_BUFFER_SIZE];
+    if (!ac)
+      return Error(ENOMEM);
+  }
+  AllocChecker ac;
+  auto *file = new (ac)
+      LinuxFile(fd, buffer, File::DEFAULT_BUFFER_SIZE, _IOFBF, true, modeflags);
+  if (!ac)
+    return Error(ENOMEM);
+  return file;
+}
+
+ErrorOr<File *> openfile(int fd, const char *mode) {
+  if (fd < 0)
+    return Error(EBADF);
+  using ModeFlags = File::ModeFlags;
+  auto modeflags = File::mode_flags(mode);
+  if (modeflags == 0) {
+    // return {nullptr, EINVAL};
+    return Error(EINVAL);
+  }
+
+  if (modeflags & ModeFlags(File::OpenMode::APPEND)) {
+    auto cur_flags = __llvm_libc::syscall_impl<int>(SYS_fcntl, fd, F_GETFL);
+    if (!(cur_flags & O_APPEND))
+      __llvm_libc::syscall_impl<int>(SYS_fcntl, fd, F_SETFL,
+                                     cur_flags | O_APPEND);
+  }
+  return allocatefile(fd, modeflags);
+}
+
 ErrorOr<File *> openfile(const char *path, const char *mode) {
   using ModeFlags = File::ModeFlags;
   auto modeflags = File::mode_flags(mode);
@@ -143,22 +181,7 @@ ErrorOr<File *> openfile(const char *path, const char *mode) {
 #error "open and openat syscalls not available."
 #endif
 
-  if (fd < 0)
-    return Error(-fd);
-
-  uint8_t *buffer;
-  {
-    AllocChecker ac;
-    buffer = new (ac) uint8_t[File::DEFAULT_BUFFER_SIZE];
-    if (!ac)
-      return Error(ENOMEM);
-  }
-  AllocChecker ac;
-  auto *file = new (ac)
-      LinuxFile(fd, buffer, File::DEFAULT_BUFFER_SIZE, _IOFBF, true, modeflags);
-  if (!ac)
-    return Error(ENOMEM);
-  return file;
+  return allocatefile(fd, modeflags);
 }
 
 int get_fileno(File *f) {

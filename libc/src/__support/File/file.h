@@ -302,6 +302,7 @@ private:
 // The implementaiton of this function is provided by the platfrom_file
 // library.
 ErrorOr<File *> openfile(const char *path, const char *mode);
+ErrorOr<File *> openfile(int fd, const char *mode);
 
 // The platform_file library should implement it if it relevant for that
 // platform.
