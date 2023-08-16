@@ -7081,6 +7081,32 @@ static void DiagnosedUnqualifiedCallsToStdFunctions(Sema &S, CallExpr *Call) {
       << FixItHint::CreateInsertion(DRE->getLocation(), "std::");
 }
 
+// Diagnose uses of std::is_constant_evaluated or
+// __builtin_is_constant_evaluated in contexts where the result is known at
+// compile time.
+static void DiagnoseTautologicalCallToIsConstantEvaluated(Sema &S,
+                                                          CallExpr *CE) {
+  if (S.inTemplateInstantiation() || CE->getBeginLoc().isMacroID())
+    return;
+  if (const FunctionDecl *FD = CE->getDirectCallee()) {
+    bool IsBuiltin =
+        FD->getBuiltinID() == Builtin::BI__builtin_is_constant_evaluated;
+    SourceLocation ConstexprIfLoc = S.ConstexprIfLoc;
+
+    if ((FD->isInStdNamespace() &&
+         FD->getNameAsString() == "is_constant_evaluated") ||
+        IsBuiltin) {
+      bool AlwaysTrue = S.ExprEvalContexts.back().isConstantEvaluated() ||
+                        S.ExprEvalContexts.back().isUnevaluated();
+      bool AlwaysFalse = S.ExprEvalContexts.back().IsRuntimeEvaluated;
+      if (AlwaysTrue || AlwaysFalse)
+        S.Diag(CE->getBeginLoc(), diag::warn_tautological_is_constant_evaluated)
+            << IsBuiltin << AlwaysTrue
+            << FixItHint::CreateRemoval(ConstexprIfLoc);
+    }
+  }
+}
+
 ExprResult Sema::ActOnCallExpr(Scope *Scope, Expr *Fn, SourceLocation LParenLoc,
                                MultiExprArg ArgExprs, SourceLocation RParenLoc,
                                Expr *ExecConfig) {
@@ -7107,8 +7133,10 @@ ExprResult Sema::ActOnCallExpr(Scope *Scope, Expr *Fn, SourceLocation LParenLoc,
                            ExecConfig);
   if (LangOpts.CPlusPlus) {
     CallExpr *CE = dyn_cast<CallExpr>(Call.get());
-    if (CE)
+    if (CE) {
       DiagnosedUnqualifiedCallsToStdFunctions(*this, CE);
+      DiagnoseTautologicalCallToIsConstantEvaluated(*this, CE);
+    }
   }
   return Call;
 }
@@ -18591,6 +18619,8 @@ void Sema::PopExpressionEvaluationContext() {
       } else
         llvm_unreachable("Couldn't infer lambda error message.");
 
+      if (auto *VD = dyn_cast_if_present<VarDecl>(Rec.ManglingContextDecl))
+        VD->setInvalidDecl();
       for (const auto *L : Rec.Lambdas)
         Diag(L->getBeginLoc(), D);
     }
