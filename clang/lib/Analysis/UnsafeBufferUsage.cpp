@@ -1106,7 +1106,7 @@ findGadgets(const Decl *D, const UnsafeBufferUsageHandler &Handler,
             // In parallel, match all DeclRefExprs so that to find out
             // whether there are any uncovered by gadgets.
             declRefExpr(anyOf(hasPointerType(), hasArrayType()),
-                        to(varDecl())).bind("any_dre"),
+                        to(anyOf(varDecl(), bindingDecl()))).bind("any_dre"),
             // Also match DeclStmts because we'll need them when fixing
             // their underlying VarDecls that otherwise don't have
             // any backreferences to DeclStmts.
