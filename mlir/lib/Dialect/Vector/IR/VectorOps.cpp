@@ -5170,12 +5170,81 @@ public:
   }
 };
 
+static VectorType trimTrailingOneDims(VectorType oldType) {
+  ArrayRef<int64_t> oldShape = oldType.getShape();
+  ArrayRef<int64_t> newShape(oldShape.begin(), oldShape.end());
+
+  while (newShape.back() == 1)
+    newShape = newShape.drop_back(1);
+
+  auto newScalableDims =
+      oldType.getScalableDims().drop_front(oldShape.size() - newShape.size());
+
+  // Make sure we have at least 1 dimension per vector type requirements.
+  if (newShape.empty()) {
+    newShape = oldShape.take_back();
+    newScalableDims = oldType.getScalableDims().take_back();
+  }
+  return VectorType::get(newShape, oldType.getElementType(), newScalableDims);
+}
+
+/// Folds shape_cast(create_mask) into a new create_mask
+class FoldShapeCastCreateMask final : public OpRewritePattern<ShapeCastOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(ShapeCastOp shapeOp,
+                                PatternRewriter &rewriter) const override {
+    Value shapeOpSrc = shapeOp->getOperand(0);
+    auto createMaskOp = shapeOpSrc.getDefiningOp<vector::CreateMaskOp>();
+    auto constantMaskOp = shapeOpSrc.getDefiningOp<vector::ConstantMaskOp>();
+    if (!createMaskOp && !constantMaskOp)
+      return failure();
+
+    VectorType shapeOpResTy = shapeOp.getResultVectorType();
+    VectorType shapeOpSrcTy = shapeOp.getSourceVectorType();
+
+    VectorType newVecType = trimTrailingOneDims(shapeOpSrcTy);
+    if (newVecType != shapeOpResTy)
+      return failure();
+
+    if (createMaskOp) {
+      auto maskOperands = createMaskOp.getOperands();
+      auto numDimsToDrop =
+          shapeOpSrcTy.getShape().size() - shapeOpResTy.getShape().size();
+      auto numMaskOperands = maskOperands.size();
+
+      // Check every mask operand whether it can be dropped
+      for (size_t i = numMaskOperands - 1; i >= numMaskOperands - numDimsToDrop;
+           i--) {
+        auto constant = maskOperands[i].getDefiningOp<arith::ConstantIndexOp>();
+        // TODO: Support mask values other than 1 (0 might be only viable
+        // option)
+        if (!constant || (constant.value() != 1))
+          return failure();
+      }
+      SmallVector<Value> newMaskOperands =
+          maskOperands.drop_back(numDimsToDrop);
+
+      rewriter.replaceOpWithNewOp<vector::CreateMaskOp>(
+          shapeOp, shapeOp.getResultVectorType(), newMaskOperands);
+      return success();
+    }
+
+    // TODO: Constant mask case
+
+    return failure();
+  }
+};
+
 } // namespace
 
 void vector::TransposeOp::getCanonicalizationPatterns(
     RewritePatternSet &results, MLIRContext *context) {
-  results.add<FoldTransposeCreateMask, FoldTransposedScalarBroadcast,
-              TransposeFolder, FoldTransposeSplat>(context);
+  results
+      .add<FoldShapeCastCreateMask, FoldTransposeCreateMask,
+           FoldTransposedScalarBroadcast, TransposeFolder, FoldTransposeSplat>(
+          context);
 }
 
 void vector::TransposeOp::getTransp(SmallVectorImpl<int64_t> &results) {
