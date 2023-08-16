@@ -5927,6 +5927,9 @@ static TypeSourceInfo *GetFullTypeForDeclarator(TypeProcessingState &state,
                                          /*ExpectPackInType=*/false);
       }
       break;
+    case DeclaratorContext::Member:
+      // Expand for data member packs.
+      // https://discourse.llvm.org/t/adding-support-for-data-member-packs/71333
     case DeclaratorContext::TemplateParam:
       // C++0x [temp.param]p15:
       //   If a template-parameter is a [...] is a parameter-declaration that
@@ -5954,7 +5957,6 @@ static TypeSourceInfo *GetFullTypeForDeclarator(TypeProcessingState &state,
     case DeclaratorContext::CXXNew:
     case DeclaratorContext::AliasDecl:
     case DeclaratorContext::AliasTemplate:
-    case DeclaratorContext::Member:
     case DeclaratorContext::Block:
     case DeclaratorContext::ForInit:
     case DeclaratorContext::SelectionInit:
