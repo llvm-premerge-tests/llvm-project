@@ -116,6 +116,49 @@ RUN wget https://github.com/Kitware/CMake/releases/download/v3.27.0-rc2/cmake-3.
 RUN bash /tmp/install-cmake.sh --prefix=/opt --exclude-subdir --skip-license
 RUN rm /tmp/install-cmake.sh
 
+# Install the Android platform tools (e.g. adb) into /opt/android/sdk.
+RUN apt-get update && apt-get install -y unzip
+RUN mkdir -p /opt/android/sdk && cd /opt/android/sdk && \
+    curl -LO https://dl.google.com/android/repository/platform-tools-latest-linux.zip && \
+    unzip platform-tools-latest-linux.zip && \
+    rm platform-tools-latest-linux.zip
+
+# Install the current Android compiler.
+ENV ANDROID_CLANG_VERSION=r498229
+RUN git clone --filter=blob:none --sparse \
+        https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 \
+        /opt/android/clang && \
+    git -C /opt/android/clang sparse-checkout add clang-${ANDROID_CLANG_VERSION} && \
+    rm -fr /opt/android/clang/.git && \
+    ln -sf /opt/android/clang/clang-${ANDROID_CLANG_VERSION} /opt/android/clang/clang-current
+
+# Install an Android sysroot. New AOSP sysroots are available at
+# https://ci.android.com/builds/branches/aosp-master/grid, the "ndk" target. The
+# NDK also makes its sysroot prebuilt available at
+# https://android.googlesource.com/platform/prebuilts/ndk/+/refs/heads/dev/platform/sysroot.
+ENV ANDROID_SYSROOT_BID=10375398
+RUN cd /opt/android && \
+    curl -L -o ndk_platform.tar.bz2 \
+        https://androidbuildinternal.googleapis.com/android/internal/build/v3/builds/${ANDROID_SYSROOT_BID}/ndk/attempts/latest/artifacts/ndk_platform.tar.bz2/url && \
+    tar xf ndk_platform.tar.bz2 && \
+    rm ndk_platform.tar.bz2
+
+# Install Docker. Mark the binary setuid so it can be run without prefixing it
+# with sudo. Adding the container user to the docker group doesn't work because
+# /var/run/docker.sock is owned by the host's docker GID, not the container's
+# docker GID.
+RUN apt-get update && apt-get install -y gpg && \
+    install -m 0755 -d /etc/apt/keyrings && \
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
+    chmod a+r /etc/apt/keyrings/docker.gpg && \
+    echo "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+         "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+         tee /etc/apt/sources.list.d/docker.list > /dev/null && \
+    apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin && \
+    chmod u+s /usr/bin/docker
+
+COPY ./container-setup.sh /opt/bin/container-setup.sh
+
 # Change the user to a non-root user, since some of the libc++ tests
 # (e.g. filesystem) require running as non-root. Also setup passwordless sudo.
 RUN apt-get update && apt-get install -y sudo
@@ -124,11 +167,13 @@ RUN useradd --create-home libcxx-builder
 USER libcxx-builder
 WORKDIR /home/libcxx-builder
 
+# Add Android platform-tools to the PATH.
+ENV PATH="/opt/android/sdk/platform-tools:${PATH}"
+
 # Install the Buildkite agent and dependencies. This must be done as non-root
 # for the Buildkite agent to be installed in a path where we can find it.
 RUN bash -c "$(curl -sL https://raw.githubusercontent.com/buildkite/agent/main/install.sh)"
 ENV PATH="${PATH}:/home/libcxx-builder/.buildkite-agent/bin"
-RUN echo "tags=\"queue=libcxx-builders,arch=$(uname -m),os=linux\"" >> "/home/libcxx-builder/.buildkite-agent/buildkite-agent.cfg"
 
 # By default, start the Buildkite agent (this requires a token).
-CMD buildkite-agent start
+CMD /opt/bin/container-setup.sh && buildkite-agent start
