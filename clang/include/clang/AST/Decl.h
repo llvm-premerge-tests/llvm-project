@@ -2118,6 +2118,8 @@ public:
     return DeclarationNameInfo(getDeclName(), getLocation(), DNLoc);
   }
 
+  void setDeclNameLoc(const DeclarationNameLoc &Loc) { DNLoc = Loc; }
+
   void getNameForDiagnostic(raw_ostream &OS, const PrintingPolicy &Policy,
                             bool Qualified) const override;
 
@@ -3045,6 +3047,8 @@ public:
 
   /// Determines whether this field is mutable (C++ only).
   bool isMutable() const { return Mutable; }
+
+  void setMutable(bool Mutable) { this->Mutable = Mutable; }
 
   /// Determines whether this field is a bitfield.
   bool isBitField() const { return BitField; }

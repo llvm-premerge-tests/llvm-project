@@ -1199,6 +1199,8 @@ public:
   /// place.
   Expr *getSourceExpr() const { return SourceExpr; }
 
+  void setSourceExpr(Expr *E) { SourceExpr = E; }
+
   void setIsUnique(bool V) {
     assert((!V || SourceExpr) &&
            "unique OVEs are expected to have source expressions");
@@ -1332,6 +1334,11 @@ public:
     return *getTrailingObjects<NestedNameSpecifierLoc>();
   }
 
+  void setQualifierLoc(NestedNameSpecifierLoc QL) {
+    assert(hasQualifier());
+    *getTrailingObjects<NestedNameSpecifierLoc>() = QL;
+  }
+
   /// If the name was qualified, retrieves the nested-name-specifier
   /// that precedes the name. Otherwise, returns NULL.
   NestedNameSpecifier *getQualifier() const {
@@ -1352,6 +1359,11 @@ public:
   /// See non-const variant.
   const NamedDecl *getFoundDecl() const {
     return hasFoundDecl() ? *getTrailingObjects<NamedDecl *>() : D;
+  }
+
+  void setFoundDecl(NamedDecl *ND) {
+    assert(hasFoundDecl());
+    *getTrailingObjects<NamedDecl *>() = ND;
   }
 
   bool hasTemplateKWAndArgsInfo() const {
@@ -3296,6 +3308,11 @@ public:
     return getTrailingObjects<MemberExprNameQualifier>()->QualifierLoc;
   }
 
+  void setQualifierLoc(NestedNameSpecifierLoc QL) {
+    assert(hasQualifierOrFoundDecl());
+    getTrailingObjects<MemberExprNameQualifier>()->QualifierLoc = QL;
+  }
+
   /// If the member name was qualified, retrieves the
   /// nested-name-specifier that precedes the member name. Otherwise, returns
   /// NULL.
@@ -3368,6 +3385,10 @@ public:
   DeclarationNameInfo getMemberNameInfo() const {
     return DeclarationNameInfo(MemberDecl->getDeclName(),
                                MemberLoc, MemberDNLoc);
+  }
+
+  void setMemberDeclNameLoc(const DeclarationNameLoc &Loc) {
+    MemberDNLoc = Loc;
   }
 
   SourceLocation getOperatorLoc() const { return MemberExprBits.OperatorLoc; }
