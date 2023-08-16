@@ -51,6 +51,21 @@ private:
   std::string Msg;
 };
 
+// A class representing segmentation faults specifically. Holds information
+// about where specifically the segmentation fault occurred.
+class SnippetSegfaultCrash : public ErrorInfo<SnippetSegfaultCrash> {
+public:
+  static char ID;
+  SnippetSegfaultCrash(const void *Addr) : Address((intptr_t)Addr) {}
+
+  void log(raw_ostream &OS) const override;
+
+  std::error_code convertToErrorCode() const override;
+
+private:
+  intptr_t Address;
+};
+
 } // namespace exegesis
 } // namespace llvm
 

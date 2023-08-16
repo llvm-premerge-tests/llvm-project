@@ -27,5 +27,15 @@ std::error_code SnippetCrash::convertToErrorCode() const {
   return inconvertibleErrorCode();
 }
 
+char SnippetSegfaultCrash::ID;
+
+void SnippetSegfaultCrash::log(raw_ostream &OS) const {
+  OS << "A segmentation fault occurred at address " + Twine::utohexstr(Address);
+}
+
+std::error_code SnippetSegfaultCrash::convertToErrorCode() const {
+  return inconvertibleErrorCode();
+}
+
 } // namespace exegesis
 } // namespace llvm

@@ -334,6 +334,9 @@ private:
                                  Twine(strerror(errno)));
     }
 
+    if (ChildSignalInfo.si_signo == SIGSEGV)
+      return make_error<SnippetSegfaultCrash>(ChildSignalInfo.si_addr);
+
     return make_error<SnippetCrash>(
         "The benchmarking subprocess sent unexpected signal: " +
         Twine(strsignal(ChildSignalInfo.si_signo)));
@@ -526,7 +529,7 @@ Expected<Benchmark> BenchmarkRunner::runConfiguration(
   auto NewMeasurements = runMeasurements(**Executor);
 
   if (Error E = NewMeasurements.takeError()) {
-    if (!E.isA<SnippetCrash>())
+    if (!E.isA<SnippetCrash>() && !E.isA<SnippetSegfaultCrash>())
       return std::move(E);
     InstrBenchmark.Error = toString(std::move(E));
     return std::move(InstrBenchmark);
