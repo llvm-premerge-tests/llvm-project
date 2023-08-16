@@ -1818,6 +1818,14 @@ void MachineVerifier::visitMachineInstrBefore(const MachineInstr *MI) {
            << MI->getNumOperands() << " given.\n";
   }
 
+  if (MI->getFlag(MachineInstr::NoConvergent)) {
+    if (!MCID.isConvergent()) {
+      report(
+          "NoConvergent flag expected only on instructions marked convergent.",
+          MI);
+    }
+  }
+
   if (MI->isPHI()) {
     if (MF->getProperties().hasProperty(
             MachineFunctionProperties::Property::NoPHIs))

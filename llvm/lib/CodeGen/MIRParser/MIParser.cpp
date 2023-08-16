@@ -1471,6 +1471,7 @@ bool MIParser::parseInstruction(unsigned &OpCode, unsigned &Flags) {
          Token.is(MIToken::kw_nsw) ||
          Token.is(MIToken::kw_exact) ||
          Token.is(MIToken::kw_nofpexcept) ||
+         Token.is(MIToken::kw_noconvergent) ||
          Token.is(MIToken::kw_unpredictable)) {
     // Mine frame and fast math flags
     if (Token.is(MIToken::kw_frame_setup))
@@ -1501,6 +1502,8 @@ bool MIParser::parseInstruction(unsigned &OpCode, unsigned &Flags) {
       Flags |= MachineInstr::NoFPExcept;
     if (Token.is(MIToken::kw_unpredictable))
       Flags |= MachineInstr::Unpredictable;
+    if (Token.is(MIToken::kw_noconvergent))
+      Flags |= MachineInstr::NoConvergent;
 
     lex();
   }
