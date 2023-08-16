@@ -7025,6 +7025,16 @@ extern const AstTypeMatcher<AtomicType> atomicType;
 AST_TYPELOC_TRAVERSE_MATCHER_DECL(hasValueType, getValue,
                                   AST_POLYMORPHIC_SUPPORTED_TYPES(AtomicType));
 
+/// Matches bitint types.
+///
+/// Given
+/// \code
+///   _BitInt(10) i;
+/// \endcode
+/// bitIntType()
+///   matches "_BitInt(10) i"
+extern const AstTypeMatcher<BitIntType> bitIntType;
+
 /// Matches types nodes representing C++11 auto types.
 ///
 /// Given:

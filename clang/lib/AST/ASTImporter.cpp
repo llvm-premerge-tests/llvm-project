@@ -419,6 +419,7 @@ namespace clang {
     ExpectedType VisitObjCInterfaceType(const ObjCInterfaceType *T);
     ExpectedType VisitObjCObjectType(const ObjCObjectType *T);
     ExpectedType VisitObjCObjectPointerType(const ObjCObjectPointerType *T);
+    ExpectedType VisitBitIntType(const BitIntType *T);
 
     // Importing declarations
     Error ImportDeclParts(NamedDecl *D, DeclarationName &Name, NamedDecl *&ToD,
@@ -1699,6 +1700,11 @@ ASTNodeImporter::VisitObjCObjectPointerType(const ObjCObjectPointerType *T) {
     return ToPointeeTypeOrErr.takeError();
 
   return Importer.getToContext().getObjCObjectPointerType(*ToPointeeTypeOrErr);
+}
+
+ExpectedType clang::ASTNodeImporter::VisitBitIntType(const BitIntType *T) {
+  return Importer.getToContext().getBitIntType(T->isUnsigned(),
+                                               T->getNumBits());
 }
 
 //----------------------------------------------------------------------------

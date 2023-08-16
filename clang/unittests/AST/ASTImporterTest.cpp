@@ -583,6 +583,13 @@ TEST_P(ImportType, ImportAtomicType) {
       functionDecl(hasDescendant(typedefDecl(has(atomicType())))));
 }
 
+TEST_P(ImportType, ImportBitIntType) {
+  MatchVerifier<Decl> Verifier;
+  testImport("void declToImport() { typedef _BitInt(10) bit_int; }", Lang_CXX11,
+             "", Lang_CXX11, Verifier,
+             functionDecl(hasDescendant(typedefDecl(has(bitIntType())))));
+}
+
 TEST_P(ImportType, ImportUsingType) {
   MatchVerifier<Decl> Verifier;
   testImport("struct C {};"
