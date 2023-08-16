@@ -2225,7 +2225,16 @@ Value *ScalarExprEmitter::VisitCastExpr(CastExpr *CE) {
     return Visit(const_cast<Expr*>(E));
 
   case CK_NoOp: {
-    llvm::Value *V = Visit(const_cast<Expr *>(E));
+    //  Emit the expression as an l-value(if volatile qual exist) and then load from it 
+    //  rather than aggressively recursing going through.
+    // |-ImplicitCastExpr 'int' <LValueToRValue>
+    // | `-CXXStaticCastExpr 'volatile int' lvalue static_cast<volatile int &> <NoOp>
+    // |   `-ImplicitCastExpr  'volatile int' lvalue <NoOp> part_of_explicit_cast
+    // |     `-DeclRefExpr 'int' lvalue Var 'x' 'int'
+
+    llvm::Value *V = CE->getType().isVolatileQualified() 
+	    		? EmitLoadOfLValue(CE) 
+			: Visit(const_cast<Expr *>(E)) ;
     if (V) {
       // CK_NoOp can model a pointer qualification conversion, which can remove
       // an array bound and change the IR type.

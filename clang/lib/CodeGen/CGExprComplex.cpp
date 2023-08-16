@@ -182,6 +182,8 @@ public:
   ComplexPairTy VisitCastExpr(CastExpr *E) {
     if (const auto *ECE = dyn_cast<ExplicitCastExpr>(E))
       CGF.CGM.EmitExplicitCastExprType(ECE, &CGF);
+    if (E->getCastKind() == CK_NoOp && E->getType().isVolatileQualified())
+       return EmitLoadOfLValue(E);
     return EmitCast(E->getCastKind(), E->getSubExpr(), E->getType());
   }
   ComplexPairTy VisitCallExpr(const CallExpr *E);
