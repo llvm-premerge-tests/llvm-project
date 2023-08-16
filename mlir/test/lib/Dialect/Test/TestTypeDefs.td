@@ -373,4 +373,12 @@ def TestI32 : Test_Type<"TestI32"> {
   let mnemonic = "i32";
 }
 
+def TestDozing : Test_Type<"TestDozing"> {
+  let mnemonic = "dozing";
+  let summary = "An MLIR type, but very tired.";
+  let parameters = (ins "Type":$valueType);
+  let assemblyFormat = "`<` $valueType `>`";
+}
+
+
 #endif // TEST_TYPEDEFS

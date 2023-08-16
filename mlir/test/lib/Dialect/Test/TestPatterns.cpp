@@ -1697,6 +1697,76 @@ struct TestSelectiveReplacementPatternDriver
 } // namespace
 
 //===----------------------------------------------------------------------===//
+// Test Dialect Conversion Materialization Folding
+//===----------------------------------------------------------------------===//
+
+namespace {
+
+class DropDozingTypeConverter : public TypeConverter {
+public:
+  DropDozingTypeConverter() {
+    addConversion([](Type type) { return type; });
+    addConversion(
+        [](TestDozingType type) -> Type { return type.getValueType(); });
+  }
+};
+
+struct ConvertFallAsleep : public OpConversionPattern<FallAsleepOp> {
+  ConvertFallAsleep(MLIRContext *context)
+      : OpConversionPattern<FallAsleepOp>(context) {}
+
+  using OpConversionPattern::OpConversionPattern;
+
+  LogicalResult
+  matchAndRewrite(FallAsleepOp op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    rewriter.replaceAllUsesWith(op.getResult(), adaptor.getInput());
+    rewriter.eraseOp(op);
+    return success();
+  }
+};
+
+struct TestDialectConversionMaterializationFolding
+    : public PassWrapper<TestDialectConversionMaterializationFolding,
+                         OperationPass<>> {
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(
+      TestDialectConversionMaterializationFolding)
+
+  StringRef getArgument() const final { return "test-drop-dozing"; }
+  StringRef getDescription() const final {
+    return "Test dropping dozing types";
+  }
+  void runOnOperation() override {
+    MLIRContext *context = &getContext();
+    Operation *op = getOperation();
+    RewritePatternSet patterns(context);
+    DropDozingTypeConverter typeConverter;
+    ConversionTarget target(*context);
+
+    target.addIllegalOp<FallAsleepOp>();
+    target.addDynamicallyLegalOp<func::FuncOp>([&](func::FuncOp op) {
+      return typeConverter.isSignatureLegal(op.getFunctionType()) &&
+             typeConverter.isLegal(&op.getBody());
+    });
+    target.addDynamicallyLegalOp<func::CallOp>(
+        [&](func::CallOp op) { return typeConverter.isLegal(op); });
+    target.addDynamicallyLegalOp<func::ReturnOp>(
+        [&](func::ReturnOp op) { return typeConverter.isLegal(op); });
+
+    patterns.add<ConvertFallAsleep>(typeConverter, context);
+    populateFunctionOpInterfaceTypeConversionPattern<func::FuncOp>(
+        patterns, typeConverter);
+    populateReturnOpTypeConversionPattern(patterns, typeConverter);
+    populateCallOpTypeConversionPattern(patterns, typeConverter);
+
+    if (failed(applyPartialConversion(op, target, std::move(patterns)))) {
+      signalPassFailure();
+    }
+  }
+};
+} // namespace
+
+//===----------------------------------------------------------------------===//
 // PassRegistration
 //===----------------------------------------------------------------------===//
 
@@ -1725,6 +1795,7 @@ void registerPatternsTestPass() {
 
   PassRegistration<TestMergeBlocksPatternDriver>();
   PassRegistration<TestSelectiveReplacementPatternDriver>();
+  PassRegistration<TestDialectConversionMaterializationFolding>();
 }
 } // namespace test
 } // namespace mlir
