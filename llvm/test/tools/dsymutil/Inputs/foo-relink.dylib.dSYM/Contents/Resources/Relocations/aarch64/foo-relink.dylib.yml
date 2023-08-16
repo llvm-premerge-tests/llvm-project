@@ -1,0 +1,10 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     foo-relink.dylib
+relocations:
+  - { offsetInCU: 0x26, offset: 0x26, size: 0x8, addend: 0x0, symName: _foo, symObjAddr: 0x0, symBinAddr: 0x3F60, symSize: 0x20 }
+  - { offsetInCU: 0x33, offset: 0x33, size: 0x8, addend: 0x0, symName: _foo, symObjAddr: 0x0, symBinAddr: 0x3F60, symSize: 0x20 }
+  - { offsetInCU: 0x5B, offset: 0x5B, size: 0x8, addend: 0x0, symName: _foo_unused, symObjAddr: 0x20, symBinAddr: 0x3F80, symSize: 0x8 }
+  - { offsetInCU: 0x26, offset: 0xA1, size: 0x8, addend: 0x0, symName: _altfoo, symObjAddr: 0x0, symBinAddr: 0x3F88, symSize: 0x24 }
+  - { offsetInCU: 0x33, offset: 0xAE, size: 0x8, addend: 0x0, symName: _altfoo, symObjAddr: 0x0, symBinAddr: 0x3F88, symSize: 0x24 }
+...
