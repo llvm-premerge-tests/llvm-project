@@ -74,6 +74,9 @@ public:
     /// The index of this DIE's parent.
     uint32_t ParentIdx;
 
+    /// Name of the file where the described entity is from.
+    std::optional<StringRef> FileName;
+
     /// Is the DIE part of the linked output?
     bool Keep : 1;
 
@@ -105,7 +108,8 @@ public:
 
   CompileUnit(DWARFUnit &OrigUnit, unsigned ID, bool CanUseODR,
               StringRef ClangModuleName)
-      : OrigUnit(OrigUnit), ID(ID), ClangModuleName(ClangModuleName) {
+      : OrigUnit(OrigUnit), ID(ID), AddedOriginObject(false),
+        ClangModuleName(ClangModuleName) {
     Info.resize(OrigUnit.getNumDIEs());
 
     auto CUDie = OrigUnit.getUnitDIE(false);
@@ -142,6 +146,9 @@ public:
   StringRef getSysRoot();
 
   const std::string &getClangModuleName() const { return ClangModuleName; }
+
+  void setOriginObject() { AddedOriginObject = true; }
+  bool addedOriginObject() const { return AddedOriginObject; }
 
   DIEInfo &getInfo(unsigned Idx) { return Info[Idx]; }
   const DIEInfo &getInfo(unsigned Idx) const { return Info[Idx]; }
@@ -319,6 +326,9 @@ private:
 
   /// The DW_AT_language of this unit.
   uint16_t Language = 0;
+
+  /// The DW_AT_APPLE_origin was added
+  bool AddedOriginObject;
 
   /// The DW_AT_LLVM_sysroot of this unit.
   std::string SysRoot;

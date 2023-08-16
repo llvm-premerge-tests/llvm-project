@@ -15,6 +15,9 @@
 #include <cstdint>
 
 namespace llvm {
+
+class RelocMap;
+
 namespace dwarflinker_parallel {
 
 /// Mapped value in the address map is the offset to apply to the
@@ -53,12 +56,19 @@ public:
   virtual std::optional<int64_t>
   getSubprogramRelocAdjustment(const DWARFDie &DIE) = 0;
 
+  // Returns the file name associated to the AddessesMap.
+  virtual std::optional<StringRef> getFileName() = 0;
+
   /// Apply the valid relocations to the buffer \p Data, taking into
   /// account that Data is at \p BaseOffset in the .debug_info section.
   ///
   /// \returns true whether any reloc has been applied.
   virtual bool applyValidRelocs(MutableArrayRef<char> Data, uint64_t BaseOffset,
-                                bool IsLittleEndian) = 0;
+                                bool IsLittleEndian, uint64_t CUOffset,
+                                int64_t RelocSlide) = 0;
+
+  /// Add the valid relocatios to be serialized to the relocation map.
+  virtual void addValidRelocs(RelocMap *RM) = 0;
 
   /// Erases all data.
   virtual void clear() = 0;
