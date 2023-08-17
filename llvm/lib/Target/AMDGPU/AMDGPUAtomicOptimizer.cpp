@@ -204,6 +204,8 @@ void AMDGPUAtomicOptimizerImpl::visitAtomicRMWInst(AtomicRMWInst &I) {
   case AtomicRMWInst::UMin:
   case AtomicRMWInst::FAdd:
   case AtomicRMWInst::FSub:
+  case AtomicRMWInst::FMax:
+  case AtomicRMWInst::FMin:
     break;
   }
 
@@ -375,6 +377,10 @@ static Value *buildNonAtomicBinOp(IRBuilder<> &B, AtomicRMWInst::BinOp Op,
   case AtomicRMWInst::UMin:
     Pred = CmpInst::ICMP_ULT;
     break;
+  case AtomicRMWInst::FMax:
+    return B.CreateMaxNum(LHS, RHS);
+  case AtomicRMWInst::FMin:
+    return B.CreateMinNum(LHS, RHS);
   }
   Value *Cond = B.CreateICmp(Pred, LHS, RHS);
   return B.CreateSelect(Cond, LHS, RHS);
@@ -664,6 +670,10 @@ static Constant *getIdentityValueForAtomicOp(Type *const Ty,
     return ConstantFP::get(C, APFloat::getZero(Ty->getFltSemantics(), true));
   case AtomicRMWInst::FSub:
     return ConstantFP::get(C, APFloat::getZero(Ty->getFltSemantics(), false));
+  case AtomicRMWInst::FMin:
+    return ConstantFP::get(C, APFloat::getInf(Ty->getFltSemantics(), false));
+  case AtomicRMWInst::FMax:
+    return ConstantFP::get(C, APFloat::getInf(Ty->getFltSemantics(), true));
   }
 }
 
@@ -824,6 +834,8 @@ void AMDGPUAtomicOptimizerImpl::optimizeAtomic(Instruction &I,
     case AtomicRMWInst::Min:
     case AtomicRMWInst::UMax:
     case AtomicRMWInst::UMin:
+    case AtomicRMWInst::FMin:
+    case AtomicRMWInst::FMax:
       // These operations with a uniform value are idempotent: doing the atomic
       // operation multiple times has the same effect as doing it once.
       NewV = V;
