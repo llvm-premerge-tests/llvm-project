@@ -11,6 +11,7 @@ import platform
 import shutil
 import tempfile
 import threading
+from pathlib import Path
 
 import io
 
@@ -2066,7 +2067,18 @@ def _runShTest(test, litConfig, useExternalSh, script, tmpBase):
         return out, err, exitCode, timeoutInfo, status
 
     # Create the output directory if it does not already exist.
-    lit.util.mkdir_p(os.path.dirname(tmpBase))
+    outputDir = os.path.dirname(tmpBase)
+    lit.util.mkdir_p(outputDir)
+
+    # On Windows, copy the required DLLs from PATH into the test directory
+    # This avoids the loader finding DLLs in C:\Windows\System32
+    if litConfig.isWindows:
+        toolsetDirectory = Path(lit.util.which("cl.exe")).parent
+        for dllToCopy in itertools.chain(\
+                toolsetDirectory.glob('msvcp*.dll'),\
+                toolsetDirectory.glob('vcruntime*.dll'),\
+                toolsetDirectory.glob('ucrtbase*.dll')):
+            shutil.copyfile(dllToCopy, os.path.join(outputDir, dllToCopy.name))
 
     # Re-run failed tests up to test.allowed_retries times.
     execdir = os.path.dirname(test.getExecPath())
