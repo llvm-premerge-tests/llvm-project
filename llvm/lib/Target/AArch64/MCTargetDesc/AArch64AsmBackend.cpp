@@ -321,10 +321,37 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, const MCValue &Target,
     if (Value & 0x3)
       Ctx.reportError(Fixup.getLoc(), "fixup not sufficiently aligned");
     return (Value >> 2) & 0x3ffffff;
+  case FK_Data_8:
+    if (TheTriple.isOSBinFormatELF()) {
+      auto RefKind =
+          static_cast<AArch64MCExpr::VariantKind>(Target.getRefKind());
+      AArch64MCExpr::VariantKind SymLoc = AArch64MCExpr::getSymbolLoc(RefKind);
+      if (SymLoc == AArch64AuthMCExpr::VK_AUTH ||
+          SymLoc == AArch64AuthMCExpr::VK_AUTHADDR) {
+        if (!isInt<32>(Value)) {
+          // TODO: check if there is any chance to get here and implement
+          // corresponding tests. It might happen when rel with an implicit
+          // addend is used. By default, rela is used, and the implicit addend
+          // is 0.
+          Ctx.reportError(Fixup.getLoc(),
+                          "addend " + Twine(Value) +
+                              " in auth relocation is out of range. Permitted "
+                              "range [-0x80000000, 0x7FFFFFFF]");
+        }
+        auto *Expr = cast<AArch64AuthMCExpr>(Fixup.getValue());
+        uint16_t Discriminator = Expr->getDiscriminator();
+        AArch64PACKey::ID Key = Expr->getKey();
+
+        return (uint32_t(Value) << 0) |
+               (uint64_t(Discriminator) << 32) |
+               (uint64_t(Key) << 60) |
+               (uint64_t(Expr->hasAddressDiversity()) << 63);
+      }
+    }
+    LLVM_FALLTHROUGH;
   case FK_Data_1:
   case FK_Data_2:
   case FK_Data_4:
-  case FK_Data_8:
   case FK_SecRel_2:
   case FK_SecRel_4:
     return Value;
@@ -393,7 +420,9 @@ void AArch64AsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
                                    MutableArrayRef<char> Data, uint64_t Value,
                                    bool IsResolved,
                                    const MCSubtargetInfo *STI) const {
-  if (!Value)
+  // For FK_Data_8, the fixup might correspond to VK_AUTH or VK_AUTHADDR symbol
+  // kind. So, need to call adjustFixupValue even if the value is zero.
+  if (!Value && Fixup.getTargetKind() != FK_Data_8)
     return; // Doesn't change encoding.
   unsigned Kind = Fixup.getKind();
   if (Kind >= FirstLiteralRelocationKind)
@@ -404,6 +433,9 @@ void AArch64AsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
   int64_t SignedValue = static_cast<int64_t>(Value);
   // Apply any target-specific value adjustments.
   Value = adjustFixupValue(Fixup, Target, Value, Ctx, TheTriple, IsResolved);
+  // The fixup is not related to VK_AUTH or VK_AUTHADDR. Skip.
+  if (!Value && Fixup.getTargetKind() == FK_Data_8)
+    return; // Doesn't change encoding.
 
   // Shift the value into position.
   Value <<= Info.TargetOffset;
