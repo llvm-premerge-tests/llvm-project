@@ -1794,6 +1794,13 @@ def NoUniqueAddress : InheritableAttr, TargetSpecificAttr<TargetItaniumCXXABI> {
   let SimpleHandler = 1;
 }
 
+def UnnamedAddr : InheritableAttr {
+  let Spellings = [Clang<"unnamed_addr">];
+  let Subjects = SubjectList<[GlobalVar], ErrorDiag>;
+  let Documentation = [UnnamedAddrDocs];
+  let SimpleHandler = 1;
+}
+
 def ReturnsTwice : InheritableAttr {
   let Spellings = [GCC<"returns_twice">];
   let Subjects = SubjectList<[Function]>;

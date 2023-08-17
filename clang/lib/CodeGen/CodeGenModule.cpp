@@ -5254,6 +5254,9 @@ void CodeGenModule::EmitGlobalVarDefinition(const VarDecl *D,
       GV->setConstant(true);
   }
 
+  if (D->hasAttr<UnnamedAddrAttr>())
+    GV->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
+
   CharUnits AlignVal = getContext().getDeclAlign(D);
   // Check for alignment specifed in an 'omp allocate' directive.
   if (std::optional<CharUnits> AlignValFromAllocate =

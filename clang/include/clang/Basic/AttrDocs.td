@@ -1408,6 +1408,24 @@ in C++11 onwards.
   }];
 }
 
+def UnnamedAddrDocs : Documentation {
+  let Category = DocCatField;
+  let Content = [{
+The ``clang::unnamed_addr`` attribute specifies that the address of a global is
+not significant. This allows global constants with the same contents to be
+merged. This can break global pointer identity, i.e. two different globals have
+the same address.
+
+Example usage:
+
+.. code-block:: c
+
+  // i and j may have the same address.
+  [[clang::unnamed_addr]] const int i = 42;
+  [[clang::unnamed_addr]] const int j = 42;
+  }];
+}
+
 def ObjCRequiresSuperDocs : Documentation {
   let Category = DocCatFunction;
   let Content = [{
