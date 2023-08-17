@@ -13606,6 +13606,24 @@ SDValue RISCVTargetLowering::PerformDAGCombine(SDNode *N,
     if (SDValue V = performCONCAT_VECTORSCombine(N, DAG, Subtarget, *this))
       return V;
     break;
+  case RISCVISD::ROTR_VL:
+  case RISCVISD::ROTL_VL: {
+    // An i16 bitrotate of 8 in either direction is equivalent to a swapping the
+    // bytes (bswap). This is normally caught by a generic ISD::ROT{L,R}
+    // combine, but on fixed vectors they are legalized before they can be
+    // combined, so handle it later here too.
+    EVT VT = N->getValueType(0);
+    if (VT.getScalarType() == MVT::i16 &&
+        // The splat of 8 will have been legalized to a vmv_v_x_vl.
+        N->getOperand(1).getOpcode() == RISCVISD::VMV_V_X_VL &&
+        N->getOperand(1).getOperand(0).isUndef() &&
+        isa<ConstantSDNode>(N->getOperand(1).getOperand(1)) &&
+        N->getOperand(1).getConstantOperandVal(1) == 8) {
+      return DAG.getNode(RISCVISD::BSWAP_VL, SDLoc(N), VT, N->getOperand(0),
+                         N->getOperand(2), N->getOperand(3), N->getOperand(4));
+    }
+    break;
+  }
   case RISCVISD::VMV_V_X_VL: {
     // Tail agnostic VMV.V.X only demands the vector element bitwidth from the
     // scalar input.
