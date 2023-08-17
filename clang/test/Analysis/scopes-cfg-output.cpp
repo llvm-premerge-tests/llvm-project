@@ -1419,3 +1419,15 @@ label:
     }
   }
 }
+
+// CHECK:      [B1]
+// CHECK-NEXT:   1: CFGScopeBegin(i)
+// CHECK-NEXT:   2: int i __attribute__((cleanup(cleanup_int)));
+// CHECK-NEXT:   3: CleanupFunction (cleanup_int)
+// CHECK-NEXT:   4: CFGScopeEnd(i)
+void cleanup_int(int *i) {
+}
+
+void test_cleanup_functions() {
+  int i __attribute__((cleanup(cleanup_int)));
+}
