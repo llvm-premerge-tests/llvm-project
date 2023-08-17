@@ -1,0 +1,18 @@
+# pythonDirectiveInaccessibleFunction is defined within lit's implementation
+# (specifically for the purposes of the test).  It and other lit implementation
+# symbols should not be accessible to PYTHON directives.
+
+# PYTHON: pythonDirectiveInaccessibleFunction() # LN
+
+#       CHECK:Command Output (stdout):
+#  CHECK-NEXT:--
+#  CHECK-NEXT:# executed '{{PYTHON}}:' directive at line [[#LN: @LINE - 4]]
+#  CHECK-NEXT:# .---stderr from '{{PYTHON}}:' directive at line [[#LN]]
+#  CHECK-NEXT:# | Traceback{{.*}}:
+#  CHECK-NEXT:# |   File "<lit test>", line [[#LN]], in <module>
+#  CHECK-NEXT:# | {{.*Error.*pythonDirectiveInaccessibleFunction.*}}
+#  CHECK-NEXT:# `-----------------------------
+# CHECK-EMPTY:
+#  CHECK-NEXT:--
+
+# CHECK:  Failed: 1

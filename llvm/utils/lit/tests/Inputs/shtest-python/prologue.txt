@@ -1,0 +1,32 @@
+# To avoid the boilerplate discussed in the test ./import.txt to set up use of a
+# module, this test depends on lit.cfg's config.prologue.
+#
+# That config.prologue has writes to stdout/stderr so we can check when it's
+# executed:
+# - It should be executed before any RUN or PYTHON directive.  This test checks
+#   the case when the first directive is a RUN directive.  ./trace.txt checks
+#   the case when the first directive is a PYTHON directive.
+# - It should be executed only once even if there are multiple PYTHON blocks
+#   and regardless of the number of lines in those blocks.
+
+#    RUN: echo after config.prologue executes
+# PYTHON: exampleModule.helloWorldFromLitRun()
+#    RUN: echo start new python block
+# PYTHON: exampleModule.helloWorldFromLitRun()
+# PYTHON: exampleModule.goodbyeWorldFromLitRun()
+
+# CHECK-NOT:config.prologue writes
+#     CHECK:# | config.prologue writes to stdout
+# CHECK-NOT:config.prologue writes
+#     CHECK:# | config.prologue writes to stderr
+# CHECK-NOT:config.prologue writes
+#     CHECK:# | after config.prologue executes
+# CHECK-NOT:config.prologue writes
+#     CHECK:# | # | hello world from lit.run at {{.*}}
+# CHECK-NOT:config.prologue writes
+#     CHECK:# | # | hello world from lit.run at {{.*}}
+# CHECK-NOT:config.prologue writes
+#     CHECK:# | # | goodbye world from lit.run at {{.*}}
+# CHECK-NOT:config.prologue writes
+
+# CHECK:  Passed: 1

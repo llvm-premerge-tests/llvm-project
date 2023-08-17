@@ -1,0 +1,23 @@
+# Check that the effect of a RUN directive or a lit.run call in a PYTHON
+# directive can be seen by later python code in PYTHON directives.  That is, the
+# role of PYTHON directives is more than just calling lit.run to insert
+# additional shell commands while building the RUN directives' shell script for
+# later execution.  Instead, PYTHON directives must execute as part of that
+# script.
+
+#    RUN: mkdir -p %t
+# PYTHON: lit.run('touch %t/python-different-block')
+#    RUN: touch %t/run
+
+# PYTHON: import os
+# PYTHON: lit.run('touch %t/python-same-block')
+# PYTHON: for file in sorted(os.listdir(lit.expand('%t'))):
+# PYTHON:   print(file)
+
+# CHECK-COUNT-3:{{.*}} executed command: touch {{.*}}
+#  CHECK-NEXT:# | python-different-block
+#  CHECK-NEXT:# | python-same-block
+#  CHECK-NEXT:# | run
+#  CHECK-NEXT:# `--{{-*}}
+
+# CHECK:  Passed: 1
