@@ -176,6 +176,17 @@ set(C_INCLUDE_DIRS "" CACHE STRING
 set(GCC_INSTALL_PREFIX "" CACHE PATH "Directory where gcc is installed." )
 set(DEFAULT_SYSROOT "" CACHE STRING
   "Default <path> to all compiler invocations for --sysroot=<path>." )
+if(DEFAULT_SYSROOT)
+  message(WARNING "DEFAULT_SYSROOT is deprecated and will be removed. Use "
+    "configuration files (https://clang.llvm.org/docs/UsersManual.html#configuration-files)"
+    "to specify the default --sysroot=")
+endif()
+if(GCC_INSTALL_PREFIX)
+  message(WARNING "GCC_INSTALL_PREFIX is deprecated and will be removed. Use "
+    "configuration files (https://clang.llvm.org/docs/UsersManual.html#configuration-files)"
+    "to specify the default --gcc-install-dir=. --gcc-toolchain= is discouraged. "
+    "The option is often unneeded or better replaced with --gcc-install-dir=.")
+endif()
 
 set(ENABLE_LINKER_BUILD_ID OFF CACHE BOOL "pass --build-id to ld")
 
