@@ -347,6 +347,11 @@ public:
   static void decomposeStackOffsetForDwarfOffsets(const StackOffset &Offset,
                                                   int64_t &ByteSized,
                                                   int64_t &VGSized);
+
+  MachineBasicBlock::iterator
+  insertStackProbingLoop(MachineBasicBlock::iterator MBBI, Register ScratchReg,
+                         Register TargetReg, int64_t AllocSizeMax) const;
+
 #define GET_INSTRINFO_HELPER_DECLS
 #include "AArch64GenInstrInfo.inc"
 

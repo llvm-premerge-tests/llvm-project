@@ -20,6 +20,7 @@
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/CodeGen/LivePhysRegs.h"
 #include "llvm/CodeGen/MachineBasicBlock.h"
 #include "llvm/CodeGen/MachineCombinerPattern.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
@@ -8459,6 +8460,105 @@ unsigned llvm::getBLRCallOpcode(const MachineFunction &MF) {
     return AArch64::BLRNoIP;
   else
     return AArch64::BLR;
+}
+
+MachineBasicBlock::iterator AArch64InstrInfo::insertStackProbingLoop(
+    MachineBasicBlock::iterator MBBI, Register ScratchReg, Register TargetReg,
+    int64_t AllocSizeMax) const {
+  MachineBasicBlock &MBB = *MBBI->getParent();
+  MachineFunction &MF = *MBB.getParent();
+  const AArch64TargetLowering *TLI =
+      MF.getSubtarget<AArch64Subtarget>().getTargetLowering();
+  const AArch64InstrInfo *TII =
+      MF.getSubtarget<AArch64Subtarget>().getInstrInfo();
+  int64_t ProbeSize = (int64_t)TLI->getStackProbeSize(MF);
+  DebugLoc DL = MBB.findDebugLoc(MBBI);
+
+  // The difference ScratchReg - TargetReg < AllocSizeMax. If that size is less
+  // than or equal to StackProbeSize we don't need to create a loop.
+  if (AllocSizeMax && AllocSizeMax <= ProbeSize) {
+    //   STR XZR, [TargetReg]
+    BuildMI(MBB, MBBI, DL, TII->get(AArch64::STRXui))
+        .addReg(AArch64::XZR)
+        .addReg(TargetReg)
+        .addImm(0)
+        .setMIFlags(MachineInstr::FrameSetup);
+    return std::next(MBBI);
+  }
+
+  MachineFunction::iterator MBBInsertPoint = std::next(MBB.getIterator());
+  MachineBasicBlock *LoopTestMBB =
+      MF.CreateMachineBasicBlock(MBB.getBasicBlock());
+  MF.insert(MBBInsertPoint, LoopTestMBB);
+  MachineBasicBlock *LoopBodyMBB =
+      MF.CreateMachineBasicBlock(MBB.getBasicBlock());
+  MF.insert(MBBInsertPoint, LoopBodyMBB);
+  MachineBasicBlock *ExitMBB = MF.CreateMachineBasicBlock(MBB.getBasicBlock());
+  MF.insert(MBBInsertPoint, ExitMBB);
+
+  // LoopTest:
+  //   SUB ScratchReg, ScratchReg, #ProbeSize
+  emitFrameOffset(*LoopTestMBB, LoopTestMBB->end(), DL, ScratchReg, ScratchReg,
+                  StackOffset::getFixed(-ProbeSize), TII,
+                  MachineInstr::FrameSetup);
+
+  //   CMP ScratchReg, TargetReg
+  AArch64CC::CondCode Cond = AArch64CC::LE;
+  Register Op1 = ScratchReg;
+  Register Op2 = TargetReg;
+  if (Op2 == AArch64::SP) {
+    assert(Op1 != AArch64::SP && "At most one of the registers can be SP");
+    // CMP TargetReg, ScratchReg
+    std::swap(Op1, Op2);
+    Cond = AArch64CC::GT;
+  }
+  BuildMI(*LoopTestMBB, LoopTestMBB->end(), DL, TII->get(AArch64::SUBSXrx64),
+          AArch64::XZR)
+      .addReg(Op1)
+      .addReg(Op2)
+      .addImm(AArch64_AM::getArithExtendImm(AArch64_AM::UXTX, 0))
+      .setMIFlags(MachineInstr::FrameSetup);
+
+  //   B.<Cond> LoopExit
+  BuildMI(*LoopTestMBB, LoopTestMBB->end(), DL, TII->get(AArch64::Bcc))
+      .addImm(Cond)
+      .addMBB(ExitMBB)
+      .setMIFlags(MachineInstr::FrameSetup);
+
+  //   STR XZR, [ScratchReg, #MaxUnprobedStack]
+  BuildMI(*LoopBodyMBB, LoopBodyMBB->end(), DL, TII->get(AArch64::STRXui))
+      .addReg(AArch64::XZR)
+      .addReg(ScratchReg)
+      .addImm(0)
+      .setMIFlags(MachineInstr::FrameSetup);
+
+  //   B loop
+  BuildMI(*LoopBodyMBB, LoopBodyMBB->end(), DL, TII->get(AArch64::B))
+      .addMBB(LoopTestMBB);
+
+  LoopTestMBB->addSuccessor(ExitMBB);
+  LoopTestMBB->addSuccessor(LoopBodyMBB);
+  LoopBodyMBB->addSuccessor(LoopTestMBB);
+  // Synthesize the exit MBB.
+  ExitMBB->splice(ExitMBB->end(), &MBB, std::next(MBBI), MBB.end());
+  ExitMBB->transferSuccessorsAndUpdatePHIs(&MBB);
+  MBB.addSuccessor(LoopTestMBB);
+
+  // Update liveins.
+  if (MF.getRegInfo().reservedRegsFrozen()) {
+    recomputeLiveIns(*LoopTestMBB);
+    recomputeLiveIns(*LoopBodyMBB);
+    recomputeLiveIns(*ExitMBB);
+  }
+
+  // LoopExit:
+  //   STR XZR, [TargetReg]
+  BuildMI(*ExitMBB, ExitMBB->begin(), DL, TII->get(AArch64::STRXui))
+      .addReg(AArch64::XZR)
+      .addReg(TargetReg)
+      .addImm(0)
+      .setMIFlags(MachineInstr::FrameSetup);
+  return ExitMBB->begin();
 }
 
 #define GET_INSTRINFO_HELPERS

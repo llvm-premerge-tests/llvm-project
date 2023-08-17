@@ -942,6 +942,19 @@ public:
   // used for 64bit and 128bit vectors as well.
   bool useSVEForFixedLengthVectorVT(EVT VT, bool OverrideNEON = false) const;
 
+  /// True if stack clash protection is enabled for this functions.
+  bool hasInlineStackProbe(const MachineFunction &MF) const override;
+
+  /// Get the interval between stack-clash probes, which is equal to the stack
+  /// guard size, in bytes.
+  unsigned getStackProbeSize(const MachineFunction &MF) const;
+
+  /// Get the maximum allowed number of unprobed bytes above SP at an ABI
+  /// boundary.
+  unsigned getStackProbeMaxUnprobedStack(const MachineFunction &MF) const {
+    return 1024;
+  }
+
 private:
   /// Keep a pointer to the AArch64Subtarget around so that we can
   /// make the right decision when generating code for different targets.
