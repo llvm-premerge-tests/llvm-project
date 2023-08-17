@@ -14,6 +14,7 @@
 #include "llvm/CodeGen/AccelTable.h"
 #include "llvm/CodeGen/NonRelocatableStringpool.h"
 #include "llvm/DWARFLinker/DWARFLinkerCompileUnit.h"
+#include "llvm/DWARFLinker/DWARFLinkerRelocs.h"
 #include "llvm/DebugInfo/DWARF/DWARFContext.h"
 #include "llvm/DebugInfo/DWARF/DWARFDebugLine.h"
 #include "llvm/DebugInfo/DWARF/DWARFDebugRangeList.h"
@@ -23,9 +24,11 @@
 
 namespace llvm {
 class DWARFExpression;
+class DWARFLinker;
 class DWARFUnit;
 class DataExtractor;
 class DeclContextTree;
+
 template <typename T> class SmallVectorImpl;
 
 enum class DwarfLinkerClient { Dsymutil, LLD, General };
@@ -62,12 +65,19 @@ public:
   virtual std::optional<int64_t>
   getSubprogramRelocAdjustment(const DWARFDie &DIE) = 0;
 
+  /// Returns the file name associated to the AddessesMap
+  virtual std::optional<StringRef> getFileName() = 0;
+
   /// Apply the valid relocations to the buffer \p Data, taking into
   /// account that Data is at \p BaseOffset in the .debug_info section.
   ///
   /// \returns true whether any reloc has been applied.
   virtual bool applyValidRelocs(MutableArrayRef<char> Data, uint64_t BaseOffset,
-                                bool IsLittleEndian) = 0;
+                                bool IsLittleEndian, uint64_t OutOffset,
+                                CompileUnit *CU) = 0;
+
+  /// Add the valid relocations to be serialized to the relocation map
+  virtual void addValidRelocs(RelocMap *RM) = 0;
 
   /// Erases all data.
   virtual void clear() = 0;
@@ -637,6 +647,9 @@ private:
                                    const DWARFFile &File, CompileUnit &Unit,
                                    CompileUnit::DIEInfo &MyInfo,
                                    unsigned Flags);
+
+  void visitCompileUnitDIE(AddressesMap &RelocMgr, const DWARFDie &DIE,
+                           CompileUnit::DIEInfo &MyInfo);
 
   /// Resolve the DIE attribute reference that has been extracted in \p
   /// RefValue. The resulting DIE might be in another CompileUnit which is
