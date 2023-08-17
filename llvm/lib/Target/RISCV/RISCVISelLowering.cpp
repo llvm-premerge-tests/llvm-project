@@ -11197,12 +11197,22 @@ static SDValue performXORCombine(SDNode *N, SelectionDAG &DAG,
   return combineSelectAndUseCommutative(N, DAG, /*AllOnes*/ false, Subtarget);
 }
 
+bool isVMV_V_X_VLOfConstant(SDValue N, APInt &SplatVal) {
+  auto *C = dyn_cast<ConstantSDNode>(N->getOperand(1));
+  if (C && N.getOpcode() == RISCVISD::VMV_V_X_VL) {
+    SplatVal = C->getAPIntValue();
+    return true;
+  }
+  return false;
+}
+
 // According to the property that indexed load/store instructions
 // zero-extended their indices, \p narrowIndex tries to narrow the type of index
 // operand if it is matched to pattern (shl (zext x to ty), C) and bits(x) + C <
 // bits(ty).
 static SDValue narrowIndex(SDValue N, SelectionDAG &DAG) {
-  if (N.getOpcode() != ISD::SHL || !N->hasOneUse())
+  if ((N.getOpcode() != ISD::SHL && N.getOpcode() != RISCVISD::SHL_VL) ||
+      !N->hasOneUse())
     return SDValue();
 
   SDValue N0 = N.getOperand(0);
@@ -11214,7 +11224,21 @@ static SDValue narrowIndex(SDValue N, SelectionDAG &DAG) {
 
   APInt ShAmt;
   SDValue N1 = N.getOperand(1);
-  if (!ISD::isConstantSplatVector(N1.getNode(), ShAmt))
+  // If this is an insert of an extracted vector into an undef vector, we can
+  // just use the input to the extract.
+  if (N1.getOpcode() == ISD::INSERT_SUBVECTOR) {
+    SDValue N10 = N1.getOperand(0);
+    SDValue N11 = N1.getOperand(1);
+    EVT VT = N->getValueType(0);
+    if (N10.isUndef() && N11.getOpcode() == ISD::EXTRACT_SUBVECTOR &&
+        N11.getOperand(1) == N1.getOperand(2) &&
+        N11.getOperand(0).getValueType() == VT) {
+      N1 = N11.getOperand(0);
+    }
+  }
+
+  if (!ISD::isConstantSplatVector(N1.getNode(), ShAmt) &&
+      !isVMV_V_X_VLOfConstant(N1, ShAmt))
     return SDValue();
 
   SDLoc DL(N);
@@ -11233,6 +11257,14 @@ static SDValue narrowIndex(SDValue N, SelectionDAG &DAG) {
   EVT NewVT = SrcVT.changeVectorElementType(NewEltVT);
 
   SDValue NewExt = DAG.getNode(N0->getOpcode(), DL, NewVT, N0->ops());
+  if (N.getOpcode() == RISCVISD::SHL_VL) {
+    SDValue NewShAmtVec =
+        DAG.getNode(RISCVISD::VMV_V_X_VL, DL, NewVT, DAG.getUNDEF(NewVT),
+                    N1.getOperand(1), N1.getOperand(2));
+    return DAG.getNode(RISCVISD::SHL_VL, DL, NewVT, NewExt, NewShAmtVec,
+                       DAG.getUNDEF(NewVT), N.getOperand(3), N.getOperand(4));
+  }
+
   SDValue NewShAmtVec = DAG.getConstant(ShAmtV, DL, NewVT);
   return DAG.getNode(ISD::SHL, DL, NewVT, NewExt, NewShAmtVec);
 }
