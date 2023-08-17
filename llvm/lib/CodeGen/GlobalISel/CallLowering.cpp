@@ -21,6 +21,7 @@
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/TargetLowering.h"
 #include "llvm/IR/DataLayout.h"
+#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Target/TargetMachine.h"
@@ -87,10 +88,20 @@ void CallLowering::addArgFlagsFromAttributes(ISD::ArgFlagsTy &Flags,
   });
 }
 
+static bool isEntryTokenIfPresent(const CallBase &CB) {
+  auto Bundle = CB.getOperandBundle(LLVMContext::OB_convergencectrl);
+  if (!Bundle)
+    return true;
+  auto *Token = Bundle->Inputs[0].get();
+  auto *Def = cast<IntrinsicInst>(Token);
+  return Def->getIntrinsicID() == Intrinsic::experimental_convergence_entry;
+}
+
 bool CallLowering::lowerCall(MachineIRBuilder &MIRBuilder, const CallBase &CB,
                              ArrayRef<Register> ResRegs,
                              ArrayRef<ArrayRef<Register>> ArgRegs,
                              Register SwiftErrorVReg,
+                             Register ConvergenceCtrlToken,
                              std::function<unsigned()> GetCalleeReg) const {
   CallLoweringInfo Info;
   const DataLayout &DL = MIRBuilder.getDataLayout();
@@ -119,6 +130,8 @@ bool CallLowering::lowerCall(MachineIRBuilder &MIRBuilder, const CallBase &CB,
     CanBeTailCalled = false;
   }
 
+  if (!isEntryTokenIfPresent(CB))
+    CanBeTailCalled = false;
 
   // First step is to marshall all the function's parameters into the correct
   // physregs and memory locations. Gather the sequence of argument types that
@@ -174,6 +187,7 @@ bool CallLowering::lowerCall(MachineIRBuilder &MIRBuilder, const CallBase &CB,
   Info.KnownCallees = CB.getMetadata(LLVMContext::MD_callees);
   Info.CallConv = CallConv;
   Info.SwiftErrorVReg = SwiftErrorVReg;
+  Info.ConvergenceCtrlToken = ConvergenceCtrlToken;
   Info.IsMustTailCall = CB.isMustTailCall();
   Info.IsTailCall = CanBeTailCalled;
   Info.IsVarArg = IsVarArg;

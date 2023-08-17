@@ -119,8 +119,27 @@ LegalizerHelper::legalizeInstrStep(MachineInstr &MI,
 
   MIRBuilder.setInstrAndDebugLoc(MI);
 
-  if (isa<GIntrinsic>(MI))
+  if (auto *GI = dyn_cast<GIntrinsic>(&MI)) {
+    auto ID = GI->getIntrinsicID();
+    assert(ID != Intrinsic::not_intrinsic);
+    switch (ID) {
+    default:
+      break;
+    case Intrinsic::experimental_convergence_anchor:
+    case Intrinsic::experimental_convergence_entry:
+    case Intrinsic::experimental_convergence_loop:
+      assert(MI.getNumDefs() == 1);
+      Register Token = MI.defs().begin()->getReg();
+      for (auto &Use : MRI.use_operands(Token)) {
+        auto *UserInstr = Use.getParent();
+        UserInstr->removeOperand(Use.getOperandNo());
+      }
+      MI.eraseFromParent();
+      return Legalized;
+    }
+
     return LI.legalizeIntrinsic(*this, MI) ? Legalized : UnableToLegalize;
+  }
   auto Step = LI.getAction(MI, MRI);
   switch (Step.Action) {
   case Legal:

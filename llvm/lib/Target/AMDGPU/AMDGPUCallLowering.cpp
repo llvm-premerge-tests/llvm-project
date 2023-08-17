@@ -1267,6 +1267,9 @@ bool AMDGPUCallLowering::lowerTailCall(
   if (!handleAssignments(Handler, OutArgs, CCInfo, ArgLocs, MIRBuilder))
     return false;
 
+  if (Info.ConvergenceCtrlToken) {
+    MIB.addUse(Info.ConvergenceCtrlToken, RegState::Implicit);
+  }
   handleImplicitCallArguments(MIRBuilder, MIB, ST, *FuncInfo, ImplicitArgRegs);
 
   // If we have -tailcallopt, we need to adjust the stack. We'll do the call
@@ -1390,6 +1393,9 @@ bool AMDGPUCallLowering::lowerCall(MachineIRBuilder &MIRBuilder,
 
   const SIMachineFunctionInfo *MFI = MF.getInfo<SIMachineFunctionInfo>();
 
+  if (Info.ConvergenceCtrlToken) {
+    MIB.addUse(Info.ConvergenceCtrlToken, RegState::Implicit);
+  }
   handleImplicitCallArguments(MIRBuilder, MIB, ST, *MFI, ImplicitArgRegs);
 
   // Get a count of how many bytes are to be pushed on the stack.

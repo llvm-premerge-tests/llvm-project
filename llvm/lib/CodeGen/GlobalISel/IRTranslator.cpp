@@ -210,7 +210,7 @@ ArrayRef<Register> IRTranslator::getOrCreateVRegs(const Value &Val) {
   auto *VRegs = VMap.getVRegs(Val);
   auto *Offsets = VMap.getOffsets(Val);
 
-  assert(Val.getType()->isSized() &&
+  assert((Val.getType()->isSized() || Val.getType()->isTokenTy()) &&
          "Don't know how to create an empty vreg");
 
   SmallVector<LLT, 4> SplitTys;
@@ -2456,12 +2456,18 @@ bool IRTranslator::translateCallBase(const CallBase &CB,
     }
   }
 
+  Register ConvergenceCtrlToken = 0;
+  if (auto Bundle = CB.getOperandBundle(LLVMContext::OB_convergencectrl)) {
+    auto *Token = Bundle->Inputs[0].get();
+    ConvergenceCtrlToken = getOrCreateVReg(*Token);
+  }
+
   // We don't set HasCalls on MFI here yet because call lowering may decide to
   // optimize into tail calls. Instead, we defer that to selection where a final
   // scan is done to check if any instructions are calls.
-  bool Success =
-      CLI->lowerCall(MIRBuilder, CB, Res, Args, SwiftErrorVReg,
-                     [&]() { return getOrCreateVReg(*CB.getCalledOperand()); });
+  bool Success = CLI->lowerCall(
+      MIRBuilder, CB, Res, Args, SwiftErrorVReg, ConvergenceCtrlToken,
+      [&]() { return getOrCreateVReg(*CB.getCalledOperand()); });
 
   // Check if we just inserted a tail call.
   if (Success) {
@@ -2509,8 +2515,13 @@ bool IRTranslator::translateCall(const User &U, MachineIRBuilder &MIRBuilder) {
 
   assert(ID != Intrinsic::not_intrinsic && "unknown intrinsic");
 
-  if (translateKnownIntrinsic(CI, ID, MIRBuilder))
+  // Note: Known intrinsics are target-independent, and not expected to be
+  // convergent. Hence we don't look for a convergencectrl operand bundle if we
+  // are calling a known intrinsic.
+  if (translateKnownIntrinsic(CI, ID, MIRBuilder)) {
+    assert(!CI.countOperandBundlesOfType(LLVMContext::OB_convergencectrl));
     return true;
+  }
 
   ArrayRef<Register> ResultRegs;
   if (!CI.getType()->isVoidTy())
@@ -2573,6 +2584,14 @@ bool IRTranslator::translateCall(const User &U, MachineIRBuilder &MIRBuilder) {
       MPI = MachinePointerInfo(*Info.fallbackAddressSpace);
     MIB.addMemOperand(
         MF->getMachineMemOperand(MPI, Info.flags, MemTy, Alignment, CI.getAAMetadata()));
+  }
+
+  if (CI.isConvergent()) {
+    if (auto Bundle = CI.getOperandBundle(LLVMContext::OB_convergencectrl)) {
+      auto *Token = Bundle->Inputs[0].get();
+      Register TokenReg = getOrCreateVReg(*Token);
+      MIB.addUse(TokenReg, RegState::Implicit);
+    }
   }
 
   return true;
