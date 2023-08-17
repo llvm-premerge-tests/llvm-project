@@ -286,8 +286,16 @@ void llvm::avoidZeroOffsetLandingPad(MachineFunction &MF) {
       while (!MI->isEHLabel())
         ++MI;
       MCInst Nop = MF.getSubtarget().getInstrInfo()->getNop();
-      BuildMI(MBB, MI, DebugLoc(),
-              MF.getSubtarget().getInstrInfo()->get(Nop.getOpcode()));
+      MachineInstr &NopInstr =
+          *BuildMI(MBB, MI, DebugLoc(),
+                   MF.getSubtarget().getInstrInfo()->get(Nop.getOpcode()));
+
+      // On AArch64, the NOP instruction has an immediate operand of 0, which
+      // must be propagated.
+      if (Nop.getNumOperands() == 0 || !Nop.getOperand(0).isImm())
+        continue;
+      NopInstr.addOperand(
+          MachineOperand::CreateImm(Nop.getOperand(0).getImm()));
     }
   }
 }
