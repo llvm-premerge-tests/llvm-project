@@ -384,21 +384,18 @@ public:
       DCHECK_NE(ClassId, 0U);
       bool UnlockRequired;
       auto *TSD = TSDRegistry.getTSDAndLock(&UnlockRequired);
-      Block = TSD->getCache().allocate(ClassId);
       // If the allocation failed, the most likely reason with a 32-bit primary
       // is the region being full. In that event, retry in each successively
       // larger class until it fits. If it fails to fit in the largest class,
       // fallback to the Secondary.
-      if (UNLIKELY(!Block)) {
-        while (ClassId < SizeClassMap::LargestClassId && !Block)
-          Block = TSD->getCache().allocate(++ClassId);
-        if (!Block)
-          ClassId = 0;
-      }
+      Block = TSD->getCache().allocate(
+          ClassId, /*UntilClassId=*/SizeClassMap::LargestClassId);
+
       if (UnlockRequired)
         TSD->unlock();
     }
-    if (UNLIKELY(ClassId == 0)) {
+    if (UNLIKELY(!Block)) {
+      ClassId = 0;
       Block = Secondary.allocate(Options, Size, Alignment, &SecondaryBlockEnd,
                                  FillContents);
     }

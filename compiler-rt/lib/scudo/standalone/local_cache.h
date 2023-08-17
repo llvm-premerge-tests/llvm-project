@@ -122,6 +122,18 @@ template <class SizeClassAllocator> struct SizeClassAllocatorLocalCache {
     return Allocator->decompactPtr(ClassId, CompactP);
   }
 
+  // An overloadding which will try larger size classes when it fails. Note that
+  // `ClassId` will be updated to the feasible size class.
+  void *allocate(uptr &ClassId, const uptr UntilClassId) {
+    while (ClassId <= UntilClassId) {
+      void *Ptr = allocate(ClassId);
+      if (Ptr)
+        return Ptr;
+      ++ClassId;
+    }
+    return nullptr;
+  }
+
   bool deallocate(uptr ClassId, void *P) {
     CHECK_LT(ClassId, NumClasses);
     PerClass *C = &PerClassArray[ClassId];
