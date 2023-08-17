@@ -428,6 +428,9 @@ def warn_ignoring_ftabstop_value : Warning<
 def warn_drv_overriding_flag_option : Warning<
   "overriding '%0' option with '%1'">,
   InGroup<DiagGroup<"overriding-t-option">>;
+def warn_drv_overriding_option : Warning<
+  "overriding '%0' option with '%1'">,
+  InGroup<DiagGroup<"overriding-option">>;
 def warn_drv_treating_input_as_cxx : Warning<
   "treating '%0' input as '%1' when in C++ mode, this behavior is deprecated">,
   InGroup<Deprecated>;
