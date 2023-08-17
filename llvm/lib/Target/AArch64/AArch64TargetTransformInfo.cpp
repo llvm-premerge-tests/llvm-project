@@ -2044,6 +2044,52 @@ bool AArch64TTIImpl::isWideningInstruction(Type *DstTy, unsigned Opcode,
   return NumDstEls == NumSrcEls && 2 * SrcElTySize == DstEltSize;
 }
 
+// s/urhadd instructions implement the following pattern, making the
+// extends free:
+//   %x = add ((zext i8 -> i16), 1)
+//   %y = (zext i8 -> i16)
+//   trunc i16 (lshr (add %x, %y), 1) -> i8
+//
+bool isExtShiftRightAdd(const Instruction *ExtUser, const CastInst *Ext,
+                        Type *Dst, Type *Src) {
+  // Check that the cast is doubling the source type.
+  if ((Src->getScalarSizeInBits() != Dst->getScalarSizeInBits() / 2) ||
+      ExtUser->getOpcode() != Instruction::Add)
+    return false;
+
+  // Look for trunc/shl/add before trying to match the pattern.
+  const Instruction *Add = ExtUser;
+  auto *AddUser = dyn_cast<Instruction>(Add->getUniqueUndroppableUser());
+  if (AddUser && AddUser->getOpcode() == Instruction::Add)
+    Add = AddUser;
+
+  auto *Shr = dyn_cast<Instruction>(Add->getUniqueUndroppableUser());
+  if (Shr->getOpcode() != Instruction::LShr)
+    return false;
+
+  auto *Trunc = dyn_cast<Instruction>(Shr->getUniqueUndroppableUser());
+  if (Trunc->getOpcode() != Instruction::Trunc ||
+      Src->getScalarSizeInBits() !=
+          cast<CastInst>(Trunc)->getDestTy()->getScalarSizeInBits())
+    return false;
+
+  // Try to match the whole pattern. Ext could be either the first or second
+  // m_ZExtOrSExt matched.
+  Value *Ex1, *Ex2;
+  if (!(match(Add, m_c_Add(m_ZExtOrSExt(m_Value(Ex1)),
+                   m_c_Add(m_ZExtOrSExt(m_Value(Ex2)), m_SpecificInt(1))))))
+    return false;
+
+  // Ensure both extends are of the same type
+  Instruction *Ex1User = cast<CastInst>(Ex1->getUniqueUndroppableUser());
+  Instruction *Ex2User = cast<CastInst>(Ex2->getUniqueUndroppableUser());
+  if ((Ext->getOpcode() == Ex1User->getOpcode()) &&
+      (Ext->getOpcode() == Ex2User->getOpcode()))
+    return true;
+
+  return false;
+}
+
 InstructionCost AArch64TTIImpl::getCastInstrCost(unsigned Opcode, Type *Dst,
                                                  Type *Src,
                                                  TTI::CastContextHint CCH,
@@ -2068,6 +2114,11 @@ InstructionCost AArch64TTIImpl::getCastInstrCost(unsigned Opcode, Type *Dst,
       } else // Others are free so long as isWideningInstruction returned true.
         return 0;
     }
+
+    // The cast will be free for the SVE2 s/urhadd instructions
+    if (ST->hasSVE2() && (isa<ZExtInst>(I) || isa<SExtInst>(I)) &&
+        isExtShiftRightAdd(SingleUser, cast<CastInst>(I), Dst, Src))
+      return 0;
   }
 
   // TODO: Allow non-throughput costs that aren't binary.
