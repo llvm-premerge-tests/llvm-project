@@ -68,6 +68,13 @@ static cl::opt<bool> SplitAllEHCode(
     cl::desc("Splits all EH code and it's descendants by default."),
     cl::init(false), cl::Hidden);
 
+// FIXME: this flag is temporary and only intended to exist until machine
+// function splitting is fully enabled on AArch64.
+static cl::opt<bool> IgnoreTripleForDebug(
+    "mfs-ignore-triple",
+    cl::desc("Splits functions regardless of the target triple."),
+    cl::init(false), cl::Hidden);
+
 namespace {
 
 class MachineFunctionSplitter : public MachineFunctionPass {
@@ -138,10 +145,9 @@ static bool isColdBlock(const MachineBasicBlock &MBB,
 
 bool MachineFunctionSplitter::doInitialization(Module &M) {
   StringRef T = M.getTargetTriple();
-  if (!isSupportedTriple(Triple(T))) {
+  if (!isSupportedTriple(Triple(T)) && !IgnoreTripleForDebug) {
     UnsupportedTriple = true;
-    M.getContext().diagnose(
-        DiagnosticInfoMachineFunctionSplit(T, DS_Warning));
+    M.getContext().diagnose(DiagnosticInfoMachineFunctionSplit(T, DS_Warning));
     return false;
   }
   return MachineFunctionPass::doInitialization(M);
