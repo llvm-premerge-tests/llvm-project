@@ -1794,6 +1794,13 @@ def NoUniqueAddress : InheritableAttr, TargetSpecificAttr<TargetItaniumCXXABI> {
   let SimpleHandler = 1;
 }
 
+def NoUniqueAddressMSVC : InheritableAttr, TargetSpecificAttr<TargetMicrosoftCXXABI> {
+  let Spellings = [CXX11<"msvc", "no_unique_address", 201803>];
+  let Subjects = SubjectList<[NonBitField], ErrorDiag>;
+  let Documentation = [NoUniqueAddressDocs];
+  let SimpleHandler = 1;
+}
+
 def ReturnsTwice : InheritableAttr {
   let Spellings = [GCC<"returns_twice">];
   let Subjects = SubjectList<[Function]>;

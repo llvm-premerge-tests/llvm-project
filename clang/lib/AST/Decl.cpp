@@ -4474,6 +4474,10 @@ unsigned FieldDecl::getBitWidthValue(const ASTContext &Ctx) const {
   return getBitWidth()->EvaluateKnownConstInt(Ctx).getZExtValue();
 }
 
+bool FieldDecl::hasNoUniqueAddress() const {
+  return hasAttr<NoUniqueAddressAttr>() || hasAttr<NoUniqueAddressMSVCAttr>();
+}
+
 bool FieldDecl::isZeroLengthBitField(const ASTContext &Ctx) const {
   return isUnnamedBitfield() && !getBitWidth()->isValueDependent() &&
          getBitWidthValue(Ctx) == 0;
@@ -4486,7 +4490,7 @@ bool FieldDecl::isZeroSize(const ASTContext &Ctx) const {
   // C++2a [intro.object]p7:
   //   An object has nonzero size if it
   //     -- is not a potentially-overlapping subobject, or
-  if (!hasAttr<NoUniqueAddressAttr>())
+  if (!hasNoUniqueAddress())
     return false;
 
   //     -- is not of class type, or
@@ -4505,6 +4509,14 @@ bool FieldDecl::isZeroSize(const ASTContext &Ctx) const {
   if (!CXXRD->isEmpty())
     return false;
 
+  // MS ABI: nonzero if class type with class type fields
+  if (Ctx.getTargetInfo().getCXXABI().isMicrosoft() &&
+      llvm::any_of(CXXRD->fields(), [&](const FieldDecl *Field) {
+        return Field->getType()->getAs<RecordType>();
+      })) {
+    return false;
+  }
+
   // Otherwise, [...] the circumstances under which the object has zero size
   // are implementation-defined.
   // FIXME: This might be Itanium ABI specific; we don't yet know what the MS
@@ -4513,7 +4525,7 @@ bool FieldDecl::isZeroSize(const ASTContext &Ctx) const {
 }
 
 bool FieldDecl::isPotentiallyOverlapping() const {
-  return hasAttr<NoUniqueAddressAttr>() && getType()->getAsCXXRecordDecl();
+  return hasNoUniqueAddress() && getType()->getAsCXXRecordDecl();
 }
 
 unsigned FieldDecl::getFieldIndex() const {

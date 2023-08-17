@@ -8754,7 +8754,7 @@ TEST_P(ASTImporterOptionSpecificTestBase,
   CXXRecordDecl *ToD = Import(FromD, Lang_CXX20);
   EXPECT_TRUE(ToD->isEmpty());
   for (auto *FD : ToD->fields())
-    EXPECT_EQ(true, FD->hasAttr<NoUniqueAddressAttr>());
+    EXPECT_EQ(true, FD->hasNoUniqueAddress());
 }
 
 TEST_P(ASTImporterOptionSpecificTestBase, ImportExistingTypedefToRecord) {

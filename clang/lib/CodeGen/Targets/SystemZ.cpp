@@ -223,7 +223,7 @@ QualType SystemZABIInfo::GetSingleElementType(QualType Ty) const {
       // do count.  So do anonymous bitfields that aren't zero-sized.
 
       // Like isSingleElementStruct(), ignore C++20 empty data members.
-      if (FD->hasAttr<NoUniqueAddressAttr>() &&
+      if (FD->hasNoUniqueAddress() &&
           isEmptyRecord(getContext(), FD->getType(), true))
         continue;
 

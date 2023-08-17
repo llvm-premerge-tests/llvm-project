@@ -280,7 +280,7 @@ bool CodeGen::isEmptyField(ASTContext &Context, const FieldDecl *FD,
   // not arrays of records, so we must also check whether we stripped off an
   // array type above.
   if (isa<CXXRecordDecl>(RT->getDecl()) &&
-      (WasArray || (!AsIfNoUniqueAddr && !FD->hasAttr<NoUniqueAddressAttr>())))
+      (WasArray || (!AsIfNoUniqueAddr && !FD->hasNoUniqueAddress())))
     return false;
 
   return isEmptyRecord(Context, FT, AllowArrays, AsIfNoUniqueAddr);

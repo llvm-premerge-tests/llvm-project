@@ -3131,6 +3131,8 @@ public:
   /// Set the C++11 in-class initializer for this member.
   void setInClassInitializer(Expr *NewInit);
 
+  bool hasNoUniqueAddress() const;
+
 private:
   void setLazyInClassInitializer(LazyDeclStmtPtr NewInit);
 

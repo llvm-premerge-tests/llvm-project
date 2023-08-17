@@ -756,7 +756,7 @@ void CGRecordLowering::clipTailPadding() {
         Prior->Data = getByteArrayType(bitsToCharUnits(llvm::alignTo(
             cast<llvm::IntegerType>(Prior->Data)->getIntegerBitWidth(), 8)));
       else {
-        assert(Prior->FD->hasAttr<NoUniqueAddressAttr>() &&
+        assert((Prior->FD->hasNoUniqueAddress()) &&
                "should not have reused this field's tail padding");
         Prior->Data = getByteArrayType(
             Context.getTypeInfoDataSizeInChars(Prior->FD->getType()).Width);
@@ -812,6 +812,7 @@ void CGRecordLowering::insertPadding() {
       continue;
     CharUnits Offset = Member->Offset;
     assert(Offset >= Size);
+
     // Insert padding if we need to.
     if (Offset !=
         Size.alignTo(Packed ? CharUnits::One() : getAlignment(Member->Data)))
