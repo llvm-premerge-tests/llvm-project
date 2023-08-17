@@ -17934,6 +17934,18 @@ bool RISCVTargetLowering::areTwoSDNodeTargetMMOFlagsMergeable(
   return getTargetMMOFlags(NodeX) == getTargetMMOFlags(NodeY);
 }
 
+SDValue RISCVTargetLowering::expandIndirectJTBranch(const SDLoc &dl,
+                                                    SDValue Value, SDValue Addr,
+                                                    SelectionDAG &DAG) const {
+  if (Subtarget.hasStdExtZicfilp()) {
+    // When Zicfilp enabled, we need to use software guarded branch for jump
+    // table branch.
+    return DAG.getNode(RISCVISD::SW_GUARDED_BRIND, dl, MVT::Other, Value, Addr);
+  }
+
+  return TargetLowering::expandIndirectJTBranch(dl, Value, Addr, DAG);
+}
+
 namespace llvm::RISCVVIntrinsicsTable {
 
 #define GET_RISCVVIntrinsicsTable_IMPL
