@@ -18,7 +18,7 @@ def run(f):
 @run
 def testEmptyTensorToAllocTensorOpCompact():
     sequence = transform.SequenceOp(
-        transform.FailurePropagationMode.PROPAGATE,
+        transform.FailurePropagationMode.Propagate,
         [],
         transform.OperationType.get("tensor.empty"),
     )
@@ -33,7 +33,7 @@ def testEmptyTensorToAllocTensorOpCompact():
 @run
 def testEmptyTensorToAllocTensorOpTyped():
     sequence = transform.SequenceOp(
-        transform.FailurePropagationMode.PROPAGATE,
+        transform.FailurePropagationMode.Propagate,
         [],
         transform.OperationType.get("tensor.empty"),
     )
@@ -51,7 +51,7 @@ def testEmptyTensorToAllocTensorOpTyped():
 @run
 def testOneShotBufferizeOpCompact():
     sequence = transform.SequenceOp(
-        transform.FailurePropagationMode.PROPAGATE, [], transform.AnyOpType.get()
+        transform.FailurePropagationMode.Propagate, [], transform.AnyOpType.get()
     )
     with InsertionPoint(sequence.body):
         bufferization.OneShotBufferizeOp(sequence.bodyTarget)
@@ -64,7 +64,7 @@ def testOneShotBufferizeOpCompact():
 @run
 def testOneShotBufferizeOpTyped():
     sequence = transform.SequenceOp(
-        transform.FailurePropagationMode.PROPAGATE, [], transform.AnyOpType.get()
+        transform.FailurePropagationMode.Propagate, [], transform.AnyOpType.get()
     )
     with InsertionPoint(sequence.body):
         bufferization.OneShotBufferizeOp(
@@ -80,7 +80,7 @@ def testOneShotBufferizeOpTyped():
 @run
 def testOneShotBufferizeOpAttributes():
     sequence = transform.SequenceOp(
-        transform.FailurePropagationMode.PROPAGATE, [], transform.AnyOpType.get()
+        transform.FailurePropagationMode.Propagate, [], transform.AnyOpType.get()
     )
     with InsertionPoint(sequence.body):
         bufferization.OneShotBufferizeOp(
@@ -89,7 +89,7 @@ def testOneShotBufferizeOpAttributes():
             allow_unknown_ops=True,
             bufferize_function_boundaries=True,
             create_deallocs=False,
-            function_boundary_type_conversion=bufferization.LayoutMapOption.IDENTITY_LAYOUT_MAP,
+            function_boundary_type_conversion=bufferization.LayoutMapOption.IdentityLayoutMap,
             memcpy_op="linalg.copy",
             print_conflicts=True,
             test_analysis_only=True,
