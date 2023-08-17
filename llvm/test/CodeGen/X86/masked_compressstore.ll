@@ -531,9 +531,10 @@ define void @compressstore_v16f64_v16i1(ptr %base, <16 x double> %V, <16 x i1> %
 ; AVX512F-NEXT:    addl %ecx, %eax
 ; AVX512F-NEXT:    andl $252645135, %eax ## imm = 0xF0F0F0F
 ; AVX512F-NEXT:    imull $16843009, %eax, %eax ## imm = 0x1010101
-; AVX512F-NEXT:    shrl $24, %eax
+; AVX512F-NEXT:    shrl $21, %eax
+; AVX512F-NEXT:    andl $-8, %eax
 ; AVX512F-NEXT:    kshiftrw $8, %k1, %k2
-; AVX512F-NEXT:    vcompresspd %zmm1, (%rdi,%rax,8) {%k2}
+; AVX512F-NEXT:    vcompresspd %zmm1, (%rdi,%rax) {%k2}
 ; AVX512F-NEXT:    vcompresspd %zmm0, (%rdi) {%k1}
 ; AVX512F-NEXT:    vzeroupper
 ; AVX512F-NEXT:    retq
@@ -558,9 +559,10 @@ define void @compressstore_v16f64_v16i1(ptr %base, <16 x double> %V, <16 x i1> %
 ; AVX512VLDQ-NEXT:    addl %eax, %ecx
 ; AVX512VLDQ-NEXT:    andl $252645135, %ecx ## imm = 0xF0F0F0F
 ; AVX512VLDQ-NEXT:    imull $16843009, %ecx, %eax ## imm = 0x1010101
-; AVX512VLDQ-NEXT:    shrl $24, %eax
+; AVX512VLDQ-NEXT:    shrl $21, %eax
+; AVX512VLDQ-NEXT:    andl $-8, %eax
 ; AVX512VLDQ-NEXT:    kshiftrw $8, %k1, %k2
-; AVX512VLDQ-NEXT:    vcompresspd %zmm1, (%rdi,%rax,8) {%k2}
+; AVX512VLDQ-NEXT:    vcompresspd %zmm1, (%rdi,%rax) {%k2}
 ; AVX512VLDQ-NEXT:    vcompresspd %zmm0, (%rdi) {%k1}
 ; AVX512VLDQ-NEXT:    vzeroupper
 ; AVX512VLDQ-NEXT:    retq
@@ -584,9 +586,10 @@ define void @compressstore_v16f64_v16i1(ptr %base, <16 x double> %V, <16 x i1> %
 ; AVX512VLBW-NEXT:    addl %ecx, %eax
 ; AVX512VLBW-NEXT:    andl $252645135, %eax ## imm = 0xF0F0F0F
 ; AVX512VLBW-NEXT:    imull $16843009, %eax, %eax ## imm = 0x1010101
-; AVX512VLBW-NEXT:    shrl $24, %eax
+; AVX512VLBW-NEXT:    shrl $21, %eax
+; AVX512VLBW-NEXT:    andl $-8, %eax
 ; AVX512VLBW-NEXT:    kshiftrw $8, %k1, %k2
-; AVX512VLBW-NEXT:    vcompresspd %zmm1, (%rdi,%rax,8) {%k2}
+; AVX512VLBW-NEXT:    vcompresspd %zmm1, (%rdi,%rax) {%k2}
 ; AVX512VLBW-NEXT:    vcompresspd %zmm0, (%rdi) {%k1}
 ; AVX512VLBW-NEXT:    vzeroupper
 ; AVX512VLBW-NEXT:    retq
@@ -2444,8 +2447,9 @@ define void @compressstore_v32f32_v32i32(ptr %base, <32 x float> %V, <32 x i32> 
 ; AVX512-NEXT:    addl %eax, %ecx
 ; AVX512-NEXT:    andl $252645135, %ecx ## imm = 0xF0F0F0F
 ; AVX512-NEXT:    imull $16843009, %ecx, %eax ## imm = 0x1010101
-; AVX512-NEXT:    shrl $24, %eax
-; AVX512-NEXT:    vcompressps %zmm1, (%rdi,%rax,4) {%k1}
+; AVX512-NEXT:    shrl $22, %eax
+; AVX512-NEXT:    andl $-4, %eax
+; AVX512-NEXT:    vcompressps %zmm1, (%rdi,%rax) {%k1}
 ; AVX512-NEXT:    vcompressps %zmm0, (%rdi) {%k2}
 ; AVX512-NEXT:    vzeroupper
 ; AVX512-NEXT:    retq
