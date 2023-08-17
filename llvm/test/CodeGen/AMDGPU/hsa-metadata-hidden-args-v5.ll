@@ -87,9 +87,12 @@
 ; GFX8-NEXT:      - .offset:         220
 ; GFX8-NEXT:        .size:           4
 ; GFX8-NEXT:        .value_kind:     hidden_shared_base
-; CHECK:      - .offset:         224
+; CHECK:          - .offset:         224
 ; CHECK-NEXT:        .size:           8
 ; CHECK-NEXT:        .value_kind:     hidden_queue_ptr
+; CHECK:          - .offset:         232
+; CHECK-NEXT:        .size:           4
+; CHECK-NEXT:        .value_kind:     hidden_dynamic_lds_size
 
 ; CHECK:          .name:           test_v5
 ; CHECK:          .symbol:         test_v5.kd

@@ -138,6 +138,7 @@ bool MetadataVerifier::verifyKernelArgs(msgpack::DocNode &Node) {
                                .Case("hidden_private_base", true)
                                .Case("hidden_shared_base", true)
                                .Case("hidden_queue_ptr", true)
+                               .Case("hidden_dynamic_lds_size", true)
                                .Default(false);
                          }))
     return false;
