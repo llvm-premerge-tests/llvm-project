@@ -1278,6 +1278,11 @@ def TestCommutative2Op : TEST_Op<"op_commutative2", [Commutative]> {
   let results = (outs I32);
 }
 
+def TestCommutative3Op : TEST_Op<"op_commutative3", [Commutative]> {
+  let arguments = (ins I32:$op1, I32:$op2, I32:$op3);
+  let results = (outs I32);
+}
+
 def TestIdempotentTraitOp
  : TEST_Op<"op_idempotent_trait",
            [SameOperandsAndResultType, NoMemoryEffect, Idempotent]> {
