@@ -3517,8 +3517,8 @@ SDValue SITargetLowering::LowerDYNAMIC_STACKALLOC(SDValue Op,
   // we would need to do a wave reduction to get the maximum size to know how
   // much to increment the uniform stack pointer.
   SDValue Size = Op.getOperand(1);
-  if (isa<ConstantSDNode>(Size))
-      return lowerDYNAMIC_STACKALLOCImpl(Op, DAG); // Use "generic" expansion.
+  if (!Size->isDivergent())
+    return lowerDYNAMIC_STACKALLOCImpl(Op, DAG); // Use "generic" expansion.
 
   return AMDGPUTargetLowering::LowerDYNAMIC_STACKALLOC(Op, DAG);
 }
