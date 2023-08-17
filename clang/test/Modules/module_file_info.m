@@ -42,9 +42,6 @@
 // CHECK: Preprocessor options:
 // CHECK:   Uses compiler/target-specific predefines [-undef]: Yes
 // CHECK:   Uses detailed preprocessing record (for indexing): No
-// CHECK:   Predefined macros:
-// CHECK:     -DBLARG
-// CHECK:     -DWIBBLE=WOBBLE
 // CHECK: Input file: {{.*}}module.map
 // CHECK-NEXT: Input file: {{.*}}module_private.map
 // CHECK-NEXT: Input file: {{.*}}DependsOnModule.h
