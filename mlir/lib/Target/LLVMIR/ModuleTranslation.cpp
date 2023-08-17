@@ -1286,32 +1286,18 @@ SmallVector<llvm::Value *> ModuleTranslation::lookupValues(ValueRange values) {
 llvm::OpenMPIRBuilder *ModuleTranslation::getOpenMPBuilder() {
   if (!ompBuilder) {
     ompBuilder = std::make_unique<llvm::OpenMPIRBuilder>(*llvmModule);
+    ompBuilder->initialize();
 
-    bool isTargetDevice = false, isGPU = false;
-    llvm::StringRef hostIRFilePath = "";
-
-    if (auto deviceAttr =
-            mlirModule->getAttrOfType<mlir::BoolAttr>("omp.is_target_device"))
-      isTargetDevice = deviceAttr.getValue();
-
-    if (auto gpuAttr = mlirModule->getAttrOfType<mlir::BoolAttr>("omp.is_gpu"))
-      isGPU = gpuAttr.getValue();
-
-    if (auto filepathAttr =
-            mlirModule->getAttrOfType<mlir::StringAttr>("omp.host_ir_filepath"))
-      hostIRFilePath = filepathAttr.getValue();
-
-    ompBuilder->initialize(hostIRFilePath);
-
-    // TODO: set the flags when available
-    llvm::OpenMPIRBuilderConfig config(
-        isTargetDevice, isGPU,
+    // Flags represented as top-level OpenMP dialect attributes are set in
+    // `OpenMPDialectLLVMIRTranslationInterface::amendOperation()`. Here we set
+    // the default configuration.
+    ompBuilder->setConfig(llvm::OpenMPIRBuilderConfig(
+        /* IsTargetDevice = */ false, /* IsGPU = */ false,
         /* OpenMPOffloadMandatory = */ false,
         /* HasRequiresReverseOffload = */ false,
         /* HasRequiresUnifiedAddress = */ false,
         /* HasRequiresUnifiedSharedMemory = */ false,
-        /* HasRequiresDynamicAllocators = */ false);
-    ompBuilder->setConfig(config);
+        /* HasRequiresDynamicAllocators = */ false));
   }
   return ompBuilder.get();
 }
@@ -1399,8 +1385,14 @@ mlir::translateModuleToLLVMIR(Operation *module, llvm::LLVMContext &llvmContext,
   if (failed(translator.createTBAAMetadata()))
     return nullptr;
 
-  // Convert other top-level operations if possible.
+  // Convert module itself before any functions and operations inside, so that
+  // the OpenMPIRBuilder is configured with the OpenMP dialect attributes
+  // attached to the module by `amendOperation()` calls before then.
   llvm::IRBuilder<> llvmBuilder(llvmContext);
+  if (failed(translator.convertOperation(*module, llvmBuilder)))
+    return nullptr;
+
+  // Convert other top-level operations if possible.
   for (Operation &o : getModuleBody(module).getOperations()) {
     if (!isa<LLVM::LLVMFuncOp, LLVM::GlobalOp, LLVM::GlobalCtorsOp,
              LLVM::GlobalDtorsOp, LLVM::ComdatOp>(&o) &&
@@ -1414,10 +1406,6 @@ mlir::translateModuleToLLVMIR(Operation *module, llvm::LLVMContext &llvmContext,
   // after the top-level operations they refer to are declared, so we do it
   // last.
   if (failed(translator.convertFunctions()))
-    return nullptr;
-
-  // Convert module itself.
-  if (failed(translator.convertOperation(*module, llvmBuilder)))
     return nullptr;
 
   if (llvm::verifyModule(*translator.llvmModule, &llvm::errs()))
