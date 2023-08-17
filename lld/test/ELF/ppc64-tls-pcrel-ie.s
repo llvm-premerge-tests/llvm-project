@@ -29,6 +29,11 @@ SECTIONS {
   .text_val 0x1002000 : { *(.text_val) }
   .text_twoval 0x1003000 : { *(.text_twoval) }
   .text_incrval 0x1004000 : { *(.text_incrval) }
+  .text_incrval2 0x1005000 : { *(.text_incrval2) }
+  .text_incrval3 0x1006000 : { *(.text_incrval3) }
+  .text_incrval4 0x1007000 : { *(.text_incrval4) }
+  .text_incrval5 0x1008000 : { *(.text_incrval5) }
+  .text_incrval6 0x1009000 : { *(.text_incrval6) }
 }
 
 #--- defs
@@ -42,26 +47,26 @@ y:
 
 #--- asm
 # IE-RELOC: Relocation section '.rela.dyn' at offset 0x10090 contains 2 entries:
-# IE-RELOC: 00000000010040f0  0000000100000049 R_PPC64_TPREL64        0000000000000000 x + 0
-# IE-RELOC: 00000000010040f8  0000000200000049 R_PPC64_TPREL64        0000000000000000 y + 0
+# IE-RELOC: 00000000010090f0  0000000100000049 R_PPC64_TPREL64        0000000000000000 x + 0
+# IE-RELOC: 00000000010090f8  0000000200000049 R_PPC64_TPREL64        0000000000000000 y + 0
 
 # IE-SYM:   Symbol table '.dynsym' contains 3 entries:
 # IE-SYM:   1: 0000000000000000     0 TLS     GLOBAL DEFAULT   UND x
 # IE-SYM:   2: 0000000000000000     0 TLS     GLOBAL DEFAULT   UND y
 
 # IE-GOT:      Hex dump of section '.got':
-# IE-GOT-NEXT: 0x010040e8 e8c00001 00000000 00000000 00000000
+# IE-GOT-NEXT: 0x010090e8 e8100101 00000000 00000000 00000000
 
 # LE-RELOC: There are no relocations in this file.
 
-# LE-SYM: Symbol table '.symtab' contains 8 entries:
-# LE-SYM: 6: 0000000000000000     0 TLS     GLOBAL DEFAULT     6 x
-# LE-SYM: 7: 0000000000000004     0 TLS     GLOBAL DEFAULT     6 y
+# LE-SYM: Symbol table '.symtab' contains 13 entries:
+# LE-SYM: 11: 0000000000000000     0 TLS     GLOBAL DEFAULT     11 x
+# LE-SYM: 12: 0000000000000004     0 TLS     GLOBAL DEFAULT     11 y
 
 # LE-GOT: could not find section '.got'
 
 # IE-LABEL: <IEAddr>:
-# IE-NEXT:    pld 3, 12528(0), 1
+# IE-NEXT:    pld 3, 33008(0), 1
 # IE-NEXT:    add 3, 3, 13
 # IE-NEXT:    blr
 # LE-LABEL: <IEAddr>:
@@ -75,7 +80,7 @@ IEAddr:
 	blr
 
 # IE-LABEL: <IEAddrCopy>:
-# IE-NEXT:    pld 3, 12512(0), 1
+# IE-NEXT:    pld 3, 32992(0), 1
 # IE-NEXT:    add 4, 3, 13
 # IE-NEXT:    blr
 # LE-LABEL: <IEAddrCopy>:
@@ -89,7 +94,7 @@ IEAddrCopy:
 	blr
 
 # IE-LABEL: <IEVal>:
-# IE-NEXT:    pld 3, 8432(0), 1
+# IE-NEXT:    pld 3, 28912(0), 1
 # IE-NEXT:    lwzx 3, 3, 13
 # IE-NEXT:    blr
 # LE-LABEL: <IEVal>:
@@ -103,8 +108,8 @@ IEVal:
 	blr
 
 # IE-LABEL: <IETwoVal>:
-# IE-NEXT:    pld 3, 4336(0), 1
-# IE-NEXT:    pld 4, 4336(0), 1
+# IE-NEXT:    pld 3, 24816(0), 1
+# IE-NEXT:    pld 4, 24816(0), 1
 # IE-NEXT:    lwzx 3, 3, 13
 # IE-NEXT:    lwzx 4, 4, 13
 # IE-NEXT:    blr
@@ -123,7 +128,7 @@ IETwoVal:
 	blr
 
 # IE-LABEL: <IEIncrementVal>:
-# IE-NEXT:    pld 4, 248(0), 1
+# IE-NEXT:    pld 4, 20728(0), 1
 # IE-NEXT:    lwzx 3, 4, 13
 # IE-NEXT:    stwx 3, 4, 13
 # IE-NEXT:    blr
@@ -137,4 +142,89 @@ IEIncrementVal:
 	pld 4, y@got@tprel@pcrel(0), 1
 	lwzx 3, 4, y@tls@pcrel
 	stwx 3, 4, y@tls@pcrel
+	blr
+
+# IE-LABEL: <IEIncrementVal2>:
+# IE-NEXT:    pld 4, 16632(0), 1
+# IE-NEXT:    lhax 3, 4, 13
+# IE-NEXT:    sthx 3, 4, 13
+# IE-NEXT:    blr
+# LE-LABEL: <IEIncrementVal2>:
+# LE-NEXT:    paddi 4, 13, -28668, 0
+# LE-NEXT:    lha 3, 0(4)
+# LE-NEXT:    sth 3, 0(4)
+# LE-NEXT:    blr
+.section .text_incrval2, "ax", %progbits
+IEIncrementVal2:
+	pld 4, y@got@tprel@pcrel(0), 1
+	lhax 3, 4, y@tls@pcrel
+	sthx 3, 4, y@tls@pcrel
+	blr
+
+# IE-LABEL: <IEIncrementVal3>:
+# IE-NEXT:    pld 4, 12536(0), 1
+# IE-NEXT:    lwax 3, 4, 13
+# IE-NEXT:    stwx 3, 4, 13
+# IE-NEXT:    blr
+# LE-LABEL: <IEIncrementVal3>:
+# LE-NEXT:    paddi 4, 13, -28668, 0
+# LE-NEXT:    lwa 3, 0(4)
+# LE-NEXT:    stw 3, 0(4)
+# LE-NEXT:    blr
+.section .text_incrval3, "ax", %progbits
+IEIncrementVal3:
+	pld 4, y@got@tprel@pcrel(0), 1
+	lwax 3, 4, y@tls@pcrel
+	stwx 3, 4, y@tls@pcrel
+	blr
+
+# IE-LABEL: <IEIncrementVal4>:
+# IE-NEXT:    pld 4, 8440(0), 1
+# IE-NEXT:    lfsx 3, 4, 13
+# IE-NEXT:    stfsx 3, 4, 13
+# IE-NEXT:    blr
+# LE-LABEL: <IEIncrementVal4>:
+# LE-NEXT:    paddi 4, 13, -28668, 0
+# LE-NEXT:    lfs 3, 0(4)
+# LE-NEXT:    stfs 3, 0(4)
+# LE-NEXT:    blr
+.section .text_incrval4, "ax", %progbits
+IEIncrementVal4:
+	pld 4, y@got@tprel@pcrel(0), 1
+	lfsx 3, 4, y@tls@pcrel
+	stfsx 3, 4, y@tls@pcrel
+	blr
+
+# IE-LABEL: <IEIncrementVal5>:
+# IE-NEXT:    pld 4, 4344(0), 1
+# IE-NEXT:    lfdx 3, 4, 13
+# IE-NEXT:    stfdx 3, 4, 13
+# IE-NEXT:    blr
+# LE-LABEL: <IEIncrementVal5>:
+# LE-NEXT:    paddi 4, 13, -28668, 0
+# LE-NEXT:    lfd 3, 0(4)
+# LE-NEXT:    stfd 3, 0(4)
+# LE-NEXT:    blr
+.section .text_incrval5, "ax", %progbits
+IEIncrementVal5:
+	pld 4, y@got@tprel@pcrel(0), 1
+	lfdx 3, 4, y@tls@pcrel
+	stfdx 3, 4, y@tls@pcrel
+	blr
+
+# IE-LABEL: <IEIncrementVal6>:
+# IE-NEXT:    pld 4, 248(0), 1
+# IE-NEXT:    ldx 3, 4, 13
+# IE-NEXT:    stdx 3, 4, 13
+# IE-NEXT:    blr
+# LE-LABEL: <IEIncrementVal6>:
+# LE-NEXT:    paddi 4, 13, -28668, 0
+# LE-NEXT:    ld 3, 0(4)
+# LE-NEXT:    std 3, 0(4)
+# LE-NEXT:    blr
+.section .text_incrval6, "ax", %progbits
+IEIncrementVal6:
+	pld 4, y@got@tprel@pcrel(0), 1
+	ldx 3, 4, y@tls@pcrel
+	stdx 3, 4, y@tls@pcrel
 	blr

@@ -37,6 +37,12 @@ enum XFormOpcd {
   STHX = 407,
   STWX = 151,
   STDX = 149,
+  LHAX = 343,
+  LWAX = 341,
+  LFSX = 535,
+  LFDX = 599,
+  STFSX = 663,
+  STFDX = 727,
   ADD = 266,
 };
 
@@ -49,7 +55,6 @@ enum DFormOpcd {
   LWZ = 32,
   LWZU = 33,
   LFSU = 49,
-  LD = 58,
   LFDU = 51,
   STB = 38,
   STBU = 39,
@@ -59,8 +64,18 @@ enum DFormOpcd {
   STWU = 37,
   STFSU = 53,
   STFDU = 55,
-  STD = 62,
+  LHA = 42,
+  LFS = 48,
+  LFD = 50,
+  STFS = 52,
+  STFD = 54,
   ADDI = 14
+};
+
+enum DSFormOpcd {
+  LD = 58,
+  LWA = 58,
+  STD = 62
 };
 
 constexpr uint32_t NOP = 0x60000000;
@@ -825,6 +840,22 @@ void PPC64::relaxTlsLdToLe(uint8_t *loc, const Relocation &rel,
   }
 }
 
+// Map X-Form instructions to their DS-Form counterparts, if applicable.
+// The full encoding is returned here to distinguish between the different
+// DS-Form instructions.
+unsigned elf::getPPCDSFormOp(unsigned secondaryOp) {
+  switch (secondaryOp) {
+  case LWAX:
+    return ((LWA << 26) | 0x2);
+  case LDX:
+    return (LD << 26);
+  case STDX:
+    return (STD << 26);
+  default:
+    return 1;
+  }
+}
+
 unsigned elf::getPPCDFormOp(unsigned secondaryOp) {
   switch (secondaryOp) {
   case LBZX:
@@ -833,16 +864,22 @@ unsigned elf::getPPCDFormOp(unsigned secondaryOp) {
     return LHZ;
   case LWZX:
     return LWZ;
-  case LDX:
-    return LD;
   case STBX:
     return STB;
   case STHX:
     return STH;
   case STWX:
     return STW;
-  case STDX:
-    return STD;
+  case LHAX:
+    return LHA;
+  case LFSX:
+    return LFS;
+  case LFDX:
+    return LFD;
+  case STFSX:
+    return STFS;
+  case STFDX:
+    return STFD;
   case ADD:
     return ADDI;
   default:
@@ -898,10 +935,20 @@ void PPC64::relaxTlsIeToLe(uint8_t *loc, const Relocation &rel,
         error("unrecognized instruction for IE to LE R_PPC64_TLS");
       uint32_t secondaryOp = (read32(loc) & 0x000007FE) >> 1; // bits 21-30
       uint32_t dFormOp = getPPCDFormOp(secondaryOp);
-      if (dFormOp == 0)
-        error("unrecognized instruction for IE to LE R_PPC64_TLS");
-      write32(loc, ((dFormOp << 26) | (read32(loc) & 0x03FFFFFF)));
-      relocateNoSym(loc + offset, R_PPC64_TPREL16_LO, val);
+      uint32_t finalInstr;
+      uint32_t finalReloc;
+      if (dFormOp == 0) { // Expecting a DS-Form instruction.
+        dFormOp = getPPCDSFormOp(secondaryOp);
+        if (dFormOp == 1)
+          error("unrecognized instruction for IE to LE R_PPC64_TLS");
+        finalInstr = (dFormOp | (read32(loc) & 0x03FFFFFC));
+        finalReloc = R_PPC64_TPREL16_LO_DS;
+      } else {
+        finalInstr = ((dFormOp << 26) | (read32(loc) & 0x03FFFFFF));
+        finalReloc = R_PPC64_TPREL16_LO;
+      }
+      write32(loc, finalInstr);
+      relocateNoSym(loc + offset, finalReloc, val);
     } else if (locAsInt % 4 == 1) {
       // If the offset is not 4 byte aligned then we have a PCRel type reloc.
       // This version of the relocation is offset by one byte from the
@@ -926,9 +973,15 @@ void PPC64::relaxTlsIeToLe(uint8_t *loc, const Relocation &rel,
         }
       } else {
         uint32_t dFormOp = getPPCDFormOp(secondaryOp);
-        if (dFormOp == 0)
-          errorOrWarn("unrecognized instruction for IE to LE R_PPC64_TLS");
-        write32(loc - 1, ((dFormOp << 26) | (tlsInstr & 0x03FF0000)));
+        uint32_t finalInstr;
+        if (dFormOp == 0) { // Expecting a DS-Form instruction.
+          dFormOp = getPPCDSFormOp(secondaryOp);
+          if (dFormOp == 1)
+            errorOrWarn("unrecognized instruction for IE to LE R_PPC64_TLS");
+          finalInstr = (dFormOp | (tlsInstr & 0x03FF0000));
+        } else
+          finalInstr = ((dFormOp << 26) | (tlsInstr & 0x03FF0000));
+        write32(loc - 1, finalInstr);
       }
     } else {
       errorOrWarn("R_PPC64_TLS must be either 4 byte aligned or one byte "
