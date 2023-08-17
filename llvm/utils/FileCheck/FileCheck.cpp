@@ -90,6 +90,18 @@ static cl::opt<bool> MatchFullLines(
              "Allows leading and trailing whitespace if --strict-whitespace\n"
              "is not also passed."));
 
+static cl::opt<bool> MatchFullLinesLeading(
+    "match-full-lines-leading", cl::init(false),
+    cl::desc("Require all positive matches to cover the entire trailing input\n"
+             "line. Allows trailing whitespace if --strict-whitespace is not\n"
+             "also passed."));
+
+static cl::opt<bool> MatchFullLinesTrailing(
+    "match-full-lines-trailing", cl::init(false),
+    cl::desc("Require all positive matches to cover the entire trailing input\n"
+             "line. Allows leading whitespace if --strict-whitespace is not\n"
+             "also passed."));
+
 static cl::opt<bool> EnableVarScope(
     "enable-var-scope", cl::init(false),
     cl::desc("Enables scope for regex variables. Variables with names that\n"
@@ -800,7 +812,8 @@ int main(int argc, char **argv) {
   Req.Verbose = Verbose;
   Req.VerboseVerbose = VerboseVerbose;
   Req.NoCanonicalizeWhiteSpace = NoCanonicalizeWhiteSpace;
-  Req.MatchFullLines = MatchFullLines;
+  Req.MatchFullLinesLeading = MatchFullLines || MatchFullLinesLeading;
+  Req.MatchFullLinesTrailing = MatchFullLines || MatchFullLinesTrailing;
   Req.IgnoreCase = IgnoreCase;
 
   if (VerboseVerbose)

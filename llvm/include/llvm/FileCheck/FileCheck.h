@@ -35,7 +35,8 @@ struct FileCheckRequest {
   std::vector<StringRef> GlobalDefines;
   bool AllowEmptyInput = false;
   bool AllowUnusedPrefixes = false;
-  bool MatchFullLines = false;
+  bool MatchFullLinesTrailing = false;
+  bool MatchFullLinesLeading = false;
   bool IgnoreCase = false;
   bool IsDefaultCheckPrefix = false;
   bool EnableVarScope = false;

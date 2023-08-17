@@ -759,12 +759,15 @@ Expected<std::unique_ptr<Expression>> Pattern::parseNumericSubstitutionBlock(
 
 bool Pattern::parsePattern(StringRef PatternStr, StringRef Prefix,
                            SourceMgr &SM, const FileCheckRequest &Req) {
-  bool MatchFullLinesHere = Req.MatchFullLines && CheckTy != Check::CheckNot;
+  bool MatchFullLinesLeadingHere =
+      Req.MatchFullLinesLeading && CheckTy != Check::CheckNot;
+  bool MatchFullLinesTrailingHere =
+      Req.MatchFullLinesTrailing && CheckTy != Check::CheckNot;
   IgnoreCase = Req.IgnoreCase;
 
   PatternLoc = SMLoc::getFromPointer(PatternStr.data());
 
-  if (!(Req.NoCanonicalizeWhiteSpace && Req.MatchFullLines))
+  if (!(Req.NoCanonicalizeWhiteSpace && Req.MatchFullLinesLeading))
     // Ignore trailing whitespace.
     while (!PatternStr.empty() &&
            (PatternStr.back() == ' ' || PatternStr.back() == '\t'))
@@ -797,14 +800,14 @@ bool Pattern::parsePattern(StringRef PatternStr, StringRef Prefix,
   }
 
   // Check to see if this is a fixed string, or if it has regex pieces.
-  if (!MatchFullLinesHere &&
+  if (!(MatchFullLinesLeadingHere || MatchFullLinesTrailingHere) &&
       (PatternStr.size() < 2 ||
        (!PatternStr.contains("{{") && !PatternStr.contains("[[")))) {
     FixedStr = PatternStr;
     return false;
   }
 
-  if (MatchFullLinesHere) {
+  if (MatchFullLinesLeadingHere) {
     RegExStr += '^';
     if (!Req.NoCanonicalizeWhiteSpace)
       RegExStr += " *";
@@ -1039,7 +1042,7 @@ bool Pattern::parsePattern(StringRef PatternStr, StringRef Prefix,
     PatternStr = PatternStr.substr(FixedMatchEnd);
   }
 
-  if (MatchFullLinesHere) {
+  if (MatchFullLinesTrailingHere) {
     if (!Req.NoCanonicalizeWhiteSpace)
       RegExStr += " *";
     RegExStr += '$';
@@ -1823,7 +1826,7 @@ bool FileCheck::readCheckFile(
 
     // Okay, we found the prefix, yay. Remember the rest of the line, but ignore
     // leading whitespace.
-    if (!(Req.NoCanonicalizeWhiteSpace && Req.MatchFullLines))
+    if (!(Req.NoCanonicalizeWhiteSpace && Req.MatchFullLinesTrailing))
       Buffer = Buffer.substr(Buffer.find_first_not_of(" \t"));
 
     // Scan ahead to the end of line.
