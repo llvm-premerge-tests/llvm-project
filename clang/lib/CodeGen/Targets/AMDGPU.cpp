@@ -8,6 +8,7 @@
 
 #include "ABIInfoImpl.h"
 #include "TargetInfo.h"
+#include "clang/Basic/TargetOptions.h"
 
 using namespace clang;
 using namespace clang::CodeGen;
@@ -274,6 +275,8 @@ public:
   void setFunctionDeclAttributes(const FunctionDecl *FD, llvm::Function *F,
                                  CodeGenModule &CGM) const;
 
+  void emitTargetGlobals(CodeGen::CodeGenModule &CGM) const override;
+
   void setTargetAttributes(const Decl *D, llvm::GlobalValue *GV,
                            CodeGen::CodeGenModule &M) const override;
   unsigned getOpenCLKernelCallingConv() const override;
@@ -352,6 +355,35 @@ void AMDGPUTargetCodeGenInfo::setFunctionDeclAttributes(
     if (NumVGPR != 0)
       F->addFnAttr("amdgpu-num-vgpr", llvm::utostr(NumVGPR));
   }
+}
+
+/// Emits control constants used to change per-architecture behaviour in the
+/// AMDGPU ROCm device libraries.
+void AMDGPUTargetCodeGenInfo::emitTargetGlobals(
+    CodeGen::CodeGenModule &CGM) const {
+  auto AddGlobal = [&](StringRef Name,
+                       clang::TargetOptions::CodeObjectVersionKind Value,
+                       unsigned Size,
+                       llvm::GlobalValue::LinkageTypes Linkage =
+                           llvm::GlobalValue::WeakODRLinkage) {
+    if (CGM.getModule().getNamedGlobal(Name))
+      return;
+
+    auto *Type =
+        llvm::IntegerType::getIntNTy(CGM.getModule().getContext(), Size);
+    auto *GV = new llvm::GlobalVariable(
+        CGM.getModule(), Type, true, Linkage,
+        llvm::ConstantInt::get(Type, Value), Name, nullptr,
+        llvm::GlobalValue::ThreadLocalMode::NotThreadLocal,
+        CGM.getContext().getTargetAddressSpace(LangAS::opencl_constant));
+    GV->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Local);
+    GV->setVisibility(llvm::GlobalValue::VisibilityTypes::HiddenVisibility);
+    GV->setAlignment(CGM.getDataLayout().getABITypeAlign(Type));
+  };
+
+  AddGlobal("llvm.amdgcn.abi.version",
+            CGM.getTarget().getTargetOpts().CodeObjectVersion, /*Size=*/32,
+            llvm::GlobalValue::WeakODRLinkage);
 }
 
 void AMDGPUTargetCodeGenInfo::setTargetAttributes(
