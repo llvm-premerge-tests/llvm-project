@@ -52,6 +52,9 @@ void solaris::Linker::ConstructJob(Compilation &C, const JobAction &JA,
                                    const InputInfoList &Inputs,
                                    const ArgList &Args,
                                    const char *LinkingOutput) const {
+  const bool IsPIE =
+      !Args.hasArg(options::OPT_shared) &&
+      (Args.hasArg(options::OPT_pie) || getToolChain().isPIEDefault(Args));
   ArgStringList CmdArgs;
 
   // Demangle C++ names in errors
@@ -61,6 +64,9 @@ void solaris::Linker::ConstructJob(Compilation &C, const JobAction &JA,
     CmdArgs.push_back("-e");
     CmdArgs.push_back("_start");
   }
+
+  if (IsPIE)
+    CmdArgs.push_back("-ztype=pie");
 
   if (Args.hasArg(options::OPT_static)) {
     CmdArgs.push_back("-Bstatic");

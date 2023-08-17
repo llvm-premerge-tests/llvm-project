@@ -106,6 +106,20 @@
 // CHECK-SPARC32-SHARED-NOT: "-lgcc"
 // CHECK-SPARC32-SHARED-NOT: "-lm"
 
+// Check the right ld flags are present with -pie.
+// RUN: %clang -### %s -pie 2>&1 \
+// RUN:     --target=sparc-sun-solaris2.11 \
+// RUN:     --gcc-toolchain="" \
+// RUN:     --sysroot=%S/Inputs/solaris_sparc_tree \
+// RUN:   | FileCheck --check-prefix=CHECK-PIE %s
+// RUN: %clang -### %s -nopie 2>&1 \
+// RUN:     --target=sparc-sun-solaris2.11 \
+// RUN:     --gcc-toolchain="" \
+// RUN:     --sysroot=%S/Inputs/solaris_sparc_tree \
+// RUN:   | FileCheck --check-prefix=CHECK-NOPIE %s
+// CHECK-PIE: "-ztype=pie"
+// CHECK-NOPIE-NOT: "-ztype=pie'
+
 // -r suppresses default -l and crt*.o, values-*.o like -nostdlib.
 // RUN: %clang -### %s --target=sparc-sun-solaris2.11 -r 2>&1 \
 // RUN:   | FileCheck %s --check-prefix=CHECK-RELOCATABLE
