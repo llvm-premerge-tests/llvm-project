@@ -1784,6 +1784,24 @@ Either the comparison is useless or there is division by zero.
 alpha.cplusplus
 ^^^^^^^^^^^^^^^
 
+.. _alpha-cplusplus-ArrayDelete:
+
+alpha.cplusplus.ArrayDelete (C++)
+""""""""""""""""""""""""""""""""""""""""""""""
+Reports destructions of arrays of polymorphic objects that are destructed as their base class.
+
+.. code-block:: cpp
+
+ Base *create() {
+   Base *x = new Derived[10]; // note: conversion from derived to base
+                              //       happened here
+   return x;
+ }
+
+ void sink(Base *x) {
+   delete[] x; // warn: Deleting an array of polymorphic objects is undefined
+ }
+
 .. _alpha-cplusplus-DeleteWithNonVirtualDtor:
 
 alpha.cplusplus.DeleteWithNonVirtualDtor (C++)
