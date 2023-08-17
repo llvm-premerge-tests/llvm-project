@@ -3546,6 +3546,23 @@ public:
   CastKind getCastKind() const { return (CastKind) CastExprBits.Kind; }
   void setCastKind(CastKind K) { CastExprBits.Kind = K; }
 
+  /// Return 
+  //  True :  if the cast expr has the volatileness in the cast node path and 
+  //          declrefexpr doesn't has the volatile qualfiler like
+  //  |-ImplicitCastExpr 'int' <LValueToRValue>
+  //  | `-CXXStaticCastExpr 'volatile int' lvalue static_cast<volatile int &>
+  //  |   `-ImplicitCastExpr  'volatile int' lvalue <NoOp> part_of_explicit_cast
+  //  |     `-DeclRefExpr 'int' lvalue Var 'x' 'int'
+  //  False :  Otherwise.
+  bool isWorthToPropagateVolatile(CastExpr *CE) const {
+    if (CE->getCastKind() != CK_NoOp )	  
+       return (this->isGLValue() && 
+               this->getType().isVolatileQualified() != 
+	       CE->getType().isVolatileQualified());
+    return isWorthToPropagateVolatile(static_cast<CastExpr *>(CE->getSubExpr()));
+  }
+
+
   static const char *getCastKindName(CastKind CK);
   const char *getCastKindName() const { return getCastKindName(getCastKind()); }
 
