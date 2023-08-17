@@ -57,6 +57,8 @@ static void PutShape(
 static llvm::raw_ostream &PutAttr(llvm::raw_ostream &, Attr);
 static llvm::raw_ostream &PutType(llvm::raw_ostream &, const DeclTypeSpec &);
 static llvm::raw_ostream &PutLower(llvm::raw_ostream &, std::string_view);
+static llvm::raw_ostream &PutOmpRequires(
+    llvm::raw_ostream &, const WithOmpDeclarative &);
 static std::error_code WriteFile(
     const std::string &, const std::string &, bool = true);
 static bool FileContentsMatch(
@@ -162,6 +164,7 @@ std::string ModFileWriter::GetAsString(const Symbol &symbol) {
   uses_.str().clear();
   all << useExtraAttrs_.str();
   useExtraAttrs_.str().clear();
+  PutOmpRequires(all, details);
   all << decls_.str();
   decls_.str().clear();
   auto str{contains_.str()};
@@ -496,6 +499,8 @@ void ModFileWriter::PutSubprogram(const Symbol &symbol) {
     }
   }
   os << '\n';
+  // print OpenMP requires
+  PutOmpRequires(os, details);
   // walk symbols, collect ones needed for interface
   const Scope &scope{
       details.entryScope() ? *details.entryScope() : DEREF(symbol.scope())};
@@ -860,6 +865,44 @@ llvm::raw_ostream &PutType(llvm::raw_ostream &os, const DeclTypeSpec &type) {
 llvm::raw_ostream &PutLower(llvm::raw_ostream &os, std::string_view str) {
   for (char c : str) {
     os << parser::ToLowerCaseLetter(c);
+  }
+  return os;
+}
+
+llvm::raw_ostream &PutOmpRequires(
+    llvm::raw_ostream &os, const WithOmpDeclarative &details) {
+  if (details.has_ompRequires() || details.has_ompAtomicDefaultMemOrder()) {
+    os << "!$omp requires";
+    if (auto *flags{details.ompRequires()}) {
+      if (*flags & OmpRequiresFlags::ReverseOffload) {
+        os << " reverse_offload";
+      }
+      if (*flags & OmpRequiresFlags::UnifiedAddress) {
+        os << " unified_address";
+      }
+      if (*flags & OmpRequiresFlags::UnifiedSharedMemory) {
+        os << " unified_shared_memory";
+      }
+      if (*flags & OmpRequiresFlags::DynamicAllocators) {
+        os << " dynamic_allocators";
+      }
+    }
+    if (auto *memOrder{details.ompAtomicDefaultMemOrder()}) {
+      os << " atomic_default_mem_order(";
+      switch (*memOrder) {
+      case parser::OmpAtomicDefaultMemOrderClause::Type::SeqCst:
+        os << "seq_cst";
+        break;
+      case parser::OmpAtomicDefaultMemOrderClause::Type::AcqRel:
+        os << "acq_rel";
+        break;
+      case parser::OmpAtomicDefaultMemOrderClause::Type::Relaxed:
+        os << "relaxed";
+        break;
+      }
+      os << ')';
+    }
+    os << '\n';
   }
   return os;
 }

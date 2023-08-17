@@ -64,6 +64,12 @@ protected:
     dirContext_.emplace_back(source, dir, context_.FindScope(source));
   }
   void PopContext() { dirContext_.pop_back(); }
+  Scope *GetDeclScope() {
+    CHECK(!declScope_.empty());
+    return declScope_.back();
+  }
+  void PushDeclScope(Scope *scope) { declScope_.push_back(scope); }
+  void PopDeclScope() { declScope_.pop_back(); }
   void SetContextDirectiveSource(parser::CharBlock &dir) {
     GetContext().directiveSource = dir;
   }
@@ -110,6 +116,7 @@ protected:
   UnorderedSymbolSet dataSharingAttributeObjects_; // on one directive
   SemanticsContext &context_;
   std::vector<DirContext> dirContext_; // used as a stack
+  std::vector<Scope *> declScope_; // used as a stack
 };
 
 class AccAttributeVisitor : DirectiveAttributeVisitor<llvm::acc::Directive> {
@@ -410,6 +417,33 @@ public:
   bool Pre(const parser::OpenMPDeclareTargetConstruct &);
   void Post(const parser::OpenMPDeclareTargetConstruct &) { PopContext(); }
 
+  void Post(const parser::UseStmt &x) {
+    Symbol *symbol{x.moduleName.symbol};
+    if (!symbol) {
+      return;
+    }
+
+    // Gather information from the imported module's symbol details.
+    OmpRequiresFlags flags{OmpRequiresFlags::None};
+    std::optional<parser::OmpAtomicDefaultMemOrderClause::Type> memOrder;
+    common::visit(
+        [&](auto &details) {
+          if constexpr (std::is_base_of_v<ModuleDetails,
+                            std::decay_t<decltype(details)>>) {
+            if (details.has_ompRequires()) {
+              flags = *details.ompRequires();
+            }
+            if (details.has_ompAtomicDefaultMemOrder()) {
+              memOrder = *details.ompAtomicDefaultMemOrder();
+            }
+          }
+        },
+        symbol->details());
+
+    // Merge requires clauses into USE statement's parents.
+    AddOmpRequiresToScope(GetDeclScope(), flags, memOrder);
+  }
+
   bool Pre(const parser::OpenMPThreadprivate &);
   void Post(const parser::OpenMPThreadprivate &) { PopContext(); }
 
@@ -530,6 +564,59 @@ public:
   }
 
   void Post(const parser::Name &);
+
+  // Keep track of contexts inside of which `SpecificationPart`s can be found to
+  // allow matching USE statements with their parent scopes.
+  bool Pre(const parser::MainProgram &x) {
+    PushDeclScope(GetScope(context_, x));
+    return true;
+  }
+  bool Pre(const parser::Module &x) {
+    PushDeclScope(GetScope(context_, x));
+    return true;
+  }
+  bool Pre(const parser::Submodule &x) {
+    PushDeclScope(GetScope(context_, x));
+    return true;
+  }
+  bool Pre(const parser::FunctionSubprogram &x) {
+    PushDeclScope(GetScope(context_, x));
+    return true;
+  }
+  bool Pre(const parser::InterfaceBody::Function &x) {
+    PushDeclScope(GetScope(context_, x));
+    return true;
+  }
+  bool Pre(const parser::SubroutineSubprogram &x) {
+    PushDeclScope(GetScope(context_, x));
+    return true;
+  }
+  bool Pre(const parser::InterfaceBody::Subroutine &x) {
+    PushDeclScope(GetScope(context_, x));
+    return true;
+  }
+  bool Pre(const parser::SeparateModuleSubprogram &x) {
+    PushDeclScope(GetScope(context_, x));
+    return true;
+  }
+  bool Pre(const parser::BlockConstruct &x) {
+    PushDeclScope(GetScope(context_, x));
+    return true;
+  }
+  bool Pre(const parser::BlockData &x) {
+    PushDeclScope(GetScope(context_, x));
+    return true;
+  }
+  void Post(const parser::MainProgram &) { PopDeclScope(); }
+  void Post(const parser::Module &) { PopDeclScope(); }
+  void Post(const parser::Submodule &) { PopDeclScope(); }
+  void Post(const parser::FunctionSubprogram &) { PopDeclScope(); }
+  void Post(const parser::InterfaceBody::Function &) { PopDeclScope(); }
+  void Post(const parser::SubroutineSubprogram &) { PopDeclScope(); }
+  void Post(const parser::InterfaceBody::Subroutine &) { PopDeclScope(); }
+  void Post(const parser::SeparateModuleSubprogram &) { PopDeclScope(); }
+  void Post(const parser::BlockConstruct &) { PopDeclScope(); }
+  void Post(const parser::BlockData &) { PopDeclScope(); }
 
   // Keep track of labels in the statements that causes jumps to target labels
   void Post(const parser::GotoStmt &gotoStmt) { CheckSourceLabel(gotoStmt.v); }
@@ -2054,7 +2141,7 @@ void ResolveOmpTopLevelParts(
 
   // Gather REQUIRES clauses from all non-module top-level program unit symbols,
   // combine them together ensuring compatibility and apply them to all these
-  // program units. Modules are skipped because their REQUIRES clauses should be
+  // program units. Modules are skipped because their REQUIRES clauses are
   // propagated via USE statements instead.
   OmpRequiresFlags combinedFlags{OmpRequiresFlags::None};
   std::optional<parser::OmpAtomicDefaultMemOrderClause::Type> combinedMemOrder;
