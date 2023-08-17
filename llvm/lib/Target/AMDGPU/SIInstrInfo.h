@@ -840,6 +840,31 @@ public:
     return get(Opcode).TSFlags & SIInstrFlags::TiedSourceNotRead;
   }
 
+  static std::optional<unsigned> getNonSoftWaitcntOpcode(unsigned Op) {
+    if (Op == AMDGPU::S_WAITCNT || Op == AMDGPU::S_SOFT_WAITCNT)
+      return AMDGPU::S_WAITCNT;
+
+    if (Op == AMDGPU::S_WAITCNT_VSCNT || Op == AMDGPU::S_SOFT_WAITCNT_VSCNT)
+      return AMDGPU::S_WAITCNT_VSCNT;
+
+    return std::nullopt;
+  }
+
+  static bool isWaitcnt(const MachineInstr &MI) {
+    return getNonSoftWaitcntOpcode(MI.getOpcode()).value_or(-1) ==
+           AMDGPU::S_WAITCNT;
+  }
+
+  static bool isWaitcntVsCnt(const MachineInstr &MI) {
+    return getNonSoftWaitcntOpcode(MI.getOpcode()).value_or(-1) ==
+           AMDGPU::S_WAITCNT_VSCNT;
+  }
+
+  static bool isSoftWaitcnt(const MachineInstr &MI) {
+    unsigned Op = MI.getOpcode();
+    return Op == AMDGPU::S_SOFT_WAITCNT || Op == AMDGPU::S_SOFT_WAITCNT_VSCNT;
+  }
+
   bool isVGPRCopy(const MachineInstr &MI) const {
     assert(isCopyInstr(MI));
     Register Dest = MI.getOperand(0).getReg();
