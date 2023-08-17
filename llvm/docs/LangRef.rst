@@ -1532,6 +1532,18 @@ Currently, only the following parameter attributes are defined:
     If a function reads from a writeonly pointer argument, the behavior is
     undefined.
 
+``writable``
+    This attribute indicates that any memory location based on this pointer
+    argument that can be loaded from, can also be stored to without trapping.
+
+    If the argument is also ``dereferenceable(N)``, the first ``N`` bytes of
+    the pointer are (non-atomically) loaded and stored back to the pointer on
+    entry to the function.
+
+    The last rule is needed to ensure a well-defined interaction between
+    ``writable`` and ``noalias``, and to ensure that spurious stores can be
+    introduced without data races.
+
 .. _gc:
 
 Garbage Collector Strategy Names
