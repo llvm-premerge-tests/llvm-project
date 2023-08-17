@@ -119,8 +119,13 @@ void solaris::Linker::ConstructJob(Compilation &C, const JobAction &JA,
       values_xpg = "values-xpg4.o";
     CmdArgs.push_back(
         Args.MakeArgString(getToolChain().GetFilePath(values_xpg)));
-    CmdArgs.push_back(
-        Args.MakeArgString(getToolChain().GetFilePath("crtbegin.o")));
+
+    const char *crtbegin = nullptr;
+    if (Args.hasArg(options::OPT_shared) || IsPIE)
+      crtbegin = "crtbeginS.o";
+    else
+      crtbegin = "crtbegin.o";
+    CmdArgs.push_back(Args.MakeArgString(getToolChain().GetFilePath(crtbegin)));
     // Add crtfastmath.o if available and fast math is enabled.
     getToolChain().addFastMathRuntimeIfAvailable(Args, CmdArgs);
   }
@@ -177,8 +182,12 @@ void solaris::Linker::ConstructJob(Compilation &C, const JobAction &JA,
 
   if (!Args.hasArg(options::OPT_nostdlib, options::OPT_nostartfiles,
                    options::OPT_r)) {
-    CmdArgs.push_back(
-        Args.MakeArgString(getToolChain().GetFilePath("crtend.o")));
+    if (Args.hasArg(options::OPT_shared) || IsPIE)
+      CmdArgs.push_back(
+          Args.MakeArgString(getToolChain().GetFilePath("crtendS.o")));
+    else
+      CmdArgs.push_back(
+          Args.MakeArgString(getToolChain().GetFilePath("crtend.o")));
     CmdArgs.push_back(
         Args.MakeArgString(getToolChain().GetFilePath("crtn.o")));
   }

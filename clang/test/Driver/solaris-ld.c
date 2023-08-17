@@ -129,6 +129,28 @@
 // CHECK-RELOCATABLE-NOT: /crt{{[^.]+}}.o
 // CHECK-RELOCATABLE-NOT: /values-{{[^.]+}}.o
 
+// Check that crt{begin,end}S.o is linked with -shared/-pie.
+// RUN: %clang --target=sparc-sun-solaris2.11 -### %s \
+// RUN:        --gcc-toolchain="" \
+// RUN:        --sysroot=%S/Inputs/solaris_sparc_tree 2>&1 \
+// RUN:   | FileCheck --check-prefix=CHECK-NOCRTS %s
+// RUN: %clang --target=sparc-sun-solaris2.11 -### %s -shared \
+// RUN:        --gcc-toolchain="" \
+// RUN:        --sysroot=%S/Inputs/solaris_sparc_tree 2>&1 \
+// RUN:   | FileCheck --check-prefix=CHECK-CRTS %s
+// RUN: %clang --target=sparc-sun-solaris2.11 -### %s -nopie \
+// RUN:        --gcc-toolchain="" \
+// RUN:        --sysroot=%S/Inputs/solaris_sparc_tree 2>&1 \
+// RUN:   | FileCheck --check-prefix=CHECK-NOCRTS %s
+// RUN: %clang --target=sparc-sun-solaris2.11 -### %s -pie \
+// RUN:        --gcc-toolchain="" \
+// RUN:        --sysroot=%S/Inputs/solaris_sparc_tree 2>&1 \
+// RUN:   | FileCheck --check-prefix=CHECK-CRTS %s
+// CHECK-CRTS: crtbeginS.o
+// CHECK-CRTS: crtendS.o
+// CHECK-NOCRTS-NOT: crtbeginS.o
+// CHECK-NOCRTS-NOT: crtendS.o
+
 // Check that crtfastmath.o is linked with -ffast-math.
 
 // Check sparc-sun-solaris2.11, 32bit
