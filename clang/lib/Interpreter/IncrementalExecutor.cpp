@@ -34,6 +34,8 @@ LLVM_ATTRIBUTE_USED void linkComponents() {
 }
 
 namespace clang {
+IncrementalExecutor::IncrementalExecutor(llvm::orc::ThreadSafeContext &TSC)
+    : TSCtx(TSC) {}
 
 IncrementalExecutor::IncrementalExecutor(llvm::orc::ThreadSafeContext &TSC,
                                          llvm::Error &Err,
