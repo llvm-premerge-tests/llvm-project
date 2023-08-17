@@ -353,6 +353,9 @@ def print_archive_stats: J<"print-archive-stats=">,
   HelpText<"Write archive usage statistics to the specified file. "
            "Print the numbers of members and extracted members for each archive">;
 
+defm print_relocation_stats: Eq<"print-relocation-stats",
+  "Print relocation statistics into the specified file">;
+
 defm print_symbol_order: Eq<"print-symbol-order",
   "Print a symbol order specified by --call-graph-ordering-file into the specified file">;
 

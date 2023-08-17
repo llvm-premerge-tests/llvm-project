@@ -246,10 +246,30 @@ void reportRangeError(uint8_t *loc, const Relocation &rel, const Twine &v,
 void reportRangeError(uint8_t *loc, int64_t v, int n, const Symbol &sym,
                       const Twine &msg);
 
+LLVM_LIBRARY_VISIBILITY inline std::atomic<int64_t> min32Offset = 0,
+                                                    max32Offset = 0;
+LLVM_LIBRARY_VISIBILITY inline std::mutex min32OffsetMu, max32OffsetMu;
+
 // Make sure that V can be represented as an N bit signed integer.
 inline void checkInt(uint8_t *loc, int64_t v, int n, const Relocation &rel) {
   if (v != llvm::SignExtend64(v, n))
     reportRangeError(loc, rel, Twine(v), llvm::minIntN(n), llvm::maxIntN(n));
+  // If we request relocation stats, perform double checked locking to keep
+  // track of the min/max 32-bit signed offset we encounter.
+  if (n == 32 && !config->printRelocationStats.empty()) {
+    int64_t lo = min32Offset.load();
+    if (v < lo) {
+      std::lock_guard<std::mutex> l(min32OffsetMu);
+      if (v < min32Offset)
+        min32Offset = v;
+    }
+    int64_t hi = max32Offset.load();
+    if (v > hi) {
+      std::lock_guard<std::mutex> l(max32OffsetMu);
+      if (v > max32Offset)
+        max32Offset = v;
+    }
+  }
 }
 
 // Make sure that V can be represented as an N bit unsigned integer.

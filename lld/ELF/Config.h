@@ -173,6 +173,7 @@ struct Config {
   llvm::StringRef optStatsFilename;
   llvm::StringRef progName;
   llvm::StringRef printArchiveStats;
+  llvm::StringRef printRelocationStats;
   llvm::StringRef printSymbolOrder;
   llvm::StringRef soName;
   llvm::StringRef sysroot;

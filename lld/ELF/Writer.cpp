@@ -29,6 +29,7 @@
 #include "llvm/Support/Parallel.h"
 #include "llvm/Support/RandomNumberGenerator.h"
 #include "llvm/Support/TimeProfiler.h"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/xxhash.h"
 #include <climits>
 
@@ -79,6 +80,7 @@ private:
   void writeSections();
   void writeSectionsBinary();
   void writeBuildId();
+  void writeStats();
 
   std::unique_ptr<FileOutputBuffer> &buffer;
 
@@ -599,6 +601,7 @@ template <class ELFT> void Writer<ELFT>::run() {
     // Backfill .note.gnu.build-id section content. This is done at last
     // because the content is usually a hash value of the entire output file.
     writeBuildId();
+    writeStats();
     if (errorCount())
       return;
 
@@ -3022,6 +3025,19 @@ template <class ELFT> void Writer<ELFT>::writeBuildId() {
   }
   for (Partition &part : partitions)
     part.buildId->writeBuildId(output);
+}
+
+template <class ELFT> void Writer<ELFT>::writeStats() {
+  if (config->printRelocationStats.empty())
+    return;
+  std::error_code ec;
+  llvm::raw_fd_ostream out(config->printRelocationStats, ec);
+  if (ec) {
+    error("Could not open file to write stats: " + ec.message());
+    return;
+  }
+  out << "Min 32-bit offset: " << min32Offset << "\n";
+  out << "Max 32-bit offset: " << max32Offset << "\n";
 }
 
 template void elf::createSyntheticSections<ELF32LE>();
