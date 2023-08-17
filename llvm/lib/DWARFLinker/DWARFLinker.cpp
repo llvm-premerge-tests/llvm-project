@@ -515,6 +515,7 @@ unsigned DWARFLinker::shouldKeepVariableDIE(AddressesMap &RelocMgr,
 
   MyInfo.AddrAdjust = *LocExprAddrAndRelocAdjustment.second;
   MyInfo.InDebugMap = true;
+  MyInfo.FileName = RelocMgr.getFileName();
 
   if (((Flags & TF_InFunctionScope) &&
        !LLVM_UNLIKELY(Options.KeepFunctionForStatic)))
@@ -550,6 +551,7 @@ unsigned DWARFLinker::shouldKeepSubprogramDIE(
 
   MyInfo.AddrAdjust = *RelocAdjustment;
   MyInfo.InDebugMap = true;
+  MyInfo.FileName = RelocMgr.getFileName();
 
   if (Options.Verbose) {
     outs() << "Keeping subprogram DIE:";
@@ -594,6 +596,12 @@ unsigned DWARFLinker::shouldKeepSubprogramDIE(
   return Flags;
 }
 
+/// Get information about a compile unit that needs to be updated.
+void DWARFLinker::visitCompileUnitDIE(AddressesMap &RelocMgr,
+                                      const DWARFDie &DIE,
+                                      CompileUnit::DIEInfo &MyInfo) {
+  MyInfo.FileName = RelocMgr.getFileName();
+}
 /// Check if a DIE should be kept.
 /// \returns updated TraversalFlags.
 unsigned DWARFLinker::shouldKeepDIE(AddressesMap &RelocMgr, const DWARFDie &DIE,
@@ -615,6 +623,9 @@ unsigned DWARFLinker::shouldKeepDIE(AddressesMap &RelocMgr, const DWARFDie &DIE,
   case dwarf::DW_TAG_imported_unit:
     // We always want to keep these.
     return Flags | TF_Keep;
+  case dwarf::DW_TAG_compile_unit:
+    visitCompileUnitDIE(RelocMgr, DIE, MyInfo);
+    break;
   default:
     break;
   }
@@ -1655,6 +1666,9 @@ shouldSkipAttribute(bool Update,
     // Since DW_AT_loclists_base is used for only DW_FORM_loclistx the
     // DW_AT_loclists_base is removed.
     return !Update;
+  case dwarf::DW_AT_APPLE_origin:
+    // Always recreate the DW_AT_APPLE_origin attribute.
+    return true;
   case dwarf::DW_AT_location:
   case dwarf::DW_AT_frame_base:
     return !Update && SkipPC;
@@ -1714,7 +1728,8 @@ DIE *DWARFLinker::DIECloner::cloneDIE(const DWARFDie &InputDIE,
       DWARFDataExtractor(DIECopy, Data.isLittleEndian(), Data.getAddressSize());
 
   // Modify the copy with relocated addresses.
-  ObjFile.Addresses->applyValidRelocs(DIECopy, Offset, Data.isLittleEndian());
+  ObjFile.Addresses->applyValidRelocs(DIECopy, Offset, Data.isLittleEndian(),
+                                      OutOffset, &Unit);
 
   // Reset the Offset to 0 as we will be working on the local copy of
   // the data.
@@ -1744,8 +1759,10 @@ DIE *DWARFLinker::DIECloner::cloneDIE(const DWARFDie &InputDIE,
       Flags |= TF_SkipPC;
   }
 
+  bool hadOriginAttribute = false;
   for (const auto &AttrSpec : Abbrev->attributes()) {
     if (shouldSkipAttribute(Update, AttrSpec, Flags & TF_SkipPC)) {
+      hadOriginAttribute = AttrSpec.Attr == dwarf::DW_AT_APPLE_origin;
       DWARFFormValue::skipValue(AttrSpec.Form, Data, &Offset,
                                 U.getFormParams());
       continue;
@@ -1760,8 +1777,21 @@ DIE *DWARFLinker::DIECloner::cloneDIE(const DWARFDie &InputDIE,
                                 AttrSize, AttrInfo, IsLittleEndian);
   }
 
-  // Look for accelerator entries.
   uint16_t Tag = InputDIE.getTag();
+  // Add origin attribute to Compile Unit die.
+  if (Tag == dwarf::DW_TAG_compile_unit) {
+    if (Info.FileName) {
+      auto StringEntry = DebugStrPool.getEntry(Info.FileName.value());
+      Die->addValue(DIEAlloc, dwarf::Attribute(dwarf::DW_AT_APPLE_origin),
+                    dwarf::DW_FORM_strp, DIEInteger(StringEntry.getOffset()));
+      AttrInfo.Name = StringEntry;
+      OutOffset += 4;
+      if (!hadOriginAttribute)
+        Unit.setOriginObject();
+    }
+  }
+
+  // Look for accelerator entries.
   // FIXME: This is slightly wrong. An inline_subroutine without a
   // low_pc, but with AT_ranges might be interesting to get into the
   // accelerator tables too. For now stick with dsymutil's behavior.
