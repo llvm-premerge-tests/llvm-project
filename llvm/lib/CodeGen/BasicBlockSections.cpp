@@ -79,6 +79,9 @@
 #include "llvm/InitializePasses.h"
 #include "llvm/Target/TargetMachine.h"
 #include <optional>
+#include "llvm/Support/WithColor.h"
+#include <sstream>
+
 
 using namespace llvm;
 
@@ -99,9 +102,52 @@ static cl::opt<bool> BBSectionsDetectSourceDrift(
 
 namespace {
 
+// The cluster information for a machine basic block.
+struct BBClusterInfo {
+  // Unique ID for this basic block.
+  unsigned BlockID;
+  // Cluster ID this basic block belongs to.
+  unsigned ClusterID;
+  // Position of basic block within the cluster.
+  unsigned PositionInCluster;
+};
+
+MachineBasicBlock* CloneMachineBasicBlock(MachineBasicBlock* MBB) {
+  auto& MF = *MBB->getParent();
+  auto TII = MF.getSubtarget().getInstrInfo();
+
+  // Pass nullptr as this new block doesn't directly correspond to an LLVM basic
+  // block.
+  auto CloneBB = MF.CreateMachineBasicBlock(MBB->getBasicBlock());
+  MF.push_back(CloneBB);
+  // Copy the instructions.
+  for (auto &I : MBB->instrs())
+    CloneBB->push_back(MF.CloneMachineInstr(&I));
+
+  // Add the successors of the original block as the new block's
+  // successors as well.
+  for (auto SI = MBB->succ_begin(), SE = MBB->succ_end(); SI != SE; ++SI)
+    CloneBB->copySuccessor(MBB, SI);
+
+  if (auto FT = MBB->getFallThrough()) {
+    // The original block has an implicit fall through.
+    // Insert an explicit unconditional jump from the cloned block to that
+    // same block.
+    TII->insertUnconditionalBranch(*CloneBB, FT,
+                                   CloneBB->findBranchDebugLoc());
+  }
+
+  for (auto& LiveIn : MBB->liveins())
+    CloneBB->addLiveIn(LiveIn);
+
+  return CloneBB;
+}
+
 class BasicBlockSections : public MachineFunctionPass {
 public:
   static char ID;
+
+  SmallVector<BBClusterInfo> FunctionBBClusterInfo;
 
   BasicBlockSectionsProfileReader *BBSectionsProfileReader = nullptr;
 
@@ -172,24 +218,18 @@ updateBranches(MachineFunction &MF,
 // Returns true if a valid association exists and false otherwise.
 bool getBBClusterInfoForFunction(
     const MachineFunction &MF,
-    BasicBlockSectionsProfileReader *BBSectionsProfileReader,
+    SmallVector<BBClusterInfo> &FunctionBBClusterInfo,
     DenseMap<unsigned, BBClusterInfo> &V) {
 
-  // Find the assoicated cluster information.
-  std::pair<bool, SmallVector<BBClusterInfo, 4>> P =
-      BBSectionsProfileReader->getBBClusterInfoForFunction(MF.getName());
-  if (!P.first)
-    return false;
-
-  if (P.second.empty()) {
+  if (FunctionBBClusterInfo.empty()) {
     // This indicates that sections are desired for all basic blocks of this
     // function. We clear the BBClusterInfo vector to denote this.
     V.clear();
     return true;
   }
 
-  for (const BBClusterInfo &BBCI : P.second)
-    V[BBCI.BBID] = BBCI;
+  for (auto bbClusterInfo : FunctionBBClusterInfo)
+    V[bbClusterInfo.BlockID] = bbClusterInfo;
   return true;
 }
 
@@ -201,7 +241,7 @@ bool getBBClusterInfoForFunction(
 // clusters are ordered in increasing order of their IDs, with the "Exception"
 // and "Cold" succeeding all other clusters.
 // FuncBBClusterInfo represent the cluster information for basic blocks. It
-// maps from BBID of basic blocks to their cluster information. If this is
+// maps from BlockID of basic blocks to their cluster information. If this is
 // empty, it means unique sections for all basic blocks in the function.
 static void
 assignSections(MachineFunction &MF,
@@ -313,6 +353,92 @@ static bool hasInstrProfHashMismatch(MachineFunction &MF) {
   return false;
 }
 
+// Performs the cloning instructions in the profile data for the given machine
+// function.
+// After all clones are performed, it will fill the actual cluster info with
+// the correct linear IDs which is used by the block sorting.
+// Alongside the cluster info, it also fills out a set of block that have been
+// modified by the path layout. These blocks should not have their branches
+// adjusted.
+// Finally, it also fills out a map from the unique BB IDs in the profile info
+// to linear BB ids in the MF for cloned blocks.
+static bool PerformCloningAndPathLayouts(MachineFunction& MF,
+                                         const RawFunctionProfile &RawProfile,
+                                         SmallVector<BBClusterInfo>& Out) {
+  DenseMap<ProfileBBID, unsigned> ProfileIDToBlockID;
+  DenseMap<unsigned, MachineBasicBlock*> BBIdToBlock;
+  for (auto &BB: MF) BBIdToBlock.try_emplace(BB.getBBIDOrNumber(), &BB);
+
+  auto TII = MF.getSubtarget().getInstrInfo();
+
+  MachineBasicBlock *PrevBB = nullptr;
+  for (auto& ClonePath : RawProfile.ClonePaths) {
+    unsigned PredBlockID = ClonePath.front();
+    for (unsigned I=0; I<ClonePath.size(); ++I) { 
+      unsigned BlockID = ClonePath[I];
+      MachineBasicBlock *PathBB = BBIdToBlock.lookup(BlockID);
+      if (!PathBB) {
+        WithColor::warning() << "Block ID " << BlockID << " does not correspond to a block in function: " << MF.getName();
+        return false;
+      }
+
+     if (PrevBB && !PrevBB->isSuccessor(PathBB)) {
+        WithColor::warning() << "Block " << BlockID << " is not a successor of " << PrevBB->getBBIDOrNumber() << " in function: " << MF.getName();
+	return false;
+      }
+
+     if (I!=ClonePath.size()-1) {
+	if (!PathBB->empty() && PathBB->back().isIndirectBranch()) {
+          WithColor::warning() << "Non-final block " << BlockID << " has indirect branch in " << MF.getName();
+          return false;
+        }
+
+        MachineBasicBlock *TBB = nullptr, *FBB = nullptr;
+        SmallVector<MachineOperand, 4> Cond;
+        if (TII->analyzeBranch(*PrevBB, TBB, FBB, Cond)) {
+          WithColor::warning() << "Unable to analyze branch for block " << BlockID << " in function: " << MF.getName();
+  	  return false;
+        }
+     }
+      PrevBB = PathBB;
+    }
+  }
+
+  DenseMap<unsigned, unsigned> NClonesByBlockID;
+
+  // This step creates all the necessary clones. It does not adjust the branches.
+  for (auto& ClonePath : RawProfile.ClonePaths) {
+    DenseMap<MachineBasicBlock*, MachineBasicBlock*> CloneMap;
+    MachineBasicBlock *PrevBB = nullptr;
+    for (auto BlockID: ClonePath) {
+      MachineBasicBlock *OrigBB = BBIdToBlock.at(BlockID);
+      if (PrevBB == nullptr) {
+        PrevBB = OrigBB;
+	continue;
+      }
+
+        MachineBasicBlock *CloneBB = CloneMachineBasicBlock(OrigBB);
+        CloneMap.try_emplace(OrigBB, CloneBB);
+
+        unsigned CloneNumber = ++NClonesByBlockID[BlockID];
+        ProfileIDToBlockID[ProfileBBID({BlockID, CloneNumber})] = CloneBB->getBBIDOrNumber();
+	PrevBB->ReplaceUsesOfBlockWith(OrigBB, CloneBB);
+        PrevBB = CloneBB;
+    }
+  }
+
+  for (const RawBBProfile& P : RawProfile.RawBBProfiles) {
+    unsigned FinalID = P.BBID.CloneID == 0 ? P.BBID.BlockID : ProfileIDToBlockID.at(P.BBID);
+    Out.push_back(BBClusterInfo{
+        FinalID, P.ClusterID, P.PositionInCluster
+    });
+  }
+
+  return true;
+}
+
+
+
 bool BasicBlockSections::runOnMachineFunction(MachineFunction &MF) {
   auto BBSectionsType = MF.getTarget().getBBSectionsType();
   assert(BBSectionsType != BasicBlockSection::None &&
@@ -342,14 +468,23 @@ bool BasicBlockSections::runOnMachineFunction(MachineFunction &MF) {
     return true;
   }
 
+  FunctionBBClusterInfo.clear();
   BBSectionsProfileReader = &getAnalysis<BasicBlockSectionsProfileReader>();
+  auto [HasProfile, P] = BBSectionsProfileReader->getRawProfileForFunction(MF.getName());
+  if (!HasProfile)
+    return true;
+  if (!PerformCloningAndPathLayouts(MF, P, FunctionBBClusterInfo)) {
+    errs() << "UNABLE TO PERFORM CLONING for: " << MF.getName();
+    return true;
+  }
 
-  // Map from BBID of blocks to their cluster information.
+  // Map from BlockID of blocks to their cluster information.
   DenseMap<unsigned, BBClusterInfo> FuncBBClusterInfo;
   if (BBSectionsType == BasicBlockSection::List &&
-      !getBBClusterInfoForFunction(MF, BBSectionsProfileReader,
-                                   FuncBBClusterInfo))
+      !getBBClusterInfoForFunction(MF, FunctionBBClusterInfo,
+                                   FuncBBClusterInfo)) {
     return true;
+  }
   MF.setBBSectionsType(BBSectionsType);
   assignSections(MF, FuncBBClusterInfo);
 

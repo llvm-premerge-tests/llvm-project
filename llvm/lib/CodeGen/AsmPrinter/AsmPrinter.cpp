@@ -425,6 +425,7 @@ void AsmPrinter::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<MachineOptimizationRemarkEmitterPass>();
   AU.addRequired<GCModuleInfo>();
   AU.addRequired<LazyMachineBlockFrequencyInfoPass>();
+  AU.addRequired<MachineLoopInfo>();
 }
 
 bool AsmPrinter::doInitialization(Module &M) {
@@ -1343,6 +1344,10 @@ static uint32_t getBBAddrMapMetadata(const MachineBasicBlock &MBB) {
       .encode();
 }
 
+ // auto LoopInfo = MLI->getLoopFor(&MBB);
+  // if (LoopInfo)
+   // IsLoopHeader = LoopInfo->getHeader() == &MBB;
+
 void AsmPrinter::emitBBAddrMapSection(const MachineFunction &MF) {
   MCSection *BBAddrMapSection =
       getObjFileLowering().getBBAddrMapSection(*MF.getSection());
@@ -1379,6 +1384,12 @@ void AsmPrinter::emitBBAddrMapSection(const MachineFunction &MF) {
     // always be computed from their offsets.
     emitLabelDifferenceAsULEB128(MBB.getEndSymbol(), MBBSymbol);
     // Emit the Metadata.
+    //MLI = getAnalysisIfAvailable<MachineLoopInfo>();
+    //if (!MLI) {
+    //  OwnedMLI = std::make_unique<MachineLoopInfo>();
+    //  OwnedMLI->getBase().analyze(MDT->getBase());
+    //  MLI = OwnedMLI.get();
+    //}
     OutStreamer->emitULEB128IntValue(getBBAddrMapMetadata(MBB));
     PrevMBBEndSymbol = MBB.getEndSymbol();
   }
