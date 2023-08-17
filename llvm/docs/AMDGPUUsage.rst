@@ -3960,6 +3960,9 @@ Code object V5 metadata is the same as
                                                        associated dispatch AQL packet. It is only required for pre-GFX9
                                                        devices for the trap handler ABI (see :ref:`amdgpu-amdhsa-trap-handler-abi`).
 
+                                                     "hidden_dynamic_lds_size"
+                                                       Size of the Dynamically allocated LDS memory is passes in the kernarg.
+
      ====================== ============== ========= ================================
 
 ..
