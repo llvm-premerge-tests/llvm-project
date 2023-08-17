@@ -231,6 +231,10 @@ Changes in existing checks
   <clang-tidy/checks/readability/static-accessed-through-instance>` check to
   identify calls to static member functions with out-of-class inline definitions.
 
+- Improved :doc:`readability-non-const-parameter.cpp
+  <clang-tidy/checks/readability/non-const-parameter>` check to ignore
+  false-positives in initializer list of record.
+
 Removed checks
 ^^^^^^^^^^^^^^
 
