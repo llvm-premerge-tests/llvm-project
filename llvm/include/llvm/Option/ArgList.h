@@ -419,11 +419,13 @@ public:
         NumInputArgStrings(RHS.NumInputArgStrings) {}
 
   InputArgList &operator=(InputArgList &&RHS) {
-    releaseMemory();
-    ArgList::operator=(std::move(RHS));
-    ArgStrings = std::move(RHS.ArgStrings);
-    SynthesizedStrings = std::move(RHS.SynthesizedStrings);
-    NumInputArgStrings = RHS.NumInputArgStrings;
+    if (this != &RHS) {
+      releaseMemory();
+      ArgList::operator=(std::move(RHS));
+      ArgStrings = std::move(RHS.ArgStrings);
+      SynthesizedStrings = std::move(RHS.SynthesizedStrings);
+      NumInputArgStrings = RHS.NumInputArgStrings;
+    }
     return *this;
   }
 
