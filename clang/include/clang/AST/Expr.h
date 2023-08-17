@@ -3546,6 +3546,19 @@ public:
   CastKind getCastKind() const { return (CastKind) CastExprBits.Kind; }
   void setCastKind(CastKind K) { CastExprBits.Kind = K; }
 
+  bool isWorthToPropagteVolatile() const {
+    //  Emit the expression as an l-value(if volatile qual exist) and then load from it 
+    //  rather than aggressively recursing going through.
+    // |-ImplicitCastExpr 'int' <LValueToRValue>
+    // | `-CXXStaticCastExpr 'volatile int' lvalue static_cast<volatile int &> <NoOp>
+    // |   `-ImplicitCastExpr  'volatile int' lvalue <NoOp> part_of_explicit_cast
+    // |     `-DeclRefExpr 'int' lvalue Var 'x' 'int'
+    return (this->isGLValue() && 
+            this->getType().isVolatileQualified() != 
+	    this->getSubExpr()->getType().isVolatileQualified());
+  }
+
+
   static const char *getCastKindName(CastKind CK);
   const char *getCastKindName() const { return getCastKindName(getCastKind()); }
 
