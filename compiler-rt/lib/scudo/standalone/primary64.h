@@ -367,6 +367,18 @@ public:
     }
   }
 
+  void getFragmentationInfo(ScopedString *Str) {
+    Str->append(
+        "Fragmentation Stats: SizeClassAllocator64: page size = %zu bytes\n",
+        getPageSizeCached());
+
+    for (uptr I = 1; I < NumClasses; I++) {
+      RegionInfo *Region = getRegionInfo(I);
+      ScopedLock L(Region->MMLock);
+      getRegionFragmentationInfo(Region, I, Str);
+    }
+  }
+
   bool setOption(Option O, sptr Value) {
     if (O == Option::ReleaseInterval) {
       const s32 Interval = Max(Min(static_cast<s32>(Value),
@@ -973,6 +985,45 @@ private:
         Region->ReleaseInfo.LastReleasedBytes >> 10,
         RegionPushedBytesDelta >> 10, Region->RegionBeg,
         getRegionBaseByClassId(ClassId));
+  }
+
+  void getRegionFragmentationInfo(RegionInfo *Region, uptr ClassId,
+                                  ScopedString *Str) REQUIRES(Region->MMLock) {
+    const uptr BlockSize = getSizeByClassId(ClassId);
+    const uptr AllocatedUserEnd =
+        Region->MemMapInfo.AllocatedUser + Region->RegionBeg;
+
+    SinglyLinkedList<BatchGroup> GroupsToRelease;
+    {
+      ScopedLock L(Region->FLLock);
+      GroupsToRelease = Region->FreeListInfo.BlockList;
+      Region->FreeListInfo.BlockList.clear();
+    }
+
+    FragmentationRecorder Recorder;
+    if (!GroupsToRelease.empty()) {
+      PageReleaseContext Context =
+          markFreeBlocks(Region, BlockSize, AllocatedUserEnd,
+                         getCompactPtrBaseByClassId(ClassId), GroupsToRelease);
+      auto SkipRegion = [](UNUSED uptr RegionIndex) { return false; };
+      releaseFreeMemoryToOS(Context, Recorder, SkipRegion);
+
+      mergeGroupsToReleaseBack(Region, GroupsToRelease);
+    }
+
+    ScopedLock L(Region->FLLock);
+    const uptr PageSize = getPageSizeCached();
+    const uptr TotalBlocks = Region->MemMapInfo.AllocatedUser / BlockSize;
+    const uptr InUse =
+        Region->FreeListInfo.PoppedBlocks - Region->FreeListInfo.PushedBlocks;
+    const uptr AllocatedPagesCount =
+        roundUp(Region->MemMapInfo.AllocatedUser, PageSize) / PageSize;
+    const uptr ReleasedPagesCount = Recorder.getReleasedPagesCount();
+
+    Str->append("  %02zu (%6zu): inuse/total blocks: %6zu/%6zu inuse/total "
+                "pages: %6zu/%6zu\n",
+                ClassId, BlockSize, InUse, TotalBlocks,
+                AllocatedPagesCount - ReleasedPagesCount, AllocatedPagesCount);
   }
 
   NOINLINE uptr releaseToOSMaybe(RegionInfo *Region, uptr ClassId,
