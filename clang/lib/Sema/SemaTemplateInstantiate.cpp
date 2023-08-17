@@ -3155,6 +3155,12 @@ void InstantiateMemberPack(Sema &S, CXXRecordDecl *Instantiation,
           S.SubstType(PatternType, TemplateArgs, PackedField->getLocation(),
                       PackedField->getDeclName());
       PackedField->setType(T);
+      // Rename the expanded fields to avoid ambiguous names in
+      // name lookup. The renamed fields need to be invisible to users so an
+      // `@` is added to the name.
+      std::string NewFieldName =
+          PackedField->getName().str() + "@" + std::to_string(Arg);
+      PackedField->setDeclName(&(S.Context).Idents.get(NewFieldName));
       Fields.push_back(PackedField);
       if (NewMember->isInvalidDecl()) {
         // When `NewMember` has type of `PackExpansionType`, it escapes

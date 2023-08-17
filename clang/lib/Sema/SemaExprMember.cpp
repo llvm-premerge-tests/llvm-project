@@ -514,12 +514,26 @@ Sema::ActOnDependentMemberExpr(Expr *BaseExpr, QualType BaseType,
                                          return Arg.getArgument().isDependent();
                                        })));
 
-  // Get the type being accessed in BaseType.  If this is an arrow, the BaseExpr
+  bool isMemberPack = false;
+  // Check for member packs by looking up base's template decl.
+  if (const auto *ET = dyn_cast<ElaboratedType>(BaseType)) {
+    if (const auto *TST =
+            dyn_cast<TemplateSpecializationType>(ET->getNamedType())) {
+      const auto *TD = TST->getTemplateName().getAsTemplateDecl();
+      const auto Fields = cast<ClassTemplateDecl>(TD)->getTemplatedDecl()->fields();
+      auto It = llvm::find_if(Fields, [NameInfo](const FieldDecl *Field) {
+        return Field->getDeclName() == NameInfo.getName();
+      });
+      if (It != Fields.end() && isa<PackExpansionType>(*It->getType())) 
+        isMemberPack = true;
+    }
+  }
+  // Get the type being accessed in BaseType. If this is an arrow, the BaseExpr
   // must have pointer type, and the accessed type is the pointee.
   return CXXDependentScopeMemberExpr::Create(
       Context, BaseExpr, BaseType, IsArrow, OpLoc,
       SS.getWithLocInContext(Context), TemplateKWLoc, FirstQualifierInScope,
-      NameInfo, TemplateArgs);
+      NameInfo, TemplateArgs, isMemberPack);
 }
 
 /// We know that the given qualified member reference points only to
@@ -995,10 +1009,16 @@ Sema::BuildMemberReferenceExpr(Expr *BaseExpr, QualType BaseExprType,
         << isa<CXXDestructorDecl>(FD);
 
   if (R.empty()) {
+    // The member is expanded from member pack if its name has `@` in it. In this
+    // case a failed name lookup is not an error, but represents it's at the end
+    // of the expanded members. Return an empty expression to inform its
+    // caller.
+    auto MemberNameStr = MemberNameInfo.getName().getAsString();
+    if (MemberNameStr.find('@') != std::string::npos)
+      return ExprEmpty();
     // Rederive where we looked up.
-    DeclContext *DC = (SS.isSet()
-                       ? computeDeclContext(SS, false)
-                       : BaseType->castAs<RecordType>()->getDecl());
+    DeclContext *DC = (SS.isSet() ? computeDeclContext(SS, false)
+                                  : BaseType->castAs<RecordType>()->getDecl());
 
     if (ExtraArgs) {
       ExprResult RetryExpr;
