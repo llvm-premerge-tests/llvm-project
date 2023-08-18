@@ -16,9 +16,14 @@
 include "mlir/IR/AttrTypeBase.td"
 include "mlir/IR/OpBase.td"
 
+
 //===----------------------------------------------------------------------===//
-// GPU target attribute interface.
+// GPU target attribute.
 //===----------------------------------------------------------------------===//
+def GPUTargetAttrTrait : NativeTrait<"TargetAttrTrait", ""> {
+  let cppNamespace = "::mlir::gpu";
+}
+
 def GPUTargetAttrInterface : AttrInterface<"TargetAttrInterface"> {
   let description = [{
     Interface for GPU target attributes. Attributes implementing this interface
@@ -42,7 +47,19 @@ def GPUTargetAttrInterface : AttrInterface<"TargetAttrInterface"> {
   ];
 }
 
-def GPUTargetArrayAttr : TypedArrayAttrBase<GPUTargetAttrInterface,
+def HasGPUTargetAttrTrait : AttrConstraint<
+    CPred<"$_self.hasTrait<::mlir::gpu::TargetAttrTrait>()">,
+  "with the GPU `TargetAttrTrait` trait."
+>;
+
+def GPUTargetAttr : ConfinedAttr<AnyAttr, [HasGPUTargetAttrTrait]> {
+  let description = [{
+    Generic GPU target attribute. These attributes must implement the GPU
+    `TargetAttrInterface` interface or promise the interface.
+  }];
+}
+
+def GPUTargetArrayAttr : TypedArrayAttrBase<GPUTargetAttr,
   "array of GPU target attributes">;
 
 def GPUNonEmptyTargetArrayAttr :

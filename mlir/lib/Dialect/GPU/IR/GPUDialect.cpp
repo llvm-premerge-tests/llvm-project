@@ -1955,6 +1955,19 @@ void AllocOp::getCanonicalizationPatterns(RewritePatternSet &results,
 }
 
 //===----------------------------------------------------------------------===//
+// GPU object attribute
+//===----------------------------------------------------------------------===//
+
+LogicalResult
+gpu::ObjectAttr::verify(function_ref<InFlightDiagnostic()> emitError,
+                        Attribute target, StringAttr object) {
+  if (target && !target.hasTrait<TargetAttrTrait>())
+    return emitError()
+           << "attribute failed to have the `TargetAttrTrait` trait.";
+  return success();
+}
+
+//===----------------------------------------------------------------------===//
 // GPU select object attribute
 //===----------------------------------------------------------------------===//
 
@@ -1967,7 +1980,7 @@ gpu::SelectObjectAttr::verify(function_ref<InFlightDiagnostic()> emitError,
       if (intAttr.getInt() < 0) {
         return emitError() << "The object index must be positive.";
       }
-    } else if (!(::mlir::isa<TargetAttrInterface>(target))) {
+    } else if (!target.hasTrait<TargetAttrTrait>()) {
       return emitError()
              << "The target attribute must be a GPU Target attribute.";
     }
