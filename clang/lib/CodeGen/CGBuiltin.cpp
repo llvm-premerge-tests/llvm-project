@@ -2400,6 +2400,26 @@ RValue CodeGenFunction::EmitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
                                    Intrinsic::minnum,
                                    Intrinsic::experimental_constrained_minnum));
 
+    case Builtin::BI__builtin_fmaximum:
+    case Builtin::BI__builtin_fmaximumf:
+    case Builtin::BI__builtin_fmaximumf16:
+    case Builtin::BI__builtin_fmaximumbf16:
+    case Builtin::BI__builtin_fmaximuml:
+    case Builtin::BI__builtin_fmaximumf128:
+      return RValue::get(emitBinaryMaybeConstrainedFPBuiltin(*this, E,
+                                   Intrinsic::maximum,
+                                   Intrinsic::experimental_constrained_maximum));
+
+    case Builtin::BI__builtin_fminimum:
+    case Builtin::BI__builtin_fminimumf:
+    case Builtin::BI__builtin_fminimumf16:
+    case Builtin::BI__builtin_fminimumbf16:
+    case Builtin::BI__builtin_fminimuml:
+    case Builtin::BI__builtin_fminimumf128:
+      return RValue::get(emitBinaryMaybeConstrainedFPBuiltin(*this, E,
+                                   Intrinsic::minimum,
+                                   Intrinsic::experimental_constrained_minimum));
+
     // fmod() is a special-case. It maps to the frem instruction rather than an
     // LLVM intrinsic.
     case Builtin::BIfmod:

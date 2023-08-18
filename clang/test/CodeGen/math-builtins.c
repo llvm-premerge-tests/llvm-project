@@ -395,6 +395,37 @@ __builtin_fmin(f,f);       __builtin_fminf(f,f);      __builtin_fminl(f,f); __bu
 // HAS_ERRNO: declare x86_fp80 @llvm.minnum.f80(x86_fp80, x86_fp80) [[READNONE_INTRINSIC]]
 // HAS_ERRNO: declare fp128 @llvm.minnum.f128(fp128, fp128) [[READNONE_INTRINSIC]]
 
+__builtin_fmaximum(f,f);       __builtin_fmaximumf(f,f);      __builtin_fmaximuml(f,f);
+__builtin_fmaximumf128(f,f);   __builtin_fmaximumf16(f,f);    __builtin_fmaximumbf16(f,f);
+// NO__ERRNO: declare double @llvm.maximum.f64(double, double) [[READNONE_INTRINSIC]]
+// NO__ERRNO: declare float @llvm.maximum.f32(float, float) [[READNONE_INTRINSIC]]
+// NO__ERRNO: declare x86_fp80 @llvm.maximum.f80(x86_fp80, x86_fp80) [[READNONE_INTRINSIC]]
+// NO__ERRNO: declare fp128 @llvm.maximum.f128(fp128, fp128) [[READNONE_INTRINSIC]]
+// NO__ERRNO: declare half @llvm.maximum.f16(half, half) [[READNONE_INTRINSIC]]
+// NO__ERRNO: declare bfloat @llvm.maximum.bf16(bfloat, bfloat) [[READNONE_INTRINSIC]]
+// HAS_ERRNO: declare double @llvm.maximum.f64(double, double) [[READNONE_INTRINSIC]]
+// HAS_ERRNO: declare float @llvm.maximum.f32(float, float) [[READNONE_INTRINSIC]]
+// HAS_ERRNO: declare x86_fp80 @llvm.maximum.f80(x86_fp80, x86_fp80) [[READNONE_INTRINSIC]]
+// HAS_ERRNO: declare fp128 @llvm.maximum.f128(fp128, fp128) [[READNONE_INTRINSIC]]
+// HAS_ERRNO: declare half @llvm.maximum.f16(half, half) [[READNONE_INTRINSIC]]
+// HAS_ERRNO: declare bfloat @llvm.maximum.bf16(bfloat, bfloat) [[READNONE_INTRINSIC]]
+
+__builtin_fminimum(f,f);       __builtin_fminimumf(f,f);      __builtin_fminimuml(f,f);
+__builtin_fminimumf128(f,f);   __builtin_fminimumf16(f,f);    __builtin_fminimumbf16(f,f);
+
+// NO__ERRNO: declare double @llvm.minimum.f64(double, double) [[READNONE_INTRINSIC]]
+// NO__ERRNO: declare float @llvm.minimum.f32(float, float) [[READNONE_INTRINSIC]]
+// NO__ERRNO: declare x86_fp80 @llvm.minimum.f80(x86_fp80, x86_fp80) [[READNONE_INTRINSIC]]
+// NO__ERRNO: declare fp128 @llvm.minimum.f128(fp128, fp128) [[READNONE_INTRINSIC]]
+// NO__ERRNO: declare half @llvm.minimum.f16(half, half) [[READNONE_INTRINSIC]]
+// NO__ERRNO: declare bfloat @llvm.minimum.bf16(bfloat, bfloat) [[READNONE_INTRINSIC]]
+// HAS_ERRNO: declare double @llvm.minimum.f64(double, double) [[READNONE_INTRINSIC]]
+// HAS_ERRNO: declare float @llvm.minimum.f32(float, float) [[READNONE_INTRINSIC]]
+// HAS_ERRNO: declare x86_fp80 @llvm.minimum.f80(x86_fp80, x86_fp80) [[READNONE_INTRINSIC]]
+// HAS_ERRNO: declare fp128 @llvm.minimum.f128(fp128, fp128) [[READNONE_INTRINSIC]]
+// HAS_ERRNO: declare half @llvm.minimum.f16(half, half) [[READNONE_INTRINSIC]]
+// HAS_ERRNO: declare bfloat @llvm.minimum.bf16(bfloat, bfloat) [[READNONE_INTRINSIC]]
+
 __builtin_hypot(f,f);      __builtin_hypotf(f,f);     __builtin_hypotl(f,f); __builtin_hypotf128(f,f);
 
 // NO__ERRNO: declare double @hypot(double noundef, double noundef) [[READNONE]]
