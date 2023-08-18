@@ -113,10 +113,10 @@ define <4 x i16> @vrgather_shuffle_xv_v4i16(<4 x i16> %x) {
 define <4 x i16> @vrgather_shuffle_vx_v4i16(<4 x i16> %x) {
 ; CHECK-LABEL: vrgather_shuffle_vx_v4i16:
 ; CHECK:       # %bb.0:
+; CHECK-NEXT:    lui a0, 48
+; CHECK-NEXT:    vsetivli zero, 2, e32, mf2, ta, ma
+; CHECK-NEXT:    vmv.v.x v10, a0
 ; CHECK-NEXT:    vsetivli zero, 4, e16, mf2, ta, mu
-; CHECK-NEXT:    vid.v v9
-; CHECK-NEXT:    li a0, 3
-; CHECK-NEXT:    vmul.vx v10, v9, a0
 ; CHECK-NEXT:    vmv.v.i v0, 3
 ; CHECK-NEXT:    vmv.v.i v9, 5
 ; CHECK-NEXT:    vrgather.vv v9, v8, v10, v0.t
