@@ -485,6 +485,58 @@ QualType maybeDesugar(ASTContext &AST, QualType QT) {
   return QT;
 }
 
+// Given a callee expression `Fn`, if the call is through a function pointer,
+// try to find the declaration of the corresponding function pointer type,
+// so that we can recover argument names from it.
+// FIXME: This function is mostly duplicated in SemaCodeComplete.cpp; unify.
+static FunctionProtoTypeLoc getPrototypeLoc(Expr *Fn) {
+  TypeLoc Target;
+  Expr *NakedFn = Fn->IgnoreParenCasts();
+  if (const auto *T = NakedFn->getType().getTypePtr()->getAs<TypedefType>()) {
+    Target = T->getDecl()->getTypeSourceInfo()->getTypeLoc();
+  } else if (const auto *DR = dyn_cast<DeclRefExpr>(NakedFn)) {
+    const auto *D = DR->getDecl();
+    if (const auto *const VD = dyn_cast<VarDecl>(D)) {
+      Target = VD->getTypeSourceInfo()->getTypeLoc();
+    }
+  }
+
+  if (!Target)
+    return {};
+
+  // Unwrap types that may be wrapping the function type
+  while (true) {
+    if (auto P = Target.getAs<PointerTypeLoc>()) {
+      Target = P.getPointeeLoc();
+      continue;
+    }
+    if (auto A = Target.getAs<AttributedTypeLoc>()) {
+      Target = A.getModifiedLoc();
+      continue;
+    }
+    if (auto P = Target.getAs<ParenTypeLoc>()) {
+      Target = P.getInnerLoc();
+      continue;
+    }
+    break;
+  }
+
+  if (auto F = Target.getAs<FunctionProtoTypeLoc>()) {
+    return F;
+  }
+
+  return {};
+}
+
+struct CallInfo {
+  // Only one of Callee or ProtoTypeLoc is set.
+  const FunctionDecl *Callee = nullptr;
+  FunctionProtoTypeLoc ProtoTypeLoc;
+
+  // Args is always set.
+  llvm::ArrayRef<const Expr *> Args;
+};
+
 class InlayHintVisitor : public RecursiveASTVisitor<InlayHintVisitor> {
 public:
   InlayHintVisitor(std::vector<InlayHint> &Results, ParsedAST &AST,
@@ -524,7 +576,12 @@ public:
       return true;
     }
 
-    processCall(E->getConstructor(), {E->getArgs(), E->getNumArgs()});
+    CallInfo Call;
+    Call.Callee = E->getConstructor();
+    if (!Call.Callee)
+      return true;
+    Call.Args = {E->getArgs(), E->getNumArgs()};
+    processCall(Call);
     return true;
   }
 
@@ -547,10 +604,17 @@ public:
       Callee = FD;
     else if (const auto *FTD = dyn_cast<FunctionTemplateDecl>(CalleeDecls[0]))
       Callee = FTD->getTemplatedDecl();
-    if (!Callee)
-      return true;
 
-    processCall(Callee, {E->getArgs(), E->getNumArgs()});
+    CallInfo Call;
+    if (Callee)
+      Call.Callee = Callee;
+    else if (FunctionProtoTypeLoc ProtoTypeLoc =
+                 getPrototypeLoc(E->getCallee()))
+      Call.ProtoTypeLoc = ProtoTypeLoc;
+    else
+      return true;
+    Call.Args = {E->getArgs(), E->getNumArgs()};
+    processCall(Call);
     return true;
   }
 
@@ -762,42 +826,51 @@ public:
 private:
   using NameVec = SmallVector<StringRef, 8>;
 
-  void processCall(const FunctionDecl *Callee,
-                   llvm::ArrayRef<const Expr *> Args) {
-    if (!Cfg.InlayHints.Parameters || Args.size() == 0 || !Callee)
+  void processCall(CallInfo Call) {
+    assert(Call.Callee || Call.ProtoTypeLoc);
+
+    if (!Cfg.InlayHints.Parameters || Call.Args.size() == 0)
       return;
 
     // The parameter name of a move or copy constructor is not very interesting.
-    if (auto *Ctor = dyn_cast<CXXConstructorDecl>(Callee))
-      if (Ctor->isCopyOrMoveConstructor())
-        return;
+    if (Call.Callee)
+      if (auto *Ctor = dyn_cast<CXXConstructorDecl>(Call.Callee))
+        if (Ctor->isCopyOrMoveConstructor())
+          return;
+
+    auto Params =
+        Call.Callee ? Call.Callee->parameters() : Call.ProtoTypeLoc.getParams();
 
     // Resolve parameter packs to their forwarded parameter
-    auto ForwardedParams = resolveForwardingParameters(Callee);
+    SmallVector<const ParmVarDecl *> ForwardedParams;
+    if (Call.Callee)
+      ForwardedParams = resolveForwardingParameters(Call.Callee);
+    else
+      ForwardedParams = {Params.begin(), Params.end()};
 
     NameVec ParameterNames = chooseParameterNames(ForwardedParams);
 
     // Exclude setters (i.e. functions with one argument whose name begins with
     // "set"), and builtins like std::move/forward/... as their parameter name
     // is also not likely to be interesting.
-    if (isSetter(Callee, ParameterNames) || isSimpleBuiltin(Callee))
+    if (Call.Callee &&
+        (isSetter(Call.Callee, ParameterNames) || isSimpleBuiltin(Call.Callee)))
       return;
 
-    for (size_t I = 0; I < ParameterNames.size() && I < Args.size(); ++I) {
+    for (size_t I = 0; I < ParameterNames.size() && I < Call.Args.size(); ++I) {
       // Pack expansion expressions cause the 1:1 mapping between arguments and
       // parameters to break down, so we don't add further inlay hints if we
       // encounter one.
-      if (isa<PackExpansionExpr>(Args[I])) {
+      if (isa<PackExpansionExpr>(Call.Args[I])) {
         break;
       }
 
       StringRef Name = ParameterNames[I];
-      bool NameHint = shouldHintName(Args[I], Name);
-      bool ReferenceHint =
-          shouldHintReference(Callee->getParamDecl(I), ForwardedParams[I]);
+      bool NameHint = shouldHintName(Call.Args[I], Name);
+      bool ReferenceHint = shouldHintReference(Params[I], ForwardedParams[I]);
 
       if (NameHint || ReferenceHint) {
-        addInlayHint(Args[I]->getSourceRange(), HintSide::Left,
+        addInlayHint(Call.Args[I]->getSourceRange(), HintSide::Left,
                      InlayHintKind::Parameter, ReferenceHint ? "&" : "",
                      NameHint ? Name : "", ": ");
       }
