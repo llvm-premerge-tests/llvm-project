@@ -73,6 +73,12 @@ static cl::opt<int>
                        "use for creating a floating-point immediate value"),
               cl::init(2));
 
+static cl::opt<int>
+    VectorImmCost(DEBUG_TYPE "-vecimm-cost", cl::Hidden,
+                  cl::desc("Give the maximum number of instructions that we will "
+                           "use for creating a vector immediate value"),
+                  cl::init(4));
+
 RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
                                          const RISCVSubtarget &STI)
     : TargetLowering(TM), Subtarget(STI) {
@@ -2970,6 +2976,10 @@ static std::optional<VIDSequence> isSimpleVIDSequence(SDValue Op) {
 
   assert(SeqAddend && "Must have an addend if we have a step");
 
+  // Would require a udiv in the expansion - never profitable.
+  if (!isPowerOf2_32(*SeqStepDenom))
+    return std::nullopt;
+
   return VIDSequence{*SeqStepNum, *SeqStepDenom, *SeqAddend};
 }
 
@@ -3220,6 +3230,8 @@ static SDValue lowerBuildVectorOfConstants(SDValue Op, SelectionDAG &DAG,
     return convertFromScalableVector(VT, Splat, DAG, Subtarget);
   }
 
+  const unsigned EltBitSize = VT.getScalarSizeInBits();
+
   // Try and match index sequences, which we can lower to the vid instruction
   // with optional modifications. An all-undef vector is matched by
   // getSplatValue, above.
@@ -3229,6 +3241,7 @@ static SDValue lowerBuildVectorOfConstants(SDValue Op, SelectionDAG &DAG,
     int64_t Addend = SimpleVID->Addend;
 
     assert(StepNumerator != 0 && "Invalid step");
+    assert(isPowerOf2_32(StepDenominator) && "unexpected denominator");
     bool Negate = false;
     int64_t SplatStepVal = StepNumerator;
     unsigned StepOpcode = ISD::MUL;
@@ -3240,44 +3253,84 @@ static SDValue lowerBuildVectorOfConstants(SDValue Op, SelectionDAG &DAG,
       }
     }
 
-    // Only emit VIDs with suitably-small steps/addends. We use imm5 is a
-    // threshold since it's the immediate value many RVV instructions accept.
-    // There is no vmul.vi instruction so ensure multiply constant can fit in
-    // a single addi instruction.
-    if (((StepOpcode == ISD::MUL && isInt<12>(SplatStepVal)) ||
-         (StepOpcode == ISD::SHL && isUInt<5>(SplatStepVal))) &&
-        isPowerOf2_32(StepDenominator) &&
-        (SplatStepVal >= 0 || StepDenominator == 1) && isInt<5>(Addend)) {
+    // Pairs of Opcode, and Immediate.
+    SmallVector<std::pair<unsigned, int64_t>, 8> Seq;
+    Seq.emplace_back(RISCVISD::VID_VL, 0);
+    if ((StepOpcode == ISD::MUL && SplatStepVal != 1) ||
+        (StepOpcode == ISD::SHL && SplatStepVal != 0))
+      Seq.emplace_back(StepOpcode, SplatStepVal);
+    if (StepDenominator != 1)
+      Seq.emplace_back(ISD::SRL, Log2_64(StepDenominator));
+    if (Addend != 0 || Negate)
+      Seq.emplace_back(Negate ? ISD::SUB : ISD::ADD, Addend);
+    if (VT.isFloatingPoint())
+      Seq.emplace_back(ISD::SINT_TO_FP, 0);
+
+
+    int Cost = 0;
+    for (const auto &[Opc, Imm] : Seq) {
+      Cost++;
+      switch (Opc) {
+      case RISCVISD::VID_VL:
+      case ISD::SINT_TO_FP:
+        // No immediates
+        break;
+      case ISD::SHL:
+      case ISD::SRL:
+      case ISD::ADD:
+      case ISD::SUB:
+        // VI form supports 5 bit constants
+        if (!isInt<5>(Imm))
+          Cost += RISCVMatInt::getIntMatCost(APInt(64, Imm), EltBitSize,
+                                             Subtarget.getFeatureBits());
+        break;
+      case ISD::MUL:
+        Cost += RISCVMatInt::getIntMatCost(APInt(64, Imm), EltBitSize,
+                                           Subtarget.getFeatureBits());
+        break;
+      }
+    }
+
+    if (Cost <= VectorImmCost) {
       MVT VIDVT =
-          VT.isFloatingPoint() ? VT.changeVectorElementTypeToInteger() : VT;
+        VT.isFloatingPoint() ? VT.changeVectorElementTypeToInteger() : VT;
       MVT VIDContainerVT =
-          getContainerForFixedLengthVector(DAG, VIDVT, Subtarget);
-      SDValue VID = DAG.getNode(RISCVISD::VID_VL, DL, VIDContainerVT, Mask, VL);
-      // Convert right out of the scalable type so we can use standard ISD
-      // nodes for the rest of the computation. If we used scalable types with
-      // these, we'd lose the fixed-length vector info and generate worse
-      // vsetvli code.
-      VID = convertFromScalableVector(VIDVT, VID, DAG, Subtarget);
-      if ((StepOpcode == ISD::MUL && SplatStepVal != 1) ||
-          (StepOpcode == ISD::SHL && SplatStepVal != 0)) {
-        SDValue SplatStep = DAG.getSplatBuildVector(
-            VIDVT, DL, DAG.getConstant(SplatStepVal, DL, XLenVT));
-        VID = DAG.getNode(StepOpcode, DL, VIDVT, VID, SplatStep);
-      }
-      if (StepDenominator != 1) {
-        SDValue SplatStep = DAG.getSplatBuildVector(
-            VIDVT, DL, DAG.getConstant(Log2_64(StepDenominator), DL, XLenVT));
-        VID = DAG.getNode(ISD::SRL, DL, VIDVT, VID, SplatStep);
-      }
-      if (Addend != 0 || Negate) {
-        SDValue SplatAddend = DAG.getSplatBuildVector(
-            VIDVT, DL, DAG.getConstant(Addend, DL, XLenVT));
-        VID = DAG.getNode(Negate ? ISD::SUB : ISD::ADD, DL, VIDVT, SplatAddend,
-                          VID);
-      }
-      if (VT.isFloatingPoint()) {
-        // TODO: Use vfwcvt to reduce register pressure.
-        VID = DAG.getNode(ISD::SINT_TO_FP, DL, VT, VID);
+        getContainerForFixedLengthVector(DAG, VIDVT, Subtarget);
+
+      SDValue VID;
+      assert(!Seq.empty());
+      for (const auto &[Opc, Imm] : Seq) {
+        switch (Opc) {
+        case RISCVISD::VID_VL:
+          VID = DAG.getNode(RISCVISD::VID_VL, DL, VIDContainerVT, Mask, VL);
+          // Convert right out of the scalable type so we can use standard ISD
+          // nodes for the rest of the computation. If we used scalable types with
+          // these, we'd lose the fixed-length vector info and generate worse
+          // vsetvli code.
+          VID = convertFromScalableVector(VIDVT, VID, DAG, Subtarget);
+          break;
+        case ISD::SHL:
+        case ISD::SRL:
+        case ISD::MUL: {
+          SDValue Splat = DAG.getSplatBuildVector(
+               VIDVT, DL, DAG.getConstant(Imm, DL, XLenVT));
+          VID = DAG.getNode(Opc, DL, VIDVT, VID, Splat);
+          break;
+        }
+        case ISD::ADD:
+        case ISD::SUB: {
+          // Note the swapped operands here.  This means that sub
+          // is actually vrsub (i.e. commonly negate)
+          SDValue Splat = DAG.getSplatBuildVector(
+               VIDVT, DL, DAG.getConstant(Imm, DL, XLenVT));
+          VID = DAG.getNode(Opc, DL, VIDVT, Splat, VID);
+          break;
+        }
+        case ISD::SINT_TO_FP:
+          // TODO: Use vfwcvt to reduce register pressure.
+          VID = DAG.getNode(ISD::SINT_TO_FP, DL, VT, VID);
+          break;
+        }
       }
       return VID;
     }
@@ -3285,7 +3338,6 @@ static SDValue lowerBuildVectorOfConstants(SDValue Op, SelectionDAG &DAG,
 
   // For very small build_vectors, use a single scalar insert of a constant.
   // TODO: Base this on constant rematerialization cost, not size.
-  const unsigned EltBitSize = VT.getScalarSizeInBits();
   if (VT.getSizeInBits() <= 32 &&
       ISD::isBuildVectorOfConstantSDNodes(Op.getNode())) {
     MVT ViaIntVT = MVT::getIntegerVT(VT.getSizeInBits());
