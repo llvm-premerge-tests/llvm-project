@@ -9,6 +9,9 @@
 #include "llvm/IR/StructuralHash.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/GlobalVariable.h"
+#include "llvm/IR/InstrTypes.h"
+#include "llvm/IR/Instructions.h"
+#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Module.h"
 
 using namespace llvm;
@@ -43,7 +46,7 @@ public:
   // expensive checks for pass modification status). When modifying this
   // function, most changes should be gated behind an option and enabled
   // selectively.
-  void update(const Function &F) {
+  void update(const Function &F, bool DetailedHash) {
     // Declarations don't affect analyses.
     if (F.isDeclaration())
       return;
@@ -68,8 +71,26 @@ public:
       // opcodes into BBs wouldn't affect the hash, only the order of the
       // opcodes
       hash(45798);
-      for (auto &Inst : *BB)
+      for (auto &Inst : *BB) {
         hash(Inst.getOpcode());
+        if (DetailedHash) {
+          hash(Inst.getType());
+
+          // Handle additional properties of specific instructions that cause
+          // semantic differences in the IR.
+          if (const CmpInst *ComparisonInstruction = dyn_cast<CmpInst>(&Inst))
+            hash(ComparisonInstruction->getPredicate());
+          if (const IntrinsicInst *InstrinsicInstruction =
+                  dyn_cast<IntrinsicInst>(&Inst))
+            hash(InstrinsicInstruction->getIntrinsicID());
+          if (const CallInst *CallInstruction = dyn_cast<CallInst>(&Inst))
+            hash(CallInstruction->getCalledFunction()->getName());
+
+          for (unsigned I = 0; I < Inst.getNumOperands(); ++I) {
+            hash(Inst.getOperand(I)->getType());
+          }
+        }
+      }
 
       const Instruction *Term = BB->getTerminator();
       for (unsigned i = 0, e = Term->getNumSuccessors(); i != e; ++i) {
@@ -90,11 +111,11 @@ public:
     hash(GV.getValueType()->getTypeID());
   }
 
-  void update(const Module &M) {
+  void update(const Module &M, bool DetailedHash) {
     for (const GlobalVariable &GV : M.globals())
       update(GV);
     for (const Function &F : M)
-      update(F);
+      update(F, DetailedHash);
   }
 
   uint64_t getHash() const { return Hash; }
@@ -102,14 +123,14 @@ public:
 
 } // namespace
 
-IRHash llvm::StructuralHash(const Function &F) {
+IRHash llvm::StructuralHash(const Function &F, bool DetailedHash) {
   StructuralHashImpl H;
-  H.update(F);
+  H.update(F, DetailedHash);
   return H.getHash();
 }
 
-IRHash llvm::StructuralHash(const Module &M) {
+IRHash llvm::StructuralHash(const Module &M, bool DetailedHash) {
   StructuralHashImpl H;
-  H.update(M);
+  H.update(M, DetailedHash);
   return H.getHash();
 }
