@@ -2077,21 +2077,40 @@ template <typename ELFT> void ELFDumper<ELFT>::parseDynamicTable() {
       break;
     case ELF::DT_RELR:
     case ELF::DT_ANDROID_RELR:
+    case ELF::DT_AARCH64_AUTH_RELR:
       DynRelrRegion.Addr = toMappedAddr(Dyn.getTag(), Dyn.getPtr());
       break;
     case ELF::DT_RELRSZ:
     case ELF::DT_ANDROID_RELRSZ:
+    case ELF::DT_AARCH64_AUTH_RELRSZ:
       DynRelrRegion.Size = Dyn.getVal();
-      DynRelrRegion.SizePrintName = Dyn.d_tag == ELF::DT_RELRSZ
-                                        ? "DT_RELRSZ value"
-                                        : "DT_ANDROID_RELRSZ value";
+      DynRelrRegion.SizePrintName = [&Dyn]() {
+        switch (Dyn.d_tag) {
+        case ELF::DT_RELRSZ:
+          return "DT_RELRSZ value";
+        case ELF::DT_ANDROID_RELRSZ:
+          return "DT_ANDROID_RELRSZ value";
+        case ELF::DT_AARCH64_AUTH_RELRSZ:
+          return "DT_AARCH64_AUTH_RELRSZ value";
+        }
+        llvm_unreachable("Unexpected Dyn.d_tag value");
+      }();
       break;
     case ELF::DT_RELRENT:
     case ELF::DT_ANDROID_RELRENT:
+    case ELF::DT_AARCH64_AUTH_RELRENT:
       DynRelrRegion.EntSize = Dyn.getVal();
-      DynRelrRegion.EntSizePrintName = Dyn.d_tag == ELF::DT_RELRENT
-                                           ? "DT_RELRENT value"
-                                           : "DT_ANDROID_RELRENT value";
+      DynRelrRegion.EntSizePrintName = [&Dyn]() {
+        switch (Dyn.d_tag) {
+        case ELF::DT_RELRENT:
+          return "DT_RELRENT value";
+        case ELF::DT_ANDROID_RELRENT:
+          return "DT_ANDROID_RELRENT value";
+        case ELF::DT_AARCH64_AUTH_RELRENT:
+          return "DT_AARCH64_AUTH_RELRENT value";
+        }
+        llvm_unreachable("Unexpected Dyn.d_tag value");
+      }();
       break;
     case ELF::DT_PLTREL:
       if (Dyn.getVal() == DT_REL)
@@ -2454,6 +2473,8 @@ std::string ELFDumper<ELFT>::getDynamicEntry(uint64_t Type,
   case DT_PREINIT_ARRAYSZ:
   case DT_RELRSZ:
   case DT_RELRENT:
+  case DT_AARCH64_AUTH_RELRSZ:
+  case DT_AARCH64_AUTH_RELRENT:
   case DT_ANDROID_RELSZ:
   case DT_ANDROID_RELASZ:
     return std::to_string(Value) + " (bytes)";
@@ -3788,7 +3809,8 @@ void GNUELFDumper<ELFT>::printRelRelaReloc(const Relocation<ELFT> &R,
 template <class ELFT>
 static void printRelocHeaderFields(formatted_raw_ostream &OS, unsigned SType) {
   bool IsRela = SType == ELF::SHT_RELA || SType == ELF::SHT_ANDROID_RELA;
-  bool IsRelr = SType == ELF::SHT_RELR || SType == ELF::SHT_ANDROID_RELR;
+  bool IsRelr = SType == ELF::SHT_RELR || SType == ELF::SHT_ANDROID_RELR ||
+                SType == ELF::SHT_AARCH64_AUTH_RELR;
   if (ELFT::Is64Bits)
     OS << "    ";
   else
@@ -3821,7 +3843,8 @@ static bool isRelocationSec(const typename ELFT::Shdr &Sec) {
   return Sec.sh_type == ELF::SHT_REL || Sec.sh_type == ELF::SHT_RELA ||
          Sec.sh_type == ELF::SHT_RELR || Sec.sh_type == ELF::SHT_ANDROID_REL ||
          Sec.sh_type == ELF::SHT_ANDROID_RELA ||
-         Sec.sh_type == ELF::SHT_ANDROID_RELR;
+         Sec.sh_type == ELF::SHT_ANDROID_RELR ||
+         Sec.sh_type == ELF::SHT_AARCH64_AUTH_RELR;
 }
 
 template <class ELFT> void GNUELFDumper<ELFT>::printRelocations() {
@@ -3837,8 +3860,9 @@ template <class ELFT> void GNUELFDumper<ELFT>::printRelocations() {
       return RelasOrErr->size();
     }
 
-    if (!opts::RawRelr && (Sec.sh_type == ELF::SHT_RELR ||
-                           Sec.sh_type == ELF::SHT_ANDROID_RELR)) {
+    if (!opts::RawRelr &&
+        (Sec.sh_type == ELF::SHT_RELR || Sec.sh_type == ELF::SHT_ANDROID_RELR ||
+         Sec.sh_type == ELF::SHT_AARCH64_AUTH_RELR)) {
       Expected<Elf_Relr_Range> RelrsOrErr = this->Obj.relrs(Sec);
       if (!RelrsOrErr)
         return RelrsOrErr.takeError();
@@ -6172,11 +6196,12 @@ void ELFDumper<ELFT>::forEachRelocationDo(
                               toString(std::move(E)));
   };
 
-  // SHT_RELR/SHT_ANDROID_RELR sections do not have an associated symbol table.
-  // For them we should not treat the value of the sh_link field as an index of
-  // a symbol table.
+  // SHT_RELR/SHT_ANDROID_RELR/SHT_AARCH64_AUTH_RELR sections do not have an
+  // associated symbol table. For them we should not treat the value of the
+  // sh_link field as an index of a symbol table.
   const Elf_Shdr *SymTab;
-  if (Sec.sh_type != ELF::SHT_RELR && Sec.sh_type != ELF::SHT_ANDROID_RELR) {
+  if (Sec.sh_type != ELF::SHT_RELR && Sec.sh_type != ELF::SHT_ANDROID_RELR &&
+      Sec.sh_type != ELF::SHT_AARCH64_AUTH_RELR) {
     Expected<const Elf_Shdr *> SymTabOrErr = Obj.getSection(Sec.sh_link);
     if (!SymTabOrErr) {
       Warn(SymTabOrErr.takeError(), "unable to locate a symbol table for");
@@ -6205,6 +6230,7 @@ void ELFDumper<ELFT>::forEachRelocationDo(
     }
     break;
   case ELF::SHT_RELR:
+  case ELF::SHT_AARCH64_AUTH_RELR:
   case ELF::SHT_ANDROID_RELR: {
     Expected<Elf_Relr_Range> RangeOrErr = Obj.relrs(Sec);
     if (!RangeOrErr) {

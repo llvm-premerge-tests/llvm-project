@@ -537,6 +537,7 @@ constexpr const char *knownZFlags[] = {
     "nognustack",
     "nokeep-text-section-prefix",
     "nopack-relative-relocs",
+    "nopack-relative-auth-relocs",
     "norelro",
     "noseparate-code",
     "nostart-stop-gc",
@@ -545,6 +546,7 @@ constexpr const char *knownZFlags[] = {
     "origin",
     "pac-plt",
     "pack-relative-relocs",
+    "pack-relative-auth-relocs",
     "rel",
     "rela",
     "relro",
@@ -1575,6 +1577,9 @@ static void readConfigs(opt::InputArgList &args) {
     std::tie(config->androidPackDynRelocs, config->relrPackDynRelocs) =
         getPackDynRelocs(args);
   }
+
+  config->relrPackAuthDynRelocs = getZFlag(
+      args, "pack-relative-auth-relocs", "nopack-relative-auth-relocs", false);
 
   if (auto *arg = args.getLastArg(OPT_symbol_ordering_file)){
     if (args.hasArg(OPT_call_graph_ordering_file))
