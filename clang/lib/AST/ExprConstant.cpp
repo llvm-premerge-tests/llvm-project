@@ -14310,6 +14310,34 @@ bool FloatExprEvaluator::VisitCallExpr(const CallExpr *E) {
       Result = RHS;
     return true;
   }
+
+  case Builtin::BI__builtin_fmaximum:
+  case Builtin::BI__builtin_fmaximumf:
+  case Builtin::BI__builtin_fmaximuml:
+  case Builtin::BI__builtin_fmaximumf16:
+  case Builtin::BI__builtin_fmaximumbf16:
+  case Builtin::BI__builtin_fmaximumf128: {
+    APFloat RHS(0.);
+    if (!EvaluateFloat(E->getArg(0), Result, Info) ||
+        !EvaluateFloat(E->getArg(1), RHS, Info))
+      return false;
+    Result = maximum(Result, RHS);
+    return true;
+  }
+
+  case Builtin::BI__builtin_fminimum:
+  case Builtin::BI__builtin_fminimumf:
+  case Builtin::BI__builtin_fminimuml:
+  case Builtin::BI__builtin_fminimumf16:
+  case Builtin::BI__builtin_fminimumbf16:
+  case Builtin::BI__builtin_fminimumf128: {
+    APFloat RHS(0.);
+    if (!EvaluateFloat(E->getArg(0), Result, Info) ||
+        !EvaluateFloat(E->getArg(1), RHS, Info))
+      return false;
+    Result = minimum(Result, RHS);
+    return true;
+  }
   }
 }
 
