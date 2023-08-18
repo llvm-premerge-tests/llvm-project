@@ -14,7 +14,7 @@ define amdgpu_kernel void @global_atomic_fadd_noret_f32_wrong_subtarget(ptr addr
 ; GCN-NEXT:    s_load_dwordx2 s[0:1], s[0:1], 0x24
 ; GCN-NEXT:    v_mov_b32_e32 v0, 0
 ; GCN-NEXT:    v_mov_b32_e32 v1, 4.0
-; GCN-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
+; GCN-NEXT:    s_waitcnt lgkmcnt(0)
 ; GCN-NEXT:    global_atomic_add_f32 v0, v1, s[0:1]
 ; GCN-NEXT:    s_waitcnt vmcnt(0)
 ; GCN-NEXT:    buffer_wbinvl1_vol

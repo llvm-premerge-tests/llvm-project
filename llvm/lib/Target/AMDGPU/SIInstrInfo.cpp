@@ -8287,6 +8287,11 @@ bool SIInstrInfo::isAsmOnlyOpcode(int MCOp) const {
 }
 
 int SIInstrInfo::pseudoToMCOpcode(int Opcode) const {
+
+  // FIXME: move to the right place
+  if (auto NonSoftOpcode = SIInstrInfo::getNonSoftWaitcntOpcode(Opcode))
+    Opcode = *NonSoftOpcode;
+
   unsigned Gen = subtargetEncodingFamily(ST);
 
   if ((get(Opcode).TSFlags & SIInstrFlags::renamedInGFX9) != 0 &&
