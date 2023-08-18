@@ -1,5 +1,8 @@
+import itertools
 import multiprocessing
 import os
+import pathlib
+import shutil
 import time
 
 import lit.Test
@@ -55,6 +58,28 @@ class Run(object):
         deadline = time.time() + timeout
 
         try:
+            # On Windows, copy the required DLLs from PATH into the test directory
+            # This avoids the loader finding DLLs in C:\Windows\System32
+            if self.lit_config.isWindows:
+                def outputPath(path):
+                    # this handles both the unit test C:\...\TestCases\Windows\foo.cpp,
+                    # and also the regular test C:\...\X86_64WindowsDynamicConfig\Asan-x86_64-inline-Dynamic-Test.exe\16\18
+                    path = pathlib.Path(path)
+                    parent = path.parent
+                    while path.suffix == '':
+                        path, parent = parent, parent.parent
+                        assert(path != path.parent)
+                    return parent / 'Output'
+                outputDirectories = {outputPath(test.getExecPath()) for test in self.tests}
+                toolsetDirectory = pathlib.Path(lit.util.which("cl.exe")).parent
+                for outputDirectory in outputDirectories:
+                    lit.util.mkdir_p(outputDirectory)
+                    for dllToCopy in itertools.chain(\
+                            toolsetDirectory.glob('msvcp*.dll'),\
+                            toolsetDirectory.glob('vcruntime*.dll'),\
+                            toolsetDirectory.glob('ucrtbase*.dll')):
+                        shutil.copyfile(dllToCopy, outputDirectory / dllToCopy.name)
+
             self._execute(deadline)
         finally:
             skipped = lit.Test.Result(lit.Test.SKIPPED)
