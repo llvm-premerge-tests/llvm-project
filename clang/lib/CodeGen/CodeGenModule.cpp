@@ -5413,6 +5413,36 @@ static bool isVarDeclStrongDefinition(const ASTContext &Context,
 llvm::GlobalValue::LinkageTypes
 CodeGenModule::getLLVMLinkageForDeclarator(const DeclaratorDecl *D,
                                            GVALinkage Linkage) {
+
+  if (const auto *A = D->getAttr<LinkageAttr>()) {
+    switch (A->getLinkage()) {
+    case LinkageAttr::Private:
+      return llvm::GlobalValue::PrivateLinkage;
+    case LinkageAttr::Internal:
+      return llvm::GlobalValue::InternalLinkage;
+    case LinkageAttr::WeakAny:
+      return llvm::GlobalValue::WeakAnyLinkage;
+    case LinkageAttr::WeakODR:
+      return llvm::GlobalValue::WeakODRLinkage;
+    case LinkageAttr::LinkOnceAny:
+      return llvm::GlobalValue::LinkOnceAnyLinkage;
+    case LinkageAttr::LinkOnceODR:
+      return llvm::GlobalValue::LinkOnceODRLinkage;
+    case LinkageAttr::AvailableExternally:
+      return llvm::GlobalValue::AvailableExternallyLinkage;
+    case LinkageAttr::Appending:
+      return llvm::GlobalValue::AppendingLinkage;
+    case LinkageAttr::Common:
+      return llvm::GlobalValue::CommonLinkage;
+    case LinkageAttr::ExternalWeak:
+      return llvm::GlobalValue::ExternalWeakLinkage;
+    case LinkageAttr::External:
+      return llvm::GlobalValue::ExternalLinkage;
+    default:
+      llvm_unreachable("unknown linkage");
+    }
+  }
+
   if (Linkage == GVA_Internal)
     return llvm::Function::InternalLinkage;
 

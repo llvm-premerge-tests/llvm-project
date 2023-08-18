@@ -3036,6 +3036,16 @@ def Visibility : InheritableAttr {
   let Documentation = [Undocumented];
 }
 
+def Linkage : InheritableAttr {
+  let Clone = 0;
+  let Spellings = [GCC<"linkage">];
+  let Args = [EnumArgument<"Linkage", "LinkageType",
+                           ["external", "available_externally", "linkonce", "linkonce_odr", "weak", "weak_odr", "appending", "internal", "private", "external_weak", "common"],
+                           ["External", "AvailableExternally", "LinkOnceAny", "LinkOnceODR", "WeakAny", "WeakODR", "Appending", "Internal", "Private", "ExternalWeak", "Common"]>];
+  let MeaningfulToClassTemplateDefinition = 1;
+  let Documentation = [Undocumented];
+}
+
 def TypeVisibility : InheritableAttr {
   let Clone = 0;
   let Spellings = [Clang<"type_visibility">];

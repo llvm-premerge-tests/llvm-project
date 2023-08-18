@@ -2365,6 +2365,29 @@ static void handleConstructorAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
   D->addAttr(::new (S.Context) ConstructorAttr(S.Context, AL, priority));
 }
 
+static void handleLinkageAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
+  // Linkage attributes don't mean anything on a typedef.
+  if (isa<TypedefNameDecl>(D)) {
+    S.Diag(AL.getRange().getBegin(), diag::warn_attribute_ignored) << AL;
+    return;
+  }
+
+  // Check that the argument is a string literal.
+  StringRef TypeStr;
+  SourceLocation LiteralLoc;
+  if (!S.checkStringLiteralArgumentAttr(AL, 0, TypeStr, &LiteralLoc))
+    return;
+
+  LinkageAttr::LinkageType type;
+  if (!LinkageAttr::ConvertStrToLinkageType(TypeStr, type)) {
+    S.Diag(LiteralLoc, diag::warn_attribute_type_not_supported)
+        << AL << TypeStr;
+    return;
+  }
+
+  D->addAttr(::new (S.Context) LinkageAttr(S.Context, AL, type));
+}
+
 static void handleDestructorAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
   uint32_t priority = DestructorAttr::DefaultPriority;
   if (AL.getNumArgs() &&
@@ -8877,6 +8900,9 @@ ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D, const ParsedAttr &AL,
     // that do not list any subjects.
     S.Diag(AL.getLoc(), diag::err_attribute_invalid_on_decl)
         << AL << AL.isRegularKeywordAttribute() << D->getLocation();
+    break;
+  case ParsedAttr::AT_Linkage:
+    handleLinkageAttr(S, D, AL);
     break;
   case ParsedAttr::AT_Interrupt:
     handleInterruptAttr(S, D, AL);
