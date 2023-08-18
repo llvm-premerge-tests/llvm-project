@@ -706,6 +706,14 @@ public:
                              unsigned AddrSpace = 0,
                              Instruction *I = nullptr) const;
 
+  /// Checks if the specified operation with the given vector type is not going
+  /// to be scalarized.
+  bool isLegalVectorOp(unsigned, VectorType *) const;
+
+  /// Checks if the specified operation(intrinsic) with the given vector type is
+  /// not going to be scalarized.
+  bool isLegalVectorIntrinsic(Intrinsic::ID, VectorType *) const;
+
   /// Return true if LSR cost of C1 is lower than C2.
   bool isLSRCostLess(const TargetTransformInfo::LSRCost &C1,
                      const TargetTransformInfo::LSRCost &C2) const;
@@ -1757,6 +1765,10 @@ public:
                                      int64_t BaseOffset, bool HasBaseReg,
                                      int64_t Scale, unsigned AddrSpace,
                                      Instruction *I) = 0;
+  virtual bool isLegalVectorOp(unsigned, VectorType *) const = 0;
+
+  virtual bool isLegalVectorIntrinsic(Intrinsic::ID, VectorType *) const = 0;
+
   virtual bool isLSRCostLess(const TargetTransformInfo::LSRCost &C1,
                              const TargetTransformInfo::LSRCost &C2) = 0;
   virtual bool isNumRegsMajorCostOfLSR() = 0;
@@ -2198,6 +2210,15 @@ public:
     return Impl.isLegalAddressingMode(Ty, BaseGV, BaseOffset, HasBaseReg, Scale,
                                       AddrSpace, I);
   }
+  bool isLegalVectorOp(unsigned Opcode, VectorType *VecTy) const override {
+    return Impl.isLegalVectorOp(Opcode, VecTy);
+  }
+
+  bool isLegalVectorIntrinsic(Intrinsic::ID Id,
+                              VectorType *VecTy) const override {
+    return Impl.isLegalVectorIntrinsic(Id, VecTy);
+  }
+
   bool isLSRCostLess(const TargetTransformInfo::LSRCost &C1,
                      const TargetTransformInfo::LSRCost &C2) override {
     return Impl.isLSRCostLess(C1, C2);

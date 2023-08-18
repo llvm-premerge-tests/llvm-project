@@ -298,6 +298,12 @@ public:
 
   bool isLegalMaskedExpandLoad(Type *DataType) const { return false; }
 
+  bool isLegalVectorOp(unsigned, VectorType *) const { return true; }
+
+  bool isLegalVectorIntrinsic(Intrinsic::ID, VectorType *) const {
+    return true;
+  }
+
   bool enableOrderedReductions() const { return false; }
 
   bool hasDivRemOp(Type *DataType, bool IsSigned) const { return false; }

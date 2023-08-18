@@ -1189,6 +1189,13 @@ public:
     UserIgnoreList = nullptr;
     PostponedGathers.clear();
     ValueToGatherNodes.clear();
+    OperandsToVectorize.clear();
+  }
+
+  /// Returns the list of the operands to try to vectorize later, if the user
+  /// node was not vectorized.
+  ArrayRef<SmallVector<Value *>> operandsToVectorize() const {
+    return OperandsToVectorize;
   }
 
   unsigned getTreeSize() const { return VectorizableTree.size(); }
@@ -2427,6 +2434,10 @@ private:
   bool areAllUsersVectorized(Instruction *I,
                              ArrayRef<Value *> VectorizedVals) const;
 
+  /// Checks if the list of the values worth to be vectorized and not going to
+  /// be scalarized later.
+  bool isLegalVectorOp(ArrayRef<Value *> VL);
+
   /// Return information about the vector formed for the specified index
   /// of a vector of (the same) instruction.
   TargetTransformInfo::OperandValueInfo getOperandInfo(ArrayRef<Value *> VL,
@@ -2959,6 +2970,10 @@ private:
 
   /// A list of scalars that we found that we need to keep as scalars.
   ValueSet MustGather;
+
+  /// A list of the operands of the nodes, which are not vectorized. These
+  /// operands are the candidates for the vectorization later.
+  SmallVector<SmallVector<Value *>> OperandsToVectorize;
 
   /// A map between the vectorized entries and the last instructions in the
   /// bundles. The bundles are built in use order, not in the def order of the
@@ -5781,6 +5796,21 @@ void BoUpSLP::buildTree_rec(ArrayRef<Value *> VL, unsigned Depth,
     return;
   }
 
+  // Check if the generated vector instruction won't be scalarized later.
+  if (!isLegalVectorOp(VL)) {
+    LLVM_DEBUG(dbgs() << "SLP: scalarized bundle starting " << *S.OpValue
+                      << ".\n");
+    newTreeEntry(VL, std::nullopt /*not vectorized*/, S, UserTreeIdx,
+                 ReuseShuffleIndicies);
+    // Gather operands to try to vectorize them later.
+    for (unsigned I = 0, End = S.MainOp->getNumOperands(); I < End; ++I) {
+      auto &Operands = OperandsToVectorize.emplace_back();
+      for (Value *V : VL)
+        Operands.push_back(cast<Instruction>(V)->getOperand(I));
+    }
+    return;
+  }
+
   auto &BSRef = BlocksSchedules[BB];
   if (!BSRef)
     BSRef = std::make_unique<BlockScheduling>(BB);
@@ -6429,6 +6459,75 @@ static bool isAlternateInstruction(const Instruction *I,
     return MainP != P && MainP != SwappedP;
   }
   return I->getOpcode() == AltOp->getOpcode();
+}
+
+bool BoUpSLP::isLegalVectorOp(ArrayRef<Value *> VL) {
+  InstructionsState S = getSameOpcode(VL, *TLI);
+  const unsigned Sz = VL.size();
+  Value *V0 = VL.front();
+  Type *ScalarTy = V0->getType();
+  if (isa<StoreInst, InsertElementInst>(V0))
+    return true;
+  if (auto *CI = dyn_cast<CmpInst>(V0))
+    ScalarTy = CI->getOperand(0)->getType();
+  else if (auto *CI = dyn_cast<CastInst>(V0))
+    if (!isa<BitCastInst, FPToSIInst, FPToSIInst>(CI))
+      ScalarTy = CI->getSrcTy();
+  if (!isValidElementType(ScalarTy))
+    return false;
+  auto *VecTy = FixedVectorType::get(ScalarTy, Sz);
+
+  // If we have computed a smaller type for the expression, update VecTy so
+  // that the costs will be accurate.
+  const auto It = MinBWs.find(VL[0]);
+  if (It != MinBWs.end())
+    VecTy = FixedVectorType::get(
+        IntegerType::get(F->getContext(), It->second.first), VL.size());
+
+  unsigned ShuffleOrOp =
+      S.isAltShuffle() ? (unsigned)Instruction::ShuffleVector : S.getOpcode();
+  switch (ShuffleOrOp) {
+  case Instruction::URem:
+  case Instruction::SRem:
+  case Instruction::UDiv:
+  case Instruction::SDiv: {
+    // Check if it can be represented as shift
+    TTI::OperandValueInfo OVI = getOperandInfo(VL, 1);
+    if (OVI.isConstant())
+      return true;
+    return TTI->isLegalVectorOp(ShuffleOrOp, VecTy);
+  }
+  case Instruction::Mul: {
+    // Check if it can be represented as shift
+    TTI::OperandValueInfo OVI = getOperandInfo(VL, 1);
+    if (OVI.isConstant())
+      return true;
+    return TTI->isLegalVectorOp(ShuffleOrOp, VecTy);
+  }
+  case Instruction::FNeg:
+  case Instruction::Add:
+  case Instruction::FAdd:
+  case Instruction::Sub:
+  case Instruction::FSub:
+  case Instruction::FMul:
+  case Instruction::FDiv:
+  case Instruction::FRem:
+  case Instruction::Shl:
+  case Instruction::LShr:
+  case Instruction::AShr:
+  case Instruction::And:
+  case Instruction::Or:
+  case Instruction::Xor:
+    return TTI->isLegalVectorOp(ShuffleOrOp, VecTy);
+  case Instruction::Call: {
+    auto *CI = cast<CallInst>(V0);
+    auto VecCallCosts = getVectorCallCosts(CI, VecTy, TTI, TLI);
+    return (VecCallCosts.first > VecCallCosts.second ||
+            TTI->isLegalVectorIntrinsic(CI->getIntrinsicID(), VecTy));
+  }
+  default:
+    return true;
+  }
 }
 
 TTI::OperandValueInfo BoUpSLP::getOperandInfo(ArrayRef<Value *> VL,
@@ -12382,6 +12481,51 @@ bool SLPVectorizerPass::runImpl(Function &F, ScalarEvolution *SE_,
   return Changed;
 }
 
+static bool vectorizeOperands(BoUpSLP &R) {
+  SmallVector<SmallVector<Value *>> Operands(R.operandsToVectorize().begin(),
+                                             R.operandsToVectorize().end());
+  DenseSet<hash_code> VisitedOperands;
+  bool Changed = false;
+  while (!Operands.empty()) {
+    SmallVector<Value *> Chain = Operands.pop_back_val();
+    if (!VisitedOperands.insert(hash_value(ArrayRef(Chain))).second)
+      continue;
+    unsigned VF = Chain.size();
+    R.buildTree(Chain);
+    if (R.isTreeTinyAndNotFullyVectorizable())
+      return false;
+    if (R.isLoadCombineCandidate())
+      return false;
+    R.reorderTopToBottom();
+    R.reorderBottomToTop();
+    R.buildExternalUses();
+
+    R.computeMinimumValueSizes();
+
+    InstructionCost Cost = R.getTreeCost();
+
+    LLVM_DEBUG(dbgs() << "SLP: Found cost = " << Cost << " for VF=" << VF
+                      << "\n");
+    if (Cost < -SLPCostThreshold) {
+      LLVM_DEBUG(dbgs() << "SLP: Decided to vectorize cost = " << Cost << "\n");
+
+      using namespace ore;
+
+      R.getORE()->emit(OptimizationRemark(SV_NAME, "OperandsVectorized",
+                                          cast<Instruction>(Chain[0]))
+                       << "Operands SLP vectorized with cost "
+                       << NV("Cost", Cost) << " and with tree size "
+                       << NV("TreeSize", R.getTreeSize()));
+
+      R.vectorizeTree();
+      Changed = true;
+    }
+    Operands.append(R.operandsToVectorize().begin(),
+                    R.operandsToVectorize().end());
+  }
+  return Changed;
+}
+
 bool SLPVectorizerPass::vectorizeStoreChain(ArrayRef<Value *> Chain, BoUpSLP &R,
                                             unsigned Idx, unsigned MinVF) {
   LLVM_DEBUG(dbgs() << "SLP: Analyzing a store chain of length " << Chain.size()
@@ -12421,10 +12565,11 @@ bool SLPVectorizerPass::vectorizeStoreChain(ArrayRef<Value *> Chain, BoUpSLP &R,
                      << NV("TreeSize", R.getTreeSize()));
 
     R.vectorizeTree();
+    (void)vectorizeOperands(R);
     return true;
   }
 
-  return false;
+  return vectorizeOperands(R);
 }
 
 bool SLPVectorizerPass::vectorizeStores(ArrayRef<StoreInst *> Stores,
@@ -12786,6 +12931,7 @@ bool SLPVectorizerPass::tryToVectorizeList(ArrayRef<Value *> VL, BoUpSLP &R,
         NextInst = I + 1;
         Changed = true;
       }
+      Changed |= vectorizeOperands(R);
     }
   }
 
@@ -13802,6 +13948,7 @@ public:
         // Vectorize a tree.
         Value *VectorizedRoot = V.vectorizeTree(LocalExternallyUsedValues,
                                                 ReplacedExternals, InsertPt);
+        (void)vectorizeOperands(V);
 
         Builder.SetInsertPoint(InsertPt);
 

@@ -3,7 +3,21 @@
 
 define <8 x i32> @sdiv_v8i32_undefs(<8 x i32> %a) {
 ; CHECK-LABEL: @sdiv_v8i32_undefs(
-; CHECK-NEXT:    ret <8 x i32> poison
+; CHECK-NEXT:    [[A1:%.*]] = extractelement <8 x i32> [[A:%.*]], i64 1
+; CHECK-NEXT:    [[A5:%.*]] = extractelement <8 x i32> [[A]], i64 5
+; CHECK-NEXT:    [[AB1:%.*]] = sdiv i32 [[A1]], 4
+; CHECK-NEXT:    [[TMP1:%.*]] = shufflevector <8 x i32> [[A]], <8 x i32> poison, <2 x i32> <i32 2, i32 3>
+; CHECK-NEXT:    [[TMP2:%.*]] = sdiv <2 x i32> [[TMP1]], <i32 8, i32 16>
+; CHECK-NEXT:    [[AB5:%.*]] = sdiv i32 [[A5]], 4
+; CHECK-NEXT:    [[TMP3:%.*]] = shufflevector <8 x i32> [[A]], <8 x i32> poison, <2 x i32> <i32 6, i32 7>
+; CHECK-NEXT:    [[TMP4:%.*]] = sdiv <2 x i32> [[TMP3]], <i32 8, i32 16>
+; CHECK-NEXT:    [[R1:%.*]] = insertelement <8 x i32> poison, i32 [[AB1]], i64 1
+; CHECK-NEXT:    [[TMP5:%.*]] = shufflevector <2 x i32> [[TMP2]], <2 x i32> poison, <8 x i32> <i32 0, i32 1, i32 poison, i32 poison, i32 poison, i32 poison, i32 poison, i32 poison>
+; CHECK-NEXT:    [[R32:%.*]] = shufflevector <8 x i32> [[R1]], <8 x i32> [[TMP5]], <8 x i32> <i32 poison, i32 1, i32 8, i32 9, i32 poison, i32 poison, i32 poison, i32 poison>
+; CHECK-NEXT:    [[R5:%.*]] = insertelement <8 x i32> [[R32]], i32 [[AB5]], i64 5
+; CHECK-NEXT:    [[TMP6:%.*]] = shufflevector <2 x i32> [[TMP4]], <2 x i32> poison, <8 x i32> <i32 0, i32 1, i32 poison, i32 poison, i32 poison, i32 poison, i32 poison, i32 poison>
+; CHECK-NEXT:    [[R71:%.*]] = shufflevector <8 x i32> [[R5]], <8 x i32> [[TMP6]], <8 x i32> <i32 poison, i32 1, i32 2, i32 3, i32 poison, i32 5, i32 8, i32 9>
+; CHECK-NEXT:    ret <8 x i32> [[R71]]
 ;
   %a0 = extractelement <8 x i32> %a, i32 0
   %a1 = extractelement <8 x i32> %a, i32 1

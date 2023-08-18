@@ -393,6 +393,16 @@ bool TargetTransformInfo::isLegalAddressingMode(Type *Ty, GlobalValue *BaseGV,
                                         Scale, AddrSpace, I);
 }
 
+bool TargetTransformInfo::isLegalVectorOp(unsigned Opcode,
+                                          VectorType *VecTy) const {
+  return TTIImpl->isLegalVectorOp(Opcode, VecTy);
+}
+
+bool TargetTransformInfo::isLegalVectorIntrinsic(Intrinsic::ID Id,
+                                                 VectorType *VecTy) const {
+  return TTIImpl->isLegalVectorIntrinsic(Id, VecTy);
+}
+
 bool TargetTransformInfo::isLSRCostLess(const LSRCost &C1,
                                         const LSRCost &C2) const {
   return TTIImpl->isLSRCostLess(C1, C2);
