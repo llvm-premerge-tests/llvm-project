@@ -218,6 +218,10 @@ constexpr bool
                      details::void_t<decltype(details::convertible_to_helper<T>(
                          declval<F>()))>> = true;
 
+#ifndef __has_builtin
+#define __has_builtin(builtin) 0
+#endif
+
 namespace details {
 #if __has_builtin(__is_lvalue_reference) &&                                    \
     __has_builtin(__is_rvalue_reference) && __has_builtin(__is_reference)
@@ -333,14 +337,12 @@ template <typename T>
 struct is_trivially_destructible
     : public integral_constant<bool, __is_trivially_destructible(T)> {};
 
-#elif __has_builtin(__has_trivial_destructor)
-
+#else
 template <typename T>
 struct is_trivially_destructible
     : public integral_constant<
           bool, __llvm_libc::cpp::details::is_destructible<T>::value
                     &&__has_trivial_destructor(T)> {};
-
 #endif // __has_builtin(__is_trivially_destructible)
 
 } // namespace cpp
