@@ -1,6 +1,6 @@
-// RUN: %clang_cc1 -emit-llvm -o %t %s
+// RUN: %clang_cc1 -emit-llvm -o %t %s -Wno-format
 // RUN: not grep __builtin %t
-// RUN: %clang_cc1 -emit-llvm -triple x86_64-darwin-apple -o - %s | FileCheck %s
+// RUN: %clang_cc1 -emit-llvm -triple x86_64-darwin-apple -o - %s -Wno-format | FileCheck %s
 
 int printf(const char *, ...);
 
@@ -276,6 +276,8 @@ void test_float_builtins(__fp16 *H, float F, double D, long double LD) {
 
 // CHECK-LABEL: define{{.*}} void @test_float_builtin_ops
 void test_float_builtin_ops(float F, double D, long double LD) {
+  volatile __fp16 resf16 = F;
+  volatile __bf16 resbf16 = F;
   volatile float resf;
   volatile double resd;
   volatile long double resld;
@@ -322,6 +324,36 @@ void test_float_builtin_ops(float F, double D, long double LD) {
 
   resld = __builtin_fmaxl(LD, LD);
   // CHECK: call x86_fp80 @llvm.maxnum.f80
+
+  resf16 = __builtin_fminimumf16(F, F);
+  // CHECK: call half @llvm.minimum.f16
+
+  resbf16 = __builtin_fminimumbf16(F, F);
+  // CHECK: call bfloat @llvm.minimum.bf16
+
+  resf = __builtin_fminimumf(F, F);
+  // CHECK: call float @llvm.minimum.f32
+
+  resd = __builtin_fminimum(D, D);
+  // CHECK: call double @llvm.minimum.f64
+
+  resld = __builtin_fminimuml(LD, LD);
+  // CHECK: call x86_fp80 @llvm.minimum.f80
+
+  resf16 = __builtin_fmaximumf16(F, F);
+  // CHECK: call half @llvm.maximum.f16
+
+  resbf16 = __builtin_fmaximumbf16(F, F);
+  // CHECK: call bfloat @llvm.maximum.bf16
+
+  resf = __builtin_fmaximumf(F, F);
+  // CHECK: call float @llvm.maximum.f32
+
+  resd = __builtin_fmaximum(D, D);
+  // CHECK: call double @llvm.maximum.f64
+
+  resld = __builtin_fmaximuml(LD, LD);
+  // CHECK: call x86_fp80 @llvm.maximum.f80
 
   resf = __builtin_fabsf(F);
   // CHECK: call float @llvm.fabs.f32
@@ -413,7 +445,7 @@ void test_float_builtin_ops(float F, double D, long double LD) {
 
   resld = __builtin_roundevenl(LD);
   // CHECK: call x86_fp80 @llvm.roundeven.f80
-  
+
   resli = __builtin_lroundf (F);
   // CHECK: call i64 @llvm.lround.i64.f32
 
