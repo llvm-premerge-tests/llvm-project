@@ -1002,6 +1002,35 @@ def G_FNEARBYINT : GenericInstruction {
 }
 
 //------------------------------------------------------------------------------
+// Access to floating-point environment.
+//------------------------------------------------------------------------------
+
+// These operations read/write floating-point environment. This property is
+// represented by side effect, because constrained intrinsics (which also acces
+// FP environment) use this way.
+
+// Reading floating-point control modes.
+def G_GET_FPMODE : GenericInstruction {
+  let OutOperandList = (outs type0:$dst);
+  let InOperandList = (ins);
+  let hasSideEffects = true;
+}
+
+// Setting floating-point control modes.
+def G_SET_FPMODE : GenericInstruction {
+  let OutOperandList = (outs);
+  let InOperandList = (ins type0:$src);
+  let hasSideEffects = true;
+}
+
+// Setting floating-point control modes to default state.
+def G_RESET_FPMODE : GenericInstruction {
+  let OutOperandList = (outs);
+  let InOperandList = (ins);
+  let hasSideEffects = true;
+}
+
+//------------------------------------------------------------------------------
 // Opcodes for LLVM Intrinsics
 //------------------------------------------------------------------------------
 def G_INTRINSIC_FPTRUNC_ROUND : GenericInstruction {
