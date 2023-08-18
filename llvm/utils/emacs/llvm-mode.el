@@ -34,10 +34,24 @@
    '("[-a-zA-Z$._0-9]+:" . font-lock-variable-name-face)
    ;; Unnamed variable slots
    '("%[-]?[0-9]+" . font-lock-variable-name-face)
+   ;; Function names
+   '("@[-a-zA-Z$._][-a-zA-Z$._0-9]*" . font-lock-function-name-face)
    ;; Types
-   `(,(regexp-opt
-       '("void" "i1" "i8" "i16" "i32" "i64" "i128" "half" "bfloat" "float" "double" "fp128" "x86_fp80" "ppc_fp128" "x86_mmx" "x86_amx" "ptr"
-         "type" "label" "opaque" "token") 'symbols) . font-lock-type-face)
+   ,@(let ((type-regexp
+	    (concat
+	     "\\(i[0-9]+\\|"
+	     (regexp-opt
+	      '("void" "half" "bfloat" "float" "double" "fp128" "x86_fp80"
+		"ppc_fp128" "x86_mmx" "x86_amx" "ptr" "type" "label" "opaque"
+		"token") t)
+	     "\\)")))
+       (list
+	;; Vector types
+	`(,(concat "<[ \t]*\\(vscale[ \t]+x[ \t]+\\)?[0-9]+[ \t]+x[ \t]+"
+		   type-regexp
+		   "[ \t]*>") . font-lock-type-face)
+	;; Primitive types
+	`(,(concat "\\<" type-regexp "\\>") . font-lock-type-face)))
    ;; Integer literals
    '("\\b[-]?[0-9]+\\b" . font-lock-preprocessor-face)
    ;; Floating point constants
