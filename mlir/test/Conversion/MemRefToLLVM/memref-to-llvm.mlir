@@ -620,3 +620,26 @@ func.func @store_non_temporal(%input : memref<32xf32, affine_map<(d0) -> (d0)>>,
   memref.store %2, %output[%1] {nontemporal = true} : memref<32xf32, affine_map<(d0) -> (d0)>>
   func.return
 }
+
+// -----
+
+// CHECK-LABEL: func @lifetime_start_end
+func.func @lifetime_start_end(%d : index) {
+  %0 = memref.alloca() : memref<17x42xf32>
+  // CHECK: llvm.mlir.undef : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
+  // CHECK: %[[BASE_PTR:.*]] = llvm.extractvalue %{{.*}}[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
+  // CHECK: llvm.intr.lifetime.start 2856, %[[BASE_PTR]] : !llvm.ptr
+  memref.lifetime_start %0 : memref<17x42xf32>
+  // CHECK: %[[BASE_PTR_2:.*]] = llvm.extractvalue %{{.*}}[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
+  // CHECK: llvm.intr.lifetime.end 2856, %[[BASE_PTR_2]] : !llvm.ptr
+  memref.lifetime_end %0 : memref<17x42xf32>
+  %1 = memref.alloca(%d) : memref<?xf32>
+  // CHECK: llvm.mlir.undef : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
+  // CHECK: %[[BASE_PTR_3:.*]] = llvm.extractvalue %{{.*}}[1] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
+  // CHECK: llvm.intr.lifetime.start -1, %[[BASE_PTR_3]] : !llvm.ptr
+  memref.lifetime_start %1 : memref<?xf32>
+  // CHECK: %[[BASE_PTR_4:.*]] = llvm.extractvalue %{{.*}}[1] : !llvm.struct<(ptr, ptr, i64, array<1 x i64>, array<1 x i64>)>
+  // CHECK: llvm.intr.lifetime.end -1, %[[BASE_PTR_4]] : !llvm.ptr
+  memref.lifetime_end %1 : memref<?xf32>
+  func.return
+}
