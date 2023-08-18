@@ -1099,6 +1099,11 @@ void MetadataStreamerMsgPackV5::emitHiddenKernelArgs(
 
   if (MFI.hasQueuePtr())
     emitKernelArg(DL, Int8PtrTy, Align(8), "hidden_queue_ptr", Offset, Args);
+  else
+    Offset += 8; // Skipped
+
+  // emit argument for hidden dynamic lds size
+  emitKernelArg(DL, Int32Ty, Align(4), "hidden_dynamic_lds_size", Offset, Args);
 }
 
 void MetadataStreamerMsgPackV5::emitKernelAttrs(const Function &Func,
