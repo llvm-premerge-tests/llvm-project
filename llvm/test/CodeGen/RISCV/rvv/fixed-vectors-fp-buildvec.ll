@@ -31,20 +31,37 @@ define void @buildvec_no_vid_v4f32(<4 x float>* %x) {
 ; expanded to 4 EXTRACT_VECTOR_ELTs and a BUILD_VECTOR. This then triggers the
 ; loop when expanded.
 define <4 x float> @hang_when_merging_stores_after_legalization(<8 x float> %x, <8 x float> %y) optsize {
-; CHECK-LABEL: hang_when_merging_stores_after_legalization:
-; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetivli zero, 8, e32, m2, ta, ma
-; CHECK-NEXT:    vid.v v12
-; CHECK-NEXT:    li a0, 7
-; CHECK-NEXT:    vmul.vx v14, v12, a0
-; CHECK-NEXT:    vrgather.vv v12, v8, v14
-; CHECK-NEXT:    vadd.vi v8, v14, -14
-; CHECK-NEXT:    vsetivli zero, 1, e8, mf8, ta, ma
-; CHECK-NEXT:    vmv.v.i v0, 12
-; CHECK-NEXT:    vsetivli zero, 8, e32, m2, ta, mu
-; CHECK-NEXT:    vrgather.vv v12, v10, v8, v0.t
-; CHECK-NEXT:    vmv1r.v v8, v12
-; CHECK-NEXT:    ret
+; RV32-LABEL: hang_when_merging_stores_after_legalization:
+; RV32:       # %bb.0:
+; RV32-NEXT:    vsetivli zero, 8, e32, m2, ta, ma
+; RV32-NEXT:    vid.v v12
+; RV32-NEXT:    li a0, 7
+; RV32-NEXT:    vmul.vx v14, v12, a0
+; RV32-NEXT:    vrgather.vv v12, v8, v14
+; RV32-NEXT:    vadd.vi v8, v14, -14
+; RV32-NEXT:    vsetivli zero, 1, e8, mf8, ta, ma
+; RV32-NEXT:    vmv.v.i v0, 12
+; RV32-NEXT:    vsetivli zero, 8, e32, m2, ta, mu
+; RV32-NEXT:    vrgather.vv v12, v10, v8, v0.t
+; RV32-NEXT:    vmv1r.v v8, v12
+; RV32-NEXT:    ret
+;
+; RV64-LABEL: hang_when_merging_stores_after_legalization:
+; RV64:       # %bb.0:
+; RV64-NEXT:    vsetivli zero, 8, e32, m2, ta, ma
+; RV64-NEXT:    vid.v v12
+; RV64-NEXT:    li a0, 7
+; RV64-NEXT:    vmul.vx v14, v12, a0
+; RV64-NEXT:    vrgather.vv v12, v8, v14
+; RV64-NEXT:    slli a0, a0, 32
+; RV64-NEXT:    vsetivli zero, 4, e64, m2, ta, ma
+; RV64-NEXT:    vmv.v.x v8, a0
+; RV64-NEXT:    vsetivli zero, 1, e8, mf8, ta, ma
+; RV64-NEXT:    vmv.v.i v0, 12
+; RV64-NEXT:    vsetivli zero, 8, e32, m2, ta, mu
+; RV64-NEXT:    vrgather.vv v12, v10, v8, v0.t
+; RV64-NEXT:    vmv1r.v v8, v12
+; RV64-NEXT:    ret
   %z = shufflevector <8 x float> %x, <8 x float> %y, <4 x i32> <i32 0, i32 7, i32 8, i32 15>
   ret <4 x float> %z
 }

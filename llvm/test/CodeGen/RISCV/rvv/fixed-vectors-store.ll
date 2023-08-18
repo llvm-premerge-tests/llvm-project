@@ -214,12 +214,10 @@ define void @store_id_v4i8(ptr %p) {
 define void @store_constant_v2i8_align1(ptr %p) {
 ; CHECK-LABEL: store_constant_v2i8_align1:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetivli zero, 2, e8, mf8, ta, ma
-; CHECK-NEXT:    vmv.v.i v8, 3
-; CHECK-NEXT:    vid.v v9
-; CHECK-NEXT:    li a1, 3
-; CHECK-NEXT:    vmadd.vx v9, a1, v8
-; CHECK-NEXT:    vse8.v v9, (a0)
+; CHECK-NEXT:    li a1, 1539
+; CHECK-NEXT:    vsetivli zero, 2, e16, mf4, ta, ma
+; CHECK-NEXT:    vmv.s.x v8, a1
+; CHECK-NEXT:    vse8.v v8, (a0)
 ; CHECK-NEXT:    ret
   store <2 x i8> <i8 3, i8 6>, ptr %p, align 1
   ret void
