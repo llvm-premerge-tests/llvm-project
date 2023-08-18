@@ -3288,10 +3288,8 @@ static SDValue lowerBuildVectorOfConstants(SDValue Op, SelectionDAG &DAG,
     // threshold since it's the immediate value many RVV instructions accept.
     // There is no vmul.vi instruction so ensure multiply constant can fit in
     // a single addi instruction.
-    if (((StepOpcode == ISD::MUL && isInt<12>(SplatStepVal)) ||
-         (StepOpcode == ISD::SHL && isUInt<5>(SplatStepVal))) &&
-        isPowerOf2_32(StepDenominator) &&
-        (SplatStepVal >= 0 || StepDenominator == 1) && isInt<5>(Addend)) {
+    if (isPowerOf2_32(StepDenominator) &&
+        (SplatStepVal >= 0 || StepDenominator == 1)) {
       AddLowering(Cost, [=, &DAG, &Subtarget]() {
         MVT VIDVT =
             VT.isFloatingPoint() ? VT.changeVectorElementTypeToInteger() : VT;
