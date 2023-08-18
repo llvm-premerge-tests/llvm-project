@@ -1989,6 +1989,14 @@ AttributeMask AttributeFuncs::typeIncompatible(Type *Ty,
   if (Ty->isVoidTy()) {
     if (ASK & ASK_SAFE_TO_DROP)
       Incompatible.addAttribute(Attribute::NoUndef);
+    // These attributes do not apply to void types.
+    Incompatible.addAttribute(Attribute::NoAlias)
+        .addAttribute(Attribute::NoCapture)
+        .addAttribute(Attribute::NonNull)
+        .addAttribute(Attribute::ReadNone)
+        .addAttribute(Attribute::ReadOnly)
+        .addAttribute(Attribute::Dereferenceable)
+        .addAttribute(Attribute::DereferenceableOrNull);
   }
 
   return Incompatible;
