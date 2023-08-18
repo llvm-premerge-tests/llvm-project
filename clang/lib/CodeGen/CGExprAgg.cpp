@@ -2099,6 +2099,34 @@ AggValueSlot::Overlap_t CodeGenFunction::getOverlapForBaseInit(
   return AggValueSlot::MayOverlap;
 }
 
+static bool hasSomethingToCopy(const ASTContext &Ctx, QualType Ty) {
+  if (const RecordType *RT = Ty->getAs<RecordType>()) {
+    CXXRecordDecl *Record = cast<CXXRecordDecl>(RT->getDecl());
+
+    if (Record->isEmpty())
+      return false;
+    if (Record->isDynamicClass())
+      return true;
+
+    for (auto *Field : Record->fields()) {
+      if (Field->isZeroLengthBitField(Ctx))
+        continue;
+
+      if (hasSomethingToCopy(Ctx, Field->getType()))
+        return true;
+    }
+
+    for (auto &Base : Record->bases()) {
+      if (hasSomethingToCopy(Ctx, Base.getType()))
+        return true;
+    }
+
+    return false;
+  } else {
+    return true;
+  }
+}
+
 void CodeGenFunction::EmitAggregateCopy(LValue Dest, LValue Src, QualType Ty,
                                         AggValueSlot::Overlap_t MayOverlap,
                                         bool isVolatile) {
@@ -2118,7 +2146,7 @@ void CodeGenFunction::EmitAggregateCopy(LValue Dest, LValue Src, QualType Ty,
              "Trying to aggregate-copy a type without a trivial copy/move "
              "constructor or assignment operator");
       // Ignore empty classes in C++.
-      if (Record->isEmpty())
+      if (!hasSomethingToCopy(getContext(), Ty))
         return;
     }
   }
