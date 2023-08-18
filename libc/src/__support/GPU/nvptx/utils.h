@@ -142,9 +142,7 @@ LIBC_INLINE uint32_t get_lane_size() { return LANE_SIZE; }
 
 /// Returns the current value of the GPU's processor clock.
 LIBC_INLINE uint64_t processor_clock() {
-  uint64_t timestamp;
-  LIBC_INLINE_ASM("mov.u64  %0, %%clock64;" : "=l"(timestamp));
-  return timestamp;
+  return __nvvm_read_ptx_sreg_clock64();
 }
 
 /// Returns a global fixed-frequency timer at nanosecond frequency.
