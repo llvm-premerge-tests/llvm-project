@@ -1376,6 +1376,13 @@ static void AddReturnAttributes(CallBase &CB, ValueToValueMapTy &VMap) {
     auto *NewRetVal = dyn_cast_or_null<CallBase>(VMap.lookup(RetVal));
     if (!NewRetVal)
       continue;
+    // Deoptimize calls are special since their deopt bundles are updated with
+    // the caller deopt bundle and the return type is updated to the caller
+    // return type later during inlining. So, we cannot update the return
+    // attribute(s) of the deopt call with that of the callee.
+    if (auto *F = NewRetVal->getCalledFunction())
+      if (F->getIntrinsicID() == Intrinsic::experimental_deoptimize)
+        continue;
     // Backward propagation of attributes to the returned value may be incorrect
     // if it is control flow dependent.
     // Consider:
