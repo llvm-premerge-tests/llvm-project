@@ -886,7 +886,8 @@ include "SMEInstrFormats.td"
 // Miscellaneous instructions.
 //===----------------------------------------------------------------------===//
 
-let Defs = [SP], Uses = [SP], hasSideEffects = 1, isCodeGenOnly = 1 in {
+let hasSideEffects = 1, isCodeGenOnly = 1 in {
+let Defs = [SP], Uses = [SP] in {
 // We set Sched to empty list because we expect these instructions to simply get
 // removed in most cases.
 def ADJCALLSTACKDOWN : Pseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2),
@@ -895,7 +896,23 @@ def ADJCALLSTACKDOWN : Pseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2),
 def ADJCALLSTACKUP : Pseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2),
                             [(AArch64callseq_end timm:$amt1, timm:$amt2)]>,
                             Sched<[]>;
-} // Defs = [SP], Uses = [SP], hasSideEffects = 1, isCodeGenOnly = 1
+
+// Probed stack allocation of a constant size, used in function prologues when
+// stack-clash protection is enabled.
+def PROBED_STACKALLOC : Pseudo<(outs GPR64:$scratch),
+                               (ins i64imm:$stacksize, i64imm:$fixed_offset,
+                                i64imm:$scalable_offset),
+                               []>,
+                               Sched<[]>;
+} // Defs = [SP], Uses = [SP]
+
+// Probed stack allocation of a variable size, used in function prologues when
+// stack-clash protection is enabled.
+def PROBED_STACKALLOC_VAR : Pseudo<(outs GPR64sp:$scratch),
+                                   (ins GPR64sp:$target, i64imm:$maxsize),
+                                   []>,
+                                   Sched<[]>;
+} //hasSideEffects = 1, isCodeGenOnly = 1
 
 let isReMaterializable = 1, isCodeGenOnly = 1 in {
 // FIXME: The following pseudo instructions are only needed because remat
