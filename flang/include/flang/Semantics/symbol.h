@@ -14,6 +14,8 @@
 #include "flang/Common/enum-set.h"
 #include "flang/Common/reference.h"
 #include "flang/Common/visit.h"
+#include "flang/Parser/parse-tree.h"
+#include "llvm/ADT/BitmaskEnum.h"
 #include "llvm/ADT/DenseMapInfo.h"
 
 #include <array>
@@ -45,8 +47,47 @@ using SymbolVector = std::vector<SymbolRef>;
 using MutableSymbolRef = common::Reference<Symbol>;
 using MutableSymbolVector = std::vector<MutableSymbolRef>;
 
+namespace {
+LLVM_ENABLE_BITMASK_ENUMS_IN_NAMESPACE();
+// Flags representing OpenMP requires clauses.
+enum OmpRequiresFlags {
+  None = 0x00,
+  ReverseOffload = 0x01,
+  UnifiedAddress = 0x02,
+  UnifiedSharedMemory = 0x04,
+  DynamicAllocators = 0x08,
+  LLVM_MARK_AS_BITMASK_ENUM(DynamicAllocators)
+};
+} // namespace
+
+// Mixin for details with OpenMP declarative constructs.
+class WithOmpDeclarative {
+  using OmpAtomicOrderType = parser::OmpAtomicDefaultMemOrderClause::Type;
+
+public:
+  bool has_ompRequires() const { return ompRequires_.has_value(); }
+  const OmpRequiresFlags *ompRequires() const {
+    return ompRequires_ ? &*ompRequires_ : nullptr;
+  }
+  void set_ompRequires(OmpRequiresFlags flags) { ompRequires_ = flags; }
+
+  bool has_ompAtomicDefaultMemOrder() const {
+    return ompAtomicDefaultMemOrder_.has_value();
+  }
+  const OmpAtomicOrderType *ompAtomicDefaultMemOrder() const {
+    return ompAtomicDefaultMemOrder_ ? &*ompAtomicDefaultMemOrder_ : nullptr;
+  }
+  void set_ompAtomicDefaultMemOrder(OmpAtomicOrderType flags) {
+    ompAtomicDefaultMemOrder_ = flags;
+  }
+
+private:
+  std::optional<OmpRequiresFlags> ompRequires_;
+  std::optional<OmpAtomicOrderType> ompAtomicDefaultMemOrder_;
+};
+
 // A module or submodule.
-class ModuleDetails {
+class ModuleDetails : public WithOmpDeclarative {
 public:
   ModuleDetails(bool isSubmodule = false) : isSubmodule_{isSubmodule} {}
   bool isSubmodule() const { return isSubmodule_; }
@@ -63,7 +104,7 @@ private:
   const Scope *scope_{nullptr};
 };
 
-class MainProgramDetails {
+class MainProgramDetails : public WithOmpDeclarative {
 public:
 private:
 };
@@ -85,7 +126,7 @@ private:
 // A subroutine or function definition, or a subprogram interface defined
 // in an INTERFACE block as part of the definition of a dummy procedure
 // or a procedure pointer (with just POINTER).
-class SubprogramDetails : public WithBindName {
+class SubprogramDetails : public WithBindName, public WithOmpDeclarative {
 public:
   bool isFunction() const { return result_ != nullptr; }
   bool isInterface() const { return isInterface_; }
