@@ -24,10 +24,14 @@ define void @test(ptr nocapture %array, i32 %r0) nounwind ssp noredzone {
 ; CHECK-NEXT:    addb %r8b, %r9b
 ; CHECK-NEXT:    shlb $2, %r9b
 ; CHECK-NEXT:    movzbl %r9b, %r9d
-; CHECK-NEXT:    movl %esi, (%rdi,%r9,4)
-; CHECK-NEXT:    movl %esi, 8(%rdi,%r9,4)
-; CHECK-NEXT:    movl %esi, 4(%rdi,%r9,4)
-; CHECK-NEXT:    movl %esi, 12(%rdi,%r9,4)
+; CHECK-NEXT:    leal (,%r9,4), %r10d
+; CHECK-NEXT:    movl %esi, (%rdi,%r10)
+; CHECK-NEXT:    leal 8(,%r9,4), %r10d
+; CHECK-NEXT:    movl %esi, (%rdi,%r10)
+; CHECK-NEXT:    leal 4(,%r9,4), %r10d
+; CHECK-NEXT:    movl %esi, (%rdi,%r10)
+; CHECK-NEXT:    leal 12(,%r9,4), %r9d
+; CHECK-NEXT:    movl %esi, (%rdi,%r9)
 ; CHECK-NEXT:    incb %r8b
 ; CHECK-NEXT:    decb %al
 ; CHECK-NEXT:    jne LBB0_1
@@ -88,10 +92,14 @@ define void @test1(ptr nocapture %array, i32 %r0, i8 signext %k, i8 signext %i0)
 ; CHECK-NEXT:    shlb $4, %r10b
 ; CHECK-NEXT:    addb %r9b, %r10b
 ; CHECK-NEXT:    movzbl %r10b, %r9d
-; CHECK-NEXT:    movl %esi, (%rdi,%r9,4)
-; CHECK-NEXT:    movl %esi, 8(%rdi,%r9,4)
-; CHECK-NEXT:    movl %esi, 4(%rdi,%r9,4)
-; CHECK-NEXT:    movl %esi, 12(%rdi,%r9,4)
+; CHECK-NEXT:    leal (,%r9,4), %r10d
+; CHECK-NEXT:    movl %esi, (%rdi,%r10)
+; CHECK-NEXT:    leal 8(,%r9,4), %r10d
+; CHECK-NEXT:    movl %esi, (%rdi,%r10)
+; CHECK-NEXT:    leal 4(,%r9,4), %r10d
+; CHECK-NEXT:    movl %esi, (%rdi,%r10)
+; CHECK-NEXT:    leal 12(,%r9,4), %r9d
+; CHECK-NEXT:    movl %esi, (%rdi,%r9)
 ; CHECK-NEXT:    incb %cl
 ; CHECK-NEXT:    decb %al
 ; CHECK-NEXT:    jne LBB1_1

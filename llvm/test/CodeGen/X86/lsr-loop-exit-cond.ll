@@ -27,33 +27,37 @@ define void @t(i8* nocapture %in, i8* nocapture %out, i32* nocapture %rk, i32 %r
 ; GENERIC-NEXT:    ## =>This Inner Loop Header: Depth=1
 ; GENERIC-NEXT:    movzbl %r8b, %r14d
 ; GENERIC-NEXT:    ## kill: def $r8d killed $r8d def $r8
-; GENERIC-NEXT:    shrl $24, %r8d
-; GENERIC-NEXT:    movl %ebx, %ebp
-; GENERIC-NEXT:    shrl $16, %ebp
-; GENERIC-NEXT:    movzbl %bpl, %r15d
-; GENERIC-NEXT:    movl (%rax,%r15,4), %ebp
-; GENERIC-NEXT:    xorl (%rdi,%r8,4), %ebp
+; GENERIC-NEXT:    shrl $22, %r8d
+; GENERIC-NEXT:    andl $-4, %r8d
+; GENERIC-NEXT:    movl %ebx, %r15d
+; GENERIC-NEXT:    shrl $14, %r15d
+; GENERIC-NEXT:    andl $1020, %r15d ## imm = 0x3FC
+; GENERIC-NEXT:    movl (%rax,%r15), %ebp
+; GENERIC-NEXT:    xorl (%rdi,%r8), %ebp
 ; GENERIC-NEXT:    xorl -12(%r9), %ebp
-; GENERIC-NEXT:    shrl $24, %ebx
+; GENERIC-NEXT:    shrl $22, %ebx
+; GENERIC-NEXT:    andl $-4, %ebx
 ; GENERIC-NEXT:    movl (%r10,%r14,4), %r14d
-; GENERIC-NEXT:    xorl (%rdi,%rbx,4), %r14d
+; GENERIC-NEXT:    xorl (%rdi,%rbx), %r14d
 ; GENERIC-NEXT:    xorl -8(%r9), %r14d
 ; GENERIC-NEXT:    movl %ebp, %r8d
-; GENERIC-NEXT:    shrl $24, %r8d
-; GENERIC-NEXT:    movl (%rdi,%r8,4), %r8d
+; GENERIC-NEXT:    shrl $22, %r8d
+; GENERIC-NEXT:    andl $-4, %r8d
+; GENERIC-NEXT:    movl (%rdi,%r8), %r8d
 ; GENERIC-NEXT:    subq $1, %r11
 ; GENERIC-NEXT:    jb LBB0_3
 ; GENERIC-NEXT:  ## %bb.2: ## %bb1
 ; GENERIC-NEXT:    ## in Loop: Header=BB0_1 Depth=1
 ; GENERIC-NEXT:    movl %r14d, %ebx
-; GENERIC-NEXT:    shrl $16, %ebx
-; GENERIC-NEXT:    movzbl %bl, %ebx
-; GENERIC-NEXT:    xorl (%rax,%rbx,4), %r8d
+; GENERIC-NEXT:    shrl $14, %ebx
+; GENERIC-NEXT:    andl $1020, %ebx ## imm = 0x3FC
+; GENERIC-NEXT:    xorl (%rax,%rbx), %r8d
 ; GENERIC-NEXT:    xorl -4(%r9), %r8d
-; GENERIC-NEXT:    shrl $24, %r14d
+; GENERIC-NEXT:    shrl $22, %r14d
+; GENERIC-NEXT:    andl $-4, %r14d
 ; GENERIC-NEXT:    movzbl %bpl, %ebx
 ; GENERIC-NEXT:    movl (%r10,%rbx,4), %ebx
-; GENERIC-NEXT:    xorl (%rdi,%r14,4), %ebx
+; GENERIC-NEXT:    xorl (%rdi,%r14), %ebx
 ; GENERIC-NEXT:    xorl (%r9), %ebx
 ; GENERIC-NEXT:    addq $16, %r9
 ; GENERIC-NEXT:    jmp LBB0_1
@@ -61,14 +65,15 @@ define void @t(i8* nocapture %in, i8* nocapture %out, i32* nocapture %rk, i32 %r
 ; GENERIC-NEXT:    shlq $4, %rcx
 ; GENERIC-NEXT:    andl $-16777216, %r8d ## imm = 0xFF000000
 ; GENERIC-NEXT:    movl %r14d, %r9d
-; GENERIC-NEXT:    shrl $16, %r9d
-; GENERIC-NEXT:    movzbl %r9b, %r9d
-; GENERIC-NEXT:    movzbl 2(%rax,%r9,4), %r9d
+; GENERIC-NEXT:    shrl $14, %r9d
+; GENERIC-NEXT:    andl $1020, %r9d ## imm = 0x3FC
+; GENERIC-NEXT:    movzbl 2(%rax,%r9), %r9d
 ; GENERIC-NEXT:    shll $16, %r9d
 ; GENERIC-NEXT:    orl %r8d, %r9d
 ; GENERIC-NEXT:    xorl 16(%rcx,%rdx), %r9d
-; GENERIC-NEXT:    shrl $8, %r14d
-; GENERIC-NEXT:    movzbl 3(%rdi,%r14,4), %edi
+; GENERIC-NEXT:    shrl $6, %r14d
+; GENERIC-NEXT:    andl $-4, %r14d
+; GENERIC-NEXT:    movzbl 3(%rdi,%r14), %edi
 ; GENERIC-NEXT:    shll $24, %edi
 ; GENERIC-NEXT:    movzbl %bpl, %r8d
 ; GENERIC-NEXT:    movzbl 2(%rax,%r8,4), %eax
@@ -99,7 +104,7 @@ define void @t(i8* nocapture %in, i8* nocapture %out, i32* nocapture %rk, i32 %r
 ; ATOM-NEXT:    pushq %rbx
 ; ATOM-NEXT:    ## kill: def $ecx killed $ecx def $rcx
 ; ATOM-NEXT:    movl (%rdx), %r8d
-; ATOM-NEXT:    movl 4(%rdx), %r15d
+; ATOM-NEXT:    movl 4(%rdx), %ebx
 ; ATOM-NEXT:    leaq 20(%rdx), %r9
 ; ATOM-NEXT:    movq _Te0@GOTPCREL(%rip), %rdi
 ; ATOM-NEXT:    movq _Te1@GOTPCREL(%rip), %rax
@@ -109,51 +114,56 @@ define void @t(i8* nocapture %in, i8* nocapture %out, i32* nocapture %rk, i32 %r
 ; ATOM-NEXT:    .p2align 4, 0x90
 ; ATOM-NEXT:  LBB0_1: ## %bb
 ; ATOM-NEXT:    ## =>This Inner Loop Header: Depth=1
-; ATOM-NEXT:    movl %r15d, %ebx
-; ATOM-NEXT:    movl %r8d, %r14d
-; ATOM-NEXT:    movzbl %r8b, %r8d
-; ATOM-NEXT:    shrl $24, %r15d
-; ATOM-NEXT:    shrl $16, %ebx
-; ATOM-NEXT:    shrl $24, %r14d
-; ATOM-NEXT:    movzbl %bl, %ebx
-; ATOM-NEXT:    movl (%rax,%rbx,4), %ebx
-; ATOM-NEXT:    xorl (%rdi,%r14,4), %ebx
-; ATOM-NEXT:    movl (%r10,%r8,4), %r14d
-; ATOM-NEXT:    xorl -12(%r9), %ebx
-; ATOM-NEXT:    xorl (%rdi,%r15,4), %r14d
-; ATOM-NEXT:    movl %ebx, %r8d
+; ATOM-NEXT:    movl %ebx, %r14d
+; ATOM-NEXT:    movzbl %r8b, %r15d
+; ATOM-NEXT:    ## kill: def $r8d killed $r8d def $r8
+; ATOM-NEXT:    shrl $22, %ebx
+; ATOM-NEXT:    shrl $14, %r14d
+; ATOM-NEXT:    shrl $22, %r8d
+; ATOM-NEXT:    andl $-4, %ebx
+; ATOM-NEXT:    andl $1020, %r14d ## imm = 0x3FC
+; ATOM-NEXT:    andl $-4, %r8d
+; ATOM-NEXT:    movl (%rax,%r14), %ebp
+; ATOM-NEXT:    movl (%r10,%r15,4), %r14d
+; ATOM-NEXT:    xorl (%rdi,%r8), %ebp
+; ATOM-NEXT:    xorl (%rdi,%rbx), %r14d
+; ATOM-NEXT:    xorl -12(%r9), %ebp
 ; ATOM-NEXT:    xorl -8(%r9), %r14d
-; ATOM-NEXT:    shrl $24, %r8d
+; ATOM-NEXT:    movl %ebp, %r8d
+; ATOM-NEXT:    shrl $22, %r8d
+; ATOM-NEXT:    andl $-4, %r8d
 ; ATOM-NEXT:    subq $1, %r11
-; ATOM-NEXT:    movl (%rdi,%r8,4), %r8d
+; ATOM-NEXT:    movl (%rdi,%r8), %r8d
 ; ATOM-NEXT:    jb LBB0_3
 ; ATOM-NEXT:  ## %bb.2: ## %bb1
 ; ATOM-NEXT:    ## in Loop: Header=BB0_1 Depth=1
-; ATOM-NEXT:    movl %r14d, %ebp
-; ATOM-NEXT:    movzbl %bl, %ebx
-; ATOM-NEXT:    shrl $24, %r14d
-; ATOM-NEXT:    shrl $16, %ebp
-; ATOM-NEXT:    movzbl %bpl, %r15d
-; ATOM-NEXT:    xorl (%rax,%r15,4), %r8d
-; ATOM-NEXT:    movl (%r10,%rbx,4), %r15d
-; ATOM-NEXT:    xorl (%rdi,%r14,4), %r15d
+; ATOM-NEXT:    movl %r14d, %ebx
+; ATOM-NEXT:    shrl $22, %r14d
+; ATOM-NEXT:    shrl $14, %ebx
+; ATOM-NEXT:    andl $-4, %r14d
+; ATOM-NEXT:    andl $1020, %ebx ## imm = 0x3FC
+; ATOM-NEXT:    xorl (%rax,%rbx), %r8d
+; ATOM-NEXT:    movzbl %bpl, %ebx
+; ATOM-NEXT:    movl (%r10,%rbx,4), %ebx
 ; ATOM-NEXT:    xorl -4(%r9), %r8d
-; ATOM-NEXT:    xorl (%r9), %r15d
+; ATOM-NEXT:    xorl (%rdi,%r14), %ebx
+; ATOM-NEXT:    xorl (%r9), %ebx
 ; ATOM-NEXT:    addq $16, %r9
 ; ATOM-NEXT:    jmp LBB0_1
 ; ATOM-NEXT:  LBB0_3: ## %bb2
 ; ATOM-NEXT:    movl %r14d, %r9d
+; ATOM-NEXT:    shrl $6, %r14d
 ; ATOM-NEXT:    andl $-16777216, %r8d ## imm = 0xFF000000
-; ATOM-NEXT:    shrl $8, %r14d
 ; ATOM-NEXT:    shlq $4, %rcx
-; ATOM-NEXT:    shrl $16, %r9d
-; ATOM-NEXT:    movzbl 3(%rdi,%r14,4), %edi
-; ATOM-NEXT:    movzbl %r9b, %r9d
+; ATOM-NEXT:    shrl $14, %r9d
+; ATOM-NEXT:    andl $-4, %r14d
+; ATOM-NEXT:    andl $1020, %r9d ## imm = 0x3FC
+; ATOM-NEXT:    movzbl 3(%rdi,%r14), %edi
+; ATOM-NEXT:    movzbl 2(%rax,%r9), %r9d
 ; ATOM-NEXT:    shll $24, %edi
-; ATOM-NEXT:    movzbl 2(%rax,%r9,4), %r9d
 ; ATOM-NEXT:    shll $16, %r9d
 ; ATOM-NEXT:    orl %r8d, %r9d
-; ATOM-NEXT:    movzbl %bl, %r8d
+; ATOM-NEXT:    movzbl %bpl, %r8d
 ; ATOM-NEXT:    movzbl 2(%rax,%r8,4), %eax
 ; ATOM-NEXT:    xorl 16(%rcx,%rdx), %r9d
 ; ATOM-NEXT:    shll $16, %eax
