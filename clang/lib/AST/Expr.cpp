@@ -4839,7 +4839,7 @@ PseudoObjectExpr *PseudoObjectExpr::Create(const ASTContext &Context,
 
 PseudoObjectExpr::PseudoObjectExpr(EmptyShell shell, unsigned numSemanticExprs)
   : Expr(PseudoObjectExprClass, shell) {
-  PseudoObjectExprBits.NumSubExprs = numSemanticExprs + 1;
+  setNumSubExprs(numSemanticExprs + 1);
 }
 
 PseudoObjectExpr *PseudoObjectExpr::Create(const ASTContext &C, Expr *syntax,
@@ -4870,8 +4870,9 @@ PseudoObjectExpr::PseudoObjectExpr(QualType type, ExprValueKind VK,
                                    Expr *syntax, ArrayRef<Expr *> semantics,
                                    unsigned resultIndex)
     : Expr(PseudoObjectExprClass, type, VK, OK_Ordinary) {
-  PseudoObjectExprBits.NumSubExprs = semantics.size() + 1;
-  PseudoObjectExprBits.ResultIndex = resultIndex + 1;
+  
+  setNumSubExprs(semantics.size() + 1);
+  setResultExprIndex(resultIndex + 1);
 
   for (unsigned i = 0, e = semantics.size() + 1; i != e; ++i) {
     Expr *E = (i == 0 ? syntax : semantics[i-1]);

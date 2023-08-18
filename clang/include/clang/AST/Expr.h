@@ -6310,6 +6310,18 @@ class PseudoObjectExpr final
     return PseudoObjectExprBits.NumSubExprs;
   }
 
+  void setNumSubExprs(unsigned Val) {
+    assert(Val <= std::numeric_limits<uint16_t>::max() &&
+           "The value of NumSubExprs too large.");
+    PseudoObjectExprBits.NumSubExprs = Val;
+  }
+
+  void setResultExprIndex(unsigned Val) {
+    assert(Val <= std::numeric_limits<uint16_t>::max() &&
+           "The value of NumSubExprs too large.");
+    PseudoObjectExprBits.ResultIndex = Val;
+  }
+
 public:
   /// NoResult - A value for the result index indicating that there is
   /// no semantic result.

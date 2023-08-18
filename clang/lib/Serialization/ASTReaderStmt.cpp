@@ -1378,9 +1378,8 @@ void ASTStmtReader::VisitGenericSelectionExpr(GenericSelectionExpr *E) {
 void ASTStmtReader::VisitPseudoObjectExpr(PseudoObjectExpr *E) {
   VisitExpr(E);
   unsigned numSemanticExprs = Record.readInt();
-  assert(numSemanticExprs + 1 == E->PseudoObjectExprBits.NumSubExprs);
-  E->PseudoObjectExprBits.ResultIndex = Record.readInt();
-
+  assert(numSemanticExprs + 1 == E->getNumSubExprs());
+  E->setResultExprIndex(Record.readInt());
   // Read the syntactic expression.
   E->getSubExprsBuffer()[0] = Record.readSubExpr();
 
