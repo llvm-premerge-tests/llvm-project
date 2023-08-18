@@ -12,6 +12,7 @@
 #include "llvm/ADT/TypeSwitch.h"
 
 #include "PythonTestDialect.cpp.inc"
+#include "PythonTestEnums.cpp.inc"
 
 #define GET_ATTRDEF_CLASSES
 #include "PythonTestAttributes.cpp.inc"

@@ -7,6 +7,8 @@ mlir_tablegen(lib/PythonTestAttributes.h.inc -gen-attrdef-decls)
 mlir_tablegen(lib/PythonTestAttributes.cpp.inc -gen-attrdef-defs)
 mlir_tablegen(lib/PythonTestTypes.h.inc -gen-typedef-decls)
 mlir_tablegen(lib/PythonTestTypes.cpp.inc -gen-typedef-defs)
+mlir_tablegen(lib/PythonTestEnums.h.inc -gen-enum-decls)
+mlir_tablegen(lib/PythonTestEnums.cpp.inc -gen-enum-defs)
 add_public_tablegen_target(MLIRPythonTestIncGen)
 
 add_subdirectory(lib)
