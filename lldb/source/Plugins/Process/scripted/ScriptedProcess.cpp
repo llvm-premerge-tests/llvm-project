@@ -228,7 +228,8 @@ size_t ScriptedProcess::DoReadMemory(lldb::addr_t addr, void *buf, size_t size,
 }
 
 size_t ScriptedProcess::DoWriteMemory(lldb::addr_t vm_addr, const void *buf,
-                                      size_t size, Status &error) {
+                                      size_t size, Status &error,
+                                      ByteOrder byte_order) {
   lldb::DataExtractorSP data_extractor_sp = std::make_shared<DataExtractor>(
       buf, size, GetByteOrder(), GetAddressByteSize());
 

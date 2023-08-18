@@ -2111,14 +2111,14 @@ bool Process::WritePointerToMemory(lldb::addr_t vm_addr, lldb::addr_t ptr_value,
 }
 
 size_t Process::WriteMemoryPrivate(addr_t addr, const void *buf, size_t size,
-                                   Status &error) {
+                                   Status &error, ByteOrder byte_order) {
   size_t bytes_written = 0;
   const uint8_t *bytes = (const uint8_t *)buf;
 
   while (bytes_written < size) {
     const size_t curr_size = size - bytes_written;
     const size_t curr_bytes_written = DoWriteMemory(
-        addr + bytes_written, bytes + bytes_written, curr_size, error);
+        addr + bytes_written, bytes + bytes_written, curr_size, error, byte_order);
     bytes_written += curr_bytes_written;
     if (curr_bytes_written == curr_size || curr_bytes_written == 0)
       break;
@@ -2127,7 +2127,7 @@ size_t Process::WriteMemoryPrivate(addr_t addr, const void *buf, size_t size,
 }
 
 size_t Process::WriteMemory(addr_t addr, const void *buf, size_t size,
-                            Status &error) {
+                            Status &error, ByteOrder byte_order) {
   if (ABISP abi_sp = GetABI())
     addr = abi_sp->FixAnyAddress(addr);
 
@@ -2146,17 +2146,17 @@ size_t Process::WriteMemory(addr_t addr, const void *buf, size_t size,
 
   BreakpointSiteList bp_sites_in_range;
   if (!m_breakpoint_site_list.FindInRange(addr, addr + size, bp_sites_in_range))
-    return WriteMemoryPrivate(addr, buf, size, error);
+    return WriteMemoryPrivate(addr, buf, size, error, byte_order);
 
   // No breakpoint sites overlap
   if (bp_sites_in_range.IsEmpty())
-    return WriteMemoryPrivate(addr, buf, size, error);
+    return WriteMemoryPrivate(addr, buf, size, error, byte_order);
 
   const uint8_t *ubuf = (const uint8_t *)buf;
   uint64_t bytes_written = 0;
 
   bp_sites_in_range.ForEach([this, addr, size, &bytes_written, &ubuf,
-                             &error](BreakpointSite *bp) -> void {
+                             &error, byte_order](BreakpointSite *bp) -> void {
     if (error.Fail())
       return;
 
@@ -2182,7 +2182,7 @@ size_t Process::WriteMemory(addr_t addr, const void *buf, size_t size,
       // write to memory
       size_t curr_size = intersect_addr - curr_addr;
       size_t curr_bytes_written =
-          WriteMemoryPrivate(curr_addr, ubuf + bytes_written, curr_size, error);
+          WriteMemoryPrivate(curr_addr, ubuf + bytes_written, curr_size, error, byte_order);
       bytes_written += curr_bytes_written;
       if (curr_bytes_written != curr_size) {
         // We weren't able to write all of the requested bytes, we are
@@ -2203,13 +2203,14 @@ size_t Process::WriteMemory(addr_t addr, const void *buf, size_t size,
   if (bytes_written < size)
     bytes_written +=
         WriteMemoryPrivate(addr + bytes_written, ubuf + bytes_written,
-                           size - bytes_written, error);
+                           size - bytes_written, error, byte_order);
 
   return bytes_written;
 }
 
 size_t Process::WriteScalarToMemory(addr_t addr, const Scalar &scalar,
-                                    size_t byte_size, Status &error) {
+                                    size_t byte_size, Status &error,
+                                    ByteOrder byte_order) {
   if (byte_size == UINT32_MAX)
     byte_size = scalar.GetByteSize();
   if (byte_size > 0) {
@@ -2217,7 +2218,7 @@ size_t Process::WriteScalarToMemory(addr_t addr, const Scalar &scalar,
     const size_t mem_size =
         scalar.GetAsMemoryData(buf, byte_size, GetByteOrder(), error);
     if (mem_size > 0)
-      return WriteMemory(addr, buf, mem_size, error);
+      return WriteMemory(addr, buf, mem_size, error, byte_order);
     else
       error.SetErrorString("failed to get scalar as memory data");
   } else {
