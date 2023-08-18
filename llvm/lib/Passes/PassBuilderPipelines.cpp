@@ -436,9 +436,10 @@ PassBuilder::buildO1FunctionSimplificationPipeline(OptimizationLevel Level,
     LPM1.addPass(LoopFlattenPass());
 
   LPM2.addPass(LoopIdiomRecognizePass());
-  LPM2.addPass(IndVarSimplifyPass());
 
   invokeLateLoopOptimizationsEPCallbacks(LPM2, Level);
+
+  LPM2.addPass(IndVarSimplifyPass());
 
   LPM2.addPass(LoopDeletionPass());
 
@@ -614,10 +615,11 @@ PassBuilder::buildFunctionSimplificationPipeline(OptimizationLevel Level,
   if (EnableLoopFlatten)
     LPM1.addPass(LoopFlattenPass());
 
-  LPM2.addPass(LoopIdiomRecognizePass());
   LPM2.addPass(IndVarSimplifyPass());
 
   invokeLateLoopOptimizationsEPCallbacks(LPM2, Level);
+
+  LPM2.addPass(IndVarSimplifyPass());
 
   LPM2.addPass(LoopDeletionPass());
 

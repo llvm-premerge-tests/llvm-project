@@ -2177,6 +2177,11 @@ def int_experimental_vp_splice:
              llvm_i32_ty, llvm_i32_ty],
             [IntrNoMem, ImmArg<ArgIndex<2>>]>;
 
+def int_experimental_cttz_elts:
+  DefaultAttrsIntrinsic<[llvm_i32_ty],
+            [llvm_anyvector_ty],
+            [IntrNoMem, IntrNoSync, IntrWillReturn]>;
+
 //===-------------------------- Masked Intrinsics -------------------------===//
 //
 def int_masked_load:

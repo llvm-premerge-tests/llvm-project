@@ -8551,6 +8551,11 @@ multiclass sve_int_break_z<bits<3> opc, string asm, SDPatternOperator op> {
   def NAME : sve_int_break<opc, asm, "/z", (ins PPRAny:$Pg, PPR8:$Pn)>;
 
   def : SVE_2_Op_Pat<nxv16i1, op, nxv16i1, nxv16i1, !cast<Instruction>(NAME)>;
+
+  // TODO: Remove if cttz_elt lowering is moved to isel
+  // brkb(ptrue, and(pred, x)) -> brkb(pred, x)
+  def : Pat<(nxv16i1 (op (nxv16i1 (AArch64ptrue 31)), (and nxv16i1:$Op1, nxv16i1:$Op2))),
+            (!cast<Instruction>(NAME) $Op1, $Op2)>;
 }
 
 //===----------------------------------------------------------------------===//

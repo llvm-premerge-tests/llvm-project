@@ -465,6 +465,8 @@ public:
     return true;
   }
 
+  virtual bool shouldExpandCttzElements(EVT VT) const { return true; }
+
   // Return true if op(vecreduce(x), vecreduce(y)) should be reassociated to
   // vecreduce(op(x, y)) for the reduction opcode RedOpc.
   virtual bool shouldReassociateReduction(unsigned RedOpc, EVT VT) const {

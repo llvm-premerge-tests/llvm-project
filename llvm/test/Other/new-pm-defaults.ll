@@ -179,8 +179,8 @@
 ; CHECK-O-NEXT: Running pass: LoopSimplifyPass
 ; CHECK-O-NEXT: Running pass: LCSSAPass
 ; CHECK-O-NEXT: Running pass: LoopIdiomRecognizePass
-; CHECK-O-NEXT: Running pass: IndVarSimplifyPass
 ; CHECK-EP-LOOP-LATE-NEXT: Running pass: NoOpLoopPass
+; CHECK-O-NEXT: Running pass: IndVarSimplifyPass
 ; CHECK-O-NEXT: Running pass: LoopDeletionPass
 ; CHECK-O-NEXT: Running pass: LoopFullUnrollPass
 ; CHECK-EP-LOOP-END-NEXT: Running pass: NoOpLoopPass

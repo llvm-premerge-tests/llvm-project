@@ -1757,6 +1757,13 @@ bool AArch64TargetLowering::shouldExpandGetActiveLaneMask(EVT ResVT,
   return false;
 }
 
+bool AArch64TargetLowering::shouldExpandCttzElements(EVT VT) const {
+  if (!Subtarget->hasSVE() || VT != MVT::nxv16i1)
+    return true;
+
+  return false;
+}
+
 void AArch64TargetLowering::addTypeForFixedLengthSVE(MVT VT,
                                                      bool StreamingSVE) {
   assert(VT.isFixedLengthVector() && "Expected fixed length vector type!");
@@ -5303,6 +5310,24 @@ SDValue AArch64TargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
         DAG.getTargetConstant(Intrinsic::aarch64_sve_whilelo, dl, MVT::i64);
     return DAG.getNode(ISD::INTRINSIC_WO_CHAIN, dl, Op.getValueType(), ID,
                        Op.getOperand(1), Op.getOperand(2));
+  }
+  case Intrinsic::experimental_cttz_elts: {
+    // TODO: It might be better to do this during isel & remove the brkb pattern
+    //       in SVEInstrFormats.td
+    SDValue BrkbID =
+        DAG.getTargetConstant(Intrinsic::aarch64_sve_brkb_z, dl, MVT::i64);
+    SDValue CntpID =
+        DAG.getTargetConstant(Intrinsic::aarch64_sve_cntp, dl, MVT::i64);
+
+    SDValue Input = Op.getOperand(1);
+    EVT VT = Input.getValueType();
+    SDValue PTrue = getPTrue(DAG, dl, VT, AArch64SVEPredPattern::all);
+
+    SDValue Brkb =
+        DAG.getNode(ISD::INTRINSIC_WO_CHAIN, dl, VT, BrkbID, PTrue, Input);
+    SDValue Cntp =
+        DAG.getNode(ISD::INTRINSIC_WO_CHAIN, dl, MVT::i64, CntpID, Brkb, Brkb);
+    return DAG.getNode(ISD::TRUNCATE, dl, MVT::i32, Cntp);
   }
   }
 }
