@@ -1425,7 +1425,10 @@ void RetainCountChecker::checkDeadSymbols(SymbolReaper &SymReaper,
 
       // Fetch the new reference count from the state, and use it to handle
       // this symbol.
-      state = handleSymbolDeath(state, Sym, *getRefBinding(state, Sym), Leaked);
+      const RefVal* T = getRefBinding(state, Sym);
+      if (!T)
+        return;
+      state = handleSymbolDeath(state, Sym, *T, Leaked);
     }
   }
 
