@@ -280,6 +280,54 @@ static bool interp__builtin_fmax(InterpState &S, CodePtr OpPC,
   return true;
 }
 
+/// Implements IEEE 754-2018 minimum semantics. Returns the smaller of 2
+/// arguments, propagating NaNs and treating -0 as less than +0.
+static bool interp__builtin_fminimum(InterpState &S, CodePtr OpPC,
+                                     const InterpFrame *Frame,
+                                     const Function *F) {
+  const Floating &LHS = getParam<Floating>(Frame, 0);
+  const Floating &RHS = getParam<Floating>(Frame, 1);
+
+  Floating Result;
+
+  if (LHS.isNan())
+    Result = LHS;
+  else if (RHS.isNan())
+    Result = RHS;
+  else if (LHS.isZero() && RHS.isZero() &&
+           (LHS.isNegative() != RHS.isNegative()))
+    Result = LHS.isNegative() ? LHS : RHS;
+  else
+    Result =  RHS < LHS ? RHS : LHS;
+
+  S.Stk.push<Floating>(Result);
+  return true;
+}
+
+/// Implements IEEE 754-2018 maximum semantics. Returns the smaller of 2
+/// arguments, propagating NaNs and treating -0 as less than +0.
+static bool interp__builtin_fmaximum(InterpState &S, CodePtr OpPC,
+                                     const InterpFrame *Frame,
+                                     const Function *Func) {
+  const Floating &LHS = getParam<Floating>(Frame, 0);
+  const Floating &RHS = getParam<Floating>(Frame, 1);
+
+  Floating Result;
+
+  if (LHS.isNan())
+    Result = LHS;
+  else if (RHS.isNan())
+    Result = RHS;
+  else if (LHS.isZero() && RHS.isZero() &&
+           (LHS.isNegative() != RHS.isNegative()))
+    Result = LHS.isNegative() ? RHS : LHS;
+  else
+    Result =  LHS < RHS ? RHS : LHS;
+
+  S.Stk.push<Floating>(Result);
+  return true;
+}
+
 /// Defined as __builtin_isnan(...), to accommodate the fact that it can
 /// take a float, double, long double, etc.
 /// But for us, that's all a Floating anyway.
@@ -458,6 +506,26 @@ bool InterpretBuiltin(InterpState &S, CodePtr OpPC, const Function *F,
   case Builtin::BI__builtin_fmaxf16:
   case Builtin::BI__builtin_fmaxf128:
     if (interp__builtin_fmax(S, OpPC, Frame, F))
+      return Ret<PT_Float>(S, OpPC, Dummy);
+    break;
+
+  case Builtin::BI__builtin_fminimum:
+  case Builtin::BI__builtin_fminimumf:
+  case Builtin::BI__builtin_fminimuml:
+  case Builtin::BI__builtin_fminimumf16:
+  case Builtin::BI__builtin_fminimumbf16:
+  case Builtin::BI__builtin_fminimumf128:
+    if (interp__builtin_fminimum(S, OpPC, Frame, F))
+      return Ret<PT_Float>(S, OpPC, Dummy);
+    break;
+
+  case Builtin::BI__builtin_fmaximum:
+  case Builtin::BI__builtin_fmaximumf:
+  case Builtin::BI__builtin_fmaximuml:
+  case Builtin::BI__builtin_fmaximumf16:
+  case Builtin::BI__builtin_fmaximumbf16:
+  case Builtin::BI__builtin_fmaximumf128:
+    if (interp__builtin_fmaximum(S, OpPC, Frame, F))
       return Ret<PT_Float>(S, OpPC, Dummy);
     break;
 
