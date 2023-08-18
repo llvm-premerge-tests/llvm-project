@@ -242,14 +242,17 @@ namespace PR32933 {
 // https://bugs.llvm.org/show_bug.cgi?id=32933
 void foo ()
 { 
-  int b = 1, a[b];
+  int b = 1, a[b]; // expected-warning {{variable length arrays are a Clang extension}} \
+                      expected-note {{read of non-const variable 'b' is not allowed in a constant expression}} \
+                      expected-note {{declared here}}
   a[0] = 0;
   [&] { for (int c : a) 0; } (); // expected-warning {{expression result unused}}
 }
 
 
-int foo(int b) {
-  int varr[b][(b+=8)];
+int foo(int b) { // expected-note {{declared here}}
+  int varr[b][(b+=8)]; // expected-warning 2{{variable length arrays are a Clang extension}} \
+                          expected-note {{function parameter 'b' with unknown value cannot be used in a constant expression}}
   b = 15; 
   [&] {
     int i = 0;

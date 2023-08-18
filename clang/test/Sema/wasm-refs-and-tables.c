@@ -108,8 +108,10 @@ __externref_t func(__externref_t ref) {
   table[0];                       // expected-error {{cannot subscript a WebAssembly table}}
   table[0] = ref;                 // expected-error {{cannot subscript a WebAssembly table}}
 
-  int i = 0;
-  __externref_t oh_no_vlas[i];    // expected-error {{WebAssembly table cannot be declared within a function}}
+  int i = 0;                      // cpp-note {{declared here}}
+  __externref_t oh_no_vlas[i];    // expected-error {{WebAssembly table cannot be declared within a function}} \
+                                     cpp-warning {{variable length arrays are a Clang extension}} \
+                                     cpp-note {{read of non-const variable 'i' is not allowed in a constant expression}}
   
   return ref;
 }

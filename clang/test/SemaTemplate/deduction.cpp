@@ -193,8 +193,9 @@ void g() {
 
 namespace test8 {
 template <class T> void foo(T);
-void test(int a) {
-    char n[a];
+void test(int a) { // expected-note {{declared here}}
+    char n[a]; // expected-warning {{variable length arrays are a Clang extension}} \
+                  expected-note {{function parameter 'a' with unknown value cannot be used in a constant expression}}
     foo(n);
 }
 } // namespace test8

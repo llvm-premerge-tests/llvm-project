@@ -69,8 +69,10 @@ struct TestPPName
   typedef Types incomplete_array[]; // expected-error{{declaration type contains unexpanded parameter pack 'Types'}} 
 
   // VariableArrayType
-  void f(int i) {
-    Types variable_array[i]; // expected-error{{declaration type contains unexpanded parameter pack 'Types'}} 
+  void f(int i) {            // expected-note {{declared here}}
+    Types variable_array[i]; // expected-error{{declaration type contains unexpanded parameter pack 'Types'}} \
+                                expected-warning {{variable length arrays are a Clang extension}} \
+                                expected-note {{function parameter 'i' with unknown value cannot be used in a constant expression}}
   }
 
   // DependentSizedArrayType
