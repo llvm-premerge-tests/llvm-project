@@ -9,6 +9,7 @@
 #include "sanitizer_common/sanitizer_common_interceptors_vfork_loongarch64.inc.S"
 #include "sanitizer_common/sanitizer_common_interceptors_vfork_riscv64.inc.S"
 #include "sanitizer_common/sanitizer_common_interceptors_vfork_x86_64.inc.S"
+#include "sanitizer_common/sanitizer_common_interceptors_vfork_mips.inc.S"
 #endif
 
 NO_EXEC_STACK_DIRECTIVE
