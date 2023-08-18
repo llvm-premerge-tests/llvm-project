@@ -164,6 +164,7 @@ function(create_libc_unittest fq_target_name)
       PRIVATE ${LIBC_UNITTEST_COMPILE_OPTIONS}
     )
   endif()
+  target_link_options(${fq_build_target_name} PRIVATE -static)
   if(NOT LIBC_UNITTEST_CXX_STANDARD)
     set(LIBC_UNITTEST_CXX_STANDARD ${CMAKE_CXX_STANDARD})
   endif()
