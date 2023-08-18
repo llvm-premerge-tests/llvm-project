@@ -4150,11 +4150,67 @@ ExprResult TreeTransform<Derived>::TransformInitializer(Expr *Init,
                                            Parens.getEnd());
 }
 
+template <typename Derived>
+bool TransformExprsOnMemberPack(Derived &DerivedRef, Sema &SemaRef,
+                               bool *ArgChanged,
+                               SmallVectorImpl<Expr *> &Outputs,
+                               const CXXDependentScopeMemberExpr *MemberExpr) {
+  if (ArgChanged)
+    *ArgChanged = true;
+  assert(MemberExpr->isMemberPackAccess() &&
+         "trying to expand non-pack member access");
+  std::string UnExpandedNameStr =
+      MemberExpr->getMemberNameInfo().getName().getAsString();
+
+  ExprResult Base = DerivedRef.TransformExpr(MemberExpr->getBase());
+  if (Base.isInvalid())
+    return true;
+  QualType BaseType = ((Expr *)Base.get())->getType();
+  if (MemberExpr->isArrow()) {
+    assert(BaseType->isPointerType());
+    BaseType = BaseType->castAs<PointerType>()->getPointeeType();
+  }
+
+  unsigned Arg = 0;
+  while (true) {
+    Twine ExpandedNameStr = Twine(UnExpandedNameStr) + "@" + Twine(Arg);
+    // Transform unexpanded field name and create a new member
+    // expression.
+    DeclarationName ExpandedName =
+        &SemaRef.Context.Idents.get(ExpandedNameStr.str());
+    // Construct name info with new name and keep other members the same.
+    DeclarationNameInfo ExpandedNameInfo = DeclarationNameInfo(
+        ExpandedName, MemberExpr->getMemberNameInfo().getLoc(),
+        MemberExpr->getMemberNameInfo().getInfo());
+    TemplateArgumentListInfo TemplateArgs = TemplateArgumentListInfo();
+    MemberExpr->copyTemplateArgumentsInto(TemplateArgs);
+    auto *ExpandedMemberExpr = CXXDependentScopeMemberExpr::Create(
+        SemaRef.Context, MemberExpr->getBase(), MemberExpr->getBaseType(),
+        MemberExpr->isArrow(), MemberExpr->getOperatorLoc(),
+        MemberExpr->getQualifierLoc(), MemberExpr->getTemplateKeywordLoc(),
+        MemberExpr->getFirstQualifierFoundInScope(), ExpandedNameInfo,
+        &TemplateArgs, MemberExpr->isMemberPackAccess());
+
+    Sema::ArgumentPackSubstitutionIndexRAII SubstIndex(SemaRef, Arg);
+    ExprResult Out = DerivedRef.TransformExpr(ExpandedMemberExpr);
+    if (Out.isInvalid())
+      return true;
+    // An empty expression is returned when name lookup fails in accessing
+    // member packs. This means the last field in member pack has been
+    // processd and time to exit the loop.
+    if (Out.isUnset())
+      break;
+    Outputs.push_back(Out.get());
+    ++Arg;
+  }
+  return false;
+}
+
 template<typename Derived>
 bool TreeTransform<Derived>::TransformExprs(Expr *const *Inputs,
                                             unsigned NumInputs,
                                             bool IsCall,
-                                      SmallVectorImpl<Expr *> &Outputs,
+                                            SmallVectorImpl<Expr *> &Outputs,
                                             bool *ArgChanged) {
   for (unsigned I = 0; I != NumInputs; ++I) {
     // If requested, drop call arguments that need to be dropped.
@@ -4167,6 +4223,14 @@ bool TreeTransform<Derived>::TransformExprs(Expr *const *Inputs,
 
     if (PackExpansionExpr *Expansion = dyn_cast<PackExpansionExpr>(Inputs[I])) {
       Expr *Pattern = Expansion->getPattern();
+
+      if (const auto *MemberExpr =
+              dyn_cast<CXXDependentScopeMemberExpr>(Pattern)) {
+        TransformExprsOnMemberPack(getDerived(), getSema(), ArgChanged, Outputs,
+                                   MemberExpr);
+        // Proceed to next pack expansion expression.
+        continue;
+      }
 
       SmallVector<UnexpandedParameterPack, 2> Unexpanded;
       getSema().collectUnexpandedParameterPacks(Pattern, Unexpanded);

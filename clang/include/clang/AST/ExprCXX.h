@@ -3658,6 +3658,9 @@ class CXXDependentScopeMemberExpr final
   /// FIXME: could also be a template-id
   DeclarationNameInfo MemberNameInfo;
 
+  /// Whether the member is a member pack.
+  bool isMemberPack;
+
   // CXXDependentScopeMemberExpr is followed by several trailing objects,
   // some of which optional. They are in order:
   //
@@ -3693,14 +3696,12 @@ class CXXDependentScopeMemberExpr final
     return hasFirstQualifierFoundInScope();
   }
 
-  CXXDependentScopeMemberExpr(const ASTContext &Ctx, Expr *Base,
-                              QualType BaseType, bool IsArrow,
-                              SourceLocation OperatorLoc,
-                              NestedNameSpecifierLoc QualifierLoc,
-                              SourceLocation TemplateKWLoc,
-                              NamedDecl *FirstQualifierFoundInScope,
-                              DeclarationNameInfo MemberNameInfo,
-                              const TemplateArgumentListInfo *TemplateArgs);
+  CXXDependentScopeMemberExpr(
+      const ASTContext &Ctx, Expr *Base, QualType BaseType, bool IsArrow,
+      SourceLocation OperatorLoc, NestedNameSpecifierLoc QualifierLoc,
+      SourceLocation TemplateKWLoc, NamedDecl *FirstQualifierFoundInScope,
+      DeclarationNameInfo MemberNameInfo,
+      const TemplateArgumentListInfo *TemplateArgs, bool isMemberPack);
 
   CXXDependentScopeMemberExpr(EmptyShell Empty, bool HasTemplateKWAndArgsInfo,
                               bool HasFirstQualifierFoundInScope);
@@ -3711,7 +3712,8 @@ public:
          SourceLocation OperatorLoc, NestedNameSpecifierLoc QualifierLoc,
          SourceLocation TemplateKWLoc, NamedDecl *FirstQualifierFoundInScope,
          DeclarationNameInfo MemberNameInfo,
-         const TemplateArgumentListInfo *TemplateArgs);
+         const TemplateArgumentListInfo *TemplateArgs,
+         bool isMemberPack = false);
 
   static CXXDependentScopeMemberExpr *
   CreateEmpty(const ASTContext &Ctx, bool HasTemplateKWAndArgsInfo,
@@ -3734,6 +3736,8 @@ public:
   }
 
   QualType getBaseType() const { return BaseType; }
+
+  bool isMemberPackAccess() const { return isMemberPack; }
 
   /// Determine whether this member expression used the '->'
   /// operator; otherwise, it used the '.' operator.
