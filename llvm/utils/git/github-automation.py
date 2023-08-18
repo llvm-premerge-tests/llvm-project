@@ -385,7 +385,7 @@ class ReleaseWorkflow:
 
     def create_pull_request(self, owner: str, repo_name: str, branch: str) -> bool:
         """
-        reate a pull request in `self.branch_repo_name`.  The base branch of the
+        Create a pull request in `self.branch_repo_name`.  The base branch of the
         pull request will be chosen based on the the milestone attached to
         the issue represented by `self.issue_number`  For example if the milestone
         is Release 13.0.1, then the base branch will be release/13.x. `branch`
@@ -399,7 +399,8 @@ class ReleaseWorkflow:
         release_branch_for_issue = self.release_branch_for_issue
         if release_branch_for_issue is None:
             return False
-        head_branch = branch
+        local_name = branch.replace("/", "_")
+        head_branch = local_name
         if not repo.fork:
             # If the target repo is not a fork of llvm-project, we need to copy
             # the branch into the target repo.  GitHub only supports cross-repo pull
@@ -410,10 +411,10 @@ class ReleaseWorkflow:
             for _ in range(0, 5):
                 try:
                     local_repo.git.fetch(
-                        f"https://github.com/{owner}/{repo_name}", f"{branch}:{branch}"
+                        f"https://github.com/{owner}/{repo_name}", f"{branch}:{local_name}"
                     )
                     local_repo.git.push(
-                        self.push_url, f"{branch}:{head_branch}", force=True
+                        self.push_url, f"{local_name}:{head_branch}", force=True
                     )
                     push_done = True
                     break
