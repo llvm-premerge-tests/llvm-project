@@ -3155,6 +3155,12 @@ void InstantiateMemberPack(Sema &S, CXXRecordDecl *Instantiation,
           S.SubstType(PatternType, TemplateArgs, PackedField->getLocation(),
                       PackedField->getDeclName());
       PackedField->setType(T);
+      // Rename the expanded fields to avoid ambiguous names in
+      // name lookup. The renamed fields need to be inaccessible by users so an
+      // `@` is added to the name.
+      Twine NewFieldName =
+          Twine(PackedField->getName()) + "@" + Twine(Arg);
+      PackedField->setDeclName(&(S.Context).Idents.get(NewFieldName.str()));
       Fields.push_back(PackedField);
       if (NewMember->isInvalidDecl()) {
         // When `NewMember` has type of `PackExpansionType`, it escapes
