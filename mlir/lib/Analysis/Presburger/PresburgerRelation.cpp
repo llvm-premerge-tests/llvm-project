@@ -515,6 +515,9 @@ static PresburgerRelation getSetDifference(IntegerRelation b,
     }
   }
 
+  // Try to simplify the results.
+  result = result.simplify();
+
   return result;
 }
 
@@ -956,6 +959,17 @@ bool PresburgerRelation::hasOnlyDivLocals() const {
   return llvm::all_of(disjuncts, [](const IntegerRelation &rel) {
     return rel.hasOnlyDivLocals();
   });
+}
+
+PresburgerRelation PresburgerRelation::simplify() const {
+  PresburgerRelation origin = *this;
+  PresburgerRelation result = PresburgerRelation(getSpace());
+  for (IntegerRelation &disjunct : origin.disjuncts) {
+    disjunct.simplify();
+    if (!disjunct.isPlainEmpty())
+      result.unionInPlace(disjunct);
+  }
+  return result;
 }
 
 void PresburgerRelation::print(raw_ostream &os) const {

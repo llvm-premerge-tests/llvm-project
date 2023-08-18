@@ -190,6 +190,10 @@ public:
   /// also be a union of convex disjuncts.
   PresburgerRelation computeReprWithOnlyDivLocals() const;
 
+  /// Simplify each disjunct, see IntegerRelation::simplify for details. If
+  /// disjunct is empty it will not be merged into the new set.
+  PresburgerRelation simplify() const;
+
   /// Print the set's internal state.
   void print(raw_ostream &os) const;
   void dump() const;
