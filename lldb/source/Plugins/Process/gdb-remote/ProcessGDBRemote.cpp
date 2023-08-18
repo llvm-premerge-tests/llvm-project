@@ -2762,7 +2762,8 @@ Status ProcessGDBRemote::FlashDone() {
 }
 
 size_t ProcessGDBRemote::DoWriteMemory(addr_t addr, const void *buf,
-                                       size_t size, Status &error) {
+                                       size_t size, Status &error,
+                                       ByteOrder byte_order) {
   GetMaxMemorySize();
   // M and m packets take 2 bytes for 1 byte of memory
   size_t max_memory_size = m_max_memory_size / 2;
@@ -2798,7 +2799,7 @@ size_t ProcessGDBRemote::DoWriteMemory(addr_t addr, const void *buf,
   } else {
     packet.Printf("M%" PRIx64 ",%" PRIx64 ":", addr, (uint64_t)size);
     packet.PutBytesAsRawHex8(buf, size, endian::InlHostByteOrder(),
-                             endian::InlHostByteOrder());
+                             byte_order);
   }
   StringExtractorGDBRemote response;
   if (m_gdb_comm.SendPacketAndWaitForResponse(packet.GetString(), response,

@@ -5122,6 +5122,10 @@ lldb::Encoding TypeSystemClang::GetEncoding(lldb::opaque_compiler_type_t type,
   return lldb::eEncodingInvalid;
 }
 
+lldb::ByteOrder TypeSystemClang::GetByteOrder(lldb::opaque_compiler_type_t type) {
+    return endian::InlHostByteOrder();
+}
+
 lldb::Format TypeSystemClang::GetFormat(lldb::opaque_compiler_type_t type) {
   if (!type)
     return lldb::eFormatDefault;

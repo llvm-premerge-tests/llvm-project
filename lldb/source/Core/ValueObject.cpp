@@ -780,6 +780,8 @@ bool ValueObject::SetData(DataExtractor &data, Status &error) {
 
   uint64_t count = 0;
   const Encoding encoding = GetCompilerType().GetEncoding(count);
+  const ByteOrder byte_order = GetCompilerType().GetByteOrder();
+
 
   const size_t byte_size = GetByteSize().value_or(0);
 
@@ -807,7 +809,7 @@ bool ValueObject::SetData(DataExtractor &data, Status &error) {
     if (process) {
       addr_t target_addr = m_value.GetScalar().ULongLong(LLDB_INVALID_ADDRESS);
       size_t bytes_written = process->WriteMemory(
-          target_addr, data.GetDataStart(), byte_size, error);
+          target_addr, data.GetDataStart(), byte_size, error, byte_order);
       if (!error.Success())
         return false;
       if (bytes_written != byte_size) {
@@ -1473,6 +1475,7 @@ bool ValueObject::SetValueFromCString(const char *value_str, Status &error) {
 
   uint64_t count = 0;
   const Encoding encoding = GetCompilerType().GetEncoding(count);
+  const ByteOrder byte_order = GetCompilerType().GetByteOrder();
 
   const size_t byte_size = GetByteSize().value_or(0);
 
@@ -1499,7 +1502,7 @@ bool ValueObject::SetValueFromCString(const char *value_str, Status &error) {
           addr_t target_addr =
               m_value.GetScalar().ULongLong(LLDB_INVALID_ADDRESS);
           size_t bytes_written = process->WriteScalarToMemory(
-              target_addr, new_scalar, byte_size, error);
+              target_addr, new_scalar, byte_size, error, byte_order);
           if (!error.Success())
             return false;
           if (bytes_written != byte_size) {

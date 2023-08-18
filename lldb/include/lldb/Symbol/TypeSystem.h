@@ -297,6 +297,8 @@ public:
   virtual lldb::Encoding GetEncoding(lldb::opaque_compiler_type_t type,
                                      uint64_t &count) = 0;
 
+  virtual lldb::ByteOrder GetByteOrder(lldb::opaque_compiler_type_t type) = 0;
+
   virtual lldb::Format GetFormat(lldb::opaque_compiler_type_t type) = 0;
 
   virtual uint32_t GetNumChildren(lldb::opaque_compiler_type_t type,

@@ -584,6 +584,13 @@ lldb::Encoding CompilerType::GetEncoding(uint64_t &count) const {
   return lldb::eEncodingInvalid;
 }
 
+lldb::ByteOrder CompilerType::GetByteOrder() const {
+  if (IsValid())
+    if (auto type_system_sp = GetTypeSystem())
+      return type_system_sp->GetByteOrder(m_type);
+  return endian::InlHostByteOrder();
+}
+
 lldb::Format CompilerType::GetFormat() const {
   if (IsValid())
     if (auto type_system_sp = GetTypeSystem())
