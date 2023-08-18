@@ -564,6 +564,10 @@ void AArch64CallLowering::saveVarArgRegisters(
     if (IsWin64CC) {
       GPRIdx = MFI.CreateFixedObject(GPRSaveSize,
                                      -static_cast<int>(GPRSaveSize), false);
+      if (GPRSaveSize & 15)
+        // The extra size here, if triggered, will always be 8.
+        MFI.CreateFixedObject(16 - (GPRSaveSize & 15),
+                              -(int)alignTo(GPRSaveSize, 16), false);
     } else
       GPRIdx = MFI.CreateStackObject(GPRSaveSize, Align(8), false);
 
