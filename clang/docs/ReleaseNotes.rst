@@ -156,6 +156,9 @@ Bug Fixes in This Version
   ``abs`` builtins.
   (`#45129 <https://github.com/llvm/llvm-project/issues/45129>`_,
   `#45794 <https://github.com/llvm/llvm-project/issues/45794>`_)
+- Clang now reports missing-field-initializers warning for missing designated
+  initializers in C++.
+  (`#56628 <https://github.com/llvm/llvm-project/issues/56628>`_)
 
 Bug Fixes to Compiler Builtins
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
