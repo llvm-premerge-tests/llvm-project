@@ -335,6 +335,8 @@ public:
 
   lldb::Encoding GetEncoding(uint64_t &count) const;
 
+  lldb::ByteOrder GetByteOrder() const;
+
   lldb::Format GetFormat() const;
 
   std::optional<size_t> GetTypeBitAlign(ExecutionContextScope *exe_scope) const;

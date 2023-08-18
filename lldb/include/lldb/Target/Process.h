@@ -1612,10 +1612,13 @@ public:
   /// \param[out] error
   ///     An error value in case the memory write fails.
   ///
+  /// \param[in] byte_order
+  ///     The byte order of destination type.
   /// \return
   ///     The number of bytes that were actually written.
   virtual size_t DoWriteMemory(lldb::addr_t vm_addr, const void *buf,
-                               size_t size, Status &error) {
+                               size_t size, Status &error,
+                               lldb::ByteOrder byte_order = endian::InlHostByteOrder()) {
     error.SetErrorStringWithFormatv(
         "error: {0} does not support writing to processes", GetPluginName());
     return 0;
@@ -1651,7 +1654,8 @@ public:
   /// \return
   ///     The number of bytes that were actually written.
   size_t WriteScalarToMemory(lldb::addr_t vm_addr, const Scalar &scalar,
-                             size_t size, Status &error);
+                             size_t size, Status &error,
+                             lldb::ByteOrder byte_order = endian::InlHostByteOrder());
 
   size_t ReadScalarIntegerFromMemory(lldb::addr_t addr, uint32_t byte_size,
                                      bool is_signed, Scalar &scalar,
@@ -1678,11 +1682,15 @@ public:
   /// \param[in] size
   ///     The number of bytes to write.
   ///
+  /// \param[in] byte_order
+  ///     The byte order of destination type.
+  ///
   /// \return
   ///     The number of bytes that were actually written.
   // TODO: change this to take an ArrayRef<uint8_t>
   size_t WriteMemory(lldb::addr_t vm_addr, const void *buf, size_t size,
-                     Status &error);
+                     Status &error,
+                     lldb::ByteOrder byte_order = endian::InlHostByteOrder());
 
   /// Actually allocate memory in the process.
   ///
@@ -3115,7 +3123,8 @@ protected:
                                const Timeout<std::micro> &timeout);
 
   size_t WriteMemoryPrivate(lldb::addr_t addr, const void *buf, size_t size,
-                            Status &error);
+                            Status &error,
+                            lldb::ByteOrder byte_order = endian::InlHostByteOrder());
 
   void AppendSTDOUT(const char *s, size_t len);
 

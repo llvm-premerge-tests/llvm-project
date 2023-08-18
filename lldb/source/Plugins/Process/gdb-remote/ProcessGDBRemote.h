@@ -142,7 +142,8 @@ public:
   WriteObjectFile(std::vector<ObjectFile::LoadableData> entries) override;
 
   size_t DoWriteMemory(lldb::addr_t addr, const void *buf, size_t size,
-                       Status &error) override;
+                       Status &error,
+                       lldb::ByteOrder byte_order = endian::InlHostByteOrder()) override;
 
   lldb::addr_t DoAllocateMemory(size_t size, uint32_t permissions,
                                 Status &error) override;
