@@ -125,7 +125,7 @@ add_fp_unittest(
     libc.src.__support.FPUtil.platform_defs
 )
 
-add_libc_unittest(
+add_libc_test(
   snprintf_test
   SUITE
     libc_stdio_unittests
@@ -186,7 +186,7 @@ add_fp_unittest(
     libc.src.stdio.vsprintf
 )
 
-add_libc_unittest(
+add_libc_test(
   vsnprintf_test
   SUITE
     libc_stdio_unittests

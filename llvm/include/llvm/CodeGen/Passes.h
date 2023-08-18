@@ -601,6 +601,10 @@ namespace llvm {
 
   /// Lowers KCFI operand bundles for indirect calls.
   FunctionPass *createKCFIPass();
+
+  // Lower variadic functions and calls. Unconditionally if passed true.
+  ModulePass *createDesugarVariadicsPass(bool ApplicableToAllFunctions);
+
 } // End llvm namespace
 
 #endif
