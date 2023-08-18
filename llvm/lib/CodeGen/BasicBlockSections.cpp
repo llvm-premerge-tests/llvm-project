@@ -77,8 +77,10 @@
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
 #include "llvm/InitializePasses.h"
+#include "llvm/Support/WithColor.h"
 #include "llvm/Target/TargetMachine.h"
 #include <optional>
+#include <sstream>
 
 using namespace llvm;
 
@@ -99,9 +101,39 @@ static cl::opt<bool> BBSectionsDetectSourceDrift(
 
 namespace {
 
+MachineBasicBlock *CloneMachineBasicBlock(MachineBasicBlock *MBB) {
+  auto &MF = *MBB->getParent();
+  auto TII = MF.getSubtarget().getInstrInfo();
+
+  auto CloneBB = MF.CreateMachineBasicBlock(MBB->getBasicBlock());
+  MF.push_back(CloneBB);
+  // Copy the instructions.
+  for (auto &I : MBB->instrs())
+    CloneBB->push_back(MF.CloneMachineInstr(&I));
+
+  // Add the successors of the original block as the new block's
+  // successors as well.
+  for (auto SI = MBB->succ_begin(), SE = MBB->succ_end(); SI != SE; ++SI)
+    CloneBB->copySuccessor(MBB, SI);
+
+  if (auto FT = MBB->getFallThrough()) {
+    // The original block has an implicit fall through.
+    // Insert an explicit unconditional jump from the cloned block to that
+    // same block.
+    TII->insertUnconditionalBranch(*CloneBB, FT, CloneBB->findBranchDebugLoc());
+  }
+
+  for (auto &LiveIn : MBB->liveins())
+    CloneBB->addLiveIn(LiveIn);
+
+  return CloneBB;
+}
+
 class BasicBlockSections : public MachineFunctionPass {
 public:
   static char ID;
+
+  SmallVector<BBProfile<unsigned>> FunctionProfile;
 
   BasicBlockSectionsProfileReader *BBSectionsProfileReader = nullptr;
 
@@ -170,26 +202,20 @@ updateBranches(MachineFunction &MF,
 
 // This function provides the BBCluster information associated with a function.
 // Returns true if a valid association exists and false otherwise.
-bool getBBClusterInfoForFunction(
+bool getBBprofilesByBBID(
     const MachineFunction &MF,
-    BasicBlockSectionsProfileReader *BBSectionsProfileReader,
-    DenseMap<unsigned, BBClusterInfo> &V) {
+    SmallVector<BBProfile<unsigned>> &FunctionProfile,
+    DenseMap<unsigned, BBProfile<unsigned>> &V) {
 
-  // Find the assoicated cluster information.
-  std::pair<bool, SmallVector<BBClusterInfo, 4>> P =
-      BBSectionsProfileReader->getBBClusterInfoForFunction(MF.getName());
-  if (!P.first)
-    return false;
-
-  if (P.second.empty()) {
+  if (FunctionProfile.empty()) {
     // This indicates that sections are desired for all basic blocks of this
-    // function. We clear the BBClusterInfo vector to denote this.
+    // function. We clear the output map to denote this.
     V.clear();
     return true;
   }
 
-  for (const BBClusterInfo &BBCI : P.second)
-    V[BBCI.BBID] = BBCI;
+  for (const auto &P : FunctionProfile)
+    V[P.BasicBlockID] = P;
   return true;
 }
 
@@ -200,12 +226,12 @@ bool getBBClusterInfoForFunction(
 // clusters, they are moved into a single "Exception" section. Eventually,
 // clusters are ordered in increasing order of their IDs, with the "Exception"
 // and "Cold" succeeding all other clusters.
-// FuncBBClusterInfo represent the cluster information for basic blocks. It
+// BBProfilesByBBID represent the cluster information for basic blocks. It
 // maps from BBID of basic blocks to their cluster information. If this is
 // empty, it means unique sections for all basic blocks in the function.
 static void
 assignSections(MachineFunction &MF,
-               const DenseMap<unsigned, BBClusterInfo> &FuncBBClusterInfo) {
+               const DenseMap<unsigned, BBProfile<unsigned>> &BBProfilesByBBID) {
   assert(MF.hasBBSections() && "BB Sections is not set for function.");
   // This variable stores the section ID of the cluster containing eh_pads (if
   // all eh_pads are one cluster). If more than one cluster contain eh_pads, we
@@ -216,9 +242,9 @@ assignSections(MachineFunction &MF,
     // With the 'all' option, every basic block is placed in a unique section.
     // With the 'list' option, every basic block is placed in a section
     // associated with its cluster, unless we want individual unique sections
-    // for every basic block in this function (if FuncBBClusterInfo is empty).
+    // for every basic block in this function (if BBProfilesByBBID is empty).
     if (MF.getTarget().getBBSectionsType() == llvm::BasicBlockSection::All ||
-        FuncBBClusterInfo.empty()) {
+        BBProfilesByBBID.empty()) {
       // If unique sections are desired for all basic blocks of the function, we
       // set every basic block's section ID equal to its original position in
       // the layout (which is equal to its number). This ensures that basic
@@ -227,8 +253,8 @@ assignSections(MachineFunction &MF,
     } else {
       // TODO: Replace `getBBIDOrNumber` with `getBBID` once version 1 is
       // deprecated.
-      auto I = FuncBBClusterInfo.find(MBB.getBBIDOrNumber());
-      if (I != FuncBBClusterInfo.end()) {
+      auto I = BBProfilesByBBID.find(MBB.getBBIDOrNumber());
+      if (I != BBProfilesByBBID.end()) {
         MBB.setSectionID(I->second.ClusterID);
       } else {
         // BB goes into the special cold section if it is not specified in the
@@ -313,6 +339,94 @@ static bool hasInstrProfHashMismatch(MachineFunction &MF) {
   return false;
 }
 
+// Performs the cloning instructions in the profile data for the given machine
+// function.
+// After all clones are performed, it will fill the actual cluster info with
+// the correct linear IDs which is used by the block sorting.
+// Alongside the cluster info, it also fills out a set of block that have been
+// modified by the path layout. These blocks should not have their branches
+// adjusted.
+// Finally, it also fills out a map from the unique BB IDs in the profile info
+// to linear BB ids in the MF for cloned blocks.
+static bool PerformCloningAndPathLayouts(MachineFunction &MF,
+                                         const RawFunctionProfile &RawProfile,
+                                         SmallVector<BBProfile<unsigned>> &Out) {
+  DenseMap<ProfileBBID, unsigned> ProfileBBIDToBBID;
+  DenseMap<unsigned, MachineBasicBlock *> BBIdToBlock;
+  for (auto &BB : MF)
+    BBIdToBlock.try_emplace(BB.getBBIDOrNumber(), &BB);
+
+  for (auto &ClonePath : RawProfile.ClonePaths) {
+    MachineBasicBlock *PrevBB = nullptr;
+    for (unsigned I = 0; I < ClonePath.size(); ++I) {
+      unsigned BBID = ClonePath[I];
+      MachineBasicBlock *PathBB = BBIdToBlock.lookup(BBID);
+      if (!PathBB) {
+        WithColor::warning()
+            << "Block ID " << BBID
+            << " does not correspond to a block in function: " << MF.getName()
+            << "\n";
+        return false;
+      }
+
+      if (PrevBB && !PrevBB->isSuccessor(PathBB)) {
+        WithColor::warning() << "Block " << BBID << " is not a successor of "
+                             << PrevBB->getBBIDOrNumber()
+                             << " in function: " << MF.getName() << "\n";
+        return false;
+      }
+
+      if (I != ClonePath.size() - 1 && !PathBB->empty() &&
+          PathBB->back().isIndirectBranch()) {
+        WithColor::warning()
+            << "Non-final block " << BBID << " has indirect branch in "
+            << MF.getName() << "\n";
+        return false;
+      }
+      PrevBB = PathBB;
+    }
+  }
+
+  DenseMap<unsigned, unsigned> NClonesForBBID;
+  auto TII = MF.getSubtarget().getInstrInfo();
+
+  // This step creates all the necessary clones. It does not adjust the
+  // branches.
+  for (auto &ClonePath : RawProfile.ClonePaths) {
+    DenseMap<MachineBasicBlock *, MachineBasicBlock *> CloneMap;
+    MachineBasicBlock *PrevBB = nullptr;
+    for (auto BBID : ClonePath) {
+      MachineBasicBlock *OrigBB = BBIdToBlock.at(BBID);
+      if (PrevBB == nullptr) {
+        if (auto FT = OrigBB->getFallThrough()) {
+          // Make fallthrough explicit since we might change this later.
+          TII->insertUnconditionalBranch(*OrigBB, FT,
+                                         OrigBB->findBranchDebugLoc());
+        }
+        PrevBB = OrigBB;
+        continue;
+      }
+
+      MachineBasicBlock *CloneBB = CloneMachineBasicBlock(OrigBB);
+      CloneMap.try_emplace(OrigBB, CloneBB);
+
+      unsigned CloneNumber = ++NClonesForBBID[BBID];
+      ProfileBBIDToBBID[ProfileBBID({BBID, CloneNumber})] =
+          CloneBB->getBBIDOrNumber();
+      PrevBB->ReplaceUsesOfBlockWith(OrigBB, CloneBB);
+      PrevBB = CloneBB;
+    }
+  }
+
+  for (const BBProfile<ProfileBBID> &P : RawProfile.RawBBProfiles) {
+    unsigned FinalBBID =
+        P.BasicBlockID.CloneID == 0 ? P.BasicBlockID.BBID : ProfileBBIDToBBID.at(P.BasicBlockID);
+    Out.push_back(BBProfile<unsigned>{FinalBBID, P.ClusterID, P.PositionInCluster});
+  }
+
+  return true;
+}
+
 bool BasicBlockSections::runOnMachineFunction(MachineFunction &MF) {
   auto BBSectionsType = MF.getTarget().getBBSectionsType();
   assert(BBSectionsType != BasicBlockSection::None &&
@@ -342,16 +456,26 @@ bool BasicBlockSections::runOnMachineFunction(MachineFunction &MF) {
     return true;
   }
 
+  FunctionProfile.clear();
   BBSectionsProfileReader = &getAnalysis<BasicBlockSectionsProfileReader>();
+  auto [HasProfile, P] =
+      BBSectionsProfileReader->getRawProfileForFunction(MF.getName());
+  if (!HasProfile)
+    return true;
+  if (!PerformCloningAndPathLayouts(MF, P, FunctionProfile)) {
+    WithColor::warning() << "Unable to perform clonings for " << MF.getName()
+                         << ". Rejecting the BBSections Profile.\n";
+    return true;
+  }
 
   // Map from BBID of blocks to their cluster information.
-  DenseMap<unsigned, BBClusterInfo> FuncBBClusterInfo;
+  DenseMap<unsigned, BBProfile<unsigned>> BBProfilesByBBID;
   if (BBSectionsType == BasicBlockSection::List &&
-      !getBBClusterInfoForFunction(MF, BBSectionsProfileReader,
-                                   FuncBBClusterInfo))
+      !getBBprofilesByBBID(MF, FunctionProfile, BBProfilesByBBID)) {
     return true;
+  }
   MF.setBBSectionsType(BBSectionsType);
-  assignSections(MF, FuncBBClusterInfo);
+  assignSections(MF, BBProfilesByBBID);
 
   // We make sure that the cluster including the entry basic block precedes all
   // other clusters.
@@ -385,8 +509,8 @@ bool BasicBlockSections::runOnMachineFunction(MachineFunction &MF) {
     // If the two basic block are in the same section, the order is decided by
     // their position within the section.
     if (XSectionID.Type == MBBSectionID::SectionType::Default)
-      return FuncBBClusterInfo.lookup(X.getBBIDOrNumber()).PositionInCluster <
-             FuncBBClusterInfo.lookup(Y.getBBIDOrNumber()).PositionInCluster;
+      return BBProfilesByBBID.lookup(X.getBBIDOrNumber()).PositionInCluster <
+             BBProfilesByBBID.lookup(Y.getBBIDOrNumber()).PositionInCluster;
     return X.getNumber() < Y.getNumber();
   };
 
