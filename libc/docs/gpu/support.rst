@@ -105,7 +105,7 @@ strtoull       |check|
 =============  =========  ============
 
 inttypes.h
---------
+----------
 
 =============  =========  ============
 Function Name  Available  RPC Required
