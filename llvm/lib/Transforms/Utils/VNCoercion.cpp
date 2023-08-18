@@ -4,6 +4,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/Support/Debug.h"
+#include <numeric>
 
 #define DEBUG_TYPE "vncoerce"
 
@@ -312,6 +313,74 @@ static Value *getStoreValueForLoadHelper(Value *SrcVal, unsigned Offset,
   if (SrcVal->getType()->isPtrOrPtrVectorTy())
     SrcVal =
         Builder.CreatePtrToInt(SrcVal, DL.getIntPtrType(SrcVal->getType()));
+  if (LoadTy->isPtrOrPtrVectorTy())
+    LoadTy = DL.getIntPtrType(LoadTy);
+
+  // If SrcVal is a vector, use vector ops to get the loaded value.
+  if (SrcVal->getType()->isVectorTy()) {
+    if (StoreSize > LoadSize) {
+      auto *SrcValTyV = cast<FixedVectorType>(SrcVal->getType());
+      unsigned LoadSizeInBits = DL.getTypeSizeInBits(LoadTy).getFixedValue();
+      unsigned SrcValEltSizeInBits = SrcValTyV->getScalarSizeInBits();
+
+      // Compute how many elements of SrcVal are necessary. We need to ensure
+      // that all bitcasts are between vector types to prevent poison
+      // propagation.
+      unsigned NumEltsRequiredFromVec =
+          std::lcm(SrcValEltSizeInBits, LoadSizeInBits) / SrcValEltSizeInBits;
+      if (isa<FixedVectorType>(LoadTy)) {
+        auto *LoadTyV = cast<FixedVectorType>(LoadTy);
+        unsigned LoadEltSizeInBits = LoadTy->getScalarSizeInBits();
+
+        SmallVector<int, 16> Mask(NumEltsRequiredFromVec, PoisonMaskElem);
+        std::iota(Mask.begin(), Mask.begin() + SrcValTyV->getNumElements(), 0);
+        SrcVal = Builder.CreateShuffleVector(SrcVal, Mask);
+
+        // A subvector is loaded so we extract it from SrcVal.
+        if (SrcVal->getType() != LoadTy) {
+          // Bitcast to ensure that SrcVal has the same element type as the
+          // loaded vector.
+          unsigned NumElems = (NumEltsRequiredFromVec * SrcValEltSizeInBits) /
+                              LoadEltSizeInBits;
+
+          auto *DestTy = VectorType::get(LoadTy->getScalarType(), NumElems,
+                                         /* Scalable */ false);
+          SrcVal = Builder.CreateBitCast(SrcVal, DestTy);
+          if (SrcVal->getType() != LoadTy) {
+            // Extract the subvector such that SrcVal and the loaded vector
+            // have the same size.
+            SmallVector<int, 16> Mask2(LoadTyV->getNumElements());
+            std::iota(Mask2.begin(), Mask2.end(), 0);
+            SrcVal = Builder.CreateShuffleVector(SrcVal, Mask2);
+          }
+        }
+      } else {
+        if (SrcVal->getType()->getScalarType() != LoadTy) {
+          // Requires a bitcast before the extract.
+          auto *DestTy = VectorType::get(LoadTy, NumEltsRequiredFromVec,
+                                         /* Scalable */ false);
+          if (SrcValTyV->getPrimitiveSizeInBits() !=
+              DestTy->getPrimitiveSizeInBits()) {
+            // Extract the subvector to ensure a legal bitcast.
+            SmallVector<int, 16> Mask(NumEltsRequiredFromVec, PoisonMaskElem);
+            std::iota(Mask.begin(), Mask.begin() + SrcValTyV->getNumElements(),
+                      0);
+            SrcVal = Builder.CreateShuffleVector(SrcVal, Mask);
+            // Compute the new vector type from which we can extract the loaded
+            // element.
+            unsigned NumElems =
+                (NumEltsRequiredFromVec * SrcValEltSizeInBits) / LoadSizeInBits;
+            DestTy = VectorType::get(LoadTy, NumElems, /* Scalable */ false);
+          }
+          SrcVal = Builder.CreateBitCast(SrcVal, DestTy);
+        }
+        unsigned Idx = Offset / LoadSize;
+        SrcVal = Builder.CreateExtractElement(SrcVal, Idx);
+      }
+    }
+    return SrcVal;
+  }
+
   if (!SrcVal->getType()->isIntegerTy())
     SrcVal =
         Builder.CreateBitCast(SrcVal, IntegerType::get(Ctx, StoreSize * 8));
