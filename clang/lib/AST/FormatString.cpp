@@ -465,6 +465,24 @@ ArgType::matchesType(ASTContext &C, QualType argTy) const {
                   T == C.WideCharTy)
                 return MatchPromotion;
               break;
+            case BuiltinType::Char_U:
+              if (T == C.UnsignedIntTy)
+                return MatchPromotion;
+              if (T == C.UnsignedShortTy)
+                return NoMatchPromotionTypeConfusion;
+              break;
+            case BuiltinType::Char_S:
+              if (T == C.IntTy)
+                return MatchPromotion;
+              if (T == C.ShortTy)
+                return NoMatchPromotionTypeConfusion;
+              break;
+            case BuiltinType::Half:
+            case BuiltinType::Float16:
+            case BuiltinType::Float:
+              if (T == C.DoubleTy)
+                return MatchPromotion;
+              break;
             case BuiltinType::Short:
             case BuiltinType::UShort:
               if (T == C.SignedCharTy || T == C.UnsignedCharTy)

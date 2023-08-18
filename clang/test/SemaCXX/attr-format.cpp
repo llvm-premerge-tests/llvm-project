@@ -78,6 +78,9 @@ void do_format() {
   format("%s %s %u %d %i %p\n", "hello", s, 10u, x, y, do_format);
   format("bad format %s"); // expected-warning{{more '%' conversions than data arguments}}
 
+  format("%c %c %hhd %hd %d\n", (char)'a', 'a', 'a', (short)123, (int)123);
+  format("%f %f %f\n", (__fp16)123.f, 123.f, 123.);
+
   struct foo f;
   format_invalid_nonpod("hello %i", f); // expected-warning{{format specifies type 'int' but the argument has type 'struct foo'}}
 
