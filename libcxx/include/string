@@ -970,7 +970,9 @@ public:
     __init(__n, __c);
   }
 
-#if _LIBCPP_STD_VER >= 23
+#if _LIBCPP_STD_VER >= 20
+  // Extension: Support these overloads in C++20 rather than C++23.
+  // Otherwise C++20's `basic_stringbuf::str() &&` is hard to implement.
   _LIBCPP_HIDE_FROM_ABI constexpr
   basic_string(basic_string&& __str, size_type __pos, const _Allocator& __alloc = _Allocator())
       : basic_string(std::move(__str), __pos, npos, __alloc) {}
@@ -983,12 +985,7 @@ public:
 
     auto __len = std::min<size_type>(__n, __str.size() - __pos);
     if (__alloc_traits::is_always_equal::value || __alloc == __str.__alloc()) {
-      __r_.first() = __str.__r_.first();
-      __str.__default_init();
-
-      _Traits::move(data(), data() + __pos, __len);
-      __set_size(__len);
-      _Traits::assign(data()[__len], value_type());
+      __pilfering_assign(std::move(__str), __pos, __len);
     } else {
       // Perform a copy because the allocators are not compatible.
       __init(__str.data() + __pos, __len);
@@ -1332,6 +1329,20 @@ public:
     __self_view __sv = __t;
     return assign(__sv.data(), __sv.size());
   }
+
+#if _LIBCPP_STD_VER >= 20
+  _LIBCPP_HIDE_FROM_ABI constexpr
+  void __pilfering_assign(basic_string&& __str, size_type __pos, size_type __len) {
+    // Pilfer the allocation from __str.
+    // Precondition: __alloc == __str.__alloc()
+    __r_.first() = __str.__r_.first();
+    __str.__default_init();
+
+    _Traits::move(data(), data() + __pos, __len);
+    __set_size(__len);
+    _Traits::assign(data()[__len], value_type());
+  }
+#endif
 
     _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX20
     basic_string& assign(const basic_string& __str) { return *this = __str; }
