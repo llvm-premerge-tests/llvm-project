@@ -25,17 +25,23 @@ class RuntimeDyldCheckerImpl {
   using GetGOTInfoFunction = RuntimeDyldChecker::GetGOTInfoFunction;
 
 public:
-  RuntimeDyldCheckerImpl(
-      IsSymbolValidFunction IsSymbolValid, GetSymbolInfoFunction GetSymbolInfo,
-      GetSectionInfoFunction GetSectionInfo, GetStubInfoFunction GetStubInfo,
-      GetGOTInfoFunction GetGOTInfo, support::endianness Endianness,
-      MCDisassembler *Disassembler, MCInstPrinter *InstPrinter,
-      llvm::raw_ostream &ErrStream);
+  RuntimeDyldCheckerImpl(IsSymbolValidFunction IsSymbolValid,
+                         GetSymbolInfoFunction GetSymbolInfo,
+                         GetSectionInfoFunction GetSectionInfo,
+                         GetStubInfoFunction GetStubInfo,
+                         GetGOTInfoFunction GetGOTInfo,
+                         support::endianness Endianness, Triple &TT,
+                         SubtargetFeatures &TF, llvm::raw_ostream &ErrStream);
 
   bool check(StringRef CheckExpr) const;
   bool checkAllRulesInBuffer(StringRef RulePrefix, MemoryBuffer *MemBuf) const;
 
 private:
+  Expected<std::unique_ptr<MCDisassembler>>
+  getDisassembler(const Triple &TT, const SubtargetFeatures &Features) const;
+
+  Expected<std::unique_ptr<MCInstPrinter>>
+  getInstPrinter(const Triple &TT) const;
 
   // StubMap typedefs.
 
@@ -48,6 +54,8 @@ private:
   uint64_t readMemoryAtAddr(uint64_t Addr, unsigned Size) const;
 
   StringRef getSymbolContent(StringRef Symbol) const;
+
+  Expected<bool> hasTargetFlag(StringRef Symbol, uint8_t Flag) const;
 
   std::pair<uint64_t, std::string> getSectionAddr(StringRef FileName,
                                                   StringRef SectionName,
@@ -65,8 +73,8 @@ private:
   GetStubInfoFunction GetStubInfo;
   GetGOTInfoFunction GetGOTInfo;
   support::endianness Endianness;
-  MCDisassembler *Disassembler;
-  MCInstPrinter *InstPrinter;
+  Triple &TT;
+  SubtargetFeatures &TF;
   llvm::raw_ostream &ErrStream;
 };
 }

@@ -973,11 +973,12 @@ static int linkAndVerify() {
 
     ObjectFile &Obj = **MaybeObj;
 
+    SubtargetFeatures Features = SubtargetFeatures();
     if (!Checker)
       Checker = std::make_unique<RuntimeDyldChecker>(
           IsSymbolValid, GetSymbolInfo, GetSectionInfo, GetStubInfo,
           GetStubInfo, Obj.isLittleEndian() ? support::little : support::big,
-          Disassembler.get(), InstPrinter.get(), dbgs());
+          TheTriple, Features, dbgs());
 
     auto FileName = sys::path::filename(InputFile);
     MemMgr.setSectionIDsMap(&FileToSecIDMap[FileName]);
