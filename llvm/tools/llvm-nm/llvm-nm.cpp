@@ -2262,6 +2262,12 @@ static std::vector<NMSymbol> dumpSymbolNamesFromFile(StringRef Filename) {
   if (error(BufferOrErr.getError(), Filename))
     return SymbolList;
 
+  //Ignore AIX linker import files (these files start with "#!"), when exporting symbols.
+  const char *BuffStart = (*BufferOrErr)->getBufferStart();
+  if (ExportSymbols && (*BufferOrErr)->getBufferSize() >= 2 &&
+      BuffStart[0] == '#' && BuffStart[1] == '!')
+    return SymbolList;
+
   LLVMContext Context;
   LLVMContext *ContextPtr = NoLLVMBitcode ? nullptr : &Context;
   Expected<std::unique_ptr<Binary>> BinaryOrErr =
