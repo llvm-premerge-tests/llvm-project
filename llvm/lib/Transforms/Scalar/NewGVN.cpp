@@ -1756,9 +1756,15 @@ NewGVN::performSymbolicPHIEvaluation(ArrayRef<ValPair> PHIOps,
   });
   // If we are left with no operands, it's dead.
   if (Filtered.empty()) {
-    // If it has undef or poison at this point, it means there are no-non-undef
-    // arguments, and thus, the value of the phi node must be undef.
     if (HasUndef) {
+      // If we have undef and poison, we need to know if it's cycle
+      // free to ignore the poison. Otherwise we might get stuck in a evaluation
+      // loop.
+      if (HasBackedge && !OriginalOpsConstant && HasPoison && !isCycleFree(I))
+        return E;
+      // If it has undef or poison at this point, it means there are
+      // no-non-undef arguments, and thus, the value of the phi node must be
+      // undef.
       LLVM_DEBUG(
           dbgs() << "PHI Node " << *I
                  << " has no non-undef arguments, valuing it as undef\n");
