@@ -628,6 +628,9 @@ public:
     return static_cast<TargetFlagsType>(TargetFlags) & Flags;
   }
 
+  /// Get the target flags of this Symbol.
+  TargetFlagsType getTargetFlags() const { return TargetFlags; }
+
   /// Set the target flags for this Symbol.
   void setTargetFlags(TargetFlagsType Flags) {
     assert(Flags <= 1 && "Add more bits to store more than single flag");

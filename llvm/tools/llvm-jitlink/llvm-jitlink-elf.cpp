@@ -145,7 +145,8 @@ Error registerELFGraphInfo(Session &S, LinkGraph &G) {
           SectionContainsZeroFill = true;
         } else {
           S.SymbolInfos[Sym->getName()] = {Sym->getSymbolContent(),
-                                           Sym->getAddress().getValue()};
+                                           Sym->getAddress().getValue(),
+                                           Sym->getTargetFlags()};
           SectionContainsContent = true;
         }
       }
