@@ -12,6 +12,7 @@
 include "mlir/IR/AttrTypeBase.td"
 include "mlir/IR/OpBase.td"
 include "mlir/Interfaces/InferTypeOpInterface.td"
+include "mlir/IR/EnumAttr.td"
 
 def Python_Test_Dialect : Dialect {
   let name = "python_test";
@@ -179,6 +180,25 @@ def FirstAttrDeriveAttrOp : TestOp<"first_attr_derive_attr_op",
 def OptionalOperandOp : TestOp<"optional_operand_op"> {
   let arguments = (ins Optional<AnyType>:$input);
   let results = (outs I32:$result);
+}
+
+// Define an enum with a different separator
+def TestBitEnumVerticalBar
+    : I32BitEnumAttr<"TestBitEnumVerticalBar", "another test bit enum", [
+        I32BitEnumAttrCaseBit<"User", 0, "user">,
+        I32BitEnumAttrCaseBit<"Group", 1, "group">,
+        I32BitEnumAttrCaseBit<"Other", 2, "other">,
+      ]> {
+  let genSpecializedAttr = 0;
+  let cppNamespace = "python_test";
+  let separator = " | ";
+}
+
+// Define an op that contains the bare enum attribute.
+def OpWithBareBitEnumVerticalBar : TestOp<"op_with_bit_bar_enum_vbar"> {
+  let arguments = (ins TestBitEnumVerticalBar:$value,
+                   OptionalAttr<AnyAttr>:$tag);
+  let assemblyFormat = "$value (`tag` $tag^)? attr-dict";
 }
 
 #endif // PYTHON_TEST_OPS

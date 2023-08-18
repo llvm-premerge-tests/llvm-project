@@ -487,3 +487,22 @@ def testInferTypeOpInterface():
             two_operands = test.InferResultsVariadicInputsOp(single=zero, doubled=zero)
             # CHECK: f32
             print(two_operands.result.type)
+
+
+# CHECK-LABEL: TEST: testBitEnum
+@run
+def testBitEnum():
+    with Context() as ctx, Location.unknown(ctx):
+        test.register_python_test_dialect(ctx)
+        module = Module.create()
+        with InsertionPoint(module.body):
+            op = test.OpWithBareBitEnumVerticalBar(1)
+            # CHECK: python_test.op_with_bit_bar_enum_vbar user
+            print(op)
+            op = test.OpWithBareBitEnumVerticalBar(2)
+            # CHECK: python_test.op_with_bit_bar_enum_vbar group
+            print(op)
+            op = test.OpWithBareBitEnumVerticalBar(1 | 2)
+            # CHECK: python_test.op_with_bit_bar_enum_vbar user | group
+            print(op)
+        print(module.body)
