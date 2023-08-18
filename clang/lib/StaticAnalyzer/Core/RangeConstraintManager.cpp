@@ -1470,7 +1470,7 @@ private:
         [SSE, State = this->State]() -> SymbolRef {
           if (SSE->getOpcode() == BO_Sub)
             return State->getSymbolManager().getSymSymExpr(
-                SSE->getRHS(), BO_Sub, SSE->getLHS(), SSE->getType());
+                SSE->getLHS(), BO_Sub, SSE->getRHS(), SSE->getType());
           return nullptr;
         },
         SSE->getType());
@@ -1531,7 +1531,7 @@ private:
       if (!QueriedRangeSet) {
         const BinaryOperatorKind ROP =
             BinaryOperator::reverseComparisonOp(QueriedOP);
-        SymSym = SymMgr.getSymSymExpr(RHS, ROP, LHS, T);
+        SymSym = SymMgr.getSymSymExpr(LHS, ROP, RHS, T);
         QueriedRangeSet = getConstraint(State, SymSym);
       }
 

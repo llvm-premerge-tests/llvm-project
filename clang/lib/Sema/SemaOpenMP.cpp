@@ -18097,7 +18097,7 @@ OMPClause *Sema::ActOnOpenMPVarListClause(OpenMPClauseKind Kind,
     break;
   case OMPC_allocate:
     Res = ActOnOpenMPAllocateClause(Data.DepModOrTailExpr, VarList, StartLoc,
-                                    LParenLoc, ColonLoc, EndLoc);
+                                    ColonLoc, LParenLoc, EndLoc);
     break;
   case OMPC_nontemporal:
     Res = ActOnOpenMPNontemporalClause(VarList, StartLoc, LParenLoc, EndLoc);
