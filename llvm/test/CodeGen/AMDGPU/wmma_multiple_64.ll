@@ -63,8 +63,13 @@ bb:
 define amdgpu_ps void @test_wmma_f16_16x16x16_f16_lo(<16 x half> %A, <16 x half> %B, <8 x half> %C, ptr addrspace(1) %out, ptr addrspace(1) %out2) {
 ; W64-LABEL: test_wmma_f16_16x16x16_f16_lo:
 ; W64:       ; %bb.0: ; %bb
-; W64-NEXT:    v_wmma_f16_16x16x16_f16 v[24:27], v[0:7], v[8:15], v[16:19]
+; W64-NEXT:    v_mov_b32_e32 v27, v19
+; W64-NEXT:    v_mov_b32_e32 v26, v18
+; W64-NEXT:    v_mov_b32_e32 v25, v17
+; W64-NEXT:    v_mov_b32_e32 v24, v16
 ; W64-NEXT:    v_wmma_f16_16x16x16_f16 v[16:19], v[8:15], v[8:15], v[16:19]
+; W64-NEXT:    s_delay_alu instid0(VALU_DEP_2)
+; W64-NEXT:    v_wmma_f16_16x16x16_f16 v[24:27], v[0:7], v[8:15], v[24:27]
 ; W64-NEXT:    global_store_b128 v[20:21], v[24:27], off
 ; W64-NEXT:    global_store_b128 v[22:23], v[16:19], off
 ; W64-NEXT:    s_nop 0
@@ -81,8 +86,13 @@ bb:
 define amdgpu_ps void @test_wmma_f16_16x16x16_f16_hi(<16 x half> %A, <16 x half> %B, <8 x half> %C, ptr addrspace(1) %out, ptr addrspace(1) %out2) {
 ; W64-LABEL: test_wmma_f16_16x16x16_f16_hi:
 ; W64:       ; %bb.0: ; %bb
-; W64-NEXT:    v_wmma_f16_16x16x16_f16 v[24:27], v[0:7], v[8:15], v[16:19] op_sel:[0,0,1]
+; W64-NEXT:    v_mov_b32_e32 v27, v19
+; W64-NEXT:    v_mov_b32_e32 v26, v18
+; W64-NEXT:    v_mov_b32_e32 v25, v17
+; W64-NEXT:    v_mov_b32_e32 v24, v16
 ; W64-NEXT:    v_wmma_f16_16x16x16_f16 v[16:19], v[8:15], v[8:15], v[16:19] op_sel:[0,0,1]
+; W64-NEXT:    s_delay_alu instid0(VALU_DEP_2)
+; W64-NEXT:    v_wmma_f16_16x16x16_f16 v[24:27], v[0:7], v[8:15], v[24:27] op_sel:[0,0,1]
 ; W64-NEXT:    global_store_b128 v[20:21], v[24:27], off
 ; W64-NEXT:    global_store_b128 v[22:23], v[16:19], off
 ; W64-NEXT:    s_nop 0

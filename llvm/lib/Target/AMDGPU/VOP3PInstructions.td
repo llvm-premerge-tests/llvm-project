@@ -855,11 +855,12 @@ multiclass WMMAInst<string Suffix, string Instr, VOPProfile P, SDPatternOperator
 
   defvar WMMAConstraints2Addr = "@earlyclobber $vdst,$vdst = $src2";
   defvar WMMAConstraints3Addr = "@earlyclobber $vdst";
+  defvar isConvertableTo3Addr = !cond(!eq(Instr, "v_wmma_f16_16x16x16_f16"): 0, true: 1);
 
   defvar WMMAProfile = VOPProfileWMMA<P, Suffix, _Src01RC64, Type.hasClamp, Type.hasOpsel>;
   if !eq(Suffix, "_w32") then {
     let Mnemonic = Instr, mayRaiseFPException = 0, ReadsModeReg = 0 in {
-      let Constraints = WMMAConstraints2Addr, isConvertibleToThreeAddress = 1 in {
+      let Constraints = WMMAConstraints2Addr, isConvertibleToThreeAddress = isConvertableTo3Addr in {
         def _twoaddr_w32 : VOP3P_Pseudo<Instr # Suffix, WMMAProfile>;
       }
       let Constraints = WMMAConstraints3Addr, SchedRW = [Write32Bit, Write32Bit] in {
@@ -870,7 +871,7 @@ multiclass WMMAInst<string Suffix, string Instr, VOPProfile P, SDPatternOperator
                             !cast<Instruction>(NAME # _threeaddr_w32)>;
   } else if !eq(Suffix, "_w64") then {
     let Mnemonic = Instr, mayRaiseFPException = 0, ReadsModeReg = 0 in {
-      let Constraints = WMMAConstraints2Addr, isConvertibleToThreeAddress = 1 in {
+      let Constraints = WMMAConstraints2Addr, isConvertibleToThreeAddress = isConvertableTo3Addr in {
         def _twoaddr_w64 : VOP3P_Pseudo<Instr # Suffix, WMMAProfile>;
       }
       let Constraints = WMMAConstraints3Addr, SchedRW = [Write32Bit, Write32Bit] in {
