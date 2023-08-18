@@ -21,11 +21,39 @@
 
 set -e
 
+SKIP_PULL=0
+while [[ ${#} -gt 0 ]]; do
+    case "${1}" in
+        --skip-pull) SKIP_PULL=1; shift ;;
+        *) echo "error: unrecognized argument: ${1}" >&2 ; exit 1 ;;
+    esac
+done
+
 MONOREPO_ROOT="$(git rev-parse --show-toplevel)"
 if [[ ! -d "${MONOREPO_ROOT}/libcxx/utils/ci" ]]; then
     echo "Was unable to find the root of the LLVM monorepo; are you running from within the monorepo?"
     exit 1
 fi
-docker pull ldionne/libcxx-builder
-docker run -it --volume "${MONOREPO_ROOT}:/llvm" --workdir "/llvm" --cap-add=SYS_PTRACE ldionne/libcxx-builder \
-    bash -c 'git config --global --add safe.directory /llvm ; exec bash'
+
+if [ ${SKIP_PULL} -eq 0 ]; then
+    docker pull ldionne/libcxx-builder
+fi
+
+DOCKER_OPTIONS=(-it)
+DOCKER_OPTIONS+=(--volume "${MONOREPO_ROOT}:/llvm")
+DOCKER_OPTIONS+=(--workdir "/llvm")
+DOCKER_OPTIONS+=(--cap-add=SYS_PTRACE)
+
+# Mount this volume to allow the main image to share its copy of the Android
+# platform tools with the emulator image, ensuring that the adb versions match.
+# This argument will create a new volume if it doesn't already exist.
+DOCKER_OPTIONS+=(--volume android-platform-tools:/mnt/android-platform-tools)
+
+# Pass through the Docker socket so that the buildbot can start a sibling
+# container running an Android emulator.
+if [ -S /var/run/docker.sock ]; then
+    DOCKER_OPTIONS+=(--volume /var/run/docker.sock:/var/run/docker.sock)
+fi
+
+docker run "${DOCKER_OPTIONS[@]}" ldionne/libcxx-builder \
+    bash -c 'git config --global --add safe.directory /llvm; (/opt/bin/container-setup.sh && exec bash)'
