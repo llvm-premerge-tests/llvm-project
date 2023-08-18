@@ -2204,7 +2204,7 @@ void Darwin::AddDeploymentTarget(DerivedArgList &Args) const {
           std::string OSVersionArg =
               OSVersionArgTarget->getAsString(Args, Opts);
           std::string TargetArg = OSTarget->getAsString(Args, Opts);
-          getDriver().Diag(clang::diag::warn_drv_overriding_option)
+          getDriver().Diag(clang::diag::warn_drv_overriding_t_option)
               << OSVersionArg << TargetArg;
         }
       }

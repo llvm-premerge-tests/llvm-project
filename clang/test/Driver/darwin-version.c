@@ -214,11 +214,11 @@
 
 // RUN: %clang -target x86_64-apple-macos10.11.2 -mmacos-version-min=10.6 -c %s -### 2>&1 | \
 // RUN:   FileCheck --check-prefix=CHECK-VERSION-TNO-OSV1 %s
-// CHECK-VERSION-TNO-OSV1: overriding '-mmacos-version-min=10.6' option with '-target x86_64-apple-macos10.11.2'
+// CHECK-VERSION-TNO-OSV1: overriding '-mmacos-version-min=10.6' option with '-target x86_64-apple-macos10.11.2' [-Woverriding-t-option]
 
 // RUN: %clang -target x86_64-apple-macos -miphoneos-version-min=9.1 -c %s -### 2>&1 | \
 // RUN:   FileCheck --check-prefix=CHECK-VERSION-TNO-OSV2 %s
-// CHECK-VERSION-TNO-OSV2: overriding '-miphoneos-version-min=9.1' option with '-target x86_64-apple-macos'
+// CHECK-VERSION-TNO-OSV2: overriding '-miphoneos-version-min=9.1' option with '-target x86_64-apple-macos' [-Woverriding-t-option]
 
 // RUN: %clang -target x86_64-apple-ios -miphonesimulator-version-min=10.0 -c %s -### 2>&1 | \
 // RUN:   FileCheck --check-prefix=CHECK-VERSION-TNO-OSV3 %s
