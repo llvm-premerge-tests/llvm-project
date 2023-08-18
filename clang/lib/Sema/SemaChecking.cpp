@@ -14897,8 +14897,28 @@ static void CheckImplicitConversion(Sema &S, Expr *E, QualType T,
     Source = SourceBT->getSveEltType(S.Context).getTypePtr();
   }
 
-  if (TargetBT && TargetBT->isSveVLSBuiltinType())
-    Target = TargetBT->getSveEltType(S.Context).getTypePtr();
+  // Strip RVV vector types
+  if (SourceBT && SourceBT->isVLSBuiltinType()) {
+    // Need the original target type for vector type checks
+    const Type *OriginalTarget = S.Context.getCanonicalType(T).getTypePtr();
+    // Handle conversion from scalable to fixed when msve-vector-bits is
+    // specified
+    if (S.Context.areCompatibleRVVTypes(QualType(OriginalTarget, 0),
+                                        QualType(Source, 0)) ||
+        S.Context.areLaxCompatibleRVVTypes(QualType(OriginalTarget, 0),
+                                           QualType(Source, 0)))
+      return;
+
+    // If the vector cast is cast between two vectors of the same size, it is
+    // a bitcast, not a conversion.
+    if (S.Context.getTypeSize(Source) == S.Context.getTypeSize(Target))
+      return;
+
+    Source = SourceBT->getRVVEltType(S.Context).getTypePtr();
+  }
+
+  if (TargetBT && TargetBT->isVLSBuiltinType())
+    Target = TargetBT->getVLSEltType(S.Context).getTypePtr();
 
   // If the source is floating point...
   if (SourceBT && SourceBT->isFloatingPoint()) {
