@@ -6113,19 +6113,21 @@ bool Sema::mapLoopConstruct(llvm::SmallVector<OMPClause *> &ClausesWithoutBind,
                             ArrayRef<OMPClause *> Clauses,
                             OpenMPBindClauseKind BindKind,
                             OpenMPDirectiveKind &Kind,
-                            OpenMPDirectiveKind &PrevMappedDirective) {
+                            OpenMPDirectiveKind &PrevMappedDirective,
+                            SourceLocation StartLoc, SourceLocation EndLoc) {
 
   bool UseClausesWithoutBind = false;
 
   // Restricting to "#pragma omp loop bind"
   if (getLangOpts().OpenMP >= 50 && Kind == OMPD_loop) {
+
+    const OpenMPDirectiveKind ParentDirective = DSAStack->getParentDirective();
+
     if (BindKind == OMPC_BIND_unknown) {
       // Setting the enclosing teams or parallel construct for the loop
       // directive without bind clause.
       BindKind = OMPC_BIND_thread; // Default bind(thread) if binding is unknown
 
-      const OpenMPDirectiveKind ParentDirective =
-          DSAStack->getParentDirective();
       if (ParentDirective == OMPD_unknown) {
         Diag(DSAStack->getDefaultDSALocation(),
              diag::err_omp_bind_required_on_loop);
@@ -6158,12 +6160,26 @@ bool Sema::mapLoopConstruct(llvm::SmallVector<OMPClause *> &ClausesWithoutBind,
 
     switch (BindKind) {
     case OMPC_BIND_parallel:
+      if (isOpenMPForDirective(ParentDirective)) {
+        // "omp for" within a "for" region is not permitted.
+        Diag(StartLoc, diag::err_omp_prohibited_region)
+            << true << getOpenMPDirectiveName(ParentDirective) << 1
+            << getOpenMPDirectiveName(Kind);
+      }
       Kind = OMPD_for;
       DSAStack->setCurrentDirective(OMPD_for);
       DSAStack->setMappedDirective(OMPD_loop);
       PrevMappedDirective = OMPD_loop;
       break;
     case OMPC_BIND_teams:
+      if (!isOpenMPTeamsDirective(ParentDirective)) {
+        // A "loop" region that binds to a teams region must be strictly nested
+        // inside a teams region.
+        // A "distribute" region must be strictly nested inside a teams region.
+        Diag(StartLoc, diag::err_omp_prohibited_region)
+            << true << getOpenMPDirectiveName(ParentDirective) << 4
+            << getOpenMPDirectiveName(Kind);
+      }
       Kind = OMPD_distribute;
       DSAStack->setCurrentDirective(OMPD_distribute);
       DSAStack->setMappedDirective(OMPD_loop);
@@ -6217,8 +6233,9 @@ StmtResult Sema::ActOnOpenMPExecutableDirective(
   llvm::SmallVector<OMPClause *> ClausesWithoutBind;
   bool UseClausesWithoutBind = false;
 
-  UseClausesWithoutBind = mapLoopConstruct(ClausesWithoutBind, Clauses,
-                                           BindKind, Kind, PrevMappedDirective);
+  UseClausesWithoutBind =
+      mapLoopConstruct(ClausesWithoutBind, Clauses, BindKind, Kind,
+                       PrevMappedDirective, StartLoc, EndLoc);
 
   llvm::SmallVector<OMPClause *, 8> ClausesWithImplicit;
   VarsWithInheritedDSAType VarsWithInheritedDSA;

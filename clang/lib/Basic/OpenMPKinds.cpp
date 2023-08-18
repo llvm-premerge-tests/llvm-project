@@ -563,6 +563,18 @@ const char *clang::getOpenMPSimpleClauseTypeName(OpenMPClauseKind Kind,
   llvm_unreachable("Invalid OpenMP simple clause kind");
 }
 
+bool clang::isOpenMPForDirective(OpenMPDirectiveKind DKind) {
+  return DKind == OMPD_for || DKind == OMPD_for_simd ||
+         DKind == OMPD_parallel_for || DKind == OMPD_parallel_for_simd ||
+         DKind == OMPD_target_parallel_for ||
+         DKind == OMPD_distribute_parallel_for ||
+         DKind == OMPD_distribute_parallel_for_simd ||
+         DKind == OMPD_target_parallel_for_simd ||
+         DKind == OMPD_target_teams_distribute_parallel_for ||
+         DKind == OMPD_target_teams_distribute_parallel_for_simd ||
+         DKind == OMPD_parallel_loop || DKind == OMPD_target_parallel_loop;
+}
+
 bool clang::isOpenMPLoopDirective(OpenMPDirectiveKind DKind) {
   return DKind == OMPD_simd || DKind == OMPD_for || DKind == OMPD_for_simd ||
          DKind == OMPD_parallel_for || DKind == OMPD_parallel_for_simd ||

@@ -243,6 +243,13 @@ const char *getOpenMPSimpleClauseTypeName(OpenMPClauseKind Kind, unsigned Type);
 /// or 'omp for' directive, otherwise - false.
 bool isOpenMPLoopDirective(OpenMPDirectiveKind DKind);
 
+/// Checks if the specified directive is a directive with an associated
+/// for loop construct.
+/// \param DKind Specified directive.
+/// \return true - the directive is a for-associated directive like
+/// or 'omp for' directive, otherwise - false.
+bool isOpenMPForDirective(OpenMPDirectiveKind DKind);
+
 /// Checks if the specified directive is a worksharing directive.
 /// \param DKind Specified directive.
 /// \return true - the directive is a worksharing directive like 'omp for',
