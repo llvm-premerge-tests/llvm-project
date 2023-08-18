@@ -283,10 +283,20 @@ void AArch64InstrInfo::insertIndirectBranch(MachineBasicBlock &MBB,
   };
 
   RS->enterBasicBlockEnd(MBB);
-  Register Reg = RS->FindUnusedReg(&AArch64::GPR64RegClass);
+  // If X16 is unused, then we can rely on the linker to safely insert the
+  // indirect branch.
+  Register Reg = AArch64::X16;
+  if (!RS->isRegUsed(Reg)) {
+    insertUnconditionalBranch(MBB, &NewDestBB, DL);
+    RS->setRegUsed(Reg);
+    return;
+  }
 
-  // If there's a free register, manually insert the indirect branch using it.
-  if (Reg != AArch64::NoRegister) {
+  // If there's a free register and it's worth inflating the code size,
+  // manually insert the indirect branch.
+  Reg = RS->FindUnusedReg(&AArch64::GPR64RegClass);
+  if (Reg != AArch64::NoRegister &&
+      MBB.getSectionID() == MBBSectionID::ColdSectionID) {
     buildIndirectBranch(Reg, NewDestBB);
     RS->setRegUsed(Reg);
     return;
@@ -298,7 +308,7 @@ void AArch64InstrInfo::insertIndirectBranch(MachineBasicBlock &MBB,
   if (!AFI || AFI->hasRedZone().value_or(true))
     report_fatal_error(
         "Unable to insert indirect branch inside function that has red zone");
-
+  // Spill X16 so that the linker can safely insert the indirect branch.
   Reg = AArch64::X16;
   BuildMI(MBB, MBB.end(), DL, get(AArch64::STRXpre))
       .addReg(AArch64::SP, RegState::Define)
@@ -306,7 +316,7 @@ void AArch64InstrInfo::insertIndirectBranch(MachineBasicBlock &MBB,
       .addReg(AArch64::SP)
       .addImm(-16);
 
-  buildIndirectBranch(Reg, RestoreBB);
+  BuildMI(MBB, MBB.end(), DL, get(AArch64::B)).addMBB(&RestoreBB);
 
   BuildMI(RestoreBB, RestoreBB.end(), DL, get(AArch64::LDRXpost))
       .addReg(AArch64::SP, RegState::Define)
