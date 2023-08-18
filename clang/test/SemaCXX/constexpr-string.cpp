@@ -93,6 +93,7 @@ namespace StrcmpEtc {
 
   static_assert(__builtin_strncmp(kFoobar, kFoobazfoobar, 6) == -1);
   static_assert(__builtin_strncmp(kFoobar, kFoobazfoobar, 7) == -1); // FIXME: Should we reject this?
+  static_assert(__builtin_strncmp(kFoobar, kFoobazfoobar, (size_t)-1) == -1); // Check that this does not assert
   static_assert(__builtin_strncmp(kFoobar, kFoobazfoobar + 6, 6) == 0);
   static_assert(__builtin_strncmp(kFoobar, kFoobazfoobar + 6, 7) == 0); // expected-error {{not an integral constant}} expected-note {{dereferenced one-past-the-end}}
 
@@ -377,6 +378,7 @@ namespace StrchrEtc {
 
   static_assert(__builtin_memchr(kStr, 'a', 0) == nullptr);
   static_assert(__builtin_memchr(kStr, 'a', 1) == kStr);
+  static_assert(__builtin_memchr(kStr, 'a', (size_t)-1) == kStr); // Check that this does not assert
   static_assert(__builtin_memchr(kStr, '\0', 5) == nullptr);
   static_assert(__builtin_memchr(kStr, '\0', 6) == kStr + 5);
   static_assert(__builtin_memchr(kStr, '\xff', 8) == kStr + 4);
