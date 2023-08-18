@@ -10,7 +10,6 @@
 // UNSUPPORTED: GCC-ALWAYS_INLINE-FIXME
 
 // XFAIL: msvc, target={{.+}}-windows-gnu
-// XFAIL: availability-fp_to_chars-missing
 
 // <print>
 

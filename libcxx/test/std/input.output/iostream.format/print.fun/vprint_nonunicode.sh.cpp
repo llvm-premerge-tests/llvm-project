@@ -10,8 +10,6 @@
 // UNSUPPORTED: executor-has-no-bash
 // UNSUPPORTED: GCC-ALWAYS_INLINE-FIXME
 
-// XFAIL: availability-fp_to_chars-missing
-
 // <print>
 
 //  void vprint_nonunicode(string_view fmt, format_args args);

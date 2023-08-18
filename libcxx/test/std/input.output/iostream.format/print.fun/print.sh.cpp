@@ -10,8 +10,6 @@
 // UNSUPPORTED: executor-has-no-bash
 // UNSUPPORTED: GCC-ALWAYS_INLINE-FIXME
 
-// XFAIL: availability-fp_to_chars-missing
-
 // <print>
 
 // template<class... Args>

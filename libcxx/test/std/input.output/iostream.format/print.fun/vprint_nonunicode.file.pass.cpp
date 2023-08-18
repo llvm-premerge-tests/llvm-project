@@ -14,8 +14,6 @@
 // https://lab.llvm.org/buildbot/#/builders/237/builds/3578
 // UNSUPPORTED: asan, hwasan, msan
 
-// XFAIL: availability-fp_to_chars-missing
-
 // <print>
 
 // void vprint_nonunicode(FILE* stream, string_view fmt, format_args args);

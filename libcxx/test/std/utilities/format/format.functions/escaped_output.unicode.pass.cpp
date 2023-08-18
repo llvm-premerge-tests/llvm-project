@@ -14,9 +14,6 @@
 // TODO FMT Investigate Windows and 32-bit AIX issues.
 // UNSUPPORTED: msvc, target={{.+}}-windows-gnu, target=powerpc-ibm-aix{{.*}}
 
-// TODO FMT This test should not require std::to_chars(floating-point)
-// XFAIL: availability-fp_to_chars-missing
-
 // <format>
 
 // This test the debug string type for the formatter specializations for char
