@@ -1160,24 +1160,14 @@ bool RegisterCoalescer::removePartialRedundancy(const CoalescerPair &CP,
   if (CopyLeftBB && CopyLeftBB->succ_size() > 1)
     return false;
 
-  // Now (almost sure it's) ok to move copy.
+  // Now ok to move copy.
   if (CopyLeftBB) {
     // Position in CopyLeftBB where we should insert new copy.
     auto InsPos = CopyLeftBB->getFirstTerminator();
 
-    // Make sure that B isn't referenced in the terminators (if any) at the end
-    // of the predecessor since we're about to insert a new definition of B
-    // before them.
-    if (InsPos != CopyLeftBB->end()) {
-      SlotIndex InsPosIdx = LIS->getInstructionIndex(*InsPos).getRegSlot(true);
-      if (IntB.overlaps(InsPosIdx, LIS->getMBBEndIdx(CopyLeftBB)))
-        return false;
-    }
-
     LLVM_DEBUG(dbgs() << "\tremovePartialRedundancy: Move the copy to "
                       << printMBBReference(*CopyLeftBB) << '\t' << CopyMI);
 
-    // Insert new copy to CopyLeftBB.
     MachineInstr *NewCopyMI = BuildMI(*CopyLeftBB, InsPos, CopyMI.getDebugLoc(),
                                       TII->get(TargetOpcode::COPY), IntB.reg())
                                   .addReg(IntA.reg());
