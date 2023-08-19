@@ -374,6 +374,7 @@ module std [system] {
       }
       module ranges_count                    { private header "__algorithm/ranges_count.h" }
       module ranges_count_if                 { private header "__algorithm/ranges_count_if.h" }
+      module ranges_ends_with                { private header "__algorithm/ranges_ends_with.h" }
       module ranges_equal                    { private header "__algorithm/ranges_equal.h" }
       module ranges_equal_range {
         private header "__algorithm/ranges_equal_range.h"
