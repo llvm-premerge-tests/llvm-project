@@ -41,7 +41,7 @@ for.cond.cleanup:                                 ; preds = %for.body, %entry
 for.body:                                         ; preds = %for.body, %for.body.preheader
   %indvars.iv = phi i64 [ 0, %for.body.preheader ], [ %indvars.iv.next, %for.body ]
 ; Check that we vectorized the load, and that there is no nontemporal hint.
-; CHECK: %wide.load = load <4 x i32>, ptr %{{[0-9]+}}, align 4{{$}}
+; CHECK: %wide.load = load <4 x i32>, ptr %{{[0-9]+}}, align 4, !freeze_bits !{{[0-9]+}}{{$}}
   %arrayidx = getelementptr inbounds i32, ptr %src, i64 %indvars.iv
   %0 = load i32, ptr %arrayidx, align 4
 ; Check that we vectorized the store, and that there is no nontemporal hint.
@@ -74,7 +74,7 @@ for.body:                                         ; preds = %for.body, %for.body
   %0 = load i32, ptr %arrayidx, align 4
   %arrayidx2 = getelementptr inbounds i32, ptr %dst, i64 %indvars.iv
 ; Check that the store is not vectorized and that we don't lose the !nontemporal hint in it.
-; CHECK: store i32 %{{[0-9]+}}, ptr %arrayidx2, align 4, !nontemporal !4
+; CHECK: store i32 %{{[0-9]+}}, ptr %arrayidx2, align 4, !nontemporal !{{[0-9]+}}
   store i32 %0, ptr %arrayidx2, align 4, !nontemporal !0
   %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
   %exitcond = icmp eq i64 %indvars.iv.next, %wide.trip.count
@@ -100,7 +100,7 @@ for.body:                                         ; preds = %for.body, %for.body
   %indvars.iv = phi i64 [ 0, %for.body.preheader ], [ %indvars.iv.next, %for.body ]
   %arrayidx = getelementptr inbounds i32, ptr %src, i64 %indvars.iv
 ; Check that the load is not vectorized and that we don't lose the !nontemporal hint in it.
-; CHECK: load i32, ptr %arrayidx, align 4, !nontemporal !4
+; CHECK: load i32, ptr %arrayidx, align 4, !nontemporal !{{[0-9]+}}
   %0 = load i32, ptr %arrayidx, align 4, !nontemporal !0
   %arrayidx2 = getelementptr inbounds i32, ptr %dst, i64 %indvars.iv
   store i32 %0, ptr %arrayidx2, align 4

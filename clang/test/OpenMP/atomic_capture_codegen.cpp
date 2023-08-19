@@ -566,7 +566,7 @@ int main(void) {
 // CHECK: store i8 [[EXPECTED_I8]], ptr @{{.+}},
 #pragma omp atomic capture
   {bv = bx; bx = ldv * bx;}
-// CHECK: [[EXPR_RE:%.+]] = load i32, ptr [[CIV_ADDR:@.+]],
+// CHECK: [[EXPR_RE:%.+]] = load i32, ptr [[CIV_ADDR:@[^,]+]],
 // CHECK: [[EXPR_IM:%.+]] = load i32, ptr getelementptr inbounds ({ i32, i32 }, ptr [[CIV_ADDR]], i32 0, i32 1),
 // CHECK: [[XI8:%.+]] = load atomic i8, ptr [[X_ADDR:@.+]] monotonic, align 1
 // CHECK: br label %[[CONT:.+]]

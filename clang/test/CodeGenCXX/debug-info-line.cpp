@@ -86,7 +86,7 @@ void f7() {
   int *src1();
   int src2();
 #line 800
-  int x = ( // CHECK: load {{.*}} !dbg [[DBG_F7:!.*]]
+  int x = ( // CHECK: load {{.*}} !dbg [[DBG_F7:![0-9]+]]
       src1())[src2()];
 }
 
@@ -95,7 +95,7 @@ void f8() {
   int src1[1];
   int src2();
 #line 900
-  int x = ( // CHECK: load {{.*}} !dbg [[DBG_F8:!.*]]
+  int x = ( // CHECK: load {{.*}} !dbg [[DBG_F8:![0-9]+]]
       src1)[src2()];
 }
 

@@ -66,7 +66,7 @@ define i32 @interfering_lifetime(ptr %data, i64 %indvars.iv) {
 ; CHECK-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, ptr [[DATA:%.*]], i64 [[INDVARS_IV:%.*]]
 ; CHECK-NEXT:    [[I1:%.*]] = load i32, ptr [[ARRAYIDX]], align 4
 ; CHECK-NEXT:    [[CMP_I_I:%.*]] = icmp slt i32 [[I1]], 0
-; CHECK-NEXT:    [[I3_SROA_SPECULATE_LOAD_FALSE:%.*]] = load i32, ptr [[ARRAYIDX]], align 4
+; CHECK-NEXT:    [[I3_SROA_SPECULATE_LOAD_FALSE:%.*]] = load i32, ptr [[ARRAYIDX]], align 4, !freeze_bits [[FREEZE_BITS0:![0-9]+]]
 ; CHECK-NEXT:    [[I3_SROA_SPECULATED:%.*]] = select i1 [[CMP_I_I]], i32 0, i32 [[I3_SROA_SPECULATE_LOAD_FALSE]]
 ; CHECK-NEXT:    ret i32 [[I3_SROA_SPECULATED]]
 ;
@@ -141,13 +141,13 @@ define i32 @non_speculatable_load_of_select(i1 %cond, ptr %else.addr) {
 ; CHECK-PRESERVE-CFG-NEXT:  entry:
 ; CHECK-PRESERVE-CFG-NEXT:    [[MIN:%.*]] = alloca i32, align 4
 ; CHECK-PRESERVE-CFG-NEXT:    store i32 0, ptr [[MIN]], align 4
-; CHECK-PRESERVE-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND:%.*]], ptr [[MIN]], ptr [[ELSE_ADDR:%.*]], !prof [[PROF0:![0-9]+]]
+; CHECK-PRESERVE-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND:%.*]], ptr [[MIN]], ptr [[ELSE_ADDR:%.*]], !prof [[PROF1:![0-9]+]]
 ; CHECK-PRESERVE-CFG-NEXT:    [[R:%.*]] = load i32, ptr [[ADDR]], align 4
 ; CHECK-PRESERVE-CFG-NEXT:    ret i32 [[R]]
 ;
 ; CHECK-MODIFY-CFG-LABEL: @non_speculatable_load_of_select(
 ; CHECK-MODIFY-CFG-NEXT:  entry:
-; CHECK-MODIFY-CFG-NEXT:    br i1 [[COND:%.*]], label [[ENTRY_CONT:%.*]], label [[ENTRY_ELSE:%.*]], !prof [[PROF0:![0-9]+]]
+; CHECK-MODIFY-CFG-NEXT:    br i1 [[COND:%.*]], label [[ENTRY_CONT:%.*]], label [[ENTRY_ELSE:%.*]], !prof [[PROF1:![0-9]+]]
 ; CHECK-MODIFY-CFG:       entry.else:
 ; CHECK-MODIFY-CFG-NEXT:    [[R_ELSE_VAL:%.*]] = load i32, ptr [[ELSE_ADDR:%.*]], align 4
 ; CHECK-MODIFY-CFG-NEXT:    br label [[ENTRY_CONT]]
@@ -167,13 +167,13 @@ define i32 @non_speculatable_load_of_select_inverted(i1 %cond, ptr %then.addr) {
 ; CHECK-PRESERVE-CFG-NEXT:  entry:
 ; CHECK-PRESERVE-CFG-NEXT:    [[MAX:%.*]] = alloca i32, align 4
 ; CHECK-PRESERVE-CFG-NEXT:    store i32 4095, ptr [[MAX]], align 4
-; CHECK-PRESERVE-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND:%.*]], ptr [[THEN_ADDR:%.*]], ptr [[MAX]], !prof [[PROF0]]
+; CHECK-PRESERVE-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND:%.*]], ptr [[THEN_ADDR:%.*]], ptr [[MAX]], !prof [[PROF1]]
 ; CHECK-PRESERVE-CFG-NEXT:    [[R:%.*]] = load i32, ptr [[ADDR]], align 4
 ; CHECK-PRESERVE-CFG-NEXT:    ret i32 [[R]]
 ;
 ; CHECK-MODIFY-CFG-LABEL: @non_speculatable_load_of_select_inverted(
 ; CHECK-MODIFY-CFG-NEXT:  entry:
-; CHECK-MODIFY-CFG-NEXT:    br i1 [[COND:%.*]], label [[ENTRY_THEN:%.*]], label [[ENTRY_CONT:%.*]], !prof [[PROF1:![0-9]+]]
+; CHECK-MODIFY-CFG-NEXT:    br i1 [[COND:%.*]], label [[ENTRY_THEN:%.*]], label [[ENTRY_CONT:%.*]], !prof [[PROF2:![0-9]+]]
 ; CHECK-MODIFY-CFG:       entry.then:
 ; CHECK-MODIFY-CFG-NEXT:    [[R_THEN_VAL:%.*]] = load i32, ptr [[THEN_ADDR:%.*]], align 4
 ; CHECK-MODIFY-CFG-NEXT:    br label [[ENTRY_CONT]]
@@ -194,7 +194,7 @@ define i32 @non_speculatable_volatile_load_of_select(i1 %cond, ptr %else.addr) {
 ; CHECK-PRESERVE-CFG-NEXT:  entry:
 ; CHECK-PRESERVE-CFG-NEXT:    [[MIN:%.*]] = alloca i32, align 4
 ; CHECK-PRESERVE-CFG-NEXT:    store i32 0, ptr [[MIN]], align 4
-; CHECK-PRESERVE-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND:%.*]], ptr [[MIN]], ptr [[ELSE_ADDR:%.*]], !prof [[PROF0]]
+; CHECK-PRESERVE-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND:%.*]], ptr [[MIN]], ptr [[ELSE_ADDR:%.*]], !prof [[PROF1]]
 ; CHECK-PRESERVE-CFG-NEXT:    [[R:%.*]] = load volatile i32, ptr [[ADDR]], align 4
 ; CHECK-PRESERVE-CFG-NEXT:    ret i32 [[R]]
 ;
@@ -202,7 +202,7 @@ define i32 @non_speculatable_volatile_load_of_select(i1 %cond, ptr %else.addr) {
 ; CHECK-MODIFY-CFG-NEXT:  entry:
 ; CHECK-MODIFY-CFG-NEXT:    [[MIN:%.*]] = alloca i32, align 4
 ; CHECK-MODIFY-CFG-NEXT:    store i32 0, ptr [[MIN]], align 4
-; CHECK-MODIFY-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND:%.*]], ptr [[MIN]], ptr [[ELSE_ADDR:%.*]], !prof [[PROF1]]
+; CHECK-MODIFY-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND:%.*]], ptr [[MIN]], ptr [[ELSE_ADDR:%.*]], !prof [[PROF2]]
 ; CHECK-MODIFY-CFG-NEXT:    [[R:%.*]] = load volatile i32, ptr [[ADDR]], align 4
 ; CHECK-MODIFY-CFG-NEXT:    ret i32 [[R]]
 ;
@@ -218,7 +218,7 @@ define i32 @non_speculatable_volatile_load_of_select_inverted(i1 %cond, ptr %the
 ; CHECK-PRESERVE-CFG-NEXT:  entry:
 ; CHECK-PRESERVE-CFG-NEXT:    [[MAX:%.*]] = alloca i32, align 4
 ; CHECK-PRESERVE-CFG-NEXT:    store i32 4095, ptr [[MAX]], align 4
-; CHECK-PRESERVE-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND:%.*]], ptr [[THEN_ADDR:%.*]], ptr [[MAX]], !prof [[PROF0]]
+; CHECK-PRESERVE-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND:%.*]], ptr [[THEN_ADDR:%.*]], ptr [[MAX]], !prof [[PROF1]]
 ; CHECK-PRESERVE-CFG-NEXT:    [[R:%.*]] = load volatile i32, ptr [[ADDR]], align 4
 ; CHECK-PRESERVE-CFG-NEXT:    ret i32 [[R]]
 ;
@@ -226,7 +226,7 @@ define i32 @non_speculatable_volatile_load_of_select_inverted(i1 %cond, ptr %the
 ; CHECK-MODIFY-CFG-NEXT:  entry:
 ; CHECK-MODIFY-CFG-NEXT:    [[MAX:%.*]] = alloca i32, align 4
 ; CHECK-MODIFY-CFG-NEXT:    store i32 4095, ptr [[MAX]], align 4
-; CHECK-MODIFY-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND:%.*]], ptr [[THEN_ADDR:%.*]], ptr [[MAX]], !prof [[PROF1]]
+; CHECK-MODIFY-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND:%.*]], ptr [[THEN_ADDR:%.*]], ptr [[MAX]], !prof [[PROF2]]
 ; CHECK-MODIFY-CFG-NEXT:    [[R:%.*]] = load volatile i32, ptr [[ADDR]], align 4
 ; CHECK-MODIFY-CFG-NEXT:    ret i32 [[R]]
 ;
@@ -243,13 +243,13 @@ define i32 @non_speculatable_atomic_unord_load_of_select(i1 %cond, ptr %else.add
 ; CHECK-PRESERVE-CFG-NEXT:  entry:
 ; CHECK-PRESERVE-CFG-NEXT:    [[MIN:%.*]] = alloca i32, align 4
 ; CHECK-PRESERVE-CFG-NEXT:    store i32 0, ptr [[MIN]], align 4
-; CHECK-PRESERVE-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND:%.*]], ptr [[MIN]], ptr [[ELSE_ADDR:%.*]], !prof [[PROF0]]
+; CHECK-PRESERVE-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND:%.*]], ptr [[MIN]], ptr [[ELSE_ADDR:%.*]], !prof [[PROF1]]
 ; CHECK-PRESERVE-CFG-NEXT:    [[R:%.*]] = load atomic i32, ptr [[ADDR]] unordered, align 4
 ; CHECK-PRESERVE-CFG-NEXT:    ret i32 [[R]]
 ;
 ; CHECK-MODIFY-CFG-LABEL: @non_speculatable_atomic_unord_load_of_select(
 ; CHECK-MODIFY-CFG-NEXT:  entry:
-; CHECK-MODIFY-CFG-NEXT:    br i1 [[COND:%.*]], label [[ENTRY_THEN:%.*]], label [[ENTRY_ELSE:%.*]], !prof [[PROF1]]
+; CHECK-MODIFY-CFG-NEXT:    br i1 [[COND:%.*]], label [[ENTRY_THEN:%.*]], label [[ENTRY_ELSE:%.*]], !prof [[PROF2]]
 ; CHECK-MODIFY-CFG:       entry.then:
 ; CHECK-MODIFY-CFG-NEXT:    br label [[ENTRY_CONT:%.*]]
 ; CHECK-MODIFY-CFG:       entry.else:
@@ -271,13 +271,13 @@ define i32 @non_speculatable_atomic_unord_load_of_select_inverted(i1 %cond, ptr 
 ; CHECK-PRESERVE-CFG-NEXT:  entry:
 ; CHECK-PRESERVE-CFG-NEXT:    [[MAX:%.*]] = alloca i32, align 4
 ; CHECK-PRESERVE-CFG-NEXT:    store i32 4095, ptr [[MAX]], align 4
-; CHECK-PRESERVE-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND:%.*]], ptr [[THEN_ADDR:%.*]], ptr [[MAX]], !prof [[PROF0]]
+; CHECK-PRESERVE-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND:%.*]], ptr [[THEN_ADDR:%.*]], ptr [[MAX]], !prof [[PROF1]]
 ; CHECK-PRESERVE-CFG-NEXT:    [[R:%.*]] = load atomic i32, ptr [[ADDR]] unordered, align 4
 ; CHECK-PRESERVE-CFG-NEXT:    ret i32 [[R]]
 ;
 ; CHECK-MODIFY-CFG-LABEL: @non_speculatable_atomic_unord_load_of_select_inverted(
 ; CHECK-MODIFY-CFG-NEXT:  entry:
-; CHECK-MODIFY-CFG-NEXT:    br i1 [[COND:%.*]], label [[ENTRY_THEN:%.*]], label [[ENTRY_ELSE:%.*]], !prof [[PROF1]]
+; CHECK-MODIFY-CFG-NEXT:    br i1 [[COND:%.*]], label [[ENTRY_THEN:%.*]], label [[ENTRY_ELSE:%.*]], !prof [[PROF2]]
 ; CHECK-MODIFY-CFG:       entry.then:
 ; CHECK-MODIFY-CFG-NEXT:    [[R_THEN_VAL:%.*]] = load atomic i32, ptr [[THEN_ADDR:%.*]] unordered, align 4
 ; CHECK-MODIFY-CFG-NEXT:    br label [[ENTRY_CONT:%.*]]
@@ -300,15 +300,15 @@ define i32 @non_speculatable_load_of_select_outer(i1 %cond_inner, i1 %cond_outer
 ; CHECK-PRESERVE-CFG-NEXT:  entry:
 ; CHECK-PRESERVE-CFG-NEXT:    [[MIN:%.*]] = alloca i32, align 4
 ; CHECK-PRESERVE-CFG-NEXT:    store i32 0, ptr [[MIN]], align 4
-; CHECK-PRESERVE-CFG-NEXT:    [[ADDR_DATA:%.*]] = select i1 [[COND_INNER:%.*]], ptr [[DATA_THEN:%.*]], ptr [[DATA_ELSE:%.*]], !prof [[PROF0]]
-; CHECK-PRESERVE-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND_OUTER:%.*]], ptr [[MIN]], ptr [[ADDR_DATA]], !prof [[PROF0]]
+; CHECK-PRESERVE-CFG-NEXT:    [[ADDR_DATA:%.*]] = select i1 [[COND_INNER:%.*]], ptr [[DATA_THEN:%.*]], ptr [[DATA_ELSE:%.*]], !prof [[PROF1]]
+; CHECK-PRESERVE-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND_OUTER:%.*]], ptr [[MIN]], ptr [[ADDR_DATA]], !prof [[PROF1]]
 ; CHECK-PRESERVE-CFG-NEXT:    [[R:%.*]] = load i32, ptr [[ADDR]], align 4
 ; CHECK-PRESERVE-CFG-NEXT:    ret i32 [[R]]
 ;
 ; CHECK-MODIFY-CFG-LABEL: @non_speculatable_load_of_select_outer(
 ; CHECK-MODIFY-CFG-NEXT:  entry:
-; CHECK-MODIFY-CFG-NEXT:    [[ADDR_DATA:%.*]] = select i1 [[COND_INNER:%.*]], ptr [[DATA_THEN:%.*]], ptr [[DATA_ELSE:%.*]], !prof [[PROF1]]
-; CHECK-MODIFY-CFG-NEXT:    br i1 [[COND_OUTER:%.*]], label [[ENTRY_CONT:%.*]], label [[ENTRY_ELSE:%.*]], !prof [[PROF0]]
+; CHECK-MODIFY-CFG-NEXT:    [[ADDR_DATA:%.*]] = select i1 [[COND_INNER:%.*]], ptr [[DATA_THEN:%.*]], ptr [[DATA_ELSE:%.*]], !prof [[PROF2]]
+; CHECK-MODIFY-CFG-NEXT:    br i1 [[COND_OUTER:%.*]], label [[ENTRY_CONT:%.*]], label [[ENTRY_ELSE:%.*]], !prof [[PROF1]]
 ; CHECK-MODIFY-CFG:       entry.else:
 ; CHECK-MODIFY-CFG-NEXT:    [[R_ELSE_VAL:%.*]] = load i32, ptr [[ADDR_DATA]], align 4
 ; CHECK-MODIFY-CFG-NEXT:    br label [[ENTRY_CONT]]
@@ -329,15 +329,15 @@ define i32 @non_speculatable_load_of_select_outer_inverted(i1 %cond_inner, i1 %c
 ; CHECK-PRESERVE-CFG-NEXT:  entry:
 ; CHECK-PRESERVE-CFG-NEXT:    [[MIN:%.*]] = alloca i32, align 4
 ; CHECK-PRESERVE-CFG-NEXT:    store i32 0, ptr [[MIN]], align 4
-; CHECK-PRESERVE-CFG-NEXT:    [[ADDR_DATA:%.*]] = select i1 [[COND_INNER:%.*]], ptr [[DATA_THEN:%.*]], ptr [[DATA_ELSE:%.*]], !prof [[PROF0]]
-; CHECK-PRESERVE-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND_OUTER:%.*]], ptr [[ADDR_DATA]], ptr [[MIN]], !prof [[PROF0]]
+; CHECK-PRESERVE-CFG-NEXT:    [[ADDR_DATA:%.*]] = select i1 [[COND_INNER:%.*]], ptr [[DATA_THEN:%.*]], ptr [[DATA_ELSE:%.*]], !prof [[PROF1]]
+; CHECK-PRESERVE-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND_OUTER:%.*]], ptr [[ADDR_DATA]], ptr [[MIN]], !prof [[PROF1]]
 ; CHECK-PRESERVE-CFG-NEXT:    [[R:%.*]] = load i32, ptr [[ADDR]], align 4
 ; CHECK-PRESERVE-CFG-NEXT:    ret i32 [[R]]
 ;
 ; CHECK-MODIFY-CFG-LABEL: @non_speculatable_load_of_select_outer_inverted(
 ; CHECK-MODIFY-CFG-NEXT:  entry:
-; CHECK-MODIFY-CFG-NEXT:    [[ADDR_DATA:%.*]] = select i1 [[COND_INNER:%.*]], ptr [[DATA_THEN:%.*]], ptr [[DATA_ELSE:%.*]], !prof [[PROF1]]
-; CHECK-MODIFY-CFG-NEXT:    br i1 [[COND_OUTER:%.*]], label [[ENTRY_THEN:%.*]], label [[ENTRY_CONT:%.*]], !prof [[PROF1]]
+; CHECK-MODIFY-CFG-NEXT:    [[ADDR_DATA:%.*]] = select i1 [[COND_INNER:%.*]], ptr [[DATA_THEN:%.*]], ptr [[DATA_ELSE:%.*]], !prof [[PROF2]]
+; CHECK-MODIFY-CFG-NEXT:    br i1 [[COND_OUTER:%.*]], label [[ENTRY_THEN:%.*]], label [[ENTRY_CONT:%.*]], !prof [[PROF2]]
 ; CHECK-MODIFY-CFG:       entry.then:
 ; CHECK-MODIFY-CFG-NEXT:    [[R_THEN_VAL:%.*]] = load i32, ptr [[ADDR_DATA]], align 4
 ; CHECK-MODIFY-CFG-NEXT:    br label [[ENTRY_CONT]]
@@ -359,8 +359,8 @@ define i32 @non_speculatable_load_of_select_inner(i1 %cond_inner, i1 %cond_outer
 ; CHECK-PRESERVE-CFG-NEXT:  entry:
 ; CHECK-PRESERVE-CFG-NEXT:    [[MIN:%.*]] = alloca i32, align 4
 ; CHECK-PRESERVE-CFG-NEXT:    store i32 0, ptr [[MIN]], align 4
-; CHECK-PRESERVE-CFG-NEXT:    [[MIN_ADDR_DATA:%.*]] = select i1 [[COND_INNER:%.*]], ptr [[MIN]], ptr [[MIN_ELSE:%.*]], !prof [[PROF0]]
-; CHECK-PRESERVE-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND_OUTER:%.*]], ptr [[MIN_ADDR_DATA]], ptr [[DATA_ELSE:%.*]], !prof [[PROF0]]
+; CHECK-PRESERVE-CFG-NEXT:    [[MIN_ADDR_DATA:%.*]] = select i1 [[COND_INNER:%.*]], ptr [[MIN]], ptr [[MIN_ELSE:%.*]], !prof [[PROF1]]
+; CHECK-PRESERVE-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND_OUTER:%.*]], ptr [[MIN_ADDR_DATA]], ptr [[DATA_ELSE:%.*]], !prof [[PROF1]]
 ; CHECK-PRESERVE-CFG-NEXT:    [[R:%.*]] = load i32, ptr [[ADDR]], align 4
 ; CHECK-PRESERVE-CFG-NEXT:    ret i32 [[R]]
 ;
@@ -368,8 +368,8 @@ define i32 @non_speculatable_load_of_select_inner(i1 %cond_inner, i1 %cond_outer
 ; CHECK-MODIFY-CFG-NEXT:  entry:
 ; CHECK-MODIFY-CFG-NEXT:    [[MIN:%.*]] = alloca i32, align 4
 ; CHECK-MODIFY-CFG-NEXT:    store i32 0, ptr [[MIN]], align 4
-; CHECK-MODIFY-CFG-NEXT:    [[MIN_ADDR_DATA:%.*]] = select i1 [[COND_INNER:%.*]], ptr [[MIN]], ptr [[MIN_ELSE:%.*]], !prof [[PROF1]]
-; CHECK-MODIFY-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND_OUTER:%.*]], ptr [[MIN_ADDR_DATA]], ptr [[DATA_ELSE:%.*]], !prof [[PROF1]]
+; CHECK-MODIFY-CFG-NEXT:    [[MIN_ADDR_DATA:%.*]] = select i1 [[COND_INNER:%.*]], ptr [[MIN]], ptr [[MIN_ELSE:%.*]], !prof [[PROF2]]
+; CHECK-MODIFY-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND_OUTER:%.*]], ptr [[MIN_ADDR_DATA]], ptr [[DATA_ELSE:%.*]], !prof [[PROF2]]
 ; CHECK-MODIFY-CFG-NEXT:    [[R:%.*]] = load i32, ptr [[ADDR]], align 4
 ; CHECK-MODIFY-CFG-NEXT:    ret i32 [[R]]
 ;
@@ -386,8 +386,8 @@ define i32 @non_speculatable_load_of_select_inner_inverted(i1 %cond_inner, i1 %c
 ; CHECK-PRESERVE-CFG-NEXT:  entry:
 ; CHECK-PRESERVE-CFG-NEXT:    [[MIN:%.*]] = alloca i32, align 4
 ; CHECK-PRESERVE-CFG-NEXT:    store i32 0, ptr [[MIN]], align 4
-; CHECK-PRESERVE-CFG-NEXT:    [[MIN_ADDR_DATA:%.*]] = select i1 [[COND_INNER:%.*]], ptr [[MIN_THEN:%.*]], ptr [[MIN]], !prof [[PROF0]]
-; CHECK-PRESERVE-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND_OUTER:%.*]], ptr [[MIN_ADDR_DATA]], ptr [[DATA_ELSE:%.*]], !prof [[PROF0]]
+; CHECK-PRESERVE-CFG-NEXT:    [[MIN_ADDR_DATA:%.*]] = select i1 [[COND_INNER:%.*]], ptr [[MIN_THEN:%.*]], ptr [[MIN]], !prof [[PROF1]]
+; CHECK-PRESERVE-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND_OUTER:%.*]], ptr [[MIN_ADDR_DATA]], ptr [[DATA_ELSE:%.*]], !prof [[PROF1]]
 ; CHECK-PRESERVE-CFG-NEXT:    [[R:%.*]] = load i32, ptr [[ADDR]], align 4
 ; CHECK-PRESERVE-CFG-NEXT:    ret i32 [[R]]
 ;
@@ -395,8 +395,8 @@ define i32 @non_speculatable_load_of_select_inner_inverted(i1 %cond_inner, i1 %c
 ; CHECK-MODIFY-CFG-NEXT:  entry:
 ; CHECK-MODIFY-CFG-NEXT:    [[MIN:%.*]] = alloca i32, align 4
 ; CHECK-MODIFY-CFG-NEXT:    store i32 0, ptr [[MIN]], align 4
-; CHECK-MODIFY-CFG-NEXT:    [[MIN_ADDR_DATA:%.*]] = select i1 [[COND_INNER:%.*]], ptr [[MIN_THEN:%.*]], ptr [[MIN]], !prof [[PROF1]]
-; CHECK-MODIFY-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND_OUTER:%.*]], ptr [[MIN_ADDR_DATA]], ptr [[DATA_ELSE:%.*]], !prof [[PROF1]]
+; CHECK-MODIFY-CFG-NEXT:    [[MIN_ADDR_DATA:%.*]] = select i1 [[COND_INNER:%.*]], ptr [[MIN_THEN:%.*]], ptr [[MIN]], !prof [[PROF2]]
+; CHECK-MODIFY-CFG-NEXT:    [[ADDR:%.*]] = select i1 [[COND_OUTER:%.*]], ptr [[MIN_ADDR_DATA]], ptr [[DATA_ELSE:%.*]], !prof [[PROF2]]
 ; CHECK-MODIFY-CFG-NEXT:    [[R:%.*]] = load i32, ptr [[ADDR]], align 4
 ; CHECK-MODIFY-CFG-NEXT:    ret i32 [[R]]
 ;
@@ -414,13 +414,13 @@ define void @load_of_select_with_noundef_nonnull(ptr %buffer, i1 %b) {
 ; CHECK-PRESERVE-CFG-LABEL: @load_of_select_with_noundef_nonnull(
 ; CHECK-PRESERVE-CFG-NEXT:    [[UB_PTR:%.*]] = alloca ptr, align 8
 ; CHECK-PRESERVE-CFG-NEXT:    [[SELECT_PTR:%.*]] = select i1 [[B:%.*]], ptr [[BUFFER:%.*]], ptr [[UB_PTR]]
-; CHECK-PRESERVE-CFG-NEXT:    [[LOAD_PTR:%.*]] = load ptr, ptr [[SELECT_PTR]], align 8, !nonnull !1, !noundef !1
+; CHECK-PRESERVE-CFG-NEXT:    [[LOAD_PTR:%.*]] = load ptr, ptr [[SELECT_PTR]], align 8, !nonnull !0, !noundef !0
 ; CHECK-PRESERVE-CFG-NEXT:    ret void
 ;
 ; CHECK-MODIFY-CFG-LABEL: @load_of_select_with_noundef_nonnull(
 ; CHECK-MODIFY-CFG-NEXT:    br i1 [[B:%.*]], label [[DOTTHEN:%.*]], label [[DOTCONT:%.*]]
 ; CHECK-MODIFY-CFG:       .then:
-; CHECK-MODIFY-CFG-NEXT:    [[LOAD_PTR_THEN_VAL:%.*]] = load ptr, ptr [[BUFFER:%.*]], align 8, !nonnull !2, !noundef !2
+; CHECK-MODIFY-CFG-NEXT:    [[LOAD_PTR_THEN_VAL:%.*]] = load ptr, ptr [[BUFFER:%.*]], align 8, !nonnull !0, !noundef !0
 ; CHECK-MODIFY-CFG-NEXT:    br label [[DOTCONT]]
 ; CHECK-MODIFY-CFG:       .cont:
 ; CHECK-MODIFY-CFG-NEXT:    [[LOAD_PTR:%.*]] = phi ptr [ [[LOAD_PTR_THEN_VAL]], [[DOTTHEN]] ], [ undef, [[TMP0:%.*]] ]
