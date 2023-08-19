@@ -11,6 +11,7 @@ add_clang_library(clangTidyBugproneModule
   BoolPointerImplicitConversionCheck.cpp
   BranchCloneCheck.cpp
   BugproneTidyModule.cpp
+  ChainedComparisonCheck.cpp
   CopyConstructorInitCheck.cpp
   DanglingHandleCheck.cpp
   DynamicStaticInitializersCheck.cpp

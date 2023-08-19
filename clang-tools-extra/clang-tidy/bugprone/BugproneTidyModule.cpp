@@ -16,6 +16,7 @@
 #include "BadSignalToKillThreadCheck.h"
 #include "BoolPointerImplicitConversionCheck.h"
 #include "BranchCloneCheck.h"
+#include "ChainedComparisonCheck.h"
 #include "CopyConstructorInitCheck.h"
 #include "DanglingHandleCheck.h"
 #include "DynamicStaticInitializersCheck.h"
@@ -102,6 +103,8 @@ public:
     CheckFactories.registerCheck<BoolPointerImplicitConversionCheck>(
         "bugprone-bool-pointer-implicit-conversion");
     CheckFactories.registerCheck<BranchCloneCheck>("bugprone-branch-clone");
+    CheckFactories.registerCheck<ChainedComparisonCheck>(
+        "bugprone-chained-comparison");
     CheckFactories.registerCheck<CopyConstructorInitCheck>(
         "bugprone-copy-constructor-init");
     CheckFactories.registerCheck<DanglingHandleCheck>(

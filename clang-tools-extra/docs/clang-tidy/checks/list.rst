@@ -82,6 +82,7 @@ Clang-Tidy Checks
    `bugprone-bad-signal-to-kill-thread <bugprone/bad-signal-to-kill-thread.html>`_,
    `bugprone-bool-pointer-implicit-conversion <bugprone/bool-pointer-implicit-conversion.html>`_, "Yes"
    `bugprone-branch-clone <bugprone/branch-clone.html>`_,
+   `bugprone-chained-comparison <bugprone/chained-comparison.html>`_,
    `bugprone-copy-constructor-init <bugprone/copy-constructor-init.html>`_, "Yes"
    `bugprone-dangling-handle <bugprone/dangling-handle.html>`_,
    `bugprone-dynamic-static-initializers <bugprone/dynamic-static-initializers.html>`_,

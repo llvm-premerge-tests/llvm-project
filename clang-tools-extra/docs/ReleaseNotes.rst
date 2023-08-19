@@ -116,6 +116,12 @@ Improvements to clang-tidy
 New checks
 ^^^^^^^^^^
 
+- New :doc:`bugprone-chained-comparison
+  <clang-tidy/checks/bugprone/chained-comparison>` check.
+
+  Check detects chained comparison operators that can lead to unintended
+  behavior or logical errors in C++ code.
+
 - New :doc:`bugprone-inc-dec-in-conditions
   <clang-tidy/checks/bugprone/inc-dec-in-conditions>` check.
 
@@ -187,7 +193,7 @@ Changes in existing checks
   ignore delegate constructors.
 
 - Improved :doc `cppcoreguidelines-pro-bounds-array-to-pointer-decay
-  <clang-tidy/checks/cppcoreguidelines/pro-bounds-array-to-pointer-decay>` check 
+  <clang-tidy/checks/cppcoreguidelines/pro-bounds-array-to-pointer-decay>` check
   to ignore predefined expression (e.g., ``__func__``, ...).
 
 - Improved :doc:`cppcoreguidelines-pro-type-member-init
