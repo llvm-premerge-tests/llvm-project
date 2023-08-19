@@ -211,7 +211,7 @@ void zero_size_section_and_private_maps (int ii){
 // CK27-DAG: [[P1:%.+]] = getelementptr inbounds {{.+}}[[PS]], i32 0, i32 0
 // CK27-DAG: store i[[Z:64|32]] [[VAL:%.+]], ptr [[BP1]]
 // CK27-DAG: store i[[Z]] [[VAL]], ptr [[P1]]
-// CK27-DAG: [[VAL]] = load i[[Z]], ptr [[ADDR:%.+]],
+// CK27-DAG: [[VAL]] = load i[[Z]], ptr [[ADDR:%[^,]+]],
 // CK27-64-DAG: store i32 {{.+}}, ptr [[ADDR]],
 
 // CK27: call void [[CALL07:@.+]](i[[Z]] [[VAL]])

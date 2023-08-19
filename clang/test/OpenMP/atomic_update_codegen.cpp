@@ -502,7 +502,7 @@ int main(void) {
 // CHECK: call{{.*}} @__kmpc_flush(
 #pragma omp atomic update release
   bx = ldv * bx;
-// CHECK: [[EXPR_RE:%.+]] = load i32, ptr [[CIV_ADDR:@.+]],
+// CHECK: [[EXPR_RE:%.+]] = load i32, ptr [[CIV_ADDR:@[^,]+]],
 // CHECK: [[EXPR_IM:%.+]] = load i32, ptr getelementptr inbounds ({ i32, i32 }, ptr [[CIV_ADDR]], i32 0, i32 1),
 // CHECK: [[XI8:%.+]] = load atomic i8, ptr [[X_ADDR:@.+]] monotonic, align 1
 // CHECK: br label %[[CONT:.+]]
@@ -684,7 +684,7 @@ int main(void) {
 // CHECK: call void @__atomic_load(i64 noundef 3, ptr noundef getelementptr (i8, ptr @{{.+}}, i64 1), ptr noundef [[BITCAST:%.+]], i32 noundef 0)
 // CHECK: br label %[[CONT:.+]]
 // CHECK: [[CONT]]
-// CHECK: [[PREV_VALUE:%.+]] = load i24, ptr [[LDTEMP:%.+]],
+// CHECK: [[PREV_VALUE:%.+]] = load i24, ptr [[LDTEMP:%[^,]+]],
 // CHECK: store i24 [[PREV_VALUE]], ptr [[TEMP1:%.+]],
 // CHECK: [[PREV_VALUE:%.+]] = load i24, ptr [[LDTEMP]]
 // CHECK: store i24 [[PREV_VALUE]], ptr [[TEMP:%.+]],

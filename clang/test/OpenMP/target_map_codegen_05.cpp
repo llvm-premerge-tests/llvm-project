@@ -53,10 +53,10 @@ void implicit_maps_host_global (int a){
 // CK6-DAG: [[P1:%.+]] = getelementptr inbounds {{.+}}[[PS]], i32 0, i32 0
 // CK6-DAG: store i[[sz:64|32]] [[VAL:%[^,]+]], ptr [[BP1]]
 // CK6-DAG: store i[[sz]] [[VAL]], ptr [[P1]]
-// CK6-64-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%.+]],
+// CK6-64-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%[^,]+]],
 // CK6-64-DAG: store i32 [[GBLVAL:%.+]], ptr [[ADDR]],
 // CK6-64-DAG: [[GBLVAL]] = load i32, ptr [[GBL]],
-// CK6-32-DAG: [[VAL]] = load i[[sz]], ptr [[GBLVAL:%.+]],
+// CK6-32-DAG: [[VAL]] = load i[[sz]], ptr [[GBLVAL:%[^,]+]],
 
 // CK6: call void [[KERNEL:@.+]](i[[sz]] [[VAL]])
 #pragma omp target

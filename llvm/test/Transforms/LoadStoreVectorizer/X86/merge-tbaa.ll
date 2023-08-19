@@ -23,7 +23,7 @@ target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
 define float @foo(ptr %p) {
 entry:
 ; CHECK-LABEL: foo
-; CHECK: load <2 x i32>, {{.*}}, !tbaa [[TAG_char:!.*]]
+; CHECK: load <2 x i32>, {{.*}}, !tbaa [[TAG_char:![0-9]+]]
 ; CHECK: store <2 x i32> {{.*}}, !tbaa [[TAG_char]]
   %0 = load float, ptr %p, align 4, !tbaa !2
   %sub = fadd float %0, -1.000000e+00

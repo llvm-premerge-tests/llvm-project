@@ -53,7 +53,7 @@ void implicit_maps_parameter (int a){
 // CK3-DAG: [[P1:%.+]] = getelementptr inbounds {{.+}}[[PS]], i32 0, i32 0
 // CK3-DAG: store i[[sz:64|32]] [[VAL:%[^,]+]], ptr [[BP1]]
 // CK3-DAG: store i[[sz]] [[VAL]], ptr [[P1]]
-// CK3-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%.+]],
+// CK3-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%[^,]+]],
 // CK3-64-DAG: store i32 {{.+}}, ptr [[ADDR]],
 
 // CK3: call void [[KERNEL:@.+]](i[[sz]] [[VAL]])

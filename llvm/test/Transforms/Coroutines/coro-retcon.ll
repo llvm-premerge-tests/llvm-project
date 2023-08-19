@@ -43,8 +43,8 @@ define i32 @main() {
 ; CHECK-LABEL: @main(
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    tail call void @print(i32 4)
-; CHECK-NEXT:    tail call void @print(i32 5), !noalias !0
-; CHECK-NEXT:    tail call void @print(i32 6), !noalias !3
+; CHECK-NEXT:    tail call void @print(i32 5), !noalias !1
+; CHECK-NEXT:    tail call void @print(i32 6), !noalias !4
 ; CHECK-NEXT:    ret i32 0
 ;
 ; CORO-LABEL: @main(
@@ -85,7 +85,7 @@ define hidden { ptr, ptr } @g(ptr %buffer, ptr %ptr) {
 ; CORO-NEXT:    [[PTR_SPILL_ADDR:%.*]] = getelementptr inbounds [[G_FRAME:%.*]], ptr [[TMP0]], i32 0, i32 0
 ; CORO-NEXT:    store ptr [[PTR:%.*]], ptr [[PTR_SPILL_ADDR]], align 8
 ; CORO-NEXT:    [[PTR_RELOAD_ADDR:%.*]] = getelementptr inbounds [[G_FRAME]], ptr [[TMP0]], i32 0, i32 0
-; CORO-NEXT:    [[PTR_RELOAD:%.*]] = load ptr, ptr [[PTR_RELOAD_ADDR]], align 8
+; CORO-NEXT:    [[PTR_RELOAD:%.*]] = load ptr, ptr [[PTR_RELOAD_ADDR]], align 8, !freeze_bits [[FREEZE_BITS0:![0-9]+]]
 ; CORO-NEXT:    [[TMP1:%.*]] = insertvalue { ptr, ptr } poison, ptr @g.resume.0, 0
 ; CORO-NEXT:    [[TMP2:%.*]] = insertvalue { ptr, ptr } [[TMP1]], ptr [[PTR_RELOAD]], 1
 ; CORO-NEXT:    ret { ptr, ptr } [[TMP2]]

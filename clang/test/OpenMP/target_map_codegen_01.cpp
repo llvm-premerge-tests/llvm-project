@@ -59,7 +59,7 @@ void implicit_maps_reference (int a, int *b){
 // CK2-DAG: [[P1:%.+]] = getelementptr inbounds {{.+}}[[PS]], i32 0, i32 0
 // CK2-DAG: store i[[sz:64|32]] [[VAL:%[^,]+]], ptr [[BP1]]
 // CK2-DAG: store i[[sz]] [[VAL]], ptr [[P1]]
-// CK2-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%.+]],
+// CK2-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%[^,]+]],
 // CK2-64-DAG: store i32 {{.+}}, ptr [[ADDR]],
 
 // CK2: call void [[KERNEL:@.+]](i[[sz]] [[VAL]])
@@ -80,8 +80,8 @@ void implicit_maps_reference (int a, int *b){
 // CK2-DAG: [[P1:%.+]] = getelementptr inbounds {{.+}}[[PS]], i32 0, i32 0
 // CK2-DAG: store ptr [[VAL:%[^,]+]], ptr [[BP1]]
 // CK2-DAG: store ptr [[VAL]], ptr [[P1]]
-// CK2-DAG: [[VAL]] = load ptr, ptr [[ADDR:%.+]],
-// CK2-DAG: [[ADDR]] = load ptr, ptr [[ADDR2:%.+]],
+// CK2-DAG: [[VAL]] = load ptr, ptr [[ADDR:%[^,]+]],
+// CK2-DAG: [[ADDR]] = load ptr, ptr [[ADDR2:%[^,]+]],
 
 // CK2: call void [[KERNEL2:@.+]](ptr [[VAL]])
 #pragma omp target
