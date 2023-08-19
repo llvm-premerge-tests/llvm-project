@@ -673,7 +673,7 @@ struct FunCloner {
       }
       case LLVMLoad: {
         LLVMValueRef Ptr = CloneValue(LLVMGetOperand(Src, 0));
-        Dst = LLVMBuildLoad2(Builder, CloneType(Src), Ptr, Name);
+        Dst = LLVMBuildLoad3(Builder, CloneType(Src), Ptr, Name);
         LLVMSetAlignment(Dst, LLVMGetAlignment(Src));
         LLVMSetOrdering(Dst, LLVMGetOrdering(Src));
         LLVMSetVolatile(Dst, LLVMGetVolatile(Src));

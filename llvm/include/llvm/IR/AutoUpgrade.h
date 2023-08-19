@@ -23,6 +23,7 @@ namespace llvm {
   class Function;
   class Instruction;
   class GlobalVariable;
+  class LoadInst;
   class MDNode;
   class Module;
   class StringRef;
@@ -105,6 +106,9 @@ namespace llvm {
 
   /// Upgrade operand bundles (without knowing about their user instruction).
   void UpgradeOperandBundles(std::vector<OperandBundleDef> &OperandBundles);
+
+  /// Upgrade load instruction version 1 to load instruction version 2.
+  void UpgradeLoadInstruction(Instruction *Inst);
 
 } // End llvm namespace
 
