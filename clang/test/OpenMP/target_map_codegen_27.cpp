@@ -58,8 +58,8 @@ void explicit_maps_pointer_references (int *p){
 // CK28-DAG: [[P0:%.+]] = getelementptr inbounds {{.+}}[[P]], i{{.+}} 0, i{{.+}} 0
 // CK28-DAG: store ptr [[VAR0:%.+]], ptr [[BP0]]
 // CK28-DAG: store ptr [[VAR1:%.+]], ptr [[P0]]
-// CK28-DAG: [[VAR0]] = load ptr, ptr [[VAR00:%.+]],
-// CK28-DAG: [[VAR1]] = load ptr, ptr [[VAR11:%.+]],
+// CK28-DAG: [[VAR0]] = load ptr, ptr [[VAR00:%[^,]+]],
+// CK28-DAG: [[VAR1]] = load ptr, ptr [[VAR11:%[^,]+]],
 
 // CK28: call void [[CALL00:@.+]](ptr {{[^,]+}})
 #pragma omp target map(a)
@@ -80,11 +80,11 @@ void explicit_maps_pointer_references (int *p){
 // CK28-DAG: [[P0:%.+]] = getelementptr inbounds {{.+}}[[P]], i{{.+}} 0, i{{.+}} 0
 // CK28-DAG: store ptr [[VAR0:%.+]], ptr [[BP0]]
 // CK28-DAG: store ptr [[VAR1:%.+]], ptr [[P0]]
-// CK28-DAG: [[VAR0]] = load ptr, ptr [[VAR00:%.+]],
-// CK28-DAG: [[VAR00]] = load ptr, ptr [[VAR000:%.+]],
+// CK28-DAG: [[VAR0]] = load ptr, ptr [[VAR00:%[^,]+]],
+// CK28-DAG: [[VAR00]] = load ptr, ptr [[VAR000:%[^,]+]],
 // CK28-DAG: [[VAR1]] = getelementptr inbounds i32, ptr [[VAR11:%.+]], i{{64|32}} 2
-// CK28-DAG: [[VAR11]] = load ptr, ptr [[VAR111:%.+]],
-// CK28-DAG: [[VAR111]] = load ptr, ptr [[VAR1111:%.+]],
+// CK28-DAG: [[VAR11]] = load ptr, ptr [[VAR111:%[^,]+]],
+// CK28-DAG: [[VAR111]] = load ptr, ptr [[VAR1111:%[^,]+]],
 
 // CK28: call void [[CALL01:@.+]](ptr {{[^,]+}})
 #pragma omp target map(a [2:100])

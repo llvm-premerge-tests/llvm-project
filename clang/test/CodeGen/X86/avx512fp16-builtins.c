@@ -1461,7 +1461,7 @@ __mmask8 test_mm_mask_cmp_sh_mask(__mmask8 __M, __m128h __X, __m128h __Y) {
 
 __m128h test_mm_load_sh(void const *A) {
   // CHECK-LABEL: test_mm_load_sh
-  // CHECK: load half, ptr %{{.*}}, align 1{{$}}
+  // CHECK: load half, ptr %{{.*}}, align 1, !freeze_bits !{{[0-9]+}}{{$}}
   return _mm_load_sh(A);
 }
 
@@ -1479,37 +1479,37 @@ __m128h test_mm_maskz_load_sh(__mmask8 __U, const void *__W) {
 
 __m512h test_mm512_load_ph(void *p) {
   // CHECK-LABEL: @test_mm512_load_ph
-  // CHECK: load <32 x half>, ptr %{{.*}}, align 64{{$}}
+  // CHECK: load <32 x half>, ptr %{{.*}}, align 64, !freeze_bits !{{[0-9]+}}{{$}}
   return _mm512_load_ph(p);
 }
 
 __m256h test_mm256_load_ph(void *p) {
   // CHECK-LABEL: @test_mm256_load_ph
-  // CHECK: load <16 x half>, ptr %{{.*}}, align 32{{$}}
+  // CHECK: load <16 x half>, ptr %{{.*}}, align 32, !freeze_bits !{{[0-9]+}}{{$}}
   return _mm256_load_ph(p);
 }
 
 __m128h test_mm_load_ph(void *p) {
   // CHECK-LABEL: @test_mm_load_ph
-  // CHECK: load <8 x half>, ptr %{{.*}}, align 16{{$}}
+  // CHECK: load <8 x half>, ptr %{{.*}}, align 16, !freeze_bits !{{[0-9]+}}{{$}}
   return _mm_load_ph(p);
 }
 
 __m512h test_mm512_loadu_ph(void *p) {
   // CHECK-LABEL: @test_mm512_loadu_ph
-  // CHECK: load <32 x half>, ptr {{.*}}, align 1{{$}}
+  // CHECK: load <32 x half>, ptr {{.*}}, align 1, !freeze_bits !{{[0-9]+}}{{$}}
   return _mm512_loadu_ph(p);
 }
 
 __m256h test_mm256_loadu_ph(void *p) {
   // CHECK-LABEL: @test_mm256_loadu_ph
-  // CHECK: load <16 x half>, ptr {{.*}}, align 1{{$}}
+  // CHECK: load <16 x half>, ptr {{.*}}, align 1, !freeze_bits !{{[0-9]+}}{{$}}
   return _mm256_loadu_ph(p);
 }
 
 __m128h test_mm_loadu_ph(void *p) {
   // CHECK-LABEL: @test_mm_loadu_ph
-  // CHECK: load <8 x half>, ptr {{.*}}, align 1{{$}}
+  // CHECK: load <8 x half>, ptr {{.*}}, align 1, !freeze_bits !{{[0-9]+}}{{$}}
   return _mm_loadu_ph(p);
 }
 

@@ -111,7 +111,7 @@ int test_locals() {
 void test_bitfield(A &a) {
   auto &[a1, a2] = a;
   a1 = 5;
-  // CHECK: load i16, ptr %[[BITFIELD:.*]],
+  // CHECK: load i16, ptr %[[BITFIELD:[0-9]+]],
   // CHECK: and i16 %{{.*}}, -8192
   // CHECK: or i16 %{{.*}}, 5
   // CHECK: store i16 %{{.*}}, ptr %[[BITFIELD]],

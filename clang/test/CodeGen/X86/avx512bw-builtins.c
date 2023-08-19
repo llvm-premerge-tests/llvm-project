@@ -2048,7 +2048,7 @@ __mmask32 test_mm512_kunpackw(__m512i __A, __m512i __B, __m512i __C, __m512i __D
 __m512i test_mm512_loadu_epi16 (void *__P)
 {
   // CHECK-LABEL: @test_mm512_loadu_epi16
-  // CHECK: load <8 x i64>, ptr %{{.*}}, align 1{{$}}
+  // CHECK: load <8 x i64>, ptr %{{.*}}, align 1, !freeze_bits !{{[0-9]+}}{{$}}
   return _mm512_loadu_epi16 (__P);
 }
 
@@ -2067,7 +2067,7 @@ __m512i test_mm512_maskz_loadu_epi16(__mmask32 __U, void const *__P) {
 __m512i test_mm512_loadu_epi8 (void *__P)
 {
   // CHECK-LABEL: @test_mm512_loadu_epi8
-  // CHECK: load <8 x i64>, ptr %{{.*}}, align 1{{$}}
+  // CHECK: load <8 x i64>, ptr %{{.*}}, align 1, !freeze_bits !{{[0-9]+}}{{$}}
   return _mm512_loadu_epi8 (__P);
 }
 

@@ -5,7 +5,7 @@
 define i16 @loadCombine_2consecutive(ptr %p) {
 ;
 ; LE-LABEL: @loadCombine_2consecutive(
-; LE-NEXT:    [[L1:%.*]] = load i16, ptr [[P:%.*]], align 1
+; LE-NEXT:    [[L1:%.*]] = load i16, ptr [[P:%.*]], align 1, !freeze_bits [[FREEZE_BITS0:![0-9]+]]
 ; LE-NEXT:    ret i16 [[L1]]
 ;
 ; BE-LABEL: @loadCombine_2consecutive(
@@ -40,7 +40,7 @@ define i16 @loadCombine_2consecutive_BE(ptr %p) {
 ; LE-NEXT:    ret i16 [[O1]]
 ;
 ; BE-LABEL: @loadCombine_2consecutive_BE(
-; BE-NEXT:    [[L1:%.*]] = load i16, ptr [[P:%.*]], align 1
+; BE-NEXT:    [[L1:%.*]] = load i16, ptr [[P:%.*]], align 1, !freeze_bits [[FREEZE_BITS0:![0-9]+]]
 ; BE-NEXT:    ret i16 [[L1]]
 ;
   %p1 = getelementptr i8, ptr %p, i32 1
@@ -55,7 +55,7 @@ define i16 @loadCombine_2consecutive_BE(ptr %p) {
 
 define i32 @loadCombine_4consecutive(ptr %p) {
 ; LE-LABEL: @loadCombine_4consecutive(
-; LE-NEXT:    [[L1:%.*]] = load i32, ptr [[P:%.*]], align 1
+; LE-NEXT:    [[L1:%.*]] = load i32, ptr [[P:%.*]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    ret i32 [[L1]]
 ;
 ; BE-LABEL: @loadCombine_4consecutive(
@@ -123,7 +123,7 @@ define i32 @loadCombine_4consecutive_BE(ptr %p) {
 ; LE-NEXT:    ret i32 [[O3]]
 ;
 ; BE-LABEL: @loadCombine_4consecutive_BE(
-; BE-NEXT:    [[L1:%.*]] = load i32, ptr [[P:%.*]], align 1
+; BE-NEXT:    [[L1:%.*]] = load i32, ptr [[P:%.*]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; BE-NEXT:    ret i32 [[L1]]
 ;
   %p1 = getelementptr i8, ptr %p, i32 1
@@ -151,7 +151,7 @@ define i32 @loadCombine_4consecutive_BE(ptr %p) {
 
 define i32 @loadCombine_4consecutive_alias(ptr %p) {
 ; LE-LABEL: @loadCombine_4consecutive_alias(
-; LE-NEXT:    [[L1:%.*]] = load i32, ptr [[P:%.*]], align 1
+; LE-NEXT:    [[L1:%.*]] = load i32, ptr [[P:%.*]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    store i8 10, ptr [[P]], align 1
 ; LE-NEXT:    ret i32 [[L1]]
 ;
@@ -223,7 +223,7 @@ define i32 @loadCombine_4consecutive_alias_BE(ptr %p) {
 ; LE-NEXT:    ret i32 [[O3]]
 ;
 ; BE-LABEL: @loadCombine_4consecutive_alias_BE(
-; BE-NEXT:    [[L1:%.*]] = load i32, ptr [[P:%.*]], align 1
+; BE-NEXT:    [[L1:%.*]] = load i32, ptr [[P:%.*]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; BE-NEXT:    store i8 10, ptr [[P]], align 1
 ; BE-NEXT:    ret i32 [[L1]]
 ;
@@ -255,7 +255,7 @@ define i32 @loadCombine_4consecutive_alias2(ptr %p, ptr %pstr) {
 ; LE-LABEL: @loadCombine_4consecutive_alias2(
 ; LE-NEXT:    [[P2:%.*]] = getelementptr i8, ptr [[P:%.*]], i32 2
 ; LE-NEXT:    [[P3:%.*]] = getelementptr i8, ptr [[P]], i32 3
-; LE-NEXT:    [[L1:%.*]] = load i16, ptr [[P]], align 1
+; LE-NEXT:    [[L1:%.*]] = load i16, ptr [[P]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    [[TMP1:%.*]] = zext i16 [[L1]] to i32
 ; LE-NEXT:    [[L3:%.*]] = load i8, ptr [[P2]], align 1
 ; LE-NEXT:    store i8 10, ptr [[PSTR:%.*]], align 1
@@ -338,7 +338,7 @@ define i32 @loadCombine_4consecutive_alias2_BE(ptr %p, ptr %pstr) {
 ; BE-LABEL: @loadCombine_4consecutive_alias2_BE(
 ; BE-NEXT:    [[P2:%.*]] = getelementptr i8, ptr [[P:%.*]], i32 2
 ; BE-NEXT:    [[P3:%.*]] = getelementptr i8, ptr [[P]], i32 3
-; BE-NEXT:    [[L1:%.*]] = load i16, ptr [[P]], align 1
+; BE-NEXT:    [[L1:%.*]] = load i16, ptr [[P]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; BE-NEXT:    [[TMP1:%.*]] = zext i16 [[L1]] to i32
 ; BE-NEXT:    [[TMP2:%.*]] = shl i32 [[TMP1]], 16
 ; BE-NEXT:    [[L3:%.*]] = load i8, ptr [[P2]], align 1
@@ -379,7 +379,7 @@ define i32 @loadCombine_4consecutive_alias3(ptr %p) {
 ; LE-LABEL: @loadCombine_4consecutive_alias3(
 ; LE-NEXT:    [[P2:%.*]] = getelementptr i8, ptr [[P:%.*]], i32 2
 ; LE-NEXT:    [[P3:%.*]] = getelementptr i8, ptr [[P]], i32 3
-; LE-NEXT:    [[L1:%.*]] = load i16, ptr [[P]], align 1
+; LE-NEXT:    [[L1:%.*]] = load i16, ptr [[P]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    [[TMP1:%.*]] = zext i16 [[L1]] to i32
 ; LE-NEXT:    [[L3:%.*]] = load i8, ptr [[P2]], align 1
 ; LE-NEXT:    store i8 10, ptr [[P3]], align 1
@@ -466,7 +466,7 @@ define i32 @loadCombine_4consecutive_alias3_BE(ptr %p) {
 ; BE-LABEL: @loadCombine_4consecutive_alias3_BE(
 ; BE-NEXT:    [[P2:%.*]] = getelementptr i8, ptr [[P:%.*]], i32 2
 ; BE-NEXT:    [[P3:%.*]] = getelementptr i8, ptr [[P]], i32 3
-; BE-NEXT:    [[L1:%.*]] = load i16, ptr [[P]], align 1
+; BE-NEXT:    [[L1:%.*]] = load i16, ptr [[P]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; BE-NEXT:    [[TMP1:%.*]] = zext i16 [[L1]] to i32
 ; BE-NEXT:    [[TMP2:%.*]] = shl i32 [[TMP1]], 16
 ; BE-NEXT:    [[L3:%.*]] = load i8, ptr [[P2]], align 1
@@ -771,7 +771,7 @@ define i32 @loadCombine_4consecutive_hasOneUse4(ptr %p) {
 define i32 @loadCombine_parLoad1(ptr %p) {
 ; LE-LABEL: @loadCombine_parLoad1(
 ; LE-NEXT:    [[P2:%.*]] = getelementptr i8, ptr [[P:%.*]], i32 2
-; LE-NEXT:    [[L1:%.*]] = load i16, ptr [[P]], align 1
+; LE-NEXT:    [[L1:%.*]] = load i16, ptr [[P]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    [[TMP1:%.*]] = zext i16 [[L1]] to i32
 ; LE-NEXT:    [[L3:%.*]] = load i8, ptr [[P2]], align 1
 ; LE-NEXT:    [[E3:%.*]] = zext i8 [[L3]] to i32
@@ -816,7 +816,7 @@ define i128 @loadCombine_i128(ptr %p) {
 ; LE-LABEL: @loadCombine_i128(
 ; LE-NEXT:    [[P2:%.*]] = getelementptr i32, ptr [[P:%.*]], i32 2
 ; LE-NEXT:    [[P3:%.*]] = getelementptr i32, ptr [[P]], i32 3
-; LE-NEXT:    [[L1:%.*]] = load i64, ptr [[P]], align 4
+; LE-NEXT:    [[L1:%.*]] = load i64, ptr [[P]], align 4, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    [[TMP1:%.*]] = zext i64 [[L1]] to i128
 ; LE-NEXT:    [[L3:%.*]] = load i32, ptr [[P2]], align 4
 ; LE-NEXT:    [[L4:%.*]] = load i32, ptr [[P3]], align 4
@@ -895,7 +895,7 @@ define i128 @loadCombine_i128_BE(ptr %p) {
 ; BE-LABEL: @loadCombine_i128_BE(
 ; BE-NEXT:    [[P2:%.*]] = getelementptr i32, ptr [[P:%.*]], i32 2
 ; BE-NEXT:    [[P3:%.*]] = getelementptr i32, ptr [[P]], i32 3
-; BE-NEXT:    [[L1:%.*]] = load i64, ptr [[P]], align 4
+; BE-NEXT:    [[L1:%.*]] = load i64, ptr [[P]], align 4, !freeze_bits [[FREEZE_BITS0]]
 ; BE-NEXT:    [[TMP1:%.*]] = zext i64 [[L1]] to i128
 ; BE-NEXT:    [[TMP2:%.*]] = shl i128 [[TMP1]], 64
 ; BE-NEXT:    [[L3:%.*]] = load i32, ptr [[P2]], align 4
@@ -932,7 +932,7 @@ define i128 @loadCombine_i128_BE(ptr %p) {
 
 define i64 @loadCombine_i64(ptr %p) {
 ; LE-LABEL: @loadCombine_i64(
-; LE-NEXT:    [[L1:%.*]] = load i64, ptr [[P:%.*]], align 2
+; LE-NEXT:    [[L1:%.*]] = load i64, ptr [[P:%.*]], align 2, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    ret i64 [[L1]]
 ;
 ; BE-LABEL: @loadCombine_i64(
@@ -1000,7 +1000,7 @@ define i64 @loadCombine_i64_BE(ptr %p) {
 ; LE-NEXT:    ret i64 [[O3]]
 ;
 ; BE-LABEL: @loadCombine_i64_BE(
-; BE-NEXT:    [[L1:%.*]] = load i64, ptr [[P:%.*]], align 2
+; BE-NEXT:    [[L1:%.*]] = load i64, ptr [[P:%.*]], align 2, !freeze_bits [[FREEZE_BITS0]]
 ; BE-NEXT:    ret i64 [[L1]]
 ;
   %p1 = getelementptr i16, ptr %p, i32 1
@@ -1118,7 +1118,7 @@ define i16 @loadCombine_2consecutive_separateptr(ptr %p, ptr %p2) {
 define i64 @load64_farLoads(ptr %ptr) {
 ; LE-LABEL: @load64_farLoads(
 ; LE-NEXT:  entry:
-; LE-NEXT:    [[TMP0:%.*]] = load i64, ptr [[PTR:%.*]], align 1
+; LE-NEXT:    [[TMP0:%.*]] = load i64, ptr [[PTR:%.*]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    ret i64 [[TMP0]]
 ;
 ; BE-LABEL: @load64_farLoads(
@@ -1205,19 +1205,19 @@ entry:
 
 define i32 @loadCombine_4consecutive_metadata(ptr %p, ptr %pstr) {
 ; LE-LABEL: @loadCombine_4consecutive_metadata(
-; LE-NEXT:    [[L1:%.*]] = load i32, ptr [[P:%.*]], align 1, !alias.scope !0
-; LE-NEXT:    store i32 25, ptr [[PSTR:%.*]], align 4, !noalias !0
+; LE-NEXT:    [[L1:%.*]] = load i32, ptr [[P:%.*]], align 1, !alias.scope [[META1:![0-9]+]], !freeze_bits [[FREEZE_BITS0]]
+; LE-NEXT:    store i32 25, ptr [[PSTR:%.*]], align 4, !noalias [[META1]]
 ; LE-NEXT:    ret i32 [[L1]]
 ;
 ; BE-LABEL: @loadCombine_4consecutive_metadata(
 ; BE-NEXT:    [[P1:%.*]] = getelementptr i8, ptr [[P:%.*]], i32 1
 ; BE-NEXT:    [[P2:%.*]] = getelementptr i8, ptr [[P]], i32 2
 ; BE-NEXT:    [[P3:%.*]] = getelementptr i8, ptr [[P]], i32 3
-; BE-NEXT:    [[L1:%.*]] = load i8, ptr [[P]], align 1, !alias.scope !0
-; BE-NEXT:    [[L2:%.*]] = load i8, ptr [[P1]], align 1, !alias.scope !0
-; BE-NEXT:    [[L3:%.*]] = load i8, ptr [[P2]], align 1, !alias.scope !0
-; BE-NEXT:    [[L4:%.*]] = load i8, ptr [[P3]], align 1, !alias.scope !0
-; BE-NEXT:    store i32 25, ptr [[PSTR:%.*]], align 4, !noalias !0
+; BE-NEXT:    [[L1:%.*]] = load i8, ptr [[P]], align 1, !alias.scope [[META1:![0-9]+]]
+; BE-NEXT:    [[L2:%.*]] = load i8, ptr [[P1]], align 1, !alias.scope [[META1]]
+; BE-NEXT:    [[L3:%.*]] = load i8, ptr [[P2]], align 1, !alias.scope [[META1]]
+; BE-NEXT:    [[L4:%.*]] = load i8, ptr [[P3]], align 1, !alias.scope [[META1]]
+; BE-NEXT:    store i32 25, ptr [[PSTR:%.*]], align 4, !noalias [[META1]]
 ; BE-NEXT:    [[E1:%.*]] = zext i8 [[L1]] to i32
 ; BE-NEXT:    [[E2:%.*]] = zext i8 [[L2]] to i32
 ; BE-NEXT:    [[E3:%.*]] = zext i8 [[L3]] to i32
@@ -1305,7 +1305,7 @@ define i16 @loadCombine_4consecutive_4bit(ptr %p) {
 
 define i32 @loadCombine_4consecutive_rev(ptr %p) {
 ; LE-LABEL: @loadCombine_4consecutive_rev(
-; LE-NEXT:    [[L1:%.*]] = load i32, ptr [[P:%.*]], align 1
+; LE-NEXT:    [[L1:%.*]] = load i32, ptr [[P:%.*]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    ret i32 [[L1]]
 ;
 ; BE-LABEL: @loadCombine_4consecutive_rev(
@@ -1353,7 +1353,7 @@ define i32 @loadCombine_4consecutive_rev(ptr %p) {
 
 define i64 @loadCombine_8consecutive_rev(ptr %p) {
 ; LE-LABEL: @loadCombine_8consecutive_rev(
-; LE-NEXT:    [[L1:%.*]] = load i64, ptr [[P:%.*]], align 1
+; LE-NEXT:    [[L1:%.*]] = load i64, ptr [[P:%.*]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    ret i64 [[L1]]
 ;
 ; BE-LABEL: @loadCombine_8consecutive_rev(
@@ -1481,7 +1481,7 @@ define i64 @loadCombine_8consecutive_rev_BE(ptr %p) {
 ; LE-NEXT:    ret i64 [[O1]]
 ;
 ; BE-LABEL: @loadCombine_8consecutive_rev_BE(
-; BE-NEXT:    [[L1:%.*]] = load i64, ptr [[P:%.*]], align 1
+; BE-NEXT:    [[L1:%.*]] = load i64, ptr [[P:%.*]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; BE-NEXT:    ret i64 [[L1]]
 ;
   %p1 = getelementptr i8, ptr %p, i32 1
@@ -1529,7 +1529,7 @@ define i64 @loadCombine_8consecutive_rev_BE(ptr %p) {
 
 define i64 @eggs(ptr noundef readonly %arg) {
 ; LE-LABEL: @eggs(
-; LE-NEXT:    [[TMP3:%.*]] = load i64, ptr [[ARG:%.*]], align 1
+; LE-NEXT:    [[TMP3:%.*]] = load i64, ptr [[ARG:%.*]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    ret i64 [[TMP3]]
 ;
 ; BE-LABEL: @eggs(
@@ -1684,7 +1684,7 @@ define i32 @loadCombine_4consecutive_rev_mixsize1(ptr %p) {
 ; LE-LABEL: @loadCombine_4consecutive_rev_mixsize1(
 ; LE-NEXT:    [[P2:%.*]] = getelementptr i8, ptr [[P:%.*]], i32 2
 ; LE-NEXT:    [[L1:%.*]] = load i16, ptr [[P]], align 2
-; LE-NEXT:    [[L2:%.*]] = load i16, ptr [[P2]], align 1
+; LE-NEXT:    [[L2:%.*]] = load i16, ptr [[P2]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    [[TMP1:%.*]] = zext i16 [[L2]] to i32
 ; LE-NEXT:    [[TMP2:%.*]] = shl i32 [[TMP1]], 16
 ; LE-NEXT:    [[E1:%.*]] = zext i16 [[L1]] to i32
@@ -1743,7 +1743,7 @@ define i32 @loadCombine_4consecutive_rev_mixsize1_BE(ptr %p) {
 ; BE-LABEL: @loadCombine_4consecutive_rev_mixsize1_BE(
 ; BE-NEXT:    [[P2:%.*]] = getelementptr i8, ptr [[P:%.*]], i32 2
 ; BE-NEXT:    [[L1:%.*]] = load i16, ptr [[P]], align 2
-; BE-NEXT:    [[L2:%.*]] = load i16, ptr [[P2]], align 1
+; BE-NEXT:    [[L2:%.*]] = load i16, ptr [[P2]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; BE-NEXT:    [[TMP1:%.*]] = zext i16 [[L2]] to i32
 ; BE-NEXT:    [[E1:%.*]] = zext i16 [[L1]] to i32
 ; BE-NEXT:    [[S1:%.*]] = shl i32 [[E1]], 16
@@ -1771,7 +1771,7 @@ define i32 @loadCombine_4consecutive_rev_mixsize1_BE(ptr %p) {
 define i32 @loadCombine_4consecutive_mixsize2(ptr %p) {
 ; LE-LABEL: @loadCombine_4consecutive_mixsize2(
 ; LE-NEXT:    [[P2:%.*]] = getelementptr i8, ptr [[P:%.*]], i32 2
-; LE-NEXT:    [[L1:%.*]] = load i16, ptr [[P]], align 1
+; LE-NEXT:    [[L1:%.*]] = load i16, ptr [[P]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    [[TMP1:%.*]] = zext i16 [[L1]] to i32
 ; LE-NEXT:    [[L3:%.*]] = load i16, ptr [[P2]], align 2
 ; LE-NEXT:    [[E3:%.*]] = zext i16 [[L3]] to i32
@@ -1814,7 +1814,7 @@ define i32 @loadCombine_4consecutive_mixsize2(ptr %p) {
 
 define i32 @loadCombine_4consecutive_lower_index_comes_before(ptr %p) {
 ; LE-LABEL: @loadCombine_4consecutive_lower_index_comes_before(
-; LE-NEXT:    [[L1:%.*]] = load i32, ptr [[P:%.*]], align 1
+; LE-NEXT:    [[L1:%.*]] = load i32, ptr [[P:%.*]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    ret i32 [[L1]]
 ;
 ; BE-LABEL: @loadCombine_4consecutive_lower_index_comes_before(
@@ -1863,7 +1863,7 @@ define i32 @loadCombine_4consecutive_lower_index_comes_before(ptr %p) {
 define i16 @loadCombine_2consecutive_badinsert(ptr %p) {
 ; LE-LABEL: @loadCombine_2consecutive_badinsert(
 ; LE-NEXT:    [[P1:%.*]] = getelementptr i8, ptr [[P:%.*]], i32 1
-; LE-NEXT:    [[L1:%.*]] = load i16, ptr [[P]], align 1
+; LE-NEXT:    [[L1:%.*]] = load i16, ptr [[P]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    store i8 0, ptr [[P1]], align 1
 ; LE-NEXT:    ret i16 [[L1]]
 ;
@@ -1892,7 +1892,7 @@ define i16 @loadCombine_2consecutive_badinsert(ptr %p) {
 define i32 @loadCombine_4consecutive_badinsert(ptr %p) {
 ; LE-LABEL: @loadCombine_4consecutive_badinsert(
 ; LE-NEXT:    [[P1:%.*]] = getelementptr i8, ptr [[P:%.*]], i32 1
-; LE-NEXT:    [[L1:%.*]] = load i32, ptr [[P]], align 1
+; LE-NEXT:    [[L1:%.*]] = load i32, ptr [[P]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    store i8 0, ptr [[P1]], align 1
 ; LE-NEXT:    ret i32 [[L1]]
 ;
@@ -1945,7 +1945,7 @@ define i32 @loadCombine_4consecutive_badinsert2(ptr %p) {
 ; LE-LABEL: @loadCombine_4consecutive_badinsert2(
 ; LE-NEXT:    [[P2:%.*]] = getelementptr i8, ptr [[P:%.*]], i32 2
 ; LE-NEXT:    [[P3:%.*]] = getelementptr i8, ptr [[P]], i32 3
-; LE-NEXT:    [[L1:%.*]] = load i16, ptr [[P]], align 1
+; LE-NEXT:    [[L1:%.*]] = load i16, ptr [[P]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    [[TMP1:%.*]] = zext i16 [[L1]] to i32
 ; LE-NEXT:    store i8 0, ptr [[P3]], align 1
 ; LE-NEXT:    [[L3:%.*]] = load i8, ptr [[P2]], align 1
@@ -2006,7 +2006,7 @@ define i32 @loadCombine_4consecutive_badinsert2(ptr %p) {
 define i32 @loadCombine_4consecutive_badinsert3(ptr %p) {
 ; LE-LABEL: @loadCombine_4consecutive_badinsert3(
 ; LE-NEXT:    [[TMP1:%.*]] = getelementptr i8, ptr [[P:%.*]], i32 1
-; LE-NEXT:    [[L1:%.*]] = load i32, ptr [[TMP1]], align 1
+; LE-NEXT:    [[L1:%.*]] = load i32, ptr [[TMP1]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    ret i32 [[L1]]
 ;
 ; BE-LABEL: @loadCombine_4consecutive_badinsert3(
@@ -2063,7 +2063,7 @@ define i32 @loadCombine_4consecutive_badinsert4(ptr %p) {
 ; LE-NEXT:    [[CMP:%.*]] = icmp eq i8 [[C1]], 0
 ; LE-NEXT:    br i1 [[CMP]], label [[END:%.*]], label [[BB2:%.*]]
 ; LE:       bb2:
-; LE-NEXT:    [[L1:%.*]] = load i32, ptr [[P1]], align 1
+; LE-NEXT:    [[L1:%.*]] = load i32, ptr [[P1]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    br label [[END]]
 ; LE:       end:
 ; LE-NEXT:    [[COND:%.*]] = phi i32 [ 0, [[ENTRY:%.*]] ], [ [[L1]], [[BB2]] ]
@@ -2135,7 +2135,7 @@ define i32 @loadCombine_4consecutive_badinsert5(ptr %p) {
 ; LE-NEXT:    [[P3:%.*]] = getelementptr i8, ptr [[P]], i32 3
 ; LE-NEXT:    [[L4:%.*]] = load i8, ptr [[P3]], align 1
 ; LE-NEXT:    store i8 0, ptr [[P2]], align 1
-; LE-NEXT:    [[L1:%.*]] = load i16, ptr [[P]], align 1
+; LE-NEXT:    [[L1:%.*]] = load i16, ptr [[P]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    [[TMP1:%.*]] = zext i16 [[L1]] to i32
 ; LE-NEXT:    [[L3:%.*]] = load i8, ptr [[P2]], align 1
 ; LE-NEXT:    [[E3:%.*]] = zext i8 [[L3]] to i32
@@ -2199,7 +2199,7 @@ define i32 @loadCombine_4consecutive_badinsert6(ptr %p) {
 ; LE-NEXT:    [[L1:%.*]] = load i8, ptr [[P]], align 1
 ; LE-NEXT:    [[L2:%.*]] = load i8, ptr [[P1]], align 1
 ; LE-NEXT:    store i8 0, ptr [[P3]], align 1
-; LE-NEXT:    [[L3:%.*]] = load i16, ptr [[P2]], align 1
+; LE-NEXT:    [[L3:%.*]] = load i16, ptr [[P2]], align 1, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    [[TMP1:%.*]] = zext i16 [[L3]] to i32
 ; LE-NEXT:    [[TMP2:%.*]] = shl i32 [[TMP1]], 16
 ; LE-NEXT:    [[E1:%.*]] = zext i8 [[L1]] to i32
@@ -2307,7 +2307,7 @@ define i64 @loadCombine_nonConstShift2(ptr %arg, i8 %b) {
 define void @nested_gep(ptr %p, ptr %dest) {
 ; LE-LABEL: @nested_gep(
 ; LE-NEXT:    [[TMP1:%.*]] = getelementptr i8, ptr [[P:%.*]], i32 68
-; LE-NEXT:    [[LD2:%.*]] = load i64, ptr [[TMP1]], align 4
+; LE-NEXT:    [[LD2:%.*]] = load i64, ptr [[TMP1]], align 4, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    [[TRUNC:%.*]] = trunc i64 [[LD2]] to i32
 ; LE-NEXT:    store i32 [[TRUNC]], ptr [[DEST:%.*]], align 4
 ; LE-NEXT:    ret void
@@ -2347,7 +2347,7 @@ define void @nested_gep(ptr %p, ptr %dest) {
 define void @bitcast_gep(ptr %p, ptr %dest) {
 ; LE-LABEL: @bitcast_gep(
 ; LE-NEXT:    [[TMP1:%.*]] = getelementptr i8, ptr [[P:%.*]], i32 68
-; LE-NEXT:    [[LD2:%.*]] = load i64, ptr [[TMP1]], align 4
+; LE-NEXT:    [[LD2:%.*]] = load i64, ptr [[TMP1]], align 4, !freeze_bits [[FREEZE_BITS0]]
 ; LE-NEXT:    [[TRUNC:%.*]] = trunc i64 [[LD2]] to i32
 ; LE-NEXT:    store i32 [[TRUNC]], ptr [[DEST:%.*]], align 4
 ; LE-NEXT:    ret void

@@ -98,7 +98,7 @@ void implicit_maps_class (int a){
   // CK14-DAG: [[P3:%.+]] = getelementptr inbounds {{.+}}[[PS]], i32 0, i32 3
   // CK14-DAG: store i[[sz:64|32]] [[VAL:%.+]], ptr [[BP3]]
   // CK14-DAG: store i[[sz]] [[VAL]], ptr [[P3]]
-  // CK14-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%.+]],
+  // CK14-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%[^,]+]],
   // CK14-64-DAG: store i32 {{.+}}, ptr [[ADDR]],
 
   // CK14: call void [[KERNEL:@.+]](ptr [[DECL]], i[[sz]] {{.+}})

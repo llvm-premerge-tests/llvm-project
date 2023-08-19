@@ -64,7 +64,7 @@ void implicit_maps_templated_function (int a){
   // CK16-DAG: [[P1:%.+]] = getelementptr inbounds {{.+}}[[PS]], i32 0, i32 0
   // CK16-DAG: store i[[sz:64|32]] [[VAL:%.+]], ptr [[BP1]]
   // CK16-DAG: store i[[sz]] [[VAL]], ptr [[P1]]
-  // CK16-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%.+]],
+  // CK16-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%[^,]+]],
   // CK16-64-DAG: store i32 {{.+}}, ptr [[ADDR]],
 
   // CK16: call void [[KERNEL:@.+]](i[[sz]] [[VAL]])

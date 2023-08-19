@@ -59,7 +59,7 @@ void implicit_maps_nested_integer_and_enum (int a){
 // CK5-DAG: [[P1:%.+]] = getelementptr inbounds {{.+}}[[PS]], i32 0, i32 0
 // CK5-DAG: store i[[sz:64|32]] [[VAL:%[^,]+]], ptr [[BP1]]
 // CK5-DAG: store i[[sz]] [[VAL]], ptr [[P1]]
-// CK5-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%.+]],
+// CK5-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%[^,]+]],
 // CK5-64-DAG: store i32 {{.+}}, ptr [[ADDR]],
 
 // CK5: call void [[KERNEL:@.+]](i[[sz]] [[VAL]])

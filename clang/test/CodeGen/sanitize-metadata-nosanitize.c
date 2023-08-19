@@ -29,7 +29,7 @@ __attribute__((noinline, not_tail_called)) void escape(const volatile void *p) {
 // CHECK-NEXT:    store ptr [[X]], ptr [[X_ADDR]], align 8, !tbaa [[TBAA6:![0-9]+]]
 // CHECK-NEXT:    store atomic i32 1, ptr [[X]] monotonic, align 4, !pcsections !10
 // CHECK-NEXT:    notail call void @escape(ptr noundef nonnull [[X_ADDR]])
-// CHECK-NEXT:    [[TMP0:%.*]] = load i32, ptr [[Y]], align 4, !tbaa [[TBAA11:![0-9]+]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load i32, ptr [[Y]], align 4, !tbaa [[TBAA11:![0-9]+]], !freeze_bits [[FREEZE_BITS13:![0-9]+]]
 // CHECK-NEXT:    ret i32 [[TMP0]]
 //
 int normal_function(int *x, int *y) {
@@ -46,7 +46,7 @@ int normal_function(int *x, int *y) {
 // CHECK-NEXT:    store ptr [[X]], ptr [[X_ADDR]], align 8, !tbaa [[TBAA6]]
 // CHECK-NEXT:    store atomic i32 1, ptr [[X]] monotonic, align 4
 // CHECK-NEXT:    notail call void @escape(ptr noundef nonnull [[X_ADDR]])
-// CHECK-NEXT:    [[TMP0:%.*]] = load i32, ptr [[Y]], align 4, !tbaa [[TBAA11]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load i32, ptr [[Y]], align 4, !tbaa [[TBAA11]], !freeze_bits [[FREEZE_BITS13]]
 // CHECK-NEXT:    ret i32 [[TMP0]]
 //
 __attribute__((disable_sanitizer_instrumentation)) int test_disable_sanitize_instrumentation(int *x, int *y) {
@@ -57,13 +57,13 @@ __attribute__((disable_sanitizer_instrumentation)) int test_disable_sanitize_ins
 
 // CHECK: Function Attrs: mustprogress nofree norecurse nounwind willreturn memory(write, argmem: readwrite, inaccessiblemem: none)
 // CHECK-LABEL: define dso_local i32 @test_no_sanitize_thread
-// CHECK-SAME: (ptr noundef [[X:%.*]], ptr nocapture noundef readonly [[Y:%.*]]) local_unnamed_addr #[[ATTR3:[0-9]+]] !pcsections !13 {
+// CHECK-SAME: (ptr noundef [[X:%.*]], ptr nocapture noundef readonly [[Y:%.*]]) local_unnamed_addr #[[ATTR3:[0-9]+]] !pcsections !14 {
 // CHECK-NEXT:  entry:
 // CHECK-NEXT:    [[X_ADDR:%.*]] = alloca ptr, align 8
 // CHECK-NEXT:    store ptr [[X]], ptr [[X_ADDR]], align 8, !tbaa [[TBAA6]]
 // CHECK-NEXT:    store atomic i32 1, ptr [[X]] monotonic, align 4, !pcsections !10
 // CHECK-NEXT:    notail call void @escape(ptr noundef nonnull [[X_ADDR]])
-// CHECK-NEXT:    [[TMP0:%.*]] = load i32, ptr [[Y]], align 4, !tbaa [[TBAA11]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load i32, ptr [[Y]], align 4, !tbaa [[TBAA11]], !freeze_bits [[FREEZE_BITS13]]
 // CHECK-NEXT:    ret i32 [[TMP0]]
 //
 __attribute__((no_sanitize("thread"))) int test_no_sanitize_thread(int *x, int *y) {
@@ -74,13 +74,13 @@ __attribute__((no_sanitize("thread"))) int test_no_sanitize_thread(int *x, int *
 
 // CHECK: Function Attrs: mustprogress nofree norecurse nounwind willreturn memory(write, argmem: readwrite, inaccessiblemem: none)
 // CHECK-LABEL: define dso_local i32 @test_no_sanitize_all
-// CHECK-SAME: (ptr noundef [[X:%.*]], ptr nocapture noundef readonly [[Y:%.*]]) local_unnamed_addr #[[ATTR3]] !pcsections !13 {
+// CHECK-SAME: (ptr noundef [[X:%.*]], ptr nocapture noundef readonly [[Y:%.*]]) local_unnamed_addr #[[ATTR3]] !pcsections !14 {
 // CHECK-NEXT:  entry:
 // CHECK-NEXT:    [[X_ADDR:%.*]] = alloca ptr, align 8
 // CHECK-NEXT:    store ptr [[X]], ptr [[X_ADDR]], align 8, !tbaa [[TBAA6]]
 // CHECK-NEXT:    store atomic i32 1, ptr [[X]] monotonic, align 4, !pcsections !10
 // CHECK-NEXT:    notail call void @escape(ptr noundef nonnull [[X_ADDR]])
-// CHECK-NEXT:    [[TMP0:%.*]] = load i32, ptr [[Y]], align 4, !tbaa [[TBAA11]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load i32, ptr [[Y]], align 4, !tbaa [[TBAA11]], !freeze_bits [[FREEZE_BITS13]]
 // CHECK-NEXT:    ret i32 [[TMP0]]
 //
 __attribute__((no_sanitize("all"))) int test_no_sanitize_all(int *x, int *y) {
@@ -95,6 +95,8 @@ __attribute__((no_sanitize("all"))) int test_no_sanitize_all(int *x, int *y) {
 // CHECK: attributes #3 = { mustprogress nofree norecurse nounwind willreturn memory(write, argmem: readwrite, inaccessiblemem: none) "min-legal-vector-width"="0" "no-trapping-math"="true" "no_sanitize_thread" "stack-protector-buffer-size"="8" "target-features"="+cx8,+mmx,+sse,+sse2,+x87" }
 // CHECK: attributes #4 = { nounwind }
 //.
+// CHECK: !0 = !{i32 1, !"wchar_size", i32 4}
+// CHECK: !1 = !{!"clang version {{.*}}"}
 // CHECK: !2 = !{!"sanmd_covered!C", !3}
 // CHECK: !3 = !{i64 0}
 // CHECK: !4 = !{!"sanmd_covered!C", !5}
@@ -106,6 +108,7 @@ __attribute__((no_sanitize("all"))) int test_no_sanitize_all(int *x, int *y) {
 // CHECK: !10 = !{!"sanmd_atomics!C"}
 // CHECK: !11 = !{!12, !12, i64 0}
 // CHECK: !12 = !{!"int", !8, i64 0}
-// CHECK: !13 = !{!"sanmd_covered!C", !14}
-// CHECK: !14 = !{i64 2}
+// CHECK: !13 = !{}
+// CHECK: !14 = !{!"sanmd_covered!C", !15}
+// CHECK: !15 = !{i64 2}
 //.

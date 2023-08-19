@@ -33,9 +33,9 @@ cleanup:                                          ; preds = %loop
 define i32 @main() {
 ; CHECK-LABEL: @main(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    call void @print(i32 4)
-; CHECK-NEXT:    call void @print(i32 5), !noalias !0
-; CHECK-NEXT:    call void @print(i32 6), !noalias !3
+; CHECK-NEXT:    tail call void @print(i32 4)
+; CHECK-NEXT:    tail call void @print(i32 5), !noalias !1
+; CHECK-NEXT:    tail call void @print(i32 6), !noalias !4
 ; CHECK-NEXT:    ret i32 0
 ;
 entry:

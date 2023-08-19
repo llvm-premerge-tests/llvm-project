@@ -5,10 +5,10 @@ extern volatile int i;
 
 // CHECK-LABEL: @_Z8OneCaseLv(
 // CHECK-NEXT:  entry:
-// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2:![0-9]+]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2:![0-9]+]], !freeze_bits [[FREEZE_BITS6:![0-9]+]]
 // CHECK-NEXT:    switch i32 [[TMP0]], label [[SW_EPILOG:%.*]] [
 // CHECK-NEXT:    i32 1, label [[SW_EPILOG]]
-// CHECK-NEXT:    ], !prof !6
+// CHECK-NEXT:    ], !prof [[PROF7:![0-9]+]]
 // CHECK:       sw.epilog:
 // CHECK-NEXT:    ret void
 //
@@ -20,12 +20,12 @@ void OneCaseL() {
 
 // CHECK-LABEL: @_Z8OneCaseUv(
 // CHECK-NEXT:  entry:
-// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]], !freeze_bits [[FREEZE_BITS6]]
 // CHECK-NEXT:    switch i32 [[TMP0]], label [[SW_EPILOG:%.*]] [
 // CHECK-NEXT:    i32 1, label [[SW_BB:%.*]]
-// CHECK-NEXT:    ], !prof !7
+// CHECK-NEXT:    ], !prof [[PROF8:![0-9]+]]
 // CHECK:       sw.bb:
-// CHECK-NEXT:    [[TMP1:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]]
+// CHECK-NEXT:    [[TMP1:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]], !freeze_bits [[FREEZE_BITS6]]
 // CHECK-NEXT:    [[INC:%.*]] = add nsw i32 [[TMP1]], 1
 // CHECK-NEXT:    store volatile i32 [[INC]], ptr @i, align 4, !tbaa [[TBAA2]]
 // CHECK-NEXT:    br label [[SW_EPILOG]]
@@ -40,11 +40,11 @@ void OneCaseU() {
 
 // CHECK-LABEL: @_Z10TwoCasesLNv(
 // CHECK-NEXT:  entry:
-// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]], !freeze_bits [[FREEZE_BITS6]]
 // CHECK-NEXT:    switch i32 [[TMP0]], label [[SW_EPILOG:%.*]] [
 // CHECK-NEXT:    i32 1, label [[SW_EPILOG]]
 // CHECK-NEXT:    i32 2, label [[SW_EPILOG]]
-// CHECK-NEXT:    ], !prof !8
+// CHECK-NEXT:    ], !prof [[PROF9:![0-9]+]]
 // CHECK:       sw.epilog:
 // CHECK-NEXT:    ret void
 //
@@ -57,11 +57,11 @@ void TwoCasesLN() {
 
 // CHECK-LABEL: @_Z10TwoCasesUNv(
 // CHECK-NEXT:  entry:
-// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]], !freeze_bits [[FREEZE_BITS6]]
 // CHECK-NEXT:    switch i32 [[TMP0]], label [[SW_EPILOG:%.*]] [
 // CHECK-NEXT:    i32 1, label [[SW_EPILOG]]
 // CHECK-NEXT:    i32 2, label [[SW_EPILOG]]
-// CHECK-NEXT:    ], !prof !9
+// CHECK-NEXT:    ], !prof [[PROF10:![0-9]+]]
 // CHECK:       sw.epilog:
 // CHECK-NEXT:    ret void
 //
@@ -74,11 +74,11 @@ void TwoCasesUN() {
 
 // CHECK-LABEL: @_Z10TwoCasesLUv(
 // CHECK-NEXT:  entry:
-// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]], !freeze_bits [[FREEZE_BITS6]]
 // CHECK-NEXT:    switch i32 [[TMP0]], label [[SW_EPILOG:%.*]] [
 // CHECK-NEXT:    i32 1, label [[SW_EPILOG]]
 // CHECK-NEXT:    i32 2, label [[SW_EPILOG]]
-// CHECK-NEXT:    ], !prof !10
+// CHECK-NEXT:    ], !prof [[PROF11:![0-9]+]]
 // CHECK:       sw.epilog:
 // CHECK-NEXT:    ret void
 //
@@ -91,13 +91,13 @@ void TwoCasesLU() {
 
 // CHECK-LABEL: @_Z20CasesFallthroughNNLNv(
 // CHECK-NEXT:  entry:
-// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]], !freeze_bits [[FREEZE_BITS6]]
 // CHECK-NEXT:    switch i32 [[TMP0]], label [[SW_EPILOG:%.*]] [
 // CHECK-NEXT:    i32 1, label [[SW_BB:%.*]]
 // CHECK-NEXT:    i32 2, label [[SW_BB]]
 // CHECK-NEXT:    i32 3, label [[SW_BB1:%.*]]
 // CHECK-NEXT:    i32 4, label [[SW_BB1]]
-// CHECK-NEXT:    ], !prof !11
+// CHECK-NEXT:    ], !prof [[PROF12:![0-9]+]]
 // CHECK:       sw.bb:
 // CHECK-NEXT:    br label [[SW_BB1]]
 // CHECK:       sw.bb1:
@@ -116,13 +116,13 @@ void CasesFallthroughNNLN() {
 
 // CHECK-LABEL: @_Z20CasesFallthroughNNUNv(
 // CHECK-NEXT:  entry:
-// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]], !freeze_bits [[FREEZE_BITS6]]
 // CHECK-NEXT:    switch i32 [[TMP0]], label [[SW_EPILOG:%.*]] [
 // CHECK-NEXT:    i32 1, label [[SW_BB:%.*]]
 // CHECK-NEXT:    i32 2, label [[SW_BB]]
 // CHECK-NEXT:    i32 3, label [[SW_BB1:%.*]]
 // CHECK-NEXT:    i32 4, label [[SW_BB1]]
-// CHECK-NEXT:    ], !prof !12
+// CHECK-NEXT:    ], !prof [[PROF13:![0-9]+]]
 // CHECK:       sw.bb:
 // CHECK-NEXT:    br label [[SW_BB1]]
 // CHECK:       sw.bb1:
@@ -141,7 +141,7 @@ void CasesFallthroughNNUN() {
 
 // CHECK-LABEL: @_Z28CasesFallthroughRangeSmallLNv(
 // CHECK-NEXT:  entry:
-// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]], !freeze_bits [[FREEZE_BITS6]]
 // CHECK-NEXT:    switch i32 [[TMP0]], label [[SW_EPILOG:%.*]] [
 // CHECK-NEXT:    i32 1, label [[SW_BB:%.*]]
 // CHECK-NEXT:    i32 2, label [[SW_BB]]
@@ -151,9 +151,9 @@ void CasesFallthroughNNUN() {
 // CHECK-NEXT:    i32 102, label [[SW_BB1:%.*]]
 // CHECK-NEXT:    i32 103, label [[SW_BB2:%.*]]
 // CHECK-NEXT:    i32 104, label [[SW_BB2]]
-// CHECK-NEXT:    ], !prof !13
+// CHECK-NEXT:    ], !prof [[PROF14:![0-9]+]]
 // CHECK:       sw.bb:
-// CHECK-NEXT:    [[TMP1:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]]
+// CHECK-NEXT:    [[TMP1:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]], !freeze_bits [[FREEZE_BITS6]]
 // CHECK-NEXT:    [[INC:%.*]] = add nsw i32 [[TMP1]], 1
 // CHECK-NEXT:    store volatile i32 [[INC]], ptr @i, align 4, !tbaa [[TBAA2]]
 // CHECK-NEXT:    br label [[SW_BB1]]
@@ -175,7 +175,7 @@ void CasesFallthroughRangeSmallLN() {
 
 // CHECK-LABEL: @_Z28CasesFallthroughRangeSmallUNv(
 // CHECK-NEXT:  entry:
-// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]], !freeze_bits [[FREEZE_BITS6]]
 // CHECK-NEXT:    switch i32 [[TMP0]], label [[SW_EPILOG:%.*]] [
 // CHECK-NEXT:    i32 1, label [[SW_BB:%.*]]
 // CHECK-NEXT:    i32 2, label [[SW_BB]]
@@ -185,9 +185,9 @@ void CasesFallthroughRangeSmallLN() {
 // CHECK-NEXT:    i32 102, label [[SW_BB1:%.*]]
 // CHECK-NEXT:    i32 103, label [[SW_BB2:%.*]]
 // CHECK-NEXT:    i32 104, label [[SW_BB2]]
-// CHECK-NEXT:    ], !prof !14
+// CHECK-NEXT:    ], !prof [[PROF15:![0-9]+]]
 // CHECK:       sw.bb:
-// CHECK-NEXT:    [[TMP1:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]]
+// CHECK-NEXT:    [[TMP1:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]], !freeze_bits [[FREEZE_BITS6]]
 // CHECK-NEXT:    [[INC:%.*]] = add nsw i32 [[TMP1]], 1
 // CHECK-NEXT:    store volatile i32 [[INC]], ptr @i, align 4, !tbaa [[TBAA2]]
 // CHECK-NEXT:    br label [[SW_BB1]]
@@ -209,11 +209,11 @@ void CasesFallthroughRangeSmallUN() {
 
 // CHECK-LABEL: @_Z29CasesFallthroughRangeLargeLLNv(
 // CHECK-NEXT:  entry:
-// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]], !freeze_bits [[FREEZE_BITS6]]
 // CHECK-NEXT:    switch i32 [[TMP0]], label [[SW_CASERANGE:%.*]] [
 // CHECK-NEXT:    i32 1003, label [[SW_BB1:%.*]]
 // CHECK-NEXT:    i32 104, label [[SW_BB1]]
-// CHECK-NEXT:    ], !prof !8
+// CHECK-NEXT:    ], !prof [[PROF9]]
 // CHECK:       sw.bb:
 // CHECK-NEXT:    br label [[SW_BB1]]
 // CHECK:       sw.bb1:
@@ -236,11 +236,11 @@ void CasesFallthroughRangeLargeLLN() {
 
 // CHECK-LABEL: @_Z29CasesFallthroughRangeLargeUUNv(
 // CHECK-NEXT:  entry:
-// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]], !freeze_bits [[FREEZE_BITS6]]
 // CHECK-NEXT:    switch i32 [[TMP0]], label [[SW_CASERANGE:%.*]] [
 // CHECK-NEXT:    i32 1003, label [[SW_BB1:%.*]]
 // CHECK-NEXT:    i32 104, label [[SW_BB1]]
-// CHECK-NEXT:    ], !prof !9
+// CHECK-NEXT:    ], !prof [[PROF10]]
 // CHECK:       sw.bb:
 // CHECK-NEXT:    br label [[SW_BB1]]
 // CHECK:       sw.bb1:
@@ -263,10 +263,10 @@ void CasesFallthroughRangeLargeUUN() {
 
 // CHECK-LABEL: @_Z15OneCaseDefaultLv(
 // CHECK-NEXT:  entry:
-// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]], !freeze_bits [[FREEZE_BITS6]]
 // CHECK-NEXT:    switch i32 [[TMP0]], label [[SW_DEFAULT:%.*]] [
 // CHECK-NEXT:    i32 1, label [[SW_EPILOG:%.*]]
-// CHECK-NEXT:    ], !prof !15
+// CHECK-NEXT:    ], !prof [[PROF16:![0-9]+]]
 // CHECK:       sw.default:
 // CHECK-NEXT:    br label [[SW_EPILOG]]
 // CHECK:       sw.epilog:
@@ -281,10 +281,10 @@ void OneCaseDefaultL() {
 
 // CHECK-LABEL: @_Z15OneCaseDefaultUv(
 // CHECK-NEXT:  entry:
-// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]], !freeze_bits [[FREEZE_BITS6]]
 // CHECK-NEXT:    switch i32 [[TMP0]], label [[SW_DEFAULT:%.*]] [
 // CHECK-NEXT:    i32 1, label [[SW_EPILOG:%.*]]
-// CHECK-NEXT:    ], !prof !16
+// CHECK-NEXT:    ], !prof [[PROF17:![0-9]+]]
 // CHECK:       sw.default:
 // CHECK-NEXT:    br label [[SW_EPILOG]]
 // CHECK:       sw.epilog:
@@ -299,11 +299,11 @@ void OneCaseDefaultU() {
 
 // CHECK-LABEL: @_Z18TwoCasesDefaultLNLv(
 // CHECK-NEXT:  entry:
-// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]], !freeze_bits [[FREEZE_BITS6]]
 // CHECK-NEXT:    switch i32 [[TMP0]], label [[SW_DEFAULT:%.*]] [
 // CHECK-NEXT:    i32 1, label [[SW_EPILOG:%.*]]
 // CHECK-NEXT:    i32 2, label [[SW_EPILOG]]
-// CHECK-NEXT:    ], !prof !17
+// CHECK-NEXT:    ], !prof [[PROF18:![0-9]+]]
 // CHECK:       sw.default:
 // CHECK-NEXT:    br label [[SW_EPILOG]]
 // CHECK:       sw.epilog:
@@ -319,11 +319,11 @@ void TwoCasesDefaultLNL() {
 
 // CHECK-LABEL: @_Z18TwoCasesDefaultLNNv(
 // CHECK-NEXT:  entry:
-// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]], !freeze_bits [[FREEZE_BITS6]]
 // CHECK-NEXT:    switch i32 [[TMP0]], label [[SW_DEFAULT:%.*]] [
 // CHECK-NEXT:    i32 1, label [[SW_EPILOG:%.*]]
 // CHECK-NEXT:    i32 2, label [[SW_EPILOG]]
-// CHECK-NEXT:    ], !prof !8
+// CHECK-NEXT:    ], !prof [[PROF9]]
 // CHECK:       sw.default:
 // CHECK-NEXT:    br label [[SW_EPILOG]]
 // CHECK:       sw.epilog:
@@ -339,11 +339,11 @@ void TwoCasesDefaultLNN() {
 
 // CHECK-LABEL: @_Z18TwoCasesDefaultLNUv(
 // CHECK-NEXT:  entry:
-// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load volatile i32, ptr @i, align 4, !tbaa [[TBAA2]], !freeze_bits [[FREEZE_BITS6]]
 // CHECK-NEXT:    switch i32 [[TMP0]], label [[SW_DEFAULT:%.*]] [
 // CHECK-NEXT:    i32 1, label [[SW_EPILOG:%.*]]
 // CHECK-NEXT:    i32 2, label [[SW_EPILOG]]
-// CHECK-NEXT:    ], !prof !18
+// CHECK-NEXT:    ], !prof [[PROF19:![0-9]+]]
 // CHECK:       sw.default:
 // CHECK-NEXT:    br label [[SW_EPILOG]]
 // CHECK:       sw.epilog:

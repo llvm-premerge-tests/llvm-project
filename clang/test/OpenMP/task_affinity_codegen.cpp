@@ -18,8 +18,8 @@ int main() {
   // CHECK: [[AFFS_ADDR:%.+]] = alloca [1 x %struct.kmp_task_affinity_info_t],
   // CHECK: [[TD:%.+]] = call ptr @__kmpc_omp_task_alloc(ptr @{{.+}}, i32 [[GTID:%.+]], i32 1, i64 40, i64 1, ptr @{{.+}})
   // CHECK: [[AFFINE_LST_ADDR:%.+]] = getelementptr inbounds [1 x %struct.kmp_task_affinity_info_t], ptr [[AFFS_ADDR]], i64 0, i64 0
-  // CHECK: [[P:%.+]] = load ptr, ptr [[P_ADDR:%.+]],
-  // CHECK: [[A_VAL:%.+]] = load i32, ptr [[A_ADDR:%.+]],
+  // CHECK: [[P:%.+]] = load ptr, ptr [[P_ADDR:%[^,]+]],
+  // CHECK: [[A_VAL:%.+]] = load i32, ptr [[A_ADDR:%[^,]+]],
   // CHECK: [[A_SZ:%.+]] = sext i32 [[A_VAL]] to i64
   // CHECK: [[BYTES:%.+]] = mul nuw i64 4, [[A_SZ]]
   // CHECK: [[SZ:%.+]] = mul nuw i64 [[BYTES]], 10
