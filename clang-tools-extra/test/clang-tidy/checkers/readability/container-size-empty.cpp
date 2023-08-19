@@ -22,6 +22,10 @@ template <typename T> struct set {
 };
 }
 
+namespace string_literals{
+string operator""s(const char *, size_t);
+}
+
 }
 
 template <typename T>
@@ -769,4 +773,18 @@ bool testDummyType(const DummyType& value) {
 
 bool testIgnoredDummyType(const IgnoredDummyType& value) {
   return value == IgnoredDummyType();
+}
+
+bool testStringLiterals(const std::string& s)
+{
+  using namespace std::string_literals;
+  return s == ""s;
+  // CHECK-MESSAGES: :[[@LINE-1]]:10: warning: the 'empty' method should be used
+  // CHECK-FIXES: {{^  }}return s.empty()
+}
+
+bool testNotEmptyStringLiterals(const std::string& s)
+{
+  using namespace std::string_literals;
+  return s == "foo"s;
 }

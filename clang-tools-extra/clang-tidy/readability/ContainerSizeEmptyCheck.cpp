@@ -166,9 +166,11 @@ void ContainerSizeEmptyCheck::registerMatchers(MatchFinder *Finder) {
       this);
 
   // Comparison to empty string or empty constructor.
-  const auto WrongComparend = anyOf(
-      stringLiteral(hasSize(0)), cxxConstructExpr(isDefaultConstruction()),
-      cxxUnresolvedConstructExpr(argumentCountIs(0)));
+  const auto WrongComparend =
+      anyOf(stringLiteral(hasSize(0)),
+            userDefinedLiteral(hasDescendant(stringLiteral(hasSize(0)))),
+            cxxConstructExpr(isDefaultConstruction()),
+            cxxUnresolvedConstructExpr(argumentCountIs(0)));
   // Match the object being compared.
   const auto STLArg =
       anyOf(unaryOperator(
