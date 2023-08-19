@@ -803,12 +803,12 @@ bool AMDGPUPromoteAllocaImpl::tryPromoteAllocaToVector(AllocaInst &Alloca) {
   const unsigned VecStoreSize = DL->getTypeStoreSize(VectorTy);
 
   // Alloca is uninitialized memory. Imitate that by making the first value
-  // undef.
+  // poison.
   SSAUpdater Updater;
   Updater.Initialize(VectorTy, "promotealloca");
   Updater.AddAvailableValue(
       Alloca.getParent(),
-      getInitialValueOfAllocation(&Alloca, nullptr, VectorTy));
+      getInitialValueOfAllocation(&Alloca, nullptr, VectorTy).second);
 
   // First handle the initial worklist.
   SmallVector<LoadInst *, 4> DeferredLoads;

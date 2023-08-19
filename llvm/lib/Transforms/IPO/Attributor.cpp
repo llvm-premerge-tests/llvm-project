@@ -232,7 +232,7 @@ AA::getInitialValueForObj(Attributor &A, const AbstractAttribute &QueryingAA,
                           const DataLayout &DL, AA::RangeTy *RangePtr) {
   if (isa<AllocaInst>(Obj))
     return UndefValue::get(&Ty);
-  if (Constant *Init = getInitialValueOfAllocation(&Obj, TLI, &Ty))
+  if (Constant *Init = getInitialValueOfAllocation(&Obj, TLI, &Ty).second)
     return Init;
   auto *GV = dyn_cast<GlobalVariable>(&Obj);
   if (!GV)
