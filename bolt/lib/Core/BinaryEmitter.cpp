@@ -376,7 +376,7 @@ bool BinaryEmitter::emitFunction(BinaryFunction &Function,
   }
 
   if (opts::MarkFuncs)
-    Streamer.emitIntValue(BC.MIB->getTrapFillValue(), 1);
+    Streamer.emitBytes(BC.MIB->getTrapFillValue());
 
   // Emit CFI end
   if (Function.hasCFI())
@@ -420,7 +420,7 @@ void BinaryEmitter::emitFunctionBody(BinaryFunction &BF, FunctionFragment &FF,
     // case, the call site entries in that LSDA have 0 as offset to the landing
     // pad, which the runtime interprets as "no handler". To prevent this,
     // insert some padding.
-    Streamer.emitIntValue(BC.MIB->getTrapFillValue(), 1);
+    Streamer.emitBytes(BC.MIB->getTrapFillValue());
   }
 
   // Track the first emitted instruction with debug info.
