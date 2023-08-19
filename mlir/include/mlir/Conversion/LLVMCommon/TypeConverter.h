@@ -163,6 +163,9 @@ protected:
   LLVM::LLVMDialect *llvmDialect;
 
 private:
+  // Recursive structure detection
+  SmallVector<Type> conversionCallStack;
+
   /// Convert a function type.  The arguments and results are converted one by
   /// one.  Additionally, if the function returns more than one value, pack the
   /// results into an LLVM IR structure type so that the converted function type

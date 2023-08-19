@@ -11,6 +11,7 @@
 #include "mlir/Conversion/LLVMCommon/MemRefBuilder.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/LLVMIR/LLVMTypes.h"
+#include "llvm/ADT/ScopeExit.h"
 #include <optional>
 
 using namespace mlir;
@@ -56,13 +57,16 @@ LLVMTypeConverter::LLVMTypeConverter(MLIRContext *ctx,
       return LLVM::LLVMPointerType::get(pointee, type.getAddressSpace());
     return std::nullopt;
   });
-  addConversion([&](LLVM::LLVMStructType type, SmallVectorImpl<Type> &results,
-                    ArrayRef<Type> callStack) -> std::optional<LogicalResult> {
+  addConversion([&](LLVM::LLVMStructType type, SmallVectorImpl<Type> &results)
+                    -> std::optional<LogicalResult> {
     // Fastpath for types that won't be converted by this callback anyway.
     if (LLVM::isCompatibleType(type)) {
       results.push_back(type);
       return success();
     }
+    conversionCallStack.push_back(type);
+    auto popConversionCallStack =
+        llvm::make_scope_exit([this]() { conversionCallStack.pop_back(); });
 
     if (type.isIdentified()) {
       auto convertedType = LLVM::LLVMStructType::getIdentified(
@@ -75,7 +79,7 @@ LLVMTypeConverter::LLVMTypeConverter(MLIRContext *ctx,
             type.getContext(),
             ("_Converted_" + std::to_string(counter) + type.getName()).str());
       }
-      if (llvm::count(callStack, type) > 1) {
+      if (llvm::count(conversionCallStack, type) > 1) {
         results.push_back(convertedType);
         return success();
       }
