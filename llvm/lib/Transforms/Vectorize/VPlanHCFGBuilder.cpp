@@ -83,8 +83,13 @@ public:
 void PlainCFGBuilder::setVPBBPredsFromBB(VPBasicBlock *VPBB, BasicBlock *BB) {
   SmallVector<VPBlockBase *, 8> VPBBPreds;
   // Collect VPBB predecessors.
-  for (BasicBlock *Pred : predecessors(BB))
+  for (BasicBlock *Pred : predecessors(BB)) {
+    // Ingore the pre-header, as it will be created and connected as part of the
+    // initial skeleton construction.
+    if (Pred == TheLoop->getLoopPreheader())
+      continue;
     VPBBPreds.push_back(getOrCreateVPBB(Pred));
+  }
 
   VPBB->setPredecessors(VPBBPreds);
 }
@@ -254,6 +259,18 @@ void PlainCFGBuilder::createVPInstructionsForVPBB(VPBasicBlock *VPBB,
 
 // Main interface to build the plain CFG.
 void PlainCFGBuilder::buildPlainCFG() {
+  // Reuse the top-level region, preheader and exit VPBBs from the skeleton.
+  Loop2Region[TheLoop] = Plan.getVectorLoopRegion();
+  BasicBlock *ThePreheaderBB = TheLoop->getLoopPreheader();
+  assert((ThePreheaderBB->getTerminator()->getNumSuccessors() == 1) &&
+         "Unexpected loop preheader");
+  VPBasicBlock *ThePreheaderVPBB = Plan.getEntry();
+  BB2VPBB[ThePreheaderBB] = ThePreheaderVPBB;
+  BasicBlock *LoopExitBB = TheLoop->getUniqueExitBlock();
+  assert(LoopExitBB && "Loops with multiple exits are not supported.");
+  BB2VPBB[LoopExitBB] =
+      cast<VPBasicBlock>(Plan.getVectorLoopRegion()->getSingleSuccessor());
+
   // 1. Scan the body of the loop in a topological order to visit each basic
   // block after having visited its predecessor basic blocks. Create a VPBB for
   // each BB and link it to its successor and predecessor VPBBs. Note that
@@ -263,11 +280,6 @@ void PlainCFGBuilder::buildPlainCFG() {
 
   // Loop PH needs to be explicitly visited since it's not taken into account by
   // LoopBlocksDFS.
-  BasicBlock *ThePreheaderBB = TheLoop->getLoopPreheader();
-  assert((ThePreheaderBB->getTerminator()->getNumSuccessors() == 1) &&
-         "Unexpected loop preheader");
-  VPBasicBlock *ThePreheaderVPBB = Plan.getEntry();
-  BB2VPBB[ThePreheaderBB] = ThePreheaderVPBB;
   ThePreheaderVPBB->setName("vector.ph");
   for (auto &I : *ThePreheaderBB) {
     if (I.getType()->isVoidTy())
@@ -277,7 +289,6 @@ void PlainCFGBuilder::buildPlainCFG() {
   // Create empty VPBB for Loop H so that we can link PH->H.
   VPBlockBase *HeaderVPBB = getOrCreateVPBB(TheLoop->getHeader());
   HeaderVPBB->setName("vector.body");
-  ThePreheaderVPBB->setOneSuccessor(HeaderVPBB);
 
   LoopBlocksRPO RPO(TheLoop);
   RPO.perform(LI);
@@ -321,16 +332,6 @@ void PlainCFGBuilder::buildPlainCFG() {
     setVPBBPredsFromBB(VPBB, BB);
   }
 
-  // 2. Process outermost loop exit. We created an empty VPBB for the loop
-  // single exit BB during the RPO traversal of the loop body but Instructions
-  // weren't visited because it's not part of the the loop.
-  BasicBlock *LoopExitBB = TheLoop->getUniqueExitBlock();
-  assert(LoopExitBB && "Loops with multiple exits are not supported.");
-  VPBasicBlock *LoopExitVPBB = BB2VPBB[LoopExitBB];
-  // Loop exit was already set as successor of the loop exiting BB.
-  // We only set its predecessor VPBB now.
-  setVPBBPredsFromBB(LoopExitVPBB, LoopExitBB);
-
   // 3. Fix up region blocks for loops. For each loop,
   //   * use the header block as entry to the corresponding region,
   //   * use the latch block as exit of the corresponding region,
@@ -350,19 +351,29 @@ void PlainCFGBuilder::buildPlainCFG() {
 
     // Disconnect backedge and pre-header from header.
     VPBasicBlock *PreheaderVPBB = getOrCreateVPBB(L->getLoopPreheader());
-    VPBlockUtils::disconnectBlocks(PreheaderVPBB, HeaderVPBB);
     VPBlockUtils::disconnectBlocks(ExitingVPBB, HeaderVPBB);
-
-    Region->setParent(PreheaderVPBB->getParent());
+    if (L != TheLoop) {
+      // Disconnect prehader from Header and update parent. This is only needed
+      // when the region was created by the builder (and is not the top-level
+      // region which was created as  part of the skeleton).
+      VPBlockUtils::disconnectBlocks(PreheaderVPBB, HeaderVPBB);
+      Region->setParent(PreheaderVPBB->getParent());
+      VPBlockUtils::connectBlocks(PreheaderVPBB, Region);
+    }
     Region->setEntry(HeaderVPBB);
-    VPBlockUtils::connectBlocks(PreheaderVPBB, Region);
 
     // Disconnect exit block from exiting (=latch) block, set exiting block and
     // connect region to exit block.
     VPBasicBlock *ExitVPBB = getOrCreateVPBB(L->getExitBlock());
-    VPBlockUtils::disconnectBlocks(ExitingVPBB, ExitVPBB);
+    if (L != TheLoop) {
+      // Disconnect ExitingVPBB from ExitVPP. This is only needed when the
+      // region was created by the builder (and is not the top-level region
+      // which was created as  part of the skeleton).
+      VPBlockUtils::disconnectBlocks(ExitingVPBB, ExitVPBB);
+      VPBlockUtils::connectBlocks(Region, ExitVPBB);
+    } else
+      ExitingVPBB->getSuccessors().clear();
     Region->setExiting(ExitingVPBB);
-    VPBlockUtils::connectBlocks(Region, ExitVPBB);
 
     // Queue sub-loops for processing.
     LoopWorkList.append(L->begin(), L->end());
