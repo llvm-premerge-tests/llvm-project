@@ -107,8 +107,26 @@ long n13(int a, long b) {
 long n14(int a, int b, int c) {
   return a + b * c;
 }
+
 long n15(int a, int b, int c) {
   return a * b + c;
+}
+
+unsigned long n16()
+{
+  return (1024u) * 1024;
+}
+
+long n17(int a) {
+  return a + 1024 * 1024;
+}
+
+long n18(int a)
+{
+  return (a * 1024);
+  // CHECK-NOTES-ALL: :[[@LINE-1]]:11: warning: performing an implicit widening conversion to type 'long' of a multiplication performed in type 'int'
+  // CHECK-NOTES-ALL: :[[@LINE-2]]:11: note: make conversion explicit to silence this warning
+  // CHECK-NOTES-ALL: :[[@LINE-3]]:11: note: perform multiplication in a wider type
 }
 
 #ifdef __cplusplus

@@ -173,6 +173,10 @@ Changes in existing checks
   <clang-tidy/checks/bugprone/reserved-identifier>`, so that it does not warn
   on macros starting with underscore and lowercase letter.
 
+- Improved :doc:`bugprone-implicit-widening-of-multiplication-result
+  <clang-tidy/checks/bugprone/bugprone-implicit-widening-of-multiplication-result>`
+  check to ignore false-positives with integer literals.
+
 - Improved :doc:`bugprone-lambda-function-name
   <clang-tidy/checks/bugprone/lambda-function-name>` check by adding option
   `IgnoreMacros` to ignore warnings in macros.
