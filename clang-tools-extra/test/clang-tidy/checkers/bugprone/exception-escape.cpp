@@ -1,10 +1,9 @@
-// RUN: %check_clang_tidy -std=c++11,c++14 %s bugprone-exception-escape %t -- \
+// RUN: %check_clang_tidy -std=c++11-or-later %s bugprone-exception-escape %t -- \
 // RUN:     -config="{CheckOptions: { \
 // RUN:         bugprone-exception-escape.IgnoredExceptions: 'ignored1,ignored2', \
 // RUN:         bugprone-exception-escape.FunctionsThatShouldNotThrow: 'enabled1,enabled2,enabled3' \
 // RUN:     }}" \
 // RUN:     -- -fexceptions
-// FIXME: Fix the checker to work in C++17 or later mode.
 
 struct throwing_destructor {
   ~throwing_destructor() {
@@ -420,6 +419,7 @@ namespace c {
 struct baseMember {
     int *iptr;
     virtual void foo(){};
+    void boo(){};
 };
 
 struct derivedMember : baseMember {
@@ -437,6 +437,29 @@ void throw_basefn_catch_derivedfn() noexcept {
 void throw_basefn_catch_basefn() noexcept {
   try {
     throw &baseMember::foo;
+  } catch(void(baseMember::*)()) {
+  }
+}
+
+void throw_basefn_catch_const_basefn() noexcept {
+  // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_basefn_catch_const_basefn' which should not throw exceptions
+  try {
+    throw &baseMember::foo;
+  } catch(const void(baseMember::*)()) {
+  }
+}
+
+void throw_derivedfn_catch_basefn() noexcept {
+  // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_derivedfn_catch_basefn' which should not throw exceptions
+  try {
+    throw &derivedMember::foo;
+  } catch(void(baseMember::*)()) {
+  }
+}
+
+void throw_basefn_via_derivedfn_catch_basefn() noexcept {
+  try {
+    throw &derivedMember::boo;
   } catch(void(baseMember::*)()) {
   }
 }
@@ -721,28 +744,3 @@ void calls_non_and_throwing() noexcept {
   test_basic_no_throw();
   test_basic_throw();
 }
-
-namespace PR55143 { namespace PR40583 {
-
-struct test_explicit_throw {
-    test_explicit_throw() throw(int) { throw 42; }
-    test_explicit_throw(const test_explicit_throw&) throw(int) { throw 42; }
-    test_explicit_throw(test_explicit_throw&&) throw(int) { throw 42; }
-    test_explicit_throw& operator=(const test_explicit_throw&) throw(int) { throw 42; }
-    test_explicit_throw& operator=(test_explicit_throw&&) throw(int) { throw 42; }
-    ~test_explicit_throw() throw(int) { throw 42; }
-};
-
-struct test_implicit_throw {
-    test_implicit_throw() { throw 42; }
-    test_implicit_throw(const test_implicit_throw&) { throw 42; }
-    test_implicit_throw(test_implicit_throw&&) { throw 42; }
-    // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: an exception may be thrown in function 'test_implicit_throw' which should not throw exceptions
-    test_implicit_throw& operator=(const test_implicit_throw&) { throw 42; }
-    test_implicit_throw& operator=(test_implicit_throw&&) { throw 42; }
-    // CHECK-MESSAGES: :[[@LINE-1]]:26: warning: an exception may be thrown in function 'operator=' which should not throw exceptions
-    ~test_implicit_throw() { throw 42; }
-    // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: an exception may be thrown in function '~test_implicit_throw' which should not throw exceptions
-};
-
-}}

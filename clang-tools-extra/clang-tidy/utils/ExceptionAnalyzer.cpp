@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "ExceptionAnalyzer.h"
+#include <clang/AST/ODRHash.h>
 
 namespace clang::tidy::utils {
 
@@ -149,37 +150,27 @@ bool isStandardPointerConvertible(QualType From, QualType To) {
 }
 
 bool isFunctionPointerConvertible(QualType From, QualType To) {
-  if (!From->isFunctionPointerType() && !From->isFunctionType() &&
-      !From->isMemberFunctionPointerType())
+  ODRHash FromHash, ToHash;
+
+  if (From->isFunctionPointerType())
+    FromHash.AddType(From->getPointeeType().getTypePtr());
+  else if (From->isFunctionType())
+    FromHash.AddType(From->castAs<FunctionType>());
+  else if (From->isMemberFunctionPointerType())
+    FromHash.AddType(From->castAs<MemberPointerType>());
+  else
     return false;
 
-  if (!To->isFunctionPointerType() && !To->isMemberFunctionPointerType())
+  if (To->isFunctionPointerType())
+    ToHash.AddType(To->getPointeeType().getTypePtr());
+  else if (From->isFunctionType())
+    ToHash.AddType(To->castAs<FunctionType>());
+  else if (From->isMemberFunctionPointerType())
+    ToHash.AddType(To->castAs<MemberPointerType>());
+  else
     return false;
 
-  if (To->isFunctionPointerType()) {
-    if (From->isFunctionPointerType())
-      return To->getPointeeType() == From->getPointeeType();
-
-    if (From->isFunctionType())
-      return To->getPointeeType() == From;
-
-    return false;
-  }
-
-  if (To->isMemberFunctionPointerType()) {
-    if (!From->isMemberFunctionPointerType())
-      return false;
-
-    const auto *FromMember = cast<MemberPointerType>(From);
-    const auto *ToMember = cast<MemberPointerType>(To);
-
-    // Note: converting Derived::* to Base::* is a different kind of conversion,
-    // called Pointer-to-member conversion.
-    return FromMember->getClass() == ToMember->getClass() &&
-           FromMember->getPointeeType() == ToMember->getPointeeType();
-  }
-
-  return false;
+  return FromHash.CalculateHash() == ToHash.CalculateHash();
 }
 
 // Checks if From is qualification convertible to To based on the current
@@ -278,16 +269,17 @@ bool isQualificationConvertiblePointer(QualType From, QualType To,
       return false;
 
     if (!isSameP_i(From, To)) {
-      if (LangOpts.CPlusPlus20) {
-        if (From->isConstantArrayType() && !To->isIncompleteArrayType())
-          return false;
-
-        if (From->isIncompleteArrayType() && !To->isIncompleteArrayType())
-          return false;
-
-      } else {
+      if (!LangOpts.CPlusPlus20)
         return false;
-      }
+
+      if (From->isConstantArrayType() && !To->isIncompleteArrayType())
+        return false;
+
+      if (From->isIncompleteArrayType() && !To->isIncompleteArrayType())
+        return false;
+
+      if (From->isMemberPointerType() || To->isMemberPointerType())
+        return false;
     }
 
     ++I;
