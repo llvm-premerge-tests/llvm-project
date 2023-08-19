@@ -34,6 +34,13 @@ static const Expr *getLHSOfMulBinOp(const Expr *E) {
   return BO->getLHS()->IgnoreParens();
 }
 
+static bool hasIntegerLiteralOperators(const Expr* E)
+{
+  const auto *BO = dyn_cast<BinaryOperator>(E);
+  return isa<IntegerLiteral>(BO->getLHS()->IgnoreParenImpCasts()) &&
+      isa<IntegerLiteral>(BO->getRHS()->IgnoreParenImpCasts());
+}
+
 ImplicitWideningOfMultiplicationResultCheck::
     ImplicitWideningOfMultiplicationResultCheck(StringRef Name,
                                                 ClangTidyContext *Context)
@@ -87,6 +94,10 @@ void ImplicitWideningOfMultiplicationResultCheck::handleImplicitCastExpr(
   // in a narrower-than-wanted type?
   const Expr *LHS = getLHSOfMulBinOp(E);
   if (!LHS)
+    return;
+
+  // Widening multiplication on Integer Literals.
+  if(hasIntegerLiteralOperators(E))
     return;
 
   // Ok, looks like we should diagnose this.
