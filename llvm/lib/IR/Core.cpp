@@ -3606,6 +3606,12 @@ LLVMValueRef LLVMBuildLoad2(LLVMBuilderRef B, LLVMTypeRef Ty,
   return wrap(unwrap(B)->CreateLoad(unwrap(Ty), unwrap(PointerVal), Name));
 }
 
+LLVMValueRef LLVMBuildLoad3(LLVMBuilderRef B, LLVMTypeRef Ty,
+                            LLVMValueRef PointerVal, const char *Name) {
+  return wrap(
+      unwrap(B)->CreateLoad(unwrap(Ty), unwrap(PointerVal), Name, false));
+}
+
 LLVMValueRef LLVMBuildStore(LLVMBuilderRef B, LLVMValueRef Val,
                             LLVMValueRef PointerVal) {
   return wrap(unwrap(B)->CreateStore(unwrap(Val), unwrap(PointerVal)));

@@ -231,7 +231,7 @@ protected:
         LLVMPositionBuilderAtEnd(Builder, Entry);
         
         LLVMValueRef IntVal =
-            LLVMBuildLoad2(Builder, LLVMInt32Type(), GlobalVar, "intVal");
+            LLVMBuildLoad3(Builder, LLVMInt32Type(), GlobalVar, "intVal");
         LLVMBuildRet(Builder, IntVal);
         
         LLVMVerifyModule(Module, LLVMAbortProcessAction, &Error);
