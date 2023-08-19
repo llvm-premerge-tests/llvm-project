@@ -23,7 +23,7 @@ int main(void) {
 // CHECK-NEXT:  entry:
 // CHECK-NEXT:    [[ARG_ADDR:%.*]] = alloca i32, align 4
 // CHECK-NEXT:    store i32 [[ARG:%.*]], ptr [[ARG_ADDR]], align 4
-// CHECK-NEXT:    [[TMP0:%.*]] = load i32, ptr [[ARG_ADDR]], align 4
+// CHECK-NEXT:    [[TMP0:%.*]] = load i32, ptr [[ARG_ADDR]], align 4, !freeze_bits [[FREEZE_BITS2:![0-9]+]]
 // CHECK-NEXT:    ret i32 [[TMP0]]
 //
 int foo(int arg) {

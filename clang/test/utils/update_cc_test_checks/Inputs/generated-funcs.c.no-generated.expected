@@ -28,20 +28,20 @@ void foo(void);
 // NOOMP-NEXT:    store i32 0, ptr [[I]], align 4
 // NOOMP-NEXT:    br label [[FOR_COND:%.*]]
 // NOOMP:       for.cond:
-// NOOMP-NEXT:    [[TMP0:%.*]] = load i32, ptr [[I]], align 4
+// NOOMP-NEXT:    [[TMP0:%.*]] = load i32, ptr [[I]], align 4, !freeze_bits [[FREEZE_BITS2:![0-9]+]]
 // NOOMP-NEXT:    [[CMP:%.*]] = icmp slt i32 [[TMP0]], 33554432
 // NOOMP-NEXT:    br i1 [[CMP]], label [[FOR_BODY:%.*]], label [[FOR_END:%.*]]
 // NOOMP:       for.body:
-// NOOMP-NEXT:    [[TMP1:%.*]] = load i32, ptr [[I]], align 4
+// NOOMP-NEXT:    [[TMP1:%.*]] = load i32, ptr [[I]], align 4, !freeze_bits [[FREEZE_BITS2]]
 // NOOMP-NEXT:    [[IDXPROM:%.*]] = sext i32 [[TMP1]] to i64
 // NOOMP-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [33554432 x double], ptr @A, i64 0, i64 [[IDXPROM]]
 // NOOMP-NEXT:    store double 0.000000e+00, ptr [[ARRAYIDX]], align 8
 // NOOMP-NEXT:    br label [[FOR_INC:%.*]]
 // NOOMP:       for.inc:
-// NOOMP-NEXT:    [[TMP2:%.*]] = load i32, ptr [[I]], align 4
+// NOOMP-NEXT:    [[TMP2:%.*]] = load i32, ptr [[I]], align 4, !freeze_bits [[FREEZE_BITS2]]
 // NOOMP-NEXT:    [[INC:%.*]] = add nsw i32 [[TMP2]], 1
 // NOOMP-NEXT:    store i32 [[INC]], ptr [[I]], align 4
-// NOOMP-NEXT:    br label [[FOR_COND]], !llvm.loop [[LOOP2:![0-9]+]]
+// NOOMP-NEXT:    br label [[FOR_COND]], !llvm.loop [[LOOP3:![0-9]+]]
 // NOOMP:       for.end:
 // NOOMP-NEXT:    call void @foo()
 // NOOMP-NEXT:    ret i32 0
@@ -73,20 +73,20 @@ int main(void) {
 // NOOMP-NEXT:    store i32 0, ptr [[I]], align 4
 // NOOMP-NEXT:    br label [[FOR_COND:%.*]]
 // NOOMP:       for.cond:
-// NOOMP-NEXT:    [[TMP0:%.*]] = load i32, ptr [[I]], align 4
+// NOOMP-NEXT:    [[TMP0:%.*]] = load i32, ptr [[I]], align 4, !freeze_bits [[FREEZE_BITS2]]
 // NOOMP-NEXT:    [[CMP:%.*]] = icmp slt i32 [[TMP0]], 33554432
 // NOOMP-NEXT:    br i1 [[CMP]], label [[FOR_BODY:%.*]], label [[FOR_END:%.*]]
 // NOOMP:       for.body:
-// NOOMP-NEXT:    [[TMP1:%.*]] = load i32, ptr [[I]], align 4
+// NOOMP-NEXT:    [[TMP1:%.*]] = load i32, ptr [[I]], align 4, !freeze_bits [[FREEZE_BITS2]]
 // NOOMP-NEXT:    [[IDXPROM:%.*]] = sext i32 [[TMP1]] to i64
 // NOOMP-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds [33554432 x double], ptr @A, i64 0, i64 [[IDXPROM]]
 // NOOMP-NEXT:    store double 1.000000e+00, ptr [[ARRAYIDX]], align 8
 // NOOMP-NEXT:    br label [[FOR_INC:%.*]]
 // NOOMP:       for.inc:
-// NOOMP-NEXT:    [[TMP2:%.*]] = load i32, ptr [[I]], align 4
+// NOOMP-NEXT:    [[TMP2:%.*]] = load i32, ptr [[I]], align 4, !freeze_bits [[FREEZE_BITS2]]
 // NOOMP-NEXT:    [[INC:%.*]] = add nsw i32 [[TMP2]], 1
 // NOOMP-NEXT:    store i32 [[INC]], ptr [[I]], align 4
-// NOOMP-NEXT:    br label [[FOR_COND]], !llvm.loop [[LOOP4:![0-9]+]]
+// NOOMP-NEXT:    br label [[FOR_COND]], !llvm.loop [[LOOP5:![0-9]+]]
 // NOOMP:       for.end:
 // NOOMP-NEXT:    ret void
 //
