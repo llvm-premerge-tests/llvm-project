@@ -10,6 +10,8 @@ ProgramHeaders:
     Flags:           [ PF_R ]
     VAddr:           0x40
     Align:           0x8
+    FileSize:        0x1C0
+    MemSize:         0x1C0
   - Type:            PT_INTERP
     Flags:           [ PF_R ]
     FirstSec:        .interp
@@ -18,7 +20,8 @@ ProgramHeaders:
   - Type:            PT_LOAD
     Flags:           [ PF_R ]
     FirstSec:        .interp
-    LastSec:         .dynamic
+    LastSec:         .interp
+    Offset:          0x0
     Align:           0x10000
   - Type:            PT_LOAD
     Flags:           [ PF_X, PF_R ]
@@ -51,6 +54,7 @@ Sections:
     Type:            SHT_PROGBITS
     Flags:           [ SHF_ALLOC ]
     Address:         0x238
+    Offset:          0x238
     AddressAlign:    0x1
     Content:         2F6C69622F6C642D6C696E75782D616172636836342E736F2E3100
   - Name:            .dynsym
@@ -78,6 +82,7 @@ Sections:
     Type:            SHT_PROGBITS
     Flags:           [ SHF_ALLOC, SHF_EXECINSTR ]
     Address:         0x10348
+    Offset:          0x348
     AddressAlign:    0x4
     Content:         FF4300D1E00700F9E80740F908014092E003082AFF430091C0035FD6FD7BBFA9FD0300911F2003D580000010F5FFFF97FD7BC1A8C0035FD6C0035FD6
   - Name:            .dynamic
@@ -113,6 +118,7 @@ Sections:
     Type:            SHT_PROGBITS
     Flags:           [ SHF_WRITE, SHF_ALLOC ]
     Address:         0x20448
+    Offset:          0x448
     AddressAlign:    0x8
     Content:         '0000000000000000'
   - Name:            .rela.text

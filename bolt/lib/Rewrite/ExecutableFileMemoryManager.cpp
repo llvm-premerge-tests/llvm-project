@@ -138,38 +138,11 @@ void ExecutableFileMemoryManager::updateSection(
     }
   }
 
-  BinarySection *Section = nullptr;
-  if (!OrgSecPrefix.empty() && SectionName.startswith(OrgSecPrefix)) {
-    // Update the original section contents.
-    ErrorOr<BinarySection &> OrgSection =
-        BC.getUniqueSectionByName(SectionName.substr(OrgSecPrefix.length()));
-    assert(OrgSection && OrgSection->isAllocatable() &&
-           "Original section must exist and be allocatable.");
-
-    Section = &OrgSection.get();
-    Section->updateContents(Contents, Size);
-  } else {
-    // If the input contains a section with the section name, rename it in the
-    // output file to avoid the section name conflict and emit the new section
-    // under a unique internal name.
-    ErrorOr<BinarySection &> OrgSection =
-        BC.getUniqueSectionByName(SectionName);
-    bool UsePrefix = false;
-    if (OrgSection && OrgSection->hasSectionRef()) {
-      OrgSection->setOutputName(OrgSecPrefix + SectionName);
-      UsePrefix = true;
-    }
-
-    // Register the new section under a unique name to avoid name collision with
-    // sections in the input file.
-    BinarySection &NewSection = BC.registerOrUpdateSection(
-        UsePrefix ? NewSecPrefix + SectionName : SectionName, ELF::SHT_PROGBITS,
-        BinarySection::getFlags(IsReadOnly, IsCode, true), Contents, Size,
-        Alignment);
-    if (UsePrefix)
-      NewSection.setOutputName(SectionName);
-    Section = &NewSection;
-  }
+  BinarySection *Section = &BC.registerOrUpdateSection(
+      SectionName, ELF::SHT_PROGBITS,
+      BinarySection::getFlags(IsReadOnly, IsCode, true), Contents, Size, Alignment);
+  assert(Section->isAllocatable() &&
+         "verify that allocatable is marked as allocatable");
 
   LLVM_DEBUG({
     dbgs() << "BOLT: allocating "

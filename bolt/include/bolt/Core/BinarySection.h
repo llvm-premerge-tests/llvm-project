@@ -159,7 +159,8 @@ public:
       : BC(BC), Name(getName(Section)), Section(Section),
         Contents(getContents(Section)), Address(Section.getAddress()),
         Size(Section.getSize()), Alignment(Section.getAlignment().value()),
-        OutputName(Name), SectionNumber(++Count) {
+        OutputName(Name), OutputSize(Size), OutputContents(Contents),
+        SectionNumber(++Count) {
     if (isELF()) {
       ELFType = ELFSectionRef(Section).getType();
       ELFFlags = ELFSectionRef(Section).getFlags();
@@ -214,34 +215,19 @@ public:
 
   // Order sections by their immutable properties.
   bool operator<(const BinarySection &Other) const {
-    // Allocatable before non-allocatable.
-    if (isAllocatable() != Other.isAllocatable())
-      return isAllocatable() > Other.isAllocatable();
-
-    // Input sections take precedence.
-    if (hasSectionRef() != Other.hasSectionRef())
-      return hasSectionRef() > Other.hasSectionRef();
-
-    // Compare allocatable input sections by their address.
-    if (hasSectionRef() && getAddress() != Other.getAddress())
+    if (getAddress() != Other.getAddress())
       return getAddress() < Other.getAddress();
-    if (hasSectionRef() && getAddress() && getSize() != Other.getSize())
+
+    // We want to keep tdata/tbss together to properly calculate
+    // TLS segment size, and since .tbss may have the same address
+    // as the section after it, we have this check
+    if (isTBSS() || Other.isTBSS())
+      return isTBSS() && !Other.isTBSS();
+
+    if (getSize() != Other.getSize())
       return getSize() < Other.getSize();
 
-    // Code before data.
-    if (isText() != Other.isText())
-      return isText() > Other.isText();
-
-    // Read-only before writable.
-    if (isWritable() != Other.isWritable())
-      return isWritable() < Other.isWritable();
-
-    // BSS at the end.
-    if (isBSS() != Other.isBSS())
-      return isBSS() < Other.isBSS();
-
-    // Otherwise, preserve the order of creation.
-    return SectionNumber < Other.SectionNumber;
+    return getName() < Other.getName();
   }
 
   ///
@@ -253,6 +239,7 @@ public:
   StringRef getName() const { return Name; }
   uint64_t getAddress() const { return Address; }
   uint64_t getEndAddress() const { return Address + Size; }
+  uint64_t getOutputEndAddress() const { return OutputAddress + OutputSize; }
   uint64_t getSize() const { return Size; }
   uint64_t getInputFileOffset() const { return InputFileOffset; }
   Align getAlign() const { return Align(Alignment); }
@@ -280,7 +267,7 @@ public:
   bool isWritable() const { return (ELFFlags & ELF::SHF_WRITE); }
   bool isAllocatable() const {
     if (isELF()) {
-      return (ELFFlags & ELF::SHF_ALLOC) && !isTBSS();
+      return (ELFFlags & ELF::SHF_ALLOC);
     } else {
       // On non-ELF assume all sections are allocatable.
       return true;
@@ -344,6 +331,8 @@ public:
   /// Does this section have any pending relocations?
   bool hasPendingRelocations() const { return !PendingRelocations.empty(); }
 
+  bool hasDynamicRelocations() const { return !DynamicRelocations.empty(); }
+
   /// Remove non-pending relocation with the given /p Offset.
   bool removeRelocationAt(uint64_t Offset) {
     auto Itr = Relocations.find(Offset);
@@ -357,18 +346,8 @@ public:
 
   void clearRelocations();
 
-  /// Add a new relocation at the given /p Offset.
   void addRelocation(uint64_t Offset, MCSymbol *Symbol, uint64_t Type,
-                     uint64_t Addend, uint64_t Value = 0,
-                     bool Pending = false) {
-    assert(Offset < getSize() && "offset not within section bounds");
-    if (!Pending) {
-      Relocations.emplace(Relocation{Offset, Symbol, Type, Addend, Value});
-    } else {
-      PendingRelocations.emplace_back(
-          Relocation{Offset, Symbol, Type, Addend, Value});
-    }
-  }
+                     uint64_t Addend, uint64_t Value = 0, bool Pending = false);
 
   /// Add a dynamic relocation at the given /p Offset.
   void addDynamicRelocation(uint64_t Offset, MCSymbol *Symbol, uint64_t Type,
@@ -401,7 +380,9 @@ public:
     return Itr != Relocations.end() ? &*Itr : nullptr;
   }
 
-  /// Lookup the relocation (if any) at the given /p Offset.
+  uint64_t getNewEndSymbolValue(uint64_t RelocationOffset) const;
+
+  /// Lookup the dynamic relocation (if any) at the given /p Offset.
   const Relocation *getDynamicRelocationAt(uint64_t Offset) const {
     Relocation Key{Offset, 0, 0, 0, 0};
     auto Itr = DynamicRelocations.find(Key);

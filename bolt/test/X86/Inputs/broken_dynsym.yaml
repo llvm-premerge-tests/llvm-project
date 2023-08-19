@@ -7,7 +7,7 @@ FileHeader:
 ProgramHeaders:
   - Type: PT_LOAD
     FirstSec: .a
-    LastSec: .a
+    LastSec: .dynstr
     Align:           0x1000
 Sections:
   - Name: .a

@@ -20,7 +20,7 @@ namespace opts {
 extern cl::OptionCategory BoltOptCategory;
 extern llvm::cl::opt<unsigned> AlignText;
 extern cl::opt<unsigned> AlignFunctions;
-extern cl::opt<bool> UseOldText;
+extern cl::opt<bool> Rewrite;
 extern cl::opt<bool> HotFunctionsAtEnd;
 
 static cl::opt<bool> GroupStubs("group-stubs",
@@ -375,7 +375,7 @@ uint64_t LongJmpPass::tentativeLayoutRelocMode(
 
 void LongJmpPass::tentativeLayout(
     const BinaryContext &BC, std::vector<BinaryFunction *> &SortedFunctions) {
-  uint64_t DotAddress = BC.LayoutStartAddress;
+  uint64_t DotAddress = BC.NewTextSectionAddress;
 
   if (!BC.HasRelocations) {
     for (BinaryFunction *Func : SortedFunctions) {
@@ -391,24 +391,35 @@ void LongJmpPass::tentativeLayout(
   }
 
   // Relocation mode
-  uint64_t EstimatedTextSize = 0;
-  if (opts::UseOldText) {
-    EstimatedTextSize = tentativeLayoutRelocMode(BC, SortedFunctions, 0);
+  if (opts::Rewrite) {
 
-    // Initial padding
-    if (EstimatedTextSize <= BC.OldTextSectionSize) {
-      DotAddress = BC.OldTextSectionAddress;
-      uint64_t Pad =
-          offsetToAlignment(DotAddress, llvm::Align(opts::AlignText));
-      if (Pad + EstimatedTextSize <= BC.OldTextSectionSize) {
-        DotAddress += Pad;
-      }
+    DotAddress = alignTo(BC.OldTextSectionAddress, opts::AlignText);
+    auto PLTSec = BC.getUniqueSectionByName(".plt");
+
+    if (PLTSec) {
+      // PLT Section is always put before .text when we rewrite.
+      // If we don't do that, we won't be able to estimate PLT position
+      // relative to .text, which means we won't be able to insert stubs
+      // for PLT calls properly. Also, having PLT just before .text ensures
+      // that we have minimal amount of stubs inserted in hot text,
+      // unless -hot-functions-at-end is used.
+      // If PLT was after text previously, move estimated text address forward
+      // by it's size with alignment. The real text address will likely be
+      // different after linking, but it doesn't matter for us because we only
+      // care about relative positions in the executable segment.
+      if (PLTSec->getAddress() > BC.OldTextSectionAddress)
+        DotAddress = alignTo(BC.OldTextSectionAddress + PLTSec->getSize(),
+                             opts::AlignText);
+
+      // alignTo(PLTSec->getSize(), opts::AlignText) is the most
+      // conservative estimation for distance between start of PLT and start of
+      // text. It cannot be more far away than that, so it should work for stub
+      // insertion.
+      TentativePLTAddress =
+          DotAddress - alignTo(PLTSec->getSize(), opts::AlignText);
     }
   }
-
-  if (!EstimatedTextSize || EstimatedTextSize > BC.OldTextSectionSize)
-    DotAddress = alignTo(BC.LayoutStartAddress, opts::AlignText);
-
+  assert(DotAddress && "No tentative text address!");
   tentativeLayoutRelocMode(BC, SortedFunctions, DotAddress);
 }
 
@@ -432,6 +443,13 @@ uint64_t LongJmpPass::getSymbolAddress(const BinaryContext &BC,
   }
   uint64_t EntryID = 0;
   const BinaryFunction *TargetFunc = BC.getFunctionForSymbol(Target, &EntryID);
+  if (opts::Rewrite && TargetFunc->isPLTFunction()) {
+    uint64_t Offset =
+        TargetFunc->getAddress() - TargetFunc->getOriginSection()->getAddress();
+    assert(TentativePLTAddress && "No PLT address!");
+    return TentativePLTAddress + Offset;
+  }
+
   auto Iter = HotAddresses.find(TargetFunc);
   if (Iter == HotAddresses.end() || (TargetFunc && EntryID)) {
     // Look at BinaryContext's resolution for this symbol - this is a symbol not
@@ -621,6 +639,8 @@ void LongJmpPass::runOnFunctions(BinaryContext &BC) {
     tentativeLayout(BC, Sorted);
     updateStubGroups();
     for (BinaryFunction *Func : Sorted) {
+      if (Func->isPLTFunction())
+        continue;
       if (relax(*Func)) {
         // Don't ruin non-simple functions, they can't afford to have the layout
         // changed.

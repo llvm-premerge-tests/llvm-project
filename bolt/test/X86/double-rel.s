@@ -14,7 +14,7 @@
   .data
   .globl VAR
 VAR:
-  .quad
+  .quad 0
 
   .text
   .globl _start

@@ -67,14 +67,17 @@ INSTANTIATE_TEST_SUITE_P(AArch64, BinaryContextTester,
 TEST_P(BinaryContextTester, BaseAddress) {
   // Check that  base address calculation is correct for a binary with the
   // following segment layout:
-  BC->SegmentMapInfo[0] = SegmentInfo{0, 0x10e8c2b4, 0, 0x10e8c2b4, 0x1000};
+  BC->SegmentMapInfo[0] = ProgramHeader(ELF::PT_LOAD, ELF::PF_R, 0, 0, 0,
+                                        0x10e8c2b4, 0x10e8c2b4, 0x1000);
   BC->SegmentMapInfo[0x10e8d2b4] =
-      SegmentInfo{0x10e8d2b4, 0x3952faec, 0x10e8c2b4, 0x3952faec, 0x1000};
+      ProgramHeader(ELF::PT_LOAD, ELF::PF_R, 0x10e8c2b4, 0x10e8d2b4, 0x10e8d2b4,
+                    0x3952faec, 0x3952faec, 0x1000);
   BC->SegmentMapInfo[0x4a3bddc0] =
-      SegmentInfo{0x4a3bddc0, 0x148e828, 0x4a3bbdc0, 0x148e828, 0x1000};
+      ProgramHeader(ELF::PT_LOAD, ELF::PF_R, 0x4a3bbdc0, 0x4a3bddc0, 0x4a3bddc0,
+                    0x148e828, 0x148e828, 0x1000);
   BC->SegmentMapInfo[0x4b84d5e8] =
-      SegmentInfo{0x4b84d5e8, 0x294f830, 0x4b84a5e8, 0x3d3820, 0x1000};
-
+      ProgramHeader(ELF::PT_LOAD, ELF::PF_R, 0x4b84a5e8, 0x4b84d5e8, 0x4b84d5e8,
+                    0x3d3820, 0x294f830, 0x1000);
   std::optional<uint64_t> BaseAddress =
       BC->getBaseAddressForMapping(0x7f13f5556000, 0x10e8c000);
   ASSERT_TRUE(BaseAddress.has_value());

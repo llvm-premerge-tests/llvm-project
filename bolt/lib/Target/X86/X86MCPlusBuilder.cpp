@@ -308,6 +308,10 @@ public:
     return Inst.getOpcode() == X86::LEAVE || Inst.getOpcode() == X86::LEAVE64;
   }
 
+  virtual bool isCall64m(const MCInst &Inst) const override {
+    return Inst.getOpcode() == X86::CALL64m;
+  }
+
   bool isMoveMem2Reg(const MCInst &Inst) const override {
     switch (Inst.getOpcode()) {
     case X86::MOV16rm:

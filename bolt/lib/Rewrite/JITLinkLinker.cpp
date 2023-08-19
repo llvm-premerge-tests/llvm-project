@@ -110,6 +110,19 @@ struct JITLinkLinker::Context : jitlink::JITLinkContext {
       std::string SymName = Symbol.first.str();
       LLVM_DEBUG(dbgs() << "BOLT: looking for " << SymName << "\n");
 
+      if (auto BSecIt = Linker.BC.EndSymbols.find(SymName);
+          BSecIt != Linker.BC.EndSymbols.end()) {
+        BinarySection *BSec = BSecIt->second;
+        assert(BSec->getOutputAddress() && "Unmapped section!");
+        uint64_t Address = BSec->getOutputEndAddress();
+        AllResults[Symbol.first] = orc::ExecutorSymbolDef(
+            orc::ExecutorAddr(Address), JITSymbolFlags());
+        LLVM_DEBUG(
+            dbgs() << formatv("Resolved {0} as the end of {1} at {2:x}\n",
+                              SymName, BSec->getOutputName(), Address););
+        continue;
+      }
+
       if (auto Address = Linker.lookupSymbol(SymName)) {
         LLVM_DEBUG(dbgs() << "Resolved to address 0x"
                           << Twine::utohexstr(*Address) << "\n");

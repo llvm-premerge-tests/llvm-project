@@ -49,7 +49,7 @@ using namespace llvm;
 
 namespace opts {
 
-cl::opt<bool> NoHugePages("no-huge-pages",
+cl::opt<bool> NoHugePages("no-huge-pages", cl::init(true),
                           cl::desc("use regular size pages for code alignment"),
                           cl::Hidden, cl::cat(BoltCategory));
 
@@ -373,6 +373,47 @@ BinaryContext::getSubBinaryData(BinaryData *BD) {
   while (End != BinaryDataMap.end() && BD->isAncestorOf(End->second))
     ++End;
   return make_range(Start, End);
+}
+
+std::vector<BinarySection *>
+BinaryContext::getNewSectionsByFlags(unsigned Flags, bool ROwithRX) {
+  std::vector<BinarySection *> Result;
+  for (BinarySection &Section : allocatableSections()) {
+    if (!isExtra(Section))
+      continue;
+    if (Section.getOutputAddress() || !Section.hasValidSectionID())
+      continue;
+
+    const unsigned SecFlags = Section.getELFFlags();
+    if (SecFlags == Flags || (ROwithRX && SecFlags == ELF::SHF_ALLOC &&
+                              Flags == (ELF::SHF_ALLOC | ELF::SHF_EXECINSTR)))
+      Result.push_back(&Section);
+  }
+
+  if (Flags & ELF::SHF_EXECINSTR) {
+
+    auto CompareSections = [&](const BinarySection *A, const BinarySection *B) {
+      // executable first
+      if (A->isText() != B->isText())
+        return A->isText() > B->isText();
+      // non-executable last
+      if (!A->isText())
+        return false;
+      // Place movers before anything else.
+      if (A->getName() == getHotTextMoverSectionName())
+        return true;
+      if (B->getName() == getHotTextMoverSectionName())
+        return false;
+
+      // Depending on the option, put main text at the beginning or at the end.
+      if (opts::HotFunctionsAtEnd)
+        return B->getName() == getMainCodeSectionName();
+      else
+        return A->getName() == getMainCodeSectionName();
+    };
+    llvm::stable_sort(Result, CompareSections);
+  }
+  return Result;
 }
 
 std::pair<const MCSymbol *, uint64_t>
@@ -1887,10 +1928,10 @@ BinaryContext::getBaseAddressForMapping(uint64_t MMapAddress,
                                         uint64_t FileOffset) const {
   // Find a segment with a matching file offset.
   for (auto &KV : SegmentMapInfo) {
-    const SegmentInfo &SegInfo = KV.second;
-    if (alignDown(SegInfo.FileOffset, SegInfo.Alignment) == FileOffset) {
+    const ProgramHeader &SegInfo = KV.second;
+    if (alignDown(SegInfo.p_offset, SegInfo.p_align) == FileOffset) {
       // Use segment's aligned memory offset to calculate the base address.
-      const uint64_t MemOffset = alignDown(SegInfo.Address, SegInfo.Alignment);
+      const uint64_t MemOffset = alignDown(SegInfo.p_vaddr, SegInfo.p_align);
       return MMapAddress - MemOffset;
     }
   }

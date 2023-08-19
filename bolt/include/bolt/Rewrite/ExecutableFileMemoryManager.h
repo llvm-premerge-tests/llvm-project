@@ -51,9 +51,6 @@ public:
                   OnDeallocatedFunction OnDeallocated) override;
   using JITLinkMemoryManager::deallocate;
 
-  /// Section name management.
-  void setNewSecPrefix(StringRef Prefix) { NewSecPrefix = Prefix; }
-  void setOrgSecPrefix(StringRef Prefix) { OrgSecPrefix = Prefix; }
 };
 
 } // namespace bolt

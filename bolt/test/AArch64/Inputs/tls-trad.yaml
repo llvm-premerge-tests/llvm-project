@@ -9,8 +9,15 @@ ProgramHeaders:
   - Type:            PT_LOAD
     Flags:           [ PF_X, PF_R, PF_W ]
     FirstSec:        .dynsym
-    LastSec:         .got
+    LastSec:         .eh_frame
+    Offset:          0x0
+    VAddr:           0x0
     Align:           0x10000
+  - Type:            PT_LOAD
+    Flags:           [ PF_R, PF_W ]
+    VAddr:           0x10de0
+    FirstSec:        .tbss
+    LastSec:         .got.plt
   - Type:            PT_DYNAMIC
     Flags:           [ PF_W, PF_R ]
     FirstSec:        .dynamic
@@ -34,17 +41,20 @@ Sections:
     Type:            SHT_DYNSYM
     Flags:           [ SHF_ALLOC ]
     Address:         0x250
+    Offset:          0x250
     Link:            .dynstr
     AddressAlign:    0x8
   - Name:            .dynstr
     Type:            SHT_STRTAB
     Flags:           [ SHF_ALLOC ]
     Address:         0x340
+    Offset:          0x340
     AddressAlign:    0x1
   - Name:            .rela.dyn
     Type:            SHT_RELA
     Flags:           [ SHF_ALLOC ]
     Address:         0x400
+    Offset:          0x400
     Link:            .dynsym
     AddressAlign:    0x8
     Relocations:
@@ -58,6 +68,7 @@ Sections:
     Type:            SHT_PROGBITS
     Flags:           [ SHF_ALLOC, SHF_EXECINSTR ]
     Address:         0x540
+    Offset:          0x540
     AddressAlign:    0x10
     EntSize:         0x10
     Content:         F07BBFA99000009011FE47F910E23F9120021FD61F2003D51F2003D51F2003D5900000B0110240F91002009120021FD6900000B0110640F91022009120021FD6900000B0110A40F91042009120021FD6
@@ -77,8 +88,31 @@ Sections:
     Type:            SHT_PROGBITS
     Flags:           [ SHF_ALLOC ]
     Address:         0x6F0
+    Offset:          0x6F0
     AddressAlign:    0x8
     Content:         1000000000000000017A520004781E011B0C1F0010000000180000009CFEFFFF3000000000000000100000002C000000B8FEFFFF40000000000000002000000040000000E4FEFFFF4800000000410E209D049E034293024EDEDDD30E00000000140000006400000008FFFFFF040000000000000000000000200000007C000000F8FEFFFF4000000000410E209D049E034293024CDEDDD30E0000000000000000
+  - Name:            .rela.plt
+    Type:            SHT_RELA
+    Flags:           [ SHF_ALLOC, SHF_INFO_LINK ]
+    Link:            .dynsym
+    AddressAlign:    0x8
+    Info:            .got.plt
+    Relocations:
+      - Offset:          0x10FF8
+        Symbol:          pltSym1
+        Type:            R_AARCH64_JUMP_SLOT
+      - Offset:          0x11000
+        Symbol:          pltSym2
+        Type:            R_AARCH64_JUMP_SLOT
+      - Offset:          0x11008
+        Symbol:          pltSym3
+        Type:            R_AARCH64_JUMP_SLOT
+      - Offset:          0x11010
+        Symbol:          pltSym4
+        Type:            R_AARCH64_JUMP_SLOT
+      - Offset:          0x10fb0
+        Symbol:          t1
+        Type:            R_AARCH64_TLSDESC
   - Name:            .tbss
     Type:            SHT_NOBITS
     Flags:           [ SHF_WRITE, SHF_ALLOC, SHF_TLS ]
@@ -90,6 +124,7 @@ Sections:
     Type:            SHT_DYNAMIC
     Flags:           [ SHF_WRITE, SHF_ALLOC ]
     Address:         0x10DF0
+    Offset:          0xDF0
     Link:            .dynstr
     AddressAlign:    0x8
     Entries:
@@ -111,9 +146,17 @@ Sections:
     Type:            SHT_PROGBITS
     Flags:           [ SHF_WRITE, SHF_ALLOC ]
     Address:         0x10FB0
+    Offset:          0xFB0
     AddressAlign:    0x8
     EntSize:         0x8
     Content:         F00D010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+  - Name:            .got.plt
+    Type:            SHT_PROGBITS
+    Flags:           [ SHF_ALLOC, SHF_WRITE ]
+    Address:         0x10FE8
+    Offset:          0xFE8
+    AddressAlign:    0x8
+    Size:            0x30
   - Name:            .rela.text
     Type:            SHT_RELA
     Flags:           [ SHF_INFO_LINK ]
@@ -137,9 +180,11 @@ Sections:
       - Name:            .rela.text
       - Name:            .eh_frame_hdr
       - Name:            .eh_frame
+      - Name:            .rela.plt
       - Name:            .tbss
       - Name:            .dynamic
       - Name:            .got
+      - Name:            .got.plt
       - Name:            .symtab
       - Name:            .strtab
       - Name:            .shstrtab
@@ -148,6 +193,23 @@ Symbols:
     Type:            STT_SECTION
     Section:         .text
     Value:           0x590
+#   Add functions because otherwise BOLT will complain
+  - Name:            one
+    Type:            STT_FUNC
+    Section:         .text
+    Value:           0x540
+  - Name:            two
+    Type:            STT_FUNC
+    Section:         .text
+    Value:           0x560
+  - Name:            three
+    Type:            STT_FUNC
+    Section:         .text
+    Value:           0x570
+  - Name:            four
+    Type:            STT_FUNC
+    Section:         .text
+    Value:           0x580
   - Name:            t1
     Type:            STT_TLS
     Section:         .tbss
@@ -159,4 +221,16 @@ DynamicSymbols:
     Section:         .tbss
     Binding:         STB_GLOBAL
     Size:            0x4
+  - Name:            pltSym1
+    Type:            STT_FUNC
+    Binding:         STB_GLOBAL
+  - Name:            pltSym2
+    Type:            STT_FUNC
+    Binding:         STB_GLOBAL
+  - Name:            pltSym3
+    Type:            STT_FUNC
+    Binding:         STB_GLOBAL
+  - Name:            pltSym4
+    Type:            STT_FUNC
+    Binding:         STB_GLOBAL
 ...

@@ -1,0 +1,43 @@
+// Test checks that bolt properly finds end section label.
+// Linker script contains gap after destructor array, so
+// __init_array_end address would not be owned by any section.
+
+// REQUIRES: system-linux
+// RUN: %clang %cflags -no-pie %S/Inputs/array_end.c -o %t.exe -Wl,-q \
+// RUN:   -Wl,-T %S/Inputs/array_end.lld_script
+// RUN: llvm-bolt %t.exe -o %t.bolt --print-disasm \
+// RUN:  --print-only="callFini" --debug-only=bolt 2>&1 | FileCheck %s
+
+// CHECK: BOLT-INFO: __fini_array_end is in the end of .fini_array
+// CHECK: adr [[REG:x[0-28]+]], __fini_array_end
+
+// RUN: llvm-bolt %t.exe -o %t.bolt.rewritten --rewrite --print-disasm \
+// RUN:  --print-only="callFini" --debug-only=bolt 2>&1 | FileCheck %s
+
+// Check assembly and symtab
+// RUN: llvm-objdump --disassemble-symbols=callFini %t.bolt > %t.log
+// RUN: llvm-readelf -WS %t.bolt | grep .fini_array >> %t.log
+// RUN: llvm-readelf -Ws %t.bolt | grep __fini_array_end >> %t.log
+// RUN: llvm-readelf -Ws %t.bolt | grep __fini_array_end >> %t.log
+
+// RUN: cat %t.log | FileCheck %s --check-prefix=CHECK-FIRST
+
+// CHECK-FIRST: adrp    [[REG:x[0-28]+]], 0x[[#%x,PAGE:]]
+// CHECK-FIRST: add     [[REG]], [[REG]], #0x[[#%x,OFFSET:]]
+// CHECK-FIRST: .fini_array PROGBITS {{[0]+}}[[#%x,SECADDR:]] {{[0]+}}[[#%x,SECOFFSET:]] {{[0]+}}[[#%x,SECSIZE:]]
+// CHECK-FIRST: {{[0]+}}[[#%x,PAGE+OFFSET]]     0 NOTYPE  LOCAL  HIDDEN     {{[0-9]+}} __fini_array_end
+// CHECK-FIRST: {{[0]+}}[[#%x,SECADDR+SECSIZE]]     0 NOTYPE  LOCAL  HIDDEN     {{[0-9]+}} __fini_array_end
+
+// Check assembly and symtab after rewrite
+// RUN: llvm-objdump --disassemble-symbols=callFini %t.bolt.rewritten > %t.log
+// RUN: llvm-readelf -WS %t.bolt.rewritten | grep .fini_array >> %t.log
+// RUN: llvm-readelf -Ws %t.bolt.rewritten | grep __fini_array_end >> %t.log
+// RUN: llvm-readelf -Ws %t.bolt.rewritten | grep __fini_array_end >> %t.log
+
+// RUN: cat %t.log | FileCheck %s --check-prefix=CHECK-SECOND
+
+// CHECK-SECOND: adrp    [[REG:x[0-28]+]], 0x[[#%x,PAGE:]]
+// CHECK-SECOND: add     [[REG]], [[REG]], #0x[[#%x,OFFSET:]]
+// CHECK-SECOND: .fini_array PROGBITS {{[0]+}}[[#%x,SECADDR:]] {{[0]+}}[[#%x,SECOFFSET:]] {{[0]+}}[[#%x,SECSIZE:]]
+// CHECK-SECOND: {{[0]+}}[[#%x,PAGE+OFFSET]]     0 NOTYPE  LOCAL  HIDDEN     {{[0-9]+}} __fini_array_end
+// CHECK-SECOND: {{[0]+}}[[#%x,SECADDR+SECSIZE]]     0 NOTYPE  LOCAL  HIDDEN     {{[0-9]+}} __fini_array_end

@@ -9,7 +9,10 @@ ProgramHeaders:
   - Type:            PT_PHDR
     Flags:           [ PF_R ]
     VAddr:           0x400040
+    Offset:          0x40
     Align:           0x8
+    FileSize:        0x1F8
+    MemSize:         0x1F8
   - Type:            PT_INTERP
     Flags:           [ PF_R ]
     FirstSec:        .interp
@@ -19,6 +22,7 @@ ProgramHeaders:
     Flags:           [ PF_X, PF_R ]
     FirstSec:        .interp
     LastSec:         .eh_frame
+    Offset:          0x0
     VAddr:           0x400000
     Align:           0x200000
   - Type:            PT_LOAD

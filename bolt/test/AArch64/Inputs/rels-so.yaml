@@ -8,11 +8,16 @@ ProgramHeaders:
   - Type:            PT_PHDR
     Flags:           [ PF_R ]
     VAddr:           0x40
+    Offset:          0x40
+    MemSize:         0x1C0
+    FileSize:        0x1C0
     Align:           0x8
   - Type:            PT_LOAD
     Flags:           [ PF_R ]
     FirstSec:        .dynsym
-    LastSec:         .dynamic
+    LastSec:         .rela.plt
+    VAddr:           0x00000
+    Offset:          0x00000
     Align:           0x10000
   - Type:            PT_LOAD
     Flags:           [ PF_X, PF_R ]
@@ -22,9 +27,10 @@ ProgramHeaders:
     Align:           0x10000
   - Type:            PT_LOAD
     Flags:           [ PF_W, PF_R ]
-    FirstSec:        .tbss
+    FirstSec:        .dynamic
     LastSec:         .got
     VAddr:           0x207F0
+    Offset:          0x007F0
     Align:           0x10000
   - Type:            PT_LOAD
     Flags:           [ PF_W, PF_R ]
@@ -43,6 +49,7 @@ ProgramHeaders:
     FirstSec:        .dynamic
     LastSec:         .dynamic
     VAddr:           0x20800
+    Offset:          0x00800
     Align:           0x8
   - Type:            PT_GNU_RELRO
     Flags:           [ PF_R ]
@@ -54,17 +61,27 @@ Sections:
     Type:            SHT_DYNSYM
     Flags:           [ SHF_ALLOC ]
     Address:         0x270
+    Offset:          0x270
     Link:            .dynstr
+    AddressAlign:    0x8
+  - Name:            .gnu.hash
+    Type:            0x5
+    Flags:           [ SHF_ALLOC ]
+    Address:         0x380
+    Offset:          0x380
+    Size:            0x1c
     AddressAlign:    0x8
   - Name:            .dynstr
     Type:            SHT_STRTAB
     Flags:           [ SHF_ALLOC ]
     Address:         0x3AC
+    Offset:          0x3AC
     AddressAlign:    0x1
   - Name:            .rela.dyn
     Type:            SHT_RELA
     Flags:           [ SHF_ALLOC ]
     Address:         0x428
+    Offset:          0x428
     Link:            .dynsym
     AddressAlign:    0x8
     Relocations:
@@ -81,6 +98,7 @@ Sections:
     Type:            SHT_RELA
     Flags:           [ SHF_ALLOC, SHF_INFO_LINK ]
     Address:         0x530
+    Offset:          0x530
     Link:            .dynsym
     AddressAlign:    0x8
     Info:            .got.plt
@@ -95,12 +113,14 @@ Sections:
     Type:            SHT_PROGBITS
     Flags:           [ SHF_ALLOC, SHF_EXECINSTR ]
     Address:         0x10658
+    Offset:          0x00658
     AddressAlign:    0x8
     Content:         8000009000C844F9400000B45B000014C0035FD6000000001F2003D5A01B10101F2003D5611B10103F0000EBC00000548100009021CC44F9610000B4F00301AA00021FD6C0035FD61F2003D5201A10101F2003D5E1191010210000CB22FC7FD3410C818BFF0781EB21FC4193C00000548200009042D044F9620000B4F00302AA00021FD6C0035FD6FD7BBEA9FD030091F30B00F91301009060426839400100358000009000D444F9800000B40001009000E444F935000094D8FFFF972000805260422839F30B40F9FD7BC2A8C0035FD6DEFFFF17FF8300D1FD7B01A9FD430091A0C31FB88900009029D944F9280140B908050011280100B98000009001DC44F900E0269120003FD649D03BD5286960B808050011286920B8A8C35FB800050011FD7B41A9FF830091C0035FD6
   - Name:            .plt
     Type:            SHT_PROGBITS
     Flags:           [ SHF_ALLOC, SHF_EXECINSTR ]
     Address:         0x107B0
+    Offset:          0x007B0
     AddressAlign:    0x10
     Content:         F07BBFA91001009011FE44F910E2279120021FD61F2003D51F2003D51F2003D510010090110245F91002289120021FD610010090110645F91022289120021FD6
   - Name:            .tbss
@@ -113,6 +133,7 @@ Sections:
     Type:            SHT_DYNAMIC
     Flags:           [ SHF_WRITE, SHF_ALLOC ]
     Address:         0x20800
+    Offset:          0x00800
     Link:            .dynstr
     AddressAlign:    0x8
     Entries:
@@ -152,6 +173,7 @@ Sections:
     Type:            SHT_PROGBITS
     Flags:           [ SHF_WRITE, SHF_ALLOC ]
     Address:         0x20990
+    Offset:          0x990
     AddressAlign:    0x8
     Content:         '0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
   - Name:            .data

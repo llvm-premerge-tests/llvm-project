@@ -124,7 +124,7 @@ void ReorderFunctions::reorder(std::vector<Cluster> &&Clusters,
   // Assign valid index for functions with valid profile.
   for (auto &It : BFs) {
     BinaryFunction &BF = It.second;
-    if (!BF.hasValidIndex() && BF.hasValidProfile())
+    if (!BF.hasValidIndex() && BF.hasValidProfile() && !BF.isPseudo())
       BF.setIndex(Index++);
   }
 
@@ -264,7 +264,7 @@ void ReorderFunctions::runOnFunctions(BinaryContext &BC) {
     Cg = buildCallGraph(
         BC,
         [](const BinaryFunction &BF) {
-          if (!BF.hasProfile())
+          if (!BF.hasProfile() || BF.isPseudo())
             return true;
           if (BF.getState() != BinaryFunction::State::CFG)
             return true;
@@ -308,7 +308,7 @@ void ReorderFunctions::runOnFunctions(BinaryContext &BC) {
                       });
     uint32_t Index = 0;
     for (BinaryFunction *BF : SortedFunctions)
-      if (BF->hasProfile()) {
+      if (BF->hasProfile() || !BF->isPseudo()) {
         BF->setIndex(Index++);
         LLVM_DEBUG(if (opts::Verbosity > 1) {
           dbgs() << "BOLT-INFO: hot func " << BF->getPrintName() << " ("
@@ -414,7 +414,7 @@ void ReorderFunctions::runOnFunctions(BinaryContext &BC) {
           ++InvalidEntries;
           break;
         }
-        if (!BF->hasValidIndex())
+        if (!BF->hasValidIndex() && !BF->isPseudo())
           BF->setIndex(Index++);
         else if (opts::Verbosity > 0)
           errs() << "BOLT-WARNING: Duplicate reorder entry for " << Function

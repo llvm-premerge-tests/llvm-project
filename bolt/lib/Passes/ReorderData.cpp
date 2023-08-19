@@ -504,9 +504,6 @@ void ReorderData::runOnFunctions(BinaryContext &BC) {
       // Rename sections.
       BinarySection &Hot =
           BC.registerSection(Section->getName() + ".hot", *Section);
-      Hot.setOutputName(Section->getName());
-      Section->setOutputName(".bolt.org" + Section->getName());
-
       // Reorder contents of original section.
       setSectionOrder(BC, Hot, Order.begin(), SplitPoint);
 

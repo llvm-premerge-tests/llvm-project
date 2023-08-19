@@ -1309,7 +1309,7 @@ public:
   /// Return true if the function body is non-contiguous.
   bool isSplit() const { return isSimple() && getLayout().isSplit(); }
 
-  bool shouldPreserveNops() const { return PreserveNops; }
+  bool shouldPreserveNops() const { return isPseudo() || PreserveNops; }
 
   /// Return true if the function has exception handling tables.
   bool hasEHRanges() const { return HasEHRanges; }
@@ -2066,6 +2066,7 @@ public:
   // adjustments.
   void handleAArch64IndirectCall(MCInst &Instruction, const uint64_t Offset);
 
+  bool handlePLT();
   /// Scan function for references to other functions. In relocation mode,
   /// add relocations for external references. In non-relocation mode, detect
   /// and mark new entry points.

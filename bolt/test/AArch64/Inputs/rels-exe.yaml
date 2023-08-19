@@ -9,6 +9,9 @@ ProgramHeaders:
   - Type:            PT_PHDR
     Flags:           [ PF_R ]
     VAddr:           0x200040
+    Offset:          0x40
+    MemSize:         0x188
+    FileSize:        0x188
     Align:           0x8
   - Type:            PT_INTERP
     Flags:           [ PF_R ]
@@ -20,6 +23,7 @@ ProgramHeaders:
     FirstSec:        .interp
     LastSec:         .rodata
     VAddr:           0x200000
+    Offset:          0x0
     Align:           0x10000
   - Type:            PT_LOAD
     Flags:           [ PF_X, PF_R ]
@@ -50,23 +54,27 @@ Sections:
     Type:            SHT_PROGBITS
     Flags:           [ SHF_ALLOC ]
     Address:         0x2002A8
+    Offset:          0x2A8
     AddressAlign:    0x1
     Content:         2F6C69622F6C642D6C696E75782D616172636836342E736F2E3100
   - Name:            .dynsym
     Type:            SHT_DYNSYM
     Flags:           [ SHF_ALLOC ]
     Address:         0x2002E8
+    Offset:          0x2E8
     Link:            .dynstr
     AddressAlign:    0x8
   - Name:            .dynstr
     Type:            SHT_STRTAB
     Flags:           [ SHF_ALLOC ]
     Address:         0x200418
+    Offset:          0x418
     AddressAlign:    0x1
   - Name:            .rela.dyn
     Type:            SHT_RELA
     Flags:           [ SHF_ALLOC, SHF_INFO_LINK ]
     Address:         0x2004A0
+    Offset:          0x4A0
     Link:            .dynsym
     AddressAlign:    0x8
     Info:            .got.plt
@@ -84,6 +92,7 @@ Sections:
     Type:            SHT_RELA
     Flags:           [ SHF_ALLOC, SHF_INFO_LINK ]
     Address:         0x200500
+    Offset:          0x500
     Link:            .dynsym
     AddressAlign:    0x8
     Info:            .got.plt
@@ -101,18 +110,21 @@ Sections:
     Type:            SHT_PROGBITS
     Flags:           [ SHF_ALLOC, SHF_MERGE ]
     Address:         0x200560
+    Offset:          0x560
     AddressAlign:    0x8
     Content:         '010002000000000000000000000000000000000000000000'
   - Name:            .text
     Type:            SHT_PROGBITS
     Flags:           [ SHF_ALLOC, SHF_EXECINSTR ]
     Address:         0x210710
+    Offset:          0x710
     AddressAlign:    0x8
     Content:         1D0080D21E0080D2E50300AAE10340F9E2230091E60300910000009000201D911F2003D5230A00101F2003D5E40D0010840000947F0000943800001480000090009845F9400000B482000014C0035FD61F2003D5601F10101F2003D5211F10103F0000EBC000005481FFFF9021B442F9610000B4F00301AA00021FD6C0035FD61F2003D5E01D10101F2003D5A11D1010210000CB22FC7FD3410C818BFF0781EB21FC4193C000005482FFFF9042B842F9620000B4F00302AA00021FD6C0035FD6FD7BBEA9FD030091F30B00F91301009060426E3980000035DEFFFF972000805260422E39F30B40F9FD7BC2A8C0035FD6E4FFFF17FF4300D1E00F00B9E80F40B900050071FF430091C0035FD61F2003D520FFFF10C0035FD6FF8300D1FD7B01A9FD4300918A0000904A9D45F949D03BD528696AB80805001128692AB808010090E80700F900994BB94A000094E80740F900994BB943000094E0031F2AFD7B41A9FF830091C0035FD6FD7BBCA9FD030091F35301A91F2003D5D4080810F55B02A91F2003D535080810940215CBF603002AF76303A9F70301AAF80302AA14000094FF0F94EB6001005494FE4393130080D2A37A73F8E20318AA73060091E10317AAE003162A60003FD69F0213EB21FFFF54F35341A9F55B42A9F76343A9FD7BC4A8C0035FD61F2003D5C0035FD6
   - Name:            .plt
     Type:            SHT_PROGBITS
     Flags:           [ SHF_ALLOC, SHF_EXECINSTR ]
     Address:         0x210920
+    Offset:          0x920
     AddressAlign:    0x10
     Content:         F07BBFA91001009011B245F910822D9120021FD61F2003D51F2003D51F2003D51001009011B645F910A22D9120021FD61001009011BA45F910C22D9120021FD61001009011BE45F910E22D9120021FD61001009011C245F910022E9120021FD6
   - Name:            .iplt
@@ -125,6 +137,7 @@ Sections:
     Type:            SHT_DYNAMIC
     Flags:           [ SHF_WRITE, SHF_ALLOC ]
     Address:         0x2209A0
+    Offset:          0x9A0
     Link:            .dynstr
     AddressAlign:    0x8
     Entries:
@@ -162,6 +175,7 @@ Sections:
     Type:            SHT_PROGBITS
     Flags:           [ SHF_WRITE, SHF_ALLOC ]
     Address:         0x220B30
+    Offset:          0xB30
     AddressAlign:    0x8
     Content:         '00000000000000000000000000000000'
   - Name:            .data

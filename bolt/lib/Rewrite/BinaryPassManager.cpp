@@ -13,7 +13,6 @@
 #include "bolt/Passes/AsmDump.h"
 #include "bolt/Passes/CMOVConversion.h"
 #include "bolt/Passes/FixRISCVCallsPass.h"
-#include "bolt/Passes/FixRelaxationPass.h"
 #include "bolt/Passes/FrameOptimizer.h"
 #include "bolt/Passes/Hugify.h"
 #include "bolt/Passes/IdenticalCodeFolding.h"
@@ -182,11 +181,6 @@ static cl::opt<bool>
                cl::cat(BoltOptCategory));
 
 static cl::opt<bool>
-    PrintFixRelaxations("print-fix-relaxations",
-                        cl::desc("print functions after fix relaxations pass"),
-                        cl::cat(BoltOptCategory));
-
-static cl::opt<bool>
     PrintFixRISCVCalls("print-fix-riscv-calls",
                        cl::desc("print functions after fix RISCV calls pass"),
                        cl::cat(BoltOptCategory));
@@ -328,8 +322,6 @@ void BinaryFunctionPassManager::runAllPasses(BinaryContext &BC) {
                        opts::AsmDump.getNumOccurrences());
 
   if (BC.isAArch64()) {
-    Manager.registerPass(std::make_unique<FixRelaxations>(PrintFixRelaxations));
-
     Manager.registerPass(
         std::make_unique<VeneerElimination>(PrintVeneerElimination));
   }
@@ -482,7 +474,7 @@ void BinaryFunctionPassManager::runAllPasses(BinaryContext &BC) {
   Manager.registerPass(std::make_unique<AssignSections>());
 
   // Patch original function entries
-  if (BC.HasRelocations)
+  if (BC.HasRelocations && !opts::Rewrite)
     Manager.registerPass(std::make_unique<PatchEntries>());
 
   // This pass turns tail calls into jumps which makes them invisible to

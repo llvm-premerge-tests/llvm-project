@@ -32,6 +32,43 @@ bool BinarySection::isELF() const { return BC.isELF(); }
 
 bool BinarySection::isMachO() const { return BC.isMachO(); }
 
+// If there is a Relocation at Offset which references end-of-section symbol,
+// return the new value for it
+uint64_t BinarySection::getNewEndSymbolValue(uint64_t RelocationOffset) const {
+  if (const Relocation *R = getRelocationAt(RelocationOffset))
+    if (auto *Sym = R->Symbol)
+      if (auto BSecIt = BC.EndSymbols.find(Sym->getName());
+          BSecIt != BC.EndSymbols.end()) {
+        BinarySection *BSec = BSecIt->second;
+        assert(BSec->getOutputAddress() && "Unmapped section!");
+        uint64_t NewValue = BSec->getOutputEndAddress();
+        return NewValue;
+      }
+  return 0;
+}
+
+/// Add a new relocation at the given /p Offset.
+void BinarySection::addRelocation(uint64_t Offset, MCSymbol *Symbol,
+                                  uint64_t Type, uint64_t Addend,
+                                  uint64_t Value, bool Pending) {
+  if (Name == BC.getMainCodeSectionName()) {
+    errs() << formatv(
+        "BOLT-ERROR: Adding reloc to .text at {0:x}, symbol {1}\n", Offset,
+        Symbol ? Symbol->getName() : "");
+    // assert false for stacktrace
+    assert(false &&
+           "Relocations for .text should be handled by BinaryFunction!");
+    exit(1);
+  }
+  assert(Offset < getSize() && "offset not within section bounds");
+  if (!Pending) {
+    Relocations.emplace(Relocation{Offset, Symbol, Type, Addend, Value});
+  } else {
+    PendingRelocations.emplace_back(
+        Relocation{Offset, Symbol, Type, Addend, Value});
+  }
+}
+
 uint64_t
 BinarySection::hash(const BinaryData &BD,
                     std::map<const BinaryData *, uint64_t> &Cache) const {
@@ -152,8 +189,7 @@ void BinarySection::flushPendingRelocations(raw_pwrite_stream &OS,
   // this means using their input file offsets, since the output file offset
   // could change (e.g. for new instance of .text). For non-allocatable
   // sections, the output offset should always be a valid one.
-  const uint64_t SectionFileOffset =
-      isAllocatable() ? getInputFileOffset() : getOutputFileOffset();
+  const uint64_t SectionFileOffset = getOutputFileOffset();
   LLVM_DEBUG(
       dbgs() << "BOLT-DEBUG: flushing pending relocations for section "
              << getName() << '\n'

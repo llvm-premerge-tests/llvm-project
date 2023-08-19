@@ -20,6 +20,7 @@
 #include "llvm/MC/MCRegisterInfo.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
+#include <cstdint>
 
 #define DEBUG_TYPE "mcplus"
 
@@ -97,7 +98,7 @@ public:
             Inst.getOpcode() == AArch64::MOVZWi);
   }
 
-  bool isADD(const MCInst &Inst) const {
+  bool isADD(const MCInst &Inst) const override {
     return (Inst.getOpcode() == AArch64::ADDSWri ||
             Inst.getOpcode() == AArch64::ADDSWrr ||
             Inst.getOpcode() == AArch64::ADDSWrs ||
@@ -688,11 +689,10 @@ public:
   ///    add     x16, x16, #0xbe0
   ///    br      x17
   ///
-  uint64_t analyzePLTEntry(MCInst &Instruction, InstructionIterator Begin,
-                           InstructionIterator End,
+  uint64_t analyzePLTEntry(InstructionIterator Begin, InstructionIterator End,
                            uint64_t BeginPC) const override {
     // Check branch instruction
-    MCInst *Branch = &Instruction;
+    MCInst *Branch = &*(std::prev(End));
     assert(Branch->getOpcode() == AArch64::BR && "Unexpected opcode");
 
     DenseMap<const MCInst *, SmallVector<llvm::MCInst *, 4>> UDChain =
@@ -1042,17 +1042,21 @@ public:
     return 3;
   }
 
-  bool matchAdrpAddPair(const MCInst &Adrp, const MCInst &Add) const override {
-    if (!isADRP(Adrp) || !isAddXri(Add))
+  bool matchAdrpPair(const MCInst &Adrp,
+                     const MCInst &AddOrLdr) const override {
+    if (!isADRP(Adrp))
       return false;
-
+    if (!isAddXri(AddOrLdr) && !isLDRX(AddOrLdr))
+      return false;
     assert(Adrp.getOperand(0).isReg() &&
            "Unexpected operand in ADRP instruction");
     MCPhysReg AdrpReg = Adrp.getOperand(0).getReg();
-    assert(Add.getOperand(1).isReg() &&
-           "Unexpected operand in ADDXri instruction");
-    MCPhysReg AddReg = Add.getOperand(1).getReg();
-    return AdrpReg == AddReg;
+    assert(AddOrLdr.getOperand(1).isReg() &&
+           "Unexpected operand in ADDXri/LDRX instruction");
+    MCPhysReg AddReg = AddOrLdr.getOperand(1).getReg();
+    if (AdrpReg != AddReg)
+      return false;
+    return true;
   }
 
   bool replaceImmWithSymbolRef(MCInst &Inst, const MCSymbol *Symbol,
@@ -1073,6 +1077,29 @@ public:
 
     setOperandToSymbolRef(Inst, ImmOpNo, Symbol, Addend, Ctx, RelType);
 
+    return true;
+  }
+  bool patchPLTInstructions(InstructionIterator Begin, InstructionIterator End,
+                            const MCSymbol *Target, MCContext *Ctx,
+                            const MCSymbol *BFSymbol) const override {
+    int64_t Val;
+    int Count = 0;
+    for (auto I = Begin; I != End; ++I) {
+      if (isADRP(*I))
+        Count += replaceImmWithSymbolRef(*I, Target, 0, Ctx, Val,
+                                         ELF::R_AARCH64_ADR_PREL_PG_HI21);
+      else if (isADD(*I) || isLoad(*I))
+        Count += replaceImmWithSymbolRef(*I, Target, 0, Ctx, Val,
+                                         ELF::R_AARCH64_LDST64_ABS_LO12_NC);
+    }
+    return Count == 3;
+  }
+
+  bool relaxLdrToAdd(MCInst &Inst) const override {
+    assert(Inst.getNumOperands() == 3);
+    assert(Inst.getOpcode() == AArch64::LDRXui);
+    Inst.setOpcode(AArch64::ADDXri);
+    Inst.addOperand(MCOperand::createImm(0)); // zero shift
     return true;
   }
 

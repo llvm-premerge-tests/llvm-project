@@ -139,6 +139,7 @@ private:
   /// Emit a single function.
   bool emitFunction(BinaryFunction &BF, FunctionFragment &FF);
 
+  void emitPLTFunction(BinaryFunction &BF);
   /// Helper for emitFunctionBody to write data inside a function
   /// (used for AArch64)
   void emitConstantIslands(BinaryFunction &BF, bool EmitColdPart,
@@ -216,12 +217,25 @@ void BinaryEmitter::emitAll(StringRef OrgSecPrefix) {
   emitDataSections(OrgSecPrefix);
 }
 
+void BinaryEmitter::emitPLTFunction(BinaryFunction &BF) {
+  assert(BF.begin() + 1 == BF.end());
+  MCSection *Section = BC.getCodeSection(BF.getOriginSection()->getName());
+  Streamer.switchSection(Section);
+  Section->setAlignment(Align(BF.getOriginSection()->getAlignment()));
+  Section->setHasInstructions(true);
+  Streamer.emitLabel(BF.getSymbol());
+  for (auto &BB : BF)
+    for (auto Instr : BB)
+      Streamer.emitInstruction(Instr, *BC.STI);
+}
+
 void BinaryEmitter::emitFunctions() {
   auto emit = [&](const std::vector<BinaryFunction *> &Functions) {
     const bool HasProfile = BC.NumProfiledFuncs > 0;
     const bool OriginalAllowAutoPadding = Streamer.getAllowAutoPadding();
     for (BinaryFunction *Function : Functions) {
-      if (!BC.shouldEmit(*Function))
+      if (!BC.shouldEmit(*Function) &&
+          !(Function->isPLTFunction() && opts::Rewrite && BC.isRISC()))
         continue;
 
       LLVM_DEBUG(dbgs() << "BOLT: generating code for function \"" << *Function
@@ -231,9 +245,17 @@ void BinaryEmitter::emitFunctions() {
       bool Emitted = false;
 
       // Turn off Intel JCC Erratum mitigation for cold code if requested
-      if (HasProfile && opts::X86AlignBranchBoundaryHotOnly &&
-          !Function->hasValidProfile())
+      if ((HasProfile && opts::X86AlignBranchBoundaryHotOnly &&
+           !Function->hasValidProfile()) ||
+          Function->isPLTFunction())
         Streamer.setAllowAutoPadding(false);
+
+      if (Function->isPLTFunction()) {
+        emitPLTFunction(*Function);
+        Function->setEmitted(/*KeepCFG=*/false);
+        Streamer.setAllowAutoPadding(OriginalAllowAutoPadding);
+        continue;
+      }
 
       FunctionLayout &Layout = Function->getLayout();
       Emitted |= emitFunction(*Function, Layout.getMainFragment());
@@ -1043,16 +1065,16 @@ void BinaryEmitter::emitLSDA(BinaryFunction &BF, const FunctionFragment &FF) {
 
   for (int Index = TypeTable.size() - 1; Index >= 0; --Index) {
     const uint64_t TypeAddress = TypeTable[Index];
+    const MCSymbol *TypeSymbol =
+        BC.getOrCreateGlobalSymbol(TypeAddress, "TI", 0, TTypeAlignment);
     switch (TTypeEncoding & 0x70) {
     default:
       llvm_unreachable("unsupported TTypeEncoding");
     case dwarf::DW_EH_PE_absptr:
-      Streamer.emitIntValue(TypeAddress, TTypeEncodingSize);
+      Streamer.emitSymbolValue(TypeSymbol, TTypeEncodingSize);
       break;
     case dwarf::DW_EH_PE_pcrel: {
       if (TypeAddress) {
-        const MCSymbol *TypeSymbol =
-            BC.getOrCreateGlobalSymbol(TypeAddress, "TI", 0, TTypeAlignment);
         MCSymbol *DotSymbol = BC.Ctx->createNamedTempSymbol();
         Streamer.emitLabel(DotSymbol);
         const MCBinaryExpr *SubDotExpr = MCBinaryExpr::createSub(
@@ -1163,9 +1185,17 @@ void BinaryEmitter::emitDataSections(StringRef OrgSecPrefix) {
     if (!Section.hasRelocations())
       continue;
 
-    StringRef Prefix = Section.hasSectionRef() ? OrgSecPrefix : "";
-    Section.emitAsData(Streamer, Prefix + Section.getName());
-    Section.clearRelocations();
+    assert(Section.getOutputName() != BC.getMainCodeSectionName() &&
+           Section.getOutputName() !=
+               (OrgSecPrefix + BC.getMainCodeSectionName()).str() &&
+           ".text should not have relocations!");
+
+    Section.emitAsData(Streamer, Section.getOutputName());
+    // because dynamic relocations usually contain addresses without symbols,
+    // we neeed to preserve usual relocations to detect end-of section
+    // references
+    if (!Section.hasDynamicRelocations())
+      Section.clearRelocations();
   }
 }
 

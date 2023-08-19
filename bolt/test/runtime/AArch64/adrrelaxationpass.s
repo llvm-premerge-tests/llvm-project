@@ -48,10 +48,10 @@ br:
   .word 0xff
 
 # CHECK: <main>:
-# CHECK-NEXT: adr x0, 0x{{[1-8a-f][0-9a-f]*}}
-# CHECK-NEXT: adrp x1, 0x{{[1-8a-f][0-9a-f]*}}
-# CHECK-NEXT: add x1, x1, #{{[1-8a-f][0-9a-f]*}}
-# CHECK-NEXT: adrp x2, 0x{{[1-8a-f][0-9a-f]*}}
-# CHECK-NEXT: add x2, x2, #{{[1-8a-f][0-9a-f]*}}
-# CHECK-NEXT: adr x3, 0x{{[1-8a-f][0-9a-f]*}}
+# CHECK-NEXT: adr x0, 0x{{[1-9a-f][0-9a-f]*}}
+# CHECK-NEXT: adrp x1, 0x{{[1-9a-f][0-9a-f]*}}
+# CHECK-NEXT: add x1, x1, #{{[1-9a-f][0-9a-f]*}}
+# CHECK-NEXT: adrp x2, 0x{{[1-9a-f][0-9a-f]*}}
+# CHECK-NEXT: add x2, x2, #{{[1-9a-f][0-9a-f]*}}
+# CHECK-NEXT: adr x3, 0x{{[1-9a-f][0-9a-f]*}}
 # CHECK-ERROR: BOLT-ERROR: Cannot relax adr in non-simple function main

@@ -6,26 +6,32 @@ FileHeader:
   Machine:         EM_AARCH64
   Entry:           0x684
 ProgramHeaders:
-  - Type:            PT_PHDR
-    Flags:           [ PF_R ]
-    VAddr:           0x200
-    Align:           0x8
-  - Type:            PT_INTERP
-    Flags:           [ PF_R ]
-    FirstSec:        .plt
-    LastSec:         .plt
-    VAddr:           0x238
   - Type:            PT_LOAD
     Flags:           [ PF_X, PF_R ]
     FirstSec:        .plt
     LastSec:         .text
     Align:           0x10000
-    VAddr:           0x5e8
+    VAddr:           0x0
+    Offset:          0x0
+  - Type:            PT_LOAD
+    Flags:           [ PF_X, PF_R ]
+    VAddr:           0x10F40
+    Offset:          0xF40
+    FirstSec:        .dynamic
+    LastSec:         .dynstr
+    Align:           0x10000
+  - Type:            PT_DYNAMIC
+    Flags:           [ PF_W, PF_R ]
+    FirstSec:        .dynamic
+    LastSec:         .dynamic
+    VAddr:           0x10F40
+    Align:           0x8
 Sections:
   - Name:            .plt
     Type:            SHT_PROGBITS
     Flags:           [ SHF_ALLOC, SHF_EXECINSTR ]
     Address:         0x5F0
+    Offset:          0x5F0
     AddressAlign:    0x10
     EntSize:         0x10
     Content:         F07BBFA99000009011CA47F910423E9120021FD61F2003D51F2003D51F2003D59000009011CE47F910623E9120021FD69000009011D247F910823E9120021FD69000009011D647F910A23E9120021FD69000009011DA47F910C23E9120021FD69000009011DE47F910E23E9120021FD6
@@ -33,8 +39,50 @@ Sections:
     Type:            SHT_PROGBITS
     Flags:           [ SHF_ALLOC, SHF_EXECINSTR ]
     Address:         0x660
+    Offset:          0x660
     AddressAlign:    0x8
     Content:         FD7BBFA9A1D6811200000090FD03009100C02091F7FFFF9700008052FD7BC1A8C0035FD61D0080D21E0080D2E50300AAE10340F9E2230091E60300918000009000F847F98300009063F447F98400009084E447F9DBFFFF97E2FFFF978000009000F047F9400000B4DAFFFF17C0035FD6800000B000400091810000B0214000913F0000EBC00000548100009021E847F9610000B4F00301AA00021FD6C0035FD6800000B000400091810000B021400091210000CB22FC7FD3410C818BFF0781EB21FC4193C00000548200009042FC47F9620000B4F00302AA00021FD6C0035FD6FD7BBEA9FD030091F30B00F9930000B060424039400100358000009000EC47F9800000B4800000B0000440F9A9FFFF97D8FFFF972000805260420039F30B40F9FD7BC2A8C0035FD6DEFFFF171F2003D5FD7BBCA9FD030091F35301A99400009094223691F55B02A995000090B5023691940215CBF603002AF76303A9F70301AAF80302AA83FFFF97FF0F94EB6001005494FE4393130080D2A37A73F8E20318AA73060091E10317AAE003162A60003FD69F0213EB21FFFF54F35341A9F55B42A9F76343A9FD7BC4A8C0035FD61F2003D5C0035FD6
+  - Name:            .dynamic
+    Address:         0x10F40
+    Offset:          0xF40
+    Type:            SHT_DYNAMIC
+    Flags:           [ SHF_WRITE, SHF_ALLOC ]
+    Entries:
+      - Tag:             DT_PLTRELSZ
+        Value:           0x78
+      - Tag:             DT_JMPREL
+        Value:           0x10FB8
+      - Tag:             DT_NULL
+        Value:           0x0
+  - Name:            .got.plt
+    Type:            SHT_PROGBITS
+    Flags:           [ SHF_ALLOC, SHF_WRITE ]
+    Address:         0x10F80
+    Offset:          0xF80
+    AddressAlign:    0x8
+    Size:            0x38
+  - Name:            .rela.plt
+    Type:            SHT_RELA
+    Flags:           [ SHF_ALLOC, SHF_INFO_LINK ]
+    Link:            .dynsym
+    AddressAlign:    0x8
+    Info:            .got.plt
+    Relocations:
+      - Offset:          0x10f98
+        Symbol:          pltSym1
+        Type:            R_AARCH64_JUMP_SLOT
+      - Offset:          0x10fa0
+        Symbol:          pltSym2
+        Type:            R_AARCH64_JUMP_SLOT
+      - Offset:          0x10fa8
+        Symbol:          pltSym3
+        Type:            R_AARCH64_JUMP_SLOT
+      - Offset:          0x10fb0
+        Symbol:          pltSym4
+        Type:            R_AARCH64_JUMP_SLOT
+      - Offset:          0x10fb8
+        Symbol:          pltSym5
+        Type:            R_AARCH64_JUMP_SLOT
   - Name:            .debug_info
     Type:            SHT_PROGBITS
     AddressAlign:    0x1
@@ -54,6 +102,22 @@ Symbols:
     Binding:         STB_GLOBAL
     Value:           0x660
     Size:            0x24
+DynamicSymbols:
+  - Name:            pltSym1
+    Type:            STT_FUNC
+    Binding:         STB_GLOBAL
+  - Name:            pltSym2
+    Type:            STT_FUNC
+    Binding:         STB_GLOBAL
+  - Name:            pltSym3
+    Type:            STT_FUNC
+    Binding:         STB_GLOBAL
+  - Name:            pltSym4
+    Type:            STT_FUNC
+    Binding:         STB_GLOBAL
+  - Name:            pltSym5
+    Type:            STT_FUNC
+    Binding:         STB_GLOBAL
 DWARF:
   debug_str:
     - te.c

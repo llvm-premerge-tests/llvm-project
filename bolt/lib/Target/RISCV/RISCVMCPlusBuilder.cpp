@@ -63,6 +63,12 @@ public:
     return isNop(Inst) || isCNop(Inst);
   }
 
+  bool isAuipc(const MCInst &Inst) const {
+    return Inst.getOpcode() == RISCV::AUIPC;
+  }
+
+  bool isLD(const MCInst &Inst) const { return Inst.getOpcode() == RISCV::LD; }
+
   bool hasPCRelOperand(const MCInst &Inst) const override {
     switch (Inst.getOpcode()) {
     default:
@@ -281,12 +287,15 @@ public:
     return true;
   }
 
-  uint64_t analyzePLTEntry(MCInst &Instruction, InstructionIterator Begin,
-                           InstructionIterator End,
+  uint64_t analyzePLTEntry(InstructionIterator Begin, InstructionIterator End,
                            uint64_t BeginPC) const override {
-    auto I = Begin;
 
-    assert(I != End);
+    assert(Begin != End && std::next(Begin) != End);
+
+    if (std::next(Begin)->getOpcode() == RISCV::SUB)
+      return analyzePLTHeader(Begin, End, BeginPC);
+
+    auto I = Begin;
     auto &AUIPC = *I++;
     assert(AUIPC.getOpcode() == RISCV::AUIPC);
     assert(AUIPC.getOperand(0).getReg() == RISCV::X28);
@@ -309,6 +318,66 @@ public:
     (void)NOP;
     assert(isNoop(NOP));
 
+    assert(I == End);
+
+    auto AUIPCOffset = AUIPC.getOperand(1).getImm() << 12;
+    auto LDOffset = LD.getOperand(2).getImm();
+    return BeginPC + AUIPCOffset + LDOffset;
+  }
+
+  uint64_t analyzePLTHeader(InstructionIterator Begin, InstructionIterator End,
+                            uint64_t BeginPC) const {
+    auto I = Begin;
+
+    assert(I != End);
+    auto &AUIPC = *I++;
+    assert(AUIPC.getOpcode() == RISCV::AUIPC);
+    assert(AUIPC.getOperand(0).getReg() == RISCV::X7);
+
+    assert(I != End);
+    auto &SUB = *I++;
+    assert(SUB.getOpcode() == RISCV::SUB);
+    assert(SUB.getOperand(0).getReg() == RISCV::X6);
+    assert(SUB.getOperand(1).getReg() == RISCV::X6);
+    assert(SUB.getOperand(2).getReg() == RISCV::X28);
+
+    assert(I != End);
+    auto &LD = *I++;
+    assert(LD.getOpcode() == RISCV::LD);
+    assert(LD.getOperand(0).getReg() == RISCV::X28);
+    assert(LD.getOperand(1).getReg() == RISCV::X7);
+
+    assert(I != End);
+    auto &ADDI1 = *I++;
+    assert(ADDI1.getOpcode() == RISCV::ADDI);
+    assert(ADDI1.getOperand(0).getReg() == RISCV::X6);
+    assert(ADDI1.getOperand(1).getReg() == RISCV::X6);
+
+    assert(I != End);
+    auto &ADDI2 = *I++;
+    assert(ADDI2.getOpcode() == RISCV::ADDI);
+    assert(ADDI2.getOperand(0).getReg() == RISCV::X5);
+    assert(ADDI2.getOperand(1).getReg() == RISCV::X7);
+
+    assert(I != End);
+    auto &SRLI = *I++;
+    assert(SRLI.getOpcode() == RISCV::SRLI);
+    assert(SRLI.getOperand(0).getReg() == RISCV::X6);
+    assert(SRLI.getOperand(1).getReg() == RISCV::X6);
+
+    assert(I != End);
+    auto &LD2 = *I++;
+    assert(LD2.getOpcode() == RISCV::LD);
+    assert(LD2.getOperand(0).getReg() == RISCV::X5);
+    assert(LD2.getOperand(1).getReg() == RISCV::X5);
+    assert(LD2.getOperand(2).getImm() == 8);
+
+    assert(I != End);
+    auto &JR = *I++;
+    (void)JR;
+    assert(JR.getOpcode() == RISCV::JALR);
+    assert(JR.getOperand(0).getReg() == RISCV::X0);
+    assert(JR.getOperand(1).getReg() == RISCV::X28);
     assert(I == End);
 
     auto AUIPCOffset = AUIPC.getOperand(1).getImm() << 12;
@@ -381,6 +450,24 @@ public:
     case RISCVMCExpr::VK_RISCV_CALL_PLT:
       return true;
     }
+  }
+
+  bool patchPLTInstructions(InstructionIterator Begin, InstructionIterator End,
+                            const MCSymbol *Target, MCContext *Ctx,
+                            const MCSymbol *BFSymbol) const override {
+    int64_t Val;
+    int Count = 0;
+
+    for (auto I = Begin; I != End; ++I) {
+      if (isAuipc(*I))
+        Count += replaceImmWithSymbolRef(*I, Target, 0, Ctx, Val,
+                                         ELF::R_RISCV_PCREL_HI20);
+      else if (isLD(*I) && (I->getOperand(1).getReg() == RISCV::X7 ||
+                            I->getOperand(1).getReg() == RISCV::X28))
+        Count += replaceImmWithSymbolRef(*I, BFSymbol, 0, Ctx, Val,
+                                         ELF::R_RISCV_PCREL_LO12_I);
+    }
+    return Count == 2;
   }
 
   bool isRISCVCall(const MCInst &First, const MCInst &Second) const override {

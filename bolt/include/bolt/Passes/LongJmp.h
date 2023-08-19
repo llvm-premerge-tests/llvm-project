@@ -53,6 +53,7 @@ class LongJmpPass : public BinaryFunctionPass {
   /// Hold tentative addresses
   FuncAddressesMapTy HotAddresses;
   FuncAddressesMapTy ColdAddresses;
+  uint64_t TentativePLTAddress{0};
   DenseMap<const BinaryBasicBlock *, uint64_t> BBAddresses;
 
   /// Used to identify the stub size

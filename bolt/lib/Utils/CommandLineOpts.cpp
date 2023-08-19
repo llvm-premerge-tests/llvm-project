@@ -42,7 +42,7 @@ cl::OptionCategory HeatmapCategory("Heatmap options");
 
 cl::opt<unsigned> AlignText("align-text",
                             cl::desc("alignment of .text section"), cl::Hidden,
-                            cl::cat(BoltCategory));
+                            cl::init(64), cl::cat(BoltCategory));
 
 cl::opt<unsigned> AlignFunctions(
     "align-functions",
@@ -176,10 +176,16 @@ cl::opt<bool> TimeOpts("time-opts",
                        cl::desc("print time spent in each optimization"),
                        cl::cat(BoltOptCategory));
 
-cl::opt<bool> UseOldText(
-    "use-old-text",
-    cl::desc("re-use space in old .text if possible (relocation mode)"),
-    cl::cat(BoltCategory));
+cl::opt<bool> UseOldText("use-old-text",
+                         cl::desc("re-use space in old .text. Deprecated - use "
+                                  "-rewrite instead"),
+                         cl::cat(BoltCategory));
+
+cl::opt<bool>
+    Rewrite("rewrite",
+            cl::desc("Rewrite entire binary - relocate all sections and "
+                     "create new program header table. Requires relocations"),
+            cl::cat(BoltCategory));
 
 cl::opt<bool> UpdateDebugSections(
     "update-debug-sections",
@@ -195,7 +201,7 @@ bool processAllFunctions() {
   if (opts::AggregateOnly)
     return false;
 
-  if (UseOldText || StrictMode)
+  if (Rewrite || StrictMode)
     return true;
 
   return false;

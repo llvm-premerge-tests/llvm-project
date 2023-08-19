@@ -480,8 +480,6 @@ void MachORewriteInstance::emitAndLink() {
       static_cast<MCObjectStreamer *>(Streamer.get())->getAssembler());
 
   auto EFMM = std::make_unique<ExecutableFileMemoryManager>(*BC);
-  EFMM->setNewSecPrefix(getNewSecPrefix());
-  EFMM->setOrgSecPrefix(getOrgSecPrefix());
 
   Linker = std::make_unique<JITLinkLinker>(*BC, std::move(EFMM));
   Linker->loadObject(ObjectMemBuffer->getMemBufferRef(),

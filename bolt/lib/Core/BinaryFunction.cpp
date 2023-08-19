@@ -16,6 +16,7 @@
 #include "bolt/Core/DynoStats.h"
 #include "bolt/Core/HashUtilities.h"
 #include "bolt/Core/MCPlusBuilder.h"
+#include "bolt/Utils/CommandLineOpts.h"
 #include "bolt/Utils/NameResolver.h"
 #include "bolt/Utils/NameShortener.h"
 #include "bolt/Utils/Utils.h"
@@ -1156,6 +1157,13 @@ void BinaryFunction::handleAArch64IndirectCall(MCInst &Instruction,
   }
 }
 
+bool BinaryFunction::handlePLT() {
+  assert(BasicBlocks.size() == 1);
+  return BC.MIB->patchPLTInstructions(BasicBlocks[0]->begin(),
+                                      BasicBlocks[0]->end(), getPLTSymbol(),
+                                      BC.Ctx.get(), getSymbol());
+}
+
 bool BinaryFunction::disassemble() {
   NamedRegionTimer T("disassemble", "Disassemble function", "buildfuncs",
                      "Build Binary Functions", opts::TimeBuild);
@@ -1319,24 +1327,110 @@ bool BinaryFunction::disassemble() {
         // Indirect call. We only need to fix it if the operand is RIP-relative.
         if (IsSimple && MIB->hasPCRelOperand(Instruction))
           handlePCRelOperand(Instruction, AbsoluteInstrAddr, Size);
-
-        if (BC.isAArch64())
+        else if (opts::Rewrite && BC.isX86() &&
+                 BC.MIB->isCall64m(Instruction)) {
+          // Indirect call with possible absolute immediate. Here we assume
+          // that a relocation is present if we have such immediate and replace
+          // the immediate with symbol ref.
+          if (const Relocation *Rel =
+                  getRelocationInRange(Offset, Offset + Size)) {
+            assert(Rel->Symbol && "Indirect call without referenced symbol!");
+            int64_t Value = Rel->Value;
+            bool Ok = BC.MIB->replaceImmWithSymbolRef(Instruction, Rel->Symbol,
+                                                      Rel->Addend, Ctx.get(),
+                                                      Value, Rel->Type);
+            assert(Ok && "Failed to replace immediate with symbol ref!");
+          }
+        } else if (BC.isAArch64()) {
           handleAArch64IndirectCall(Instruction, Offset);
+        }
       }
     } else if (BC.isAArch64() || BC.isRISCV()) {
       // Check if there's a relocation associated with this instruction.
       bool UsedReloc = false;
-      for (auto Itr = Relocations.lower_bound(Offset),
-                ItrE = Relocations.lower_bound(Offset + Size);
-           Itr != ItrE; ++Itr) {
+      if (auto Itr = Relocations.find(Offset); Itr != Relocations.end()) {
         const Relocation &Relocation = Itr->second;
-        int64_t Value = Relocation.Value;
-        const bool Result = BC.MIB->replaceImmWithSymbolRef(
-            Instruction, Relocation.Symbol, Relocation.Addend, Ctx.get(), Value,
-            Relocation.Type);
+        bool Result = false;
+
+        bool TLSAccessNotHandled =
+            Relocation.Type == ELF::R_AARCH64_TLSIE_LD64_GOTTPREL_LO12_NC;
+        enum AccessType { Default, RelaxedGOTAccess, TLSGOT };
+
+        AccessType Type = [&]() {
+          if (!Instructions.size() || Itr == Relocations.begin())
+            return Default;
+          if (std::prev(Itr)->second.Type == ELF::R_AARCH64_ADR_GOT_PAGE &&
+              Relocation.Type == ELF::R_AARCH64_ADD_ABS_LO12_NC &&
+              BC.MIB->matchAdrpPair(Instructions.rbegin()->second, Instruction))
+            return RelaxedGOTAccess;
+
+          // We usually can't determine .got address for such relocations,
+          // so we assert that instructions and relocations are consecutive
+          // and extract address from instructions.
+          if (Relocation.Type == ELF::R_AARCH64_TLSIE_LD64_GOTTPREL_LO12_NC) {
+            assert(std::prev(Itr)->second.Type ==
+                       ELF::R_AARCH64_TLSIE_ADR_GOTTPREL_PAGE21 &&
+                   "Couldn't find the corresponding ADRP relocation for "
+                   "R_AARCH64_TLSIE_LD64_GOTTPREL_LO12_NC");
+            assert(BC.MIB->matchAdrpPair(Instructions.rbegin()->second,
+                                         Instruction) &&
+                   "Can't match TLS access instructions");
+            return TLSGOT;
+          }
+          return Default;
+        }();
+        if (Type != Default) {
+
+          const uint64_t PageAddress = std::prev(Itr)->second.Value;
+          const uint64_t PageOffset = Relocation.Value;
+
+          assert((PageAddress & 0xfff) == 0 && "Invalid ADRP operand");
+          assert((PageOffset & 0xfff) == PageOffset &&
+                 "Invalid ADD/LDR operand");
+
+          const uint64_t TargetAddress = PageAddress + PageOffset;
+
+          assert(TargetAddress && "ADRP + ADD/LDR references zero");
+
+          const MCSymbol *Symbol = [&]() -> const MCSymbol * {
+            if (Type == RelaxedGOTAccess) {
+              assert(Relocation.Symbol && "ADRP+ADD references unknown symbol");
+              return Relocation.Symbol;
+            }
+            return BC.getOrCreateGlobalSymbol(TargetAddress, "DATAat");
+          }();
+
+          Result = BC.MIB->setOperandToSymbolRef(
+              Instructions.rbegin()->second, /*OpNum*/ 1, Symbol, 0,
+              BC.Ctx.get(), ELF::R_AARCH64_ADR_PREL_PG_HI21);
+
+          Result =
+              BC.MIB->setOperandToSymbolRef(Instruction, /*OpNum*/ 2, Symbol, 0,
+                                            BC.Ctx.get(), Relocation.Type) &&
+              Result;
+          TLSAccessNotHandled = false;
+        } else {
+
+          int64_t Value = Relocation.Value;
+          Result = BC.MIB->replaceImmWithSymbolRef(
+              Instruction, Relocation.Symbol, Relocation.Addend, Ctx.get(),
+              Value, Relocation.Type);
+          if (Relocation.Type == ELF::R_AARCH64_ADD_ABS_LO12_NC &&
+              BC.MIB->isLoad(Instruction)) {
+            // if we see ldr with add-related relocation, it means we
+            // couldn't find the .got entry for referneced symbol during
+            // relocation processing. In that case we have to load symbol
+            // address directly, avoiding .got access altogether. It usually
+            // happens with linker-inserted symbols such as
+            // __{section}_{start,end} and shouldn't cause problems.
+            BC.MIB->relaxLdrToAdd(Instruction);
+          }
+        }
         (void)Result;
         assert(Result && "cannot replace immediate with relocation");
-
+        assert(!TLSAccessNotHandled &&
+               "Unhandled R_AARCH64_TLSIE_LD64_GOTTPREL_LO12_NC");
+        (void)TLSAccessNotHandled;
         // For aarch64, if we replaced an immediate with a symbol from a
         // relocation, we mark it so we do not try to further process a
         // pc-relative operand. All we need is the symbol.
@@ -1345,6 +1439,19 @@ bool BinaryFunction::disassemble() {
 
       if (!BC.isRISCV() && MIB->hasPCRelOperand(Instruction) && !UsedReloc)
         handlePCRelOperand(Instruction, AbsoluteInstrAddr, Size);
+    } else if (const Relocation *Rel =
+                   getRelocationInRange(Offset, Offset + Size)) {
+      if (auto *Sym = Rel->Symbol)
+        if (auto It = BC.EndSymbols.find(Sym->getName());
+            It != BC.EndSymbols.end()) {
+          int64_t Value;
+          LLVM_DEBUG(
+              dbgs() << formatv(
+                  "BOLT-INFO: end symbol {0} referenced in {1} + {2:x}\n",
+                  Sym->getName(), getOneName(), Offset););
+          BC.MIB->replaceImmWithSymbolRef(Instruction, Sym, Rel->Addend,
+                                          Ctx.get(), Value, Rel->Type);
+        }
     }
 
 add_instruction:
@@ -4023,6 +4130,11 @@ void BinaryFunction::calculateLoopInfo() {
 }
 
 void BinaryFunction::updateOutputValues(const MCAsmLayout &Layout) {
+  if (isPLTFunction()) {
+    const uint64_t Offset = getAddress() - OriginSection->getAddress();
+    setOutputAddress(OriginSection->getOutputAddress() + Offset);
+    return;
+  }
   if (!isEmitted()) {
     assert(!isInjected() && "injected function should be emitted");
     setOutputAddress(getAddress());

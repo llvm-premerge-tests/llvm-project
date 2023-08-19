@@ -9,6 +9,8 @@ ProgramHeaders:
   - Type:            PT_PHDR
     Flags:           [ PF_R ]
     VAddr:           0x40
+    FileSize:        0x230
+    MemSize:         0x230
     Align:           0x8
   - Type:            PT_INTERP
     Flags:           [ PF_R ]
@@ -19,6 +21,8 @@ ProgramHeaders:
     Flags:           [ PF_R ]
     FirstSec:        .interp
     LastSec:         .rodata.str
+    VAddr:           0x0
+    Offset:          0x0
     Align:           0x1000
   - Type:            PT_LOAD
     Flags:           [ PF_X, PF_R ]

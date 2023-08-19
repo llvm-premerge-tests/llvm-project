@@ -9,9 +9,8 @@
 # RUN:   | FileCheck %s
 
 # CHECK: considering symbol etext for function
-# CHECK-NEXT: rejecting as symbol points to end of its section
+# CHECK-NEXT: BOLT-INFO: etext is in the end of .text
 # CHECK-NOT: Binary Function "etext{{.*}}" after building cfg
-
 
   .text
   .globl _start

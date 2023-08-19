@@ -9,17 +9,29 @@ ProgramHeaders:
   - Type:            PT_PHDR
     Flags:           [ PF_R ]
     VAddr:           0x400040
+    Offset:          0x000040
+    MemSize:         0x118
+    FileSize:        0x118
     Align:           0x8
   - Type:            PT_INTERP
     Flags:           [ PF_R ]
     FirstSec:        .interp
     LastSec:         .interp
     VAddr:           0x400238
+    Offset:          0x000238
   - Type:            PT_LOAD
     Flags:           [ PF_X, PF_R ]
     FirstSec:        .interp
-    LastSec:         .bss
+    LastSec:         .rodata
     VAddr:           0x400000
+    Offset:          0x0
+    Align:           0x10000
+  - Type:            PT_LOAD
+    Flags:           [ PF_W, PF_R ]
+    VAddr:           0x410e08
+    Offset:          0x000e08
+    FirstSec:        .dynamic
+    LastSec:         .bss
     Align:           0x10000
   - Type:            PT_DYNAMIC
     Flags:           [ PF_W, PF_R ]
@@ -32,12 +44,14 @@ Sections:
     Type:            SHT_PROGBITS
     Flags:           [ SHF_ALLOC ]
     Address:         0x400238
+    Offset:          0x000238
     AddressAlign:    0x1
     Content:         2F6C69622F6C642D6C696E75782D616172636836342E736F2E3100
   - Name:            .dynsym
     Type:            SHT_DYNSYM
     Flags:           [ SHF_ALLOC ]
     Address:         0x4002A0
+    Offset:          0x0002A0
     Link:            .dynstr
     AddressAlign:    0x8
   - Name:            .dynstr
@@ -49,6 +63,7 @@ Sections:
     Type:            SHT_RELA
     Flags:           [ SHF_ALLOC ]
     Address:         0x4003C8
+    Offset:          0x0003C8
     Link:            .dynsym
     AddressAlign:    0x8
     Relocations:
@@ -59,6 +74,7 @@ Sections:
     Type:            SHT_RELA
     Flags:           [ SHF_ALLOC, SHF_INFO_LINK ]
     Address:         0x4003E0
+    Offset:          0x0003E0
     Link:            .dynsym
     AddressAlign:    0x8
     Info:            .got.plt
@@ -85,6 +101,7 @@ Sections:
     Type:            SHT_PROGBITS
     Flags:           [ SHF_ALLOC, SHF_EXECINSTR ]
     Address:         0x400490
+    Offset:          0x000490
     AddressAlign:    0x10
     EntSize:         0x10
     Content:         F07BBFA99000009011FE47F910E23F9120021FD61F2003D51F2003D51F2003D5900000B0110240F91002009120021FD6900000B0110640F91022009120021FD6900000B0110A40F91042009120021FD6900000B0110E40F91062009120021FD6900000B0111240F91082009120021FD6900000B0111640F910A2009120021FD6
@@ -98,12 +115,14 @@ Sections:
     Type:            SHT_PROGBITS
     Flags:           [ SHF_ALLOC ]
     Address:         0x400760
+    Offset:          0x000760
     AddressAlign:    0x8
     Content:         0100020000000000000000000000000000000000000000005465737420636F6D706C657465640A00
   - Name:            .dynamic
     Type:            SHT_DYNAMIC
     Flags:           [ SHF_WRITE, SHF_ALLOC ]
     Address:         0x410E08
+    Offset:          0x000E08
     Link:            .dynstr
     AddressAlign:    0x8
     Entries:
@@ -139,6 +158,7 @@ Sections:
     Type:            SHT_PROGBITS
     Flags:           [ SHF_WRITE, SHF_ALLOC ]
     Address:         0x410FD8
+    Offset:          0x000fd8
     AddressAlign:    0x8
     EntSize:         0x8
     Content:         '080E4100000000000000000000000000'
@@ -153,11 +173,13 @@ Sections:
     Type:            SHT_PROGBITS
     Flags:           [ SHF_WRITE, SHF_ALLOC ]
     Address:         0x411040
+    Offset:          0x001040
     AddressAlign:    0x8
   - Name:            .bss
     Type:            SHT_NOBITS
     Flags:           [ SHF_WRITE, SHF_ALLOC ]
     Address:         0x411040
+    Offset:          0x001040
     AddressAlign:    0x8
     Size:            0x18
   - Name:            .rela.text

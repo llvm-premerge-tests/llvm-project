@@ -6,8 +6,8 @@
 // RUN:   -data %S/Inputs/reorder-data-writable-ptload.fdata
 // RUN: llvm-readelf -SlW %t.bolt | FileCheck %s
 
-// CHECK: .bolt.org.data
-// CHECK: {{.*}} .data PROGBITS [[#%x,ADDR:]] [[#%x,OFF:]]
+// CHECK: .data
+// CHECK: {{.*}} .data.hot PROGBITS [[#%x,ADDR:]] [[#%x,OFF:]]
 // CHECK: LOAD 0x{{.*}}[[#OFF]] 0x{{.*}}[[#ADDR]] {{.*}} RW
 
 volatile int cold1 = 42;

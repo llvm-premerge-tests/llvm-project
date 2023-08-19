@@ -2,133 +2,156 @@
 FileHeader:
   Class:           ELFCLASS64
   Data:            ELFDATA2LSB
-  Type:            ET_EXEC
+  Type:            ET_DYN
   Machine:         EM_AARCH64
-  Entry:           0x210648
+  Entry:           0x264
 ProgramHeaders:
   - Type:            PT_PHDR
     Flags:           [ PF_R ]
-    VAddr:           0x200040
+    VAddr:           0x40
     Align:           0x8
+    FileSize:        0x1C0
+    MemSize:         0x1C0
+    Offset:          0x40
   - Type:            PT_INTERP
     Flags:           [ PF_R ]
     FirstSec:        .interp
     LastSec:         .interp
-    VAddr:           0x2002A8
-  - Type:            PT_LOAD
-    Flags:           [ PF_R ]
-    FirstSec:        .interp
-    LastSec:         .rodata
-    VAddr:           0x200000
-    Align:           0x10000
+    VAddr:           0x200
+    Offset:          0x200
   - Type:            PT_LOAD
     Flags:           [ PF_X, PF_R ]
-    FirstSec:        .text
-    LastSec:         .plt
-    VAddr:           0x210648
+    FirstSec:        .interp
+    LastSec:         .eh_frame
     Align:           0x10000
+    Offset:          0x0
   - Type:            PT_LOAD
     Flags:           [ PF_W, PF_R ]
-    FirstSec:        .text
-    LastSec:         .got
-    VAddr:           0x322580
+    FirstSec:        .dynamic
+    LastSec:         .got.plt
+    VAddr:           0x10F10
     Align:           0x10000
-  - Type:            PT_LOAD
-    Flags:           [ PF_W, PF_R ]
-    FirstSec:        .data
-    LastSec:         .bss
-    VAddr:           0x332720
-    Align:           0x10000
+    Offset:          0xF10
   - Type:            PT_DYNAMIC
     Flags:           [ PF_W, PF_R ]
     FirstSec:        .dynamic
     LastSec:         .dynamic
-    VAddr:           0x322590
+    VAddr:           0x10F10
     Align:           0x8
+    Offset:          0xF10
+  - Type:            PT_GNU_EH_FRAME
+    Flags:           [ PF_R ]
+    FirstSec:        .eh_frame_hdr
+    LastSec:         .eh_frame_hdr
+    VAddr:           0x298
+    Align:           0x4
+    Offset:          0x298
+  - Type:            PT_GNU_STACK
+    Flags:           [ PF_W, PF_R ]
+    Align:           0x10
+    Offset:          0x0
+  - Type:            PT_GNU_RELRO
+    Flags:           [ PF_R ]
+    FirstSec:        .dynamic
+    LastSec:         .got.plt
+    VAddr:           0x10F10
+    Offset:          0xF10
 Sections:
   - Name:            .interp
     Type:            SHT_PROGBITS
     Flags:           [ SHF_ALLOC ]
-    Address:         0x2002A8
+    Address:         0x200
     AddressAlign:    0x1
     Content:         2F6C69622F6C642D6C696E75782D616172636836342E736F2E3100
+  - Name:            .gnu.hash
+    Type:            SHT_GNU_HASH
+    Flags:           [ SHF_ALLOC ]
+    Address:         0x220
+    Link:            .dynsym
+    AddressAlign:    0x8
+    Header:
+      SymNdx:          0x1
+      Shift2:          0x0
+    BloomFilter:     [ 0x0 ]
+    HashBuckets:     [ 0x0 ]
+    HashValues:      [  ]
   - Name:            .dynsym
     Type:            SHT_DYNSYM
     Flags:           [ SHF_ALLOC ]
-    Address:         0x200300
+    Address:         0x240
     Link:            .dynstr
     AddressAlign:    0x8
   - Name:            .dynstr
     Type:            SHT_STRTAB
     Flags:           [ SHF_ALLOC ]
-    Address:         0x2003F4
+    Address:         0x258
     AddressAlign:    0x1
-  - Name:            .rodata
-    Type:            SHT_PROGBITS
-    Flags:           [ SHF_ALLOC, SHF_MERGE, SHF_STRINGS ]
-    Address:         0x2004E8
-    AddressAlign:    0x8
-    Content:         010002000000000000000000000000000000000000000000486572650A00
   - Name:            .text
     Type:            SHT_PROGBITS
     Flags:           [ SHF_ALLOC, SHF_EXECINSTR ]
-    Address:         0x210648
-    AddressAlign:    0x8
-    Content:         1D0080D21E0080D2E50300AAE10340F9E2230091E60300910000009000001A91030800D063E01191040800D084E01391B6070494B10704942F000014800800D0008843F9400000B4B4070414C0035FD6000900D000C01C91010900D021C01C913F0000EBC000005481FFFF90217842F9610000B4F00301AA00021FD6C0035FD6000900D000C01C91010900D021C01C91210000CB22FC7FD3410C818BFF0781EB21FC4193C000005482FFFF90427C42F9620000B4F00302AA00021FD6C0035FD6FD7BBEA9FD030091F30B00F9130900D060A25D3980000035DEFFFF972000805260A21D39F30B40F9FD7BC2A8C0035FD6E4FFFF17FF4300D1000800D000601191E00700F90004009100008052FF430091C0035FD6FD7BBFA9FD03009160F7FFD00000149142000094FD7BC1A8C0035FD600000000FD7BBCA9FD030091F35301A91F2003D554080810F55B02A91F2003D5B5070810940215CBF603002AF76303A9F70301AAF80302AA14000094FF0F94EB6001005494FE4393130080D2A37A73F8E20318AA73060091E10317AAE003162A60003FD69F0213EB21FFFF54F35341A9F55B42A9F76343A9FD7BC4A8C0035FD61F2003D5C0035FD6
-  - Name:            .plt
+    Address:         0x25C
+    AddressAlign:    0x4
+    Content:         E0031F2AC0035FD6FF8300D1FD7B01A9FD430091E8031F2AE80B00B9BFC31FB80100009021700991E00B40B9FD7B41A9FF830091A80B8052010000D4
+  - Name:            .eh_frame_hdr
     Type:            SHT_PROGBITS
-    Flags:           [ SHF_ALLOC, SHF_EXECINSTR ]
-    Address:         0x312520
-    AddressAlign:    0x10
-    Content:         F07BBFA91001009011A243F910021D9120021FD61F2003D51F2003D51F2003D51001009011A643F910221D9120021FD61001009011AA43F910421D9120021FD61001009011AE43F910621D9120021FD61001009011B243F910821D9120021FD6
+    Flags:           [ SHF_ALLOC ]
+    Address:         0x298
+    AddressAlign:    0x4
+    Content:         011B033B1C00000002000000C4FFFFFF34000000CCFFFFFF48000000
+  - Name:            .eh_frame
+    Type:            SHT_PROGBITS
+    Flags:           [ SHF_ALLOC ]
+    Address:         0x2B8
+    AddressAlign:    0x8
+    Content:         1000000000000000017A5200017C1E011B0C1F00100000001800000088FFFFFF0800000000000000240000002C0000007CFFFFFF3400000000440E20480C1D109E029D04580C1F20500E00DEDD000000
   - Name:            .dynamic
     Type:            SHT_DYNAMIC
     Flags:           [ SHF_WRITE, SHF_ALLOC ]
-    Address:         0x322590
+    Address:         0x10F10
     Link:            .dynstr
     AddressAlign:    0x8
+    Offset:          0xF10
     Entries:
-      - Tag:             DT_NEEDED
-        Value:           0x65
+      - Tag:             DT_GNU_HASH
+        Value:           0x220
+      - Tag:             DT_STRTAB
+        Value:           0x258
       - Tag:             DT_SYMTAB
-        Value:           0x200300
+        Value:           0x240
+      - Tag:             DT_STRSZ
+        Value:           0x1
       - Tag:             DT_SYMENT
         Value:           0x18
-      - Tag:             DT_STRTAB
-        Value:           0x2003F4
-      - Tag:             DT_STRSZ
-        Value:           0x7A
+      - Tag:             DT_DEBUG
+        Value:           0x0
+      - Tag:             DT_FLAGS_1
+        Value:           0x8000000
+      - Tag:             DT_NULL
+        Value:           0x0
+      - Tag:             DT_NULL
+        Value:           0x0
+      - Tag:             DT_NULL
+        Value:           0x0
+      - Tag:             DT_NULL
+        Value:           0x0
+      - Tag:             DT_NULL
+        Value:           0x0
       - Tag:             DT_NULL
         Value:           0x0
   - Name:            .got
     Type:            SHT_PROGBITS
     Flags:           [ SHF_WRITE, SHF_ALLOC ]
-    Address:         0x322710
+    Address:         0x10FE0
     AddressAlign:    0x8
-    Content:         '00000000000000005824310000000000'
-  - Name:            .data
-    Type:            SHT_PROGBITS
-    Flags:           [ SHF_WRITE, SHF_ALLOC ]
-    Address:         0x332720
-    AddressAlign:    0x8
-    Content:         '00000000000000000000000000000000'
-  - Name:            .tm_clone_table
-    Type:            SHT_PROGBITS
-    Flags:           [ SHF_WRITE, SHF_ALLOC ]
-    Address:         0x332730
-    AddressAlign:    0x8
+    EntSize:         0x8
+    Content:         100F010000000000
   - Name:            .got.plt
     Type:            SHT_PROGBITS
     Flags:           [ SHF_WRITE, SHF_ALLOC ]
-    Address:         0x332730
+    Address:         0x10FE8
     AddressAlign:    0x8
-    Content:         '0000000000000000000000000000000000000000000000002025310000000000202531000000000020253100000000002025310000000000'
-  - Name:            .bss
-    Type:            SHT_NOBITS
-    Flags:           [ SHF_WRITE, SHF_ALLOC ]
-    Address:         0x332768
-    AddressAlign:    0x1
-    Size:            0x1
+    EntSize:         0x8
+    Content:         '000000000000000000000000000000000000000000000000'
   - Name:            .rela.text
     Type:            SHT_RELA
     Flags:           [ SHF_INFO_LINK ]
@@ -136,67 +159,144 @@ Sections:
     AddressAlign:    0x8
     Info:            .text
     Relocations:
-      - Offset:          0x210740
+      - Offset:          0x27C
         Symbol:          foo
         Type:            R_AARCH64_ADR_GOT_PAGE
-      - Offset:          0x210744
+      - Offset:          0x280
         Symbol:          foo
         Type:            R_AARCH64_LD64_GOT_LO12_NC
+  - Name:            .rela.eh_frame
+    Type:            SHT_RELA
+    Flags:           [ SHF_INFO_LINK ]
+    Link:            .symtab
+    AddressAlign:    0x8
+    Info:            .eh_frame
+    Relocations:
+      - Offset:          0x2D4
+        Symbol:          .text
+        Type:            R_AARCH64_PREL32
+      - Offset:          0x2E8
+        Symbol:          .text
+        Type:            R_AARCH64_PREL32
+        Addend:          8
+  - Type:            SectionHeaderTable
+    Sections:
+      - Name:            .interp
+      - Name:            .gnu.hash
+      - Name:            .dynsym
+      - Name:            .dynstr
+      - Name:            .text
+      - Name:            .rela.text
+      - Name:            .eh_frame_hdr
+      - Name:            .eh_frame
+      - Name:            .rela.eh_frame
+      - Name:            .dynamic
+      - Name:            .got
+      - Name:            .got.plt
+      - Name:            .symtab
+      - Name:            .strtab
+      - Name:            .shstrtab
 Symbols:
-  - Name:            '$x'
-    Section:         .text
-    Value:           0x210648
-  - Name:            .text
-    Type:            STT_SECTION
-    Section:         .text
-    Value:           0x210648
-  - Name:            .data
-    Type:            STT_SECTION
-    Section:         .data
-    Value:           0x332720
-  - Name:            .bss
-    Type:            STT_SECTION
-    Section:         .bss
-    Value:           0x332768
-  - Name:            .rodata
-    Type:            STT_SECTION
-    Section:         .rodata
-    Value:           0x2004E8
   - Name:            .interp
     Type:            STT_SECTION
     Section:         .interp
-    Value:           0x2002A8
-  - Name:            _DYNAMIC
+    Value:           0x200
+  - Name:            .gnu.hash
+    Type:            STT_SECTION
+    Section:         .gnu.hash
+    Value:           0x220
+  - Name:            .dynsym
+    Type:            STT_SECTION
+    Section:         .dynsym
+    Value:           0x240
+  - Name:            .dynstr
+    Type:            STT_SECTION
+    Section:         .dynstr
+    Value:           0x258
+  - Name:            .text
+    Type:            STT_SECTION
+    Section:         .text
+    Value:           0x25C
+  - Name:            .eh_frame_hdr
+    Type:            STT_SECTION
+    Section:         .eh_frame_hdr
+    Value:           0x298
+  - Name:            .eh_frame
+    Type:            STT_SECTION
+    Section:         .eh_frame
+    Value:           0x2B8
+  - Name:            .dynamic
+    Type:            STT_SECTION
     Section:         .dynamic
-    Value:           0x322590
-    Other:           [ STV_HIDDEN ]
-  - Name:            _start
-    Type:            STT_FUNC
+    Value:           0x10F10
+  - Name:            .got
+    Type:            STT_SECTION
+    Section:         .got
+    Value:           0x10FE0
+  - Name:            .got.plt
+    Type:            STT_SECTION
+    Section:         .got.plt
+    Value:           0x10FE8
+  - Name:            tmp.c
+    Type:            STT_FILE
+    Index:           SHN_ABS
+  - Name:            '$x.0'
     Section:         .text
-    Binding:         STB_GLOBAL
-    Value:           0x210648
-  - Name:            main
-    Type:            STT_FUNC
-    Section:         .text
-    Binding:         STB_GLOBAL
-    Value:           0x21073C
-    Size:            0x20
-  - Name:            data_start
-    Section:         .data
-    Binding:         STB_WEAK
-    Value:           0x332720
-  - Name:            _IO_stdin_used
+    Value:           0x25C
+  - Name:            '$d.1'
+    Section:         .eh_frame
+    Value:           0x2B8
+  - Type:            STT_FILE
+    Index:           SHN_ABS
+  - Name:            _DYNAMIC
     Type:            STT_OBJECT
-    Section:         .rodata
+    Index:           SHN_ABS
+    Value:           0x10F10
+  - Name:            __GNU_EH_FRAME_HDR
+    Section:         .eh_frame_hdr
+    Value:           0x298
+  - Name:            _GLOBAL_OFFSET_TABLE_
+    Type:            STT_OBJECT
+    Index:           SHN_ABS
+    Value:           0x10FE0
+  - Name:            _bss_end__
+    Section:         .got.plt
     Binding:         STB_GLOBAL
-    Value:           0x2004E8
-    Size:            0x4
-  - Name:            __libc_start_main
-    Type:            STT_FUNC
+    Value:           0x11000
+  - Name:            __bss_start__
+    Section:         .got.plt
     Binding:         STB_GLOBAL
+    Value:           0x11000
+  - Name:            __bss_end__
+    Section:         .got.plt
+    Binding:         STB_GLOBAL
+    Value:           0x11000
+  - Name:            _start
+    Section:         .text
+    Binding:         STB_GLOBAL
+    Value:           0x264
+    Size:            0x34
+  - Name:            __bss_start
+    Section:         .got.plt
+    Binding:         STB_GLOBAL
+    Value:           0x11000
+  - Name:            __end__
+    Section:         .got.plt
+    Binding:         STB_GLOBAL
+    Value:           0x11000
   - Name:            foo
     Type:            STT_FUNC
     Section:         .text
     Binding:         STB_GLOBAL
-    Value:           0x21075c
-    Size:            0xF
+    Value:           0x25C
+    Size:            0x8
+  - Name:            _edata
+    Section:         .got.plt
+    Binding:         STB_GLOBAL
+    Value:           0x11000
+  - Name:            _end
+    Section:         .got.plt
+    Binding:         STB_GLOBAL
+    Value:           0x11000
+DynamicSymbols:  []
+...

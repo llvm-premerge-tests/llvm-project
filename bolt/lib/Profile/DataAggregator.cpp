@@ -2004,13 +2004,13 @@ std::error_code DataAggregator::parseMMapEvents() {
       // Check that the binary mapping matches one of the segments.
       bool MatchFound = llvm::any_of(
           llvm::make_second_range(BC->SegmentMapInfo),
-          [&](SegmentInfo &SegInfo) {
+          [&](ProgramHeader &SegInfo) {
             // The mapping is page-aligned and hence the MMapAddress could be
             // different from the segment start address. We cannot know the page
             // size of the mapping, but we know it should not exceed the segment
             // alignment value. Hence we are performing an approximate check.
-            return SegInfo.Address >= MMapInfo.MMapAddress &&
-                   SegInfo.Address - MMapInfo.MMapAddress < SegInfo.Alignment;
+            return SegInfo.p_vaddr >= MMapInfo.MMapAddress &&
+                   SegInfo.p_vaddr - MMapInfo.MMapAddress < SegInfo.p_align;
           });
       if (!MatchFound) {
         errs() << "PERF2BOLT-WARNING: ignoring mapping of " << NameToUse

@@ -59,25 +59,76 @@ namespace bolt {
 
 class BinaryFunction;
 
-/// Information on loadable part of the file.
-struct SegmentInfo {
-  uint64_t Address;           /// Address of the segment in memory.
-  uint64_t Size;              /// Size of the segment in memory.
-  uint64_t FileOffset;        /// Offset in the file.
-  uint64_t FileSize;          /// Size in file.
-  uint64_t Alignment;         /// Alignment of the segment.
+// We create a copy of ELF64LE::Phdr type because ELF64LE::Phdr uses
+// endian-aware members which use memcpy for assignments and other operations.
+// We will use this struct instead to avoid memcpy and convert to ELF64LE::Phdr
+// only before writing to file.
+struct ProgramHeader {
+  uint32_t p_type{0};
+  uint32_t p_flags{0};
+  uint64_t p_offset{0};
+  uint64_t p_vaddr{0};
+  uint64_t p_paddr{0};
+  uint64_t p_filesz{0};
+  uint64_t p_memsz{0};
+  uint64_t p_align{0};
 
+  ProgramHeader(const ELF64LE::Phdr &Hdr) {
+    p_type = Hdr.p_type;
+    p_flags = Hdr.p_flags;
+    p_offset = Hdr.p_offset;
+    p_vaddr = Hdr.p_vaddr;
+    p_paddr = Hdr.p_paddr;
+    p_filesz = Hdr.p_filesz;
+    p_memsz = Hdr.p_memsz;
+    p_align = Hdr.p_align;
+  }
+  ProgramHeader() {}
+
+  ProgramHeader(uint32_t p_type, uint32_t p_flags, uint64_t p_offset,
+                uint64_t p_vaddr, uint64_t p_paddr, uint64_t p_filesz,
+                uint64_t p_memsz, uint64_t p_align)
+      : p_type(p_type), p_flags(p_flags), p_offset(p_offset), p_vaddr(p_vaddr),
+        p_paddr(p_paddr), p_filesz(p_filesz), p_memsz(p_memsz),
+        p_align(p_align) {}
+  explicit operator ELF64LE::Phdr() const {
+    ELF64LE::Phdr Res;
+    Res.p_type = p_type;
+    Res.p_flags = p_flags;
+    Res.p_offset = p_offset;
+    Res.p_vaddr = p_vaddr;
+    Res.p_paddr = p_paddr;
+    Res.p_filesz = p_filesz;
+    Res.p_memsz = p_memsz;
+    Res.p_align = p_align;
+    return Res;
+  }
   void print(raw_ostream &OS) const {
-    OS << "SegmentInfo { Address: 0x"
-       << Twine::utohexstr(Address) << ", Size: 0x"
-       << Twine::utohexstr(Size) << ", FileOffset: 0x"
-       << Twine::utohexstr(FileOffset) << ", FileSize: 0x"
-       << Twine::utohexstr(FileSize) << ", Alignment: 0x"
-       << Twine::utohexstr(Alignment) << "}";
-  };
+    OS << "SegmentInfo { Address: 0x" << Twine::utohexstr(p_vaddr)
+       << ", Size: 0x" << Twine::utohexstr(p_memsz) << ", FileOffset: 0x"
+       << Twine::utohexstr(p_offset) << ", FileSize: 0x"
+       << Twine::utohexstr(p_filesz) << ", Alignment: 0x"
+       << Twine::utohexstr(p_align) << "}";
+  }
+  bool contains(const BinarySection &Section) const {
+    return (Section.getAddress() && Section.getInputFileOffset() &&
+            Section.getAddress() >= p_vaddr &&
+            (Section.getAddress() + !Section.isTBSS() * Section.getSize() <=
+             p_vaddr + p_memsz));
+  }
+
+  bool isTLS() const { return p_type == ELF::PT_TLS; }
+  bool isLOAD() const { return p_type == ELF::PT_LOAD; }
+  bool isExec() const { return p_flags & ELF::PF_X; }
+  // intended for loadable segments
+  unsigned getSectionFlags() const {
+    return ELF::SHF_ALLOC * (p_type == ELF::PT_LOAD) |
+           ELF::SHF_EXECINSTR * !!(p_flags & ELF::PF_X) |
+           ELF::SHF_WRITE * !!(p_flags & ELF::PF_W);
+  }
 };
 
-inline raw_ostream &operator<<(raw_ostream &OS, const SegmentInfo &SegInfo) {
+inline raw_ostream &operator<<(raw_ostream &OS, const ProgramHeader &SegInfo) {
   SegInfo.print(OS);
   return OS;
 }
@@ -240,6 +291,8 @@ public:
   /// overwritten, but it is okay to re-generate debug info for them.
   std::set<const DWARFUnit *> ProcessedCUs;
 
+  StringMap<BinarySection *> EndSymbols;
+
   // Setup MCPlus target builder
   void initializeTarget(std::unique_ptr<MCPlusBuilder> TargetBuilder) {
     MIB = std::move(TargetBuilder);
@@ -286,9 +339,18 @@ public:
                                   std::optional<StringRef> Source,
                                   unsigned CUID, unsigned DWARFVersion);
 
-  /// [start memory address] -> [segment info] mapping.
-  std::map<uint64_t, SegmentInfo> SegmentMapInfo;
+  /// [start memory address] -> [program header] mapping for loadable input
+  /// segments
+  std::map<uint64_t, ProgramHeader> SegmentMapInfo;
 
+  // [address] -> [offset] mappings for output loadable segments
+  std::map<uint64_t, uint64_t> OutputAddressToOffsetMap;
+  std::vector<ProgramHeader> OutputSegments;
+
+  using SegmentIterator = decltype(OutputSegments)::iterator;
+  using FilteredSegmentIterator = FilterIterator<SegmentIterator>;
+
+  std::vector<ProgramHeader> InputSegments;
   /// Symbols that are expected to be undefined in MCContext during emission.
   std::unordered_set<MCSymbol *> UndefinedSymbols;
 
@@ -658,15 +720,12 @@ public:
   // Address of the first allocated segment.
   uint64_t FirstAllocAddress{std::numeric_limits<uint64_t>::max()};
 
-  /// Track next available address for new allocatable sections. RewriteInstance
-  /// sets this prior to running BOLT passes, so layout passes are aware of the
-  /// final addresses functions will have.
-  uint64_t LayoutStartAddress{0};
-
-  /// Old .text info.
+  // The end of the last loadable segment in the input
+  uint64_t InputAddressSpaceEnd{0};
   uint64_t OldTextSectionAddress{0};
-  uint64_t OldTextSectionOffset{0};
-  uint64_t OldTextSectionSize{0};
+  // Computed in advance when not using --rewrite, otherwise unused
+  uint64_t NewTextSectionAddress{0};
+  uint64_t MaxPHDRSize{0};
 
   /// Address of the code/function that is executed before any other code in
   /// the binary.
@@ -725,6 +784,7 @@ public:
   }
 
   bool isRISCV() const { return TheTriple->getArch() == llvm::Triple::riscv64; }
+  bool isRISC() const { return isRISCV() || isAArch64(); }
 
   // AArch64-specific functions to check if symbol is used to delimit
   // code/data in .text. Code is marked by $x, data by $d.
@@ -769,6 +829,20 @@ public:
                       FilteredBinaryDataIterator(pred, End, End));
   }
 
+  std::vector<BinarySection *> getNewSectionsByFlags(unsigned Flags,
+                                                     bool ROwithRX = false);
+
+  std::vector<BinarySection *> getAllNewSections() {
+
+    std::vector<BinarySection *> Result = getNewSectionsByFlags(
+        ELF::SHF_ALLOC | ELF::SHF_EXECINSTR, /*ROwithRX*/ true);
+    std::vector<BinarySection *> RWSections =
+        getNewSectionsByFlags(ELF::SHF_ALLOC | ELF::SHF_WRITE);
+
+    Result.insert(Result.end(), RWSections.begin(), RWSections.end());
+
+    return Result;
+  }
   /// Iterate over all the sub-symbols of /p BD (if any).
   iterator_range<binary_data_iterator> getSubBinaryData(BinaryData *BD);
 
@@ -872,6 +946,11 @@ public:
   bool isInternalSymbolName(const StringRef Name) {
     return Name.startswith("SYMBOLat") || Name.startswith("DATAat") ||
            Name.startswith("HOLEat");
+  }
+
+  // true if a section wasn't present in the input binary
+  bool isExtra(BinarySection &Section) const {
+    return !Section.getInputFileOffset();
   }
 
   MCSymbol *getHotTextStartSymbol() const {
@@ -1027,6 +1106,24 @@ public:
         FilteredSectionIterator(isAllocatable, Sections.end(), Sections.end()));
   }
 
+  iterator_range<FilteredSegmentIterator> loadableSegments() {
+    auto IsLoad = [](const SegmentIterator &Phdr) { return Phdr->isLOAD(); };
+    return make_range(FilteredSegmentIterator(IsLoad, InputSegments.begin(),
+                                              InputSegments.end()),
+                      FilteredSegmentIterator(IsLoad, InputSegments.end(),
+                                              InputSegments.end()));
+  }
+
+  iterator_range<FilteredSegmentIterator> nonLoadableSegments() {
+    auto IsNotLoad = [](const SegmentIterator &Phdr) {
+      return !Phdr->isLOAD();
+    };
+    return make_range(FilteredSegmentIterator(IsNotLoad, InputSegments.begin(),
+                                              InputSegments.end()),
+                      FilteredSegmentIterator(IsNotLoad, InputSegments.end(),
+                                              InputSegments.end()));
+  }
+
   /// Iterate over all registered code sections.
   iterator_range<FilteredSectionIterator> textSections() {
     auto isText = [](const SectionIterator &Itr) {
@@ -1079,7 +1176,7 @@ public:
 
   /// Check if the address belongs to this binary's static allocation space.
   bool containsAddress(uint64_t Address) const {
-    return Address >= FirstAllocAddress && Address < LayoutStartAddress;
+    return Address >= FirstAllocAddress && Address < InputAddressSpaceEnd;
   }
 
   /// Return section name containing the given \p Address.

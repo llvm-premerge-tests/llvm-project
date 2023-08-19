@@ -105,6 +105,7 @@ static bool isSupportedRISCV(uint64_t Type) {
   case ELF::R_RISCV_RVC_BRANCH:
   case ELF::R_RISCV_ADD32:
   case ELF::R_RISCV_SUB32:
+  case ELF::R_RISCV_64:
     return true;
   }
 }
@@ -202,6 +203,7 @@ static size_t getSizeForTypeRISCV(uint64_t Type) {
   case ELF::R_RISCV_SUB32:
     return 4;
   case ELF::R_RISCV_GOT_HI20:
+  case ELF::R_RISCV_64:
     // See extractValueRISCV for why this is necessary.
     return 8;
   }
@@ -212,7 +214,8 @@ static bool skipRelocationTypeX86(uint64_t Type) {
 }
 
 static bool skipRelocationTypeAArch64(uint64_t Type) {
-  return Type == ELF::R_AARCH64_NONE || Type == ELF::R_AARCH64_LD_PREL_LO19;
+  return Type == ELF::R_AARCH64_NONE || Type == ELF::R_AARCH64_LD_PREL_LO19 ||
+         Type == ELF::R_AARCH64_TLSDESC_CALL;
 }
 
 static bool skipRelocationTypeRISCV(uint64_t Type) {
@@ -309,8 +312,10 @@ static bool skipRelocationProcessAArch64(uint64_t &Type, uint64_t Contents) {
   case ELF::R_AARCH64_ADD_ABS_LO12_NC:
   case ELF::R_AARCH64_ADR_GOT_PAGE:
   case ELF::R_AARCH64_LD64_GOT_LO12_NC:
-    if (IsAdr(Contents))
-      return true;
+    if (IsAdr(Contents)) {
+      Type = ELF::R_AARCH64_ADR_PREL_LO21;
+      return false;
+    }
   }
 
   return false;
@@ -373,7 +378,6 @@ static uint64_t extractValueAArch64(uint64_t Type, uint64_t Contents,
     return static_cast<int64_t>(PC) + SignExtend64<32>(Contents & 0xffffffff);
   case ELF::R_AARCH64_PREL64:
     return static_cast<int64_t>(PC) + Contents;
-  case ELF::R_AARCH64_TLSDESC_CALL:
   case ELF::R_AARCH64_JUMP26:
   case ELF::R_AARCH64_CALL26:
     // Immediate goes in bits 25:0 of B and BL.
@@ -515,6 +519,7 @@ static uint64_t extractValueRISCV(uint64_t Type, uint64_t Contents,
     return SignExtend64<8>(((Contents >> 2) & 0x1f) | ((Contents >> 5) & 0xe0));
   case ELF::R_RISCV_ADD32:
   case ELF::R_RISCV_SUB32:
+  case ELF::R_RISCV_64:
     return Contents;
   }
 }
@@ -677,6 +682,7 @@ static bool isPCRelativeRISCV(uint64_t Type) {
     llvm_unreachable("Unknown relocation type");
   case ELF::R_RISCV_ADD32:
   case ELF::R_RISCV_SUB32:
+  case ELF::R_RISCV_64:
     return false;
   case ELF::R_RISCV_JAL:
   case ELF::R_RISCV_CALL:
@@ -816,6 +822,8 @@ bool Relocation::isPCRelative(uint64_t Type) {
 uint64_t Relocation::getAbs64() {
   if (Arch == Triple::aarch64)
     return ELF::R_AARCH64_ABS64;
+  if (Arch == Triple::riscv64)
+    return ELF::R_RISCV_64;
   return ELF::R_X86_64_64;
 }
 

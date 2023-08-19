@@ -9,6 +9,9 @@ ProgramHeaders:
   - Type:            PT_PHDR
     Flags:           [ PF_R ]
     VAddr:           0x400040
+    Offset:          0x40
+    FileSize:        0x2d8
+    MemSize:         0x2d8
     Align:           0x8
   - Type:            PT_INTERP
     Flags:           [ PF_R ]
@@ -20,18 +23,21 @@ ProgramHeaders:
     FirstSec:        .interp
     LastSec:         .rela.plt
     VAddr:           0x400000
+    Offset:          0x0
     Align:           0x1000
   - Type:            PT_LOAD
     Flags:           [ PF_X, PF_R ]
     FirstSec:        .init
     LastSec:         .fini
     VAddr:           0x401000
+    Offset:          0x1000
     Align:           0x1000
   - Type:            PT_LOAD
     Flags:           [ PF_R ]
     FirstSec:        .rodata
     LastSec:         .eh_frame
     VAddr:           0x402000
+    Offset:          0x2000
     Align:           0x1000
   - Type:            PT_LOAD
     Flags:           [ PF_W, PF_R ]

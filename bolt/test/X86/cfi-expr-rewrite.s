@@ -693,3 +693,4 @@ blake2b_compress_avx2:
 "blake2b_IV/1":
 "DATAat0x4013a0":
 "DATAat0x401380":
+.long 0x0
