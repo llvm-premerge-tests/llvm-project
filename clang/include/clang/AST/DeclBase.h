@@ -20,6 +20,7 @@
 #include "clang/Basic/LLVM.h"
 #include "clang/Basic/SourceLocation.h"
 #include "clang/Basic/Specifiers.h"
+#include "clang/Support/BitFieldReflection.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/PointerIntPair.h"
 #include "llvm/ADT/PointerUnion.h"
@@ -1420,6 +1421,18 @@ class DeclContext {
   /// hasLazyLocalLexicalLookups, hasLazyExternalLexicalLookups
   friend class ASTWriter;
 
+#define BITSOF_FIELD(CLASS, FIELD)                                             \
+  BitFieldReflector::countBits(                                                \
+      BitFieldReflector::instanceOf<CLASS##Bitfields,                          \
+                                    decltype(CLASS##Bitfields{}.FIELD)>()      \
+          .FIELD)
+#define STATIC_ASSERT_BITFIELDS(CLASS, BITS, FIELDS)                           \
+  static_assert(                                                               \
+      Num##CLASS##Bits == BITS &&                                              \
+          BitFieldReflector::FieldCounter<CLASS##Bitfields>::value == FIELDS,  \
+      "You need to update Num" #CLASS                                          \
+      "Bits or number of fields after changing " #CLASS "Bitfields!")
+
   // We use uint64_t in the bit-fields below since some bit-fields
   // cross the unsigned boundary and this breaks the packing.
 
@@ -1427,6 +1440,7 @@ class DeclContext {
   /// If modified NumDeclContextBit, the ctor of DeclContext and the accessor
   /// methods in DeclContext should be updated appropriately.
   class DeclContextBitfields {
+  public:
     friend class DeclContext;
     /// DeclKind - This indicates which class this is.
     uint64_t DeclKind : 7;
@@ -1461,13 +1475,23 @@ class DeclContext {
     mutable uint64_t UseQualifiedLookup : 1;
   };
 
+#define BITSOF(FIELD) BITSOF_FIELD(DeclContext, FIELD)
   /// Number of bits in DeclContextBitfields.
-  enum { NumDeclContextBits = 13 };
+  enum {
+    NumDeclContextBits = BITSOF(DeclKind) + BITSOF(ExternalLexicalStorage) +
+                         BITSOF(ExternalVisibleStorage) +
+                         BITSOF(NeedToReconcileExternalVisibleStorage) +
+                         BITSOF(HasLazyLocalLexicalLookups) +
+                         BITSOF(HasLazyExternalLexicalLookups) +
+                         BITSOF(UseQualifiedLookup)
+  };
+  STATIC_ASSERT_BITFIELDS(DeclContext, 13, 7);
 
   /// Stores the bits used by TagDecl.
   /// If modified NumTagDeclBits and the accessor
   /// methods in TagDecl should be updated appropriately.
   class TagDeclBitfields {
+  public:
     friend class TagDecl;
     /// For the bits in DeclContextBitfields
     uint64_t : NumDeclContextBits;
@@ -1505,13 +1529,23 @@ class DeclContext {
     uint64_t IsThisDeclarationADemotedDefinition : 1;
   };
 
+#undef BITSOF
+#define BITSOF(FIELD) BITSOF_FIELD(TagDecl, FIELD)
   /// Number of non-inherited bits in TagDeclBitfields.
-  enum { NumTagDeclBits = 10 };
+  enum {
+    NumTagDeclBits = BITSOF(TagDeclKind) + BITSOF(IsCompleteDefinition) +
+                     BITSOF(IsBeingDefined) + BITSOF(IsEmbeddedInDeclarator) +
+                     BITSOF(IsFreeStanding) + BITSOF(MayHaveOutOfDateDef) +
+                     BITSOF(IsCompleteDefinitionRequired) +
+                     BITSOF(IsThisDeclarationADemotedDefinition)
+  };
+  STATIC_ASSERT_BITFIELDS(TagDecl, 10, 8);
 
   /// Stores the bits used by EnumDecl.
   /// If modified NumEnumDeclBit and the accessor
   /// methods in EnumDecl should be updated appropriately.
   class EnumDeclBitfields {
+  public:
     friend class EnumDecl;
     /// For the bits in DeclContextBitfields.
     uint64_t : NumDeclContextBits;
@@ -1544,13 +1578,21 @@ class DeclContext {
     uint64_t HasODRHash : 1;
   };
 
+#undef BITSOF
+#define BITSOF(FIELD) BITSOF_FIELD(EnumDecl, FIELD)
   /// Number of non-inherited bits in EnumDeclBitfields.
-  enum { NumEnumDeclBits = 20 };
+  enum {
+    NumEnumDeclBits = BITSOF(NumPositiveBits) + BITSOF(NumNegativeBits) +
+                      BITSOF(IsScoped) + BITSOF(IsScopedUsingClassTag) +
+                      BITSOF(IsFixed) + BITSOF(HasODRHash)
+  };
+  STATIC_ASSERT_BITFIELDS(EnumDecl, 20, 6);
 
   /// Stores the bits used by RecordDecl.
   /// If modified NumRecordDeclBits and the accessor
   /// methods in RecordDecl should be updated appropriately.
   class RecordDeclBitfields {
+  public:
     friend class RecordDecl;
     /// For the bits in DeclContextBitfields.
     uint64_t : NumDeclContextBits;
@@ -1605,13 +1647,30 @@ class DeclContext {
     uint64_t ODRHash : 26;
   };
 
+#undef BITSOF
+#define BITSOF(FIELD) BITSOF_FIELD(RecordDecl, FIELD)
   /// Number of non-inherited bits in RecordDeclBitfields.
-  enum { NumRecordDeclBits = 41 };
+  enum {
+    NumRecordDeclBits =
+        BITSOF(HasFlexibleArrayMember) + BITSOF(AnonymousStructOrUnion) +
+        BITSOF(HasObjectMember) + BITSOF(HasVolatileMember) +
+        BITSOF(LoadedFieldsFromExternalStorage) +
+        BITSOF(NonTrivialToPrimitiveDefaultInitialize) +
+        BITSOF(NonTrivialToPrimitiveCopy) +
+        BITSOF(NonTrivialToPrimitiveDestroy) +
+        BITSOF(HasNonTrivialToPrimitiveDefaultInitializeCUnion) +
+        BITSOF(HasNonTrivialToPrimitiveDestructCUnion) +
+        BITSOF(HasNonTrivialToPrimitiveCopyCUnion) +
+        BITSOF(ParamDestroyedInCallee) + BITSOF(ArgPassingRestrictions) +
+        BITSOF(IsRandomized) + BITSOF(ODRHash)
+  };
+  STATIC_ASSERT_BITFIELDS(RecordDecl, 41, 15);
 
   /// Stores the bits used by OMPDeclareReductionDecl.
   /// If modified NumOMPDeclareReductionDeclBits and the accessor
   /// methods in OMPDeclareReductionDecl should be updated appropriately.
   class OMPDeclareReductionDeclBitfields {
+  public:
     friend class OMPDeclareReductionDecl;
     /// For the bits in DeclContextBitfields
     uint64_t : NumDeclContextBits;
@@ -1621,14 +1680,18 @@ class DeclContext {
     uint64_t InitializerKind : 2;
   };
 
+#undef BITSOF
+#define BITSOF(FIELD) BITSOF_FIELD(OMPDeclareReductionDecl, FIELD)
   /// Number of non-inherited bits in OMPDeclareReductionDeclBitfields.
-  enum { NumOMPDeclareReductionDeclBits = 2 };
+  enum { NumOMPDeclareReductionDeclBits = BITSOF(InitializerKind) };
+  STATIC_ASSERT_BITFIELDS(OMPDeclareReductionDecl, 2, 1);
 
   /// Stores the bits used by FunctionDecl.
   /// If modified NumFunctionDeclBits and the accessor
   /// methods in FunctionDecl and CXXDeductionGuideDecl
   /// (for DeductionCandidateKind) should be updated appropriately.
   class FunctionDeclBitfields {
+  public:
     friend class FunctionDecl;
     /// For DeductionCandidateKind
     friend class CXXDeductionGuideDecl;
@@ -1701,13 +1764,32 @@ class DeclContext {
     uint64_t FriendConstraintRefersToEnclosingTemplate : 1;
   };
 
+#undef BITSOF
+#define BITSOF(FIELD) BITSOF_FIELD(FunctionDecl, FIELD)
   /// Number of non-inherited bits in FunctionDeclBitfields.
-  enum { NumFunctionDeclBits = 31 };
+  enum {
+    NumFunctionDeclBits =
+        BITSOF(SClass) + BITSOF(IsInline) + BITSOF(IsInlineSpecified) +
+        BITSOF(IsVirtualAsWritten) + BITSOF(IsPure) +
+        BITSOF(HasInheritedPrototype) + BITSOF(HasWrittenPrototype) +
+        BITSOF(IsDeleted) + BITSOF(IsTrivial) + BITSOF(IsTrivialForCall) +
+        BITSOF(IsDefaulted) + BITSOF(IsExplicitlyDefaulted) +
+        BITSOF(HasDefaultedFunctionInfo) + BITSOF(IsIneligibleOrNotSelected) +
+        BITSOF(HasImplicitReturnZero) + BITSOF(IsLateTemplateParsed) +
+        BITSOF(ConstexprKind) +
+        BITSOF(BodyContainsImmediateEscalatingExpression) +
+        BITSOF(InstantiationIsPending) + BITSOF(UsesSEHTry) +
+        BITSOF(HasSkippedBody) + BITSOF(WillHaveBody) + BITSOF(IsMultiVersion) +
+        BITSOF(DeductionCandidateKind) + BITSOF(HasODRHash) +
+        BITSOF(UsesFPIntrin) + BITSOF(FriendConstraintRefersToEnclosingTemplate)
+  };
+  STATIC_ASSERT_BITFIELDS(FunctionDecl, 31, 27);
 
   /// Stores the bits used by CXXConstructorDecl. If modified
   /// NumCXXConstructorDeclBits and the accessor
   /// methods in CXXConstructorDecl should be updated appropriately.
   class CXXConstructorDeclBitfields {
+  public:
     friend class CXXConstructorDecl;
     /// For the bits in DeclContextBitfields.
     uint64_t : NumDeclContextBits;
@@ -1729,15 +1811,27 @@ class DeclContext {
     uint64_t IsSimpleExplicit : 1;
   };
 
+#undef BITSOF
+#define BITSOF(FIELD) BITSOF_FIELD(CXXConstructorDecl, FIELD)
   /// Number of non-inherited bits in CXXConstructorDeclBitfields.
   enum {
-    NumCXXConstructorDeclBits = 64 - NumDeclContextBits - NumFunctionDeclBits
+    NumCXXConstructorDeclBits =
+        BITSOF(NumCtorInitializers) + BITSOF(IsInheritingConstructor) +
+        BITSOF(HasTrailingExplicitSpecifier) + BITSOF(IsSimpleExplicit)
   };
+  STATIC_ASSERT_BITFIELDS(CXXConstructorDecl, 20, 4);
+
+  static_assert(NumDeclContextBits + NumFunctionDeclBits +
+                        NumCXXConstructorDeclBits ==
+                    64,
+                "You need to update NumCtorInitializers so that "
+                "CXXConstructorDeclBitfields take exactly 64 bits!");
 
   /// Stores the bits used by ObjCMethodDecl.
   /// If modified NumObjCMethodDeclBits and the accessor
   /// methods in ObjCMethodDecl should be updated appropriately.
   class ObjCMethodDeclBitfields {
+  public:
     friend class ObjCMethodDecl;
 
     /// For the bits in DeclContextBitfields.
@@ -1793,8 +1887,19 @@ class DeclContext {
     uint64_t HasSkippedBody : 1;
   };
 
+#undef BITSOF
+#define BITSOF(FIELD) BITSOF_FIELD(ObjCMethodDecl, FIELD)
   /// Number of non-inherited bits in ObjCMethodDeclBitfields.
-  enum { NumObjCMethodDeclBits = 24 };
+  enum {
+    NumObjCMethodDeclBits =
+        BITSOF(Family) + BITSOF(IsInstance) + BITSOF(IsVariadic) +
+        BITSOF(IsPropertyAccessor) + BITSOF(IsSynthesizedAccessorStub) +
+        BITSOF(IsDefined) + BITSOF(IsRedeclaration) + BITSOF(HasRedeclaration) +
+        BITSOF(DeclImplementation) + BITSOF(objcDeclQualifier) +
+        BITSOF(RelatedResultType) + BITSOF(SelLocsKind) + BITSOF(IsOverriding) +
+        BITSOF(HasSkippedBody)
+  };
+  STATIC_ASSERT_BITFIELDS(ObjCMethodDecl, 25, 14);
 
   /// Stores the bits used by ObjCContainerDecl.
   /// If modified NumObjCContainerDeclBits and the accessor
@@ -1818,6 +1923,7 @@ class DeclContext {
   /// If modified NumLinkageSpecDeclBits and the accessor
   /// methods in LinkageSpecDecl should be updated appropriately.
   class LinkageSpecDeclBitfields {
+  public:
     friend class LinkageSpecDecl;
     /// For the bits in DeclContextBitfields.
     uint64_t : NumDeclContextBits;
@@ -1833,13 +1939,17 @@ class DeclContext {
     uint64_t HasBraces : 1;
   };
 
+#undef BITSOF
+#define BITSOF(FIELD) BITSOF_FIELD(LinkageSpecDecl, FIELD)
   /// Number of non-inherited bits in LinkageSpecDeclBitfields.
-  enum { NumLinkageSpecDeclBits = 4 };
+  enum { NumLinkageSpecDeclBits = BITSOF(Language) + BITSOF(HasBraces) };
+  STATIC_ASSERT_BITFIELDS(LinkageSpecDecl, 4, 2);
 
   /// Stores the bits used by BlockDecl.
   /// If modified NumBlockDeclBits and the accessor
   /// methods in BlockDecl should be updated appropriately.
   class BlockDeclBitfields {
+  public:
     friend class BlockDecl;
     /// For the bits in DeclContextBitfields.
     uint64_t : NumDeclContextBits;
@@ -1859,8 +1969,20 @@ class DeclContext {
     uint64_t CanAvoidCopyToHeap : 1;
   };
 
+#undef BITSOF
+#define BITSOF(FIELD) BITSOF_FIELD(BlockDecl, FIELD)
   /// Number of non-inherited bits in BlockDeclBitfields.
-  enum { NumBlockDeclBits = 5 };
+  enum {
+    NumBlockDeclBits = BITSOF(IsVariadic) + BITSOF(CapturesCXXThis) +
+                       BITSOF(BlockMissingReturnType) +
+                       BITSOF(IsConversionFromLambda) + BITSOF(DoesNotEscape) +
+                       BITSOF(CanAvoidCopyToHeap)
+  };
+  STATIC_ASSERT_BITFIELDS(BlockDecl, 6, 6);
+
+#undef BITSOF
+#undef BITSOF_FIELD
+#undef STATIC_ASSERT_BITFIELDS
 
   /// Pointer to the data structure used to lookup declarations
   /// within this context (or a DependentStoredDeclsMap if this is a
