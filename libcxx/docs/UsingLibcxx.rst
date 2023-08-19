@@ -525,6 +525,23 @@ in their code base.
 In C++26 formatting pointers gained a type ``P`` and allows to use
 zero-padding. These options have been retroactively applied to C++20.
 
+Extensions to ``<chrono>``
+--------------------------
+
+Updating the Time Zone Database
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Standard allows implementations to automatically update the
+*remote time zone database*. Libc++ opts not to do that. Instead calling
+
+- ``std::chrono::remote_version()`` will update the version information of the
+  *remote time zone database*,
+- ``std::chrono::reload_tzdb()``, if needed, will update the entire
+  *remote time zone database*.
+
+This offers a way for users to update the *remote time zone database* and
+give them full control over the process.
+
 .. _turning-off-asan:
 
 Turning off ASan annotation in containers
