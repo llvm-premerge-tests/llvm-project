@@ -1506,7 +1506,7 @@ NewGVN::performSymbolicLoadCoercion(Type *LoadType, Value *LoadPtr,
   // undef value.  This can happen when loading for a fresh allocation with no
   // intervening stores, for example.  Note that this is only true in the case
   // that the result of the allocation is pointer equal to the load ptr.
-  else if (auto *InitVal = getInitialValueOfAllocation(DepInst, TLI, LoadType))
+  else if (auto *InitVal = getInitialValueOfAllocation(DepInst, TLI, LoadType).second)
     return createConstantExpression(InitVal);
 
   return nullptr;
