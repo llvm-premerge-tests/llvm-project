@@ -142,6 +142,12 @@ Improvements to Clang's diagnostics
   tautologies like ``x && !x`` and ``!x || x`` in expressions. This also
   makes ``-Winfinite-recursion`` diagnose more cases.
   (`#56035: <https://github.com/llvm/llvm-project/issues/56035>`_).
+- Clang now diagnoses wider cases of tautological use of consteval if or
+  ``std::is_constant_evaluated``. This also suppresses some false positives.
+  (`#43760: <https://github.com/llvm/llvm-project/issues/43760>`_)
+  (`#51567: <https://github.com/llvm/llvm-project/issues/51567>`_)
+- Clang now diagnoses narrowing implicit conversions on variable initializers in immediate
+  function context and on constexpr variable template initializers.
 
 Bug Fixes in This Version
 -------------------------
