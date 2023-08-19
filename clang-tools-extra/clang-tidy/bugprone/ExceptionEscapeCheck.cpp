@@ -76,13 +76,22 @@ void ExceptionEscapeCheck::check(const MatchFinder::MatchResult &Result) {
   if (!MatchedDecl)
     return;
 
-  if (Tracer.analyze(MatchedDecl).getBehaviour() ==
-      utils::ExceptionAnalyzer::State::Throwing)
-    // FIXME: We should provide more information about the exact location where
-    // the exception is thrown, maybe the full path the exception escapes
-    diag(MatchedDecl->getLocation(), "an exception may be thrown in function "
-                                     "%0 which should not throw exceptions")
-        << MatchedDecl;
+  const utils::ExceptionAnalyzer::ExceptionInfo AnalyzeResult =
+      Tracer.analyze(MatchedDecl);
+  if (AnalyzeResult.getBehaviour() != utils::ExceptionAnalyzer::State::Throwing)
+    return;
+
+  diag(MatchedDecl->getLocation(), "an exception may be thrown in function "
+                                   "%0 which should not throw exceptions")
+      << MatchedDecl;
+
+  for (auto [ThrowType, ThrowLoc] : AnalyzeResult.getExceptionTypes())
+    diag(ThrowLoc, "may throw %0 here", DiagnosticIDs::Note)
+        << QualType(ThrowType, 0U);
+
+  if (AnalyzeResult.containsUnknownElements())
+    diag(MatchedDecl->getLocation(), "may throw unknown exceptions here",
+         DiagnosticIDs::Note);
 }
 
 } // namespace clang::tidy::bugprone

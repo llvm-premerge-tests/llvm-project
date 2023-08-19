@@ -13,6 +13,8 @@
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/StringSet.h"
+#include <functional>
+#include <map>
 
 namespace clang::tidy::utils {
 
@@ -35,9 +37,11 @@ public:
   /// does not include *ALL* possible types as there is the possibility that
   /// an 'Unknown' function is called that might throw a previously unknown
   /// exception at runtime.
+
   class ExceptionInfo {
   public:
-    using Throwables = llvm::SmallSet<const Type *, 2>;
+    using Throwables = std::map<const Type *, SourceLocation>;
+
     static ExceptionInfo createUnknown() {
       return ExceptionInfo(State::Unknown);
     }
@@ -60,11 +64,12 @@ public:
 
     /// Register a single exception type as recognized potential exception to be
     /// thrown.
-    void registerException(const Type *ExceptionType);
+    void registerException(const Type *ExceptionType, const SourceLocation Loc);
 
     /// Registers a `SmallVector` of exception types as recognized potential
     /// exceptions to be thrown.
-    void registerExceptions(const Throwables &Exceptions);
+    void registerExceptions(const Throwables &Exceptions,
+                            const SourceLocation Loc);
 
     /// Updates the local state according to the other state. That means if
     /// for example a function contains multiple statements the 'ExceptionInfo'
@@ -78,7 +83,8 @@ public:
     /// possible to catch multiple exception types by one 'catch' if they
     /// are a subclass of the 'catch'ed exception type.
     /// Returns 'true' if some exceptions were filtered, otherwise 'false'.
-    bool filterByCatch(const Type *BaseClass, const ASTContext &Context);
+    bool filterByCatch(const Type *BaseClass, const ASTContext &Context,
+                       Throwables &CaughtExceptions);
 
     /// Filter the set of thrown exception type against a set of ignored
     /// types that shall not be considered in the exception analysis.

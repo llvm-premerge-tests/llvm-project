@@ -169,6 +169,11 @@ New check aliases
 Changes in existing checks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+- Improved :doc:`bugprone-exception-escape
+  <clang-tidy/checks/bugprone/exception-escape>` check to not emit warnings for
+  forward declarations of functions. Emit additional diagnostic information
+  about uncaught exceptions.
+
 - Fixed bug in :doc:`bugprone-reserved-identifier
   <clang-tidy/checks/bugprone/reserved-identifier>`, so that it does not warn
   on macros starting with underscore and lowercase letter.
@@ -187,7 +192,7 @@ Changes in existing checks
   ignore delegate constructors.
 
 - Improved :doc `cppcoreguidelines-pro-bounds-array-to-pointer-decay
-  <clang-tidy/checks/cppcoreguidelines/pro-bounds-array-to-pointer-decay>` check 
+  <clang-tidy/checks/cppcoreguidelines/pro-bounds-array-to-pointer-decay>` check
   to ignore predefined expression (e.g., ``__func__``, ...).
 
 - Improved :doc:`cppcoreguidelines-pro-type-member-init

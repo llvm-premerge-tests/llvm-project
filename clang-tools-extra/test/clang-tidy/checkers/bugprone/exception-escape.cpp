@@ -9,6 +9,7 @@
 struct throwing_destructor {
   ~throwing_destructor() {
     // CHECK-MESSAGES: :[[@LINE-1]]:3: warning: an exception may be thrown in function '~throwing_destructor' which should not throw exceptions
+    // CHECK-MESSAGES: :[[@LINE+1]]:5: note: may throw 'int' here
     throw 1;
   }
 };
@@ -16,6 +17,7 @@ struct throwing_destructor {
 struct throwing_move_constructor {
   throwing_move_constructor(throwing_move_constructor&&) {
     // CHECK-MESSAGES: :[[@LINE-1]]:3: warning: an exception may be thrown in function 'throwing_move_constructor' which should not throw exceptions
+    // CHECK-MESSAGES: :[[@LINE+1]]:5: note: may throw 'int' here
     throw 1;
   }
 };
@@ -23,12 +25,14 @@ struct throwing_move_constructor {
 struct throwing_move_assignment {
   throwing_move_assignment& operator=(throwing_move_assignment&&) {
     // CHECK-MESSAGES: :[[@LINE-1]]:29: warning: an exception may be thrown in function 'operator=' which should not throw exceptions
+    // CHECK-MESSAGES: :[[@LINE+1]]:5: note: may throw 'int' here
     throw 1;
   }
 };
 
 void throwing_noexcept() noexcept {
-    // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throwing_noexcept' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throwing_noexcept' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+1]]:3: note: may throw 'int' here
   throw 1;
 }
 
@@ -42,6 +46,7 @@ void throw_and_catch() noexcept {
 
 void throw_and_catch_some(int n) noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_and_catch_some' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+3]]:5: note: may throw 'double' here
   try {
     if (n) throw 1;
     throw 1.1;
@@ -70,6 +75,7 @@ void throw_and_catch_all(int n) noexcept {
 
 void throw_and_rethrow() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_and_rethrow' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+2]]:5: note: may throw 'int' here
   try {
     throw 1;
   } catch(int &) {
@@ -79,6 +85,7 @@ void throw_and_rethrow() noexcept {
 
 void throw_catch_throw() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_catch_throw' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+4]]:5: note: may throw 'int' here
   try {
     throw 1;
   } catch(int &) {
@@ -88,6 +95,7 @@ void throw_catch_throw() noexcept {
 
 void throw_catch_rethrow_the_rest(int n) noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_catch_rethrow_the_rest' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+3]]:5: note: may throw 'double' here
   try {
     if (n) throw 1;
     throw 1.1;
@@ -120,6 +128,7 @@ void throw_catch_pointer_cv() noexcept {
 
 void throw_catch_multi_ptr_1() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_catch_multi_ptr_1' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+3]]:5: note: may throw 'char **' here
   try {
     char **p = 0;
     throw p;
@@ -165,6 +174,7 @@ void throw_catch_multi_ptr_5() noexcept {
 
 void throw_c_catch_pointer() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_c_catch_pointer' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+4]]:5: note: may throw 'const int *' here
   try {
     int a = 1;
     const int *p = &a;
@@ -174,6 +184,7 @@ void throw_c_catch_pointer() noexcept {
 
 void throw_c_catch_pointer_v() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_c_catch_pointer_v' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+4]]:5: note: may throw 'const int *' here
   try {
     int a = 1;
     const int *p = &a;
@@ -183,6 +194,7 @@ void throw_c_catch_pointer_v() noexcept {
 
 void throw_v_catch_pointer() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_v_catch_pointer' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+4]]:5: note: may throw 'volatile int *' here
   try {
     int a = 1;
     volatile int *p = &a;
@@ -192,6 +204,7 @@ void throw_v_catch_pointer() noexcept {
 
 void throw_v_catch_pointer_c() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_v_catch_pointer_c' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+4]]:5: note: may throw 'volatile int *' here
   try {
     int a = 1;
     volatile int *p = &a;
@@ -201,6 +214,7 @@ void throw_v_catch_pointer_c() noexcept {
 
 void throw_cv_catch_pointer_c() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_cv_catch_pointer_c' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+4]]:5: note: may throw 'const volatile int *' here
   try {
     int a = 1;
     const volatile int *p = &a;
@@ -210,6 +224,7 @@ void throw_cv_catch_pointer_c() noexcept {
 
 void throw_cv_catch_pointer_v() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_cv_catch_pointer_v' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+4]]:5: note: may throw 'const volatile int *' here
   try {
     int a = 1;
     const volatile int *p = &a;
@@ -256,6 +271,7 @@ void throw_derived_catch_base_ptr_c() noexcept {
 
 void throw_derived_catch_base_ptr() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_derived_catch_base_ptr' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+4]]:5: note: may throw 'const derived *' here
   try {
     derived d;
     const derived *p = &d;
@@ -280,6 +296,7 @@ class E : public moreMoreAliasedA, public aliasedD {};
 
 void throw_derived_catch_base_private() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_derived_catch_base_private' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+3]]:5: note: may throw 'B' here
   try {
     B b;
     throw b;
@@ -289,6 +306,7 @@ void throw_derived_catch_base_private() noexcept {
 
 void throw_derived_catch_base_private_ptr() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_derived_catch_base_private_ptr' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+3]]:5: note: may throw 'B *' here
   try {
     B b;
     throw &b;
@@ -298,6 +316,7 @@ void throw_derived_catch_base_private_ptr() noexcept {
 
 void throw_derived_catch_base_protected() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_derived_catch_base_protected' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+3]]:5: note: may throw 'C' here
   try {
     C c;
     throw c;
@@ -307,6 +326,7 @@ void throw_derived_catch_base_protected() noexcept {
 
 void throw_derived_catch_base_protected_ptr() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_derived_catch_base_protected_ptr' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+3]]:5: note: may throw 'C *' here
   try {
     C c;
     throw &c;
@@ -316,6 +336,7 @@ void throw_derived_catch_base_protected_ptr() noexcept {
 
 void throw_derived_catch_base_ambiguous() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_derived_catch_base_ambiguous' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+3]]:5: note: may throw 'E' here
   try {
     E e;
     throw e;
@@ -325,10 +346,11 @@ void throw_derived_catch_base_ambiguous() noexcept {
 
 void throw_derived_catch_base_ambiguous_ptr() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_derived_catch_base_ambiguous_ptr' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+3]]:5: note: may throw 'E *' here
   try {
     E e;
-    throw e;
-  } catch(A) {
+    throw &e;
+  } catch(A *) {
   }
 }
 
@@ -344,6 +366,7 @@ void throw_alias_catch_original() noexcept {
 
 void throw_alias_catch_original_warn() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_alias_catch_original_warn' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+5]]:5: note: may throw 'float' here
   using alias = float;
 
   try {
@@ -365,6 +388,7 @@ void throw_original_catch_alias() noexcept {
 
 void throw_original_catch_alias_warn() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_original_catch_alias_warn' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+5]]:5: note: may throw 'char **' here
   using alias = int;
 
   try {
@@ -428,6 +452,7 @@ struct derivedMember : baseMember {
 
 void throw_basefn_catch_derivedfn() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_basefn_catch_derivedfn' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+2]]:5: note: may throw 'void (baseMember::*)()' here
   try {
     throw &baseMember::foo;
   } catch(void(derivedMember::*)()) {
@@ -443,6 +468,7 @@ void throw_basefn_catch_basefn() noexcept {
 
 void throw_basem_catch_basem_throw() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_basem_catch_basem_throw' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+3]]:5: note: may throw 'int *baseMember::**' here
   try {
     auto ptr = &baseMember::iptr;
     throw &ptr;
@@ -460,6 +486,7 @@ void throw_basem_catch_basem() noexcept {
 
 void throw_basem_catch_derivedm() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_basem_catch_derivedm' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+3]]:5: note: may throw 'int *baseMember::**' here
   try {
     auto ptr = &baseMember::iptr;
     throw &ptr;
@@ -469,6 +496,7 @@ void throw_basem_catch_derivedm() noexcept {
 
 void throw_derivedm_catch_basem() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_derivedm_catch_basem' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+3]]:5: note: may throw 'int *derivedMember::**' here
   try {
     int *derivedMember::* ptr = &derivedMember::iptr;
     throw &ptr;
@@ -478,6 +506,7 @@ void throw_derivedm_catch_basem() noexcept {
 
 void throw_original_catch_alias_2_warn() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throw_original_catch_alias_2_warn' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+5]]:5: note: may throw 'char **' here
   using alias = const int *const;
 
   try {
@@ -501,6 +530,7 @@ void try_nested_try(int n) noexcept {
 
 void bad_try_nested_try(int n) noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'bad_try_nested_try' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+2]]:12: note: may throw 'int' here
   try {
     if (n) throw 1;
     try {
@@ -537,6 +567,7 @@ void catch_nested_try() noexcept {
 
 void bad_catch_nested_try() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'bad_catch_nested_try' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+5]]:7: note: may throw 'double' here
   try {
     throw 1;
   } catch(int &) {
@@ -558,11 +589,13 @@ void explicit_int_thrower() noexcept(false) {
 
 void indirect_implicit() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'indirect_implicit' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE-9]]:3: note: may throw 'int' here
   implicit_int_thrower();
 }
 
 void indirect_explicit() noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'indirect_explicit' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE-11]]:3: note: may throw 'int' here
   explicit_int_thrower();
 }
 
@@ -583,6 +616,7 @@ void dependent_throw() noexcept(sizeof(T)<4) {
 
 void swap(int&, int&) {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'swap' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+1]]:3: note: may throw 'int' here
   throw 1;
 }
 
@@ -601,11 +635,13 @@ void allocator() noexcept {
 
 void enabled1() {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'enabled1' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+1]]:3: note: may throw 'int' here
   throw 1;
 }
 
 void enabled2() {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'enabled2' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE-5]]:3: note: may throw 'int' here
   enabled1();
 }
 
@@ -636,6 +672,7 @@ void this_does_not_count_either(int n) noexcept {
 
 void this_counts(int n) noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'this_counts' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+1]]:10: note: may throw 'int' here
   if (n) throw 1;
   throw ignored1();
 }
@@ -646,6 +683,7 @@ void thrower(int n) {
 
 int directly_recursive(int n) noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: an exception may be thrown in function 'directly_recursive' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE-5]]:3: note: may throw 'int' here
   if (n == 0)
     thrower(n);
   return directly_recursive(n);
@@ -659,6 +697,7 @@ int recursion_helper(int n) {
 
 int indirectly_recursive(int n) noexcept {
   // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: an exception may be thrown in function 'indirectly_recursive' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE-19]]:3: note: may throw 'int' here
   if (n == 0)
     thrower(n);
   return recursion_helper(n);
@@ -671,6 +710,7 @@ struct super_throws {
 struct sub_throws : super_throws {
   sub_throws() noexcept : super_throws() {}
   // CHECK-MESSAGES: :[[@LINE-1]]:3: warning: an exception may be thrown in function 'sub_throws' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE-6]]:36: note: may throw 'int' here
 };
 
 struct init_member_throws {
@@ -678,6 +718,7 @@ struct init_member_throws {
 
   init_member_throws() noexcept : s() {}
   // CHECK-MESSAGES: :[[@LINE-1]]:3: warning: an exception may be thrown in function 'init_member_throws' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE-14]]:36: note: may throw 'int' here
 };
 
 struct implicit_init_member_throws {
@@ -685,6 +726,7 @@ struct implicit_init_member_throws {
 
   implicit_init_member_throws() noexcept {}
   // CHECK-MESSAGES: :[[@LINE-1]]:3: warning: an exception may be thrown in function 'implicit_init_member_throws' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE-22]]:36: note: may throw 'int' here
 };
 
 struct init {
@@ -696,10 +738,12 @@ struct in_class_init_throws {
 
   in_class_init_throws() noexcept {}
   // CHECK-MESSAGES: :[[@LINE-1]]:3: warning: an exception may be thrown in function 'in_class_init_throws' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE-8]]:45: note: may throw 'int' here
 };
 
 int main() {
   // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: an exception may be thrown in function 'main' which should not throw exceptions
+  // CHECK-MESSAGES: :[[@LINE+1]]:3: note: may throw 'int' here
   throw 1;
   return 0;
 }
@@ -746,3 +790,26 @@ struct test_implicit_throw {
 };
 
 }}
+
+struct Exception1 {};
+struct Exception2 {};
+
+void throwException1Or2(bool value) noexcept {
+// CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throwException1Or2' which should not throw exceptions
+// CHECK-MESSAGES: :[[@LINE+3]]:5: note: may throw 'Exception1' here
+// CHECK-MESSAGES: :[[@LINE+4]]:5: note: may throw 'Exception2' here
+  if (value)
+    throw Exception1();
+  else
+    throw Exception2();
+}
+
+void throwSomething() noexcept(false);
+
+void throwKnownAndUnknownException() noexcept {
+// CHECK-MESSAGES: :[[@LINE-1]]:6: warning: an exception may be thrown in function 'throwKnownAndUnknownException' which should not throw exceptions
+// CHECK-MESSAGES: :[[@LINE+3]]:3: note: may throw 'Exception1' here
+// CHECK-MESSAGES: :[[@LINE-3]]:6: note: may throw unknown exceptions here
+  throwSomething();
+  throw Exception1();
+}

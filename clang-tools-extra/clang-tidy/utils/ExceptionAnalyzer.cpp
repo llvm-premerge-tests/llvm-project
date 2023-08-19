@@ -11,18 +11,19 @@
 namespace clang::tidy::utils {
 
 void ExceptionAnalyzer::ExceptionInfo::registerException(
-    const Type *ExceptionType) {
+    const Type *ExceptionType, const SourceLocation Loc) {
   assert(ExceptionType != nullptr && "Only valid types are accepted");
   Behaviour = State::Throwing;
-  ThrownExceptions.insert(ExceptionType);
+  ThrownExceptions.emplace(ExceptionType, Loc);
 }
 
 void ExceptionAnalyzer::ExceptionInfo::registerExceptions(
-    const Throwables &Exceptions) {
-  if (Exceptions.size() == 0)
+    const Throwables &Exceptions, const SourceLocation Loc) {
+  if (Exceptions.empty())
     return;
   Behaviour = State::Throwing;
-  ThrownExceptions.insert(Exceptions.begin(), Exceptions.end());
+  for (const auto [ThrowType, ThrowLoc] : Exceptions)
+    ThrownExceptions.emplace(ThrowType, ThrowLoc.isInvalid() ? Loc : ThrowLoc);
 }
 
 ExceptionAnalyzer::ExceptionInfo &ExceptionAnalyzer::ExceptionInfo::merge(
@@ -345,29 +346,29 @@ static bool canThrow(const FunctionDecl *Func) {
 }
 
 bool ExceptionAnalyzer::ExceptionInfo::filterByCatch(
-    const Type *HandlerTy, const ASTContext &Context) {
-  llvm::SmallVector<const Type *, 8> TypesToDelete;
-  for (const Type *ExceptionTy : ThrownExceptions) {
+    const Type *HandlerTy, const ASTContext &Context,
+    ExceptionInfo::Throwables &CaughtExceptions) {
+
+  auto ShouldRemoveFnt = [HandlerTy, &Context](const Type *ExceptionTy) {
     CanQualType ExceptionCanTy = ExceptionTy->getCanonicalTypeUnqualified();
     CanQualType HandlerCanTy = HandlerTy->getCanonicalTypeUnqualified();
 
     // The handler is of type cv T or cv T& and E and T are the same type
     // (ignoring the top-level cv-qualifiers) ...
-    if (ExceptionCanTy == HandlerCanTy) {
-      TypesToDelete.push_back(ExceptionTy);
-    }
+    if (ExceptionCanTy == HandlerCanTy)
+      return true;
 
     // The handler is of type cv T or cv T& and T is an unambiguous public base
     // class of E ...
-    else if (isUnambiguousPublicBaseClass(ExceptionCanTy->getTypePtr(),
-                                          HandlerCanTy->getTypePtr())) {
-      TypesToDelete.push_back(ExceptionTy);
-    }
+    if (isUnambiguousPublicBaseClass(ExceptionCanTy->getTypePtr(),
+                                     HandlerCanTy->getTypePtr()))
+      return true;
 
     if (HandlerCanTy->getTypeClass() == Type::RValueReference ||
         (HandlerCanTy->getTypeClass() == Type::LValueReference &&
          !HandlerCanTy->getTypePtr()->getPointeeType().isConstQualified()))
-      continue;
+      return false;
+
     // The handler is of type cv T or const T& where T is a pointer or
     // pointer-to-member type and E is a pointer or pointer-to-member type that
     // can be converted to T by one or more of ...
@@ -378,53 +379,59 @@ bool ExceptionAnalyzer::ExceptionInfo::filterByCatch(
       if (isStandardPointerConvertible(ExceptionCanTy, HandlerCanTy) &&
           isUnambiguousPublicBaseClass(
               ExceptionCanTy->getTypePtr()->getPointeeType().getTypePtr(),
-              HandlerCanTy->getTypePtr()->getPointeeType().getTypePtr())) {
-        TypesToDelete.push_back(ExceptionTy);
-      }
+              HandlerCanTy->getTypePtr()->getPointeeType().getTypePtr()))
+        return true;
       // A function pointer conversion ...
-      else if (isFunctionPointerConvertible(ExceptionCanTy, HandlerCanTy)) {
-        TypesToDelete.push_back(ExceptionTy);
-      }
+      if (isFunctionPointerConvertible(ExceptionCanTy, HandlerCanTy))
+        return true;
       // A a qualification conversion ...
-      else if (isQualificationConvertiblePointer(ExceptionCanTy, HandlerCanTy,
-                                                 Context.getLangOpts())) {
-        TypesToDelete.push_back(ExceptionTy);
-      }
+      if (isQualificationConvertiblePointer(ExceptionCanTy, HandlerCanTy,
+                                            Context.getLangOpts()))
+        return true;
+      return false;
     }
 
     // The handler is of type cv T or const T& where T is a pointer or
     // pointer-to-member type and E is std::nullptr_t.
-    else if (isPointerOrPointerToMember(HandlerCanTy->getTypePtr()) &&
-             ExceptionCanTy->isNullPtrType()) {
-      TypesToDelete.push_back(ExceptionTy);
+    return isPointerOrPointerToMember(HandlerCanTy->getTypePtr()) &&
+           ExceptionCanTy->isNullPtrType();
+  };
+
+  bool Result = false;
+  for (Throwables::iterator It = ThrownExceptions.begin();
+       It != ThrownExceptions.end();) {
+    if (!ShouldRemoveFnt(It->first)) {
+      ++It;
+      continue;
     }
+
+    CaughtExceptions.emplace(*It);
+    It = ThrownExceptions.erase(It);
+    Result = true;
   }
 
-  for (const Type *T : TypesToDelete)
-    ThrownExceptions.erase(T);
-
   reevaluateBehaviour();
-  return TypesToDelete.size() > 0;
+  return Result;
 }
 
 ExceptionAnalyzer::ExceptionInfo &
 ExceptionAnalyzer::ExceptionInfo::filterIgnoredExceptions(
     const llvm::StringSet<> &IgnoredTypes, bool IgnoreBadAlloc) {
-  llvm::SmallVector<const Type *, 8> TypesToDelete;
-  // Note: Using a 'SmallSet' with 'llvm::remove_if()' is not possible.
-  // Therefore this slightly hacky implementation is required.
-  for (const Type *T : ThrownExceptions) {
-    if (const auto *TD = T->getAsTagDecl()) {
+
+  for (Throwables::iterator It = ThrownExceptions.begin();
+       It != ThrownExceptions.end();) {
+    if (const auto *TD = It->first->getAsTagDecl()) {
       if (TD->getDeclName().isIdentifier()) {
         if ((IgnoreBadAlloc &&
              (TD->getName() == "bad_alloc" && TD->isInStdNamespace())) ||
-            (IgnoredTypes.count(TD->getName()) > 0))
-          TypesToDelete.push_back(T);
+            (IgnoredTypes.count(TD->getName()) > 0)) {
+          It = ThrownExceptions.erase(It);
+          continue;
+        }
       }
     }
+    ++It;
   }
-  for (const Type *T : TypesToDelete)
-    ThrownExceptions.erase(T);
 
   reevaluateBehaviour();
   return *this;
@@ -472,7 +479,8 @@ ExceptionAnalyzer::ExceptionInfo ExceptionAnalyzer::throwsException(
   auto Result = ExceptionInfo::createUnknown();
   if (const auto *FPT = Func->getType()->getAs<FunctionProtoType>()) {
     for (const QualType &Ex : FPT->exceptions())
-      Result.registerException(Ex.getTypePtr());
+      Result.registerException(Ex.getTypePtr(),
+                               Func->getExceptionSpecSourceRange().getBegin());
   }
   return Result;
 }
@@ -495,12 +503,13 @@ ExceptionAnalyzer::ExceptionInfo ExceptionAnalyzer::throwsException(
                          ->getPointeeType()
                          ->getUnqualifiedDesugaredType();
       Results.registerException(
-          ThrownExpr->getType()->getUnqualifiedDesugaredType());
+          ThrownExpr->getType()->getUnqualifiedDesugaredType(),
+          Throw->getThrowLoc());
     } else
       // A rethrow of a caught exception happens which makes it possible
       // to throw all exception that are caught in the 'catch' clause of
       // the parent try-catch block.
-      Results.registerExceptions(Caught);
+      Results.registerExceptions(Caught, Throw->getThrowLoc());
   } else if (const auto *Try = dyn_cast<CXXTryStmt>(St)) {
     ExceptionInfo Uncaught =
         throwsException(Try->getTryBlock(), Caught, CallStack);
@@ -526,10 +535,11 @@ ExceptionAnalyzer::ExceptionInfo ExceptionAnalyzer::throwsException(
         // thrown types (because it's sensitive to inheritance) the throwing
         // situation changes. First of all filter the exception types and
         // analyze if the baseclass-exception is rethrown.
-        if (Uncaught.filterByCatch(
-                CaughtType, Catch->getExceptionDecl()->getASTContext())) {
-          ExceptionInfo::Throwables CaughtExceptions;
-          CaughtExceptions.insert(CaughtType);
+        ExceptionInfo::Throwables CaughtExceptions;
+        if (Uncaught.filterByCatch(CaughtType,
+                                   Catch->getExceptionDecl()->getASTContext(),
+                                   CaughtExceptions)) {
+          CaughtExceptions.emplace(CaughtType, SourceLocation());
           ExceptionInfo Rethrown = throwsException(Catch->getHandlerBlock(),
                                                    CaughtExceptions, CallStack);
           Results.merge(Rethrown);
@@ -560,7 +570,7 @@ ExceptionAnalyzer::ExceptionInfo ExceptionAnalyzer::throwsException(
     ExceptionInfo Excs = throwsException(Coro->getBody(), Caught, CallStack);
     Results.merge(throwsException(Coro->getExceptionHandler(),
                                   Excs.getExceptionTypes(), CallStack));
-    for (const Type *Throwable : Excs.getExceptionTypes()) {
+    for (auto [Throwable, ThrowLoc] : Excs.getExceptionTypes()) {
       if (const auto ThrowableRec = Throwable->getAsCXXRecordDecl()) {
         ExceptionInfo DestructorExcs =
             throwsException(ThrowableRec->getDestructor(), Caught, CallStack);
