@@ -1912,6 +1912,8 @@ static Attribute::AttrKind getAttrFromCode(uint64_t Code) {
     return Attribute::ElementType;
   case bitc::ATTR_KIND_FNRETTHUNK_EXTERN:
     return Attribute::FnRetThunkExtern;
+  case bitc::ATTR_KIND_FREEZE_BITS:
+    return Attribute::FreezeBits;
   case bitc::ATTR_KIND_INLINE_HINT:
     return Attribute::InlineHint;
   case bitc::ATTR_KIND_IN_REG:
@@ -5918,6 +5920,7 @@ Error BitcodeReader::parseFunctionBody(Function *F) {
       InstructionList.push_back(I);
       break;
     }
+    case bitc::FUNC_CODE_INST_LOAD_OLD:
     case bitc::FUNC_CODE_INST_LOAD: { // LOAD: [opty, op, align, vol]
       unsigned OpNum = 0;
       Value *Op;
@@ -5952,9 +5955,12 @@ Error BitcodeReader::parseFunctionBody(Function *F) {
       if (!Align)
         Align = TheModule->getDataLayout().getABITypeAlign(Ty);
       I = new LoadInst(Ty, Op, "", Record[OpNum + 1], *Align);
+      if (BitCode == bitc::FUNC_CODE_INST_LOAD_OLD)
+        UpgradeLoadInstruction(I);
       InstructionList.push_back(I);
       break;
     }
+    case bitc::FUNC_CODE_INST_LOADATOMIC_OLD:
     case bitc::FUNC_CODE_INST_LOADATOMIC: {
        // LOADATOMIC: [opty, op, align, vol, ordering, ssid]
       unsigned OpNum = 0;
@@ -5996,6 +6002,8 @@ Error BitcodeReader::parseFunctionBody(Function *F) {
       if (!Align)
         return error("Alignment missing from atomic load");
       I = new LoadInst(Ty, Op, "", Record[OpNum + 1], *Align, Ordering, SSID);
+      if (BitCode == bitc::FUNC_CODE_INST_LOADATOMIC_OLD)
+        UpgradeLoadInstruction(I);
       InstructionList.push_back(I);
       break;
     }

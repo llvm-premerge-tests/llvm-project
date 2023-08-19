@@ -1140,14 +1140,14 @@ define void @instructions.memops(i32** %base) {
   ; CHECK: alloca inalloca i32, i8 4, align 4
 
   load i32*, i32** %base, align 8, !invariant.load !7, !nontemporal !8, !nonnull !7, !dereferenceable !9, !dereferenceable_or_null !9
-  ; CHECK: load ptr, ptr %base, align 8, !invariant.load !7, !nontemporal !8, !nonnull !7, !dereferenceable !9, !dereferenceable_or_null !9
+  ; CHECK: load ptr, ptr %base, align 8, !invariant.load !8, !nontemporal !7, !nonnull !8, !dereferenceable !9, !dereferenceable_or_null !9, !freeze_bits !7
   load volatile i32*, i32** %base, align 8, !invariant.load !7, !nontemporal !8, !nonnull !7, !dereferenceable !9, !dereferenceable_or_null !9
-  ; CHECK: load volatile ptr, ptr %base, align 8, !invariant.load !7, !nontemporal !8, !nonnull !7, !dereferenceable !9, !dereferenceable_or_null !9
+  ; CHECK: load volatile ptr, ptr %base, align 8, !invariant.load !8, !nontemporal !7, !nonnull !8, !dereferenceable !9, !dereferenceable_or_null !9, !freeze_bits !7
 
   store i32* null, i32** %base, align 4, !nontemporal !8
-  ; CHECK: store ptr null, ptr %base, align 4, !nontemporal !8
+  ; CHECK: store ptr null, ptr %base, align 4, !nontemporal !7
   store volatile i32* null, i32** %base, align 4, !nontemporal !8
-  ; CHECK: store volatile ptr null, ptr %base, align 4, !nontemporal !8
+  ; CHECK: store volatile ptr null, ptr %base, align 4, !nontemporal !7
 
   ret void
 }
