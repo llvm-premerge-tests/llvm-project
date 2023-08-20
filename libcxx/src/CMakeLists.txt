@@ -200,6 +200,7 @@ if (LIBCXX_ENABLE_SHARED)
       DEFINE_SYMBOL ""
   )
   cxx_add_common_build_flags(cxx_shared)
+  target_add_compile_flags_if_supported(cxx_shared PUBLIC -Wno-deprecated)
 
   if(ZOS)
     add_custom_command(TARGET cxx_shared POST_BUILD
@@ -291,6 +292,7 @@ if (LIBCXX_ENABLE_STATIC)
       OUTPUT_NAME   "${LIBCXX_STATIC_OUTPUT_NAME}"
   )
   cxx_add_common_build_flags(cxx_static)
+  target_add_compile_flags_if_supported(cxx_static PUBLIC -Wno-deprecated)
 
   if (LIBCXX_HERMETIC_STATIC_LIBRARY)
     # If the hermetic library doesn't define the operator new/delete functions
