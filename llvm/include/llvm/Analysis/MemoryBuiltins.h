@@ -118,12 +118,48 @@ std::optional<APInt> getAllocSize(
       return V;
     });
 
+bool loadHasFreezeBits(const LoadInst *const LI);
+
+/// Provide categorical information concerning constant selection.
+enum class InitializationCategory {
+  /// This enumerator will be returned when the load is determined to be of an
+  /// address that was allocated using:
+  ///
+  ///   * calloc or compliant new derivative
+  ///   * malloc in the absence of !freeze_bits
+  ///
+  /// In the first case the returned constant will be zero. This is in keeping
+  /// with current behavior where initialized AllocFnKind::Zeroed results in a
+  /// zero constant of arbitrary type. In the second case the return constant
+  /// will be poison.
+  Constant,
+  /// This enumerator will be returned when the load accompanied by !freeze_bits
+  /// and classification of the allocator such that memory is determined to be
+  /// in an uninitialized state. The returned constant will be null of arbitrary
+  /// type.
+  ///
+  /// The MemoryBuiltins API is used by clients that remove loads and stores.
+  /// The reason for the null of arbitrary type is it is differentiated
+  /// from zero. If zero were used optimizations like dead store elimination
+  /// (DSE) would remove the store 0.
+  FreezePoison,
+  /// Returned when getInitialValueOfAllocation is unable to determine the
+  /// classification of the allocation operations. No constant object is
+  /// produced and thus the returned pointer will be a nullptr. This provides
+  /// backward compatibility with the current API.
+  Unknown
+};
+
 /// If this is a call to an allocation function that initializes memory to a
-/// fixed value, return said value in the requested type. If this is a call to
-/// alloca instruction the returned value is undef. Otherwise, return nullptr.
-Constant *getInitialValueOfAllocation(const Value *V,
-                                      const TargetLibraryInfo *TLI,
-                                      Type *Ty);
+/// fixed value, return said value in the requested type. Otherwise, return
+/// nullptr.
+///
+/// This function also serves to determine the return value of a load
+/// instruction directly using allocation without an intermediate store
+/// instruction(s). This mode is enabled by passing a load institution pointer.
+std::pair<InitializationCategory, Constant *>
+getInitialValueOfAllocation(const Value *V, const TargetLibraryInfo *TLI,
+                            Type *Ty, const LoadInst *LI = nullptr);
 
 /// If a function is part of an allocation family (e.g.
 /// malloc/realloc/calloc/free), return the identifier for its family

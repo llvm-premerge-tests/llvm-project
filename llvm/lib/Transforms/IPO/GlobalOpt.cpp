@@ -1091,7 +1091,7 @@ static bool tryToOptimizeStoreOfAllocationToGlobal(GlobalVariable *GV,
     return false;
 
   Type *Int8Ty = Type::getInt8Ty(CI->getFunction()->getContext());
-  Constant *InitVal = getInitialValueOfAllocation(CI, TLI, Int8Ty);
+  Constant *InitVal = getInitialValueOfAllocation(CI, TLI, Int8Ty).second;
   if (!InitVal)
     // Must be able to emit a memset for initialization
     return false;

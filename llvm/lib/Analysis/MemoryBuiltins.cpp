@@ -433,27 +433,39 @@ llvm::getAllocSize(const CallBase *CB, const TargetLibraryInfo *TLI,
   return Size;
 }
 
-Constant *llvm::getInitialValueOfAllocation(const Value *V,
-                                            const TargetLibraryInfo *TLI,
-                                            Type *Ty) {
+bool llvm::loadHasFreezeBits(const LoadInst *const LI) {
+  return LI && LI->hasMetadata(LLVMContext::MD_freeze_bits);
+}
+
+static std::pair<InitializationCategory, Constant *>
+valueUsingLoadInstAndFreezeBits(const LoadInst *const LI, Type *const Ty) {
+  if (loadHasFreezeBits(LI))
+    return {InitializationCategory::FreezePoison, nullptr};
+  else
+    return {InitializationCategory::Constant, PoisonValue::get(Ty)};
+}
+
+std::pair<InitializationCategory, Constant *>
+llvm::getInitialValueOfAllocation(const Value *V, const TargetLibraryInfo *TLI,
+                                  Type *Ty, const LoadInst *LI) {
   if (isa<AllocaInst>(V))
-    return UndefValue::get(Ty);
+    return valueUsingLoadInstAndFreezeBits(LI, Ty);
 
   auto *Alloc = dyn_cast<CallBase>(V);
   if (!Alloc)
-    return nullptr;
+    return {InitializationCategory::Unknown, nullptr};
 
   // malloc are uninitialized (undef)
   if (getAllocationData(Alloc, MallocOrOpNewLike, TLI).has_value())
-    return UndefValue::get(Ty);
+    return valueUsingLoadInstAndFreezeBits(LI, Ty);
 
   AllocFnKind AK = getAllocFnKind(Alloc);
   if ((AK & AllocFnKind::Uninitialized) != AllocFnKind::Unknown)
-    return UndefValue::get(Ty);
+    return valueUsingLoadInstAndFreezeBits(LI, Ty);
   if ((AK & AllocFnKind::Zeroed) != AllocFnKind::Unknown)
-    return Constant::getNullValue(Ty);
+    return {InitializationCategory::Constant, Constant::getNullValue(Ty)};
 
-  return nullptr;
+  return {InitializationCategory::Unknown, nullptr};
 }
 
 struct FreeFnsTy {
