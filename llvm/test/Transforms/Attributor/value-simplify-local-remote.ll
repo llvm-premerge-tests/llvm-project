@@ -79,7 +79,7 @@ define internal ptr @bar(ptr %QQfirst) {
 ; CGSCC-LABEL: define {{[^@]+}}@bar
 ; CGSCC-SAME: (ptr noalias nofree noundef nonnull readnone returned align 8 dereferenceable(8) "no-capture-maybe-returned" [[QQFIRST:%.*]]) #[[ATTR1:[0-9]+]] {
 ; CGSCC-NEXT:  entry:
-; CGSCC-NEXT:    [[QQFIRST_ADDR:%.*]] = alloca ptr, i32 0, align 8
+; CGSCC-NEXT:    [[QQFIRST_ADDR:%.*]] = alloca i64, i32 0, align 8
 ; CGSCC-NEXT:    store ptr [[QQFIRST]], ptr [[QQFIRST_ADDR]], align 8
 ; CGSCC-NEXT:    br label [[WHILE_COND:%.*]]
 ; CGSCC:       while.cond:
@@ -132,10 +132,10 @@ define internal %S @foo.1(ptr %foo.this) {
 ; TUNIT-LABEL: define {{[^@]+}}@foo.1
 ; TUNIT-SAME: (ptr nofree noundef nonnull align 8 dereferenceable(8) [[FOO_THIS:%.*]]) #[[ATTR1]] {
 ; TUNIT-NEXT:  entry:
-; TUNIT-NEXT:    [[RETVAL:%.*]] = alloca [[S:%.*]], i32 0, align 8
+; TUNIT-NEXT:    [[RETVAL:%.*]] = alloca i64, i32 0, align 8
 ; TUNIT-NEXT:    store ptr [[FOO_THIS]], ptr [[FOO_THIS]], align 8
 ; TUNIT-NEXT:    call void @bar.2(ptr noalias nocapture nofree noundef nonnull writeonly align 8 [[RETVAL]], ptr nofree noundef nonnull writeonly align 8 dereferenceable(8) [[FOO_THIS]]) #[[ATTR5:[0-9]+]]
-; TUNIT-NEXT:    [[FOO_RET:%.*]] = load [[S]], ptr [[RETVAL]], align 8
+; TUNIT-NEXT:    [[FOO_RET:%.*]] = load [[S:%.*]], ptr [[RETVAL]], align 8
 ; TUNIT-NEXT:    ret [[S]] [[FOO_RET]]
 ;
 ; CGSCC: Function Attrs: mustprogress nofree nosync nounwind willreturn memory(argmem: readwrite)
@@ -231,10 +231,10 @@ define internal %S @bar.5(ptr %this) {
 ; TUNIT-LABEL: define {{[^@]+}}@bar.5
 ; TUNIT-SAME: (ptr nofree noundef nonnull align 8 dereferenceable(8) [[THIS:%.*]]) #[[ATTR1]] {
 ; TUNIT-NEXT:  entry:
-; TUNIT-NEXT:    [[RETVAL:%.*]] = alloca [[S:%.*]], i32 0, align 8
+; TUNIT-NEXT:    [[RETVAL:%.*]] = alloca i64, i32 0, align 8
 ; TUNIT-NEXT:    store ptr [[THIS]], ptr [[THIS]], align 8
 ; TUNIT-NEXT:    call void @baz.6(ptr noalias nocapture nofree noundef nonnull writeonly align 8 [[RETVAL]], ptr nofree noundef nonnull align 8 dereferenceable(8) [[THIS]]) #[[ATTR4]]
-; TUNIT-NEXT:    [[BAR_RET:%.*]] = load [[S]], ptr [[RETVAL]], align 8
+; TUNIT-NEXT:    [[BAR_RET:%.*]] = load [[S:%.*]], ptr [[RETVAL]], align 8
 ; TUNIT-NEXT:    ret [[S]] [[BAR_RET]]
 ;
 ; CGSCC: Function Attrs: mustprogress nofree nosync nounwind willreturn memory(argmem: readwrite)
@@ -284,7 +284,7 @@ define internal void @boom(ptr %this, ptr %data) {
 ; TUNIT-LABEL: define {{[^@]+}}@boom
 ; TUNIT-SAME: (ptr nocapture nofree noundef nonnull writeonly align 8 dereferenceable(8) [[THIS:%.*]], ptr nofree noundef nonnull align 8 dereferenceable(8) [[DATA:%.*]]) #[[ATTR1]] {
 ; TUNIT-NEXT:  entry:
-; TUNIT-NEXT:    [[DATA_ADDR:%.*]] = alloca ptr, i32 0, align 8
+; TUNIT-NEXT:    [[DATA_ADDR:%.*]] = alloca i64, i32 0, align 8
 ; TUNIT-NEXT:    store ptr [[DATA]], ptr [[DATA_ADDR]], align 8
 ; TUNIT-NEXT:    [[V:%.*]] = load ptr, ptr [[DATA_ADDR]], align 8
 ; TUNIT-NEXT:    store ptr [[V]], ptr [[THIS]], align 8
@@ -294,7 +294,7 @@ define internal void @boom(ptr %this, ptr %data) {
 ; CGSCC-LABEL: define {{[^@]+}}@boom
 ; CGSCC-SAME: (ptr nocapture nofree noundef nonnull writeonly align 8 dereferenceable(8) [[THIS:%.*]], ptr nofree [[DATA:%.*]]) #[[ATTR4:[0-9]+]] {
 ; CGSCC-NEXT:  entry:
-; CGSCC-NEXT:    [[DATA_ADDR:%.*]] = alloca ptr, i32 0, align 8
+; CGSCC-NEXT:    [[DATA_ADDR:%.*]] = alloca i64, i32 0, align 8
 ; CGSCC-NEXT:    store ptr [[DATA]], ptr [[DATA_ADDR]], align 8
 ; CGSCC-NEXT:    store ptr [[DATA]], ptr [[THIS]], align 8
 ; CGSCC-NEXT:    ret void
@@ -380,8 +380,8 @@ define dso_local void @spam() {
 ; TUNIT-NEXT:    store i32 [[X]], ptr [[TMP]], align 4
 ; TUNIT-NEXT:    br label [[BB16:%.*]]
 ; TUNIT:       bb16:
-; TUNIT-NEXT:    [[TRUETMP18:%.*]] = icmp eq i32 [[X]], 0
-; TUNIT-NEXT:    br i1 [[TRUETMP18]], label [[BB35:%.*]], label [[BB19:%.*]]
+; TUNIT-NEXT:    [[TMP18:%.*]] = icmp eq i32 [[X]], 0
+; TUNIT-NEXT:    br i1 [[TMP18]], label [[BB35:%.*]], label [[BB19:%.*]]
 ; TUNIT:       bb19:
 ; TUNIT-NEXT:    br label [[BB23:%.*]]
 ; TUNIT:       bb23:
@@ -404,8 +404,8 @@ define dso_local void @spam() {
 ; CGSCC-NEXT:    store i32 [[X]], ptr [[TMP]], align 4
 ; CGSCC-NEXT:    br label [[BB16:%.*]]
 ; CGSCC:       bb16:
-; CGSCC-NEXT:    [[TRUETMP18:%.*]] = icmp eq i32 [[X]], 0
-; CGSCC-NEXT:    br i1 [[TRUETMP18]], label [[BB35:%.*]], label [[BB19:%.*]]
+; CGSCC-NEXT:    [[TMP18:%.*]] = icmp eq i32 [[X]], 0
+; CGSCC-NEXT:    br i1 [[TMP18]], label [[BB35:%.*]], label [[BB19:%.*]]
 ; CGSCC:       bb19:
 ; CGSCC-NEXT:    br label [[BB23:%.*]]
 ; CGSCC:       bb23:
@@ -494,11 +494,11 @@ define internal %S @t4a(ptr %this) {
 ; TUNIT-LABEL: define {{[^@]+}}@t4a
 ; TUNIT-SAME: (ptr nofree noundef nonnull writeonly align 8 dereferenceable(8) [[THIS:%.*]]) #[[ATTR0]] {
 ; TUNIT-NEXT:  entry:
-; TUNIT-NEXT:    [[RETVAL:%.*]] = alloca [[S:%.*]], i32 0, align 8
+; TUNIT-NEXT:    [[RETVAL:%.*]] = alloca i64, i32 0, align 8
 ; TUNIT-NEXT:    [[THIS_ADDR:%.*]] = alloca ptr, i32 0, align 8
 ; TUNIT-NEXT:    store ptr [[THIS]], ptr [[THIS]], align 8
 ; TUNIT-NEXT:    call void @t4b(ptr noalias nocapture nofree noundef nonnull writeonly align 8 [[RETVAL]]) #[[ATTR5]]
-; TUNIT-NEXT:    ret [[S]] undef
+; TUNIT-NEXT:    ret [[S:%.*]] undef
 ;
 ; CGSCC: Function Attrs: mustprogress nofree nosync nounwind willreturn memory(argmem: readwrite)
 ; CGSCC-LABEL: define {{[^@]+}}@t4a
@@ -529,7 +529,7 @@ define internal void @t4b(ptr %this, ptr %data) {
 ; TUNIT-LABEL: define {{[^@]+}}@t4b
 ; TUNIT-SAME: (ptr noalias nocapture nofree noundef nonnull writeonly align 8 dereferenceable(8) [[THIS:%.*]]) #[[ATTR0]] {
 ; TUNIT-NEXT:  entry:
-; TUNIT-NEXT:    [[THIS_ADDR:%.*]] = alloca ptr, i32 0, align 8
+; TUNIT-NEXT:    [[THIS_ADDR:%.*]] = alloca i64, i32 0, align 8
 ; TUNIT-NEXT:    [[DATA_ADDR:%.*]] = alloca ptr, i32 0, align 8
 ; TUNIT-NEXT:    call void @t4c(ptr noalias nocapture nofree noundef nonnull writeonly align 8 dereferenceable(8) [[THIS]]) #[[ATTR5]]
 ; TUNIT-NEXT:    ret void
@@ -538,7 +538,7 @@ define internal void @t4b(ptr %this, ptr %data) {
 ; CGSCC-LABEL: define {{[^@]+}}@t4b
 ; CGSCC-SAME: (ptr noalias nocapture nofree noundef nonnull writeonly align 8 dereferenceable(8) [[THIS:%.*]], ptr nofree noundef nonnull writeonly align 8 dereferenceable(8) [[DATA:%.*]]) #[[ATTR0]] {
 ; CGSCC-NEXT:  entry:
-; CGSCC-NEXT:    [[THIS_ADDR:%.*]] = alloca ptr, i32 0, align 8
+; CGSCC-NEXT:    [[THIS_ADDR:%.*]] = alloca i64, i32 0, align 8
 ; CGSCC-NEXT:    [[DATA_ADDR:%.*]] = alloca ptr, i32 0, align 8
 ; CGSCC-NEXT:    store ptr [[DATA]], ptr [[THIS]], align 8
 ; CGSCC-NEXT:    call void @t4c(ptr nocapture nofree noundef nonnull writeonly align 8 dereferenceable(8) [[THIS]], ptr nofree noundef nonnull writeonly align 8 dereferenceable(8) [[DATA]]) #[[ATTR6]]
@@ -560,7 +560,7 @@ define internal void @t4c(ptr %this, ptr %data) {
 ; TUNIT-LABEL: define {{[^@]+}}@t4c
 ; TUNIT-SAME: (ptr noalias nocapture nofree noundef nonnull writeonly align 8 dereferenceable(8) [[THIS:%.*]]) #[[ATTR0]] {
 ; TUNIT-NEXT:  entry:
-; TUNIT-NEXT:    [[THIS_ADDR:%.*]] = alloca ptr, i32 0, align 8
+; TUNIT-NEXT:    [[THIS_ADDR:%.*]] = alloca i64, i32 0, align 8
 ; TUNIT-NEXT:    [[DATA_ADDR:%.*]] = alloca ptr, i32 0, align 8
 ; TUNIT-NEXT:    ret void
 ;
@@ -568,7 +568,7 @@ define internal void @t4c(ptr %this, ptr %data) {
 ; CGSCC-LABEL: define {{[^@]+}}@t4c
 ; CGSCC-SAME: (ptr nocapture nofree noundef nonnull writeonly align 8 dereferenceable(8) [[THIS:%.*]], ptr nofree writeonly [[DATA:%.*]]) #[[ATTR3]] {
 ; CGSCC-NEXT:  entry:
-; CGSCC-NEXT:    [[THIS_ADDR:%.*]] = alloca ptr, i32 0, align 8
+; CGSCC-NEXT:    [[THIS_ADDR:%.*]] = alloca i64, i32 0, align 8
 ; CGSCC-NEXT:    [[DATA_ADDR:%.*]] = alloca ptr, i32 0, align 8
 ; CGSCC-NEXT:    store ptr [[DATA]], ptr [[THIS]], align 8
 ; CGSCC-NEXT:    store ptr [[DATA]], ptr [[THIS]], align 8
