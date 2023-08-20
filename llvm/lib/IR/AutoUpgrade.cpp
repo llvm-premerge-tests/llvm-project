@@ -915,21 +915,23 @@ static bool UpgradeIntrinsicFunction1(Function *F, Function *&NewFn) {
 
     break;
   }
-  case 'c': {
-    if (Name.startswith("ctlz.") && F->arg_size() == 1) {
-      rename(F);
-      NewFn = Intrinsic::getDeclaration(F->getParent(), Intrinsic::ctlz,
-                                        F->arg_begin()->getType());
-      return true;
-    }
-    if (Name.startswith("cttz.") && F->arg_size() == 1) {
-      rename(F);
-      NewFn = Intrinsic::getDeclaration(F->getParent(), Intrinsic::cttz,
-                                        F->arg_begin()->getType());
-      return true;
+  case 'c':
+    if (Name.consume_front("ct")) {
+      if (F->arg_size() == 1) {
+        Intrinsic::ID ID = StringSwitch<Intrinsic::ID>(Name)
+                               .StartsWith("lz.", Intrinsic::ctlz)
+                               .StartsWith("tz.", Intrinsic::cttz)
+                               .Default(Intrinsic::not_intrinsic);
+        if (ID != Intrinsic::not_intrinsic) {
+          rename(F);
+          NewFn = Intrinsic::getDeclaration(F->getParent(), ID,
+                                            F->arg_begin()->getType());
+          return true;
+        }
+      }
+      break; // No other 'ct*'
     }
     break;
-  }
   case 'd':
     if (Name.consume_front("dbg.")) {
       if (Name == "addr" || (Name == "value" && F->arg_size() == 4)) {
