@@ -16571,8 +16571,7 @@ bool Sema::CheckLiteralOperatorDeclaration(FunctionDecl *FnDecl) {
     //   contain a double underscore __ are reserved for use by C++
     //   implementations.
     Diag(FnDecl->getLocation(), diag::warn_user_literal_reserved)
-        << static_cast<int>(Status)
-        << StringLiteralParser::isValidUDSuffix(getLangOpts(), II->getName());
+        << static_cast<int>(Status);
   }
 
   return false;

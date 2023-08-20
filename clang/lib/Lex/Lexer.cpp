@@ -1986,6 +1986,7 @@ const char *Lexer::LexUDSuffix(Token &Result, const char *CurPtr,
   assert(LangOpts.CPlusPlus);
 
   // Maximally munch an identifier.
+  const char *TokStart = CurPtr;
   unsigned Size;
   char C = getCharAndSize(CurPtr, Size);
   bool Consumed = false;
@@ -2012,10 +2013,43 @@ const char *Lexer::LexUDSuffix(Token &Result, const char *CurPtr,
   // that does not start with an underscore is ill-formed. We assume a suffix
   // beginning with a UCN or UTF-8 character is more likely to be a ud-suffix
   // than a macro, however, and accept that.
+  bool IsUDSuffix = false;
+  if (!Consumed) {
+    if (C == '_')
+      IsUDSuffix = true;
+    else if (IsStringLiteral && LangOpts.CPlusPlus14) {
+      // In C++1y, we need to look ahead a few characters to see if this is a
+      // valid suffix for a string literal or a numeric literal (this could be
+      // the 'operator""if' defining a numeric literal operator).
+      const unsigned MaxStandardSuffixLength = 3;
+      char Buffer[MaxStandardSuffixLength] = {C};
+      unsigned Consumed = Size;
+      unsigned Chars = 1;
+      while (true) {
+        unsigned NextSize;
+        char Next = getCharAndSizeNoWarn(CurPtr + Consumed, NextSize, LangOpts);
+        if (!isAsciiIdentifierContinue(Next)) {
+          // End of suffix. Check whether this is on the allowed list.
+          const StringRef CompleteSuffix(Buffer, Chars);
+          IsUDSuffix =
+              StringLiteralParser::isValidUDSuffix(LangOpts, CompleteSuffix);
+          break;
+        }
+
+        if (Chars == MaxStandardSuffixLength)
+          // Too long: can't be a standard suffix.
+          break;
+
+        Buffer[Chars++] = Next;
+        Consumed += NextSize;
+      }
+    }
+  }
+
   if (!Consumed)
     CurPtr = ConsumeChar(CurPtr, Size, Result);
-
-  Result.setFlag(Token::HasUDSuffix);
+  if (IsUDSuffix)
+    Result.setFlag(Token::HasUDSuffix);
   while (true) {
     C = getCharAndSize(CurPtr, Size);
     if (isAsciiIdentifierContinue(C)) {
@@ -2024,6 +2058,24 @@ const char *Lexer::LexUDSuffix(Token &Result, const char *CurPtr,
     } else if (!isASCII(C) && tryConsumeIdentifierUTF8Char(CurPtr)) {
     } else
       break;
+  }
+
+  // As a conforming extension, we treat invalid suffixes as if they had
+  // whitespace before them if doing so results in macro expansions.
+  if (!isLexingRawMode() && !IsUDSuffix) {
+    unsigned TokLen = CurPtr - TokStart;
+    Result.setLength(TokLen);
+    Result.setLocation(getSourceLocation(TokStart, TokLen));
+    Result.setKind(tok::raw_identifier);
+    Result.setRawIdentifierData(TokStart);
+    IdentifierInfo *II = PP->LookUpIdentifierInfo(Result);
+    if (II->hasMacroDefinition()) {
+      Diag(TokStart, LangOpts.MSVCCompat
+                         ? diag::ext_ms_reserved_user_defined_literal
+                         : diag::ext_reserved_user_defined_literal)
+          << FixItHint::CreateInsertion(getSourceLocation(TokStart), " ");
+      return TokStart;
+    }
   }
 
   return CurPtr;

@@ -1,8 +1,8 @@
 // RUN: %clang_cc1 -std=c++11 -verify %s
 
 using size_t = decltype(sizeof(int));
-void operator ""wibble(const char *); // expected-warning {{user-defined literal suffixes not starting with '_' are reserved; no literal will invoke this operator}}
-void operator ""wibble(const char *, size_t); // expected-warning {{user-defined literal suffixes not starting with '_' are reserved; no literal will invoke this operator}}
+void operator ""wibble(const char *); // expected-warning {{user-defined literal suffixes not starting with '_' are reserved}}
+void operator ""wibble(const char *, size_t); // expected-warning {{user-defined literal suffixes not starting with '_' are reserved}}
 
 template<typename T>
 void f() {

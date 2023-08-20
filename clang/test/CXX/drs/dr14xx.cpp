@@ -489,7 +489,13 @@ namespace dr1473 { // dr1473: 18
 #if __cplusplus >= 201103L
   float operator ""_E(const char *);
   float operator ""E(const char *); // don't err on the lack of spaces even when the literal suffix identifier is invalid
-  // expected-warning@-1 {{user-defined literal suffixes not starting with '_' are reserved; no literal will invoke this operator}}
+  // expected-warning@-1 {{user-defined literal suffixes not starting with '_' are reserved}}
+  const char* s0 = "FOO"BAR;
+  // expected-error@-1 {{no matching literal operator for call to 'operator""BAR' with arguments of types 'const char *' and 'unsigned long', and no matching literal operator template}}
+#define BAR "BAZ"
+  const char* s1 = "FOO"BAR;
+  // expected-error@-1 {{invalid suffix on literal; C++11 requires a space between literal and a macro}}
+#undef BAR
 #endif
 }
 

@@ -92,10 +92,11 @@ C++2c Feature Support
 
 Resolutions to C++ Defect Reports
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-- Implemented `CWG1473 <https://wg21.link/CWG1473>`_ which allows spaces after ``operator""``.
-  Clang used to err on the lack of space when the literal suffix identifier was invalid in
-  all the language modes, which contradicted the deprecation of the whitespaces.
-  Also turn on ``-Wdeprecated-literal-operator`` by default in all the language modes.
+- Implemented `CWG1473 <https://wg21.link/CWG1473>`_ allowing lack of space after ``operator""``.
+  Clang used to err on the lack of space when the literal suffix identifier was invalid,
+  contradicting ``-Wdeprecated-literal-operator`` which is now default on.
+  Instead, Clang now emits error only if the invalid suffix looks like a macro,
+  and treat it as if it were preceded by whitespace.
 
 C Language Changes
 ------------------
