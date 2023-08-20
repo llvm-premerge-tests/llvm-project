@@ -19,7 +19,7 @@ define void @store_captures() #0 {
 ; CHECK-NEXT:    [[STACKGUARD1:%.*]] = load volatile ptr, ptr addrspace(257) inttoptr (i32 40 to ptr addrspace(257))
 ; CHECK-NEXT:    [[TMP0:%.*]] = load volatile ptr, ptr [[STACKGUARDSLOT]]
 ; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq ptr [[STACKGUARD1]], [[TMP0]]
-; CHECK-NEXT:    br i1 [[TMP1]], label [[SP_RETURN:%.*]], label [[CALLSTACKCHECKFAILBLK:%.*]], !prof !0
+; CHECK-NEXT:    br i1 [[TMP1]], label [[SP_RETURN:%.*]], label [[CALLSTACKCHECKFAILBLK:%.*]], !prof [[PROF:![0-9]+]]
 ; CHECK:       SP_return:
 ; CHECK-NEXT:    ret void
 ; CHECK:       CallStackCheckFailBlk:
@@ -72,7 +72,7 @@ define void @store_addrspacecast_captures() #0 {
 ; CHECK-NEXT:    [[STACKGUARD1:%.*]] = load volatile ptr, ptr addrspace(257) inttoptr (i32 40 to ptr addrspace(257))
 ; CHECK-NEXT:    [[TMP0:%.*]] = load volatile ptr, ptr [[STACKGUARDSLOT]]
 ; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq ptr [[STACKGUARD1]], [[TMP0]]
-; CHECK-NEXT:    br i1 [[TMP1]], label [[SP_RETURN:%.*]], label [[CALLSTACKCHECKFAILBLK:%.*]], !prof !0
+; CHECK-NEXT:    br i1 [[TMP1]], label [[SP_RETURN:%.*]], label [[CALLSTACKCHECKFAILBLK:%.*]], !prof [[PROF]]
 ; CHECK:       SP_return:
 ; CHECK-NEXT:    ret void
 ; CHECK:       CallStackCheckFailBlk:
@@ -109,7 +109,7 @@ define void @cmpxchg_captures() #0 {
 ; CHECK-NEXT:    [[STACKGUARD1:%.*]] = load volatile ptr, ptr addrspace(257) inttoptr (i32 40 to ptr addrspace(257))
 ; CHECK-NEXT:    [[TMP1:%.*]] = load volatile ptr, ptr [[STACKGUARDSLOT]]
 ; CHECK-NEXT:    [[TMP2:%.*]] = icmp eq ptr [[STACKGUARD1]], [[TMP1]]
-; CHECK-NEXT:    br i1 [[TMP2]], label [[SP_RETURN:%.*]], label [[CALLSTACKCHECKFAILBLK:%.*]], !prof !0
+; CHECK-NEXT:    br i1 [[TMP2]], label [[SP_RETURN:%.*]], label [[CALLSTACKCHECKFAILBLK:%.*]], !prof [[PROF]]
 ; CHECK:       SP_return:
 ; CHECK-NEXT:    ret void
 ; CHECK:       CallStackCheckFailBlk:
@@ -143,7 +143,7 @@ define void @memset_captures(i64 %c) #0 {
 ; CHECK-NEXT:    [[STACKGUARD1:%.*]] = load volatile ptr, ptr addrspace(257) inttoptr (i32 40 to ptr addrspace(257))
 ; CHECK-NEXT:    [[TMP1:%.*]] = load volatile ptr, ptr [[STACKGUARDSLOT]]
 ; CHECK-NEXT:    [[TMP2:%.*]] = icmp eq ptr [[STACKGUARD1]], [[TMP1]]
-; CHECK-NEXT:    br i1 [[TMP2]], label [[SP_RETURN:%.*]], label [[CALLSTACKCHECKFAILBLK:%.*]], !prof !0
+; CHECK-NEXT:    br i1 [[TMP2]], label [[SP_RETURN:%.*]], label [[CALLSTACKCHECKFAILBLK:%.*]], !prof [[PROF]]
 ; CHECK:       SP_return:
 ; CHECK-NEXT:    ret void
 ; CHECK:       CallStackCheckFailBlk:

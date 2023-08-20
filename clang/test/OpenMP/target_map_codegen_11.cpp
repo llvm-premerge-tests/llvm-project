@@ -60,7 +60,7 @@ void implicit_maps_float_complex (int a){
 
 // CK12-64-DAG: store i[[sz:64|32]] [[VAL:%[^,]+]], ptr [[BP1]]
 // CK12-64-DAG: store i[[sz]] [[VAL]], ptr [[P1]]
-// CK12-64-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%.+]],
+// CK12-64-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%[^,]+]],
 // CK12-64-DAG: store { float, float } {{.+}}, ptr [[ADDR]],
 
 // CK12-32-DAG: store ptr [[DECL:%[^,]+]], ptr [[BP1]]

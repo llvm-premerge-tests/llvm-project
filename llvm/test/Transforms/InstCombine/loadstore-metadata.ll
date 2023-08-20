@@ -7,7 +7,7 @@ define i32 @test_load_cast_combine_tbaa(ptr %ptr) {
 ; Ensure (cast (load (...))) -> (load (cast (...))) preserves TBAA.
 ; CHECK-LABEL: @test_load_cast_combine_tbaa(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[L1:%.*]] = load i32, ptr [[PTR:%.*]], align 4, !tbaa [[TBAA0:![0-9]+]]
+; CHECK-NEXT:    [[L1:%.*]] = load i32, ptr [[PTR:%.*]], align 4, !tbaa [[TBAA0:![0-9]+]], !freeze_bits [[FREEZE_BITS3:![0-9]+]]
 ; CHECK-NEXT:    ret i32 [[L1]]
 ;
 entry:
@@ -20,7 +20,7 @@ define i32 @test_load_cast_combine_noalias(ptr %ptr) {
 ; Ensure (cast (load (...))) -> (load (cast (...))) preserves no-alias metadata.
 ; CHECK-LABEL: @test_load_cast_combine_noalias(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[L1:%.*]] = load i32, ptr [[PTR:%.*]], align 4, !alias.scope !3, !noalias !3
+; CHECK-NEXT:    [[L1:%.*]] = load i32, ptr [[PTR:%.*]], align 4, !alias.scope !4, !noalias !4, !freeze_bits [[FREEZE_BITS3]]
 ; CHECK-NEXT:    ret i32 [[L1]]
 ;
 entry:
@@ -35,7 +35,7 @@ define float @test_load_cast_combine_range(ptr %ptr) {
 ; between types.
 ; CHECK-LABEL: @test_load_cast_combine_range(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[L1:%.*]] = load float, ptr [[PTR:%.*]], align 4
+; CHECK-NEXT:    [[L1:%.*]] = load float, ptr [[PTR:%.*]], align 4, !freeze_bits [[FREEZE_BITS3]]
 ; CHECK-NEXT:    ret float [[L1]]
 ;
 entry:
@@ -48,7 +48,7 @@ define i32 @test_load_cast_combine_invariant(ptr %ptr) {
 ; Ensure (cast (load (...))) -> (load (cast (...))) preserves invariant metadata.
 ; CHECK-LABEL: @test_load_cast_combine_invariant(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[L1:%.*]] = load i32, ptr [[PTR:%.*]], align 4, !invariant.load !6
+; CHECK-NEXT:    [[L1:%.*]] = load i32, ptr [[PTR:%.*]], align 4, !invariant.load !3, !freeze_bits [[FREEZE_BITS3]]
 ; CHECK-NEXT:    ret i32 [[L1]]
 ;
 entry:
@@ -62,7 +62,7 @@ define i32 @test_load_cast_combine_nontemporal(ptr %ptr) {
 ; metadata.
 ; CHECK-LABEL: @test_load_cast_combine_nontemporal(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[L1:%.*]] = load i32, ptr [[PTR:%.*]], align 4, !nontemporal !7
+; CHECK-NEXT:    [[L1:%.*]] = load i32, ptr [[PTR:%.*]], align 4, !nontemporal !7, !freeze_bits [[FREEZE_BITS3]]
 ; CHECK-NEXT:    ret i32 [[L1]]
 ;
 entry:
@@ -122,7 +122,7 @@ define void @test_load_cast_combine_loop(ptr %src, ptr %dst, i32 %n) {
 ; CHECK-NEXT:    [[SRC_GEP:%.*]] = getelementptr inbounds float, ptr [[SRC:%.*]], i64 [[TMP0]]
 ; CHECK-NEXT:    [[TMP1:%.*]] = sext i32 [[I]] to i64
 ; CHECK-NEXT:    [[DST_GEP:%.*]] = getelementptr inbounds i32, ptr [[DST:%.*]], i64 [[TMP1]]
-; CHECK-NEXT:    [[L1:%.*]] = load i32, ptr [[SRC_GEP]], align 4, !llvm.access.group [[ACC_GRP9:![0-9]+]]
+; CHECK-NEXT:    [[L1:%.*]] = load i32, ptr [[SRC_GEP]], align 4, !llvm.access.group [[ACC_GRP9:![0-9]+]], !freeze_bits [[FREEZE_BITS3]]
 ; CHECK-NEXT:    store i32 [[L1]], ptr [[DST_GEP]], align 4
 ; CHECK-NEXT:    [[I_NEXT]] = add i32 [[I]], 1
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp slt i32 [[I_NEXT]], [[N:%.*]]
@@ -151,7 +151,7 @@ exit:
 define void @test_load_cast_combine_nonnull(ptr %ptr) {
 ; CHECK-LABEL: @test_load_cast_combine_nonnull(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[P:%.*]] = load ptr, ptr [[PTR:%.*]], align 8, !nonnull !6
+; CHECK-NEXT:    [[P:%.*]] = load ptr, ptr [[PTR:%.*]], align 8, !nonnull !3
 ; CHECK-NEXT:    [[GEP:%.*]] = getelementptr ptr, ptr [[PTR]], i64 42
 ; CHECK-NEXT:    store ptr [[P]], ptr [[GEP]], align 8
 ; CHECK-NEXT:    ret void
@@ -165,7 +165,7 @@ entry:
 
 define i32 @test_load_cast_combine_noundef(ptr %ptr) {
 ; CHECK-LABEL: @test_load_cast_combine_noundef(
-; CHECK-NEXT:    [[L1:%.*]] = load i32, ptr [[PTR:%.*]], align 4, !noundef !6
+; CHECK-NEXT:    [[L1:%.*]] = load i32, ptr [[PTR:%.*]], align 4, !noundef !3, !freeze_bits [[FREEZE_BITS3]]
 ; CHECK-NEXT:    ret i32 [[L1]]
 ;
   %l = load float, ptr %ptr, !noundef !{}

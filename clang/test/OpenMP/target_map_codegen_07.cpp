@@ -54,7 +54,7 @@ void implicit_maps_float (int a){
 // CK8-DAG: [[P1:%.+]] = getelementptr inbounds {{.+}}[[PS]], i32 0, i32 0
 // CK8-DAG: store i[[sz:64|32]] [[VAL:%[^,]+]], ptr [[BP1]]
 // CK8-DAG: store i[[sz]] [[VAL]], ptr [[P1]]
-// CK8-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%.+]],
+// CK8-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%[^,]+]],
 // CK8-DAG: store float {{.+}}, ptr [[ADDR]],
 
 // CK8: call void [[KERNEL:@.+]](i[[sz]] [[VAL]])

@@ -41,7 +41,7 @@ void * variant_load_1(int i) {
 }
 
 // CHECK-LABEL: define{{.*}} ptr @variant_load_1(i32 noundef %i)
-// CHECK: [[IVAR:%.*]] = load i64, ptr @"OBJC_IVAR_$_Derived.member", align 8{{$}}
+// CHECK: [[IVAR:%.*]] = load i64, ptr @"OBJC_IVAR_$_Derived.member", align 8, !freeze_bits !{{[0-9]+}}{{$}}
 
 @interface Container : Derived @end
 @implementation Container

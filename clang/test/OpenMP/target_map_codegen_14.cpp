@@ -110,7 +110,7 @@ void implicit_maps_templated_class (int a){
   // CK15-DAG: [[P3:%.+]] = getelementptr inbounds {{.+}}[[PS]], i32 0, i32 3
   // CK15-DAG: store i[[sz:64|32]] [[VAL:%.+]], ptr [[BP3]]
   // CK15-DAG: store i[[sz]] [[VAL]], ptr [[P3]]
-  // CK15-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%.+]],
+  // CK15-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%[^,]+]],
   // CK15-64-DAG: store i32 {{.+}}, ptr [[ADDR]],
 
   // CK15: call void [[KERNEL:@.+]](ptr [[DECL]], i[[sz]] {{.+}})
@@ -149,7 +149,7 @@ void implicit_maps_templated_class (int a){
   // CK15-DAG: [[P3:%.+]] = getelementptr inbounds {{.+}}[[PS]], i32 0, i32 3
   // CK15-DAG: store i[[sz]] [[VAL:%.+]], ptr [[BP3]]
   // CK15-DAG: store i[[sz]] [[VAL]], ptr [[P3]]
-  // CK15-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%.+]],
+  // CK15-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%[^,]+]],
   // CK15-64-DAG: store i32 {{.+}}, ptr [[ADDR]],
 
   // CK15: call void [[KERNEL2:@.+]](ptr [[DECL]], i[[sz]] {{.+}})
