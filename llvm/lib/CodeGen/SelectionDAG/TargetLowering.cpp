@@ -2138,18 +2138,24 @@ bool TargetLowering::SimplifyDemandedBits(
   case ISD::SMIN: {
     SDValue Op0 = Op.getOperand(0);
     SDValue Op1 = Op.getOperand(1);
-    // If we're only wanting the signbit, then we can simplify to OR node.
-    // TODO: Extend this based on ComputeNumSignBits.
-    if (DemandedBits.isSignMask())
+    // If we're only wanting the signbits, then we can simplify to OR node.
+    unsigned NumSignBits =
+        std::min(TLO.DAG.ComputeNumSignBits(Op0, DemandedElts, Depth + 1),
+                 TLO.DAG.ComputeNumSignBits(Op1, DemandedElts, Depth + 1));
+    unsigned NumDemandedUpperBits = BitWidth - DemandedBits.countr_zero();
+    if (NumSignBits >= NumDemandedUpperBits)
       return TLO.CombineTo(Op, TLO.DAG.getNode(ISD::OR, dl, VT, Op0, Op1));
     break;
   }
   case ISD::SMAX: {
     SDValue Op0 = Op.getOperand(0);
     SDValue Op1 = Op.getOperand(1);
-    // If we're only wanting the signbit, then we can simplify to AND node.
-    // TODO: Extend this based on ComputeNumSignBits.
-    if (DemandedBits.isSignMask())
+    // If we're only wanting the signbits, then we can simplify to AND node.
+    unsigned NumSignBits =
+        std::min(TLO.DAG.ComputeNumSignBits(Op0, DemandedElts, Depth + 1),
+                 TLO.DAG.ComputeNumSignBits(Op1, DemandedElts, Depth + 1));
+    unsigned NumDemandedUpperBits = BitWidth - DemandedBits.countr_zero();
+    if (NumSignBits >= NumDemandedUpperBits)
       return TLO.CombineTo(Op, TLO.DAG.getNode(ISD::AND, dl, VT, Op0, Op1));
     break;
   }
