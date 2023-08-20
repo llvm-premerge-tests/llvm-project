@@ -27,6 +27,7 @@
 #include "clang/AST/TypeOrdering.h"
 #include "clang/Basic/TargetInfo.h"
 #include "clang/Lex/Preprocessor.h"
+#include "clang/Sema/EnterExpressionEvaluationContext.h"
 #include "clang/Sema/Initialization.h"
 #include "clang/Sema/Lookup.h"
 #include "clang/Sema/Ownership.h"
@@ -2779,6 +2780,17 @@ StmtResult Sema::BuildCXXForRangeStmt(SourceLocation ForLoc,
       LoopVar->setType(SubstAutoTypeDependent(LoopVar->getType()));
     }
   } else if (!BeginDeclStmt.get()) {
+    // P2718R0 - Lifetime extension in range-based for loops.
+    if (getLangOpts().CPlusPlus23) {
+      EnterExpressionEvaluationContext RangeVarContext(
+          *this, ExpressionEvaluationContext::PotentiallyEvaluated);
+      auto &LastRecord = ExprEvalContexts.back();
+      LastRecord.IsCheckingCXXForRangeInitVariable = true;
+      Cleanup = LastRecord.ParentCleanup;
+      auto Entity = InitializedEntity::InitializeVariable(RangeVar);
+      checkInitializerLifetime(Entity, RangeVar->getInit());
+    }
+
     SourceLocation RangeLoc = RangeVar->getLocation();
 
     const QualType RangeVarNonRefType = RangeVarType.getNonReferenceType();
