@@ -586,11 +586,11 @@ define void @atomics(i32* %word) {
 
   ; XXX: The parser spits out the load type here.
   %ld.1 = load atomic i32* %word monotonic, align 4
-  ; CHECK: %ld.1 = load atomic i32, ptr %word monotonic, align 4
+  ; CHECK: %ld.1 = load atomic i32, ptr %word monotonic, align 4, !freeze_bits !7
   %ld.2 = load atomic volatile i32* %word acquire, align 8
-  ; CHECK: %ld.2 = load atomic volatile i32, ptr %word acquire, align 8
+  ; CHECK: %ld.2 = load atomic volatile i32, ptr %word acquire, align 8, !freeze_bits !7
   %ld.3 = load atomic volatile i32* %word syncscope("singlethread") seq_cst, align 16
-  ; CHECK: %ld.3 = load atomic volatile i32, ptr %word syncscope("singlethread") seq_cst, align 16
+  ; CHECK: %ld.3 = load atomic volatile i32, ptr %word syncscope("singlethread") seq_cst, align 16, !freeze_bits !7
 
   store atomic i32 23, i32* %word monotonic, align 4
   ; CHECK: store atomic i32 23, ptr %word monotonic, align 4
@@ -863,14 +863,14 @@ define void @instructions.memops(i32** %base) {
   ; CHECK: alloca inalloca i32, i8 4, align 4
 
   load i32** %base, align 8, !invariant.load !7, !nontemporal !8, !nonnull !7, !dereferenceable !9
-  ; CHECK: load ptr, ptr %base, align 8, !invariant.load !7, !nontemporal !8, !nonnull !7, !dereferenceable !9
+  ; CHECK: load ptr, ptr %base, align 8, !invariant.load !8, !nontemporal !7, !nonnull !8, !dereferenceable !9, !freeze_bits !7
   load volatile i32** %base, align 8, !invariant.load !7, !nontemporal !8, !nonnull !7, !dereferenceable !9
-  ; CHECK: load volatile ptr, ptr %base, align 8, !invariant.load !7, !nontemporal !8, !nonnull !7, !dereferenceable !9
+  ; CHECK: load volatile ptr, ptr %base, align 8, !invariant.load !8, !nontemporal !7, !nonnull !8, !dereferenceable !9, !freeze_bits !7
 
-  store i32* null, i32** %base, align 4, !nontemporal !8
-  ; CHECK: store ptr null, ptr %base, align 4, !nontemporal !8
-  store volatile i32* null, i32** %base, align 4, !nontemporal !8
-  ; CHECK: store volatile ptr null, ptr %base, align 4, !nontemporal !8
+  store i32* null, i32** %base, align 4, !nontemporal !7
+  ; CHECK: store ptr null, ptr %base, align 4, !nontemporal !7
+  store volatile i32* null, i32** %base, align 4, !nontemporal !7
+  ; CHECK: store volatile ptr null, ptr %base, align 4, !nontemporal !7
 
   ret void
 }
