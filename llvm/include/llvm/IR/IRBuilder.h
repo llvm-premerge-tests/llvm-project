@@ -1767,17 +1767,20 @@ public:
 
   /// Provided to resolve 'CreateLoad(Ty, Ptr, "...")' correctly, instead of
   /// converting the string to 'bool' for the isVolatile parameter.
-  LoadInst *CreateLoad(Type *Ty, Value *Ptr, const char *Name) {
-    return CreateAlignedLoad(Ty, Ptr, MaybeAlign(), Name);
+  LoadInst *CreateLoad(Type *Ty, Value *Ptr, const char *Name,
+                       bool isFreezing = true) {
+    return CreateAlignedLoad(Ty, Ptr, MaybeAlign(), Name, isFreezing);
   }
 
-  LoadInst *CreateLoad(Type *Ty, Value *Ptr, const Twine &Name = "") {
-    return CreateAlignedLoad(Ty, Ptr, MaybeAlign(), Name);
+  LoadInst *CreateLoad(Type *Ty, Value *Ptr, const Twine &Name = "",
+                       bool isFreezing = true) {
+    return CreateAlignedLoad(Ty, Ptr, MaybeAlign(), Name, isFreezing);
   }
 
   LoadInst *CreateLoad(Type *Ty, Value *Ptr, bool isVolatile,
-                       const Twine &Name = "") {
-    return CreateAlignedLoad(Ty, Ptr, MaybeAlign(), isVolatile, Name);
+                       const Twine &Name = "", bool isFreezing = true) {
+    return CreateAlignedLoad(Ty, Ptr, MaybeAlign(), isVolatile, Name,
+                             isFreezing);
   }
 
   StoreInst *CreateStore(Value *Val, Value *Ptr, bool isVolatile = false) {
@@ -1785,22 +1788,29 @@ public:
   }
 
   LoadInst *CreateAlignedLoad(Type *Ty, Value *Ptr, MaybeAlign Align,
-                              const char *Name) {
-    return CreateAlignedLoad(Ty, Ptr, Align, /*isVolatile*/false, Name);
+                              const char *Name, bool isFreezing = true) {
+    return CreateAlignedLoad(Ty, Ptr, Align, /*isVolatile*/ false, Name,
+                             isFreezing);
   }
 
   LoadInst *CreateAlignedLoad(Type *Ty, Value *Ptr, MaybeAlign Align,
-                              const Twine &Name = "") {
-    return CreateAlignedLoad(Ty, Ptr, Align, /*isVolatile*/false, Name);
+                              const Twine &Name = "", bool isFreezing = true) {
+    return CreateAlignedLoad(Ty, Ptr, Align, /*isVolatile*/ false, Name,
+                             isFreezing);
   }
 
   LoadInst *CreateAlignedLoad(Type *Ty, Value *Ptr, MaybeAlign Align,
-                              bool isVolatile, const Twine &Name = "") {
+                              bool isVolatile, const Twine &Name = "",
+                              bool isFreezing = true) {
     if (!Align) {
       const DataLayout &DL = BB->getModule()->getDataLayout();
       Align = DL.getABITypeAlign(Ty);
     }
-    return Insert(new LoadInst(Ty, Ptr, Twine(), isVolatile, *Align), Name);
+    auto Load = new LoadInst(Ty, Ptr, Twine(), isVolatile, *Align);
+    if (isFreezing)
+      Load->setMetadata(llvm::LLVMContext::MD_freeze_bits,
+                        llvm::MDNode::get(Load->getContext(), std::nullopt));
+    return Insert(Load, Name);
   }
 
   StoreInst *CreateAlignedStore(Value *Val, Value *Ptr, MaybeAlign Align,
