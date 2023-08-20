@@ -76,7 +76,6 @@ set(BENCHMARK_LIBCXX_INSTALL ${CMAKE_CURRENT_BINARY_DIR}/benchmark-libcxx)
 set(BENCHMARK_NATIVE_INSTALL ${CMAKE_CURRENT_BINARY_DIR}/benchmark-native)
 
 add_library(               cxx-benchmarks-flags INTERFACE)
-target_compile_features(   cxx-benchmarks-flags INTERFACE cxx_std_20)
 target_compile_options(    cxx-benchmarks-flags INTERFACE -fsized-deallocation -nostdinc++)
 target_include_directories(cxx-benchmarks-flags INTERFACE "${LIBCXX_GENERATED_INCLUDE_DIR}"
                                                 INTERFACE "${BENCHMARK_LIBCXX_INSTALL}/include"
@@ -126,6 +125,8 @@ function(add_benchmark_test name source_file)
     PROPERTIES
           OUTPUT_NAME "${name}.libcxx.out"
           RUNTIME_OUTPUT_DIRECTORY "${BENCHMARK_OUTPUT_DIR}"
+          CXX_STANDARD 23
+          CXX_STANDARD_REQUIRED YES
           CXX_EXTENSIONS NO)
   cxx_link_system_libraries(${libcxx_target})
   if (LIBCXX_BENCHMARK_NATIVE_STDLIB)
@@ -143,6 +144,8 @@ function(add_benchmark_test name source_file)
       PROPERTIES
           OUTPUT_NAME "${name}.native.out"
           RUNTIME_OUTPUT_DIRECTORY "${BENCHMARK_OUTPUT_DIR}"
+          CXX_STANDARD 23
+          CXX_STANDARD_REQUIRED YES
           CXX_EXTENSIONS NO)
   endif()
 endfunction()

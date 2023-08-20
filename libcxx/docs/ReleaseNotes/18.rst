@@ -35,6 +35,8 @@ see the `releases page <https://llvm.org/releases/>`_.
 What's New in Libc++ 18.0.0?
 ==============================
 
+Building libc++ now uses C++23 instead of C++20. The minimal required
+toolchain already supports this requirement.
 
 Implemented Papers
 ------------------
