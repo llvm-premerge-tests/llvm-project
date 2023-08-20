@@ -14,10 +14,10 @@ public:
 // CHECK-NEXT:    [[ARG_ADDR:%.*]] = alloca i32, align 4
 // CHECK-NEXT:    store ptr [[THIS:%.*]], ptr [[THIS_ADDR]], align 8
 // CHECK-NEXT:    store i32 [[ARG:%.*]], ptr [[ARG_ADDR]], align 4
-// CHECK-NEXT:    [[THIS1:%.*]] = load ptr, ptr [[THIS_ADDR]], align 8
-// CHECK-NEXT:    [[TMP0:%.*]] = load i32, ptr [[ARG_ADDR]], align 4
+// CHECK-NEXT:    [[THIS1:%.*]] = load ptr, ptr [[THIS_ADDR]], align 8, !freeze_bits [[FREEZE_BITS2:![0-9]+]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load i32, ptr [[ARG_ADDR]], align 4, !freeze_bits [[FREEZE_BITS2]]
 // CHECK-NEXT:    [[X:%.*]] = getelementptr inbounds [[CLASS_FOO:%.*]], ptr [[THIS1]], i32 0, i32 0
-// CHECK-NEXT:    [[TMP1:%.*]] = load i32, ptr [[X]], align 4
+// CHECK-NEXT:    [[TMP1:%.*]] = load i32, ptr [[X]], align 4, !freeze_bits [[FREEZE_BITS2]]
 // CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 [[TMP0]], [[TMP1]]
 // CHECK-NEXT:    ret i32 [[ADD]]
 //
@@ -33,8 +33,8 @@ public:
 // CHECK-NEXT:    [[X_ADDR:%.*]] = alloca i32, align 4
 // CHECK-NEXT:    store ptr [[THIS:%.*]], ptr [[THIS_ADDR]], align 8
 // CHECK-NEXT:    store i32 [[X:%.*]], ptr [[X_ADDR]], align 4
-// CHECK-NEXT:    [[THIS1:%.*]] = load ptr, ptr [[THIS_ADDR]], align 8
-// CHECK-NEXT:    [[TMP0:%.*]] = load i32, ptr [[X_ADDR]], align 4
+// CHECK-NEXT:    [[THIS1:%.*]] = load ptr, ptr [[THIS_ADDR]], align 8, !freeze_bits [[FREEZE_BITS2]]
+// CHECK-NEXT:    [[TMP0:%.*]] = load i32, ptr [[X_ADDR]], align 4, !freeze_bits [[FREEZE_BITS2]]
 // CHECK-NEXT:    call void @_ZN3FooC2Ei(ptr noundef nonnull align 4 dereferenceable(4) [[THIS1]], i32 noundef [[TMP0]])
 // CHECK-NEXT:    ret void
 //
@@ -43,7 +43,7 @@ Foo::Foo(int x) : x(x) {}
 // CHECK-NEXT:  entry:
 // CHECK-NEXT:    [[THIS_ADDR:%.*]] = alloca ptr, align 8
 // CHECK-NEXT:    store ptr [[THIS:%.*]], ptr [[THIS_ADDR]], align 8
-// CHECK-NEXT:    [[THIS1:%.*]] = load ptr, ptr [[THIS_ADDR]], align 8
+// CHECK-NEXT:    [[THIS1:%.*]] = load ptr, ptr [[THIS_ADDR]], align 8, !freeze_bits [[FREEZE_BITS2]]
 // CHECK-NEXT:    call void @_ZN3FooD2Ev(ptr noundef nonnull align 4 dereferenceable(4) [[THIS1]]) #[[ATTR3:[0-9]+]]
 // CHECK-NEXT:    ret void
 //
@@ -54,10 +54,10 @@ Foo::~Foo() {}
 // CHECK-NEXT:    [[ARG_ADDR:%.*]] = alloca i32, align 4
 // CHECK-NEXT:    store ptr [[THIS:%.*]], ptr [[THIS_ADDR]], align 8
 // CHECK-NEXT:    store i32 [[ARG:%.*]], ptr [[ARG_ADDR]], align 4
-// CHECK-NEXT:    [[THIS1:%.*]] = load ptr, ptr [[THIS_ADDR]], align 8
+// CHECK-NEXT:    [[THIS1:%.*]] = load ptr, ptr [[THIS_ADDR]], align 8, !freeze_bits [[FREEZE_BITS2]]
 // CHECK-NEXT:    [[X:%.*]] = getelementptr inbounds [[CLASS_FOO:%.*]], ptr [[THIS1]], i32 0, i32 0
-// CHECK-NEXT:    [[TMP0:%.*]] = load i32, ptr [[X]], align 4
-// CHECK-NEXT:    [[TMP1:%.*]] = load i32, ptr [[ARG_ADDR]], align 4
+// CHECK-NEXT:    [[TMP0:%.*]] = load i32, ptr [[X]], align 4, !freeze_bits [[FREEZE_BITS2]]
+// CHECK-NEXT:    [[TMP1:%.*]] = load i32, ptr [[ARG_ADDR]], align 4, !freeze_bits [[FREEZE_BITS2]]
 // CHECK-NEXT:    [[SUB:%.*]] = sub nsw i32 [[TMP0]], [[TMP1]]
 // CHECK-NEXT:    ret i32 [[SUB]]
 //
