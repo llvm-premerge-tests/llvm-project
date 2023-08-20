@@ -8494,9 +8494,23 @@ TreeTransform<Derived>::TransformCXXForRangeStmt(CXXForRangeStmt *S) {
   if (Init.isInvalid())
     return StmtError();
 
-  StmtResult Range = getDerived().TransformStmt(S->getRangeStmt());
-  if (Range.isInvalid())
-    return StmtError();
+  StmtResult Range = S->getRangeStmt();
+  {
+    EnterExpressionEvaluationContext RangeVarContext(
+        getSema(), Sema::ExpressionEvaluationContext::PotentiallyEvaluated,
+        /*LambdaContextDecl=*/nullptr,
+        Sema::ExpressionEvaluationContextRecord::EK_Other,
+        getSema().getLangOpts().CPlusPlus23);
+    if (getSema().getLangOpts().CPlusPlus23) {
+      auto &LastRecord = getSema().ExprEvalContexts.back();
+      LastRecord.IsCheckingCXXForRangeInitVariable = true;
+      getSema().Cleanup = LastRecord.ParentCleanup;
+    }
+
+    Range = getDerived().TransformStmt(S->getRangeStmt());
+    if (Range.isInvalid())
+      return StmtError();
+  }
 
   StmtResult Begin = getDerived().TransformStmt(S->getBeginStmt());
   if (Begin.isInvalid())
