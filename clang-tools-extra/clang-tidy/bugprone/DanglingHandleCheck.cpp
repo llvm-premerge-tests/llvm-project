@@ -37,8 +37,8 @@ ast_matchers::internal::Matcher<Stmt> handleFromTemporaryValue(
   // temporary value. If one of them is not a temporary then it must be copied
   // into one to satisfy the type of the operator.
   const auto TemporaryTernary =
-      conditionalOperator(hasTrueExpression(cxxBindTemporaryExpr()),
-                          hasFalseExpression(cxxBindTemporaryExpr()));
+      conditionalOperator(hasTrueExpression(ignoringParenImpCasts(cxxBindTemporaryExpr())),
+                          hasFalseExpression(ignoringParenImpCasts(cxxBindTemporaryExpr())));
 
   return handleFrom(IsAHandle, anyOf(cxxBindTemporaryExpr(), TemporaryTernary));
 }
@@ -103,26 +103,17 @@ void DanglingHandleCheck::storeOptions(ClangTidyOptions::OptionMap &Opts) {
 void DanglingHandleCheck::registerMatchersForVariables(MatchFinder *Finder) {
   const auto ConvertedHandle = handleFromTemporaryValue(IsAHandle);
 
-  // Find 'Handle foo(ReturnsAValue());'
+  // Find 'Handle foo(ReturnsAValue());', 'Handle foo = ReturnsAValue();'
   Finder->addMatcher(
       varDecl(hasType(hasUnqualifiedDesugaredType(
                   recordType(hasDeclaration(cxxRecordDecl(IsAHandle))))),
+              unless(parmVarDecl()),
               hasInitializer(
-                  exprWithCleanups(has(ignoringParenImpCasts(ConvertedHandle)))
+                  exprWithCleanups(ignoringElidableConstructorCall(has(
+                                       ignoringParenImpCasts(ConvertedHandle))))
                       .bind("bad_stmt"))),
       this);
 
-  // Find 'Handle foo = ReturnsAValue();'
-  Finder->addMatcher(
-      traverse(TK_AsIs,
-               varDecl(hasType(hasUnqualifiedDesugaredType(recordType(
-                           hasDeclaration(cxxRecordDecl(IsAHandle))))),
-                       unless(parmVarDecl()),
-                       hasInitializer(exprWithCleanups(
-                                          has(ignoringParenImpCasts(handleFrom(
-                                              IsAHandle, ConvertedHandle))))
-                                          .bind("bad_stmt")))),
-      this);
   // Find 'foo = ReturnsAValue();  // foo is Handle'
   Finder->addMatcher(
       traverse(TK_AsIs,
@@ -146,10 +137,9 @@ void DanglingHandleCheck::registerMatchersForReturn(MatchFinder *Finder) {
           returnStmt(
               // The AST contains two constructor calls:
               //   1. Value to Handle conversion.
-              //   2. Handle copy construction.
+              //   2. Handle copy construction (elided in C++17+).
               // We have to match both.
-              has(ignoringImplicit(handleFrom(
-                  IsAHandle,
+              has(ignoringImplicit(ignoringElidableConstructorCall(ignoringImplicit(
                   handleFrom(IsAHandle,
                              declRefExpr(to(varDecl(
                                  // Is function scope ...
@@ -158,7 +148,7 @@ void DanglingHandleCheck::registerMatchersForReturn(MatchFinder *Finder) {
                                  anyOf(hasType(arrayType()),
                                        hasType(hasUnqualifiedDesugaredType(
                                            recordType(hasDeclaration(recordDecl(
-                                               unless(IsAHandle)))))))))))))),
+                                               unless(IsAHandle))))))))))))))),
               // Temporary fix for false positives inside lambdas.
               unless(hasAncestor(lambdaExpr())))
               .bind("bad_stmt")),
@@ -168,8 +158,9 @@ void DanglingHandleCheck::registerMatchersForReturn(MatchFinder *Finder) {
   Finder->addMatcher(
       traverse(
           TK_AsIs,
-          returnStmt(has(exprWithCleanups(has(ignoringParenImpCasts(handleFrom(
-                         IsAHandle, handleFromTemporaryValue(IsAHandle)))))))
+          returnStmt(has(exprWithCleanups(ignoringElidableConstructorCall(
+                    has(ignoringParenImpCasts(
+			handleFromTemporaryValue(IsAHandle)))))))
               .bind("bad_stmt")),
       this);
 }
