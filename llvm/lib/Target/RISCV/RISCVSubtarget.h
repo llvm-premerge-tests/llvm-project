@@ -160,6 +160,11 @@ public:
     assert(i < RISCV::NUM_TARGET_REGS && "Register out of range");
     return UserReservedRegister[i];
   }
+  // Add XRay support - needs double precision floats at present and does not
+  // support compressed instructions
+  bool isXRaySupported() const override {
+    return hasStdExtD() && !hasStdExtC();
+  }
 
   bool hasMacroFusion() const { return hasLUIADDIFusion(); }
 
