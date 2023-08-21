@@ -3203,7 +3203,7 @@ void RISCVAsmParser::emitVMSGE(MCInst &Inst, unsigned Opcode, SMLoc IDLoc,
                             .addOperand(Inst.getOperand(1))
                             .addOperand(Inst.getOperand(2))
                             .addOperand(Inst.getOperand(3))
-                            .addOperand(Inst.getOperand(4)));
+                            .addReg(RISCV::NoRegister));
     emitToStreamer(Out, MCInstBuilder(RISCV::VMANDN_MM)
                             .addOperand(Inst.getOperand(0))
                             .addOperand(Inst.getOperand(0))
