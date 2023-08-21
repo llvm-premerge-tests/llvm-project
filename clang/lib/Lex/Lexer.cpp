@@ -1986,36 +1986,26 @@ const char *Lexer::LexUDSuffix(Token &Result, const char *CurPtr,
   assert(LangOpts.CPlusPlus);
 
   // Maximally munch an identifier.
+  const char *const TokStart = CurPtr;
   unsigned Size;
   char C = getCharAndSize(CurPtr, Size);
-  bool Consumed = false;
 
-  if (!isAsciiIdentifierStart(C)) {
-    if (C == '\\' && tryConsumeIdentifierUCN(CurPtr, Size, Result))
-      Consumed = true;
-    else if (!isASCII(C) && tryConsumeIdentifierUTF8Char(CurPtr))
-      Consumed = true;
-    else
-      return CurPtr;
-  }
+  if (isAsciiIdentifierStart(C)) {
+    CurPtr = ConsumeChar(CurPtr, Size, Result);
+  } else if (C == '\\' && tryConsumeIdentifierUCN(CurPtr, Size, Result)) {
+  } else if (!isASCII(C) && tryConsumeIdentifierUTF8Char(CurPtr)) {
+  } else
+    return CurPtr;
 
   if (!LangOpts.CPlusPlus11) {
     if (!isLexingRawMode())
-      Diag(CurPtr,
+      Diag(TokStart,
            C == '_' ? diag::warn_cxx11_compat_user_defined_literal
                     : diag::warn_cxx11_compat_reserved_user_defined_literal)
-        << FixItHint::CreateInsertion(getSourceLocation(CurPtr), " ");
-    return CurPtr;
+          << FixItHint::CreateInsertion(getSourceLocation(TokStart), " ");
+    return TokStart;
   }
 
-  // C++11 [lex.ext]p10, [usrlit.suffix]p1: A program containing a ud-suffix
-  // that does not start with an underscore is ill-formed. We assume a suffix
-  // beginning with a UCN or UTF-8 character is more likely to be a ud-suffix
-  // than a macro, however, and accept that.
-  if (!Consumed)
-    CurPtr = ConsumeChar(CurPtr, Size, Result);
-
-  Result.setFlag(Token::HasUDSuffix);
   while (true) {
     C = getCharAndSize(CurPtr, Size);
     if (isAsciiIdentifierContinue(C)) {
@@ -2024,6 +2014,31 @@ const char *Lexer::LexUDSuffix(Token &Result, const char *CurPtr,
     } else if (!isASCII(C) && tryConsumeIdentifierUTF8Char(CurPtr)) {
     } else
       break;
+  }
+
+  bool IsLiteralOperator =
+      StringRef(BufferPtr, 2).equals("\"\"") && BufferPtr + 2 == TokStart;
+  if (unsigned TokLen = CurPtr - TokStart;
+      StringLiteralParser::isValidUDSuffix(LangOpts, {TokStart, TokLen}))
+    Result.setFlag(Token::HasUDSuffix);
+  else if (!isLexingRawMode() && !IsLiteralOperator) {
+    // As a conforming extension, we treat invalid suffixes as if they had
+    // whitespace before them if doing so results in macro expansions.
+    // However, don't diagnose operator""E(...) even if E is a macro as it
+    // results in confusing error messages. Hence, ""E would not be treated as
+    // string concat; instead it's a single PP token (as it should be).
+    Result.setLength(TokLen);
+    Result.setLocation(getSourceLocation(TokStart, TokLen));
+    Result.setKind(tok::raw_identifier);
+    Result.setRawIdentifierData(TokStart);
+    IdentifierInfo *II = PP->LookUpIdentifierInfo(Result);
+    if (II->hasMacroDefinition()) {
+      Diag(TokStart, LangOpts.MSVCCompat
+                         ? diag::ext_ms_reserved_user_defined_literal
+                         : diag::ext_reserved_user_defined_literal)
+          << FixItHint::CreateInsertion(getSourceLocation(TokStart), " ");
+      return TokStart;
+    }
   }
 
   return CurPtr;

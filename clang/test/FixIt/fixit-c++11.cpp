@@ -68,9 +68,9 @@ void S2::f(int i) {
 }
 
 #define bar "bar"
-const char *p = "foo" bar;
+const char *p = "foo"bar; // expected-error {{requires a space between}}
 #define ord - '0'
-int k = '4' ord;
+int k = '4'ord; // expected-error {{requires a space between}}
 
 void operator"x" _y(char); // expected-error {{must be '""'}}
 void operator L"" _z(char); // expected-error {{encoding prefix}}

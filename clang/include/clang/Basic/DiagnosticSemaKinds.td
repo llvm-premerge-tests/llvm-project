@@ -9319,8 +9319,7 @@ def ext_string_literal_operator_template : ExtWarn<
   "string literal operator templates are a GNU extension">,
   InGroup<GNUStringLiteralOperatorTemplate>;
 def warn_user_literal_reserved : Warning<
-  "user-defined literal suffixes %select{<ERROR>|not starting with '_'|containing '__'}0 are reserved"
-  "%select{; no literal will invoke this operator|}1">,
+  "user-defined literal suffixes %select{not starting with '_'|containing '__'}0 are reserved">,
   InGroup<UserDefinedLiterals>;
 
 // C++ conversion functions

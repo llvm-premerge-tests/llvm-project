@@ -51,9 +51,9 @@ enum class ReservedIdentifierStatus {
 };
 
 enum class ReservedLiteralSuffixIdStatus {
-  NotReserved = 0,
-  NotStartsWithUnderscore,
+  NotStartsWithUnderscore = 0,
   ContainsDoubleUnderscore,
+  NotReserved,
 };
 
 /// Determine whether an identifier is reserved for use as a name at global

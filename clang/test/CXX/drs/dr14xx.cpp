@@ -487,9 +487,14 @@ namespace dr1467 {  // dr1467: 3.7 c++11
 namespace dr1473 { // dr1473: 18
                    // NB: sup 1762, test reused there
 #if __cplusplus >= 201103L
-  float operator ""_E(const char *);
-  float operator ""E(const char *); // don't err on the lack of spaces even when the literal suffix identifier is invalid
-  // expected-warning@-1 {{user-defined literal suffixes not starting with '_' are reserved; no literal will invoke this operator}}
+#define E "!"
+const char
+  *operator""_E(const char*),
+  *operator""E(const char*), // don't err on the lack of spaces even when the literal suffix identifier is invalid
+  // expected-warning@-1 {{user-defined literal suffixes not starting with '_' are reserved}}
+  *s = "not empty"E;
+  // expected-error@-1 {{invalid suffix on literal; C++11 requires a space between literal and a macro}}
+#undef E
 #endif
 }
 
