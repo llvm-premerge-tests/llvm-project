@@ -349,8 +349,19 @@ omp_memspace_handle_t const llvm_omp_target_device_mem_space =
 KMP_BUILD_ASSERT(sizeof(kmp_tasking_flags_t) == 4);
 
 int __kmp_task_stealing_constraint = 1; /* Constrain task stealing by default */
-int __kmp_enable_task_throttling = 1;
 
+std::atomic<kmp_int32> __kmp_n_tasks_in_flight = 0; /* n° of tasks in flight */
+
+kmp_int32 __kmp_enable_task_throttling = 1; /* Serialize tasks once a threshold
+                                            is reached, such as the number of
+                                            ready tasks or the total number of
+                                            tasks */
+
+kmp_int32 __kmp_task_maximum = 65536; /* number of tasks threshold before
+                                         serializing */
+
+kmp_int32 __kmp_task_maximum_ready_per_thread = 256; /* number of ready tasks
+                                                        before serializing */
 #ifdef DEBUG_SUSPEND
 int __kmp_suspend_count = 0;
 #endif
