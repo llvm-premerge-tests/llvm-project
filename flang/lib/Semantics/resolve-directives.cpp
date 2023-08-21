@@ -21,6 +21,13 @@
 #include <list>
 #include <map>
 
+template <typename T>
+static Fortran::semantics::Scope *GetScope(
+    Fortran::semantics::SemanticsContext &context, const T &x) {
+  std::optional<Fortran::parser::CharBlock> source{GetSource(x)};
+  return source ? &context.FindScope(*source) : nullptr;
+}
+
 namespace Fortran::semantics {
 
 template <typename T> class DirectiveAttributeVisitor {
@@ -320,11 +327,6 @@ public:
     return true;
   }
 
-  bool Pre(const parser::SpecificationPart &x) {
-    Walk(std::get<std::list<parser::OpenMPDeclarativeConstruct>>(x.t));
-    return true;
-  }
-
   bool Pre(const parser::StmtFunctionStmt &x) {
     const auto &parsedExpr{std::get<parser::Scalar<parser::Expr>>(x.t)};
     if (const auto *expr{GetExpr(context_, parsedExpr)}) {
@@ -372,6 +374,35 @@ public:
 
   bool Pre(const parser::OpenMPRequiresConstruct &x) {
     PushContext(x.source, llvm::omp::Directive::OMPD_requires);
+
+    // Gather information from the clauses.
+    OmpRequiresFlags flags{OmpRequiresFlags::None};
+    std::optional<parser::OmpAtomicDefaultMemOrderClause::Type> memOrder;
+    for (auto &clause : std::get<parser::OmpClauseList>(x.t).v) {
+      flags |= common::visit(
+          common::visitors{
+              [&memOrder](
+                  const parser::OmpClause::AtomicDefaultMemOrder &atomic) {
+                memOrder = atomic.v.v;
+                return OmpRequiresFlags::None;
+              },
+              [](const parser::OmpClause::ReverseOffload &) {
+                return OmpRequiresFlags::ReverseOffload;
+              },
+              [](const parser::OmpClause::UnifiedAddress &) {
+                return OmpRequiresFlags::UnifiedAddress;
+              },
+              [](const parser::OmpClause::UnifiedSharedMemory &) {
+                return OmpRequiresFlags::UnifiedSharedMemory;
+              },
+              [](const parser::OmpClause::DynamicAllocators &) {
+                return OmpRequiresFlags::DynamicAllocators;
+              },
+              [](const auto &) { return OmpRequiresFlags::None; }},
+          clause.u);
+    }
+    // Merge clauses into parents' symbols details.
+    AddOmpRequiresToScope(&currScope(), flags, memOrder);
     return true;
   }
   void Post(const parser::OpenMPRequiresConstruct &) { PopContext(); }
@@ -639,6 +670,9 @@ private:
 
   bool HasSymbolInEnclosingScope(const Symbol &, Scope &);
   std::int64_t ordCollapseLevel{0};
+
+  void AddOmpRequiresToScope(Scope *, OmpRequiresFlags,
+      std::optional<parser::OmpAtomicDefaultMemOrderClause::Type>);
 };
 
 template <typename T>
@@ -2012,6 +2046,72 @@ void ResolveOmpParts(
   }
 }
 
+void ResolveOmpTopLevelParts(
+    SemanticsContext &context, const parser::Program &program) {
+  if (!context.IsEnabled(common::LanguageFeature::OpenMP)) {
+    return;
+  }
+
+  // Gather REQUIRES clauses from all non-module top-level program unit symbols,
+  // combine them together ensuring compatibility and apply them to all these
+  // program units. Modules are skipped because their REQUIRES clauses should be
+  // propagated via USE statements instead.
+  OmpRequiresFlags combinedFlags{OmpRequiresFlags::None};
+  std::optional<parser::OmpAtomicDefaultMemOrderClause::Type> combinedMemOrder;
+
+  // Function to go through non-module top level program units and extract
+  // REQUIRES information to be processed by a function-like argument.
+  auto processProgramUnits{[&](auto processFn) {
+    for (const parser::ProgramUnit &unit : program.v) {
+      if (!std::get_if<common::Indirection<parser::Module>>(&unit.u) &&
+          !std::get_if<common::Indirection<parser::Submodule>>(&unit.u)) {
+        Symbol *symbol{common::visit(
+            [&context](
+                auto &x) { return GetScope(context, x.value())->symbol(); },
+            unit.u)};
+
+        common::visit(
+            [&](auto &details) {
+              if constexpr (std::is_convertible_v<decltype(&details),
+                                WithOmpDeclarative *>) {
+                processFn(symbol, details);
+              }
+            },
+            symbol->details());
+      }
+    }
+  }};
+
+  // Combine global REQUIRES information from all program units except modules
+  // and submodules.
+  processProgramUnits([&](Symbol *symbol, WithOmpDeclarative &details) {
+    if (const OmpRequiresFlags * flags{details.ompRequires()}) {
+      combinedFlags |= *flags;
+    }
+    if (const parser::OmpAtomicDefaultMemOrderClause::Type *
+        memOrder{details.ompAtomicDefaultMemOrder()}) {
+      if (combinedMemOrder && *combinedMemOrder != *memOrder) {
+        context.Say(symbol->scope()->sourceRange(),
+            "Conflicting '%s' REQUIRES clauses found in compilation "
+            "unit"_err_en_US,
+            parser::ToUpperCaseLetters(llvm::omp::getOpenMPClauseName(
+                llvm::omp::Clause::OMPC_atomic_default_mem_order)
+                                           .str()));
+      }
+      combinedMemOrder = *memOrder;
+    }
+  });
+
+  // Update all program units except modules and submodules with the combined
+  // global REQUIRES information.
+  processProgramUnits([&](Symbol *, WithOmpDeclarative &details) {
+    details.set_ompRequires(combinedFlags);
+    if (combinedMemOrder) {
+      details.set_ompAtomicDefaultMemOrder(*combinedMemOrder);
+    }
+  });
+}
+
 void OmpAttributeVisitor::CheckDataCopyingClause(
     const parser::Name &name, const Symbol &symbol, Symbol::Flag ompFlag) {
   const auto *checkSymbol{&symbol};
@@ -2159,4 +2259,43 @@ void OmpAttributeVisitor::CheckNameInAllocateStmt(
       parser::ToUpperCaseLetters(
           llvm::omp::getOpenMPDirectiveName(GetContext().directive).str()));
 }
+
+void OmpAttributeVisitor::AddOmpRequiresToScope(Scope *scope,
+    OmpRequiresFlags flags,
+    std::optional<parser::OmpAtomicDefaultMemOrderClause::Type> memOrder) {
+  do {
+    if (Symbol * symbol{scope->symbol()}) {
+      common::visit(
+          [&](auto &details) {
+            // Store clauses information into the symbol for the parent and
+            // enclosing modules, programs, functions and subroutines.
+            if constexpr (std::is_convertible_v<decltype(&details),
+                              WithOmpDeclarative *>) {
+              if (flags != OmpRequiresFlags::None) {
+                if (const OmpRequiresFlags *
+                    otherFlags{details.ompRequires()}) {
+                  flags |= *otherFlags;
+                }
+                details.set_ompRequires(flags);
+              }
+              if (memOrder) {
+                if (details.has_ompAtomicDefaultMemOrder() &&
+                    *details.ompAtomicDefaultMemOrder() != *memOrder) {
+                  context_.Say(scope->sourceRange(),
+                      "Conflicting '%s' REQUIRES clauses found in compilation "
+                      "unit"_err_en_US,
+                      parser::ToUpperCaseLetters(llvm::omp::getOpenMPClauseName(
+                          llvm::omp::Clause::OMPC_atomic_default_mem_order)
+                                                     .str()));
+                }
+                details.set_ompAtomicDefaultMemOrder(*memOrder);
+              }
+            }
+          },
+          symbol->details());
+    }
+    scope = &scope->parent();
+  } while (!scope->IsGlobal());
+}
+
 } // namespace Fortran::semantics
