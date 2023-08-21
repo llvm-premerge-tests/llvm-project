@@ -116,6 +116,12 @@ public:
   bool hasNextStage() const;
 
   GCNSchedStageID getNextStage() const;
+
+  virtual bool computeScheduleMetric(unsigned RegionIdx, unsigned WavesAfter,
+                                    unsigned WavesBefore) {
+    return false;
+  }
+  virtual void clearMetric(){};
 };
 
 /// The goal of this scheduling strategy is to maximize kernel occupancy (i.e.
@@ -421,6 +427,82 @@ public:
   GCNPostScheduleDAGMILive(MachineSchedContext *C,
                            std::unique_ptr<MachineSchedStrategy> S,
                            bool RemoveKillFlags);
+};
+
+#ifndef NDEBUG
+struct EarlierIssuingCycle {
+  bool operator()(std::pair<MachineInstr *, unsigned> A,
+                  std::pair<MachineInstr *, unsigned> B) const {
+    return A.second < B.second;
+  }
+};
+#endif
+
+/// The goal of this scheduling strategy is to find a reasonable tradeof between
+/// the kernel occupancy (i.e. maximum number of waves per simd). and ILP (i.e.
+/// minimize the amount of stall cycles by means of the better latency
+/// covering).
+class GCNBalancedSchedStrategy final : public GCNSchedStrategy {
+
+  const unsigned ScaleFactor = 100;
+  unsigned StallTotal = 0;
+  DenseMap<unsigned, SmallVector<unsigned, 4>> Metrics;
+
+  void clearMetric() override {
+    StallTotal = 0;
+#ifndef NDEBUG
+    BottomScheduledSU.clear();
+    PrintableSchedule.clear();
+#endif
+  }
+
+#ifndef NDEBUG
+  std::set<std::pair<MachineInstr *, unsigned>, EarlierIssuingCycle> PrintableSchedule;
+  // Since we don't know the absolute value of the bottom ready cycless until we
+  // finish scheduling we need to sustain temporary mapping from the
+  // SUnit::nodeNum to MI to be able later fill in the PrintableSchedule
+  std::vector<SUnit*> BottomScheduledSU;
+
+  void makePrintableSchedule(unsigned ScheduleLength) {
+    for (auto SU : BottomScheduledSU) {
+      unsigned BotReadyCycle = ScheduleLength - SU->BotReadyCycle;
+      PrintableSchedule.insert(std::pair(SU->getInstr(), BotReadyCycle));
+    }
+  }
+
+  void printSchedule() {
+    if (PrintableSchedule.empty())
+      return;
+
+    unsigned BBNum = PrintableSchedule.begin()->first->getParent()->getNumber();
+    dbgs() << "\n################## Schedule time ReadyCycles for MBB : "
+           << BBNum
+           << " ##################\n# Cycle #\t\t\tInstruction          "
+              "             "
+              "                            \n";
+    unsigned IPrev = 1;
+    for (auto &I : PrintableSchedule) {
+      if (I.second > IPrev + 1)
+        dbgs() << "****************************** BUBBLE OF "
+               << I.second - IPrev
+               << " CYCLES DETECTED ******************************\n\n";
+      dbgs() << "[ " << I.second << " ]  :  " << *I.first << "\n";
+      IPrev = I.second;
+    }
+  }
+#endif
+
+public:
+  GCNBalancedSchedStrategy(const MachineSchedContext *C) : GCNSchedStrategy(C) {
+    SchedStages.push_back(GCNSchedStageID::OccInitialSchedule);
+    SchedStages.push_back(GCNSchedStageID::UnclusteredHighRPReschedule);
+    SchedStages.push_back(GCNSchedStageID::ClusteredLowOccupancyReschedule);
+    SchedStages.push_back(GCNSchedStageID::PreRARematerialize);
+  }
+
+  void schedNode(SUnit *SU, bool IsTopNode) override;
+  bool computeScheduleMetric(unsigned RegionIdx, unsigned WavesAfter,
+                            unsigned WavesBefore) override;
 };
 
 } // End namespace llvm
