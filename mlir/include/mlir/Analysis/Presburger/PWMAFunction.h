@@ -190,6 +190,9 @@ public:
   /// union of the domains of all the pieces.
   PresburgerSet getDomain() const;
 
+  /// Return the piece-wise MultiAffineFunction as a PresburgerRelation.
+  PresburgerRelation getAsRelation() const;
+
   /// Return the output of the function at the given point.
   std::optional<SmallVector<MPInt, 8>> valueAt(ArrayRef<MPInt> point) const;
   std::optional<SmallVector<MPInt, 8>> valueAt(ArrayRef<int64_t> point) const {
