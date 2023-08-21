@@ -569,6 +569,18 @@ void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
   // register.
   std::advance(MBBI, getUnmanagedCSI(MF, CSI).size());
 
+  if (MF.getFunction().hasFnAttribute("interrupt") && STI.hasStdExtF()) {
+
+    BuildMI(MBB, MBBI, DL, TII->get(RISCV::CSRRS))
+        .addReg(RISCV::X5, RegState::Define)
+        .addImm(RISCVSysReg::lookupSysRegByName("FCSR")->Encoding)
+        .addReg(RISCV::X0);
+
+    TII->storeRegToStackSlot(MBB, MBBI, RISCV::X5, /* IsKill */ false,
+                             RVFI->getFcsrFI(), &RISCV::GPRRegClass, RI,
+                             Register());
+  }
+
   // Iterate over list of callee-saved registers and emit .cfi_offset
   // directives.
   for (const auto &Entry : CSI) {
@@ -697,6 +709,7 @@ void RISCVFrameLowering::emitEpilogue(MachineFunction &MF,
   auto *RVFI = MF.getInfo<RISCVMachineFunctionInfo>();
   Register FPReg = getFPReg(STI);
   Register SPReg = getSPReg(STI);
+  const RISCVInstrInfo *TII = STI.getInstrInfo();
 
   // All calls are tail calls in GHC calling conv, and functions have no
   // prologue/epilogue.
@@ -729,6 +742,18 @@ void RISCVFrameLowering::emitEpilogue(MachineFunction &MF,
   auto LastFrameDestroy = MBBI;
   if (!CSI.empty())
     LastFrameDestroy = std::prev(MBBI, CSI.size());
+
+  if (MF.getFunction().hasFnAttribute("interrupt") && STI.hasStdExtF()) {
+
+    TII->loadRegFromStackSlot(MBB, LastFrameDestroy, RISCV::X5,
+                              RVFI->getFcsrFI(), &RISCV::GPRRegClass, RI,
+                              Register());
+
+    BuildMI(MBB, LastFrameDestroy, DL, TII->get(RISCV::CSRRW))
+        .addReg(RISCV::X0, RegState::Define)
+        .addImm(RISCVSysReg::lookupSysRegByName("FCSR")->Encoding)
+        .addReg(RISCV::X5);
+  }
 
   uint64_t StackSize = getStackSizeWithRVVPadding(MF);
   uint64_t RealStackSize =
@@ -825,7 +850,10 @@ RISCVFrameLowering::getFrameIndexReference(const MachineFunction &MF, int FI,
     MaxCSFI = CSI[CSI.size() - 1].getFrameIdx();
   }
 
-  if (FI >= MinCSFI && FI <= MaxCSFI) {
+  if ((FI >= MinCSFI && FI <= MaxCSFI) ||
+      (MF.getFunction().hasFnAttribute("interrupt") &&
+       MF.getSubtarget<RISCVSubtarget>().hasStdExtF() &&
+       FI == RVFI->getFcsrFI())) {
     FrameReg = RISCV::X2;
 
     if (FirstSPAdjustAmount)
@@ -1010,6 +1038,14 @@ void RISCVFrameLowering::determineCalleeSaves(MachineFunction &MF,
             RISCV::FPR64RegClass.contains(Regs[i]))
           SavedRegs.set(Regs[i]);
     }
+  }
+  if (MF.getFunction().hasFnAttribute("interrupt") &&
+      MF.getSubtarget<RISCVSubtarget>().hasStdExtF()) {
+    SavedRegs.set(RISCV::X5);
+    MF.getInfo<RISCVMachineFunctionInfo>()->setFcsrFI(
+        MF.getFrameInfo().CreateStackObject(
+            STI.getRegisterInfo()->getSpillSize(RISCV::GPRRegClass),
+            STI.getRegisterInfo()->getSpillAlign(RISCV::GPRRegClass), false));
   }
 }
 

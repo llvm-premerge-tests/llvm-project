@@ -76,6 +76,8 @@ private:
   unsigned RVPushRegs = 0;
   int RVPushRlist = llvm::RISCVZC::RLISTENCODE::INVALID_RLIST;
 
+  int FcsrFI = 0;
+
 public:
   RISCVMachineFunctionInfo(const Function &F, const TargetSubtargetInfo *STI) {}
 
@@ -149,6 +151,9 @@ public:
 
   bool isVectorCall() const { return IsVectorCall; }
   void setIsVectorCall() { IsVectorCall = true; }
+
+  void setFcsrFI(int FI) { FcsrFI = FI;}
+  int getFcsrFI() const { return FcsrFI; }
 };
 
 } // end namespace llvm
