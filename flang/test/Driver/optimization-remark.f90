@@ -11,6 +11,18 @@
 ! RUN: %flang %s -O1 -Rno-pass-missed 2>&1 | FileCheck %s --allow-empty --check-prefix=NO-REMARKS
 ! RUN: %flang %s -O1 -Rno-pass-analysis 2>&1 | FileCheck %s --allow-empty --check-prefix=NO-REMARKS
 
+! Check error on invalid regex -Rpass message is emitted
+! RUN: not %flang %s -O1 -Rpass=[ 2>&1 | FileCheck %s --check-prefix=REGEX-INVALID
+
+! Check valid -Rpass regex
+! RUN: %flang %s -O1 -Rpass=loop 2>&1 | FileCheck %s
+
+! Check valid -Rpass-missed regex
+! RUN: %flang %s -O1 -Rpass-missed=loop 2>&1 | FileCheck %s --check-prefix=REMARKS-MISSED
+
+! Check valid -Rpass-analysis regex
+! RUN: %flang %s -O1 -Rpass-analysis=loop 2>&1 | FileCheck %s --check-prefix=REMARKS-ANALYSIS
+
 ! Check full -Rpass message is emitted
 ! RUN: %flang %s -O1 -Rpass 2>&1 | FileCheck %s
 
@@ -20,6 +32,7 @@
 ! Check full -Rpass-analysis message is emitted
 ! RUN: %flang %s -O1 -Rpass-analysis 2>&1 | FileCheck %s --check-prefix=REMARKS-ANALYSIS
 
+! REGEX-INVALID: error: in pattern '-Rpass=[': brackets ([ ]) not balanced
 ! CHECK: remark: Loop deleted because it is invariant
 ! REMARKS-MISSED: remark: loop not vectorized
 ! REMARKS-ANALYSIS: remark: loop not vectorized: instruction cannot be vectorized
