@@ -52,6 +52,13 @@ public:
   Minix(const Driver &D, const llvm::Triple &Triple,
         const llvm::opt::ArgList &Args);
 
+  void
+  AddClangSystemIncludeArgs(const llvm::opt::ArgList &DriverArgs,
+                            llvm::opt::ArgStringList &CC1Args) const override;
+  void addLibStdCxxIncludePaths(
+      const llvm::opt::ArgList &DriverArgs,
+      llvm::opt::ArgStringList &CC1Args) const override;
+
 protected:
   Tool *buildAssembler() const override;
   Tool *buildLinker() const override;

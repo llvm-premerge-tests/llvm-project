@@ -8,11 +8,13 @@
 
 #include "Minix.h"
 #include "CommonArgs.h"
+#include "clang/Config/config.h"
 #include "clang/Driver/Compilation.h"
 #include "clang/Driver/Driver.h"
 #include "clang/Driver/InputInfo.h"
 #include "clang/Driver/Options.h"
 #include "llvm/Option/ArgList.h"
+#include "llvm/Support/Path.h"
 #include "llvm/Support/VirtualFileSystem.h"
 
 using namespace clang::driver;
@@ -105,6 +107,46 @@ toolchains::Minix::Minix(const Driver &D, const llvm::Triple &Triple,
     : Generic_ELF(D, Triple, Args) {
   getFilePaths().push_back(getDriver().Dir + "/../lib");
   getFilePaths().push_back("/usr/lib");
+}
+
+void toolchains::Minix::AddClangSystemIncludeArgs(
+    const llvm::opt::ArgList &DriverArgs,
+    llvm::opt::ArgStringList &CC1Args) const {
+  const Driver &D = getDriver();
+
+  if (DriverArgs.hasArg(clang::driver::options::OPT_nostdinc))
+    return;
+
+  if (!DriverArgs.hasArg(options::OPT_nobuiltininc)) {
+    SmallString<128> Dir(D.ResourceDir);
+    llvm::sys::path::append(Dir, "include");
+    addSystemInclude(DriverArgs, CC1Args, Dir.str());
+  }
+
+  if (DriverArgs.hasArg(options::OPT_nostdlibinc))
+    return;
+
+  // Check for configure-time C include directories.
+  StringRef CIncludeDirs(C_INCLUDE_DIRS);
+  if (CIncludeDirs != "") {
+    SmallVector<StringRef, 5> dirs;
+    CIncludeDirs.split(dirs, ":");
+    for (StringRef dir : dirs) {
+      StringRef Prefix =
+          llvm::sys::path::is_absolute(dir) ? StringRef(D.SysRoot) : "";
+      addExternCSystemInclude(DriverArgs, CC1Args, Prefix + dir);
+    }
+    return;
+  }
+
+  addExternCSystemInclude(DriverArgs, CC1Args,
+                          concat(D.SysRoot, "/usr/include"));
+}
+
+void toolchains::Minix::addLibStdCxxIncludePaths(const llvm::opt::ArgList &DriverArgs,
+                                         llvm::opt::ArgStringList &CC1Args) const {
+  addLibStdCXXIncludePaths(concat(getDriver().SysRoot, "/usr/gnu/include/c++/4.4.3"), "", "",
+                           DriverArgs, CC1Args);
 }
 
 Tool *toolchains::Minix::buildAssembler() const {

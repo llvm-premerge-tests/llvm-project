@@ -332,10 +332,6 @@ void InitHeaderSearch::AddDefaultCPlusPlusIncludePaths(
   case llvm::Triple::DragonFly:
     AddPath("/usr/include/c++/5.0", CXXSystem, false);
     break;
-  case llvm::Triple::Minix:
-    AddGnuCPlusPlusIncludePaths("/usr/gnu/include/c++/4.4.3",
-                                "", "", "", triple);
-    break;
   default:
     break;
   }
@@ -355,6 +351,7 @@ bool InitHeaderSearch::ShouldAddDefaultIncludePaths(
   case llvm::Triple::Haiku:
   case llvm::Triple::Hurd:
   case llvm::Triple::Linux:
+  case llvm::Triple::Minix:
   case llvm::Triple::Solaris:
   case llvm::Triple::WASI:
     return false;
