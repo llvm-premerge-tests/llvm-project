@@ -24960,7 +24960,14 @@ SDValue AArch64TargetLowering::LowerFixedLengthVectorMLoadToSVE(
   EVT VT = Op.getValueType();
   EVT ContainerVT = getContainerForFixedLengthVector(DAG, VT);
 
-  SDValue Mask = convertFixedMaskToScalableVector(Load->getMask(), DAG);
+  SDValue MaskOrig = Load->getMask();
+  if (VT.getSizeInBits() != Load->getMask().getValueType().getSizeInBits()) {
+    assert(VT.getSizeInBits() > MaskOrig.getValueType().getSizeInBits()
+           && "Incorrect mask type");
+    MaskOrig = DAG.getNode(ISD::ANY_EXTEND, DL, VT, Load->getMask());
+  }
+
+  SDValue Mask = convertFixedMaskToScalableVector(MaskOrig, DAG);
 
   SDValue PassThru;
   bool IsPassThruZeroOrUndef = false;

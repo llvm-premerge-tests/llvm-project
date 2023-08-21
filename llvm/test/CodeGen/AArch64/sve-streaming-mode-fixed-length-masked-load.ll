@@ -335,6 +335,108 @@ define <4 x double> @masked_load_v4f64(ptr %src, <4 x i1> %mask) {
   ret <4 x double> %load
 }
 
+define <3 x i32> @masked_load_zext_v3i32(ptr %load_ptr, <3 x i1> %pm) #0 {
+; CHECK-LABEL: masked_load_zext_v3i32:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    stp d15, d14, [sp, #-80]! // 16-byte Folded Spill
+; CHECK-NEXT:    stp d13, d12, [sp, #16] // 16-byte Folded Spill
+; CHECK-NEXT:    stp d11, d10, [sp, #32] // 16-byte Folded Spill
+; CHECK-NEXT:    stp d9, d8, [sp, #48] // 16-byte Folded Spill
+; CHECK-NEXT:    str x29, [sp, #64] // 8-byte Folded Spill
+; CHECK-NEXT:    addsvl sp, sp, #-1
+; CHECK-NEXT:    .cfi_escape 0x0f, 0x0d, 0x8f, 0x00, 0x11, 0xd0, 0x00, 0x22, 0x11, 0x08, 0x92, 0x2e, 0x00, 0x1e, 0x22 // sp + 80 + 8 * VG
+; CHECK-NEXT:    .cfi_offset w29, -16
+; CHECK-NEXT:    .cfi_offset b8, -24
+; CHECK-NEXT:    .cfi_offset b9, -32
+; CHECK-NEXT:    .cfi_offset b10, -40
+; CHECK-NEXT:    .cfi_offset b11, -48
+; CHECK-NEXT:    .cfi_offset b12, -56
+; CHECK-NEXT:    .cfi_offset b13, -64
+; CHECK-NEXT:    .cfi_offset b14, -72
+; CHECK-NEXT:    .cfi_offset b15, -80
+; CHECK-NEXT:    smstart sm
+; CHECK-NEXT:    adrp x8, .LCPI13_0
+; CHECK-NEXT:    addsvl x9, sp, #1
+; CHECK-NEXT:    strh w1, [x9, #72]
+; CHECK-NEXT:    ptrue p0.s, vl4
+; CHECK-NEXT:    strh w2, [x9, #74]
+; CHECK-NEXT:    strh w3, [x9, #76]
+; CHECK-NEXT:    ldr d0, [x8, :lo12:.LCPI13_0]
+; CHECK-NEXT:    addsvl x8, sp, #1
+; CHECK-NEXT:    ldr d1, [x8, #72]
+; CHECK-NEXT:    and z0.d, z1.d, z0.d
+; CHECK-NEXT:    lsl z0.h, z0.h, #15
+; CHECK-NEXT:    asr z0.h, z0.h, #15
+; CHECK-NEXT:    uunpklo z0.s, z0.h
+; CHECK-NEXT:    cmpne p0.s, p0/z, z0.s, #0
+; CHECK-NEXT:    ld1h { z0.s }, p0/z, [x0]
+; CHECK-NEXT:    str z0, [sp] // 16-byte Folded Spill
+; CHECK-NEXT:    smstop sm
+; CHECK-NEXT:    ldr z0, [sp] // 16-byte Folded Reload
+; CHECK-NEXT:    // kill: def $q0 killed $q0 killed $z0
+; CHECK-NEXT:    addsvl sp, sp, #1
+; CHECK-NEXT:    ldp d9, d8, [sp, #48] // 16-byte Folded Reload
+; CHECK-NEXT:    ldp d11, d10, [sp, #32] // 16-byte Folded Reload
+; CHECK-NEXT:    ldp d13, d12, [sp, #16] // 16-byte Folded Reload
+; CHECK-NEXT:    ldr x29, [sp, #64] // 8-byte Folded Reload
+; CHECK-NEXT:    ldp d15, d14, [sp], #80 // 16-byte Folded Reload
+; CHECK-NEXT:    ret
+  %load_value = tail call <3 x i16> @llvm.masked.load.v3i16.p0(ptr %load_ptr, i32 4, <3 x i1> %pm, <3 x i16> zeroinitializer)
+  %extend = zext <3 x i16> %load_value to <3 x i32>
+  ret <3 x i32> %extend;
+}
+
+define <3 x i32> @masked_load_sext_v3i32(ptr %load_ptr, <3 x i1> %pm) #0 {
+; CHECK-LABEL: masked_load_sext_v3i32:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    stp d15, d14, [sp, #-80]! // 16-byte Folded Spill
+; CHECK-NEXT:    stp d13, d12, [sp, #16] // 16-byte Folded Spill
+; CHECK-NEXT:    stp d11, d10, [sp, #32] // 16-byte Folded Spill
+; CHECK-NEXT:    stp d9, d8, [sp, #48] // 16-byte Folded Spill
+; CHECK-NEXT:    str x29, [sp, #64] // 8-byte Folded Spill
+; CHECK-NEXT:    addsvl sp, sp, #-1
+; CHECK-NEXT:    .cfi_escape 0x0f, 0x0d, 0x8f, 0x00, 0x11, 0xd0, 0x00, 0x22, 0x11, 0x08, 0x92, 0x2e, 0x00, 0x1e, 0x22 // sp + 80 + 8 * VG
+; CHECK-NEXT:    .cfi_offset w29, -16
+; CHECK-NEXT:    .cfi_offset b8, -24
+; CHECK-NEXT:    .cfi_offset b9, -32
+; CHECK-NEXT:    .cfi_offset b10, -40
+; CHECK-NEXT:    .cfi_offset b11, -48
+; CHECK-NEXT:    .cfi_offset b12, -56
+; CHECK-NEXT:    .cfi_offset b13, -64
+; CHECK-NEXT:    .cfi_offset b14, -72
+; CHECK-NEXT:    .cfi_offset b15, -80
+; CHECK-NEXT:    smstart sm
+; CHECK-NEXT:    adrp x8, .LCPI14_0
+; CHECK-NEXT:    addsvl x9, sp, #1
+; CHECK-NEXT:    strh w1, [x9, #72]
+; CHECK-NEXT:    ptrue p0.s, vl4
+; CHECK-NEXT:    strh w2, [x9, #74]
+; CHECK-NEXT:    strh w3, [x9, #76]
+; CHECK-NEXT:    ldr d0, [x8, :lo12:.LCPI14_0]
+; CHECK-NEXT:    addsvl x8, sp, #1
+; CHECK-NEXT:    ldr d1, [x8, #72]
+; CHECK-NEXT:    and z0.d, z1.d, z0.d
+; CHECK-NEXT:    lsl z0.h, z0.h, #15
+; CHECK-NEXT:    asr z0.h, z0.h, #15
+; CHECK-NEXT:    uunpklo z0.s, z0.h
+; CHECK-NEXT:    cmpne p0.s, p0/z, z0.s, #0
+; CHECK-NEXT:    ld1sh { z0.s }, p0/z, [x0]
+; CHECK-NEXT:    str z0, [sp] // 16-byte Folded Spill
+; CHECK-NEXT:    smstop sm
+; CHECK-NEXT:    ldr z0, [sp] // 16-byte Folded Reload
+; CHECK-NEXT:    // kill: def $q0 killed $q0 killed $z0
+; CHECK-NEXT:    addsvl sp, sp, #1
+; CHECK-NEXT:    ldp d9, d8, [sp, #48] // 16-byte Folded Reload
+; CHECK-NEXT:    ldp d11, d10, [sp, #32] // 16-byte Folded Reload
+; CHECK-NEXT:    ldp d13, d12, [sp, #16] // 16-byte Folded Reload
+; CHECK-NEXT:    ldr x29, [sp, #64] // 8-byte Folded Reload
+; CHECK-NEXT:    ldp d15, d14, [sp], #80 // 16-byte Folded Reload
+; CHECK-NEXT:    ret
+  %load_value = tail call <3 x i16> @llvm.masked.load.v3i16.p0(ptr %load_ptr, i32 4, <3 x i1> %pm, <3 x i16> zeroinitializer)
+  %extend = sext <3 x i16> %load_value to <3 x i32>
+  ret <3 x i32> %extend;
+}
+
 declare <4 x i8> @llvm.masked.load.v4i8(ptr, i32, <4 x i1>, <4 x i8>)
 declare <8 x i8> @llvm.masked.load.v8i8(ptr, i32, <8 x i1>, <8 x i8>)
 declare <16 x i8> @llvm.masked.load.v16i8(ptr, i32, <16 x i1>, <16 x i8>)
@@ -351,3 +453,7 @@ declare <8 x float> @llvm.masked.load.v8f32(ptr, i32, <8 x i1>, <8 x float>)
 
 declare <2 x double> @llvm.masked.load.v2f64(ptr, i32, <2 x i1>, <2 x double>)
 declare <4 x double> @llvm.masked.load.v4f64(ptr, i32, <4 x i1>, <4 x double>)
+
+declare <3 x i16> @llvm.masked.load.v3i16.p0(ptr nocapture, i32 immarg, <3 x i1>, <3 x i16>) #0
+
+attributes #0 = { "aarch64_pstate_sm_body" "target-features"="+sve,+sme" }
