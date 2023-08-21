@@ -2414,6 +2414,16 @@ void ThreadSafetyAnalyzer::runAnalysis(AnalysisDeclContext &AC) {
                                     AD.getTriggerStmt()->getEndLoc());
           break;
         }
+
+        case CFGElement::CleanupFunction: {
+          const CFGCleanupFunction &CF = BI.castAs<CFGCleanupFunction>();
+
+          LocksetBuilder.handleCall(nullptr, CF.getFunctionDecl(),
+                                    SxBuilder.createVariable(CF.getVarDecl()),
+                                    CF.getVarDecl()->getLocation());
+          break;
+        }
+
         case CFGElement::TemporaryDtor: {
           auto TD = BI.castAs<CFGTemporaryDtor>();
 
