@@ -995,6 +995,18 @@ void Preprocessor::Lex(Token &Result) {
   }
 }
 
+std::vector<Token> Preprocessor::LexAll() {
+  std::vector<Token> toks;
+  while (1) {
+    Token tok;
+    Lex(tok);
+    if (tok.is(tok::eof))
+      break;
+    toks.push_back(tok);
+  }
+  return toks;
+}
+
 /// Lex a header-name token (including one formed from header-name-tokens if
 /// \p AllowConcatenation is \c true).
 ///
