@@ -69,40 +69,14 @@ define i64 @add_D(ptr %arr)  {
 declare i32 @llvm.vector.reduce.add.v8i32(<8 x i32>)
 
 define i32 @oversized_ADDV_256(ptr noalias nocapture readonly %arg1, ptr noalias nocapture readonly %arg2) {
-; SDAG-LABEL: oversized_ADDV_256:
-; SDAG:       // %bb.0: // %entry
-; SDAG-NEXT:    ldr d0, [x0]
-; SDAG-NEXT:    ldr d1, [x1]
-; SDAG-NEXT:    uabdl v0.8h, v0.8b, v1.8b
-; SDAG-NEXT:    uaddlv s0, v0.8h
-; SDAG-NEXT:    fmov w0, s0
-; SDAG-NEXT:    ret
-;
-; GISEL-LABEL: oversized_ADDV_256:
-; GISEL:       // %bb.0: // %entry
-; GISEL-NEXT:    ldr d1, [x0]
-; GISEL-NEXT:    ldr d2, [x1]
-; GISEL-NEXT:    movi v0.2d, #0000000000000000
-; GISEL-NEXT:    ushll v1.8h, v1.8b, #0
-; GISEL-NEXT:    ushll v2.8h, v2.8b, #0
-; GISEL-NEXT:    mov d3, v1.d[1]
-; GISEL-NEXT:    mov d4, v2.d[1]
-; GISEL-NEXT:    usubl v1.4s, v1.4h, v2.4h
-; GISEL-NEXT:    usubl v2.4s, v3.4h, v4.4h
-; GISEL-NEXT:    cmgt v3.4s, v0.4s, v1.4s
-; GISEL-NEXT:    neg v4.4s, v1.4s
-; GISEL-NEXT:    cmgt v0.4s, v0.4s, v2.4s
-; GISEL-NEXT:    shl v3.4s, v3.4s, #31
-; GISEL-NEXT:    shl v0.4s, v0.4s, #31
-; GISEL-NEXT:    neg v5.4s, v2.4s
-; GISEL-NEXT:    sshr v3.4s, v3.4s, #31
-; GISEL-NEXT:    sshr v0.4s, v0.4s, #31
-; GISEL-NEXT:    bit v1.16b, v4.16b, v3.16b
-; GISEL-NEXT:    bsl v0.16b, v5.16b, v2.16b
-; GISEL-NEXT:    add v0.4s, v1.4s, v0.4s
-; GISEL-NEXT:    addv s0, v0.4s
-; GISEL-NEXT:    fmov w0, s0
-; GISEL-NEXT:    ret
+; CHECK-LABEL: oversized_ADDV_256:
+; CHECK:       // %bb.0: // %entry
+; CHECK-NEXT:    ldr d0, [x0]
+; CHECK-NEXT:    ldr d1, [x1]
+; CHECK-NEXT:    uabdl v0.8h, v0.8b, v1.8b
+; CHECK-NEXT:    uaddlv s0, v0.8h
+; CHECK-NEXT:    fmov w0, s0
+; CHECK-NEXT:    ret
 entry:
   %0 = load <8 x i8>, ptr %arg1, align 1
   %1 = zext <8 x i8> %0 to <8 x i32>
@@ -122,9 +96,9 @@ define i32 @oversized_ADDV_512(ptr %arr)  {
 ; SDAG-LABEL: oversized_ADDV_512:
 ; SDAG:       // %bb.0:
 ; SDAG-NEXT:    ldp q0, q1, [x0, #32]
-; SDAG-NEXT:    ldp q3, q2, [x0]
-; SDAG-NEXT:    add v0.4s, v3.4s, v0.4s
-; SDAG-NEXT:    add v1.4s, v2.4s, v1.4s
+; SDAG-NEXT:    ldp q2, q3, [x0]
+; SDAG-NEXT:    add v1.4s, v3.4s, v1.4s
+; SDAG-NEXT:    add v0.4s, v2.4s, v0.4s
 ; SDAG-NEXT:    add v0.4s, v0.4s, v1.4s
 ; SDAG-NEXT:    addv s0, v0.4s
 ; SDAG-NEXT:    fmov w0, s0

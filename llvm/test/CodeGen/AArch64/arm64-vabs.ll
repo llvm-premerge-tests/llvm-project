@@ -500,10 +500,10 @@ define i32 @uabdl4s_rdx_i32(<4 x i16> %a, <4 x i16> %b) {
 ;
 ; CHECK-GI-LABEL: uabdl4s_rdx_i32:
 ; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    movi.2d v2, #0000000000000000
 ; CHECK-GI-NEXT:    usubl.4s v0, v0, v1
-; CHECK-GI-NEXT:    cmgt.4s v1, v2, v0
+; CHECK-GI-NEXT:    movi.2d v1, #0000000000000000
 ; CHECK-GI-NEXT:    neg.4s v2, v0
+; CHECK-GI-NEXT:    cmgt.4s v1, v1, v0
 ; CHECK-GI-NEXT:    bit.16b v0, v2, v1
 ; CHECK-GI-NEXT:    addv.4s s0, v0
 ; CHECK-GI-NEXT:    fmov w0, s0
@@ -569,10 +569,10 @@ define i64 @uabdl2d_rdx_i64(<2 x i32> %a, <2 x i32> %b) {
 ;
 ; CHECK-GI-LABEL: uabdl2d_rdx_i64:
 ; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    movi.2d v2, #0000000000000000
 ; CHECK-GI-NEXT:    usubl.2d v0, v0, v1
-; CHECK-GI-NEXT:    cmgt.2d v1, v2, v0
+; CHECK-GI-NEXT:    movi.2d v1, #0000000000000000
 ; CHECK-GI-NEXT:    neg.2d v2, v0
+; CHECK-GI-NEXT:    cmgt.2d v1, v1, v0
 ; CHECK-GI-NEXT:    bit.16b v0, v2, v1
 ; CHECK-GI-NEXT:    addp.2d d0, v0
 ; CHECK-GI-NEXT:    fmov x0, d0
@@ -1088,21 +1088,13 @@ declare <1 x i64> @llvm.aarch64.neon.abs.v1i64(<1 x i64>) nounwind readnone
 declare i64 @llvm.aarch64.neon.abs.i64(i64) nounwind readnone
 
 define <8 x i16> @sabal8h(ptr %A, ptr %B,  ptr %C) nounwind {
-; CHECK-SD-LABEL: sabal8h:
-; CHECK-SD:       // %bb.0:
-; CHECK-SD-NEXT:    ldr d1, [x1]
-; CHECK-SD-NEXT:    ldr d2, [x0]
-; CHECK-SD-NEXT:    ldr q0, [x2]
-; CHECK-SD-NEXT:    sabal.8h v0, v2, v1
-; CHECK-SD-NEXT:    ret
-;
-; CHECK-GI-LABEL: sabal8h:
-; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    ldr d1, [x0]
-; CHECK-GI-NEXT:    ldr d2, [x1]
-; CHECK-GI-NEXT:    ldr q0, [x2]
-; CHECK-GI-NEXT:    sabal.8h v0, v1, v2
-; CHECK-GI-NEXT:    ret
+; CHECK-LABEL: sabal8h:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    ldr d1, [x0]
+; CHECK-NEXT:    ldr d2, [x1]
+; CHECK-NEXT:    ldr q0, [x2]
+; CHECK-NEXT:    sabal.8h v0, v1, v2
+; CHECK-NEXT:    ret
   %tmp1 = load <8 x i8>, ptr %A
   %tmp2 = load <8 x i8>, ptr %B
   %tmp3 = load <8 x i16>, ptr %C
@@ -1113,21 +1105,13 @@ define <8 x i16> @sabal8h(ptr %A, ptr %B,  ptr %C) nounwind {
 }
 
 define <4 x i32> @sabal4s(ptr %A, ptr %B, ptr %C) nounwind {
-; CHECK-SD-LABEL: sabal4s:
-; CHECK-SD:       // %bb.0:
-; CHECK-SD-NEXT:    ldr d1, [x1]
-; CHECK-SD-NEXT:    ldr d2, [x0]
-; CHECK-SD-NEXT:    ldr q0, [x2]
-; CHECK-SD-NEXT:    sabal.4s v0, v2, v1
-; CHECK-SD-NEXT:    ret
-;
-; CHECK-GI-LABEL: sabal4s:
-; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    ldr d1, [x0]
-; CHECK-GI-NEXT:    ldr d2, [x1]
-; CHECK-GI-NEXT:    ldr q0, [x2]
-; CHECK-GI-NEXT:    sabal.4s v0, v1, v2
-; CHECK-GI-NEXT:    ret
+; CHECK-LABEL: sabal4s:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    ldr d1, [x0]
+; CHECK-NEXT:    ldr d2, [x1]
+; CHECK-NEXT:    ldr q0, [x2]
+; CHECK-NEXT:    sabal.4s v0, v1, v2
+; CHECK-NEXT:    ret
   %tmp1 = load <4 x i16>, ptr %A
   %tmp2 = load <4 x i16>, ptr %B
   %tmp3 = load <4 x i32>, ptr %C
@@ -1138,21 +1122,13 @@ define <4 x i32> @sabal4s(ptr %A, ptr %B, ptr %C) nounwind {
 }
 
 define <2 x i64> @sabal2d(ptr %A, ptr %B, ptr %C) nounwind {
-; CHECK-SD-LABEL: sabal2d:
-; CHECK-SD:       // %bb.0:
-; CHECK-SD-NEXT:    ldr d1, [x1]
-; CHECK-SD-NEXT:    ldr d2, [x0]
-; CHECK-SD-NEXT:    ldr q0, [x2]
-; CHECK-SD-NEXT:    sabal.2d v0, v2, v1
-; CHECK-SD-NEXT:    ret
-;
-; CHECK-GI-LABEL: sabal2d:
-; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    ldr d1, [x0]
-; CHECK-GI-NEXT:    ldr d2, [x1]
-; CHECK-GI-NEXT:    ldr q0, [x2]
-; CHECK-GI-NEXT:    sabal.2d v0, v1, v2
-; CHECK-GI-NEXT:    ret
+; CHECK-LABEL: sabal2d:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    ldr d1, [x0]
+; CHECK-NEXT:    ldr d2, [x1]
+; CHECK-NEXT:    ldr q0, [x2]
+; CHECK-NEXT:    sabal.2d v0, v1, v2
+; CHECK-NEXT:    ret
   %tmp1 = load <2 x i32>, ptr %A
   %tmp2 = load <2 x i32>, ptr %B
   %tmp3 = load <2 x i64>, ptr %C
@@ -1251,21 +1227,13 @@ define <2 x i64> @sabal2_2d(ptr %A, ptr %B, ptr %C) nounwind {
 }
 
 define <8 x i16> @uabal8h(ptr %A, ptr %B,  ptr %C) nounwind {
-; CHECK-SD-LABEL: uabal8h:
-; CHECK-SD:       // %bb.0:
-; CHECK-SD-NEXT:    ldr d1, [x1]
-; CHECK-SD-NEXT:    ldr d2, [x0]
-; CHECK-SD-NEXT:    ldr q0, [x2]
-; CHECK-SD-NEXT:    uabal.8h v0, v2, v1
-; CHECK-SD-NEXT:    ret
-;
-; CHECK-GI-LABEL: uabal8h:
-; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    ldr d1, [x0]
-; CHECK-GI-NEXT:    ldr d2, [x1]
-; CHECK-GI-NEXT:    ldr q0, [x2]
-; CHECK-GI-NEXT:    uabal.8h v0, v1, v2
-; CHECK-GI-NEXT:    ret
+; CHECK-LABEL: uabal8h:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    ldr d1, [x0]
+; CHECK-NEXT:    ldr d2, [x1]
+; CHECK-NEXT:    ldr q0, [x2]
+; CHECK-NEXT:    uabal.8h v0, v1, v2
+; CHECK-NEXT:    ret
   %tmp1 = load <8 x i8>, ptr %A
   %tmp2 = load <8 x i8>, ptr %B
   %tmp3 = load <8 x i16>, ptr %C
@@ -1276,21 +1244,13 @@ define <8 x i16> @uabal8h(ptr %A, ptr %B,  ptr %C) nounwind {
 }
 
 define <4 x i32> @uabal4s(ptr %A, ptr %B, ptr %C) nounwind {
-; CHECK-SD-LABEL: uabal4s:
-; CHECK-SD:       // %bb.0:
-; CHECK-SD-NEXT:    ldr d1, [x1]
-; CHECK-SD-NEXT:    ldr d2, [x0]
-; CHECK-SD-NEXT:    ldr q0, [x2]
-; CHECK-SD-NEXT:    uabal.4s v0, v2, v1
-; CHECK-SD-NEXT:    ret
-;
-; CHECK-GI-LABEL: uabal4s:
-; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    ldr d1, [x0]
-; CHECK-GI-NEXT:    ldr d2, [x1]
-; CHECK-GI-NEXT:    ldr q0, [x2]
-; CHECK-GI-NEXT:    uabal.4s v0, v1, v2
-; CHECK-GI-NEXT:    ret
+; CHECK-LABEL: uabal4s:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    ldr d1, [x0]
+; CHECK-NEXT:    ldr d2, [x1]
+; CHECK-NEXT:    ldr q0, [x2]
+; CHECK-NEXT:    uabal.4s v0, v1, v2
+; CHECK-NEXT:    ret
   %tmp1 = load <4 x i16>, ptr %A
   %tmp2 = load <4 x i16>, ptr %B
   %tmp3 = load <4 x i32>, ptr %C
@@ -1301,21 +1261,13 @@ define <4 x i32> @uabal4s(ptr %A, ptr %B, ptr %C) nounwind {
 }
 
 define <2 x i64> @uabal2d(ptr %A, ptr %B, ptr %C) nounwind {
-; CHECK-SD-LABEL: uabal2d:
-; CHECK-SD:       // %bb.0:
-; CHECK-SD-NEXT:    ldr d1, [x1]
-; CHECK-SD-NEXT:    ldr d2, [x0]
-; CHECK-SD-NEXT:    ldr q0, [x2]
-; CHECK-SD-NEXT:    uabal.2d v0, v2, v1
-; CHECK-SD-NEXT:    ret
-;
-; CHECK-GI-LABEL: uabal2d:
-; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    ldr d1, [x0]
-; CHECK-GI-NEXT:    ldr d2, [x1]
-; CHECK-GI-NEXT:    ldr q0, [x2]
-; CHECK-GI-NEXT:    uabal.2d v0, v1, v2
-; CHECK-GI-NEXT:    ret
+; CHECK-LABEL: uabal2d:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    ldr d1, [x0]
+; CHECK-NEXT:    ldr d2, [x1]
+; CHECK-NEXT:    ldr q0, [x2]
+; CHECK-NEXT:    uabal.2d v0, v1, v2
+; CHECK-NEXT:    ret
   %tmp1 = load <2 x i32>, ptr %A
   %tmp2 = load <2 x i32>, ptr %B
   %tmp3 = load <2 x i64>, ptr %C
@@ -1413,21 +1365,13 @@ define <2 x i64> @uabal2_2d(ptr %A, ptr %B, ptr %C) nounwind {
 }
 
 define <8 x i8> @saba_8b(ptr %A, ptr %B, ptr %C) nounwind {
-; CHECK-SD-LABEL: saba_8b:
-; CHECK-SD:       // %bb.0:
-; CHECK-SD-NEXT:    ldr d1, [x1]
-; CHECK-SD-NEXT:    ldr d2, [x0]
-; CHECK-SD-NEXT:    ldr d0, [x2]
-; CHECK-SD-NEXT:    saba.8b v0, v2, v1
-; CHECK-SD-NEXT:    ret
-;
-; CHECK-GI-LABEL: saba_8b:
-; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    ldr d1, [x0]
-; CHECK-GI-NEXT:    ldr d2, [x1]
-; CHECK-GI-NEXT:    ldr d0, [x2]
-; CHECK-GI-NEXT:    saba.8b v0, v1, v2
-; CHECK-GI-NEXT:    ret
+; CHECK-LABEL: saba_8b:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    ldr d1, [x0]
+; CHECK-NEXT:    ldr d2, [x1]
+; CHECK-NEXT:    ldr d0, [x2]
+; CHECK-NEXT:    saba.8b v0, v1, v2
+; CHECK-NEXT:    ret
   %tmp1 = load <8 x i8>, ptr %A
   %tmp2 = load <8 x i8>, ptr %B
   %tmp3 = call <8 x i8> @llvm.aarch64.neon.sabd.v8i8(<8 x i8> %tmp1, <8 x i8> %tmp2)
@@ -1437,21 +1381,13 @@ define <8 x i8> @saba_8b(ptr %A, ptr %B, ptr %C) nounwind {
 }
 
 define <16 x i8> @saba_16b(ptr %A, ptr %B, ptr %C) nounwind {
-; CHECK-SD-LABEL: saba_16b:
-; CHECK-SD:       // %bb.0:
-; CHECK-SD-NEXT:    ldr q1, [x1]
-; CHECK-SD-NEXT:    ldr q2, [x0]
-; CHECK-SD-NEXT:    ldr q0, [x2]
-; CHECK-SD-NEXT:    saba.16b v0, v2, v1
-; CHECK-SD-NEXT:    ret
-;
-; CHECK-GI-LABEL: saba_16b:
-; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    ldr q1, [x0]
-; CHECK-GI-NEXT:    ldr q2, [x1]
-; CHECK-GI-NEXT:    ldr q0, [x2]
-; CHECK-GI-NEXT:    saba.16b v0, v1, v2
-; CHECK-GI-NEXT:    ret
+; CHECK-LABEL: saba_16b:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    ldr q1, [x0]
+; CHECK-NEXT:    ldr q2, [x1]
+; CHECK-NEXT:    ldr q0, [x2]
+; CHECK-NEXT:    saba.16b v0, v1, v2
+; CHECK-NEXT:    ret
   %tmp1 = load <16 x i8>, ptr %A
   %tmp2 = load <16 x i8>, ptr %B
   %tmp3 = call <16 x i8> @llvm.aarch64.neon.sabd.v16i8(<16 x i8> %tmp1, <16 x i8> %tmp2)
@@ -1461,21 +1397,13 @@ define <16 x i8> @saba_16b(ptr %A, ptr %B, ptr %C) nounwind {
 }
 
 define <4 x i16> @saba_4h(ptr %A, ptr %B, ptr %C) nounwind {
-; CHECK-SD-LABEL: saba_4h:
-; CHECK-SD:       // %bb.0:
-; CHECK-SD-NEXT:    ldr d1, [x1]
-; CHECK-SD-NEXT:    ldr d2, [x0]
-; CHECK-SD-NEXT:    ldr d0, [x2]
-; CHECK-SD-NEXT:    saba.4h v0, v2, v1
-; CHECK-SD-NEXT:    ret
-;
-; CHECK-GI-LABEL: saba_4h:
-; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    ldr d1, [x0]
-; CHECK-GI-NEXT:    ldr d2, [x1]
-; CHECK-GI-NEXT:    ldr d0, [x2]
-; CHECK-GI-NEXT:    saba.4h v0, v1, v2
-; CHECK-GI-NEXT:    ret
+; CHECK-LABEL: saba_4h:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    ldr d1, [x0]
+; CHECK-NEXT:    ldr d2, [x1]
+; CHECK-NEXT:    ldr d0, [x2]
+; CHECK-NEXT:    saba.4h v0, v1, v2
+; CHECK-NEXT:    ret
   %tmp1 = load <4 x i16>, ptr %A
   %tmp2 = load <4 x i16>, ptr %B
   %tmp3 = call <4 x i16> @llvm.aarch64.neon.sabd.v4i16(<4 x i16> %tmp1, <4 x i16> %tmp2)
@@ -1485,21 +1413,13 @@ define <4 x i16> @saba_4h(ptr %A, ptr %B, ptr %C) nounwind {
 }
 
 define <8 x i16> @saba_8h(ptr %A, ptr %B, ptr %C) nounwind {
-; CHECK-SD-LABEL: saba_8h:
-; CHECK-SD:       // %bb.0:
-; CHECK-SD-NEXT:    ldr q1, [x1]
-; CHECK-SD-NEXT:    ldr q2, [x0]
-; CHECK-SD-NEXT:    ldr q0, [x2]
-; CHECK-SD-NEXT:    saba.8h v0, v2, v1
-; CHECK-SD-NEXT:    ret
-;
-; CHECK-GI-LABEL: saba_8h:
-; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    ldr q1, [x0]
-; CHECK-GI-NEXT:    ldr q2, [x1]
-; CHECK-GI-NEXT:    ldr q0, [x2]
-; CHECK-GI-NEXT:    saba.8h v0, v1, v2
-; CHECK-GI-NEXT:    ret
+; CHECK-LABEL: saba_8h:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    ldr q1, [x0]
+; CHECK-NEXT:    ldr q2, [x1]
+; CHECK-NEXT:    ldr q0, [x2]
+; CHECK-NEXT:    saba.8h v0, v1, v2
+; CHECK-NEXT:    ret
   %tmp1 = load <8 x i16>, ptr %A
   %tmp2 = load <8 x i16>, ptr %B
   %tmp3 = call <8 x i16> @llvm.aarch64.neon.sabd.v8i16(<8 x i16> %tmp1, <8 x i16> %tmp2)
@@ -1509,21 +1429,13 @@ define <8 x i16> @saba_8h(ptr %A, ptr %B, ptr %C) nounwind {
 }
 
 define <2 x i32> @saba_2s(ptr %A, ptr %B, ptr %C) nounwind {
-; CHECK-SD-LABEL: saba_2s:
-; CHECK-SD:       // %bb.0:
-; CHECK-SD-NEXT:    ldr d1, [x1]
-; CHECK-SD-NEXT:    ldr d2, [x0]
-; CHECK-SD-NEXT:    ldr d0, [x2]
-; CHECK-SD-NEXT:    saba.2s v0, v2, v1
-; CHECK-SD-NEXT:    ret
-;
-; CHECK-GI-LABEL: saba_2s:
-; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    ldr d1, [x0]
-; CHECK-GI-NEXT:    ldr d2, [x1]
-; CHECK-GI-NEXT:    ldr d0, [x2]
-; CHECK-GI-NEXT:    saba.2s v0, v1, v2
-; CHECK-GI-NEXT:    ret
+; CHECK-LABEL: saba_2s:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    ldr d1, [x0]
+; CHECK-NEXT:    ldr d2, [x1]
+; CHECK-NEXT:    ldr d0, [x2]
+; CHECK-NEXT:    saba.2s v0, v1, v2
+; CHECK-NEXT:    ret
   %tmp1 = load <2 x i32>, ptr %A
   %tmp2 = load <2 x i32>, ptr %B
   %tmp3 = call <2 x i32> @llvm.aarch64.neon.sabd.v2i32(<2 x i32> %tmp1, <2 x i32> %tmp2)
@@ -1533,21 +1445,13 @@ define <2 x i32> @saba_2s(ptr %A, ptr %B, ptr %C) nounwind {
 }
 
 define <4 x i32> @saba_4s(ptr %A, ptr %B, ptr %C) nounwind {
-; CHECK-SD-LABEL: saba_4s:
-; CHECK-SD:       // %bb.0:
-; CHECK-SD-NEXT:    ldr q1, [x1]
-; CHECK-SD-NEXT:    ldr q2, [x0]
-; CHECK-SD-NEXT:    ldr q0, [x2]
-; CHECK-SD-NEXT:    saba.4s v0, v2, v1
-; CHECK-SD-NEXT:    ret
-;
-; CHECK-GI-LABEL: saba_4s:
-; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    ldr q1, [x0]
-; CHECK-GI-NEXT:    ldr q2, [x1]
-; CHECK-GI-NEXT:    ldr q0, [x2]
-; CHECK-GI-NEXT:    saba.4s v0, v1, v2
-; CHECK-GI-NEXT:    ret
+; CHECK-LABEL: saba_4s:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    ldr q1, [x0]
+; CHECK-NEXT:    ldr q2, [x1]
+; CHECK-NEXT:    ldr q0, [x2]
+; CHECK-NEXT:    saba.4s v0, v1, v2
+; CHECK-NEXT:    ret
   %tmp1 = load <4 x i32>, ptr %A
   %tmp2 = load <4 x i32>, ptr %B
   %tmp3 = call <4 x i32> @llvm.aarch64.neon.sabd.v4i32(<4 x i32> %tmp1, <4 x i32> %tmp2)
@@ -1557,21 +1461,13 @@ define <4 x i32> @saba_4s(ptr %A, ptr %B, ptr %C) nounwind {
 }
 
 define <8 x i8> @uaba_8b(ptr %A, ptr %B, ptr %C) nounwind {
-; CHECK-SD-LABEL: uaba_8b:
-; CHECK-SD:       // %bb.0:
-; CHECK-SD-NEXT:    ldr d1, [x1]
-; CHECK-SD-NEXT:    ldr d2, [x0]
-; CHECK-SD-NEXT:    ldr d0, [x2]
-; CHECK-SD-NEXT:    uaba.8b v0, v2, v1
-; CHECK-SD-NEXT:    ret
-;
-; CHECK-GI-LABEL: uaba_8b:
-; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    ldr d1, [x0]
-; CHECK-GI-NEXT:    ldr d2, [x1]
-; CHECK-GI-NEXT:    ldr d0, [x2]
-; CHECK-GI-NEXT:    uaba.8b v0, v1, v2
-; CHECK-GI-NEXT:    ret
+; CHECK-LABEL: uaba_8b:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    ldr d1, [x0]
+; CHECK-NEXT:    ldr d2, [x1]
+; CHECK-NEXT:    ldr d0, [x2]
+; CHECK-NEXT:    uaba.8b v0, v1, v2
+; CHECK-NEXT:    ret
   %tmp1 = load <8 x i8>, ptr %A
   %tmp2 = load <8 x i8>, ptr %B
   %tmp3 = call <8 x i8> @llvm.aarch64.neon.uabd.v8i8(<8 x i8> %tmp1, <8 x i8> %tmp2)
@@ -1581,21 +1477,13 @@ define <8 x i8> @uaba_8b(ptr %A, ptr %B, ptr %C) nounwind {
 }
 
 define <16 x i8> @uaba_16b(ptr %A, ptr %B, ptr %C) nounwind {
-; CHECK-SD-LABEL: uaba_16b:
-; CHECK-SD:       // %bb.0:
-; CHECK-SD-NEXT:    ldr q1, [x1]
-; CHECK-SD-NEXT:    ldr q2, [x0]
-; CHECK-SD-NEXT:    ldr q0, [x2]
-; CHECK-SD-NEXT:    uaba.16b v0, v2, v1
-; CHECK-SD-NEXT:    ret
-;
-; CHECK-GI-LABEL: uaba_16b:
-; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    ldr q1, [x0]
-; CHECK-GI-NEXT:    ldr q2, [x1]
-; CHECK-GI-NEXT:    ldr q0, [x2]
-; CHECK-GI-NEXT:    uaba.16b v0, v1, v2
-; CHECK-GI-NEXT:    ret
+; CHECK-LABEL: uaba_16b:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    ldr q1, [x0]
+; CHECK-NEXT:    ldr q2, [x1]
+; CHECK-NEXT:    ldr q0, [x2]
+; CHECK-NEXT:    uaba.16b v0, v1, v2
+; CHECK-NEXT:    ret
   %tmp1 = load <16 x i8>, ptr %A
   %tmp2 = load <16 x i8>, ptr %B
   %tmp3 = call <16 x i8> @llvm.aarch64.neon.uabd.v16i8(<16 x i8> %tmp1, <16 x i8> %tmp2)
@@ -1605,21 +1493,13 @@ define <16 x i8> @uaba_16b(ptr %A, ptr %B, ptr %C) nounwind {
 }
 
 define <4 x i16> @uaba_4h(ptr %A, ptr %B, ptr %C) nounwind {
-; CHECK-SD-LABEL: uaba_4h:
-; CHECK-SD:       // %bb.0:
-; CHECK-SD-NEXT:    ldr d1, [x1]
-; CHECK-SD-NEXT:    ldr d2, [x0]
-; CHECK-SD-NEXT:    ldr d0, [x2]
-; CHECK-SD-NEXT:    uaba.4h v0, v2, v1
-; CHECK-SD-NEXT:    ret
-;
-; CHECK-GI-LABEL: uaba_4h:
-; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    ldr d1, [x0]
-; CHECK-GI-NEXT:    ldr d2, [x1]
-; CHECK-GI-NEXT:    ldr d0, [x2]
-; CHECK-GI-NEXT:    uaba.4h v0, v1, v2
-; CHECK-GI-NEXT:    ret
+; CHECK-LABEL: uaba_4h:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    ldr d1, [x0]
+; CHECK-NEXT:    ldr d2, [x1]
+; CHECK-NEXT:    ldr d0, [x2]
+; CHECK-NEXT:    uaba.4h v0, v1, v2
+; CHECK-NEXT:    ret
   %tmp1 = load <4 x i16>, ptr %A
   %tmp2 = load <4 x i16>, ptr %B
   %tmp3 = call <4 x i16> @llvm.aarch64.neon.uabd.v4i16(<4 x i16> %tmp1, <4 x i16> %tmp2)
@@ -1629,21 +1509,13 @@ define <4 x i16> @uaba_4h(ptr %A, ptr %B, ptr %C) nounwind {
 }
 
 define <8 x i16> @uaba_8h(ptr %A, ptr %B, ptr %C) nounwind {
-; CHECK-SD-LABEL: uaba_8h:
-; CHECK-SD:       // %bb.0:
-; CHECK-SD-NEXT:    ldr q1, [x1]
-; CHECK-SD-NEXT:    ldr q2, [x0]
-; CHECK-SD-NEXT:    ldr q0, [x2]
-; CHECK-SD-NEXT:    uaba.8h v0, v2, v1
-; CHECK-SD-NEXT:    ret
-;
-; CHECK-GI-LABEL: uaba_8h:
-; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    ldr q1, [x0]
-; CHECK-GI-NEXT:    ldr q2, [x1]
-; CHECK-GI-NEXT:    ldr q0, [x2]
-; CHECK-GI-NEXT:    uaba.8h v0, v1, v2
-; CHECK-GI-NEXT:    ret
+; CHECK-LABEL: uaba_8h:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    ldr q1, [x0]
+; CHECK-NEXT:    ldr q2, [x1]
+; CHECK-NEXT:    ldr q0, [x2]
+; CHECK-NEXT:    uaba.8h v0, v1, v2
+; CHECK-NEXT:    ret
   %tmp1 = load <8 x i16>, ptr %A
   %tmp2 = load <8 x i16>, ptr %B
   %tmp3 = call <8 x i16> @llvm.aarch64.neon.uabd.v8i16(<8 x i16> %tmp1, <8 x i16> %tmp2)
@@ -1653,21 +1525,13 @@ define <8 x i16> @uaba_8h(ptr %A, ptr %B, ptr %C) nounwind {
 }
 
 define <2 x i32> @uaba_2s(ptr %A, ptr %B, ptr %C) nounwind {
-; CHECK-SD-LABEL: uaba_2s:
-; CHECK-SD:       // %bb.0:
-; CHECK-SD-NEXT:    ldr d1, [x1]
-; CHECK-SD-NEXT:    ldr d2, [x0]
-; CHECK-SD-NEXT:    ldr d0, [x2]
-; CHECK-SD-NEXT:    uaba.2s v0, v2, v1
-; CHECK-SD-NEXT:    ret
-;
-; CHECK-GI-LABEL: uaba_2s:
-; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    ldr d1, [x0]
-; CHECK-GI-NEXT:    ldr d2, [x1]
-; CHECK-GI-NEXT:    ldr d0, [x2]
-; CHECK-GI-NEXT:    uaba.2s v0, v1, v2
-; CHECK-GI-NEXT:    ret
+; CHECK-LABEL: uaba_2s:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    ldr d1, [x0]
+; CHECK-NEXT:    ldr d2, [x1]
+; CHECK-NEXT:    ldr d0, [x2]
+; CHECK-NEXT:    uaba.2s v0, v1, v2
+; CHECK-NEXT:    ret
   %tmp1 = load <2 x i32>, ptr %A
   %tmp2 = load <2 x i32>, ptr %B
   %tmp3 = call <2 x i32> @llvm.aarch64.neon.uabd.v2i32(<2 x i32> %tmp1, <2 x i32> %tmp2)
@@ -1677,21 +1541,13 @@ define <2 x i32> @uaba_2s(ptr %A, ptr %B, ptr %C) nounwind {
 }
 
 define <4 x i32> @uaba_4s(ptr %A, ptr %B, ptr %C) nounwind {
-; CHECK-SD-LABEL: uaba_4s:
-; CHECK-SD:       // %bb.0:
-; CHECK-SD-NEXT:    ldr q1, [x1]
-; CHECK-SD-NEXT:    ldr q2, [x0]
-; CHECK-SD-NEXT:    ldr q0, [x2]
-; CHECK-SD-NEXT:    uaba.4s v0, v2, v1
-; CHECK-SD-NEXT:    ret
-;
-; CHECK-GI-LABEL: uaba_4s:
-; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    ldr q1, [x0]
-; CHECK-GI-NEXT:    ldr q2, [x1]
-; CHECK-GI-NEXT:    ldr q0, [x2]
-; CHECK-GI-NEXT:    uaba.4s v0, v1, v2
-; CHECK-GI-NEXT:    ret
+; CHECK-LABEL: uaba_4s:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    ldr q1, [x0]
+; CHECK-NEXT:    ldr q2, [x1]
+; CHECK-NEXT:    ldr q0, [x2]
+; CHECK-NEXT:    uaba.4s v0, v1, v2
+; CHECK-NEXT:    ret
   %tmp1 = load <4 x i32>, ptr %A
   %tmp2 = load <4 x i32>, ptr %B
   %tmp3 = call <4 x i32> @llvm.aarch64.neon.uabd.v4i32(<4 x i32> %tmp1, <4 x i32> %tmp2)
@@ -1957,10 +1813,10 @@ define <2 x i64> @uabd_i32(<2 x i32> %a, <2 x i32> %b) {
 ;
 ; CHECK-GI-LABEL: uabd_i32:
 ; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    movi.2d v2, #0000000000000000
 ; CHECK-GI-NEXT:    ssubl.2d v0, v0, v1
-; CHECK-GI-NEXT:    cmgt.2d v1, v2, v0
+; CHECK-GI-NEXT:    movi.2d v1, #0000000000000000
 ; CHECK-GI-NEXT:    neg.2d v2, v0
+; CHECK-GI-NEXT:    cmgt.2d v1, v1, v0
 ; CHECK-GI-NEXT:    bit.16b v0, v2, v1
 ; CHECK-GI-NEXT:    ret
   %aext = sext <2 x i32> %a to <2 x i64>
@@ -1976,28 +1832,28 @@ define <2 x i128> @uabd_i64(<2 x i64> %a, <2 x i64> %b) {
 ; CHECK-LABEL: uabd_i64:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    mov.d x8, v0[1]
-; CHECK-NEXT:    fmov x9, d0
-; CHECK-NEXT:    mov.d x10, v1[1]
+; CHECK-NEXT:    mov.d x9, v1[1]
+; CHECK-NEXT:    fmov x10, d0
 ; CHECK-NEXT:    fmov x11, d1
-; CHECK-NEXT:    asr x12, x9, #63
+; CHECK-NEXT:    asr x12, x10, #63
 ; CHECK-NEXT:    asr x13, x11, #63
-; CHECK-NEXT:    subs x9, x9, x11
-; CHECK-NEXT:    sbc x11, x12, x13
-; CHECK-NEXT:    asr x12, x8, #63
-; CHECK-NEXT:    asr x13, x10, #63
-; CHECK-NEXT:    subs x8, x8, x10
-; CHECK-NEXT:    sbc x10, x12, x13
-; CHECK-NEXT:    asr x12, x11, #63
-; CHECK-NEXT:    asr x13, x10, #63
-; CHECK-NEXT:    eor x9, x9, x12
-; CHECK-NEXT:    eor x8, x8, x13
+; CHECK-NEXT:    subs x10, x10, x11
+; CHECK-NEXT:    asr x11, x8, #63
+; CHECK-NEXT:    asr x14, x9, #63
+; CHECK-NEXT:    sbc x12, x12, x13
+; CHECK-NEXT:    subs x8, x8, x9
+; CHECK-NEXT:    sbc x9, x11, x14
+; CHECK-NEXT:    asr x13, x12, #63
+; CHECK-NEXT:    asr x11, x9, #63
 ; CHECK-NEXT:    eor x10, x10, x13
-; CHECK-NEXT:    subs x2, x8, x13
-; CHECK-NEXT:    sbc x3, x10, x13
-; CHECK-NEXT:    subs x8, x9, x12
-; CHECK-NEXT:    eor x9, x11, x12
-; CHECK-NEXT:    sbc x1, x9, x12
-; CHECK-NEXT:    fmov d0, x8
+; CHECK-NEXT:    eor x8, x8, x11
+; CHECK-NEXT:    eor x9, x9, x11
+; CHECK-NEXT:    subs x2, x8, x11
+; CHECK-NEXT:    eor x8, x12, x13
+; CHECK-NEXT:    sbc x3, x9, x11
+; CHECK-NEXT:    subs x9, x10, x13
+; CHECK-NEXT:    fmov d0, x9
+; CHECK-NEXT:    sbc x1, x8, x13
 ; CHECK-NEXT:    mov.d v0[1], x1
 ; CHECK-NEXT:    fmov x0, d0
 ; CHECK-NEXT:    ret
