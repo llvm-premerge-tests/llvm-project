@@ -1402,6 +1402,7 @@ void SelectionDAG::clear() {
   ExternalSymbols.clear();
   TargetExternalSymbols.clear();
   MCSymbols.clear();
+  ExportedSplatValueMap.clear();
   SDEI.clear();
   std::fill(CondCodeNodes.begin(), CondCodeNodes.end(),
             static_cast<CondCodeSDNode*>(nullptr));

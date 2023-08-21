@@ -826,7 +826,6 @@ RegsForValue::RegsForValue(LLVMContext &Context, const TargetLowering &TLI,
                            const DataLayout &DL, unsigned Reg, Type *Ty,
                            std::optional<CallingConv::ID> CC) {
   ComputeValueVTs(TLI, DL, Ty, ValueVTs);
-
   CallConv = CC;
 
   for (EVT ValueVT : ValueVTs) {
@@ -2170,16 +2169,20 @@ void SelectionDAGBuilder::visitRet(const ReturnInst &I) {
 /// created for it, emit nodes to copy the value into the virtual
 /// registers.
 void SelectionDAGBuilder::CopyToExportRegsIfNeeded(const Value *V) {
-  // Skip empty types
-  if (V->getType()->isEmptyTy())
-    return;
-
-  DenseMap<const Value *, Register>::iterator VMI = FuncInfo.ValueMap.find(V);
-  if (VMI != FuncInfo.ValueMap.end()) {
+  if (Register reg = GetExportReg(V)) {
     assert((!V->use_empty() || isa<CallBrInst>(V)) &&
            "Unused value assigned virtual registers!");
-    CopyValueToVirtualRegister(V, VMI->second);
+    CopyValueToVirtualRegister(V, reg);
   }
+}
+
+Register SelectionDAGBuilder::GetExportReg(const Value *V) {
+  // Skip empty types
+  if (V->getType()->isEmptyTy())
+    return Register();
+
+  DenseMap<const Value *, Register>::iterator VMI = FuncInfo.ValueMap.find(V);
+  return (VMI != FuncInfo.ValueMap.end()) ? VMI->second : Register();
 }
 
 /// ExportFromCurrentBlock - If this condition isn't known to be exported from
@@ -3272,8 +3275,23 @@ void SelectionDAGBuilder::visitShift(const User &I, unsigned Opcode) {
   SDValue Op1 = getValue(I.getOperand(0));
   SDValue Op2 = getValue(I.getOperand(1));
 
-  EVT ShiftTy = DAG.getTargetLoweringInfo().getShiftAmountTy(
-      Op1.getValueType(), DAG.getDataLayout());
+  auto &TLI = DAG.getTargetLoweringInfo();
+  Value *V2 = I.getOperand(1);
+  if (I.getType()->isVectorTy() && TLI.isShiftAmountScalar() &&
+      !(NodeMap[V2].getNode())) {
+    const Value *splat = getSplatValue(V2);
+    if (splat && !isa<Constant>(splat)) {
+      assert(FuncInfo.isExportedInst(splat) && "Splat value is not exported");
+      // TODO: It's possible to be mapped to multiple splat vectors.
+      DenseMap<const Value *, Register>::iterator It =
+          FuncInfo.ValueMap.find(splat);
+      if (It != FuncInfo.ValueMap.end()) {
+        DAG.addExportedSplatSource(Op2.getNode(), splat, It->second);
+      }
+    }
+  }
+
+  EVT ShiftTy = TLI.getShiftAmountTy(Op1.getValueType(), DAG.getDataLayout());
 
   // Coerce the shift amount to the right type if we can. This exposes the
   // truncate or zext to optimization early.
@@ -3703,6 +3721,17 @@ void SelectionDAGBuilder::visitShuffleVector(const User &I) {
   unsigned MaskNumElts = Mask.size();
 
   if (SrcNumElts == MaskNumElts) {
+    if (TLI.hasSplatValueUseForVectorOp() && GetExportReg(&I)) {
+      if (const Value *splat = getSplatValue(&I)) {
+        for (const Use &U : I.uses()) {
+          Instruction *UserI = cast<Instruction>(U.getUser());
+          if (UserI->getType()->isVectorTy() &&
+              TLI.hasSplatValueUseForVectorOp(UserI, &I)) {
+            ExportFromCurrentBlock(splat);
+          }
+        }
+      }
+    }
     setValue(&I, DAG.getVectorShuffle(VT, DL, Src1, Src2, Mask));
     return;
   }

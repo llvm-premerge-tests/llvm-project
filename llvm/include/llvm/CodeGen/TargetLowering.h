@@ -1120,6 +1120,13 @@ public:
     return false;
   }
 
+  virtual bool isShiftAmountScalar() const { return false; }
+
+  virtual bool hasSplatValueUseForVectorOp(const Instruction *I = nullptr,
+                                           const Value *Splat = nullptr) const {
+    return false;
+  }
+
   /// Targets can use this to indicate that they only support *some*
   /// VECTOR_SHUFFLE operations, those with specific masks.  By default, if a
   /// target supports the VECTOR_SHUFFLE node, all mask values are assumed to be
