@@ -80,7 +80,7 @@ bool IntegerRelation::isEqual(const IntegerRelation &other) const {
   return PresburgerRelation(*this).isEqual(PresburgerRelation(other));
 }
 
-bool IntegerRelation::isPlainEqual(const IntegerRelation &other) const {
+bool IntegerRelation::isObviouslyEqual(const IntegerRelation &other) const {
   if (!space.isEqual(other.getSpace()))
     return false;
   if (getNumEqualities() != other.getNumEqualities())
@@ -701,6 +701,12 @@ bool IntegerRelation::isEmpty() const {
   return false;
 }
 
+bool IntegerRelation::isObviouslyEmpty() const {
+  if (isEmptyByGCDTest() || hasInvalidConstraint())
+    return true;
+  return false;
+}
+
 // Runs the GCD test on all equality constraints. Returns 'true' if this test
 // fails on any equality. Returns 'false' otherwise.
 // This test can be used to disprove the existence of a solution. If it returns
@@ -1079,6 +1085,57 @@ unsigned IntegerRelation::gaussianEliminateVars(unsigned posStart,
   return posLimit - posStart;
 }
 
+bool IntegerRelation::gaussianEliminate() {
+  gcdTightenInequalities();
+  unsigned firstVar = 0, vars = getNumVars();
+  unsigned nowDone, eqs, pivotRow;
+  for (nowDone = 0, eqs = getNumEqualities(); nowDone < eqs; ++nowDone) {
+    // Finds the first non-empty column.
+    for (; firstVar < vars; ++firstVar) {
+      if (!findConstraintWithNonZeroAt(firstVar, true, &pivotRow))
+        continue;
+      break;
+    }
+    // All columns have been normalized.
+    if (firstVar >= vars)
+      break;
+
+    // The first pivot row found is below where it should currently be placed.
+    if (pivotRow > nowDone) {
+      equalities.swapRows(pivotRow, nowDone);
+      pivotRow = nowDone;
+    }
+
+    // Normalize all lower equations and all inequalities.
+    for (unsigned i = nowDone + 1; i < eqs; ++i) {
+      eliminateFromConstraint(this, i, pivotRow, firstVar, 0, true);
+      equalities.normalizeRow(i);
+    }
+    for (unsigned i = 0, ineqs = getNumInequalities(); i < ineqs; ++i) {
+      eliminateFromConstraint(this, i, pivotRow, firstVar, 0, false);
+      inequalities.normalizeRow(i);
+    }
+    gcdTightenInequalities();
+  }
+
+  // No redundant rows.
+  if (nowDone == eqs)
+    return false;
+
+  // Check to see if the redundant rows constant is zero, a non-zero value means
+  // the set is empty.
+  for (unsigned i = nowDone; i < eqs; ++i) {
+    if (atEq(i, vars) == 0)
+      continue;
+
+    *this = getEmpty(getSpace());
+    return true;
+  }
+  // Rows that are confirmed to be all zeros can be eliminated.
+  removeEqualityRange(nowDone, eqs);
+  return true;
+}
+
 // A more complex check to eliminate redundant inequalities. Uses FourierMotzkin
 // to check if a constraint is redundant.
 void IntegerRelation::removeRedundantInequalities() {
@@ -1267,6 +1324,21 @@ void IntegerRelation::removeDuplicateDivs() {
     return true;
   };
   divs.removeDuplicateDivs(merge);
+}
+
+void IntegerRelation::simplify() {
+  bool changed = true;
+  // Repeat until we reach a fixed point.
+  while (changed) {
+    changed = false;
+    normalizeConstraintsByGCD();
+    changed |= gaussianEliminate();
+    if (isObviouslyEmpty())
+      return;
+    changed |= removeDuplicateConstraints();
+  }
+  // Current set is not empty.
+  return;
 }
 
 /// Removes local variables using equalities. Each equality is checked if it
@@ -2214,6 +2286,74 @@ IntegerPolyhedron IntegerRelation::getDomainSet() const {
                          VarKind::SetDim);
 
   return IntegerPolyhedron(std::move(copyRel));
+}
+
+bool IntegerRelation::removeDuplicateConstraints() {
+  bool changed = false;
+  SmallDenseMap<ArrayRef<MPInt>, unsigned> hashTable;
+  unsigned ineqs = getNumInequalities(), cols = getNumCols();
+
+  if (ineqs <= 1)
+    return changed;
+
+  // Check only the non-constant part of the constraint is the same.
+  auto row = getInequality(0).drop_back();
+  hashTable.insert({row, 0});
+  for (unsigned k = 1; k < ineqs; ++k) {
+    auto nRow = getInequality(k).drop_back();
+    if (!hashTable.contains(nRow)) {
+      hashTable.insert({nRow, k});
+      continue;
+    }
+
+    // For identical cases, keep only the smaller part of the constant term.
+    unsigned l = hashTable[nRow];
+    changed = true;
+    if (atIneq(k, cols - 1) <= atIneq(l, cols - 1))
+      inequalities.swapRows(k, l);
+    removeInequality(k);
+    --k;
+    --ineqs;
+  }
+
+  // Check the neg form of each inequality, need an extra space to store it.
+  inequalities.appendExtraRow();
+  bool negChanged = false;
+  for (unsigned k = 0; k < ineqs; ++k) {
+    inequalities.copyRow(k, ineqs);
+    inequalities.negateRow(ineqs);
+    auto nRow = getInequality(ineqs).drop_back();
+    if (!hashTable.contains(nRow))
+      continue;
+
+    // For cases where the neg is the same as other inequalities, check that the
+    // sum of their constant terms is positive.
+    unsigned l = hashTable[nRow];
+    auto sum = atIneq(l, cols - 1) + atIneq(k, cols - 1);
+    if (sum > 0 || l == k)
+      continue;
+
+    // A sum of constant terms equal to zero combines two inequalities into one
+    // equation, less than zero means the set is empty.
+    negChanged = true;
+    changed = true;
+    if (k < l)
+      std::swap(l, k);
+    if (sum == 0) {
+      addEquality(getInequality(k));
+      removeInequality(ineqs);
+      removeInequality(k);
+      removeInequality(l);
+    } else
+      *this = getEmpty(getSpace());
+    break;
+  }
+
+  // Need to remove the extra space requested.
+  if (!negChanged)
+    removeInequality(ineqs);
+
+  return changed;
 }
 
 IntegerPolyhedron IntegerRelation::getRangeSet() const {
