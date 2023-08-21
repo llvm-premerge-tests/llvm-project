@@ -12,7 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "mlir/Dialect/GPU/IR/GPUDialect.h"
 #include "mlir/Dialect/GPU/Transforms/Passes.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/ExecutionEngine/OptUtils.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Target/LLVMIR/Dialect/GPU/GPUToLLVMIRTranslation.h"
@@ -23,8 +25,8 @@
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetMachine.h"
 
-#include <string>
 #include <optional>
+#include <string>
 
 #define DEBUG_TYPE "serialize-to-blob"
 
@@ -126,8 +128,8 @@ gpu::SerializeToBlobPass::optimizeLlvm(llvm::Module &llvmModule,
 
 void gpu::SerializeToBlobPass::getDependentDialects(
     DialectRegistry &registry) const {
-  registerGPUDialectTranslation(registry);
-  registerLLVMDialectTranslation(registry);
+  registry.insert<gpu::GPUDialect>();
+  registry.insert<LLVM::LLVMDialect>();
   OperationPass<gpu::GPUModuleOp>::getDependentDialects(registry);
 }
 
