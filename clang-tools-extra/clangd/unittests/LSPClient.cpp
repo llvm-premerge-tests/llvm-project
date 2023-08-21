@@ -12,19 +12,36 @@
 #include "Transport.h"
 #include "support/Logger.h"
 #include "support/Threading.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/StringMap.h"
+#include "llvm/ADT/StringRef.h"
+#include "llvm/Support/Error.h"
+#include "llvm/Support/JSON.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/raw_ostream.h"
 #include "gtest/gtest.h"
 #include <condition_variable>
+#include <cstdint>
+#include <deque>
+#include <functional>
+#include <memory>
+#include <mutex>
 #include <optional>
 #include <queue>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace clang {
 namespace clangd {
 
-llvm::Expected<llvm::json::Value> clang::clangd::LSPClient::CallResult::take() {
+llvm::Expected<llvm::json::Value>
+clang::clangd::LSPClient::CallResult::take(float TimeoutSeconds) {
   std::unique_lock<std::mutex> Lock(Mu);
-  if (!clangd::wait(Lock, CV, timeoutSeconds(10),
+  if (!clangd::wait(Lock, CV,
+                    timeoutSeconds(TimeoutSeconds
+                                       ? std::optional<float>(TimeoutSeconds)
+                                       : std::nullopt),
                     [this] { return Value.has_value(); })) {
     ADD_FAILURE() << "No result from call after 10 seconds!";
     return llvm::json::Value(nullptr);
@@ -34,8 +51,8 @@ llvm::Expected<llvm::json::Value> clang::clangd::LSPClient::CallResult::take() {
   return Res;
 }
 
-llvm::json::Value LSPClient::CallResult::takeValue() {
-  auto ExpValue = take();
+llvm::json::Value LSPClient::CallResult::takeValue(float TimeoutSeconds) {
+  auto ExpValue = take(TimeoutSeconds);
   if (!ExpValue) {
     ADD_FAILURE() << "takeValue(): " << llvm::toString(ExpValue.takeError());
     return llvm::json::Value(nullptr);
@@ -197,7 +214,10 @@ void LSPClient::didClose(llvm::StringRef Path) {
   notify("textDocument/didClose", Obj{{"textDocument", documentID(Path)}});
 }
 
-void LSPClient::sync() { call("sync", nullptr).takeValue(); }
+void LSPClient::sync() {
+  // Sync should already be implemented with a timeout, so don't timeout.
+  call("sync", nullptr).takeValue(0);
+}
 
 std::optional<std::vector<llvm::json::Value>>
 LSPClient::diagnostics(llvm::StringRef Path) {

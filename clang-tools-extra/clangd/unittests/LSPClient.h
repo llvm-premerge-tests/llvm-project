@@ -9,12 +9,14 @@
 #ifndef LLVM_CLANG_TOOLS_EXTRA_CLANGD_UNITTESTS_LSPCLIENT_H
 #define LLVM_CLANG_TOOLS_EXTRA_CLANGD_UNITTESTS_LSPCLIENT_H
 
+#include "llvm/ADT/StringRef.h"
+#include <condition_variable>
 #include <llvm/Support/Error.h>
 #include <llvm/Support/JSON.h>
-#include <condition_variable>
-#include <deque>
+#include <memory>
 #include <mutex>
 #include <optional>
+#include <vector>
 
 namespace clang {
 namespace clangd {
@@ -32,11 +34,12 @@ public:
   class CallResult {
   public:
     ~CallResult();
-    // Blocks up to 10 seconds for the result to be ready.
+    // Blocks up to \p TimeoutSeconds seconds for the result to be ready. If \p
+    // TimeoutSeconds is zero, blocks indefinitely.
     // Records a test failure if there was no reply.
-    llvm::Expected<llvm::json::Value> take();
+    llvm::Expected<llvm::json::Value> take(float TimeoutSeconds = 60);
     // Like take(), but records a test failure if the result was an error.
-    llvm::json::Value takeValue();
+    llvm::json::Value takeValue(float TimeoutSeconds = 60);
 
   private:
     // Should be called once to provide the value.
