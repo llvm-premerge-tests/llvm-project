@@ -1000,7 +1000,7 @@ std::vector<Token> Preprocessor::LexAll() {
   while (1) {
     Token tok;
     Lex(tok);
-    if (tok.is(tok::eof))
+    if (tok.isOneOf(tok::eof, tok::annot_repl_input_end))
       break;
     toks.push_back(tok);
   }
