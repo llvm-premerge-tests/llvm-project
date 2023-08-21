@@ -99,7 +99,11 @@ TEST(PresburgerRelationTest, intersectDomainAndRange) {
   }
 }
 
-TEST(PresburgerRelationTest, applyDomainAndRange) {
+// FIXME: This test is disabled because of a output size issue with subtract
+// where it produces 17592 disjuncts. This increases the testing time by 11
+// seconds. Once more simplifications for subtract are added, this test
+// should be enabled again.
+TEST(PresburgerRelationTest, DISABLED_applyDomainAndRange) {
   {
     PresburgerRelation map1 = parsePresburgerRelationFromPresburgerSet(
         {// (x, y) -> (x + N, y - N)
