@@ -447,19 +447,15 @@ TEST_F(LexerTest, DontOverallocateStringifyArgs) {
 
   Token Eof;
   Eof.setKind(tok::eof);
-  std::vector<Token> ArgTokens;
-  while (1) {
-    Token tok;
-    PP->Lex(tok);
-    if (tok.is(tok::eof)) {
-      ArgTokens.push_back(Eof);
-      break;
+  std::vector<Token> ArgTokens = PP->LexAll();
+  // Replace all tok::comma with tok::eof for stringification.
+  for (auto &tok : ArgTokens) {
+    if (tok.is(tok::comma)) {
+      tok = Eof;
     }
-    if (tok.is(tok::comma))
-      ArgTokens.push_back(Eof);
-    else
-      ArgTokens.push_back(tok);
   }
+  // Push a tok::eof as the last element.
+  ArgTokens.push_back(Eof);
 
   auto MacroArgsDeleter = [&PP](MacroArgs *M) { M->destroy(*PP); };
   std::unique_ptr<MacroArgs, decltype(MacroArgsDeleter)> MA(
