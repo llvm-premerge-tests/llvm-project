@@ -5170,12 +5170,107 @@ public:
   }
 };
 
+static VectorType trimTrailingOneDims(VectorType oldType) {
+  ArrayRef<int64_t> oldShape = oldType.getShape();
+  ArrayRef<int64_t> newShape = oldShape;
+
+  ArrayRef<bool> oldScalableDims = oldType.getScalableDims();
+  ArrayRef<bool> newScalableDims = oldScalableDims;
+
+  while (!newShape.empty() && newShape.back() == 1 && !newScalableDims.back()) {
+    newShape = newShape.drop_back(1);
+    newScalableDims = newScalableDims.drop_back(1);
+  }
+
+  // Make sure we have at least 1 dimension.
+  // TODO: Add support for 0-D vectors.
+  if (newShape.empty()) {
+    newShape = oldShape.take_back();
+    newScalableDims = oldType.getScalableDims().take_back();
+  }
+
+  return VectorType::get(newShape, oldType.getElementType(), newScalableDims);
+}
+
+/// Folds shape_cast(create_mask) into a new create_mask
+class FoldShapeCastCreateMask final : public OpRewritePattern<ShapeCastOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(ShapeCastOp shapeOp,
+                                PatternRewriter &rewriter) const override {
+    Value shapeOpSrc = shapeOp->getOperand(0);
+    auto createMaskOp = shapeOpSrc.getDefiningOp<vector::CreateMaskOp>();
+    auto constantMaskOp = shapeOpSrc.getDefiningOp<vector::ConstantMaskOp>();
+    if (!createMaskOp && !constantMaskOp)
+      return failure();
+
+    VectorType shapeOpResTy = shapeOp.getResultVectorType();
+    VectorType shapeOpSrcTy = shapeOp.getSourceVectorType();
+
+    VectorType newVecType = trimTrailingOneDims(shapeOpSrcTy);
+    if (newVecType != shapeOpResTy)
+      return failure();
+
+    auto numDimsToDrop =
+        shapeOpSrcTy.getShape().size() - shapeOpResTy.getShape().size();
+
+    if (createMaskOp) {
+      auto maskOperands = createMaskOp.getOperands();
+      auto numMaskOperands = maskOperands.size();
+
+      // Check every mask dim size whether it can be dropped
+      for (size_t i = numMaskOperands - 1; i >= numMaskOperands - numDimsToDrop;
+           i--) {
+        auto constant = maskOperands[i].getDefiningOp<arith::ConstantIndexOp>();
+        // TODO: Support mask values other than 1 (0 might be the only other
+        // viable option)
+        if (!constant || (constant.value() != 1))
+          return failure();
+      }
+      SmallVector<Value> newMaskOperands =
+          maskOperands.drop_back(numDimsToDrop);
+
+      rewriter.replaceOpWithNewOp<vector::CreateMaskOp>(
+          shapeOp, shapeOp.getResultVectorType(), newMaskOperands);
+      return success();
+    }
+
+    if (constantMaskOp) {
+      auto maskDimSizes = constantMaskOp.getMaskDimSizes().getValue();
+      auto numMaskOperands = maskDimSizes.size();
+
+      // Check every mask dim size whether it can be dropped
+      for (size_t i = numMaskOperands - 1; i >= numMaskOperands - numDimsToDrop;
+           i--) {
+        // TODO: Support mask values other than 1 (0 might be the only other
+        // viable option)
+        if (cast<IntegerAttr>(maskDimSizes[i]).getValue() != 1)
+          return failure();
+      }
+
+      auto newMaskOperands =
+          constantMaskOp.getMaskDimSizesAttr().getValue().drop_back(
+              numDimsToDrop);
+      ArrayAttr newMaskOperandsAttr = rewriter.getArrayAttr(newMaskOperands);
+
+      rewriter.replaceOpWithNewOp<vector::ConstantMaskOp>(
+          shapeOp, shapeOp.getResultVectorType(), newMaskOperandsAttr);
+      return success();
+    }
+
+    return failure();
+  }
+};
+
 } // namespace
 
 void vector::TransposeOp::getCanonicalizationPatterns(
     RewritePatternSet &results, MLIRContext *context) {
-  results.add<FoldTransposeCreateMask, FoldTransposedScalarBroadcast,
-              TransposeFolder, FoldTransposeSplat>(context);
+  results
+      .add<FoldShapeCastCreateMask, FoldTransposeCreateMask,
+           FoldTransposedScalarBroadcast, TransposeFolder, FoldTransposeSplat>(
+          context);
 }
 
 void vector::TransposeOp::getTransp(SmallVectorImpl<int64_t> &results) {
