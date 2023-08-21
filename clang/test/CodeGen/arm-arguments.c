@@ -158,10 +158,10 @@ struct s30 f30() {}
 // PR11905
 struct s31 { char x; };
 void f31(struct s31 s) { }
-// AAPCS: @f31([1 x i32] %s.coerce)
+// AAPCS: @f31(i8 %s.coerce)
 // AAPCS: %s = alloca %struct.s31, align 1
-// AAPCS: [[TEMP:%.*]] = alloca [1 x i32], align 4
-// AAPCS: store [1 x i32] %s.coerce, ptr [[TEMP]], align 4
+// AAPCS: [[TEMP:%.*]] = getelementptr inbounds %struct.s31, ptr %s, i32 0, i32 0
+// AAPCS: store i8 %s.coerce, ptr [[TEMP]], align 1
 // APCS-GNU: @f31([1 x i32] %s.coerce)
 // APCS-GNU: %s = alloca %struct.s31, align 1
 // APCS-GNU: [[TEMP:%.*]] = alloca [1 x i32], align 4
@@ -184,8 +184,8 @@ struct s34 { char c; };
 void f34(struct s34 s);
 void g34(struct s34 *s) { f34(*s); }
 // AAPCS: @g34(ptr noundef %s)
-// AAPCS: %[[a:.*]] = alloca [1 x i32]
-// AAPCS: load [1 x i32], ptr %[[a]]
+// AAPCS: %[[a:.*]] = alloca ptr, align 4
+// AAPCS: load ptr, ptr %[[a]]
 
 // rdar://12596507
 struct s35

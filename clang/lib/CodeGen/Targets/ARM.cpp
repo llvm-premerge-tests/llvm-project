@@ -330,6 +330,50 @@ ABIArgInfo ARMABIInfo::classifyHomogeneousAggregate(QualType Ty,
   return ABIArgInfo::getDirect(nullptr, 0, nullptr, false, Align);
 }
 
+static bool isIntegerLikeType(QualType Ty, ASTContext &Context,
+                              llvm::LLVMContext &VMContext);
+
+// Returns true if `Ty` could be flattened into a valid ABIArgInfo `A`.
+static bool canFlatten(const RecordType *Ty, ASTContext &Ctx, llvm::LLVMContext &LLVMCtx, ABIArgInfo *A) {
+  // AAPCS32 6.5 Parameter Passing
+  // The base standard provides for passing arguments in core registers (r0-r3)
+  // and on the stack.
+  // ...
+  // When a Composite Type argument is assigned to core registers (either fully
+  // or partially), the behavior is as if the argument had been stored to memory
+  // at a word-aligned (4-byte) address and then loaded into consecutive
+  // registers using a suitable load-multiple instruction.
+
+  const RecordDecl *RD = Ty->getDecl();
+  const long NumFields = std::distance(RD->field_begin(), RD->field_end());
+  if (NumFields < 0 || NumFields > 4)
+    return false;
+
+  llvm::SmallVector<llvm::Type*, 4> ParamTypes;
+  uint64_t TotalSize = 0;
+  for (FieldDecl *FD : RD->fields()) {
+    QualType FieldType = FD->getType();
+    if (!FieldType->isIntegerType())
+      return false;
+
+    // Size in bits.
+    uint64_t TypeSize = Ctx.getTypeSize(FieldType);
+    if (TypeSize > 64)
+      return false;
+
+    TotalSize += TypeSize;
+    if (TotalSize > 16 * 8)
+      return false;
+
+    llvm::Type *T = llvm::Type::getIntNTy(LLVMCtx, TypeSize);
+    ParamTypes.push_back(T);
+  }
+
+  // llvm::dbgs() << llvm::StructType::get(LLVMCtx, ParamTypes) << "\n";
+  *A = ABIArgInfo::getDirect(llvm::StructType::get(LLVMCtx, ParamTypes));
+  return true;
+}
+
 ABIArgInfo ARMABIInfo::classifyArgumentType(QualType Ty, bool isVariadic,
                                             unsigned functionCallConv) const {
   // 6.1.2.1 The following argument types are VFP CPRCs:
@@ -427,11 +471,16 @@ ABIArgInfo ARMABIInfo::classifyArgumentType(QualType Ty, bool isVariadic,
     return coerceToIntArray(Ty, getContext(), getVMContext());
   }
 
+  // Try to flatten small structs.
+  if (getABIKind() == ARMABIKind::AAPCS && Ty->isStructureType()) {
+    ABIArgInfo A;
+    if (canFlatten(Ty->getAs<RecordType>(), getContext(), getVMContext(), &A))
+      return A;
+  }
+
   // Otherwise, pass by coercing to a structure of the appropriate size.
   llvm::Type* ElemTy;
   unsigned SizeRegs;
-  // FIXME: Try to match the types of the arguments more accurately where
-  // we can.
   if (TyAlign <= 4) {
     ElemTy = llvm::Type::getInt32Ty(getVMContext());
     SizeRegs = (getContext().getTypeSize(Ty) + 31) / 32;
