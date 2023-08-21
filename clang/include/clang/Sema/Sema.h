@@ -1353,6 +1353,22 @@ public:
 
     bool IsCurrentlyCheckingDefaultArgumentOrInitializer = false;
 
+    /// Whether rewrite the default argument.
+    bool IsRewriteDefaultArgument = false;
+
+    /// Whether we are currently in a context in which temporaries must be
+    /// lifetime-extended (Eg. in a for-range initializer).
+    bool IsInLifetimeExtendingContext = false;
+
+    /// Whether we should materialize temporaries in discarded expressions.
+    ///
+    /// [C++23][class.temporary]/p2.6 when a prvalue that has type other than cv
+    /// void appears as a discarded-value expression ([expr.context]).
+    ///
+    /// We do not materialize temporaries by default in order to avoid creating
+    /// unnecessary temporary objects.
+    bool MaterializePRValueInDiscardedExpression = false;
+
     // When evaluating immediate functions in the initializer of a default
     // argument or default member initializer, this is the declaration whose
     // default initializer is being evaluated and the location of the call
@@ -9832,6 +9848,24 @@ public:
     assert(!ExprEvalContexts.empty() &&
            "Must be in an expression evaluation context");
     return ExprEvalContexts.back().isImmediateFunctionContext();
+  }
+
+  bool isRewriteDefaultArgument() const {
+    assert(!ExprEvalContexts.empty() &&
+           "Must be in an expression evaluation context");
+    return ExprEvalContexts.back().IsRewriteDefaultArgument;
+  }
+
+  bool isInLifetimeExtendingContext() const {
+    assert(!ExprEvalContexts.empty() &&
+           "Must be in an expression evaluation context");
+    return ExprEvalContexts.back().IsInLifetimeExtendingContext;
+  }
+
+  bool ShouldMaterializePRValueInDiscardedExpression() const {
+    assert(!ExprEvalContexts.empty() &&
+           "Must be in an expression evaluation context");
+    return ExprEvalContexts.back().MaterializePRValueInDiscardedExpression;
   }
 
   bool isCheckingDefaultArgumentOrInitializer() const {
