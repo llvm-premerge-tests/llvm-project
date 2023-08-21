@@ -71,6 +71,10 @@ def FeatureExtendedConst :
       SubtargetFeature<"extended-const", "HasExtendedConst", "true",
                        "Enable extended const expressions">;
 
+def FeatureMultiMemories :
+      SubtargetFeature<"multi-memories", "HasMultiMemories", "true",
+                       "Enable multiple memories">;
+
 //===----------------------------------------------------------------------===//
 // Architectures.
 //===----------------------------------------------------------------------===//

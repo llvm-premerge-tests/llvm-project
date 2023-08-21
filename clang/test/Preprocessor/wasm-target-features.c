@@ -114,6 +114,16 @@
 // RUN:   | FileCheck %s -check-prefix=EXTENDED-CONST
 //
 // EXTENDED-CONST:#define __wasm_extended_const__ 1{{$}}
+//
+// RUN: %clang -E -dM %s -o - 2>&1 \
+// RUN:     -target wasm32-unknown-unknown -mmulti-memories \
+// RUN:   | FileCheck %s -check-prefix=MULTI-MEMORIES
+// RUN: %clang -E -dM %s -o - 2>&1 \
+// RUN:     -target wasm64-unknown-unknown -mmulti-memories \
+// RUN:   | FileCheck %s -check-prefix=MULTI-MEMORIES
+//
+// MULTI-MEMORIES:#define __wasm_multi_memories__ 1{{$}}
+//
 
 // RUN: %clang -E -dM %s -o - 2>&1 \
 // RUN:     -target wasm32-unknown-unknown -mcpu=mvp \
@@ -133,6 +143,7 @@
 // MVP-NOT:#define __wasm_tail_call__
 // MVP-NOT:#define __wasm_reference_types__
 // MVP-NOT:#define __wasm_extended_const__
+// MVP-NOT:#define __wasm_multi_memories__
 
 // RUN: %clang -E -dM %s -o - 2>&1 \
 // RUN:     -target wasm32-unknown-unknown -mcpu=bleeding-edge \
@@ -148,6 +159,7 @@
 // BLEEDING-EDGE-DAG:#define __wasm_atomics__ 1{{$}}
 // BLEEDING-EDGE-DAG:#define __wasm_mutable_globals__ 1{{$}}
 // BLEEDING-EDGE-DAG:#define __wasm_tail_call__ 1{{$}}
+// BLEEDING-EDGE-DAG:#define __wasm_multi_memories__ 1{{$}}
 // BLEEDING-EDGE-NOT:#define __wasm_unimplemented_simd128__ 1{{$}}
 // BLEEDING-EDGE-NOT:#define __wasm_exception_handling__ 1{{$}}
 // BLEEDING-EDGE-NOT:#define __wasm_multivalue__ 1{{$}}

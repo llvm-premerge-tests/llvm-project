@@ -70,6 +70,10 @@ def HasExtendedConst :
     Predicate<"Subtarget->hasExtendedConst()">,
     AssemblerPredicate<(all_of FeatureExtendedConst), "extended-const">;
 
+def HasMultiMemories :
+    Predicate<"Subtarget->hasMultiMemories()">,
+    AssemblerPredicate<(all_of FeatureMultiMemories), "multi-memories">;
+
 //===----------------------------------------------------------------------===//
 // WebAssembly-specific DAG Node Types.
 //===----------------------------------------------------------------------===//
