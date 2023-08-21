@@ -436,3 +436,25 @@ TEST(PWMAFunction, unionLexMinWithDivs) {
     EXPECT_TRUE(func1.unionLexMin(func2).isEqual(result));
   }
 }
+
+TEST(PWAFunctionTest, getAsRelation) {
+  PWMAFunction func = parsePWMAF({
+      {"(x, y)[N] : (N >= 0, x - N - 1 >= 0, y - N - 1 >= 0)",
+       "(x, y)[N] -> (x + y)"},
+      {"(x, y)[N] : (N >= 0, x - N >= 0, -y - N >= 0)", "(x, y)[N] -> (x - y)"},
+      {"(x, y)[N] : (N >= 0, -x - N - 1 >= 0, y - N >= 0)",
+       "(x, y)[N] -> (y - x)"},
+      {"(x, y)[N] : (N >= 0, -x - N - 1 >= 0, -y - N - 1 >= 0)",
+       "(x, y)[N] -> (-x - y)"},
+  });
+  PresburgerRelation rel = parsePresburgerRelationFromPresburgerSet(
+      {"(x, y, a)[N] : (N >= 0, x - N - 1 >= 0, y - N - 1 >= 0, a - x - y == "
+       "0)",
+       "(x, y, a)[N] : (N >= 0, x - N >= 0, -y - N >= 0, a - x + y == 0)",
+       "(x, y, a)[N] : (N >= 0, -x - N - 1 >= 0, y - N >= 0, a + x - y == 0)",
+       "(x, y, a)[N] : (N >= 0, -x - N - 1 >= 0, -y - N - 1 >= 0, a + x + y == "
+       "0)"},
+      2);
+
+  EXPECT_TRUE(rel.isEqual(func.getAsRelation()));
+}

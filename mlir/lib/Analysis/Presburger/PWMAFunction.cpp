@@ -48,6 +48,16 @@ PresburgerSet PWMAFunction::getDomain() const {
   return domain;
 }
 
+PresburgerRelation PWMAFunction::getAsRelation() const {
+  PresburgerRelation result = PresburgerRelation::getEmpty(space);
+  for (const Piece &piece : pieces) {
+    PresburgerRelation rel(piece.output.getAsRelation());
+    rel = rel.intersectDomain(piece.domain);
+    result.unionInPlace(rel);
+  }
+  return result;
+}
+
 void MultiAffineFunction::print(raw_ostream &os) const {
   space.print(os);
   os << "Division Representation:\n";

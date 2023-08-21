@@ -16,22 +16,6 @@
 using namespace mlir;
 using namespace presburger;
 
-static PresburgerRelation
-parsePresburgerRelationFromPresburgerSet(ArrayRef<StringRef> strs,
-                                         unsigned numDomain) {
-  assert(!strs.empty() && "strs should not be empty");
-
-  IntegerRelation rel = parseIntegerPolyhedron(strs[0]);
-  rel.convertVarKind(VarKind::SetDim, 0, numDomain, VarKind::Domain);
-  PresburgerRelation result(rel);
-  for (unsigned i = 1, e = strs.size(); i < e; ++i) {
-    rel = parseIntegerPolyhedron(strs[i]);
-    rel.convertVarKind(VarKind::SetDim, 0, numDomain, VarKind::Domain);
-    result.unionInPlace(rel);
-  }
-  return result;
-}
-
 TEST(PresburgerRelationTest, intersectDomainAndRange) {
   PresburgerRelation rel = parsePresburgerRelationFromPresburgerSet(
       {// (x, y) -> (x + N, y - N)

@@ -47,6 +47,22 @@ inline PresburgerSet parsePresburgerSet(ArrayRef<StringRef> strs) {
   return result;
 }
 
+inline PresburgerRelation
+parsePresburgerRelationFromPresburgerSet(ArrayRef<StringRef> strs,
+                                         unsigned numDomain) {
+  assert(!strs.empty() && "strs should not be empty");
+
+  IntegerRelation rel = parseIntegerPolyhedron(strs[0]);
+  rel.convertVarKind(VarKind::SetDim, 0, numDomain, VarKind::Domain);
+  PresburgerRelation result(rel);
+  for (unsigned i = 1, e = strs.size(); i < e; ++i) {
+    rel = parseIntegerPolyhedron(strs[i]);
+    rel.convertVarKind(VarKind::SetDim, 0, numDomain, VarKind::Domain);
+    result.unionInPlace(rel);
+  }
+  return result;
+}
+
 inline MultiAffineFunction parseMultiAffineFunction(StringRef str) {
   MLIRContext context(MLIRContext::Threading::DISABLED);
 
