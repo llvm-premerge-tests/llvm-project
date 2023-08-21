@@ -1,3 +1,10 @@
+set(printf_config "")
+if(LIBC_TARGET_ARCHITECTURE_IS_GPU)
+  list(APPEND printf_config -DLIBC_COPT_PRINTF_DISABLE_WRITE_INT)
+  list(APPEND printf_config -DLIBC_COPT_PRINTF_DISABLE_INDEX_MODE)
+else()
+  list(APPEND printf_config -DLIBC_COPT_FLOAT_TO_STR_USE_MEGA_LONG_DOUBLE_TABLE)
+endif()
 
 add_header_library(
   core_structs
@@ -24,6 +31,8 @@ add_object_library(
     libc.src.__support.CPP.string_view
     libc.src.__support.CPP.type_traits
     libc.src.__support.common
+  COMPILE_OPTIONS
+    ${target_config}
 )
 
 add_object_library(
@@ -92,7 +101,7 @@ add_object_library(
     libc.src.__support.integer_to_string
     libc.src.__support.float_to_string
   COMPILE_OPTIONS
-    -DLIBC_COPT_FLOAT_TO_STR_USE_MEGA_LONG_DOUBLE_TABLE
+    ${target_config}
 )
 
 
