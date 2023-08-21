@@ -93,6 +93,10 @@ static cl::opt<unsigned> MinFunctionSize(
     "Don't specialize functions that have less than this number of "
     "instructions"));
 
+static cl::opt<unsigned> MaxCodeSizeGrowth(
+    "funcspec-max-codesize-growth", cl::init(3), cl::Hidden, cl::desc(
+    "Maximum codesize growth allowed per function"));
+
 static cl::opt<unsigned> MinCodeSizeSavings(
     "funcspec-min-codesize-savings", cl::init(20), cl::Hidden, cl::desc(
     "Reject specializations whose codesize savings are less than this"
@@ -859,6 +863,12 @@ bool FunctionSpecializer::findSpecializations(Function *F, unsigned FuncSize,
 
       // Discard unprofitable specialisations.
       if (!IsProfitable(B, Score))
+        continue;
+
+      // Discard specializations which exceed the codesize budget.
+      unsigned &CodeSizeGrowth = FunctionGrowth[F];
+      CodeSizeGrowth += FuncSize - B.CodeSize;
+      if (CodeSizeGrowth / FuncSize > MaxCodeSizeGrowth)
         continue;
 
       // Create a new specialisation entry.
