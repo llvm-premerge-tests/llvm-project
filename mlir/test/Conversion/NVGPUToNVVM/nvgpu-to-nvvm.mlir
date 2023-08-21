@@ -634,7 +634,7 @@ module @mymodule {
 !tensorMap = !nvgpu.tensormap.descriptor<tensor = memref<128x64xf16,3>, swizzle = swizzle_128b, l2promo=none, oob=zero, interleave=none>
 memref.global "private" @dynamicShmem : memref<0xf16,3>
 // CHECK-LABEL: func @create_wgmma_descriptor(
-func.func @create_wgmma_descriptor(%tensorMap : !tensorMap) -> i64{
+func.func @create_wgmma_descriptor(%tensorMap : !tensorMap) -> !nvgpu.wgmma.descriptor<tensor=memref<128x64xf16,3>>{
   %dynamicMem = memref.get_global @dynamicShmem : memref<0xf16, 3>
   %lhsShmem = memref.reinterpret_cast %dynamicMem to offset: [0], sizes: [128,64], strides: [64,1] : memref<0xf16, 3> to memref<128x64xf16,3>
     // CHECK: %[[S0:.+]] = memref.get_global @dynamicShmem : memref<0xf16, 3>
@@ -666,9 +666,10 @@ func.func @create_wgmma_descriptor(%tensorMap : !tensorMap) -> i64{
     // CHECK: %[[S25:.+]] = llvm.mlir.constant(0 : i64) : i64
     // CHECK: %[[S26:.+]] = llvm.shl %[[S7]], %[[S25]]  : i64
     // CHECK: %[[S27:.+]] = llvm.or %[[S8]], %[[S26]]  : i64
-    // CHECK: return %[[S8]] : i64
-  %descA = nvgpu.wgmma.generate.descriptor %lhsShmem, %tensorMap : memref<128x64xf16,3>, !tensorMap
-  func.return %descA : i64
+    // CHECK: %[[ret:.+]] = builtin.unrealized_conversion_cast %[[S8]] : i64 to !nvgpu.wgmma.descriptor<tensor = memref<128x64xf16, 3>> 
+    // CHECK: return %[[ret]]
+  %descA = nvgpu.wgmma.generate.descriptor %lhsShmem, %tensorMap : memref<128x64xf16,3>, !tensorMap -> !nvgpu.wgmma.descriptor<tensor=memref<128x64xf16,3>>
+  func.return %descA : !nvgpu.wgmma.descriptor<tensor=memref<128x64xf16,3>>
 }
 
 
