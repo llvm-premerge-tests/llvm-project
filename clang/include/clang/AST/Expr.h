@@ -3608,6 +3608,20 @@ public:
     return FPOptionsOverride();
   }
 
+  /// Return
+  //  True : If the cast expr has the volatileness in the cast node path and
+  //         DeclRefExprNode not has the volatile qualfiler like
+  //  |-ImplicitCastExpr 'int' <LValueToRValue>
+  //  | `-CXXStaticCastExpr 'volatile int' lvalue static_cast<volatile int &>
+  //  |   `-ImplicitCastExpr  'volatile int' lvalue <NoOp> part_of_explicit_cast
+  //  |     `-DeclRefExpr 'int' lvalue Var 'x' 'int'
+  //  False :  Otherwise.
+  bool changesVolatileQualification() {
+       return (this->isGLValue() &&
+               (this->getType().isVolatileQualified() !=
+               this->getSubExprAsWritten()->getType().isVolatileQualified()));
+  }
+
   static const FieldDecl *getTargetFieldForToUnionCast(QualType unionType,
                                                        QualType opType);
   static const FieldDecl *getTargetFieldForToUnionCast(const RecordDecl *RD,
