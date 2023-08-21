@@ -13,16 +13,69 @@
 
 #include "AMDGPU.h"
 #include "GCNSubtarget.h"
+#include "SIMachineFunctionInfo.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
-#include "llvm/IR/IntrinsicsAMDGPU.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/IntrinsicsAMDGPU.h"
 #include "llvm/IR/MDBuilder.h"
+#include "llvm/IR/Metadata.h"
+#include "llvm/Support/Alignment.h"
+#include "llvm/Support/MathExtras.h"
 #include "llvm/Target/TargetMachine.h"
+
 #define DEBUG_TYPE "amdgpu-lower-kernel-arguments"
 
 using namespace llvm;
 
 namespace {
+
+class PreloadKernelArgInfo {
+private:
+  Function &F;
+
+  const GCNSubtarget &ST;
+
+  unsigned NumFreeUserSGPRs;
+
+public:
+  SmallVector<llvm::Metadata *, 8> KernelArgMetadata;
+
+  PreloadKernelArgInfo(Function &F, const GCNSubtarget &ST) : F(F), ST(ST) {
+    setInitialFreeUserSGPRsCount();
+  }
+
+  // Returns the maximum number of user SGPRs that we have available to preload
+  // arguments.
+  void setInitialFreeUserSGPRsCount() {
+    const unsigned MaxUserSGRPs = ST.getMaxNumUserSGPRs();
+    GCNUserSGPRUsageInfo UserSGPRInfo(F, ST);
+
+    NumFreeUserSGPRs = MaxUserSGRPs - UserSGPRInfo.getNumUsedUserSGPRs();
+  }
+
+  unsigned allocPreloadSGPRs(bool IsInReg, bool InPreloadSequence,
+                             unsigned AllocSize, uint64_t ArgOffset,
+                             uint64_t LastExplicitArgOffset) {
+
+    if (!IsInReg || !InPreloadSequence)
+      return 0;
+
+    //  Check if this arguemnt may be loaded into the same register as the
+    //  previous argument.
+    if (!isAligned(Align(4), ArgOffset) && AllocSize < 4)
+      return 1;
+
+    // Pad SGPRs for kernarg alignment.
+    unsigned Padding = ArgOffset - LastExplicitArgOffset;
+    unsigned PaddingSGPRs = alignTo(Padding, 4) / 4;
+    unsigned NumPreloadSGPRs = alignTo(AllocSize, 4) / 4;
+    if (NumPreloadSGPRs + PaddingSGPRs > NumFreeUserSGPRs)
+      return 0;
+
+    NumFreeUserSGPRs -= (NumPreloadSGPRs + PaddingSGPRs);
+    return NumPreloadSGPRs;
+  }
+};
 
 class AMDGPULowerKernelArguments : public FunctionPass {
 public:
@@ -84,8 +137,17 @@ static bool lowerKernelArguments(Function &F, const TargetMachine &TM) {
       Attribute::getWithDereferenceableBytes(Ctx, TotalKernArgSize));
 
   uint64_t ExplicitArgOffset = 0;
+  // Preloaded kernel arguments must be sequential.
+  bool InPreloadSequence = true;
+  bool HasPreloadArgs = false;
+  PreloadKernelArgInfo PreloadInfo(F, ST);
+  MDNode *MD = F.getMetadata("preload_kernel_args");
+  if (!MD)
+    InPreloadSequence = false;
 
+  int Idx = -1;
   for (Argument &Arg : F.args()) {
+    Idx++;
     const bool IsByRef = Arg.hasByRefAttr();
     Type *ArgTy = IsByRef ? Arg.getParamByRefType() : Arg.getType();
     MaybeAlign ParamAlign = IsByRef ? Arg.getParamAlign() : std::nullopt;
@@ -95,10 +157,31 @@ static bool lowerKernelArguments(Function &F, const TargetMachine &TM) {
     uint64_t AllocSize = DL.getTypeAllocSize(ArgTy);
 
     uint64_t EltOffset = alignTo(ExplicitArgOffset, ABITypeAlign) + BaseOffset;
+    uint64_t LastExplicitArgOffset = ExplicitArgOffset;
     ExplicitArgOffset = alignTo(ExplicitArgOffset, ABITypeAlign) + AllocSize;
 
-    if (Arg.use_empty())
+    if (Arg.use_empty()) {
+      InPreloadSequence = false;
       continue;
+    }
+
+    // Try to preload this argument.
+    unsigned PreloadSGPRs = PreloadInfo.allocPreloadSGPRs(
+        Arg.hasInRegAttr(), InPreloadSequence, AllocSize, EltOffset,
+        LastExplicitArgOffset);
+    if (PreloadSGPRs && !Arg.getType()->isAggregateType()) {
+      // Preload this argument.
+      HasPreloadArgs = true;
+      MDBuilder MDB(Ctx);
+      auto *MDIndex =
+          MDB.createConstant(llvm::ConstantInt::get(Builder.getInt32Ty(), Idx));
+      auto *MDAllocSizeSGPRs = MDB.createConstant(
+          llvm::ConstantInt::get(Builder.getInt32Ty(), PreloadSGPRs));
+      PreloadInfo.KernelArgMetadata.push_back(
+          llvm::MDNode::get(Ctx, {MDIndex, MDAllocSizeSGPRs}));
+    } else {
+      InPreloadSequence = false;
+    }
 
     // If this is byval, the loads are already explicit in the function. We just
     // need to rewrite the pointer values.
@@ -221,6 +304,11 @@ static bool lowerKernelArguments(Function &F, const TargetMachine &TM) {
       Load->setName(Arg.getName() + ".load");
       Arg.replaceAllUsesWith(Load);
     }
+  }
+
+  if (HasPreloadArgs) {
+    F.setMetadata("preload_kernel_args",
+                  llvm::MDNode::get(Ctx, PreloadInfo.KernelArgMetadata));
   }
 
   KernArgSegment->addRetAttr(
