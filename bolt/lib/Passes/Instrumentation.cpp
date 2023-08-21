@@ -504,9 +504,6 @@ void Instrumentation::instrumentFunction(BinaryFunction &Function,
 }
 
 void Instrumentation::runOnFunctions(BinaryContext &BC) {
-  if (!BC.isX86())
-    return;
-
   const unsigned Flags = BinarySection::getFlags(/*IsReadOnly=*/false,
                                                  /*IsText=*/false,
                                                  /*IsAllocatable=*/true);
