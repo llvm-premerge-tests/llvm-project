@@ -16,6 +16,16 @@
 include "mlir/Pass/PassBase.td"
 include "mlir/Rewrite/PassUtil.td"
 
+def CommutativeOperandSort : Pass<"commutative-operand-sort"> {
+  let summary = "Sort operands of commutative operands in a deterministic way";
+  let description = [{
+    This pass implements a deterministic sorting algorithm for commutative
+    operands. This way commutative operations with swapped operands can be
+    treated as equal and removed by the CSE pass.
+  }];
+  let constructor = "mlir::createCommutativeOperandSortPass()";
+}
+
 def Canonicalizer : Pass<"canonicalize"> {
   let summary = "Canonicalize operations";
   let description = [{

@@ -28,6 +28,7 @@ class GreedyRewriteConfig;
 // Passes
 //===----------------------------------------------------------------------===//
 
+#define GEN_PASS_DECL_COMMUTATIVEOPERANDSORT
 #define GEN_PASS_DECL_CANONICALIZER
 #define GEN_PASS_DECL_CONTROLFLOWSINK
 #define GEN_PASS_DECL_CSEPASS
@@ -43,6 +44,9 @@ class GreedyRewriteConfig;
 #define GEN_PASS_DECL_SYMBOLPRIVATIZE
 #define GEN_PASS_DECL_TOPOLOGICALSORT
 #include "mlir/Transforms/Passes.h.inc"
+
+/// Creates a pass to deterministically sort Commutative operation operands
+std::unique_ptr<Pass> createCommutativeOperandSortPass();
 
 /// Creates an instance of the Canonicalizer pass, configured with default
 /// settings (which can be overridden by pass options on the command line).
