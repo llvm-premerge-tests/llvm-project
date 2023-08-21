@@ -7,7 +7,6 @@
 #define CLK_FILTER_LINEAR               0x20
 
 constant sampler_t glb_smp = CLK_ADDRESS_CLAMP_TO_EDGE|CLK_NORMALIZED_COORDS_TRUE|CLK_FILTER_NEAREST;
-// CHECK-COM-NOT: constant i32
 
 void fnc1(image1d_t img) {}
 // CHECK-SPIR: @fnc1(target("spirv.Image", void, 0, 0, 0, 0, 0, 0, 0)
