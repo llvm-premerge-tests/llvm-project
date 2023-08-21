@@ -3,6 +3,7 @@
 #include "llvm/ExecutionEngine/Orc/Core.h"
 #include "llvm/ExecutionEngine/Orc/ExecutionUtils.h"
 #include "llvm/ExecutionEngine/Orc/IRCompileLayer.h"
+#include "llvm/ExecutionEngine/Orc/IRPartitionLayer.h"
 #include "llvm/ExecutionEngine/Orc/IndirectionUtils.h"
 #include "llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h"
 #include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
@@ -82,7 +83,7 @@ public:
   ExecutionSession &getES() { return *ES; }
 
   Error addModule(ThreadSafeModule TSM) {
-    return CODLayer.add(MainJD, std::move(TSM));
+    return IPLayer.add(MainJD, std::move(TSM));
   }
 
   Expected<ExecutorSymbolDef> lookup(StringRef UnmangledName) {
@@ -107,13 +108,15 @@ private:
       IndirectStubsManagerBuilderFunction ISMBuilder,
       std::unique_ptr<DynamicLibrarySearchGenerator> ProcessSymbolsGenerator)
       : ES(std::move(ES)), DL(std::move(DL)),
-        MainJD(this->ES->createBareJITDylib("<main>")), LCTMgr(std::move(LCTMgr)),
+        MainJD(this->ES->createBareJITDylib("<main>")),
+        LCTMgr(std::move(LCTMgr)),
         CompileLayer(*this->ES, ObjLayer,
                      std::make_unique<ConcurrentIRCompiler>(std::move(JTMB))),
         S(Imps, *this->ES),
         SpeculateLayer(*this->ES, CompileLayer, S, Mangle, BlockFreqQuery()),
         CODLayer(*this->ES, SpeculateLayer, *this->LCTMgr,
-                 std::move(ISMBuilder)) {
+                 std::move(ISMBuilder)),
+        IPLayer(*this->ES, CODLayer) {
     MainJD.addGenerator(std::move(ProcessSymbolsGenerator));
     this->CODLayer.setImplMap(&Imps);
     this->ES->setDispatchTask(
@@ -148,6 +151,7 @@ private:
   RTDyldObjectLinkingLayer ObjLayer{*ES, createMemMgr};
   IRSpeculationLayer SpeculateLayer;
   CompileOnDemandLayer CODLayer;
+  IRPartitionLayer IPLayer;
 };
 
 int main(int argc, char *argv[]) {

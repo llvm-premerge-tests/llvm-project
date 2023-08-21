@@ -21,6 +21,7 @@
 #include "llvm/ExecutionEngine/Orc/ExecutionUtils.h"
 #include "llvm/ExecutionEngine/Orc/ExecutorProcessControl.h"
 #include "llvm/ExecutionEngine/Orc/IRCompileLayer.h"
+#include "llvm/ExecutionEngine/Orc/IRPartitionLayer.h"
 #include "llvm/ExecutionEngine/Orc/IRTransformLayer.h"
 #include "llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h"
 #include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
@@ -49,6 +50,7 @@ private:
   IRCompileLayer CompileLayer;
   IRTransformLayer OptimizeLayer;
   CompileOnDemandLayer CODLayer;
+  IRPartitionLayer IPLayer;
 
   JITDylib &MainJD;
 
@@ -71,6 +73,7 @@ public:
         CODLayer(*this->ES, OptimizeLayer,
                  this->EPCIU->getLazyCallThroughManager(),
                  [this] { return this->EPCIU->createIndirectStubsManager(); }),
+        IPLayer(*this->ES, CODLayer),
         MainJD(this->ES->createBareJITDylib("<main>")) {
     MainJD.addGenerator(
         cantFail(DynamicLibrarySearchGenerator::GetForCurrentProcess(
@@ -120,7 +123,7 @@ public:
     if (!RT)
       RT = MainJD.getDefaultResourceTracker();
 
-    return CODLayer.add(RT, std::move(TSM));
+    return IPLayer.add(RT, std::move(TSM));
   }
 
   Expected<ExecutorSymbolDef> lookup(StringRef Name) {
