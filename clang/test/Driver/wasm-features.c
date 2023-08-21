@@ -41,3 +41,12 @@
 // DEFAULT-NOT: "-target-feature" "-nontrapping-fptoint"
 // MVP-NOT: "-target-feature" "+nontrapping-fptoint"
 // BLEEDING-EDGE-NOT: "-target-feature" "-nontrapping-fptoint"
+
+// RUN: %clang --target=wasm32-unknown-unknown -### %s -mmulti-memory 2>&1 | FileCheck %s -check-prefix=MULTI-MEMORY
+// RUN: %clang --target=wasm32-unknown-unknown -### %s -mno-multi-memory 2>&1 | FileCheck %s -check-prefix=NO-MULTI-MEMORY
+
+// MULTI-MEMORY: "-target-feature" "+multi-memory"
+// NO-MULTI-MEMORY: "-target-feature" "-multi-memory"
+// DEFAULT-NOT: "-target-feature" "-multi-memory"
+// MVP-NOT: "-target-feature" "+multi-memory"
+// BLEEDING-EDGE-NOT: "-target-feature" "-multi-memory"
