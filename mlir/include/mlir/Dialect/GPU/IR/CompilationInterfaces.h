@@ -25,6 +25,15 @@ class ModuleTranslation;
 }
 namespace gpu {
 /// This class indicates that the attribute associated with this trait is a GPU
+/// target attribute. These kinds of attributes must implement an interface for
+/// handling the serialization of GPU Modules into strings.
+template <typename ConcreteType>
+class TargetAttrTrait
+    : public AttributeTrait::TraitBase<ConcreteType, TargetAttrTrait> {
+  // TODO: Verify the attribute promises or implements the interface.
+};
+
+/// This class indicates that the attribute associated with this trait is a GPU
 /// offloading translation attribute. These kinds of attributes must implement
 /// an interface for handling the translation of GPU offloading operations like
 /// `gpu.binary` & `gpu.launch_func`.
