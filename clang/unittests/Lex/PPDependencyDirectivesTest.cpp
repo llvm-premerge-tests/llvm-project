@@ -133,12 +133,7 @@ TEST_F(PPDependencyDirectivesTest, MacroGuard) {
   SmallVector<StringRef> IncludedFiles;
   PP.addPPCallbacks(std::make_unique<IncludeCollector>(PP, IncludedFiles));
   PP.EnterMainSourceFile();
-  while (true) {
-    Token tok;
-    PP.Lex(tok);
-    if (tok.is(tok::eof))
-      break;
-  }
+  (void)PP.LexAll();
 
   SmallVector<StringRef> ExpectedIncludes{
       "main.c", "./head1.h", "./head2.h", "./head2.h", "./head3.h", "./head3.h",
