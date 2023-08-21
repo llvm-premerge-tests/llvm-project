@@ -144,6 +144,8 @@ Improvements to Clang's diagnostics
   tautologies like ``x && !x`` and ``!x || x`` in expressions. This also
   makes ``-Winfinite-recursion`` diagnose more cases.
   (`#56035: <https://github.com/llvm/llvm-project/issues/56035>`_).
+- Clang now informs you that the ``_Alignas`` attribute on a struct is ignored, instead of
+  suggesting that it should be moved.
 
 Bug Fixes in This Version
 -------------------------

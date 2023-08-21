@@ -5333,22 +5333,28 @@ Decl *Sema::ParsedFreeStandingDeclSpec(Scope *S, AccessSpecifier AS,
   // __attribute__((aligned)) struct A;
   // Attributes should be placed after tag to apply to type declaration.
   if (!DS.getAttributes().empty() || !DeclAttrs.empty()) {
+    auto WarnAttributeIgnored = [this, &DS](const ParsedAttr &AL) {
+      if (AL.isC11AlignasAttribute()) {
+        // Don't use the message with placement with _Alignas.
+        // This is because C doesnt let you use _Alignas on type declarations.
+        Diag(AL.getLoc(), diag::warn_attribute_ignored)
+            << AL;
+      } else {
+        Diag(AL.getLoc(), AL.isRegularKeywordAttribute()
+                              ? diag::err_declspec_keyword_has_no_effect
+                              : diag::warn_declspec_attribute_ignored)
+            << AL << GetDiagnosticTypeSpecifierID(DS);
+      }
+    };
+
     DeclSpec::TST TypeSpecType = DS.getTypeSpecType();
     if (TypeSpecType == DeclSpec::TST_class ||
         TypeSpecType == DeclSpec::TST_struct ||
         TypeSpecType == DeclSpec::TST_interface ||
         TypeSpecType == DeclSpec::TST_union ||
         TypeSpecType == DeclSpec::TST_enum) {
-      for (const ParsedAttr &AL : DS.getAttributes())
-        Diag(AL.getLoc(), AL.isRegularKeywordAttribute()
-                              ? diag::err_declspec_keyword_has_no_effect
-                              : diag::warn_declspec_attribute_ignored)
-            << AL << GetDiagnosticTypeSpecifierID(DS);
-      for (const ParsedAttr &AL : DeclAttrs)
-        Diag(AL.getLoc(), AL.isRegularKeywordAttribute()
-                              ? diag::err_declspec_keyword_has_no_effect
-                              : diag::warn_declspec_attribute_ignored)
-            << AL << GetDiagnosticTypeSpecifierID(DS);
+      llvm::for_each(DS.getAttributes(), WarnAttributeIgnored);
+      llvm::for_each(DeclAttrs, WarnAttributeIgnored);
     }
   }
 
