@@ -303,8 +303,7 @@ define i1 @isqnan_float(float %x) nounwind {
 ; CHECK-NEXT:    xscvdpspn 0, 1
 ; CHECK-NEXT:    xststdcsp 1, 1, 64
 ; CHECK-NEXT:    mffprwz 3, 0
-; CHECK-NEXT:    srwi 3, 3, 22
-; CHECK-NEXT:    andi. 3, 3, 1
+; CHECK-NEXT:    rlwinm. 3, 3, 10, 31, 31
 ; CHECK-NEXT:    li 3, 1
 ; CHECK-NEXT:    crnand 20, 6, 1
 ; CHECK-NEXT:    isel 3, 0, 3, 20
@@ -334,8 +333,7 @@ define i1 @isqnan_fp128(fp128 %x) nounwind {
 ; CHECK-NEXT:    li 3, 12
 ; CHECK-NEXT:    xststdcqp 1, 2, 64
 ; CHECK-NEXT:    vextuwrx 3, 3, 2
-; CHECK-NEXT:    srwi 3, 3, 15
-; CHECK-NEXT:    andi. 3, 3, 1
+; CHECK-NEXT:    rlwinm. 3, 3, 17, 31, 31
 ; CHECK-NEXT:    li 3, 1
 ; CHECK-NEXT:    crnand 20, 6, 1
 ; CHECK-NEXT:    isel 3, 0, 3, 20

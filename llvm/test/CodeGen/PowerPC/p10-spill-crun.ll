@@ -65,8 +65,7 @@ define dso_local void @P10_Spill_CR_UN(ptr %arg, ptr %arg1, i32 %arg2) local_unn
 ; CHECK-NEXT:    crnot 4*cr2+eq, eq
 ; CHECK-NEXT:    bl call_2@notoc
 ; CHECK-NEXT:    mr r27, r3
-; CHECK-NEXT:    srwi r3, r28, 4
-; CHECK-NEXT:    andi. r3, r3, 1
+; CHECK-NEXT:    rlwinm. r3, r28, 28, 31, 31
 ; CHECK-NEXT:    crmove 4*cr2+gt, gt
 ; CHECK-NEXT:    bc 12, 4*cr5+lt, .LBB0_2
 ; CHECK-NEXT:  # %bb.1: # %bb9
@@ -74,8 +73,7 @@ define dso_local void @P10_Spill_CR_UN(ptr %arg, ptr %arg1, i32 %arg2) local_unn
 ; CHECK-NEXT:    mr r4, r30
 ; CHECK-NEXT:    bl call_3@notoc
 ; CHECK-NEXT:  .LBB0_2: # %bb12
-; CHECK-NEXT:    srwi r3, r28, 7
-; CHECK-NEXT:    andi. r3, r3, 1
+; CHECK-NEXT:    rlwinm. r3, r28, 25, 31, 31
 ; CHECK-NEXT:    crmove 4*cr2+un, gt
 ; CHECK-NEXT:    bc 12, 4*cr2+eq, .LBB0_7
 ; CHECK-NEXT:  # %bb.3: # %bb37
@@ -213,8 +211,7 @@ define dso_local void @P10_Spill_CR_UN(ptr %arg, ptr %arg1, i32 %arg2) local_unn
 ; CHECK-BE-NEXT:    bl call_2
 ; CHECK-BE-NEXT:    nop
 ; CHECK-BE-NEXT:    mr r27, r3
-; CHECK-BE-NEXT:    srwi r3, r28, 4
-; CHECK-BE-NEXT:    andi. r3, r3, 1
+; CHECK-BE-NEXT:    rlwinm. r3, r28, 28, 31, 31
 ; CHECK-BE-NEXT:    crmove 4*cr2+gt, gt
 ; CHECK-BE-NEXT:    bc 12, 4*cr5+lt, .LBB0_2
 ; CHECK-BE-NEXT:  # %bb.1: # %bb9
@@ -223,8 +220,7 @@ define dso_local void @P10_Spill_CR_UN(ptr %arg, ptr %arg1, i32 %arg2) local_unn
 ; CHECK-BE-NEXT:    bl call_3
 ; CHECK-BE-NEXT:    nop
 ; CHECK-BE-NEXT:  .LBB0_2: # %bb12
-; CHECK-BE-NEXT:    srwi r3, r28, 7
-; CHECK-BE-NEXT:    andi. r3, r3, 1
+; CHECK-BE-NEXT:    rlwinm. r3, r28, 25, 31, 31
 ; CHECK-BE-NEXT:    crmove 4*cr2+un, gt
 ; CHECK-BE-NEXT:    bc 12, 4*cr2+eq, .LBB0_7
 ; CHECK-BE-NEXT:  # %bb.3: # %bb37

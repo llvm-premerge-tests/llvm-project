@@ -142,8 +142,7 @@ define i32 @xvtdivdp_andi(<2 x double> %a, <2 x double> %b) {
 ; CHECK-NEXT:    xvtdivdp cr0, v2, v3
 ; CHECK-NEXT:    li r4, 222
 ; CHECK-NEXT:    mfocrf r3, 128
-; CHECK-NEXT:    srwi r3, r3, 28
-; CHECK-NEXT:    andi. r3, r3, 2
+; CHECK-NEXT:    rlwinm. r3, r3, 4, 30, 30
 ; CHECK-NEXT:    li r3, 22
 ; CHECK-NEXT:    iseleq r3, r4, r3
 ; CHECK-NEXT:    blr

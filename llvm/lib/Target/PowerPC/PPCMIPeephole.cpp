@@ -1081,6 +1081,8 @@ bool PPCMIPeephole::simplifyCode() {
                       combineSEXTAndSHL(MI, ToErase);
         break;
       }
+      case PPC::ANDI_rec:
+      case PPC::ANDI8_rec:
       case PPC::RLWINM:
       case PPC::RLWINM_rec:
       case PPC::RLWINM8:

@@ -3852,24 +3852,36 @@ static bool sameWidthMIs(MachineInstr *SrcMI, MachineInstr *MI, bool &Is64Bit) {
   unsigned Opc = MI->getOpcode();
   unsigned SrcOpc = SrcMI->getOpcode();
   if ((SrcOpc == PPC::RLWINM8 || SrcOpc == PPC::RLWINM8_rec) &&
-      (Opc == PPC::RLWINM8 || Opc == PPC::RLWINM8_rec)) {
+      (Opc == PPC::RLWINM8 || Opc == PPC::RLWINM8_rec ||
+       Opc == PPC::ANDI8_rec)) {
     Is64Bit = true;
     return true;
   }
   if ((SrcOpc == PPC::RLWINM || SrcOpc == PPC::RLWINM_rec) &&
-      (Opc == PPC::RLWINM || Opc == PPC::RLWINM_rec))
+      (Opc == PPC::RLWINM || Opc == PPC::RLWINM_rec || Opc == PPC::ANDI_rec))
     return true;
   return false;
 }
 
-// This function tries to combine two RLWINMs. We not only perform such
-// optimization in SSA, but also after RA, since some RLWINM is generated after
-// RA.
+static void getRLWINMOps(MachineInstr &MI, uint32_t &SH, uint32_t &MB,
+                         uint32_t &ME) {
+  assert((MI.getOperand(2).isImm() && MI.getOperand(3).isImm() &&
+          MI.getOperand(4).isImm()) &&
+         "Invalid PPC::RLWINM Instruction!");
+  SH = MI.getOperand(2).getImm();
+  MB = MI.getOperand(3).getImm();
+  ME = MI.getOperand(4).getImm();
+  assert((ME < 32 && MB < 32) && "Invalid PPC::RLWINM Instruction!");
+}
+
+// This function tries to optimize rotate and mask instructions in both SSA and
+// post-RA.
 bool PPCInstrInfo::simplifyRotateAndMaskInstr(MachineInstr &MI,
                                               MachineInstr *&ToErase) const {
   unsigned UseOpc = MI.getOpcode();
   if (UseOpc != PPC::RLWINM && UseOpc != PPC::RLWINM_rec &&
-      UseOpc != PPC::RLWINM8 && UseOpc != PPC::RLWINM8_rec)
+      UseOpc != PPC::RLWINM8 && UseOpc != PPC::RLWINM8_rec &&
+      UseOpc != PPC::ANDI_rec && UseOpc != PPC::ANDI8_rec)
     return false;
 
   // Find the source MI.
@@ -3906,6 +3918,8 @@ bool PPCInstrInfo::simplifyRotateAndMaskInstr(MachineInstr &MI,
   bool IsMIUseRegKilled = MI.getOperand(1).isKill();
   if (MRI->isSSA()) {
     CanErase = !SrcMI->hasImplicitDef() && MRI->hasOneNonDBGUse(FoldingReg);
+    if (!CanErase && !MI.getOperand(1).isKill())
+      return false;
   } else {
     bool KillFwdDefMI = !OtherIntermediateUse && IsMIUseRegKilled;
     CanErase = KillFwdDefMI && !SrcMI->hasImplicitDef();
@@ -3919,18 +3933,48 @@ bool PPCInstrInfo::simplifyRotateAndMaskInstr(MachineInstr &MI,
       return false;
   }
 
-  assert((MI.getOperand(2).isImm() && MI.getOperand(3).isImm() &&
-          MI.getOperand(4).isImm() && SrcMI->getOperand(2).isImm() &&
-          SrcMI->getOperand(3).isImm() && SrcMI->getOperand(4).isImm()) &&
-         "Invalid PPC::RLWINM Instruction!");
-  uint64_t SHSrc = SrcMI->getOperand(2).getImm();
-  uint64_t SHMI = MI.getOperand(2).getImm();
-  uint64_t MBSrc = SrcMI->getOperand(3).getImm();
-  uint64_t MBMI = MI.getOperand(3).getImm();
-  uint64_t MESrc = SrcMI->getOperand(4).getImm();
-  uint64_t MEMI = MI.getOperand(4).getImm();
-  assert((MEMI < 32 && MESrc < 32 && MBMI < 32 && MBSrc < 32) &&
-         "Invalid PPC::RLWINM Instruction!");
+  uint32_t SHSrc, MBSrc, MESrc;
+  getRLWINMOps(*SrcMI, SHSrc, MBSrc, MESrc);
+  // Note that in APInt, the least significant bit is at index 0, while in
+  // PowerPC ISA, the least significant bit is at index 63.
+  APInt MaskSrc = APInt::getBitsSetWithWrap(32, 32 - MESrc - 1, 32 - MBSrc);
+  // Mark the special cases of all bits in a 64-bit register or the low 32 bits
+  // in a 64-bit register.
+  bool SrcMaskFull = (MBSrc - MESrc == 1) || (MBSrc == 0 && MESrc == 31);
+  bool Simplified = false;
+  uint32_t SHMI, MBMI, MEMI, NewMB, NewME;
+  APInt FinalMask;
+
+  // Pattern 1: RLWINM_ + RLWINM_
+  if (MI.getOpcode() == PPC::RLWINM || MI.getOpcode() == PPC::RLWINM_rec ||
+      MI.getOpcode() == PPC::RLWINM8 || MI.getOpcode() == PPC::RLWINM8_rec) {
+    getRLWINMOps(MI, SHMI, MBMI, MEMI);
+    // For other MBMI > MEMI cases, just return.
+    if ((MBMI > MEMI) && !SrcMaskFull)
+      return false;
+    // Handle MBMI <= MEMI cases.
+    // In MI, we only need low 32 bits of SrcMI, just consider about low 32
+    // bit of SrcMI mask.
+    APInt MaskMI = APInt::getBitsSetWithWrap(32, 32 - MEMI - 1, 32 - MBMI);
+    APInt RotatedSrcMask = MaskSrc.rotl(SHMI);
+    FinalMask = (RotatedSrcMask & MaskMI).getZExtValue();
+  }
+  // Pattern 2: RLWINM_ + ANDI_
+  else {
+    assert(MI.getOperand(2).isImm() && "Invalid PPC::ANDI_rec Instruction!");
+    uint32_t AndImm = MI.getOperand(2).getImm();
+    assert(isUIntN(16, AndImm) && "Invalid PPC::ANDI_rec Instruction!");
+    // We can treat ANDI_rec as RLWINM_rec with the SH = 0 if the AndImm
+    // contains a non-empty sequence of ones with the remainder zeros
+    // (isRunOfOnes).
+    SHMI = 0;
+    FinalMask = MaskSrc.getZExtValue() & AndImm;
+    // If AndImm isn't isRunOfOnes, we can only do the folding when FinalMask
+    // equals to zero.
+    if (!isShiftedMask_32(AndImm) && FinalMask != 0)
+      return false;
+  }
+
   // If MBMI is bigger than MEMI, we always can not get run of ones.
   // RotatedSrcMask non-wrap:
   //                 0........31|32........63
@@ -3951,26 +3995,6 @@ bool PPCInstrInfo::simplifyRotateAndMaskInstr(MachineInstr &MI,
   // MaskMI:         -----------|--E  B------
   // Result:         -----------|---  -------  (Good candidate)
 
-  // Mark the special cases of all bits in a 64-bit register or the low 32 bits
-  // in a 64-bit register.
-  bool SrcMaskFull = (MBSrc - MESrc == 1) || (MBSrc == 0 && MESrc == 31);
-
-  // For other MBMI > MEMI cases, just return.
-  if ((MBMI > MEMI) && !SrcMaskFull)
-    return false;
-
-  // Handle MBMI <= MEMI cases.
-  APInt MaskMI = APInt::getBitsSetWithWrap(32, 32 - MEMI - 1, 32 - MBMI);
-  // In MI, we only need low 32 bits of SrcMI, just consider about low 32
-  // bit of SrcMI mask. Note that in APInt, the least significant bit is at
-  // index 0, while in PowerPC ISA, the least significant bit is at index 63.
-  APInt MaskSrc = APInt::getBitsSetWithWrap(32, 32 - MESrc - 1, 32 - MBSrc);
-
-  APInt RotatedSrcMask = MaskSrc.rotl(SHMI);
-  APInt FinalMask = RotatedSrcMask & MaskMI;
-  uint32_t NewMB, NewME;
-  bool Simplified = false;
-
   // If final mask is 0, replace MI with LI/LI8 0 or ANDI_rec/ANDI8_rec 0.
   if (FinalMask.isZero()) {
     Simplified = true;
@@ -3980,7 +4004,8 @@ bool PPCInstrInfo::simplifyRotateAndMaskInstr(MachineInstr &MI,
     LoadImmediateInfo LII;
     LII.Imm = 0;
     LII.Is64Bit = Is64Bit;
-    LII.SetCR = (UseOpc == PPC::RLWINM_rec || UseOpc == PPC::RLWINM8_rec);
+    LII.SetCR = (UseOpc == PPC::RLWINM_rec || UseOpc == PPC::RLWINM8_rec ||
+                 UseOpc == PPC::ANDI_rec || UseOpc == PPC::ANDI8_rec);
     replaceInstrWithLI(MI, LII);
     if (LII.SetCR) {
       MI.getOperand(1).setReg(ForwardReg);
@@ -4008,8 +4033,13 @@ bool PPCInstrInfo::simplifyRotateAndMaskInstr(MachineInstr &MI,
     LLVM_DEBUG(MI.dump());
 
     MI.getOperand(2).setImm((SHSrc + SHMI) % 32);
+    if (UseOpc == PPC::ANDI_rec || UseOpc == PPC::ANDI8_rec) {
+      MI.setDesc(get(Is64Bit ? PPC::RLWINM8_rec : PPC::RLWINM_rec));
+      MI.addOperand(MachineOperand::CreateImm(NewMB));
+      MI.addOperand(MachineOperand::CreateImm(NewME));
+    }
     // If SrcMI mask is full, do not update MBMI and MEMI.
-    if (!SrcMaskFull) {
+    else if (!SrcMaskFull) {
       MI.getOperand(3).setImm(NewMB);
       MI.getOperand(4).setImm(NewME);
     }
