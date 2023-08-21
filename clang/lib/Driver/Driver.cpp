@@ -36,7 +36,6 @@
 #include "ToolChains/MSP430.h"
 #include "ToolChains/MSVC.h"
 #include "ToolChains/MinGW.h"
-#include "ToolChains/Minix.h"
 #include "ToolChains/MipsLinux.h"
 #include "ToolChains/Myriad.h"
 #include "ToolChains/NaCl.h"
@@ -6192,9 +6191,6 @@ const ToolChain &Driver::getToolChain(const ArgList &Args,
                                                                Args);
       else
         TC = std::make_unique<toolchains::FreeBSD>(*this, Target, Args);
-      break;
-    case llvm::Triple::Minix:
-      TC = std::make_unique<toolchains::Minix>(*this, Target, Args);
       break;
     case llvm::Triple::Linux:
     case llvm::Triple::ELFIAMCU:
