@@ -784,6 +784,7 @@ visitPointers(Value *StartPtr, const Loop &InnermostLoop,
   SmallVector<Value *> WorkList;
   WorkList.push_back(StartPtr);
 
+  ScalarEvolution &SE = *PSE.getSE();
   while (!WorkList.empty()) {
     Value *Ptr = WorkList.pop_back_val();
     if (!Visited.insert(Ptr).second)
@@ -796,8 +797,38 @@ visitPointers(Value *StartPtr, const Loop &InnermostLoop,
         PN->getParent() != InnermostLoop.getHeader()) {
       for (const Use &Inc : PN->incoming_values())
         WorkList.push_back(Inc);
-    } else
+    } else {
+      auto *GEP = dyn_cast<GetElementPtrInst>(Ptr);
+      if (GEP && GEP->getNumOperands() == 2) {
+        if (auto *PhiI = dyn_cast<PHINode>(GEP->getOperand(0))) {
+          if (PhiI->getNumOperands() == 2) {
+            const SCEV *BaseA = SE.getSCEV(PhiI->getIncomingValue(0));
+            const SCEV *BaseB = SE.getSCEV(PhiI->getIncomingValue(1));
+            const SCEV *Offset = SE.getSCEV(GEP->getOperand(1));
+
+            // Find the pointer type we need to extend to.
+            Type *IntPtrTy = SE.getEffectiveSCEVType(BaseA->getType());
+            if (SE.getTypeSizeInBits(Offset->getType()) <
+                SE.getTypeSizeInBits(BaseA->getType()))
+              Offset = SE.getSignExtendExpr(Offset, IntPtrTy);
+
+            // Scale up the offsets by the size of the type, then add to the
+            // bases.
+            Type *SourceTy = GEP->getResultElementType();
+            const SCEV *Size = SE.getSizeOfExpr(IntPtrTy, SourceTy);
+            const SCEV *Scaled = SE.getMulExpr(Size, Offset);
+
+            auto *PtrA = SE.getAddExpr(BaseA, Scaled, SCEV::FlagNUW);
+            auto *PtrB = SE.getAddExpr(BaseB, Scaled, SCEV::FlagNUW);
+            AddPointer(Ptr, PtrA);
+            AddPointer(Ptr, PtrB);
+            continue;
+          }
+        }
+      }
+
       AddPointer(Ptr, replaceSymbolicStrideSCEV(PSE, SymbolicStrides, Ptr));
+    }
   }
 }
 
@@ -910,6 +941,22 @@ static void findForkedSCEVs(
     // then we just bail out and return the generic SCEV.
     findForkedSCEVs(SE, L, I->getOperand(1), ChildScevs, Depth);
     findForkedSCEVs(SE, L, I->getOperand(2), ChildScevs, Depth);
+    if (ChildScevs.size() == 2) {
+      ScevList.push_back(ChildScevs[0]);
+      ScevList.push_back(ChildScevs[1]);
+    } else
+      ScevList.emplace_back(Scev, !isGuaranteedNotToBeUndefOrPoison(Ptr));
+    break;
+  }
+  case Instruction::PHI: {
+    SmallVector<PointerIntPair<const SCEV *, 1, bool>, 2> ChildScevs;
+    // A phi means we've found a forked pointer, but we currently only
+    // support a single phi per pointer so if there's another behind this
+    // then we just bail out and return the generic SCEV.
+    if (I->getNumOperands() == 2) {
+      findForkedSCEVs(SE, L, I->getOperand(0), ChildScevs, Depth);
+      findForkedSCEVs(SE, L, I->getOperand(1), ChildScevs, Depth);
+    }
     if (ChildScevs.size() == 2) {
       ScevList.push_back(ChildScevs[0]);
       ScevList.push_back(ChildScevs[1]);
@@ -1073,14 +1120,20 @@ bool AccessAnalysis::canCheckPtrAtRT(RuntimePointerChecking &RtCheck,
     SmallVector<MemAccessInfo, 4> AccessInfos;
     for (const auto &A : AS) {
       Value *Ptr = A.getValue();
-      const SCEV *PtrScev = replaceSymbolicStrideSCEV(PSE, StridesMap, Ptr);
-      bool IsWrite = Accesses.count(MemAccessInfo(Ptr, true, PtrScev));
+      SmallVector<MemAccessInfo> Infos;
+      visitPointers(Ptr, *TheLoop, PSE, StridesMap,
+                    [&Infos](Value *Ptr, const SCEV *PtrExpr) {
+                      Infos.emplace_back(Ptr, true, PtrExpr);
+                    });
+      for (auto &Tmp : Infos) {
+        bool IsWrite = Accesses.count(Tmp);
 
-      if (IsWrite)
-        ++NumWritePtrChecks;
-      else
-        ++NumReadPtrChecks;
-      AccessInfos.emplace_back(Ptr, IsWrite, PtrScev);
+        if (IsWrite)
+          ++NumWritePtrChecks;
+        else
+          ++NumReadPtrChecks;
+        AccessInfos.emplace_back(Ptr, IsWrite, Tmp.getPtrExpr());
+      }
     }
 
     // We do not need runtime checks for this alias set, if there are no writes
@@ -1257,66 +1310,70 @@ void AccessAnalysis::processMemAccesses(
           if (UseDeferred && !IsReadOnlyPtr)
             continue;
 
-          const SCEV *PtrExpr =
-              replaceSymbolicStrideSCEV(PSE, SymbolicStrides, Ptr);
-          // Otherwise, the pointer must be in the PtrAccessSet, either as a
-          // read or a write.
-          assert(((IsReadOnlyPtr && UseDeferred) || IsWrite ||
-                  S.count(MemAccessInfo(Ptr, false, PtrExpr))) &&
-                 "Alias-set pointer not in the access set?");
+          visitPointers(
+              Ptr, *TheLoop, PSE, SymbolicStrides,
+              [&](Value *Ptr, const SCEV *PtrExpr) {
+                MemAccessInfo Access(Ptr, IsWrite, PtrExpr);
+                // Otherwise, the pointer must be in the PtrAccessSet, either as
+                // a read or a write.
+                assert(((IsReadOnlyPtr && UseDeferred) || IsWrite ||
+                        S.count(Access)) &&
+                       "Alias-set pointer not in the access set?");
 
-          MemAccessInfo Access(Ptr, IsWrite, PtrExpr);
-          DepCands.insert(Access);
+                DepCands.insert(Access);
 
-          // Memorize read-only pointers for later processing and skip them in
-          // the first round (they need to be checked after we have seen all
-          // write pointers). Note: we also mark pointer that are not
-          // consecutive as "read-only" pointers (so that we check
-          // "a[b[i]] +="). Hence, we need the second check for "!IsWrite".
-          if (!UseDeferred && IsReadOnlyPtr) {
-            // We only use the pointer keys, the types vector values don't
-            // matter.
-            DeferredAccesses.insert({Access, {}});
-            continue;
-          }
+                // Memorize read-only pointers for later processing and skip
+                // them in the first round (they need to be checked after we
+                // have seen all write pointers). Note: we also mark pointer
+                // that are not consecutive as "read-only" pointers (so that we
+                // check "a[b[i]] +="). Hence, we need the second check for
+                // "!IsWrite".
+                if (!UseDeferred && IsReadOnlyPtr) {
+                  // We only use the pointer keys, the types vector values don't
+                  // matter.
+                  DeferredAccesses.insert({Access, {}});
+                  return;
+                }
 
-          // If this is a write - check other reads and writes for conflicts. If
-          // this is a read only check other writes for conflicts (but only if
-          // there is no other write to the ptr - this is an optimization to
-          // catch "a[i] = a[i] + " without having to do a dependence check).
-          if ((IsWrite || IsReadOnlyPtr) && SetHasWrite) {
-            CheckDeps.push_back(Access);
-            IsRTCheckAnalysisNeeded = true;
-          }
+                // If this is a write - check other reads and writes for
+                // conflicts. If this is a read only check other writes for
+                // conflicts (but only if there is no other write to the ptr -
+                // this is an optimization to catch "a[i] = a[i] + " without
+                // having to do a dependence check).
+                if ((IsWrite || IsReadOnlyPtr) && SetHasWrite) {
+                  CheckDeps.push_back(Access);
+                  IsRTCheckAnalysisNeeded = true;
+                }
 
-          if (IsWrite)
-            SetHasWrite = true;
+                if (IsWrite)
+                  SetHasWrite = true;
 
-          // Create sets of pointers connected by a shared alias set and
-          // underlying object.
-          typedef SmallVector<const Value *, 16> ValueVector;
-          ValueVector TempObjects;
+                // Create sets of pointers connected by a shared alias set and
+                // underlying object.
+                typedef SmallVector<const Value *, 16> ValueVector;
+                ValueVector TempObjects;
 
-          getUnderlyingObjects(Ptr, TempObjects, LI);
-          LLVM_DEBUG(dbgs()
-                     << "Underlying objects for pointer " << *Ptr << "\n");
-          for (const Value *UnderlyingObj : TempObjects) {
-            // nullptr never alias, don't join sets for pointer that have "null"
-            // in their UnderlyingObjects list.
-            if (isa<ConstantPointerNull>(UnderlyingObj) &&
-                !NullPointerIsDefined(
-                    TheLoop->getHeader()->getParent(),
-                    UnderlyingObj->getType()->getPointerAddressSpace()))
-              continue;
+                getUnderlyingObjects(Ptr, TempObjects, LI);
+                LLVM_DEBUG(dbgs() << "Underlying objects for pointer " << *Ptr
+                                  << "\n");
+                for (const Value *UnderlyingObj : TempObjects) {
+                  // nullptr never alias, don't join sets for pointer that have
+                  // "null" in their UnderlyingObjects list.
+                  if (isa<ConstantPointerNull>(UnderlyingObj) &&
+                      !NullPointerIsDefined(
+                          TheLoop->getHeader()->getParent(),
+                          UnderlyingObj->getType()->getPointerAddressSpace()))
+                    continue;
 
-            UnderlyingObjToAccessMap::iterator Prev =
-                ObjToLastAccess.find(UnderlyingObj);
-            if (Prev != ObjToLastAccess.end())
-              DepCands.unionSets(Access, Prev->second);
+                  UnderlyingObjToAccessMap::iterator Prev =
+                      ObjToLastAccess.find(UnderlyingObj);
+                  if (Prev != ObjToLastAccess.end())
+                    DepCands.unionSets(Access, Prev->second);
 
-            ObjToLastAccess[UnderlyingObj] = Access;
-            LLVM_DEBUG(dbgs() << "  " << *UnderlyingObj << "\n");
-          }
+                  ObjToLastAccess[UnderlyingObj] = Access;
+                  LLVM_DEBUG(dbgs() << "  " << *UnderlyingObj << "\n");
+                }
+              });
         }
       }
     }
