@@ -4557,6 +4557,17 @@ void FieldDecl::setCapturedVLAType(const VariableArrayType *VLAType) {
   CapturedVLAType = VLAType;
 }
 
+void FieldDecl::printName(raw_ostream &OS, const PrintingPolicy &Policy) const {
+  // Print unnamed members using name of their type.
+  if (isAnonymousStructOrUnion()) {
+    this->getType().print(OS, Policy);
+    return;
+  }
+  // Otherwise, do the normal printing.
+  DeclarationName Name = getDeclName();
+  Name.print(OS, Policy);
+}
+
 //===----------------------------------------------------------------------===//
 // TagDecl Implementation
 //===----------------------------------------------------------------------===//

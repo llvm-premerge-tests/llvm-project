@@ -167,6 +167,10 @@ Bug Fixes in This Version
   ``await_suspend`` could be misoptimized, including accesses to the awaiter
   object itself.
   (`#56301 <https://github.com/llvm/llvm-project/issues/56301>`_)
+- Clang now prints unnamed members in diagnostic messages instead of giving an
+  empty ''. Fixes
+  (`#63759 <https://github.com/llvm/llvm-project/issues/63759>`_)
+
 
 Bug Fixes to Compiler Builtins
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
