@@ -87,7 +87,6 @@ static_library("Driver") {
     "ToolChains/MSP430.cpp",
     "ToolChains/MSVC.cpp",
     "ToolChains/MinGW.cpp",
-    "ToolChains/Minix.cpp",
     "ToolChains/MipsLinux.cpp",
     "ToolChains/Myriad.cpp",
     "ToolChains/NaCl.cpp",
