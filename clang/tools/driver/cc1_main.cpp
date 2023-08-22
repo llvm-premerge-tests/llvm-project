@@ -25,6 +25,7 @@
 #include "clang/Frontend/TextDiagnosticPrinter.h"
 #include "clang/Frontend/Utils.h"
 #include "clang/FrontendTool/Utils.h"
+#include "clang/Tooling/ModuleBuildDaemon/Protocol.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/LinkAllPasses.h"
@@ -45,6 +46,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
 #include <cstdio>
+#include <filesystem>
 
 #ifdef CLANG_HAVE_RLIMITS
 #include <sys/resource.h>
@@ -242,6 +244,12 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
     Clang->getDiagnosticClient().finish();
     return 1;
   }
+
+#if LLVM_ON_UNIX
+  // handle module build daemon functionality if enabled
+  if (Clang->getInvocation().getFrontendOpts().ModuleBuildDaemon)
+    cc1modbuildd::updateCC1WithModuleBuildDaemon(*Clang, Argv0);
+#endif
 
   // Execute the frontend actions.
   {

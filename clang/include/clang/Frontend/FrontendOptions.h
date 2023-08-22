@@ -347,6 +347,9 @@ public:
   /// Whether to share the FileManager when building modules.
   unsigned ModulesShareFileManager : 1;
 
+  /// Connect to module build daemon
+  unsigned ModuleBuildDaemon : 1;
+
   CodeCompleteOptions CodeCompleteOpts;
 
   /// Specifies the output format of the AST.
