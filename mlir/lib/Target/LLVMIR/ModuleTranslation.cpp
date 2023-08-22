@@ -1309,8 +1309,11 @@ llvm::OpenMPIRBuilder *ModuleTranslation::getOpenMPBuilder() {
     // TODO: set the flags when available
     llvm::OpenMPIRBuilderConfig config(
         isTargetDevice, isGPU,
-        /* HasRequiresUnifiedSharedMemory */ false,
-        /* OpenMPOffloadMandatory */ false);
+        /* OpenMPOffloadMandatory = */ false,
+        /* HasRequiresReverseOffload = */ false,
+        /* HasRequiresUnifiedAddress = */ false,
+        /* HasRequiresUnifiedSharedMemory = */ false,
+        /* HasRequiresDynamicAllocators = */ false);
     ompBuilder->setConfig(config);
   }
   return ompBuilder.get();

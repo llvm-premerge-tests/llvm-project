@@ -24,12 +24,14 @@
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/IR/Attributes.h"
+#include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/CallingConv.h"
 #include "llvm/IR/Constant.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/Function.h"
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/MDBuilder.h"
@@ -334,6 +336,104 @@ BasicBlock *llvm::splitBBWithSuffix(IRBuilderBase &Builder, bool CreateBranch,
   return splitBB(Builder, CreateBranch, Old->getName() + Suffix);
 }
 
+//===----------------------------------------------------------------------===//
+// OpenMPIRBuilderConfig
+//===----------------------------------------------------------------------===//
+
+namespace {
+LLVM_ENABLE_BITMASK_ENUMS_IN_NAMESPACE();
+/// Values for bit flags for marking which requires clauses have been used.
+enum OpenMPOffloadingRequiresDirFlags {
+  /// flag undefined.
+  OMP_REQ_UNDEFINED = 0x000,
+  /// no requires directive present.
+  OMP_REQ_NONE = 0x001,
+  /// reverse_offload clause.
+  OMP_REQ_REVERSE_OFFLOAD = 0x002,
+  /// unified_address clause.
+  OMP_REQ_UNIFIED_ADDRESS = 0x004,
+  /// unified_shared_memory clause.
+  OMP_REQ_UNIFIED_SHARED_MEMORY = 0x008,
+  /// dynamic_allocators clause.
+  OMP_REQ_DYNAMIC_ALLOCATORS = 0x010,
+  LLVM_MARK_AS_BITMASK_ENUM(/*LargestValue=*/OMP_REQ_DYNAMIC_ALLOCATORS)
+};
+
+} // anonymous namespace
+
+OpenMPIRBuilderConfig::OpenMPIRBuilderConfig()
+    : RequiresFlags(OMP_REQ_UNDEFINED) {}
+
+OpenMPIRBuilderConfig::OpenMPIRBuilderConfig(
+    bool IsTargetDevice, bool IsGPU, bool OpenMPOffloadMandatory,
+    bool HasRequiresReverseOffload, bool HasRequiresUnifiedAddress,
+    bool HasRequiresUnifiedSharedMemory, bool HasRequiresDynamicAllocators)
+    : IsTargetDevice(IsTargetDevice), IsGPU(IsGPU),
+      OpenMPOffloadMandatory(OpenMPOffloadMandatory),
+      RequiresFlags(OMP_REQ_UNDEFINED) {
+  if (HasRequiresReverseOffload)
+    RequiresFlags |= OMP_REQ_REVERSE_OFFLOAD;
+  if (HasRequiresUnifiedAddress)
+    RequiresFlags |= OMP_REQ_UNIFIED_ADDRESS;
+  if (HasRequiresUnifiedSharedMemory)
+    RequiresFlags |= OMP_REQ_UNIFIED_SHARED_MEMORY;
+  if (HasRequiresDynamicAllocators)
+    RequiresFlags |= OMP_REQ_DYNAMIC_ALLOCATORS;
+}
+
+bool OpenMPIRBuilderConfig::hasRequiresReverseOffload() const {
+  return RequiresFlags & OMP_REQ_REVERSE_OFFLOAD;
+}
+
+bool OpenMPIRBuilderConfig::hasRequiresUnifiedAddress() const {
+  return RequiresFlags & OMP_REQ_UNIFIED_ADDRESS;
+}
+
+bool OpenMPIRBuilderConfig::hasRequiresUnifiedSharedMemory() const {
+  return RequiresFlags & OMP_REQ_UNIFIED_SHARED_MEMORY;
+}
+
+bool OpenMPIRBuilderConfig::hasRequiresDynamicAllocators() const {
+  return RequiresFlags & OMP_REQ_DYNAMIC_ALLOCATORS;
+}
+
+int64_t OpenMPIRBuilderConfig::getRequiresFlags() const {
+  return hasRequiresFlags() ? RequiresFlags
+                            : static_cast<int64_t>(OMP_REQ_NONE);
+}
+
+void OpenMPIRBuilderConfig::setHasRequiresReverseOffload(bool Value) {
+  if (Value)
+    RequiresFlags |= OMP_REQ_REVERSE_OFFLOAD;
+  else
+    RequiresFlags &= ~OMP_REQ_REVERSE_OFFLOAD;
+}
+
+void OpenMPIRBuilderConfig::setHasRequiresUnifiedAddress(bool Value) {
+  if (Value)
+    RequiresFlags |= OMP_REQ_UNIFIED_ADDRESS;
+  else
+    RequiresFlags &= ~OMP_REQ_UNIFIED_ADDRESS;
+}
+
+void OpenMPIRBuilderConfig::setHasRequiresUnifiedSharedMemory(bool Value) {
+  if (Value)
+    RequiresFlags |= OMP_REQ_UNIFIED_SHARED_MEMORY;
+  else
+    RequiresFlags &= ~OMP_REQ_UNIFIED_SHARED_MEMORY;
+}
+
+void OpenMPIRBuilderConfig::setHasRequiresDynamicAllocators(bool Value) {
+  if (Value)
+    RequiresFlags |= OMP_REQ_DYNAMIC_ALLOCATORS;
+  else
+    RequiresFlags &= ~OMP_REQ_DYNAMIC_ALLOCATORS;
+}
+
+//===----------------------------------------------------------------------===//
+// OpenMPIRBuilder
+//===----------------------------------------------------------------------===//
+
 void OpenMPIRBuilder::getKernelArgsVector(TargetKernelArgs &KernelArgs,
                                           IRBuilderBase &Builder,
                                           SmallVector<Value *> &ArgsVector) {
@@ -386,9 +486,9 @@ void OpenMPIRBuilder::addAttributes(omp::RuntimeFunction FnID, Function &Fn) {
       if (Param) {
         if (auto AK = TargetLibraryInfo::getExtAttrForI32Param(T, HasSignExt))
           FnAS = FnAS.addAttribute(Ctx, AK);
-      } else
-        if (auto AK = TargetLibraryInfo::getExtAttrForI32Return(T, HasSignExt))
-          FnAS = FnAS.addAttribute(Ctx, AK);
+      } else if (auto AK =
+                     TargetLibraryInfo::getExtAttrForI32Return(T, HasSignExt))
+        FnAS = FnAS.addAttribute(Ctx, AK);
     } else {
       FnAS = FnAS.addAttributes(Ctx, AS);
     }
@@ -402,7 +502,7 @@ void OpenMPIRBuilder::addAttributes(omp::RuntimeFunction FnID, Function &Fn) {
 #define OMP_RTL_ATTRS(Enum, FnAttrSet, RetAttrSet, ArgAttrSets)                \
   case Enum:                                                                   \
     FnAttrs = FnAttrs.addAttributes(Ctx, FnAttrSet);                           \
-    addAttrSet(RetAttrs, RetAttrSet, /*Param*/false);                          \
+    addAttrSet(RetAttrs, RetAttrSet, /*Param*/ false);                         \
     for (size_t ArgNo = 0; ArgNo < ArgAttrSets.size(); ++ArgNo)                \
       addAttrSet(ArgAttrs[ArgNo], ArgAttrSets[ArgNo]);                         \
     Fn.setAttributes(AttributeList::get(Ctx, FnAttrs, RetAttrs, ArgAttrs));    \
@@ -4875,8 +4975,8 @@ void OpenMPIRBuilder::emitOffloadingArrays(
             static_cast<std::underlying_type_t<OpenMPOffloadMappingFlags>>(
                 CombinedInfo.Types[I] &
                 OpenMPOffloadMappingFlags::OMP_MAP_NON_CONTIG))
-          ConstSizes[I] = ConstantInt::get(Int64Ty,
-                                           CombinedInfo.NonContigInfo.Dims[I]);
+          ConstSizes[I] =
+              ConstantInt::get(Int64Ty, CombinedInfo.NonContigInfo.Dims[I]);
         else
           ConstSizes[I] = CI;
         continue;
@@ -4939,8 +5039,8 @@ void OpenMPIRBuilder::emitOffloadingArrays(
         createOffloadMapnames(CombinedInfo.Names, MapnamesName);
     Info.RTArgs.MapNamesArray = MapNamesArrayGbl;
   } else {
-    Info.RTArgs.MapNamesArray = Constant::getNullValue(
-        PointerType::getUnqual(Builder.getContext()));
+    Info.RTArgs.MapNamesArray =
+        Constant::getNullValue(PointerType::getUnqual(Builder.getContext()));
   }
 
   // If there's a present map type modifier, it must not be applied to the end
@@ -4965,10 +5065,10 @@ void OpenMPIRBuilder::emitOffloadingArrays(
   for (unsigned I = 0; I < Info.NumberOfPtrs; ++I) {
     Value *BPVal = CombinedInfo.BasePointers[I];
     Value *BP = Builder.CreateConstInBoundsGEP2_32(
-        ArrayType::get(PtrTy, Info.NumberOfPtrs),
-        Info.RTArgs.BasePointersArray, 0, I);
-    Builder.CreateAlignedStore(
-        BPVal, BP, M.getDataLayout().getPrefTypeAlign(PtrTy));
+        ArrayType::get(PtrTy, Info.NumberOfPtrs), Info.RTArgs.BasePointersArray,
+        0, I);
+    Builder.CreateAlignedStore(BPVal, BP,
+                               M.getDataLayout().getPrefTypeAlign(PtrTy));
 
     if (Info.requiresDevicePointerInfo()) {
       if (CombinedInfo.DevicePointers[I] == DeviceInfoTy::Pointer) {
@@ -4987,21 +5087,21 @@ void OpenMPIRBuilder::emitOffloadingArrays(
 
     Value *PVal = CombinedInfo.Pointers[I];
     Value *P = Builder.CreateConstInBoundsGEP2_32(
-        ArrayType::get(PtrTy, Info.NumberOfPtrs),
-        Info.RTArgs.PointersArray, 0, I);
+        ArrayType::get(PtrTy, Info.NumberOfPtrs), Info.RTArgs.PointersArray, 0,
+        I);
     // TODO: Check alignment correct.
-    Builder.CreateAlignedStore(
-        PVal, P, M.getDataLayout().getPrefTypeAlign(PtrTy));
+    Builder.CreateAlignedStore(PVal, P,
+                               M.getDataLayout().getPrefTypeAlign(PtrTy));
 
     if (RuntimeSizes.test(I)) {
       Value *S = Builder.CreateConstInBoundsGEP2_32(
           ArrayType::get(Int64Ty, Info.NumberOfPtrs), Info.RTArgs.SizesArray,
           /*Idx0=*/0,
           /*Idx1=*/I);
-      Builder.CreateAlignedStore(
-          Builder.CreateIntCast(CombinedInfo.Sizes[I], Int64Ty,
-                                /*isSigned=*/true),
-          S, M.getDataLayout().getPrefTypeAlign(PtrTy));
+      Builder.CreateAlignedStore(Builder.CreateIntCast(CombinedInfo.Sizes[I],
+                                                       Int64Ty,
+                                                       /*isSigned=*/true),
+                                 S, M.getDataLayout().getPrefTypeAlign(PtrTy));
     }
     // Fill up the mapper array.
     unsigned IndexSize = M.getDataLayout().getIndexSizeInBits(0);
@@ -5603,8 +5703,8 @@ GlobalVariable *
 OpenMPIRBuilder::createOffloadMapnames(SmallVectorImpl<llvm::Constant *> &Names,
                                        std::string VarName) {
   llvm::Constant *MapNamesArrayInit = llvm::ConstantArray::get(
-      llvm::ArrayType::get(
-          llvm::PointerType::getUnqual(M.getContext()), Names.size()),
+      llvm::ArrayType::get(llvm::PointerType::getUnqual(M.getContext()),
+                           Names.size()),
       Names);
   auto *MapNamesArrayGlobal = new llvm::GlobalVariable(
       M, MapNamesArrayInit->getType(),
@@ -6046,6 +6146,39 @@ void OpenMPIRBuilder::loadOffloadInfoMetadata(Module &M) {
   }
 }
 
+Function *OpenMPIRBuilder::createRegisterRequires(StringRef Name) {
+  // Skip the creation of the registration function if this is device codegen
+  if (Config.isTargetDevice())
+    return nullptr;
+
+  Builder.ClearInsertionPoint();
+
+  // Create registration function prototype
+  auto *RegFnTy = FunctionType::get(Builder.getVoidTy(), {});
+  auto *RegFn = Function::Create(
+      RegFnTy, GlobalVariable::LinkageTypes::InternalLinkage, Name, M);
+  RegFn->setSection(".text.startup");
+  RegFn->addFnAttr(Attribute::NoInline);
+  RegFn->addFnAttr(Attribute::NoUnwind);
+
+  // Create registration function body
+  auto *BB = BasicBlock::Create(M.getContext(), "entry", RegFn);
+  ConstantInt *FlagsVal =
+      ConstantInt::getSigned(Builder.getInt64Ty(), Config.getRequiresFlags());
+  Function *RTLRegFn = getOrCreateRuntimeFunctionPtr(
+      omp::RuntimeFunction::OMPRTL___tgt_register_requires);
+
+  Builder.SetInsertPoint(BB);
+  Builder.CreateCall(RTLRegFn, {FlagsVal});
+  Builder.CreateRetVoid();
+
+  return RegFn;
+}
+
+//===----------------------------------------------------------------------===//
+// OffloadEntriesInfoManager
+//===----------------------------------------------------------------------===//
+
 bool OffloadEntriesInfoManager::empty() const {
   return OffloadEntriesTargetRegion.empty() &&
          OffloadEntriesDeviceGlobalVar.empty();
@@ -6178,6 +6311,10 @@ void OffloadEntriesInfoManager::actOnDeviceGlobalVarEntriesInfo(
   for (const auto &E : OffloadEntriesDeviceGlobalVar)
     Action(E.getKey(), E.getValue());
 }
+
+//===----------------------------------------------------------------------===//
+// CanonicalLoopInfo
+//===----------------------------------------------------------------------===//
 
 void CanonicalLoopInfo::collectControlBlocks(
     SmallVectorImpl<BasicBlock *> &BBs) {
