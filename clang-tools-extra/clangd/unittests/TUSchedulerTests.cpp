@@ -1079,7 +1079,8 @@ TEST_F(TUSchedulerTests, CommandLineErrors) {
       ElementsAre(AllOf(
           Field(&Diag::ID, Eq(diag::err_drv_unknown_argument)),
           Field(&Diag::Name, Eq("drv_unknown_argument")),
-          Field(&Diag::Message, "unknown argument: '-fsome-unknown-flag'"))));
+          Field(&Diag::Message,
+                "in command line: unknown argument: '-fsome-unknown-flag'"))));
 }
 
 TEST_F(TUSchedulerTests, CommandLineWarnings) {

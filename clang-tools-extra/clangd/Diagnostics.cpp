@@ -672,14 +672,14 @@ static void fillNonLocationData(DiagnosticsEngine::Level DiagLevel,
 
 void StoreDiags::HandleDiagnostic(DiagnosticsEngine::Level DiagLevel,
                                   const clang::Diagnostic &Info) {
-  // If the diagnostic was generated for a different SourceManager, skip it.
+  bool FromModule = false;
+  // If the diagnostic was generated for a different SourceManager.
   // This happens when a module is imported and needs to be implicitly built.
   // The compilation of that module will use the same StoreDiags, but different
-  // SourceManager.
+  // SourceManager. Treat them as coming from command line.
   if (OrigSrcMgr && Info.hasSourceManager() &&
       OrigSrcMgr != &Info.getSourceManager()) {
-    IgnoreDiagnostics::log(DiagLevel, Info);
-    return;
+    FromModule = true;
   }
 
   DiagnosticConsumer::HandleDiagnostic(DiagLevel, Info);
@@ -687,7 +687,7 @@ void StoreDiags::HandleDiagnostic(DiagnosticsEngine::Level DiagLevel,
       Info.getDiags()->getDiagnosticIDs()->isDefaultMappingAsError(
           Info.getID());
 
-  if (Info.getLocation().isInvalid()) {
+  if (Info.getLocation().isInvalid() || FromModule) {
     // Handle diagnostics coming from command-line arguments. The source manager
     // is *not* available at this point, so we cannot use it.
     if (!OriginallyError) {
@@ -702,6 +702,11 @@ void StoreDiags::HandleDiagnostic(DiagnosticsEngine::Level DiagLevel,
     LastDiagOriginallyError = OriginallyError;
     LastDiag->ID = Info.getID();
     fillNonLocationData(DiagLevel, Info, *LastDiag);
+    // Update message to mention original location.
+    const char *Prefix =
+        FromModule ? "in implicitly built module" : "in command line";
+    LastDiag->Message = llvm::formatv("{0}: {1}", Prefix, LastDiag->Message);
+
     LastDiag->InsideMainFile = true;
     // Put it at the start of the main file, for a lack of a better place.
     LastDiag->Range.start = Position{0, 0};

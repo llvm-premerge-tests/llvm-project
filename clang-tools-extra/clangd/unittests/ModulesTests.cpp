@@ -18,6 +18,12 @@ namespace clang {
 namespace clangd {
 namespace {
 
+using ::testing::ElementsAre;
+
+MATCHER_P(diag, Desc, "") {
+  return llvm::StringRef(arg.Message).contains(Desc);
+}
+
 TEST(Modules, TextualIncludeInPreamble) {
   TestTU TU = TestTU::withCode(R"cpp(
     #include "Textual.h"
@@ -88,7 +94,13 @@ TEST(Modules, Diagnostic) {
 )modulemap";
 
   // Test that we do not crash.
-  TU.build();
+  auto AST = TU.build();
+
+  // Test expected diagnostics.
+  EXPECT_THAT(AST.getDiagnostics(),
+              ElementsAre(diag("in implicitly built module: module M does not "
+                               "depend on a module exporting 'non-modular.h'"),
+                          diag("could not build module 'M'")));
 }
 
 // Unknown module formats are a fatal failure for clang. Ensure we don't crash.
