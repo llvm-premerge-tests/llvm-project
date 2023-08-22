@@ -1652,6 +1652,9 @@ public:
   /// \p VF is the vectorization factor chosen for the original loop.
   bool isEpilogueVectorizationProfitable(const ElementCount VF) const;
 
+  /// Returns total cost for out-of-loop reductions.
+  InstructionCost getOutOfLoopReductionCost(VectorizationFactor VF);
+
 private:
   unsigned NumPredStores = 0;
 
@@ -6607,6 +6610,72 @@ LoopVectorizationCostModel::getInterleaveGroupCost(Instruction *I,
   return Cost;
 }
 
+InstructionCost
+LoopVectorizationCostModel::getOutOfLoopReductionCost(VectorizationFactor VF) {
+  InstructionCost ReduxCost = 0;
+  if (VF.Width.isScalar())
+    return ReduxCost;
+
+  TTI::TargetCostKind CostKind = TTI::TCK_RecipThroughput;
+  for (auto &Reduction : Legal->getReductionVars()) {
+    PHINode *Phi = Reduction.first;
+    auto *VectorTy = cast<VectorType>(ToVectorTy(Phi->getType(), VF.Width));
+    const RecurrenceDescriptor &RdxDesc = Reduction.second;
+    if (isInLoopReduction(Phi))
+      continue;
+    RecurKind RK = RdxDesc.getRecurrenceKind();
+    auto FMF = RdxDesc.getFastMathFlags();
+    switch (RK) {
+    case RecurKind::Add:
+    case RecurKind::Mul:
+    case RecurKind::Or:
+    case RecurKind::And:
+    case RecurKind::Xor:
+    case RecurKind::FAdd:
+    case RecurKind::FMul: {
+      unsigned RdxOpcode = RecurrenceDescriptor::getOpcode(RK);
+      ReduxCost +=
+          TTI.getArithmeticReductionCost(RdxOpcode, VectorTy, FMF, CostKind);
+      break;
+    }
+    case RecurKind::FMax:
+    case RecurKind::FMin:
+    case RecurKind::FMaximum:
+    case RecurKind::FMinimum:
+    case RecurKind::SMax:
+    case RecurKind::SMin:
+    case RecurKind::UMax:
+    case RecurKind::UMin: {
+      Intrinsic::ID Id = getMinMaxReductionIntrinsicOp(RK);
+      ReduxCost += TTI.getMinMaxReductionCost(Id, VectorTy, FMF, CostKind);
+      break;
+    }
+    case RecurKind::FMulAdd: {
+      unsigned RdxOpcode = RecurrenceDescriptor::getOpcode(RK);
+      ReduxCost +=
+          TTI.getArithmeticReductionCost(RdxOpcode, VectorTy, FMF, CostKind);
+      // For a call to the llvm.fmuladd intrinsic we need to add the cost of a
+      // normal fmul instruction to the cost of the fadd reduction.
+      ReduxCost +=
+          TTI.getArithmeticInstrCost(Instruction::FMul, VectorTy, CostKind);
+      break;
+    }
+    case RecurKind::FAnyOf:
+    case RecurKind::IAnyOf: {
+      // This has the cost of vector.reduce.or, but may have other costs as
+      // well. FIXME: This recur kind does not have a well defined cost yet.
+      unsigned RdxOpcode = RecurrenceDescriptor::getOpcode(RecurKind::Or);
+      ReduxCost +=
+          TTI.getArithmeticReductionCost(RdxOpcode, VectorTy, FMF, CostKind);
+      break;
+    }
+    default:
+      llvm_unreachable("Unexpected reduction operation!");
+    }
+  }
+  return ReduxCost;
+}
+
 std::optional<InstructionCost>
 LoopVectorizationCostModel::getReductionPatternCost(
     Instruction *I, ElementCount VF, Type *Ty, TTI::TargetCostKind CostKind) {
@@ -9911,14 +9980,28 @@ static void checkMixedPrecision(Loop *L, OptimizationRemarkEmitter *ORE) {
   }
 }
 
-static bool areRuntimeChecksProfitable(GeneratedRTChecks &Checks,
-                                       VectorizationFactor &VF,
-                                       std::optional<unsigned> VScale, Loop *L,
-                                       ScalarEvolution &SE) {
-  InstructionCost CheckCost = Checks.getCost();
-  if (!CheckCost.isValid())
-    return false;
+// What makes the loop unprofitable to vectorize.
+namespace OutOfLoopCost {
+enum Reason {
+  None, // OutOfLoopCost is zero.
+  RuntimeCheck,
+  OutOfLoopReduction,
+  Some // Combination of above reasons: We have both runtime checks and out of
+       // loop reductions.
+};
+}
 
+static OutOfLoopCost::Reason areOutOfLoopComputationsProfitable(
+    InstructionCost CheckCost, InstructionCost ReduxCost,
+    VectorizationFactor &VF, std::optional<unsigned> VScale, Loop *L,
+    ScalarEvolution &SE) {
+  if (!CheckCost.isValid())
+    return OutOfLoopCost::RuntimeCheck;
+
+  auto ReduxCostVal = *ReduxCost.getValue();
+  double RtC = *CheckCost.getValue();
+  if (!ReduxCostVal && !RtC)
+    return OutOfLoopCost::None;
   // When interleaving only scalar and vector cost will be equal, which in turn
   // would lead to a divide by 0. Fall back to hard threshold.
   if (VF.Width.isScalar()) {
@@ -9926,15 +10009,21 @@ static bool areRuntimeChecksProfitable(GeneratedRTChecks &Checks,
       LLVM_DEBUG(
           dbgs()
           << "LV: Interleaving only is not profitable due to runtime checks\n");
-      return false;
+      return OutOfLoopCost::RuntimeCheck;
     }
-    return true;
+    if (ReduxCostVal) {
+      LLVM_DEBUG(dbgs() << "Interleaving only is not profitable due to out of "
+                           "loop reductions\n");
+      return OutOfLoopCost::OutOfLoopReduction;
+    }
+    return OutOfLoopCost::None;
   }
 
-  // The scalar cost should only be 0 when vectorizing with a user specified VF/IC. In those cases, runtime checks should always be generated.
+  // The scalar cost should only be 0 when vectorizing with a user specified
+  // VF/IC. In those cases, ignore out of loop costs.
   double ScalarC = *VF.ScalarCost.getValue();
   if (ScalarC == 0)
-    return true;
+    return OutOfLoopCost::None;
 
   // First, compute the minimum iteration count required so that the vector
   // loop outperforms the scalar loop.
@@ -9945,7 +10034,7 @@ static bool areRuntimeChecksProfitable(GeneratedRTChecks &Checks,
   //  * ScalarC is the cost of a single scalar iteration.
   //
   //  The total cost of the vector loop is
-  //    RtC + VecC * (TC / VF) + EpiC
+  //    RtC + VecC * (TC / VF) + EpiC + ReduxCost
   //  where
   //  * RtC is the cost of the generated runtime checks
   //  * VecC is the cost of a single vector iteration.
@@ -9953,13 +10042,15 @@ static bool areRuntimeChecksProfitable(GeneratedRTChecks &Checks,
   //  * VF is the vectorization factor
   //  * EpiCost is the cost of the generated epilogue, including the cost
   //    of the remaining scalar operations.
+  //  * ReduxCost is the cost of out-of-loop reductions which are executed if
+  //    the vector loop is taken.
   //
   // Vectorization is profitable once the total vector cost is less than the
   // total scalar cost:
-  //   RtC + VecC * (TC / VF) + EpiC <  ScalarC * TC
+  //   RtC + VecC * (TC / VF) + EpiC +ReduxCost <  ScalarC * TC
   //
   // Now we can compute the minimum required trip count TC as
-  //   (RtC + EpiC) / (ScalarC - (VecC / VF)) < TC
+  //   (RtC + EpiC + ReduxCost) / (ScalarC - (VecC / VF)) < TC
   //
   // For now we assume the epilogue cost EpiC = 0 for simplicity. Note that
   // the computations are performed on doubles, not integers and the result
@@ -9972,8 +10063,7 @@ static bool areRuntimeChecksProfitable(GeneratedRTChecks &Checks,
     IntVF *= AssumedMinimumVscale;
   }
   double VecCOverVF = double(*VF.Cost.getValue()) / IntVF;
-  double RtC = *CheckCost.getValue();
-  double MinTC1 = RtC / (ScalarC - VecCOverVF);
+  double MinTC1 = (RtC + ReduxCostVal) / (ScalarC - VecCOverVF);
 
   // Second, compute a minimum iteration count so that the cost of the
   // runtime checks is only a fraction of the total scalar loop cost. This
@@ -9982,6 +10072,8 @@ static bool areRuntimeChecksProfitable(GeneratedRTChecks &Checks,
   // * TC. To bound the runtime check to be a fraction 1/X of the scalar
   // cost, compute
   //   RtC < ScalarC * TC * (1 / X)  ==>  RtC * X / ScalarC < TC
+  // Note that we can ignore ReduxCost here since out-of-loop reductions are
+  // computed only if the vector loop is taken. 
   double MinTC2 = RtC * 10 / ScalarC;
 
   // Now pick the larger minimum. If it is not a multiple of VF, choose the
@@ -9990,9 +10082,9 @@ static bool areRuntimeChecksProfitable(GeneratedRTChecks &Checks,
   uint64_t MinTC = std::ceil(std::max(MinTC1, MinTC2));
   VF.MinProfitableTripCount = ElementCount::getFixed(alignTo(MinTC, IntVF));
 
-  LLVM_DEBUG(
-      dbgs() << "LV: Minimum required TC for runtime checks to be profitable:"
-             << VF.MinProfitableTripCount << "\n");
+  LLVM_DEBUG(dbgs() << "LV: Minimum required TC for out-of-loop computations "
+                       "to be profitable:"
+                    << VF.MinProfitableTripCount << "\n");
 
   // Skip vectorization if the expected trip count is less than the minimum
   // required trip count.
@@ -10004,10 +10096,14 @@ static bool areRuntimeChecksProfitable(GeneratedRTChecks &Checks,
                         << *ExpectedTC << " < " << VF.MinProfitableTripCount
                         << ")\n");
 
-      return false;
+      // If possible, return the exact reason we cannot vectorize the small trip
+      // count loop.
+      return (!RtC)            ? OutOfLoopCost::OutOfLoopReduction
+             : !(ReduxCostVal) ? OutOfLoopCost::RuntimeCheck
+                               : OutOfLoopCost::Some;
     }
   }
-  return true;
+  return OutOfLoopCost::None;
 }
 
 LoopVectorizePass::LoopVectorizePass(LoopVectorizeOptions Opts)
@@ -10198,23 +10294,42 @@ bool LoopVectorizePass::processLoop(Loop *L) {
     if (VF.Width.isVector() || SelectedIC > 1)
       Checks.Create(L, *LVL.getLAI(), PSE.getPredicate(), VF.Width, SelectedIC);
 
-    // Check if it is profitable to vectorize with runtime checks.
+    // Check if it is profitable to vectorize with out of loop computations
+    // (such as reductions and runtime checks).
     bool ForceVectorization =
         Hints.getForce() == LoopVectorizeHints::FK_Enabled;
-    if (!ForceVectorization &&
-        !areRuntimeChecksProfitable(Checks, VF, getVScaleForTuning(L, *TTI), L,
-                                    *PSE.getSE())) {
-      ORE->emit([&]() {
-        return OptimizationRemarkAnalysisAliasing(
-                   DEBUG_TYPE, "CantReorderMemOps", L->getStartLoc(),
-                   L->getHeader())
-               << "loop not vectorized: cannot prove it is safe to reorder "
-                  "memory operations";
-      });
-      LLVM_DEBUG(dbgs() << "LV: Too many memory checks needed.\n");
-      Hints.emitRemarkWithHints();
-      return false;
-    }
+    if (!ForceVectorization) {
+      InstructionCost RTCheckCost = Checks.getCost();
+      InstructionCost ReduxCost = CM.getOutOfLoopReductionCost(VF);
+
+      auto UnprofitableReason = areOutOfLoopComputationsProfitable(
+          RTCheckCost, ReduxCost, VF, getVScaleForTuning(L, *TTI), L,
+          *PSE.getSE());
+      switch (UnprofitableReason) {
+      case OutOfLoopCost::None:
+        break;
+      case OutOfLoopCost::RuntimeCheck: {
+        ORE->emit([&]() {
+          return OptimizationRemarkAnalysisAliasing(
+                     DEBUG_TYPE, "CantReorderMemOps", L->getStartLoc(),
+                     L->getHeader())
+                 << "loop not vectorized: cannot prove it is safe to reorder "
+                    "memory operations";
+        });
+        LLVM_DEBUG(dbgs() << "LV: Too many memory checks needed.\n");
+        Hints.emitRemarkWithHints();
+        return false;
+      }
+      case OutOfLoopCost::OutOfLoopReduction:
+        LLVM_DEBUG(dbgs() << "LV: Costly out of loop reductions for small "
+                             "trip count loop.\n");
+        return false;
+      default:
+        LLVM_DEBUG(dbgs() << "LV: Costly out of loop computation for small "
+                             "trip count loop.\n");
+        return false;
+      }
+    }// ForceVectorization
   }
 
   // Identify the diagnostic messages that should be produced.
