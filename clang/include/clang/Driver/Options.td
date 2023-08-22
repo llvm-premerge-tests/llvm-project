@@ -3061,7 +3061,8 @@ def fno_ms_compatibility : Flag<["-"], "fno-ms-compatibility">, Group<f_Group>,
 def fno_objc_legacy_dispatch : Flag<["-"], "fno-objc-legacy-dispatch">, Group<f_Group>;
 def fno_objc_weak : Flag<["-"], "fno-objc-weak">, Group<f_Group>,
   Visibility<[ClangOption, CC1Option]>;
-def fno_omit_frame_pointer : Flag<["-"], "fno-omit-frame-pointer">, Group<f_Group>;
+def fno_omit_frame_pointer : Flag<["-"], "fno-omit-frame-pointer">, Group<f_Group>,
+  Visibility<[ClangOption, FlangOption]>;
 defm operator_names : BoolFOption<"operator-names",
   LangOpts<"CXXOperatorNames">, Default<cplusplus.KeyPath>,
   NegFlag<SetFalse, [], [ClangOption, CC1Option],
@@ -3186,6 +3187,7 @@ defm objc_avoid_heapify_local_blocks : BoolFOption<"objc-avoid-heapify-local-blo
   BothFlags<[], [CC1Option], " to avoid heapifying local blocks">>;
 
 def fomit_frame_pointer : Flag<["-"], "fomit-frame-pointer">, Group<f_Group>,
+  Visibility<[ClangOption, FlangOption]>,
   HelpText<"Omit the frame pointer from functions that don't need it. "
   "Some stack unwinding cases, such as profilers and sanitizers, may prefer specifying -fno-omit-frame-pointer. "
   "On many targets, -O1 and higher omit the frame pointer by default. "

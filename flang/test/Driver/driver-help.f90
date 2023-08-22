@@ -57,6 +57,7 @@
 ! HELP-NEXT: -fno-stack-arrays       Allocate array temporaries on the heap (default)
 ! HELP-NEXT: -fno-version-loops-for-stride
 ! HELP-NEXT:                         Do not create unit-strided loops (default)
+! HELP-NEXT: -fomit-frame-pointer    Omit the frame pointer from functions that don't need it. Some stack unwinding cases, such as profilers and sanitizers, may prefer specifying -fno-omit-frame-pointer. On many targets, -O1 and higher omit the frame pointer by default. -m[no-]omit-leaf-frame-pointer takes precedence for leaf functions
 ! HELP-NEXT: -fopenacc               Enable OpenACC
 ! HELP-NEXT: -fopenmp-target-debug   Enable debugging in the OpenMP offloading device RTL
 ! HELP-NEXT: -fopenmp-targets=<value>
