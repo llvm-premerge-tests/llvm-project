@@ -340,11 +340,19 @@ static void scanf_common(void *ctx, int n_inputs, bool allowGnuMalloc,
       size = 0;
     }
     COMMON_INTERCEPTOR_WRITE_RANGE(ctx, argp, size);
-    // For %ms/%mc, write the allocated output buffer as well.
+    // For %mc/%mC/%ms/%mS, write the allocated output buffer as well.
     if (dir.allocate) {
-      char *buf = *(char **)argp;
-      if (buf)
-        COMMON_INTERCEPTOR_WRITE_RANGE(ctx, buf, internal_strlen(buf) + 1);
+      if (char *buf = *(char **)argp) {
+        if (dir.convSpecifier == 'c')
+          size = 1;
+        else if (dir.convSpecifier == 'C')
+          size = sizeof(wchar_t);
+        else if (dir.convSpecifier == 's')
+          size = internal_strlen(buf) + 1;
+        else
+          size = (internal_wcslen((wchar_t *)buf) + 1) * sizeof(wchar_t);
+        COMMON_INTERCEPTOR_WRITE_RANGE(ctx, buf, size);
+      }
     }
   }
 }
