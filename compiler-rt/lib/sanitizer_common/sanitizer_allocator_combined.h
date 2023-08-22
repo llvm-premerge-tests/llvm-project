@@ -64,11 +64,17 @@ class CombinedAllocator {
     // using a non-fixed base address). The secondary takes care of the
     // alignment without such requirement, and allocating 'size' would use
     // extraneous memory, so we employ 'original_size'.
-    void *res;
+    void *res = nullptr;
     if (primary_.CanAllocate(size, alignment))
       res = cache->Allocate(&primary_, primary_.ClassID(size));
-    else
+    if (!res) {
+      // The primary alllocater can still fail if a region for a particular
+      // class id is exhausted and we cannot repopulate it. This can happen if
+      // the kRegionSize happens to be relatively small. There could still be
+      // lots of memory left in the system for mmap-ing, so we should fallback
+      // to that.
       res = secondary_.Allocate(&stats_, original_size, alignment);
+    }
     if (alignment > 8)
       CHECK_EQ(reinterpret_cast<uptr>(res) & (alignment - 1), 0);
     return res;
