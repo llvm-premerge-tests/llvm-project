@@ -8,12 +8,12 @@
 
 #include "gtest/gtest.h"
 #include "tools.h"
-#include "flang/ISO_Fortran_binding.h"
 #include "flang/Runtime/allocatable.h"
 #include "flang/Runtime/cpp-type.h"
 #include "flang/Runtime/descriptor.h"
 #include "flang/Runtime/temporary-stack.h"
 #include "flang/Runtime/type-code.h"
+#include "flang/iso_fortran_binding_wrapper.h"
 #include <vector>
 
 using namespace Fortran::runtime;

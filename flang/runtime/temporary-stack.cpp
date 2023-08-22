@@ -11,10 +11,10 @@
 
 #include "flang/Runtime/temporary-stack.h"
 #include "terminator.h"
-#include "flang/ISO_Fortran_binding.h"
 #include "flang/Runtime/assign.h"
 #include "flang/Runtime/descriptor.h"
 #include "flang/Runtime/memory.h"
+#include "flang/iso_fortran_binding_wrapper.h"
 
 namespace {
 

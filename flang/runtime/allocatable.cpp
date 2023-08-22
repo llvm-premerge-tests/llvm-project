@@ -12,9 +12,9 @@
 #include "stat.h"
 #include "terminator.h"
 #include "type-info.h"
-#include "flang/ISO_Fortran_binding.h"
 #include "flang/Runtime/assign.h"
 #include "flang/Runtime/descriptor.h"
+#include "flang/iso_fortran_binding_wrapper.h"
 
 namespace Fortran::runtime {
 extern "C" {
