@@ -3,6 +3,9 @@
 // RUN: clang-tidy %t.cpp -checks='-*,performance-trivially-destructible' -fix --
 // RUN: clang-tidy %t.cpp -checks='-*,performance-trivially-destructible' -warnings-as-errors='-*,performance-trivially-destructible' --
 
+// For fat binaries this test fails: https://github.com/llvm/llvm-project/issues/60304
+// UNSUPPORTED: system-darwin
+
 struct TriviallyDestructible1 {
   int a;
 };
