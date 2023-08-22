@@ -4698,11 +4698,12 @@ def note_ovl_candidate_bad_conv : Note<
     "candidate %sub{select_ovl_candidate_kind}0,1,2 not viable: "
     "no known conversion "
     "%diff{from $ to $|from argument type to parameter type}3,4 for "
-    "%select{%ordinal6 argument|object argument}5"
-    "%select{|; dereference the argument with *|"
-    "; take the address of the argument with &|"
-    "; remove *|"
-    "; remove &}7">;
+    "%select{%ordinal6 argument|object argument}5">;
+def note_ovl_candidate_fixit : Note<
+    "%select{|dereference the argument with *|"
+    "take the address of the argument with &|"
+    "remove *|"
+    "remove &}0">;
 def note_ovl_candidate_bad_arc_conv : Note<
     "candidate %sub{select_ovl_candidate_kind}0,1,2 not viable: "
     "cannot implicitly convert argument "

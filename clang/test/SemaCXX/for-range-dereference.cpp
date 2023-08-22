@@ -56,7 +56,8 @@ void f() {
   ADLNoEnd ANE;
   for (auto i : ANE) { } // expected-error{{invalid range expression of type 'ADLNoEnd'; no viable 'end' function available}}
   ADLNoEnd *pANE;
-  for (auto i : pANE) { } // expected-error{{invalid range expression of type 'ADLNoEnd *'; no viable 'begin' function available}}
+  for (auto i : pANE) { } // expected-error{{invalid range expression of type 'ADLNoEnd *'; no viable 'begin' function available}} \
+                          // expected-note {{dereference the argument with *}}
 
   DeletedEnd DE;
   for (auto i : DE) { } // expected-error{{attempt to use a deleted function}} \

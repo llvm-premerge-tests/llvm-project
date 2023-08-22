@@ -16,7 +16,7 @@ void f1(intTy &a);
 void f2(intTy2 *a) {
 // CHECK: error: no matching function for call to 'f1
 // CHECK: dereference the argument with *
-// CHECK: void f1(intTy &a);
+// CHECK-NEXT: f1(a + 1);
 // CHECK: fix-it{{.*}}*(
 // CHECK-NEXT: fix-it{{.*}})
 // CHECK: void f1(double *a);
@@ -109,7 +109,8 @@ void dbcaller(A *ptra, B *ptrb, C &c, B &refb) {
   bp(c);
 
 // CHECK: no matching function for call to 'u'
-// CHECK: candidate function not viable: no known conversion from 'C' to 'const C *' for 1st argument; take the address of the argument with &
+// CHECK: candidate function not viable: no known conversion from 'C' to 'const C *' for 1st argument
+// CHECK: take the address of the argument with &
 // CHECK: candidate function not viable
 // CHECK: candidate function not viable
   u(c);

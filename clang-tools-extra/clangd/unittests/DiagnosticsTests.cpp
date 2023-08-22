@@ -1991,9 +1991,7 @@ TEST(DiagnosticsTest, FixItFromHeader) {
       UnorderedElementsAre(AllOf(
           Diag(Source.range("diag"), "no matching function for call to 'foo'"),
           withFix(Fix(Source.range("fix"), "&",
-                      "candidate function not viable: no known conversion from "
-                      "'int' to 'int *' for 1st argument; take the address of "
-                      "the argument with &")))));
+                      "take the address of the argument with &")))));
 }
 
 TEST(DiagnosticsTest, UnusedInHeader) {

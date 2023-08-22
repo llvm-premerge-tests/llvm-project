@@ -94,7 +94,8 @@ template struct New1<X, Y>; // expected-note{{instantiation}}
 template<typename T, typename Arg1, typename Arg2>
 struct New2 {
   T* f(bool x, Arg1 a1, Arg2 a2) {
-    return new T(a1, a2); // expected-error{{no matching}}
+    return new T(a1, a2); // expected-error{{no matching}} \
+                          // expected-note{{dereference the argument with *}}
   }
 };
 

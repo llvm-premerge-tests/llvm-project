@@ -83,7 +83,8 @@ void test_unaligned() {
   foo_unaligned(p1);
 
   const __unaligned int *const_p1 = 0;
-  foo_unaligned(const_p1); // expected-error {{no matching function for call to 'foo_unaligned'}}
+  foo_unaligned(const_p1); // expected-error {{no matching function for call to 'foo_unaligned'}} \
+                           // expected-note {{dereference the argument with *}}
 
   __unaligned int *p2 = 0;
   foo_unaligned(p2);

@@ -138,8 +138,10 @@ void test_no_args() {
 
 void test_no_matching_fn() {
   Tag<1> tag;
-  __builtin_operator_new(42, tag);    // expected-error {{no matching function for call to 'operator new'}}
-  __builtin_operator_delete(NP, tag); // expected-error {{no matching function for call to 'operator delete'}}
+  __builtin_operator_new(42, tag);    // expected-error {{no matching function for call to 'operator new'}} \
+                                      // expected-note {{take the address of the argument with &}}
+  __builtin_operator_delete(NP, tag); // expected-error {{no matching function for call to 'operator delete'}} \
+                                      // expected-note {{take the address of the argument with &}}
 }
 
 template <class Tp, class Up, class RetT>

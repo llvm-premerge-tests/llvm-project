@@ -27,7 +27,8 @@ float *accept_funcptr(int (*)(int, double)) __attribute__((overloadable)); //  \
 void test_funcptr(int (*f1)(int, double),
                   int (*f2)(int, float)) {
   float *fp = accept_funcptr(f1);
-  accept_funcptr(f2); // expected-error{{no matching function for call to 'accept_funcptr'}}
+  accept_funcptr(f2); // expected-error{{no matching function for call to 'accept_funcptr'}} \
+                      // expected-note 2{{take the address of the argument with &}}
 }
 
 struct X { int x; float y; };
