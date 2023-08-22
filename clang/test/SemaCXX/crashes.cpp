@@ -44,7 +44,8 @@ struct Y { // expected-note{{candidate constructor (the implicit copy constructo
 struct {
   Y obj;
 } objs[] = {
-  new Y // expected-error{{no viable conversion}}
+  new Y // expected-error{{no viable conversion}} \
+        // expected-note{{dereference the argument with *}}
 };
 }
 

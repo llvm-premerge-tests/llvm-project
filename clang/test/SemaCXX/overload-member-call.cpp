@@ -124,6 +124,7 @@ namespace b7398190 {
 void member_call_op_template(int *p) {
   // Ensure that we don't get confused about relative parameter / argument
   // indexing here.
-  [](int, int, auto...){}(p, p); // expected-error {{no matching function}} expected-note {{no known conversion}}
+  [](int, int, auto...){}(p, p); // expected-error {{no matching function}} expected-note {{no known conversion}} \
+                                 // expected-note {{dereference the argument with *}}
 }
 

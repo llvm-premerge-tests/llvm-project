@@ -175,10 +175,12 @@ void test_atomic_double_reporting(volatile __generic atomic_int *a) {
   // expected-error@-1{{no matching function for call to 'atomic_init'}}
 #if defined(NO_FP64)
   // Expecting 5 candidates: int, uint, long, ulong, float
-  // expected-note@-4 5 {{candidate function not viable: no known conversion}}
+  // expected-note@-4 5 {{candidate function not viable: no known conversion}} \
+  // expected-note@-4 5{{dereference the argument with *}}
 #else
   // Expecting 6 candidates: int, uint, long, ulong, float, double
-  // expected-note@-7 6 {{candidate function not viable: no known conversion}}
+  // expected-note@-8 6 {{candidate function not viable: no known conversion}} \
+  // expected-note@-8 6{{dereference the argument with *}}
 #endif
 }
 

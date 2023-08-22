@@ -11010,19 +11010,25 @@ static void DiagnoseBadConversion(Sema &S, OverloadCandidate *Cand,
     return;
 
   // Emit the generic diagnostic and, optionally, add the hints to it.
-  PartialDiagnostic FDiag = S.PDiag(diag::note_ovl_candidate_bad_conv);
-  FDiag << (unsigned)FnKindPair.first << (unsigned)FnKindPair.second << FnDesc
-        << ToParamRange << FromTy << ToTy << (unsigned)isObjectArgument << I + 1
-        << (unsigned)(Cand->Fix.Kind);
+  S.Diag(Fn->getLocation(), diag::note_ovl_candidate_bad_conv)
+      << (unsigned)FnKindPair.first << (unsigned)FnKindPair.second << FnDesc
+      << ToParamRange << FromTy << ToTy << (unsigned)isObjectArgument << I + 1;
 
   // Check that location of Fn is not in system header.
-  if (!S.SourceMgr.isInSystemHeader(Fn->getLocation())) {
+  if (!S.SourceMgr.isInSystemHeader(Fn->getLocation()) &&
+      Cand->Fix.Hints.size() > 0) {
     // If we can fix the conversion, suggest the FixIts.
+    PartialDiagnostic HintDiag = S.PDiag(diag::note_ovl_candidate_fixit)
+                                 << (unsigned)(Cand->Fix.Kind);
     for (const FixItHint &HI : Cand->Fix.Hints)
-        FDiag << HI;
+      HintDiag << HI;
+    const FixItHint &FirstHint = Cand->Fix.Hints[0];
+    SourceLocation FirstHintLoc = FirstHint.RemoveRange.getBegin();
+    FirstHintLoc = FirstHintLoc.isInvalid()
+                       ? FirstHint.InsertFromRange.getBegin()
+                       : FirstHintLoc;
+    S.Diag(FirstHintLoc, HintDiag);
   }
-
-  S.Diag(Fn->getLocation(), FDiag);
 
   MaybeEmitInheritedConstructorNote(S, Cand->FoundDecl);
 }
