@@ -597,3 +597,8 @@ foreach m = LMULList in {
 // Special registers
 def FFLAGS : RISCVReg<0, "fflags">;
 def FRM    : RISCVReg<0, "frm">;
+def FCSR   : RISCVReg<0, "frm">;
+
+def CSR : RegisterClass<"RISCV", [XLenVT], 32, (add FCSR)> {
+  let RegInfos = XLenRI;
+}

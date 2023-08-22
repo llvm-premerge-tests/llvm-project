@@ -412,55 +412,57 @@ define void @foo_double() nounwind #0 {
 ;
 ; CHECK-RV32IF-LABEL: foo_double:
 ; CHECK-RV32IF:       # %bb.0:
-; CHECK-RV32IF-NEXT:    addi sp, sp, -192
-; CHECK-RV32IF-NEXT:    sw ra, 188(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    sw t0, 184(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    sw t1, 180(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    sw t2, 176(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    sw a0, 172(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    sw a1, 168(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    sw a2, 164(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    sw a3, 160(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    sw a4, 156(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    sw a5, 152(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    sw a6, 148(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    sw a7, 144(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    sw t3, 140(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    sw t4, 136(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    sw t5, 132(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    sw t6, 128(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw ft0, 124(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw ft1, 120(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw ft2, 116(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw ft3, 112(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw ft4, 108(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw ft5, 104(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw ft6, 100(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw ft7, 96(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw fs0, 92(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw fs1, 88(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw fa0, 84(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw fa1, 80(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw fa2, 76(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw fa3, 72(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw fa4, 68(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw fa5, 64(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw fa6, 60(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw fa7, 56(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw fs2, 52(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw fs3, 48(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw fs4, 44(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw fs5, 40(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw fs6, 36(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw fs7, 32(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw fs8, 28(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw fs9, 24(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw fs10, 20(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw fs11, 16(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw ft8, 12(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw ft9, 8(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw ft10, 4(sp) # 4-byte Folded Spill
-; CHECK-RV32IF-NEXT:    fsw ft11, 0(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    addi sp, sp, -208
+; CHECK-RV32IF-NEXT:    sw ra, 204(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    sw t0, 200(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    sw t1, 196(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    sw t2, 192(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    sw a0, 188(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    sw a1, 184(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    sw a2, 180(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    sw a3, 176(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    sw a4, 172(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    sw a5, 168(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    sw a6, 164(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    sw a7, 160(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    sw t3, 156(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    sw t4, 152(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    sw t5, 148(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    sw t6, 144(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw ft0, 140(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw ft1, 136(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw ft2, 132(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw ft3, 128(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw ft4, 124(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw ft5, 120(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw ft6, 116(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw ft7, 112(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw fs0, 108(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw fs1, 104(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw fa0, 100(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw fa1, 96(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw fa2, 92(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw fa3, 88(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw fa4, 84(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw fa5, 80(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw fa6, 76(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw fa7, 72(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw fs2, 68(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw fs3, 64(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw fs4, 60(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw fs5, 56(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw fs6, 52(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw fs7, 48(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw fs8, 44(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw fs9, 40(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw fs10, 36(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw fs11, 32(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw ft8, 28(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw ft9, 24(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw ft10, 20(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    fsw ft11, 16(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    frcsr t0
+; CHECK-RV32IF-NEXT:    sw t0, 12(sp) # 4-byte Folded Spill
 ; CHECK-RV32IF-NEXT:    lui a1, %hi(h)
 ; CHECK-RV32IF-NEXT:    lw a0, %lo(h)(a1)
 ; CHECK-RV32IF-NEXT:    lw a1, %lo(h+4)(a1)
@@ -471,55 +473,57 @@ define void @foo_double() nounwind #0 {
 ; CHECK-RV32IF-NEXT:    lui a2, %hi(g)
 ; CHECK-RV32IF-NEXT:    sw a1, %lo(g+4)(a2)
 ; CHECK-RV32IF-NEXT:    sw a0, %lo(g)(a2)
-; CHECK-RV32IF-NEXT:    lw ra, 188(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    lw t0, 184(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    lw t1, 180(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    lw t2, 176(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    lw a0, 172(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    lw a1, 168(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    lw a2, 164(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    lw a3, 160(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    lw a4, 156(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    lw a5, 152(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    lw a6, 148(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    lw a7, 144(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    lw t3, 140(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    lw t4, 136(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    lw t5, 132(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    lw t6, 128(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw ft0, 124(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw ft1, 120(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw ft2, 116(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw ft3, 112(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw ft4, 108(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw ft5, 104(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw ft6, 100(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw ft7, 96(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw fs0, 92(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw fs1, 88(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw fa0, 84(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw fa1, 80(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw fa2, 76(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw fa3, 72(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw fa4, 68(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw fa5, 64(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw fa6, 60(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw fa7, 56(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw fs2, 52(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw fs3, 48(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw fs4, 44(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw fs5, 40(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw fs6, 36(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw fs7, 32(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw fs8, 28(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw fs9, 24(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw fs10, 20(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw fs11, 16(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw ft8, 12(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw ft9, 8(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw ft10, 4(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    flw ft11, 0(sp) # 4-byte Folded Reload
-; CHECK-RV32IF-NEXT:    addi sp, sp, 192
+; CHECK-RV32IF-NEXT:    lw ra, 204(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    lw t0, 200(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    lw t1, 196(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    lw t2, 192(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    lw a0, 188(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    lw a1, 184(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    lw a2, 180(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    lw a3, 176(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    lw a4, 172(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    lw a5, 168(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    lw a6, 164(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    lw a7, 160(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    lw t3, 156(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    lw t4, 152(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    lw t5, 148(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    lw t6, 144(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw ft0, 140(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw ft1, 136(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw ft2, 132(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw ft3, 128(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw ft4, 124(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw ft5, 120(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw ft6, 116(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw ft7, 112(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw fs0, 108(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw fs1, 104(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw fa0, 100(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw fa1, 96(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw fa2, 92(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw fa3, 88(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw fa4, 84(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw fa5, 80(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw fa6, 76(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw fa7, 72(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw fs2, 68(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw fs3, 64(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw fs4, 60(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw fs5, 56(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw fs6, 52(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw fs7, 48(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw fs8, 44(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw fs9, 40(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw fs10, 36(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw fs11, 32(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw ft8, 28(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw ft9, 24(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw ft10, 20(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    flw ft11, 16(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    lw frm, 12(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    fscsr t0
+; CHECK-RV32IF-NEXT:    addi sp, sp, 208
 ; CHECK-RV32IF-NEXT:    mret
 ;
 ; CHECK-RV32IFD-LABEL: foo_double:
@@ -654,7 +658,9 @@ define void @foo_fp_double() nounwind #1 {
 ; CHECK-RV32IF-NEXT:    fsw ft9, 20(sp) # 4-byte Folded Spill
 ; CHECK-RV32IF-NEXT:    fsw ft10, 16(sp) # 4-byte Folded Spill
 ; CHECK-RV32IF-NEXT:    fsw ft11, 12(sp) # 4-byte Folded Spill
+; CHECK-RV32IF-NEXT:    frcsr t0
 ; CHECK-RV32IF-NEXT:    addi s0, sp, 208
+; CHECK-RV32IF-NEXT:    sw t0, 8(sp) # 4-byte Folded Spill
 ; CHECK-RV32IF-NEXT:    lui a1, %hi(h)
 ; CHECK-RV32IF-NEXT:    lw a0, %lo(h)(a1)
 ; CHECK-RV32IF-NEXT:    lw a1, %lo(h+4)(a1)
@@ -714,6 +720,8 @@ define void @foo_fp_double() nounwind #1 {
 ; CHECK-RV32IF-NEXT:    flw ft9, 20(sp) # 4-byte Folded Reload
 ; CHECK-RV32IF-NEXT:    flw ft10, 16(sp) # 4-byte Folded Reload
 ; CHECK-RV32IF-NEXT:    flw ft11, 12(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    lw frm, 8(sp) # 4-byte Folded Reload
+; CHECK-RV32IF-NEXT:    fscsr t0
 ; CHECK-RV32IF-NEXT:    addi sp, sp, 208
 ; CHECK-RV32IF-NEXT:    mret
 ;

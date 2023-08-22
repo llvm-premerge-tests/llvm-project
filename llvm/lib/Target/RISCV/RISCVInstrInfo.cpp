@@ -512,6 +512,18 @@ void RISCVInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
   }
 }
 
+static unsigned getSysRegEncoding(Register Reg) {
+  StringRef RegName;
+  switch (Reg) {
+  case RISCV::FCSR:
+    RegName = "FCSR";
+    break;
+  default:
+    report_fatal_error("can't store this CSR!");
+  }
+  return RISCVSysReg::lookupSysRegByName(RegName)->Encoding;
+}
+
 void RISCVInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
                                          MachineBasicBlock::iterator I,
                                          Register SrcReg, bool IsKill, int FI,
@@ -527,10 +539,18 @@ void RISCVInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
 
   unsigned Opcode;
   bool IsScalableVector = true;
-  if (RISCV::GPRRegClass.hasSubClassEq(RC)) {
-    Opcode = TRI->getRegSizeInBits(RISCV::GPRRegClass) == 32 ?
-             RISCV::SW : RISCV::SD;
+  if (RISCV::GPRRegClass.hasSubClassEq(RC) ||
+      RISCV::CSRRegClass.hasSubClassEq(RC)) {
+    Opcode =
+        TRI->getRegSizeInBits(RISCV::GPRRegClass) == 32 ? RISCV::SW : RISCV::SD;
     IsScalableVector = false;
+    if (RISCV::CSRRegClass.hasSubClassEq(RC)) {
+      BuildMI(MBB, I, DL, get(RISCV::CSRRS))
+          .addReg(RISCV::X5, RegState::Define)
+          .addImm(getSysRegEncoding(SrcReg))
+          .addReg(RISCV::X0);
+      SrcReg = RISCV::X5;
+    }
   } else if (RISCV::GPRPF64RegClass.hasSubClassEq(RC)) {
     Opcode = RISCV::PseudoRV32ZdinxSD;
     IsScalableVector = false;
@@ -614,9 +634,10 @@ void RISCVInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
 
   unsigned Opcode;
   bool IsScalableVector = true;
-  if (RISCV::GPRRegClass.hasSubClassEq(RC)) {
-    Opcode = TRI->getRegSizeInBits(RISCV::GPRRegClass) == 32 ?
-             RISCV::LW : RISCV::LD;
+  if (RISCV::GPRRegClass.hasSubClassEq(RC) ||
+      RISCV::CSRRegClass.hasSubClassEq(RC)) {
+    Opcode =
+        TRI->getRegSizeInBits(RISCV::GPRRegClass) == 32 ? RISCV::LW : RISCV::LD;
     IsScalableVector = false;
   } else if (RISCV::GPRPF64RegClass.hasSubClassEq(RC)) {
     Opcode = RISCV::PseudoRV32ZdinxLD;
@@ -681,6 +702,11 @@ void RISCVInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
         .addFrameIndex(FI)
         .addImm(0)
         .addMemOperand(MMO);
+    if (RISCV::CSRRegClass.hasSubClassEq(RC))
+      BuildMI(MBB, I, DL, get(RISCV::CSRRW))
+          .addReg(RISCV::X0, RegState::Define)
+          .addImm(getSysRegEncoding(DstReg))
+          .addReg(RISCV::X5);
   }
 }
 
