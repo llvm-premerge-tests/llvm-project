@@ -320,8 +320,8 @@ define void @two_strides(ptr noalias nocapture %A, ptr noalias nocapture readonl
 ;
 ; DEFAULT-LABEL: @two_strides(
 ; DEFAULT-NEXT:  for.body.lver.check:
-; DEFAULT-NEXT:    [[IDENT_CHECK:%.*]] = icmp ne i64 [[STRIDE_2:%.*]], 1
-; DEFAULT-NEXT:    [[IDENT_CHECK1:%.*]] = icmp ne i64 [[STRIDE_1:%.*]], 1
+; DEFAULT-NEXT:    [[IDENT_CHECK:%.*]] = icmp ne i64 [[STRIDE_1:%.*]], 1
+; DEFAULT-NEXT:    [[IDENT_CHECK1:%.*]] = icmp ne i64 [[STRIDE_2:%.*]], 1
 ; DEFAULT-NEXT:    [[TMP0:%.*]] = or i1 [[IDENT_CHECK]], [[IDENT_CHECK1]]
 ; DEFAULT-NEXT:    br i1 [[TMP0]], label [[FOR_BODY_PH_LVER_ORIG:%.*]], label [[FOR_BODY_PH:%.*]]
 ; DEFAULT:       for.body.ph.lver.orig:
