@@ -399,4 +399,20 @@ _CLC_OVERLOAD _CLC_DEF double erf(double y) {
 
 _CLC_UNARY_VECTORIZE(_CLC_OVERLOAD _CLC_DEF, double, erf, double);
 
+#ifdef cl_khr_fp16
+
+#pragma OPENCL EXTENSION cl_khr_fp16 : enable
+
+// This implementation may not be conformant due to rounding between half and
+// float. Still it should be a reasonnable implementation, and provides the
+// function at a low developement cost. The CTS does not have any test for this
+// function at the moment (Aug 2023).
+_CLC_OVERLOAD _CLC_DEF half erf(half h) {
+    return (half)erf((float)h);
+}
+
+_CLC_UNARY_VECTORIZE(_CLC_OVERLOAD _CLC_DEF, half, erf, half);
+
+#endif
+
 #endif
