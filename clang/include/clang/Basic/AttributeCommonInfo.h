@@ -186,6 +186,10 @@ public:
   bool isGNUScope() const;
   bool isClangScope() const;
 
+  bool isC11AlignasAttribute() const {
+    return getParsedKind() == AT_Aligned && isKeywordAttribute() && !IsAlignas;
+  }
+
   bool isCXX11Attribute() const { return SyntaxUsed == AS_CXX11 || IsAlignas; }
 
   bool isC23Attribute() const { return SyntaxUsed == AS_C23; }
