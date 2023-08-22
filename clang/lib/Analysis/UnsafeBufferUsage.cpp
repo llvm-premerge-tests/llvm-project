@@ -8,6 +8,7 @@
 
 #include "clang/Analysis/Analyses/UnsafeBufferUsage.h"
 #include "clang/AST/Decl.h"
+#include "clang/AST/Expr.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Lex/Lexer.h"
@@ -21,6 +22,84 @@
 using namespace llvm;
 using namespace clang;
 using namespace ast_matchers;
+
+#ifndef NDEBUG
+namespace {
+static std::string printUnaryOperator(const Stmt *Stmt) {
+  const UnaryOperator *UO = cast<UnaryOperator>(Stmt);
+  return "UnaryOperator(" + UO->getOpcodeStr(UO->getOpcode()).str() + ")";
+}
+
+static std::string printBinaryOperator(const Stmt *Stmt) {
+  const BinaryOperator *BO = cast<BinaryOperator>(Stmt);
+  StringRef BOOpStr = BO->getOpcodeStr();
+
+  if (BO->getOpcode() == BinaryOperator::Opcode::BO_Comma)
+    BOOpStr = "COMMA"; // Do not print `,` as it is used as the separator
+  return "BinaryOperator(" + BOOpStr.str() + ")";
+}
+
+static std::string printCompoundAssignOperator(const Stmt *Stmt) {
+  return printBinaryOperator(Stmt);
+}
+
+static std::string printImplicitCastExpr(const Stmt *Stmt) {
+  const CastExpr *CE = cast<CastExpr>(Stmt);
+  return "ImplicitCastExpr(" + std::string(CE->getCastKindName()) + ")";
+}
+
+// Prints the `StmtClass` of the given `Stmt`.  For `UnaryOperator`s and
+// `BinaryOperator`s, it also prints the operator.  For `CastExpr`, it also
+// prints the cast kind.
+static std::optional<std::string> printStmtClass(const Stmt *Stmt) {
+  switch (Stmt->getStmtClass()) {
+#define STMT(CLASS, PARENT)                                                    \
+  case Stmt::CLASS##Class:                                                     \
+    return #CLASS;
+#define UNARYOPERATOR(TYPE, BASE)                                              \
+  case Stmt::TYPE##Class:                                                      \
+    return print##TYPE(Stmt);
+#define BINARYOPERATOR(TYPE, BASE)                                             \
+  case Stmt::TYPE##Class:                                                      \
+    return print##TYPE(Stmt);
+#define IMPLICITCASTEXPR(TYPE, BASE)                                           \
+  case Stmt::TYPE##Class:                                                      \
+    return print##TYPE(Stmt);
+#define ABSTRACT_STMT(STMT)
+#include "clang/AST/StmtNodes.inc"
+  default:
+    return std::nullopt;
+  }
+}
+
+// Returns a string of ancestor `Stmt`s of the given `DRE` in such a form:
+// "DRE, parent-of-DRE, grandparent-of-DRE, ...".
+static std::string getDREAncestorString(const DeclRefExpr *DRE,
+                                        ASTContext &Ctx) {
+  std::stringstream SS;
+  const Stmt *St = DRE;
+
+  do {
+    if (auto Printed = printStmtClass(St))
+      SS << *Printed;
+    else
+      return "unavailable due to unknown statement: " +
+             std::string(St->getStmtClassName());
+
+    DynTypedNodeList StParents = Ctx.getParents(*St);
+
+    if (StParents.size() > 1)
+      return "unavailable due to multiple parents";
+    if (StParents.size() == 0)
+      break;
+    St = StParents.begin()->get<Stmt>();
+    if (St)
+      SS << ", ";
+  } while (St);
+  return SS.str();
+}
+} // namespace
+#endif /* NDEBUG */
 
 namespace clang::ast_matchers {
 // A `RecursiveASTVisitor` that traverses all descendants of a given node "n"
@@ -2481,11 +2560,15 @@ void clang::checkUnsafeBufferUsage(const Decl *D,
 #ifndef NDEBUG
         auto AllUnclaimed = Tracker.getUnclaimedUses(it->first);
         for (auto UnclaimedDRE : AllUnclaimed) {
-          Handler.addDebugNoteForVar(
-              it->first, UnclaimedDRE->getBeginLoc(),
-                                     ("failed to produce fixit for '" + it->first->getNameAsString() +
-                                      "' : has an unclaimed use"));
-          }
+        std::string UnclaimedUseTrace =
+            getDREAncestorString(UnclaimedDRE, D->getASTContext());
+
+        Handler.addDebugNoteForVar(
+            it->first, UnclaimedDRE->getBeginLoc(),
+            ("failed to produce fixit for '" + it->first->getNameAsString() +
+             "' : has an unclaimed use\nThe unclaimed DRE trace: " +
+             UnclaimedUseTrace));
+        }
 #endif
         it = FixablesForAllVars.byVar.erase(it);
       } else if (it->first->isInitCapture()) {
