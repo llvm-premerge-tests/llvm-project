@@ -25,6 +25,7 @@
 #include "llvm/Support/DJB.h"
 #include "llvm/Support/Debug.h"
 #include <cstdint>
+#include <variant>
 #include <vector>
 
 /// \file
@@ -312,7 +313,7 @@ void emitDWARF5AccelTable(AsmPrinter *Asm,
 
 void emitDWARF5AccelTable(
     AsmPrinter *Asm, AccelTable<DWARF5AccelTableStaticData> &Contents,
-    ArrayRef<MCSymbol *> CUs,
+    ArrayRef<std::variant<MCSymbol *, uint64_t>> CUs,
     llvm::function_ref<unsigned(const DWARF5AccelTableStaticData &)>
         getCUIndexForEntry);
 
