@@ -300,6 +300,58 @@ struct StoreTileSliceToArmSMELowering
   }
 };
 
+/// Lower `arm_sme.vector_to_tile_slice` to SME intrinsics. Only horizontal
+/// tile slices are currently supported.
+struct VectorToTileSliceToArmSMELowering
+    : public ConvertOpToLLVMPattern<arm_sme::VectorToTileSliceOp> {
+  using ConvertOpToLLVMPattern<
+      arm_sme::VectorToTileSliceOp>::ConvertOpToLLVMPattern;
+
+  LogicalResult
+  matchAndRewrite(arm_sme::VectorToTileSliceOp vectorToTileSliceOp,
+                  arm_sme::VectorToTileSliceOp::Adaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto loc = vectorToTileSliceOp.getLoc();
+    auto tileType = vectorToTileSliceOp.getTileType();
+    auto tileElementType = tileType.getElementType();
+    unsigned tileElementWidth = tileElementType.getIntOrFloatBitWidth();
+
+    // Create 'arm_sme.cast_vector_to_tile' to get a tile ID for the tile being
+    // loaded to.
+    auto tile = rewriter.create<arm_sme::CastVectorToTile>(
+        loc, rewriter.getIntegerType(tileElementWidth),
+        vectorToTileSliceOp.getTile());
+
+    auto tileSlice = vectorToTileSliceOp.getTileSliceIndex();
+
+    // Cast tile slice from index to i32 for intrinsic.
+    auto tileSliceI32 = rewriter.create<arith::IndexCastUIOp>(
+        loc, rewriter.getI32Type(), tileSlice);
+
+    // Create all active predicate mask.
+    auto one = rewriter.create<arith::ConstantOp>(
+        loc, rewriter.getI1Type(),
+        rewriter.getIntegerAttr(rewriter.getI1Type(), 1));
+    auto predTy = VectorType::get(tileType.getShape()[0], rewriter.getI1Type(),
+                                  /*scalableDims=*/{true});
+    auto allActiveMask = rewriter.create<vector::SplatOp>(loc, predTy, one);
+
+    auto tileI32 = castTileIDToI32(tile, loc, rewriter);
+
+    // Create 'arm_sme.intr.write.horiz' to write vector to tile slice.
+    rewriter.create<arm_sme::aarch64_sme_write_horiz>(
+        loc, tileI32, tileSliceI32, allActiveMask,
+        vectorToTileSliceOp.getVector());
+
+    // Intrinsic has no result, replace 'arm_sme.vector_to_tile_slice' with
+    // 'arm_sme.cast_tile_to_vector' to preserve dataflow.
+    rewriter.replaceOpWithNewOp<arm_sme::CastTileToVector>(vectorToTileSliceOp,
+                                                           tileType, tile);
+
+    return success();
+  }
+};
+
 } // namespace
 
 void mlir::configureArmSMELegalizeForExportTarget(
@@ -311,8 +363,8 @@ void mlir::configureArmSMELegalizeForExportTarget(
       arm_sme::aarch64_sme_ld1h_horiz, arm_sme::aarch64_sme_ld1w_horiz,
       arm_sme::aarch64_sme_ld1d_horiz, arm_sme::aarch64_sme_st1b_horiz,
       arm_sme::aarch64_sme_st1h_horiz, arm_sme::aarch64_sme_st1w_horiz,
-      arm_sme::aarch64_sme_st1d_horiz, arm_sme::aarch64_sme_za_enable,
-      arm_sme::aarch64_sme_za_disable>();
+      arm_sme::aarch64_sme_st1d_horiz, arm_sme::aarch64_sme_write_horiz,
+      arm_sme::aarch64_sme_za_enable, arm_sme::aarch64_sme_za_disable>();
   target.addLegalOp<GetTileID>();
 
   // Mark 'func.func' ops as legal if either:
@@ -343,6 +395,8 @@ void mlir::configureArmSMELegalizeForExportTarget(
 void mlir::populateArmSMELegalizeForLLVMExportPatterns(
     LLVMTypeConverter &converter, RewritePatternSet &patterns) {
   patterns.add<EnableZAPattern, DisableZAPattern>(patterns.getContext());
-  patterns.add<ZeroOpConversion, StoreTileSliceToArmSMELowering,
-               LoadTileSliceToArmSMELowering>(converter);
+  patterns
+      .add<ZeroOpConversion, StoreTileSliceToArmSMELowering,
+           LoadTileSliceToArmSMELowering, VectorToTileSliceToArmSMELowering>(
+          converter);
 }
