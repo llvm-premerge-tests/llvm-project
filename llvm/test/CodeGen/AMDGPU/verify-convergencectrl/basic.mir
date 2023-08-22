@@ -1,0 +1,42 @@
+# RUN: not --crash llc -mtriple=amdgcn--1 -run-pass=machineverifier -o /dev/null %s 2>&1 | FileCheck %s
+---
+name:            basic
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    %0:_(s0) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.experimental.convergence.anchor)
+    ; It's impossible to check that no token is passed to entry, since the
+    ; verifier will return when it sees that the entry is not the first instruction
+    ; in the function.
+    ; CHECK: Entry intrinsic can occur only at the start of the basic block.
+    ; CHECK: G_INTRINSIC_CONVERGENT intrinsic(@llvm.experimental.convergence.entry)
+    %1:_(s0) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.experimental.convergence.entry), implicit %0:_(s0)
+    ; CHECK: Loop intrinsic must have a convergencectrl token operand.
+    ; CHECK: G_INTRINSIC_CONVERGENT intrinsic(@llvm.experimental.convergence.loop)
+    %2:_(s0) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.experimental.convergence.loop)
+    ; CHECK: Loop intrinsic can occur only at the start of the basic block.
+    ; CHECK: G_INTRINSIC_CONVERGENT intrinsic(@llvm.experimental.convergence.loop)
+    %3:_(s0) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.experimental.convergence.loop), implicit %0:_(s0)
+    ; CHECK: Convergence control tokens can only be used implicitly.
+    ; CHECK: G_INTRINSIC_CONVERGENT intrinsic(@llvm.experimental.convergence.loop)
+    %4:_(s0) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.experimental.convergence.loop), %0:_(s0)
+    %5:_(s1) = IMPLICIT_DEF
+    G_BRCOND %6:sgpr_64(s1), %bb.1
+    G_BR %bb.2
+
+  bb.1:
+    ; CHECK: Entry intrinsic can occur only in the entry block.
+    ; CHECK: G_INTRINSIC_CONVERGENT intrinsic(@llvm.experimental.convergence.entry)
+    %7:_(s0) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.experimental.convergence.entry)
+
+  bb.2:
+    ; CHECK: Convergence control tokens can only be used by call instructions or intrinsics.
+    ; CHECK: G_PHI
+    %8:_(s0) = G_PHI %0:_(s0), %bb.0, %0:_(s0), %bb.1
+    %9:_(s0) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.experimental.convergence.anchor)
+    %10:sgpr_64 = IMPLICIT_DEF
+    %6:sgpr_64(s1) = G_SI_CALL %10:sgpr_64, 1, implicit %9:_(s0)
+    %11:sgpr_64 = G_SI_CALL %10:sgpr_64, 2, implicit %9:_(s0), implicit %9:_(s0)
+    %12:sgpr_64 = G_SI_CALL %10:sgpr_64, 3
+    %13:sgpr_64 = G_SI_CALL %10:sgpr_64, 4, implicit %9:_(s0)
+...

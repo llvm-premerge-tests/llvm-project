@@ -1,0 +1,15 @@
+# RUN: not --crash llc -mtriple=amdgcn-- -run-pass=machineverifier -o /dev/null %s 2>&1 | FileCheck %s
+---
+name:            mixed2
+body:             |
+  bb.0:
+    %0:sgpr_64 = IMPLICIT_DEF
+    %1:sgpr_64 = G_SI_CALL %0, 1
+    ; CHECK: Cannot mix controlled and uncontrolled convergence in the same function.
+    ; CHECK: G_INTRINSIC_CONVERGENT intrinsic(@llvm.experimental.convergence.anchor)
+    %2:_(s0) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.experimental.convergence.anchor)
+    ; CHECK: Cannot mix controlled and uncontrolled convergence in the same function.
+    ; CHECK: G_SI_CALL %{{[0-9]}}:sgpr_64, 2
+    %3:sgpr_64 = G_SI_CALL %0, 2, implicit %2(s0)
+
+...

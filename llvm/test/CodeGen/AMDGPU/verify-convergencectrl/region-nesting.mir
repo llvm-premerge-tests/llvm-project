@@ -1,0 +1,25 @@
+# RUN: not --crash llc -mtriple=amdgcn-- -run-pass=machineverifier -o /dev/null %s 2>&1 | FileCheck %s
+---
+name:            region_nesting
+body:             |
+  bb.0:
+    %0:_(s0) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.experimental.convergence.anchor)
+    %1:_(s0) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.experimental.convergence.anchor)
+    %2:sgpr_64 = IMPLICIT_DEF
+    %3:sgpr_64 = G_SI_CALL %2, 1, implicit %0(s0)
+    ; CHECK: Convergence region is not well-nested.
+    ; CHECK: G_SI_CALL %{{[0-9]}}:sgpr_64, 2
+    %3:sgpr_64 = G_SI_CALL %2, 2, implicit %1(s0)
+    %4:_(s1) = IMPLICIT_DEF
+    G_BRCOND %4(s1), %bb.1
+    G_BR %bb.2
+
+  bb.1:
+    %5:sgpr_64 = G_SI_CALL %2, 3, implicit %0(s0)
+
+  bb.2:
+    ; CHECK: Convergence region is not well-nested.
+    ; CHECK: G_SI_CALL %{{[0-9]}}:sgpr_64, 4
+    %6:sgpr_64 = G_SI_CALL %2, 4, implicit %1(s0)
+
+...
