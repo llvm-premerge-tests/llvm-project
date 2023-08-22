@@ -239,71 +239,39 @@ bb30:
 define fastcc void @c_expand_expr_stmt(ptr %expr) nounwind {
 ; CHECK-LABEL: c_expand_expr_stmt:
 ; CHECK:       # %bb.0: # %entry
-; CHECK-NEXT:    pushq %rbx
 ; CHECK-NEXT:    xorl %eax, %eax
 ; CHECK-NEXT:    testb %al, %al
-; CHECK-NEXT:    jne .LBB3_9
+; CHECK-NEXT:    jne .LBB3_8
 ; CHECK-NEXT:  # %bb.1: # %entry
-; CHECK-NEXT:    movzbl 0, %ebx
 ; CHECK-NEXT:    xorl %eax, %eax
 ; CHECK-NEXT:    testb %al, %al
 ; CHECK-NEXT:    jne .LBB3_8
 ; CHECK-NEXT:  # %bb.2: # %bb.i
 ; CHECK-NEXT:    xorl %eax, %eax
 ; CHECK-NEXT:    testb %al, %al
-; CHECK-NEXT:    je .LBB3_8
+; CHECK-NEXT:    jne .LBB3_8
 ; CHECK-NEXT:  # %bb.3: # %lvalue_p.exit
 ; CHECK-NEXT:    movq 0, %rax
 ; CHECK-NEXT:    movzbl (%rax), %ecx
 ; CHECK-NEXT:    testl %ecx, %ecx
-; CHECK-NEXT:    je .LBB3_10
+; CHECK-NEXT:    je .LBB3_8
 ; CHECK-NEXT:  # %bb.4: # %lvalue_p.exit
 ; CHECK-NEXT:    cmpl $2, %ecx
-; CHECK-NEXT:    jne .LBB3_15
+; CHECK-NEXT:    jne .LBB3_8
 ; CHECK-NEXT:  # %bb.5: # %bb.i1
 ; CHECK-NEXT:    movq 32(%rax), %rax
-; CHECK-NEXT:    movzbl 16(%rax), %ecx
-; CHECK-NEXT:    testl %ecx, %ecx
-; CHECK-NEXT:    je .LBB3_13
+; CHECK-NEXT:    movzbl 16(%rax), %eax
+; CHECK-NEXT:    testl %eax, %eax
+; CHECK-NEXT:    je .LBB3_8
 ; CHECK-NEXT:  # %bb.6: # %bb.i1
-; CHECK-NEXT:    cmpl $2, %ecx
-; CHECK-NEXT:    jne .LBB3_15
+; CHECK-NEXT:    cmpl $2, %eax
+; CHECK-NEXT:    jne .LBB3_8
 ; CHECK-NEXT:  # %bb.7: # %bb.i.i
+; CHECK-NEXT:    pushq %rax
 ; CHECK-NEXT:    xorl %edi, %edi
 ; CHECK-NEXT:    callq lvalue_p@PLT
-; CHECK-NEXT:    testl %eax, %eax
-; CHECK-NEXT:    setne %al
-; CHECK-NEXT:    jmp .LBB3_16
-; CHECK-NEXT:  .LBB3_8: # %bb1
-; CHECK-NEXT:    cmpb $23, %bl
-; CHECK-NEXT:  .LBB3_9: # %bb3
-; CHECK-NEXT:  .LBB3_15:
-; CHECK-NEXT:    xorl %eax, %eax
-; CHECK-NEXT:  .LBB3_16: # %lvalue_p.exit4
-; CHECK-NEXT:    testb %al, %al
-; CHECK-NEXT:    jne .LBB3_9
-; CHECK-NEXT:  # %bb.17: # %lvalue_p.exit4
-; CHECK-NEXT:    testb %bl, %bl
-; CHECK-NEXT:  .LBB3_10: # %bb2.i3
-; CHECK-NEXT:    movq 8(%rax), %rax
-; CHECK-NEXT:    movzbl 16(%rax), %ecx
-; CHECK-NEXT:    xorl %eax, %eax
-; CHECK-NEXT:    cmpl $23, %ecx
-; CHECK-NEXT:    je .LBB3_16
-; CHECK-NEXT:  # %bb.11: # %bb2.i3
-; CHECK-NEXT:    cmpl $16, %ecx
-; CHECK-NEXT:    je .LBB3_16
-; CHECK-NEXT:    jmp .LBB3_9
-; CHECK-NEXT:  .LBB3_13: # %bb2.i.i2
-; CHECK-NEXT:    movq 8(%rax), %rax
-; CHECK-NEXT:    movzbl 16(%rax), %ecx
-; CHECK-NEXT:    xorl %eax, %eax
-; CHECK-NEXT:    cmpl $16, %ecx
-; CHECK-NEXT:    je .LBB3_16
-; CHECK-NEXT:  # %bb.14: # %bb2.i.i2
-; CHECK-NEXT:    cmpl $23, %ecx
-; CHECK-NEXT:    je .LBB3_16
-; CHECK-NEXT:    jmp .LBB3_9
+; CHECK-NEXT:    addq $8, %rsp
+; CHECK-NEXT:  .LBB3_8: # %bb3
 entry:
   %tmp4 = load i8, ptr null, align 8                  ; <i8> [#uses=3]
   switch i8 %tmp4, label %bb3 [
