@@ -11,6 +11,7 @@ add_mlir_library(MLIRTransforms
   Mem2Reg.cpp
   OpStats.cpp
   PrintIR.cpp
+  RemoveNonLiveValues.cpp
   SCCP.cpp
   SROA.cpp
   StripDebugInfo.cpp
