@@ -643,24 +643,32 @@ FailureOr<linalg::ForallReductionTilingResult> linalg::tileReductionUsingForall(
 
   SmallVector<utils::IteratorType> iterators =
       tilingInterfaceOp.getLoopIteratorTypes();
-  SmallVector<unsigned> redDims;
-  linalgOp.getReductionDims(redDims);
-  if (redDims.size() != 1)
-    return b.notifyMatchFailure(
-        op, "only support ops with one reduction dimension.");
   if (!tileSizes.empty() && tileSizes.size() != numThreads.size())
     return b.notifyMatchFailure(op, "if tile sizes are present it must have as "
                                     "many elements as number of threads");
-  int reductionDim = static_cast<int>(redDims.front());
 
-  if (redDims.front() >= numThreads.size())
+  SmallVector<int> tiledReductionDims, reductionInductionVarIndices;
+  int64_t nonZeroTileIdx = 0;
+  for (auto [idx, iteratorType] :
+       llvm::enumerate(tilingInterfaceOp.getLoopIteratorTypes())) {
+    bool isNonZeroTileSize =
+        idx < numThreads.size() && !isConstantIntValue(numThreads[idx], 0);
+    if (iteratorType == utils::IteratorType::reduction && isNonZeroTileSize) {
+      tiledReductionDims.push_back(idx);
+      reductionInductionVarIndices.push_back(nonZeroTileIdx);
+    }
+    nonZeroTileIdx += isNonZeroTileSize;
+  }
+
+  if (tiledReductionDims.size() == 0) {
     return b.notifyMatchFailure(
-        op, "reduction dimension must be mapped to threads");
+        op, "at least one reduction dimension must be mapped to threads");
+  }
 
   // 1. Create the inital tensor value.
   FailureOr<Operation *> identityTensor =
       op.generateInitialTensorForPartialReduction(b, loc, numThreads,
-                                                  reductionDim);
+                                                  tiledReductionDims);
   if (failed(identityTensor))
     return b.notifyMatchFailure(op,
                                 "cannot create a tensor of identity value.");
@@ -701,6 +709,11 @@ FailureOr<linalg::ForallReductionTilingResult> linalg::tileReductionUsingForall(
     OpBuilder::InsertionGuard g(b);
     b.setInsertionPoint(forallOp.getTerminator());
 
+    SmallVector<OpFoldResult> filteredTiledSizes(
+        tiledSizes.begin(), tiledSizes.begin() + numThreads.size());
+    llvm::SmallDenseSet<int> reductionIndexSet(tiledReductionDims.begin(),
+                                               tiledReductionDims.end());
+
     SmallVector<Value> tiledDpsInitOperands;
     for (OpOperand *initOperand : destinationStyleOp.getDpsInitOperands()) {
       auto *it = llvm::find(dest, initOperand->get());
@@ -709,9 +722,19 @@ FailureOr<linalg::ForallReductionTilingResult> linalg::tileReductionUsingForall(
       SmallVector<OpFoldResult> strides(numThreads.size(), b.getIndexAttr(1));
       SmallVector<OpFoldResult> outOffsets(numThreads.size(),
                                            b.getIndexAttr(0));
-      SmallVector<OpFoldResult> sizes = tiledSizes;
-      sizes[reductionDim] = b.getIndexAttr(1);
-      outOffsets[reductionDim] = forallOp.getInductionVars().front();
+      SmallVector<OpFoldResult> sizes = filteredTiledSizes;
+      auto indVars = forallOp.getInductionVars();
+      for (auto [indVarIdx, redDim] :
+           llvm::zip_equal(reductionInductionVarIndices, tiledReductionDims)) {
+        sizes[redDim] = b.getIndexAttr(1);
+        outOffsets[redDim] = indVars[indVarIdx];
+      }
+      // Parallel dims are tiled with the clone in the next step.
+      for (int i = 0, e = filteredTiledSizes.size(); i < e; ++i) {
+        if (!reductionIndexSet.contains(i) &&
+            !isConstantIntValue(numThreads[i], 0))
+          sizes[i] = tensor::getMixedSize(b, loc, destBbArgs[destNum], i);
+      }
       // TODO: use SubsetExtractOpInterface once it is available.
       tiledDpsInitOperands.push_back(b.create<tensor::ExtractSliceOp>(
           loc, cast<RankedTensorType>(initOperand->get().getType()),
@@ -777,9 +800,12 @@ FailureOr<linalg::ForallReductionTilingResult> linalg::tileReductionUsingForall(
     SmallVector<OpFoldResult> resultOffsetsRank, resultSizesRank;
     int64_t offIdx = 0;
     int64_t sizeIdx = 0;
+    int64_t reductionIdx = 0;
     for (int64_t i = 0, e = numThreads.size(); i < e; ++i) {
-      if (i == reductionDim) {
-        resultOffsetsRank.push_back(forallOp.getInductionVars().front());
+      if (tiledReductionDims[reductionIdx] == i) {
+        resultOffsetsRank.push_back(
+            forallOp.getInductionVars()
+                [reductionInductionVarIndices[reductionIdx++]]);
         resultSizesRank.push_back(b.getIndexAttr(1));
         continue;
       }
@@ -799,7 +825,7 @@ FailureOr<linalg::ForallReductionTilingResult> linalg::tileReductionUsingForall(
   // 7. Merge the partial reductions.
   b.setInsertionPointAfter(forallOp);
   Operation *mergeOp =
-      op.mergeReductions(b, loc, forallOp->getResults(), reductionDim);
+      op.mergeReductions(b, loc, forallOp->getResults(), tiledReductionDims);
   b.replaceOp(op, mergeOp->getResults());
 
   // 8. Return.
