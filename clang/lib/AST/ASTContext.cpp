@@ -10266,8 +10266,13 @@ bool ASTContext::canBindObjCObjectType(QualType To, QualType From) {
 /// same. See 6.7.[2,3,5] for additional rules.
 bool ASTContext::typesAreCompatible(QualType LHS, QualType RHS,
                                     bool CompareUnqualified) {
-  if (getLangOpts().CPlusPlus)
+  if (getLangOpts().CPlusPlus) {
+    if (CompareUnqualified) {
+      LHS = LHS.getUnqualifiedType();
+      RHS = RHS.getUnqualifiedType();
+    }
     return hasSameType(LHS, RHS);
+  }
 
   return !mergeTypes(LHS, RHS, false, CompareUnqualified).isNull();
 }

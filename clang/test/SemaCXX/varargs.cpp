@@ -31,7 +31,7 @@ void record_context(int a, ...) {
 // Ensure the correct behavior for promotable type UB checking.
 void promotable(int a, ...) {
   enum Unscoped1 { One = 0x7FFFFFFF };
-  (void)__builtin_va_arg(ap, Unscoped1); // ok
+  (void)__builtin_va_arg(ap, Unscoped1); // expected-warning {{second argument to 'va_arg' is of promotable type 'Unscoped1'; this va_arg has undefined behavior because arguments will be promoted to 'int'}}
 
   enum Unscoped2 { Two = 0xFFFFFFFF };
   (void)__builtin_va_arg(ap, Unscoped2); // ok
@@ -55,6 +55,24 @@ void promotable(int a, ...) {
   (void)__builtin_va_arg(ap, unsigned int);
 
   (void)__builtin_va_arg(ap, bool); // expected-warning {{second argument to 'va_arg' is of promotable type 'bool'; this va_arg has undefined behavior because arguments will be promoted to 'int'}}
+
+  (void)__builtin_va_arg(ap, float); // expected-warning {{second argument to 'va_arg' is of promotable type 'float'; this va_arg has undefined behavior because arguments will be promoted to 'double'}}
+  (void)__builtin_va_arg(ap, __fp16); // expected-warning {{second argument to 'va_arg' is of promotable type '__fp16'; this va_arg has undefined behavior because arguments will be promoted to 'double'}}
+
+#if __cplusplus >= 201103L
+  (void)__builtin_va_arg(ap, decltype(nullptr)); // expected-warning {{second argument to 'va_arg' is of promotable type 'decltype(nullptr)' (aka 'std::nullptr_t'); this va_arg has undefined behavior because arguments will be promoted to 'void *'}}
+#endif
+
+  (void)__builtin_va_arg(ap, int[3]); // expected-warning {{second argument to 'va_arg' is of promotable type 'int[3]'; this va_arg has undefined behavior because arguments will be promoted to 'int *'}}
+  (void)__builtin_va_arg(ap, const int[3]); // expected-warning {{second argument to 'va_arg' is of promotable type 'const int[3]'; this va_arg has undefined behavior because arguments will be promoted to 'const int *'}}
+
+  // _BitInts aren't promoted
+  (void)__builtin_va_arg(ap, _BitInt(7));
+  (void)__builtin_va_arg(ap, unsigned _BitInt(7));
+  (void)__builtin_va_arg(ap, _BitInt(32));
+  (void)__builtin_va_arg(ap, unsigned _BitInt(32));
+  (void)__builtin_va_arg(ap, _BitInt(33));
+  (void)__builtin_va_arg(ap, unsigned _BitInt(33));
 }
 
 #if __cplusplus >= 201103L

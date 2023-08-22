@@ -75,6 +75,14 @@ void f9(__builtin_va_list args)
     (void)__builtin_va_arg(args, enum E); // Don't warn here in C
     (void)__builtin_va_arg(args, short); // expected-warning {{second argument to 'va_arg' is of promotable type 'short'}}
     (void)__builtin_va_arg(args, char); // expected-warning {{second argument to 'va_arg' is of promotable type 'char'}}
+
+    // _BitInts aren't promoted
+    (void)__builtin_va_arg(args, _BitInt(7));
+    (void)__builtin_va_arg(args, unsigned _BitInt(7));
+    (void)__builtin_va_arg(args, _BitInt(32)); // OK
+    (void)__builtin_va_arg(args, unsigned _BitInt(32)); // OK
+    (void)__builtin_va_arg(args, _BitInt(33)); // OK
+    (void)__builtin_va_arg(args, unsigned _BitInt(33)); // OK
 }
 
 void f10(int a, ...) {
@@ -120,4 +128,19 @@ void f14(int e, ...) {
   va_start();
   __builtin_va_list va;
   va_start(va, e);
+}
+
+void f15(__builtin_va_list args) {
+  (void)__builtin_va_arg(args, const int);
+  (void)__builtin_va_arg(args, const volatile int);
+  (void)__builtin_va_arg(args, volatile int);
+  (void)__builtin_va_arg(args, int * volatile);
+
+  typedef short vec [[gnu::vector_size(sizeof(short))]];
+  vec v = __builtin_va_arg(args, vec);
+
+#ifdef MS
+  typedef void(__fastcall * attribute_fn)(void);
+  attribute_fn ptr = __builtin_va_arg(args, attribute_fn);
+#endif
 }
