@@ -186,25 +186,76 @@ const interpose_substitution substitution_##func_name[]             \
 #   define __ASM_WEAK_WRAPPER(func) ".weak " #func "\n"
 #  endif  // SANITIZER_FREEBSD || SANITIZER_NETBSD
 // Keep trampoline implementation in sync with sanitizer_common/sanitizer_asm.h
-#  define DECLARE_WRAPPER(ret_type, func, ...)                                 \
-     extern "C" ret_type func(__VA_ARGS__);                                    \
-     extern "C" ret_type TRAMPOLINE(func)(__VA_ARGS__);                        \
-     extern "C" ret_type __interceptor_##func(__VA_ARGS__)                     \
-       INTERCEPTOR_ATTRIBUTE __attribute__((weak)) ALIAS(WRAP(func));          \
-     asm(                                                                      \
-       ".text\n"                                                               \
-       __ASM_WEAK_WRAPPER(func)                                                \
-       ".set " #func ", " SANITIZER_STRINGIFY(TRAMPOLINE(func)) "\n"           \
-       ".globl " SANITIZER_STRINGIFY(TRAMPOLINE(func)) "\n"                    \
-       ".type  " SANITIZER_STRINGIFY(TRAMPOLINE(func)) ", %function\n"         \
-       SANITIZER_STRINGIFY(TRAMPOLINE(func)) ":\n"                             \
-       SANITIZER_STRINGIFY(CFI_STARTPROC) "\n"                                 \
-       SANITIZER_STRINGIFY(ASM_TAIL_CALL) " __interceptor_"                    \
-         SANITIZER_STRINGIFY(ASM_PREEMPTIBLE_SYM(func)) "\n"                   \
-       SANITIZER_STRINGIFY(CFI_ENDPROC) "\n"                                   \
-       ".size  " SANITIZER_STRINGIFY(TRAMPOLINE(func)) ", "                    \
-            ".-" SANITIZER_STRINGIFY(TRAMPOLINE(func)) "\n"                    \
-     );
+#    if !defined(__mips__) || __mips_isa_rev >= 6
+#      define DECLARE_WRAPPER(ret_type, func, ...)                         \
+        extern "C" ret_type func(__VA_ARGS__);                             \
+        extern "C" ret_type TRAMPOLINE(func)(__VA_ARGS__);                 \
+        extern "C" ret_type __interceptor_##func(__VA_ARGS__)              \
+            INTERCEPTOR_ATTRIBUTE __attribute__((weak)) ALIAS(WRAP(func)); \
+        asm(                                                                      \
+        ".text\n"                                                               \
+        __ASM_WEAK_WRAPPER(func)                                                \
+        ".set " #func ", " SANITIZER_STRINGIFY(TRAMPOLINE(func)) "\n"           \
+        ".globl " SANITIZER_STRINGIFY(TRAMPOLINE(func)) "\n"                    \
+        ".type  " SANITIZER_STRINGIFY(TRAMPOLINE(func)) ", %function\n"         \
+        SANITIZER_STRINGIFY(TRAMPOLINE(func)) ":\n"                             \
+        SANITIZER_STRINGIFY(CFI_STARTPROC) "\n"                                 \
+        SANITIZER_STRINGIFY(ASM_TAIL_CALL) " __interceptor_"                    \
+          SANITIZER_STRINGIFY(ASM_PREEMPTIBLE_SYM(func)) "\n"                   \
+        SANITIZER_STRINGIFY(CFI_ENDPROC) "\n"                                   \
+        ".size  " SANITIZER_STRINGIFY(TRAMPOLINE(func)) ", "                    \
+             ".-" SANITIZER_STRINGIFY(TRAMPOLINE(func)) "\n"                    \
+      );
+#    elif defined(__mips64)
+// FIXME: why t8 is ok, while gp cannot?
+#      define DECLARE_WRAPPER(ret_type, func, ...)                         \
+        extern "C" ret_type func(__VA_ARGS__);                             \
+        extern "C" ret_type TRAMPOLINE(func)(__VA_ARGS__);                 \
+        extern "C" ret_type __interceptor_##func(__VA_ARGS__)              \
+            INTERCEPTOR_ATTRIBUTE __attribute__((weak)) ALIAS(WRAP(func)); \
+        asm(                                                                      \
+        ".text\n"                                                               \
+        __ASM_WEAK_WRAPPER(func)                                                \
+        ".set " #func ", " SANITIZER_STRINGIFY(TRAMPOLINE(func)) "\n"           \
+        ".globl " SANITIZER_STRINGIFY(TRAMPOLINE(func)) "\n"                    \
+        ".type  " SANITIZER_STRINGIFY(TRAMPOLINE(func)) ", %function\n"         \
+        SANITIZER_STRINGIFY(TRAMPOLINE(func)) ":\n"                             \
+        SANITIZER_STRINGIFY(CFI_STARTPROC) "\n"                                 \
+        "lui $t8, %hi(%neg(%gp_rel("                                            \
+                     SANITIZER_STRINGIFY(TRAMPOLINE(func)) "))) \n"             \
+        "daddu $t8, $t8, $t9 \n"                                                \
+        "daddu $t8, $t8, %lo(%neg(%gp_rel("                                     \
+                     SANITIZER_STRINGIFY(TRAMPOLINE(func)) "))) \n"             \
+        "ld $t9, %got_disp(__interceptor_" SANITIZER_STRINGIFY(func) ")($t8) \n"  \
+        "jr $t9 \n"                                                             \
+        SANITIZER_STRINGIFY(CFI_ENDPROC) "\n"                                   \
+        ".size  " SANITIZER_STRINGIFY(TRAMPOLINE(func)) ", "                    \
+             ".-" SANITIZER_STRINGIFY(TRAMPOLINE(func)) "\n"                    \
+       );
+#    else
+#      define DECLARE_WRAPPER(ret_type, func, ...)                         \
+        extern "C" ret_type func(__VA_ARGS__);                             \
+        extern "C" ret_type TRAMPOLINE(func)(__VA_ARGS__);                 \
+        extern "C" ret_type __interceptor_##func(__VA_ARGS__)              \
+            INTERCEPTOR_ATTRIBUTE __attribute__((weak)) ALIAS(WRAP(func)); \
+        asm(                                                                      \
+        ".text\n"                                                               \
+        __ASM_WEAK_WRAPPER(func)                                                \
+        ".set " #func ", " SANITIZER_STRINGIFY(TRAMPOLINE(func)) "\n"           \
+        ".globl " SANITIZER_STRINGIFY(TRAMPOLINE(func)) "\n"                    \
+        ".type  " SANITIZER_STRINGIFY(TRAMPOLINE(func)) ", %function\n"         \
+        SANITIZER_STRINGIFY(TRAMPOLINE(func)) ":\n"                             \
+        SANITIZER_STRINGIFY(CFI_STARTPROC) "\n"                                 \
+	".set    noreorder \n"                                                  \
+	".cpload $t9 \n"                                                        \
+        "lw $t9, %got(__interceptor_" SANITIZER_STRINGIFY(func) ")($gp) \n"     \
+        "jr $t9 \n"                                                             \
+	".set    reorder \n"                                                    \
+        SANITIZER_STRINGIFY(CFI_ENDPROC) "\n"                                   \
+        ".size  " SANITIZER_STRINGIFY(TRAMPOLINE(func)) ", "                    \
+             ".-" SANITIZER_STRINGIFY(TRAMPOLINE(func)) "\n"                    \
+       );
+#    endif
 # else  // ASM_INTERCEPTOR_TRAMPOLINE_SUPPORT
 // Some architectures cannot implement efficient interceptor trampolines with
 // just a plain jump due to complexities of resolving a preemptible symbol. In

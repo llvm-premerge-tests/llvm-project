@@ -44,6 +44,8 @@
 
 #if defined(__x86_64__) || defined(__i386__) || defined(__sparc__)
 # define ASM_TAIL_CALL jmp
+#elif defined(__mips__) && __mips_isa_rev >= 6
+#  define ASM_TAIL_CALL bc
 #elif defined(__arm__) || defined(__aarch64__) || defined(__mips__) || \
     defined(__powerpc__) || defined(__loongarch_lp64)
 # define ASM_TAIL_CALL b
