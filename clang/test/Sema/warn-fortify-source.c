@@ -87,6 +87,10 @@ void call_snprintf(void) {
   char buf[10];
   __builtin_snprintf(buf, 10, "merp");
   __builtin_snprintf(buf, 11, "merp"); // expected-warning {{'snprintf' size argument is too large; destination buffer has size 10, but size argument is 11}}
+  __builtin_snprintf(buf, 0, "merp");
+  __builtin_snprintf(buf, 3, "merp"); // expected-warning {{'snprintf' will always be truncated; specified size is 3, but format string expands to at least 5}}
+  __builtin_snprintf(buf, 4, "merp"); // expected-warning {{'snprintf' will always be truncated; specified size is 4, but format string expands to at least 5}}
+  __builtin_snprintf(buf, 5, "merp");
 }
 
 void call_vsnprintf(void) {
@@ -94,6 +98,10 @@ void call_vsnprintf(void) {
   __builtin_va_list list;
   __builtin_vsnprintf(buf, 10, "merp", list);
   __builtin_vsnprintf(buf, 11, "merp", list); // expected-warning {{'vsnprintf' size argument is too large; destination buffer has size 10, but size argument is 11}}
+  __builtin_vsnprintf(buf, 0, "merp", list);
+  __builtin_vsnprintf(buf, 3, "merp", list); // expected-warning {{'vsnprintf' will always be truncated; specified size is 3, but format string expands to at least 5}}
+  __builtin_vsnprintf(buf, 4, "merp", list); // expected-warning {{'vsnprintf' will always be truncated; specified size is 4, but format string expands to at least 5}}
+  __builtin_vsnprintf(buf, 5, "merp", list);
 }
 
 void call_sprintf_chk(char *buf) {
