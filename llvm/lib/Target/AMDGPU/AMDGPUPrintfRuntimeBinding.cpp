@@ -439,7 +439,10 @@ bool AMDGPUPrintfRuntimeBindingImpl::run(Module &M) {
 
   for (auto &U : PrintfFunction->uses()) {
     if (auto *CI = dyn_cast<CallInst>(U.getUser())) {
-      if (CI->isCallee(&U))
+      if (CI->isCallee(&U) &&
+          (!CI->isNoBuiltin() ||
+           (CI->hasFnAttr(Attribute::Builtin) &&
+            PrintfFunction->hasFnAttribute(Attribute::NoBuiltin))))
         Printfs.push_back(CI);
     }
   }
