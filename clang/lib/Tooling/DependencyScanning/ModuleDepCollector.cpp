@@ -467,20 +467,6 @@ ModuleDepCollectorPP::handleTopLevelModule(const Module *M) {
   serialization::ModuleFile *MF =
       MDC.ScanInstance.getASTReader()->getModuleManager().lookup(
           M->getASTFile());
-  MDC.ScanInstance.getASTReader()->visitInputFileInfos(
-      *MF, /*IncludeSystem=*/true,
-      [&](const serialization::InputFileInfo &IFI, bool IsSystem) {
-        // __inferred_module.map is the result of the way in which an implicit
-        // module build handles inferred modules. It adds an overlay VFS with
-        // this file in the proper directory and relies on the rest of Clang to
-        // handle it like normal. With explicitly built modules we don't need
-        // to play VFS tricks, so replace it with the correct module map.
-        if (StringRef(IFI.Filename).endswith("__inferred_module.map")) {
-          MDC.addFileDep(MD, ModuleMap->getName());
-          return;
-        }
-        MDC.addFileDep(MD, IFI.Filename);
-      });
 
   llvm::DenseSet<const Module *> SeenDeps;
   addAllSubmodulePrebuiltDeps(M, MD, SeenDeps);
@@ -510,7 +496,9 @@ ModuleDepCollectorPP::handleTopLevelModule(const Module *M) {
   // Finish the compiler invocation. Requires dependencies and the context hash.
   MDC.addOutputPaths(CI, MD);
 
-  MD.BuildArguments = CI.getCC1CommandLine();
+  // Wire up lazy info computation.
+  MD.MDC = &MDC;
+  MDC.LazyModuleDepsInfoByID.insert({MD.ID, {MF, std::move(CI)}});
 
   return MD.ID;
 }
@@ -643,5 +631,50 @@ void ModuleDepCollector::addFileDep(StringRef Path) {
 void ModuleDepCollector::addFileDep(ModuleDeps &MD, StringRef Path) {
   llvm::SmallString<256> Storage;
   Path = makeAbsoluteAndPreferred(ScanInstance, Path, Storage);
-  MD.FileDeps.insert(Path);
+  MD.FileDeps->insert(Path);
+}
+
+void ModuleDepCollector::addFileDeps(ModuleDeps &MD) {
+  auto It = LazyModuleDepsInfoByID.find(MD.ID);
+  assert(It != LazyModuleDepsInfoByID.end());
+
+  MD.FileDeps = llvm::StringSet<>{};
+
+  ScanInstance.getASTReader()->visitInputFileInfos(
+      *It->second.MF, /*IncludeSystem=*/true,
+      [&](const serialization::InputFileInfo &IFI, bool IsSystem) {
+        // __inferred_module.map is the result of the way in which an implicit
+        // module build handles inferred modules. It adds an overlay VFS with
+        // this file in the proper directory and relies on the rest of Clang to
+        // handle it like normal. With explicitly built modules we don't need
+        // to play VFS tricks, so replace it with the correct module map.
+        if (StringRef(IFI.Filename).endswith("__inferred_module.map")) {
+          FileManager &FileMgr = ScanInstance.getFileManager();
+          auto ModuleMap = FileMgr.getOptionalFileRef(MD.ClangModuleMapFile);
+          assert(ModuleMap && "Module map file of a dependency still exists");
+          addFileDep(MD, ModuleMap->getName());
+          return;
+        }
+        addFileDep(MD, IFI.Filename);
+      });
+}
+
+void ModuleDepCollector::addBuildArguments(ModuleDeps &MD) {
+  auto It = LazyModuleDepsInfoByID.find(MD.ID);
+  assert(It != LazyModuleDepsInfoByID.end());
+  MD.BuildArguments = It->second.CI.getCC1CommandLine();
+}
+
+const llvm::StringSet<> &ModuleDeps::getFileDeps() {
+  if (FileDeps)
+    return *FileDeps;
+  MDC->addFileDeps(*this);
+  return *FileDeps;
+}
+
+const std::vector<std::string> &ModuleDeps::getBuildArguments() {
+  if (BuildArguments)
+    return *BuildArguments;
+  MDC->addBuildArguments(*this);
+  return *BuildArguments;
 }

@@ -41,6 +41,7 @@ public:
   void handleModuleDependency(ModuleDeps MD) override {}
   void handleDirectModuleDependency(ModuleID ID) override {}
   void handleContextHash(std::string Hash) override {}
+  void handleScanInstance(std::shared_ptr<CompilerInstance> CI) override {}
 
   void printDependencies(std::string &S) {
     assert(Opts && "Handled dependency output options.");
@@ -172,22 +173,14 @@ TranslationUnitDeps FullDependencyConsumer::takeTranslationUnitDeps() {
   TU.FileDeps = std::move(Dependencies);
   TU.PrebuiltModuleDeps = std::move(PrebuiltModuleDeps);
   TU.Commands = std::move(Commands);
-
-  for (auto &&M : ClangModuleDeps) {
-    auto &MD = M.second;
-    // TODO: Avoid handleModuleDependency even being called for modules
-    //   we've already seen.
-    if (AlreadySeen.count(M.first))
-      continue;
-    TU.ModuleGraph.push_back(std::move(MD));
-  }
+  TU.ModuleGraph = takeModuleGraphDeps();
   TU.ClangModuleDeps = std::move(DirectModuleDeps);
 
   return TU;
 }
 
 ModuleDepsGraph FullDependencyConsumer::takeModuleGraphDeps() {
-  ModuleDepsGraph ModuleGraph;
+  ModuleDepsGraph ModuleGraph(std::move(ScanInstance));
 
   for (auto &&M : ClangModuleDeps) {
     auto &MD = M.second;
@@ -195,7 +188,7 @@ ModuleDepsGraph FullDependencyConsumer::takeModuleGraphDeps() {
     //   we've already seen.
     if (AlreadySeen.count(M.first))
       continue;
-    ModuleGraph.push_back(std::move(MD));
+    ModuleGraph.MDs.push_back(std::move(MD));
   }
 
   return ModuleGraph;

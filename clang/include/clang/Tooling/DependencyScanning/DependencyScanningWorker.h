@@ -58,6 +58,8 @@ public:
 
   virtual void handleDirectModuleDependency(ModuleID MD) = 0;
 
+  virtual void handleScanInstance(std::shared_ptr<CompilerInstance> CI) = 0;
+
   virtual void handleContextHash(std::string Hash) = 0;
 };
 

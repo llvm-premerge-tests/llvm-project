@@ -104,7 +104,21 @@ enum class ModuleOutputKind {
   DiagnosticSerializationFile,
 };
 
-struct ModuleDeps {
+class ModuleDepCollector;
+class ModuleDepCollectorPP;
+
+class ModuleDeps {
+  /// This facilitates the lazy computation of file deps and build arguments.
+  ModuleDepCollector *MDC;
+  /// Storage for the lazily-computed file dependencies.
+  std::optional<llvm::StringSet<>> FileDeps;
+  /// Storage for the lazily-computed build arguments.
+  std::optional<std::vector<std::string>> BuildArguments;
+
+  friend ModuleDepCollector;
+  friend ModuleDepCollectorPP;
+
+public:
   /// The identifier of the module.
   ModuleID ID;
 
@@ -117,9 +131,10 @@ struct ModuleDeps {
   /// additionally appear in \c FileDeps as a dependency.
   std::string ClangModuleMapFile;
 
-  /// A collection of absolute paths to files that this module directly depends
-  /// on, not including transitive dependencies.
-  llvm::StringSet<> FileDeps;
+  /// Compute/get the set of absolute paths to files that this module directly
+  /// depends on, not including transitive dependencies. Must be first called
+  /// during the lifetime of the parent dependency graph.
+  const llvm::StringSet<> &getFileDeps();
 
   /// A collection of absolute paths to module map files that this module needs
   /// to know about. The ordering is significant.
@@ -136,12 +151,11 @@ struct ModuleDeps {
   /// determined that the differences are benign for this compilation.
   std::vector<ModuleID> ClangModuleDeps;
 
-  /// Compiler invocation that can be used to build this module. Does not
-  /// include argv[0].
-  std::vector<std::string> BuildArguments;
+  /// Compute/get the compiler invocation that can be used to build this module.
+  /// Does not include argv[0]. Must be first called during the lifetime of the
+  /// parent dependency graph.
+  const std::vector<std::string> &getBuildArguments();
 };
-
-class ModuleDepCollector;
 
 /// Callback that records textual includes and direct modular includes/imports
 /// during preprocessing. At the end of the main file, it also collects
@@ -216,6 +230,13 @@ public:
 
 private:
   friend ModuleDepCollectorPP;
+  friend ModuleDeps;
+
+  /// Information we keep to be able to compute some ModuleDeps info lazily.
+  struct LazyModuleDepsInfo {
+    serialization::ModuleFile *MF;
+    CompilerInvocation CI;
+  };
 
   /// The compiler instance for scanning the current translation unit.
   CompilerInstance &ScanInstance;
@@ -235,6 +256,8 @@ private:
   /// Secondary mapping for \c ModularDeps allowing lookup by ModuleID without
   /// a preprocessor. Storage owned by \c ModularDeps.
   llvm::DenseMap<ModuleID, ModuleDeps *> ModuleDepsByID;
+  /// Mapping for lazy computation of some ModuleDeps info.
+  llvm::DenseMap<ModuleID, LazyModuleDepsInfo> LazyModuleDepsInfoByID;
   /// Direct modular dependencies that have already been built.
   llvm::MapVector<const Module *, PrebuiltModuleDep> DirectPrebuiltModularDeps;
   /// Working set of direct modular dependencies.
@@ -279,6 +302,11 @@ private:
   /// Add module files (pcm) to the invocation, if needed.
   void addModuleFiles(CompilerInvocation &CI,
                       ArrayRef<ModuleID> ClangModuleDeps) const;
+
+  /// Compute the file deps and store them into \c MD.
+  void addFileDeps(ModuleDeps &MD);
+  /// Compute the build arguments and store them into \c MD.
+  void addBuildArguments(ModuleDeps &MD);
 
   /// Add paths that require looking up outputs to the given dependencies.
   void addOutputPaths(CompilerInvocation &CI, ModuleDeps &Deps);

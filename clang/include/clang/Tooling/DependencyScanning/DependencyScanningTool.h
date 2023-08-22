@@ -28,7 +28,17 @@ using LookupModuleOutputCallback =
     llvm::function_ref<std::string(const ModuleID &, ModuleOutputKind)>;
 
 /// Graph of modular dependencies.
-using ModuleDepsGraph = std::vector<ModuleDeps>;
+class ModuleDepsGraph {
+  /// This is keeping the scan instance alive so that \c ModuleDeps can use it
+  /// to compute some properties lazily.
+  std::shared_ptr<CompilerInstance> ScanInstance;
+
+public:
+  ModuleDepsGraph(std::shared_ptr<CompilerInstance> ScanInstance = nullptr)
+      : ScanInstance(std::move(ScanInstance)) {}
+
+  std::vector<ModuleDeps> MDs;
+};
 
 /// The full dependencies and module graph for a specific input.
 struct TranslationUnitDeps {
@@ -170,6 +180,10 @@ public:
     ContextHash = std::move(Hash);
   }
 
+  void handleScanInstance(std::shared_ptr<CompilerInstance> CI) override {
+    ScanInstance = std::move(CI);
+  }
+
   TranslationUnitDeps takeTranslationUnitDeps();
   ModuleDepsGraph takeModuleGraphDeps();
 
@@ -180,6 +194,7 @@ private:
   std::vector<ModuleID> DirectModuleDeps;
   std::vector<Command> Commands;
   std::string ContextHash;
+  std::shared_ptr<CompilerInstance> ScanInstance;
   std::vector<std::string> OutputPaths;
   const llvm::DenseSet<ModuleID> &AlreadySeen;
 };

@@ -351,14 +351,24 @@ public:
   }
 
   void mergeDeps(ModuleDepsGraph Graph, size_t InputIndex) {
-    std::unique_lock<std::mutex> ul(Lock);
-    for (const ModuleDeps &MD : Graph) {
-      auto I = Modules.find({MD.ID, 0});
-      if (I != Modules.end()) {
-        I->first.InputIndex = std::min(I->first.InputIndex, InputIndex);
-        continue;
+    std::vector<ModuleDeps *> NewMDs;
+    {
+      std::unique_lock<std::mutex> ul(Lock);
+      for (const ModuleDeps &MD : Graph.MDs) {
+        auto I = Modules.find({MD.ID, 0});
+        if (I != Modules.end()) {
+          I->first.InputIndex = std::min(I->first.InputIndex, InputIndex);
+          continue;
+        }
+        auto NewIt = Modules.insert(I, {{MD.ID, InputIndex}, std::move(MD)});
+        NewMDs.push_back(&NewIt->second);
       }
-      Modules.insert(I, {{MD.ID, InputIndex}, std::move(MD)});
+    }
+    // Eagerly compute the lazy members before the graph goes out of scope.
+    // This is somewhat costly, so do it outside the critical section.
+    for (ModuleDeps *MD : NewMDs) {
+      (void)MD->getBuildArguments();
+      (void)MD->getFileDeps();
     }
   }
 
@@ -382,7 +392,7 @@ public:
                                             /*ShouldOwnClient=*/false);
 
     for (auto &&M : Modules)
-      if (roundTripCommand(M.second.BuildArguments, *Diags))
+      if (roundTripCommand(M.second.getBuildArguments(), *Diags))
         return true;
 
     for (auto &&I : Inputs)
@@ -408,10 +418,10 @@ public:
       Object O{
           {"name", MD.ID.ModuleName},
           {"context-hash", MD.ID.ContextHash},
-          {"file-deps", toJSONSorted(MD.FileDeps)},
+          {"file-deps", toJSONSorted(MD.getFileDeps())},
           {"clang-module-deps", toJSONSorted(MD.ClangModuleDeps)},
           {"clang-modulemap-file", MD.ClangModuleMapFile},
-          {"command-line", MD.BuildArguments},
+          {"command-line", MD.getBuildArguments()},
       };
       OutModules.push_back(std::move(O));
     }
