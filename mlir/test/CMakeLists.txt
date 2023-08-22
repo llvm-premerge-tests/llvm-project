@@ -32,6 +32,7 @@ if (MLIR_INCLUDE_INTEGRATION_TESTS)
   option(MLIR_RUN_CUDA_SM80_TESTS "Run CUDA A100 tests.")
   option(MLIR_RUN_CUDA_SM80_LT_TESTS "Run CUDA A100 structured sparsity tests.")
   option(MLIR_RUN_CUDA_SM90_TESTS "Run CUDA H100 tests.")
+  option(MLIR_RUN_CUDA_SM90a_TESTS "Run CUDA H100 for sm_90a tests.")
   option(MLIR_RUN_ARM_SVE_TESTS "Run Arm SVE tests.")
   option(MLIR_RUN_ARM_SME_TESTS "Run Arm SME tests.")
 
@@ -73,6 +74,7 @@ llvm_canonicalize_cmake_booleans(
   MLIR_RUN_CUDA_SM80_TESTS
   MLIR_RUN_CUDA_SM80_LT_TESTS
   MLIR_RUN_CUDA_SM90_TESTS
+  MLIR_RUN_CUDA_SM90a_TESTS
   )
 
 configure_lit_site_cfg(
