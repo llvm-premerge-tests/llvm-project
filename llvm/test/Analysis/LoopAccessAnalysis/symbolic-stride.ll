@@ -110,8 +110,8 @@ define void @two_strides(ptr noalias %A, ptr noalias %B, i64 %N, i64 %stride.1, 
 ; CHECK-EMPTY:
 ; CHECK-NEXT:    Non vectorizable stores to invariant address were not found in loop.
 ; CHECK-NEXT:    SCEV assumptions:
-; CHECK-NEXT:    Equal predicate: %stride.2 == 1
 ; CHECK-NEXT:    Equal predicate: %stride.1 == 1
+; CHECK-NEXT:    Equal predicate: %stride.2 == 1
 ; CHECK-EMPTY:
 ; CHECK-NEXT:    Expressions re-written:
 ; CHECK-NEXT:    [PSE]  %gep.A = getelementptr inbounds i32, ptr %A, i64 %mul:

@@ -16,6 +16,14 @@ define void @foo(i64  %len, ptr %a) {
 ; CHECK-NEXT:          store i32 %0, ptr %arrayidx2, align 4 ->
 ; CHECK-NEXT:          %1 = load i32, ptr %arrayidx5, align 4
 ; CHECK-EMPTY:
+; CHECK-NEXT:    BackwardVectorizable:
+; CHECK-NEXT:        store i32 %0, ptr %arrayidx2, align 4 ->
+; CHECK-NEXT:        %1 = load i32, ptr %arrayidx5, align 4
+; CHECK-EMPTY:
+; CHECK-NEXT:    BackwardVectorizable:
+; CHECK-NEXT:        store i32 %0, ptr %arrayidx2, align 4 ->
+; CHECK-NEXT:        %1 = load i32, ptr %arrayidx5, align 4
+; CHECK-EMPTY:
 ; CHECK-NEXT:    Run-time memory checks:
 ; CHECK-NEXT:    Grouped accesses:
 ; CHECK-EMPTY:
