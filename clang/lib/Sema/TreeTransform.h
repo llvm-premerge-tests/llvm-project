@@ -6814,12 +6814,29 @@ QualType TreeTransform<Derived>::TransformAutoType(TypeLocBuilder &TLB,
 
     NewTemplateArgs.setLAngleLoc(TL.getLAngleLoc());
     NewTemplateArgs.setRAngleLoc(TL.getRAngleLoc());
-    typedef TemplateArgumentLocContainerIterator<AutoTypeLoc> ArgIterator;
-    if (getDerived().TransformTemplateArguments(ArgIterator(TL, 0),
-                                                ArgIterator(TL,
-                                                            TL.getNumArgs()),
-                                                NewTemplateArgs))
-      return QualType();
+    if (TL.getConceptReference()) {
+      typedef TemplateArgumentLocContainerIterator<AutoTypeLoc> ArgIterator;
+      if (getDerived().TransformTemplateArguments(
+              ArgIterator(TL, 0), ArgIterator(TL, TL.getNumArgs()),
+              NewTemplateArgs))
+        return QualType();
+    } else {
+      unsigned size = TL.getTypePtr()->getTypeConstraintArguments().size();
+      TemplateArgumentLocInfo *TALI = new TemplateArgumentLocInfo[size];
+      TemplateSpecializationTypeLoc::initializeArgLocs(
+          SemaRef.Context, TL.getTypePtr()->getTypeConstraintArguments(), TALI,
+          SourceLocation());
+      TemplateArgumentLoc *TAL = new TemplateArgumentLoc[size];
+      for (unsigned i = 0; i < size; ++i)
+        TAL[i] = TemplateArgumentLoc(
+            TL.getTypePtr()->getTypeConstraintArguments()[i], TALI[i]);
+      bool failed =
+          getDerived().TransformTemplateArguments(TAL, size, NewTemplateArgs);
+      delete[] TAL;
+      delete[] TALI;
+      if (failed)
+        return QualType();
+    }
 
     if (TL.getNestedNameSpecifierLoc()) {
       NewNestedNameSpec
@@ -6846,15 +6863,19 @@ QualType TreeTransform<Derived>::TransformAutoType(TypeLocBuilder &TLB,
 
   AutoTypeLoc NewTL = TLB.push<AutoTypeLoc>(Result);
   NewTL.setNameLoc(TL.getNameLoc());
-  NewTL.setNestedNameSpecifierLoc(NewNestedNameSpec);
-  NewTL.setTemplateKWLoc(TL.getTemplateKWLoc());
-  NewTL.setConceptNameLoc(TL.getConceptNameLoc());
-  NewTL.setFoundDecl(TL.getFoundDecl());
-  NewTL.setLAngleLoc(TL.getLAngleLoc());
-  NewTL.setRAngleLoc(TL.getRAngleLoc());
   NewTL.setRParenLoc(TL.getRParenLoc());
-  for (unsigned I = 0; I < NewTL.getNumArgs(); ++I)
-    NewTL.setArgLocInfo(I, NewTemplateArgs.arguments()[I].getLocInfo());
+
+  if (T->isConstrained()) {
+    DeclarationNameInfo DNI = DeclarationNameInfo(
+        TL.getTypePtr()->getTypeConstraintConcept()->getDeclName(),
+        TL.getConceptNameLoc(),
+        TL.getTypePtr()->getTypeConstraintConcept()->getDeclName());
+    auto *CR = ConceptReference::Create(
+        SemaRef.Context, NewNestedNameSpec, TL.getTemplateKWLoc(), DNI,
+        TL.getFoundDecl(), TL.getTypePtr()->getTypeConstraintConcept(),
+        ASTTemplateArgumentListInfo::Create(SemaRef.Context, NewTemplateArgs));
+    NewTL.setConceptReference(CR);
+  }
 
   return Result;
 }

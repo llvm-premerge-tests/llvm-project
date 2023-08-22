@@ -5652,13 +5652,14 @@ ASTNodeImporter::VisitTemplateTypeParmDecl(TemplateTypeParmDecl *D) {
       if (Error Err = ImportTemplateArgumentListInfo(*ASTTemplateArgs,
                                                      ToTAInfo))
         return std::move(Err);
-
-    ToD->setTypeConstraint(ToNNS, DeclarationNameInfo(ToName, ToNameLoc),
-        ToFoundDecl, ToNamedConcept,
-        ASTTemplateArgs ?
-            ASTTemplateArgumentListInfo::Create(Importer.getToContext(),
-                                                ToTAInfo) : nullptr,
-        ToIDC);
+    auto *CL = ConceptReference::Create(
+        Importer.getToContext(), ToNNS,
+        ToNameLoc, // What is the right Loc here?
+        DeclarationNameInfo(ToName, ToNameLoc), ToFoundDecl, ToNamedConcept,
+        ASTTemplateArgs ? ASTTemplateArgumentListInfo::Create(
+                              Importer.getToContext(), ToTAInfo)
+                        : nullptr);
+    ToD->setTypeConstraint(CL, ToIDC);
   }
 
   if (D->hasDefaultArgument()) {
