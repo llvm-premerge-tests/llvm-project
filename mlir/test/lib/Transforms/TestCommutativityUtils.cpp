@@ -36,7 +36,10 @@ struct CommutativityUtils
     RewritePatternSet patterns(context);
     populateCommutativityUtilsPatterns(patterns);
 
-    (void)applyPatternsAndFoldGreedily(func, std::move(patterns));
+    FrozenRewritePatternSet frozenPatterns =
+        FrozenRewritePatternSet(std::move(patterns));
+
+    (void)applyPatternsAndFoldGreedily(func, frozenPatterns);
   }
 };
 } // namespace

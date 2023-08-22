@@ -45,6 +45,20 @@ def Canonicalizer : Pass<"canonicalize"> {
   ] # RewritePassUtils.options;
 }
 
+def CommutativeOperandSort : Pass<"commutative-operand-sort"> {
+  let summary = "Sort operands of commutative operands in a deterministic way";
+  let description = [{
+    This pass calls a deterministic sorting algorithm for commutative
+    operands. This way commutative operations with swapped operands can be
+    treated as equal and removed by the CSE pass.
+
+    The sorting algorithm looks at the ancestors of operands
+    to establish an ordering. See 
+    mlir/lib/Transforms/Utils/CommutativityUtils.cpp for more details. 
+  }];
+  let constructor = "mlir::createCommutativeOperandSortPass()";
+}
+
 def ControlFlowSink : Pass<"control-flow-sink"> {
   let summary = "Sink operations into conditional blocks";
   let description = [{
