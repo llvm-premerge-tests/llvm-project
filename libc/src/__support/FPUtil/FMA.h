@@ -32,7 +32,9 @@
 namespace __llvm_libc {
 namespace fputil {
 
-template <typename T> LIBC_INLINE T fma(T x, T y, T z) {
+template <typename T>
+LIBC_INLINE T fma(cpp::parameter_type<T> x, cpp::parameter_type<T> y,
+                  cpp::parameter_type<T> z) {
   return generic::fma(x, y, z);
 }
 

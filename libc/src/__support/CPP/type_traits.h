@@ -343,6 +343,12 @@ struct is_trivially_destructible
                     &&__has_trivial_destructor(T)> {};
 #endif // LIBC_HAS_BUILTIN(__is_trivially_destructible)
 
+// Use values for function parameters for small data types (<= 64-bit), and
+// use const-ref parameters for larger data types.
+template <typename T>
+using parameter_type =
+    conditional_t<sizeof(T) < 2 * sizeof(void *), T, const T &>;
+
 } // namespace cpp
 } // namespace __llvm_libc
 
