@@ -309,6 +309,14 @@ TEST(WalkAST, Alias) {
     namespace ns { using ::$explicit^Foo; }
     template<> struct ns::Foo<int> {};)cpp",
            "ns::^Foo<int> x;");
+  testWalk(R"cpp(
+    namespace ns { enum class foo { bar }; }
+    using ns::$implicit^foo;)cpp",
+           "auto x = foo::^bar;");
+  testWalk(R"cpp(
+    namespace ns { enum foo { bar }; }
+    using ns::foo::$explicit^bar;)cpp",
+           "auto x = ^bar;");
 }
 
 TEST(WalkAST, Using) {
