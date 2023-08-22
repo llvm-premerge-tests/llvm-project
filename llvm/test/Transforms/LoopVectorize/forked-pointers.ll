@@ -172,3 +172,181 @@ for.body:                                         ; preds = %entry, %for.body
   %exitcond.not = icmp eq i64 %indvars.iv.next, 100
   br i1 %exitcond.not, label %for.cond.cleanup, label %for.body
 }
+
+
+define void @forked_ptrs_with_different_base(ptr nocapture readonly %Preds, ptr nocapture %a, ptr nocapture %b, ptr nocapture readonly %c)  {
+; CHECK-LABEL: @forked_ptrs_with_different_base(
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[C:%.*]], align 64
+; CHECK-NEXT:    [[TMP1:%.*]] = load ptr, ptr [[A:%.*]], align 64
+; CHECK-NEXT:    [[DOTFR:%.*]] = freeze ptr [[TMP1]]
+; CHECK-NEXT:    [[TMP2:%.*]] = load ptr, ptr [[B:%.*]], align 64
+; CHECK-NEXT:    [[DOTFR6:%.*]] = freeze ptr [[TMP2]]
+; CHECK-NEXT:    br i1 false, label [[SCALAR_PH:%.*]], label [[VECTOR_MEMCHECK:%.*]]
+; CHECK:       vector.memcheck:
+; CHECK-NEXT:    [[SCEVGEP:%.*]] = getelementptr i8, ptr [[DOTFR]], i64 63992
+; CHECK-NEXT:    [[SCEVGEP1:%.*]] = getelementptr i8, ptr [[PREDS:%.*]], i64 31996
+; CHECK-NEXT:    [[SCEVGEP4:%.*]] = getelementptr i8, ptr [[TMP0]], i64 63992
+; CHECK-NEXT:    [[SCEVGEP5:%.*]] = getelementptr i8, ptr [[DOTFR6]], i64 63992
+; CHECK-NEXT:    [[BOUND0:%.*]] = icmp ult ptr [[DOTFR]], [[SCEVGEP1]]
+; CHECK-NEXT:    [[BOUND1:%.*]] = icmp ugt ptr [[SCEVGEP]], [[PREDS]]
+; CHECK-NEXT:    [[FOUND_CONFLICT:%.*]] = and i1 [[BOUND0]], [[BOUND1]]
+; CHECK-NEXT:    [[BOUND09:%.*]] = icmp ult ptr [[DOTFR]], [[SCEVGEP4]]
+; CHECK-NEXT:    [[BOUND110:%.*]] = icmp ult ptr [[TMP0]], [[SCEVGEP]]
+; CHECK-NEXT:    [[FOUND_CONFLICT11:%.*]] = and i1 [[BOUND09]], [[BOUND110]]
+; CHECK-NEXT:    [[CONFLICT_RDX:%.*]] = or i1 [[FOUND_CONFLICT]], [[FOUND_CONFLICT11]]
+; CHECK-NEXT:    [[BOUND012:%.*]] = icmp ult ptr [[DOTFR6]], [[SCEVGEP1]]
+; CHECK-NEXT:    [[BOUND113:%.*]] = icmp ugt ptr [[SCEVGEP5]], [[PREDS]]
+; CHECK-NEXT:    [[FOUND_CONFLICT14:%.*]] = and i1 [[BOUND012]], [[BOUND113]]
+; CHECK-NEXT:    [[CONFLICT_RDX15:%.*]] = or i1 [[CONFLICT_RDX]], [[FOUND_CONFLICT14]]
+; CHECK-NEXT:    [[BOUND016:%.*]] = icmp ult ptr [[DOTFR6]], [[SCEVGEP4]]
+; CHECK-NEXT:    [[BOUND117:%.*]] = icmp ult ptr [[TMP0]], [[SCEVGEP5]]
+; CHECK-NEXT:    [[FOUND_CONFLICT18:%.*]] = and i1 [[BOUND016]], [[BOUND117]]
+; CHECK-NEXT:    [[CONFLICT_RDX19:%.*]] = or i1 [[CONFLICT_RDX15]], [[FOUND_CONFLICT18]]
+; CHECK-NEXT:    br i1 [[CONFLICT_RDX19]], label [[SCALAR_PH]], label [[VECTOR_PH:%.*]]
+; CHECK:       vector.ph:
+; CHECK-NEXT:    [[BROADCAST_SPLATINSERT:%.*]] = insertelement <4 x ptr> poison, ptr [[DOTFR]], i64 0
+; CHECK-NEXT:    [[BROADCAST_SPLAT:%.*]] = shufflevector <4 x ptr> [[BROADCAST_SPLATINSERT]], <4 x ptr> poison, <4 x i32> zeroinitializer
+; CHECK-NEXT:    [[BROADCAST_SPLATINSERT26:%.*]] = insertelement <4 x ptr> poison, ptr [[DOTFR6]], i64 0
+; CHECK-NEXT:    [[BROADCAST_SPLAT27:%.*]] = shufflevector <4 x ptr> [[BROADCAST_SPLATINSERT26]], <4 x ptr> poison, <4 x i32> zeroinitializer
+; CHECK-NEXT:    br label [[VECTOR_BODY:%.*]]
+; CHECK:       vector.body:
+; CHECK-NEXT:    [[INDEX:%.*]] = phi i64 [ 0, [[VECTOR_PH]] ], [ [[INDEX_NEXT:%.*]], [[PRED_LOAD_CONTINUE25:%.*]] ]
+; CHECK-NEXT:    [[VEC_IND:%.*]] = phi <4 x i64> [ <i64 0, i64 1, i64 2, i64 3>, [[VECTOR_PH]] ], [ [[VEC_IND_NEXT:%.*]], [[PRED_LOAD_CONTINUE25]] ]
+; CHECK-NEXT:    [[TMP3:%.*]] = or i64 [[INDEX]], 1
+; CHECK-NEXT:    [[TMP4:%.*]] = or i64 [[INDEX]], 2
+; CHECK-NEXT:    [[TMP5:%.*]] = or i64 [[INDEX]], 3
+; CHECK-NEXT:    [[TMP6:%.*]] = getelementptr inbounds i32, ptr [[PREDS]], i64 [[INDEX]]
+; CHECK-NEXT:    [[WIDE_LOAD:%.*]] = load <4 x i32>, ptr [[TMP6]], align 4, !alias.scope !4
+; CHECK-NEXT:    [[TMP7:%.*]] = icmp ne <4 x i32> [[WIDE_LOAD]], zeroinitializer
+; CHECK-NEXT:    [[TMP8:%.*]] = extractelement <4 x i1> [[TMP7]], i64 0
+; CHECK-NEXT:    br i1 [[TMP8]], label [[PRED_LOAD_IF:%.*]], label [[PRED_LOAD_CONTINUE:%.*]]
+; CHECK:       pred.load.if:
+; CHECK-NEXT:    [[TMP9:%.*]] = getelementptr inbounds double, ptr [[TMP0]], i64 [[INDEX]]
+; CHECK-NEXT:    [[TMP10:%.*]] = load double, ptr [[TMP9]], align 8, !alias.scope !7
+; CHECK-NEXT:    [[TMP11:%.*]] = insertelement <4 x double> poison, double [[TMP10]], i64 0
+; CHECK-NEXT:    br label [[PRED_LOAD_CONTINUE]]
+; CHECK:       pred.load.continue:
+; CHECK-NEXT:    [[TMP12:%.*]] = phi <4 x double> [ poison, [[VECTOR_BODY]] ], [ [[TMP11]], [[PRED_LOAD_IF]] ]
+; CHECK-NEXT:    [[TMP13:%.*]] = extractelement <4 x i1> [[TMP7]], i64 1
+; CHECK-NEXT:    br i1 [[TMP13]], label [[PRED_LOAD_IF20:%.*]], label [[PRED_LOAD_CONTINUE21:%.*]]
+; CHECK:       pred.load.if20:
+; CHECK-NEXT:    [[TMP14:%.*]] = getelementptr inbounds double, ptr [[TMP0]], i64 [[TMP3]]
+; CHECK-NEXT:    [[TMP15:%.*]] = load double, ptr [[TMP14]], align 8, !alias.scope !7
+; CHECK-NEXT:    [[TMP16:%.*]] = insertelement <4 x double> [[TMP12]], double [[TMP15]], i64 1
+; CHECK-NEXT:    br label [[PRED_LOAD_CONTINUE21]]
+; CHECK:       pred.load.continue21:
+; CHECK-NEXT:    [[TMP17:%.*]] = phi <4 x double> [ [[TMP12]], [[PRED_LOAD_CONTINUE]] ], [ [[TMP16]], [[PRED_LOAD_IF20]] ]
+; CHECK-NEXT:    [[TMP18:%.*]] = extractelement <4 x i1> [[TMP7]], i64 2
+; CHECK-NEXT:    br i1 [[TMP18]], label [[PRED_LOAD_IF22:%.*]], label [[PRED_LOAD_CONTINUE23:%.*]]
+; CHECK:       pred.load.if22:
+; CHECK-NEXT:    [[TMP19:%.*]] = getelementptr inbounds double, ptr [[TMP0]], i64 [[TMP4]]
+; CHECK-NEXT:    [[TMP20:%.*]] = load double, ptr [[TMP19]], align 8, !alias.scope !7
+; CHECK-NEXT:    [[TMP21:%.*]] = insertelement <4 x double> [[TMP17]], double [[TMP20]], i64 2
+; CHECK-NEXT:    br label [[PRED_LOAD_CONTINUE23]]
+; CHECK:       pred.load.continue23:
+; CHECK-NEXT:    [[TMP22:%.*]] = phi <4 x double> [ [[TMP17]], [[PRED_LOAD_CONTINUE21]] ], [ [[TMP21]], [[PRED_LOAD_IF22]] ]
+; CHECK-NEXT:    [[TMP23:%.*]] = extractelement <4 x i1> [[TMP7]], i64 3
+; CHECK-NEXT:    br i1 [[TMP23]], label [[PRED_LOAD_IF24:%.*]], label [[PRED_LOAD_CONTINUE25]]
+; CHECK:       pred.load.if24:
+; CHECK-NEXT:    [[TMP24:%.*]] = getelementptr inbounds double, ptr [[TMP0]], i64 [[TMP5]]
+; CHECK-NEXT:    [[TMP25:%.*]] = load double, ptr [[TMP24]], align 8, !alias.scope !7
+; CHECK-NEXT:    [[TMP26:%.*]] = insertelement <4 x double> [[TMP22]], double [[TMP25]], i64 3
+; CHECK-NEXT:    br label [[PRED_LOAD_CONTINUE25]]
+; CHECK:       pred.load.continue25:
+; CHECK-NEXT:    [[TMP27:%.*]] = phi <4 x double> [ [[TMP22]], [[PRED_LOAD_CONTINUE23]] ], [ [[TMP26]], [[PRED_LOAD_IF24]] ]
+; CHECK-NEXT:    [[TMP28:%.*]] = fadd fast <4 x double> [[TMP27]], <double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00>
+; CHECK-NEXT:    [[TMP29:%.*]] = mul nuw nsw <4 x i64> [[VEC_IND]], [[VEC_IND]]
+; CHECK-NEXT:    [[TMP30:%.*]] = trunc <4 x i64> [[TMP29]] to <4 x i32>
+; CHECK-NEXT:    [[TMP31:%.*]] = sitofp <4 x i32> [[TMP30]] to <4 x double>
+; CHECK-NEXT:    [[PREDPHI:%.*]] = select <4 x i1> [[TMP7]], <4 x ptr> [[BROADCAST_SPLAT]], <4 x ptr> [[BROADCAST_SPLAT27]]
+; CHECK-NEXT:    [[PREDPHI28:%.*]] = select <4 x i1> [[TMP7]], <4 x double> [[TMP28]], <4 x double> [[TMP31]]
+; CHECK-NEXT:    [[TMP32:%.*]] = extractelement <4 x ptr> [[PREDPHI]], i64 0
+; CHECK-NEXT:    [[TMP33:%.*]] = getelementptr inbounds double, ptr [[TMP32]], i64 [[INDEX]]
+; CHECK-NEXT:    [[TMP34:%.*]] = extractelement <4 x ptr> [[PREDPHI]], i64 1
+; CHECK-NEXT:    [[TMP35:%.*]] = getelementptr inbounds double, ptr [[TMP34]], i64 [[TMP3]]
+; CHECK-NEXT:    [[TMP36:%.*]] = extractelement <4 x ptr> [[PREDPHI]], i64 2
+; CHECK-NEXT:    [[TMP37:%.*]] = getelementptr inbounds double, ptr [[TMP36]], i64 [[TMP4]]
+; CHECK-NEXT:    [[TMP38:%.*]] = extractelement <4 x ptr> [[PREDPHI]], i64 3
+; CHECK-NEXT:    [[TMP39:%.*]] = getelementptr inbounds double, ptr [[TMP38]], i64 [[TMP5]]
+; CHECK-NEXT:    [[TMP40:%.*]] = extractelement <4 x double> [[PREDPHI28]], i64 0
+; CHECK-NEXT:    store double [[TMP40]], ptr [[TMP33]], align 8, !alias.scope !9, !noalias !11
+; CHECK-NEXT:    [[TMP41:%.*]] = extractelement <4 x double> [[PREDPHI28]], i64 1
+; CHECK-NEXT:    store double [[TMP41]], ptr [[TMP35]], align 8, !alias.scope !9, !noalias !11
+; CHECK-NEXT:    [[TMP42:%.*]] = extractelement <4 x double> [[PREDPHI28]], i64 2
+; CHECK-NEXT:    store double [[TMP42]], ptr [[TMP37]], align 8, !alias.scope !9, !noalias !11
+; CHECK-NEXT:    [[TMP43:%.*]] = extractelement <4 x double> [[PREDPHI28]], i64 3
+; CHECK-NEXT:    store double [[TMP43]], ptr [[TMP39]], align 8, !alias.scope !9, !noalias !11
+; CHECK-NEXT:    [[INDEX_NEXT]] = add nuw i64 [[INDEX]], 4
+; CHECK-NEXT:    [[VEC_IND_NEXT]] = add <4 x i64> [[VEC_IND]], <i64 4, i64 4, i64 4, i64 4>
+; CHECK-NEXT:    [[TMP44:%.*]] = icmp eq i64 [[INDEX_NEXT]], 7996
+; CHECK-NEXT:    br i1 [[TMP44]], label [[MIDDLE_BLOCK:%.*]], label [[VECTOR_BODY]], !llvm.loop [[LOOP12:![0-9]+]]
+; CHECK:       middle.block:
+; CHECK-NEXT:    br i1 false, label [[FOR_COND_CLEANUP:%.*]], label [[SCALAR_PH]]
+; CHECK:       scalar.ph:
+; CHECK-NEXT:    [[BC_RESUME_VAL:%.*]] = phi i64 [ 7996, [[MIDDLE_BLOCK]] ], [ poison, [[ENTRY:%.*]] ], [ 0, [[VECTOR_MEMCHECK]] ]
+; CHECK-NEXT:    br label [[FOR_BODY:%.*]]
+; CHECK:       for.cond.cleanup:
+; CHECK-NEXT:    ret void
+; CHECK:       for.body:
+; CHECK-NEXT:    [[INDVARS_IV:%.*]] = phi i64 [ [[BC_RESUME_VAL]], [[SCALAR_PH]] ], [ [[INDVARS_IV_NEXT:%.*]], [[FOR_INC:%.*]] ]
+; CHECK-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, ptr [[PREDS]], i64 [[INDVARS_IV]]
+; CHECK-NEXT:    [[TMP45:%.*]] = load i32, ptr [[ARRAYIDX]], align 4
+; CHECK-NEXT:    [[CMP2_NOT:%.*]] = icmp eq i32 [[TMP45]], 0
+; CHECK-NEXT:    br i1 [[CMP2_NOT]], label [[IF_ELSE:%.*]], label [[IF_THEN:%.*]]
+; CHECK:       if.then:
+; CHECK-NEXT:    [[ARRAYIDX5:%.*]] = getelementptr inbounds double, ptr [[TMP0]], i64 [[INDVARS_IV]]
+; CHECK-NEXT:    [[TMP46:%.*]] = load double, ptr [[ARRAYIDX5]], align 8
+; CHECK-NEXT:    [[ADD:%.*]] = fadd fast double [[TMP46]], 1.000000e+00
+; CHECK-NEXT:    br label [[FOR_INC]]
+; CHECK:       if.else:
+; CHECK-NEXT:    [[TMP47:%.*]] = mul nuw nsw i64 [[INDVARS_IV]], [[INDVARS_IV]]
+; CHECK-NEXT:    [[TMP48:%.*]] = trunc i64 [[TMP47]] to i32
+; CHECK-NEXT:    [[CONV8:%.*]] = sitofp i32 [[TMP48]] to double
+; CHECK-NEXT:    br label [[FOR_INC]]
+; CHECK:       for.inc:
+; CHECK-NEXT:    [[DOTSINK:%.*]] = phi ptr [ [[DOTFR]], [[IF_THEN]] ], [ [[DOTFR6]], [[IF_ELSE]] ]
+; CHECK-NEXT:    [[ADD_SINK:%.*]] = phi double [ [[ADD]], [[IF_THEN]] ], [ [[CONV8]], [[IF_ELSE]] ]
+; CHECK-NEXT:    [[ARRAYIDX7:%.*]] = getelementptr inbounds double, ptr [[DOTSINK]], i64 [[INDVARS_IV]]
+; CHECK-NEXT:    store double [[ADD_SINK]], ptr [[ARRAYIDX7]], align 8
+; CHECK-NEXT:    [[INDVARS_IV_NEXT]] = add nuw nsw i64 [[INDVARS_IV]], 1
+; CHECK-NEXT:    [[EXITCOND_NOT:%.*]] = icmp eq i64 [[INDVARS_IV_NEXT]], 7999
+; CHECK-NEXT:    br i1 [[EXITCOND_NOT]], label [[FOR_COND_CLEANUP]], label [[FOR_BODY]], !llvm.loop [[LOOP13:![0-9]+]]
+;
+entry:
+  %0 = load ptr, ptr %c, align 64
+  %1 = load ptr, ptr %a, align 64
+  %2 = load ptr, ptr %b, align 64
+  br label %for.body
+
+for.cond.cleanup:                                 ; preds = %for.inc
+  ret void
+
+for.body:                                         ; preds = %entry, %for.inc
+  %indvars.iv = phi i64 [ 0, %entry ], [ %indvars.iv.next, %for.inc ]
+  %arrayidx = getelementptr inbounds i32, ptr %Preds, i64 %indvars.iv
+  %3 = load i32, ptr %arrayidx, align 4
+  %cmp2.not = icmp eq i32 %3, 0
+  br i1 %cmp2.not, label %if.else, label %if.then
+
+if.then:                                          ; preds = %for.body
+  %arrayidx5 = getelementptr inbounds double, ptr %0, i64 %indvars.iv
+  %4 = load double, ptr %arrayidx5, align 8
+  %add = fadd fast double %4, 1.000000e+00
+  br label %for.inc
+
+if.else:                                          ; preds = %for.body
+  %5 = mul nuw nsw i64 %indvars.iv, %indvars.iv
+  %6 = trunc i64 %5 to i32
+  %conv8 = sitofp i32 %6 to double
+  br label %for.inc
+
+for.inc:                                          ; preds = %if.then, %if.else
+  %.sink = phi ptr [ %1, %if.then ], [ %2, %if.else ]
+  %add.sink = phi double [ %add, %if.then ], [ %conv8, %if.else ]
+  %arrayidx7 = getelementptr inbounds double, ptr %.sink, i64 %indvars.iv
+  store double %add.sink, ptr %arrayidx7, align 8
+  %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
+  %exitcond.not = icmp eq i64 %indvars.iv.next, 7999
+  br i1 %exitcond.not, label %for.cond.cleanup, label %for.body
+}
