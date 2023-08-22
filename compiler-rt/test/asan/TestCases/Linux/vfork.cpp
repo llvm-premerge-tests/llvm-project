@@ -1,7 +1,7 @@
 // https://github.com/google/sanitizers/issues/925
 // RUN: %clang_asan -O0 %s -o %t && %run %t 2>&1
 
-// REQUIRES: aarch64-target-arch || x86_64-target-arch || i386-target-arch || arm-target-arch || riscv64-target-arch || loongarch64-target-arch
+// REQUIRES: target={{(aarch64|arm|i386|loongarch64|mips.*|riscv64|x86_64)-.*}}
 
 #include <assert.h>
 #include <sys/types.h>

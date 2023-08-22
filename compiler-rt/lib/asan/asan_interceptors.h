@@ -120,19 +120,20 @@ void InitializePlatformInterceptors();
 # define ASAN_INTERCEPT_TRYJOIN 0
 #endif
 
-#if SANITIZER_LINUX &&                                                \
-    (defined(__arm__) || defined(__aarch64__) || defined(__i386__) || \
-     defined(__x86_64__) || SANITIZER_RISCV64 || SANITIZER_LOONGARCH64)
-# define ASAN_INTERCEPT_VFORK 1
-#else
-# define ASAN_INTERCEPT_VFORK 0
-#endif
+#  if SANITIZER_LINUX &&                                                    \
+      (defined(__arm__) || defined(__aarch64__) || defined(__i386__) ||     \
+       defined(__x86_64__) || SANITIZER_RISCV64 || SANITIZER_LOONGARCH64 || \
+       defined(__mips))
+#    define ASAN_INTERCEPT_VFORK 1
+#  else
+#    define ASAN_INTERCEPT_VFORK 0
+#  endif
 
-#if SANITIZER_NETBSD
-# define ASAN_INTERCEPT_PTHREAD_ATFORK 1
-#else
-# define ASAN_INTERCEPT_PTHREAD_ATFORK 0
-#endif
+#  if SANITIZER_NETBSD
+#    define ASAN_INTERCEPT_PTHREAD_ATFORK 1
+#  else
+#    define ASAN_INTERCEPT_PTHREAD_ATFORK 0
+#  endif
 
 DECLARE_REAL(int, memcmp, const void *a1, const void *a2, uptr size)
 DECLARE_REAL(char*, strchr, const char *str, int c)
