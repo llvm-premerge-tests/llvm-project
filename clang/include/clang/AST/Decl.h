@@ -26,6 +26,7 @@
 #include "clang/Basic/Diagnostic.h"
 #include "clang/Basic/IdentifierTable.h"
 #include "clang/Basic/LLVM.h"
+#include "clang/Basic/LangOptions.h"
 #include "clang/Basic/Linkage.h"
 #include "clang/Basic/OperatorKinds.h"
 #include "clang/Basic/PartialDiagnostic.h"
@@ -3122,6 +3123,16 @@ public:
   bool hasNonNullInClassInitializer() const {
     return hasInClassInitializer() && (BitField ? InitAndBitWidth->Init : Init);
   }
+
+  /// Whether it resembles a flexible array member.
+  bool isFlexibleArrayMemberLike(
+      ASTContext &Context,
+      LangOptions::StrictFlexArraysLevelKind StrictFlexArraysLevel,
+      bool IgnoreTemplateOrMacroSubstitution) const;
+
+  std::optional<bool> isFlexibleArrayMemberLike(
+    ASTContext &Ctx, QualType Ty, bool isUnion,
+    LangOptions::StrictFlexArraysLevelKind StrictFlexArraysLevel) const;
 
   /// Get the C++11 default member initializer for this member, or null if one
   /// has not been set. If a valid declaration has a default member initializer,
