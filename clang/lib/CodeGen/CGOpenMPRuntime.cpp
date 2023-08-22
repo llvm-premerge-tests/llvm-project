@@ -7435,6 +7435,9 @@ private:
           LowestElem = LB =
               CGF.EmitOMPSharedLValue(I->getAssociatedExpression())
                   .getAddress(CGF);
+          // Seems like changing here doesn't reflect on the @.offload_sizes entry,
+          // while changing it in  emitCombinedEntry does update the sizes array.
+          // I also couldn't get the full test case to working when trying to change here
         }
 
         // If this component is a pointer inside the base struct then we don't
@@ -8382,8 +8385,29 @@ public:
       CombinedInfo.Pointers.push_back(LB);
       // Size is (addr of {highest+1} element) - (addr of lowest element)
       llvm::Value *HB = HBAddr.getPointer();
-      llvm::Value *HAddr = CGF.Builder.CreateConstGEP1_32(
-          HBAddr.getElementType(), HB, /*Idx0=*/1);
+      llvm::Value *HAddr;
+
+      if(HBAddr.getElementType() == PartialStruct.Base.getElementType()) {
+        HAddr = CGF.Builder.CreateConstGEP1_32(HBAddr.getElementType(), HB, /*Idx0=*/1);
+      }
+      else
+      {
+        //fixup the last pointer if it's not a direct struct member
+        llvm::Instruction* Instr = &CGF.Builder.GetInsertBlock()->back();
+        // we want to stop at the GEP that uses the base pointer as its
+        // source. Can we safely assume that we can go off of the boolean result of the cast?
+        // In other words, are we certain that all the members were generated in the IR
+        // using a GEP instruction?
+        llvm::Instruction* cur_inst = Instr;
+        llvm::Instruction* last_inst; 
+        while(dyn_cast<llvm::GetElementPtrInst>(cur_inst)) {
+          last_inst = cur_inst;
+          cur_inst = cast<llvm::Instruction>(cast<llvm::GetElementPtrInst>(cur_inst)->getOperand(0));
+        }
+        HAddr = CGF.Builder.CreateConstGEP1_32(
+          cast<llvm::GetElementPtrInst>(last_inst)->getSourceElementType(), cast<llvm::Value>(last_inst), /*Idx0=*/1);
+      }      
+
       llvm::Value *CLAddr = CGF.Builder.CreatePointerCast(LB, CGF.VoidPtrTy);
       llvm::Value *CHAddr = CGF.Builder.CreatePointerCast(HAddr, CGF.VoidPtrTy);
       llvm::Value *Diff = CGF.Builder.CreatePtrDiff(CGF.Int8Ty, CHAddr, CLAddr);
