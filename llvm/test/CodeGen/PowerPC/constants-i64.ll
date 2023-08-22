@@ -424,4 +424,24 @@ entry:
   ret i64 82134617250843903 ;0x0123CCFFCCFFCCFF
 }
 
+define i64 @imm23() {
+; CHECK-LABEL: imm23:
+; CHECK:       # %bb.0: # %entry
+; CHECK-NEXT:    li 3, 32767
+; CHECK-NEXT:    rldimi 3, 3, 32, 0
+; CHECK-NEXT:    blr
+entry:
+  ret i64 140733193420799 ;0x00007FFF00007FFF
+}
+
+define i64 @imm24() {
+; CHECK-LABEL: imm24:
+; CHECK:       # %bb.0: # %entry
+; CHECK-NEXT:    lis 3, -9
+; CHECK-NEXT:    rldimi 3, 3, 32, 0
+; CHECK-NEXT:    blr
+entry:
+  ret i64 18444210803213533184 ;0xFFF70000FFF70000
+}
+
 attributes #0 = { nounwind readnone }
