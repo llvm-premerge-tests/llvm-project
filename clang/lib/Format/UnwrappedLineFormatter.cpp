@@ -390,7 +390,7 @@ private:
           for (auto *CompactedLine = I + J; CompactedLine <= ClosingLine;
                ++CompactedLine) {
             if (!(*CompactedLine)->InPPDirective)
-              (*CompactedLine)->Level -= OutdentBy;
+              (*CompactedLine)->Level -= std::min(OutdentBy, (*CompactedLine)->Level);
           }
         }
         return J - 1;
