@@ -22,6 +22,42 @@
 ; CHECK-NEXT:            store float %val, ptr %gep.iv.min.100, align 8 ->
 ; CHECK-NEXT:            store i32 %indvars.iv.i32, ptr %gep.iv, align 8
 ; CHECK-EMPTY:
+; CHECK-NEXT:    Forward:
+; CHECK-NEXT:        %ld.f32 = load float, ptr %gep.iv, align 8 ->
+; CHECK-NEXT:        store i32 %indvars.iv.i32, ptr %gep.iv, align 8
+; CHECK-EMPTY:
+; CHECK-NEXT:    Forward:
+; CHECK-NEXT:        %ld.f32 = load float, ptr %gep.iv, align 8 ->
+; CHECK-NEXT:        store float %val, ptr %gep.iv.min.100, align 8
+; CHECK-EMPTY:
+; CHECK-NEXT:    BackwardVectorizable:
+; CHECK-NEXT:        store float %val, ptr %gep.iv.min.100, align 8 ->
+; CHECK-NEXT:        store i32 %indvars.iv.i32, ptr %gep.iv, align 8
+; CHECK-EMPTY:
+; CHECK-NEXT:    Forward:
+; CHECK-NEXT:        %ld.f32 = load float, ptr %gep.iv, align 8 ->
+; CHECK-NEXT:        store i32 %indvars.iv.i32, ptr %gep.iv, align 8
+; CHECK-EMPTY:
+; CHECK-NEXT:    Forward:
+; CHECK-NEXT:        %ld.f32 = load float, ptr %gep.iv, align 8 ->
+; CHECK-NEXT:        store float %val, ptr %gep.iv.min.100, align 8
+; CHECK-EMPTY:
+; CHECK-NEXT:    BackwardVectorizable:
+; CHECK-NEXT:        store float %val, ptr %gep.iv.min.100, align 8 ->
+; CHECK-NEXT:        store i32 %indvars.iv.i32, ptr %gep.iv, align 8
+; CHECK-EMPTY:
+; CHECK-NEXT:    Forward:
+; CHECK-NEXT:        %ld.f32 = load float, ptr %gep.iv, align 8 ->
+; CHECK-NEXT:        store i32 %indvars.iv.i32, ptr %gep.iv, align 8
+; CHECK-EMPTY:
+; CHECK-NEXT:    Forward:
+; CHECK-NEXT:        %ld.f32 = load float, ptr %gep.iv, align 8 ->
+; CHECK-NEXT:        store float %val, ptr %gep.iv.min.100, align 8
+; CHECK-EMPTY:
+; CHECK-NEXT:    BackwardVectorizable:
+; CHECK-NEXT:        store float %val, ptr %gep.iv.min.100, align 8 ->
+; CHECK-NEXT:        store i32 %indvars.iv.i32, ptr %gep.iv, align 8
+; CHECK-EMPTY:
 ; CHECK-NEXT:        Run-time memory checks:
 ; CHECK-NEXT:        Grouped accesses:
 
@@ -137,6 +173,26 @@ exit:
 ; CHECK-NEXT:        Unknown:
 ; CHECK-NEXT:            store double %val, ptr %gep.iv.101, align 8 ->
 ; CHECK-NEXT:		         store i32 %ld.i64.i32, ptr %gep.iv.n, align 8
+; CHECK-EMPTY:
+; CHECK-NEXT:        Unknown:
+; CHECK-NEXT:            %ld.f64 = load double, ptr %gep.iv, align 8 ->
+; CHECK-NEXT:                    store i32 %ld.i64.i32, ptr %gep.iv.n, align 8
+; CHECK-EMPTY:
+; CHECK-NEXT:        Unknown:
+; CHECK-NEXT:            %ld.i64 = load i64, ptr %gep.iv, align 8 ->
+; CHECK-NEXT:                    store i32 %ld.i64.i32, ptr %gep.iv.n, align 8
+; CHECK-EMPTY:
+; CHECK-NEXT:        BackwardVectorizableButPreventsForwarding:
+; CHECK-NEXT:            %ld.f64 = load double, ptr %gep.iv, align 8 ->
+; CHECK-NEXT:            store double %val, ptr %gep.iv.101, align 8
+; CHECK-EMPTY:
+; CHECK-NEXT:        ForwardButPreventsForwarding:
+; CHECK-NEXT:            store double %val, ptr %gep.iv.101, align 8 ->
+; CHECK-NEXT:            %ld.i64 = load i64, ptr %gep.iv, align 8
+; CHECK-EMPTY:
+; CHECK-NEXT:        Unknown:
+; CHECK-NEXT:            store double %val, ptr %gep.iv.101, align 8 ->
+; CHECK-NEXT:                    store i32 %ld.i64.i32, ptr %gep.iv.n, align 8
 ; CHECK-EMPTY:
 ; CHECK-NEXT:      Run-time memory checks:
 ; CHECK-NEXT:      Grouped accesses:
