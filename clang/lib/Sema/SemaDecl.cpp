@@ -17904,6 +17904,37 @@ void Sema::ActOnStartCXXMemberDeclarations(Scope *S, Decl *TagD,
          "Broken injected-class-name");
 }
 
+static const FieldDecl *FindFieldWithCountedByAttr(const RecordDecl *RD) {
+  for (const Decl *D : RD->decls()) {
+    if (const auto *FD = dyn_cast<FieldDecl>(D))
+      if (FD->hasAttr<CountedByAttr>())
+        return FD;
+
+    if (const auto *SubRD = dyn_cast<RecordDecl>(D))
+      if (const FieldDecl *FD = FindFieldWithCountedByAttr(SubRD))
+        return FD;
+  }
+
+  return nullptr;
+}
+
+static const IdentifierInfo *
+CheckCountedByAttr(const RecordDecl *RD, const FieldDecl *FD,
+                   SourceRange &Loc) {
+  const CountedByAttr *ECA = FD->getAttr<CountedByAttr>();
+
+  auto It = llvm::find_if(
+      RD->fields(), [&](const FieldDecl *Field){
+        return Field->getName() == ECA->getCountedByField()->getName();
+      });
+  if (It == RD->field_end()) {
+    Loc = ECA->getCountedByFieldLoc();
+    return ECA->getCountedByField();
+  }
+
+  return nullptr;
+}
+
 void Sema::ActOnTagFinishDefinition(Scope *S, Decl *TagD,
                                     SourceRange BraceRange) {
   AdjustDeclIfTemplate(TagD);
@@ -17960,6 +17991,19 @@ void Sema::ActOnTagFinishDefinition(Scope *S, Decl *TagD,
     if (llvm::any_of(RD->fields(),
                      [](const FieldDecl *FD) { return FD->isBitField(); }))
       Diag(BraceRange.getBegin(), diag::warn_pragma_align_not_xl_compatible);
+  }
+
+  // Check the "counted_by" attribute to ensure that the count field exists in
+  // the struct.
+  if (const RecordDecl *RD = dyn_cast<RecordDecl>(Tag)) {
+    if (const FieldDecl *FD = FindFieldWithCountedByAttr(RD)) {
+      SourceRange SR;
+      const IdentifierInfo *Unknown = CheckCountedByAttr(RD, FD, SR);
+
+      if (Unknown)
+        Diag(SR.getBegin(), diag::warn_counted_by_placeholder)
+            << Unknown << SR;
+    }
   }
 }
 

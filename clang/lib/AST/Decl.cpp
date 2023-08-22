@@ -4538,6 +4538,102 @@ unsigned FieldDecl::getFieldIndex() const {
   return CachedFieldIndex - 1;
 }
 
+std::optional<bool> FieldDecl::isFlexibleArrayMemberLike(
+    ASTContext &Ctx, QualType Ty, bool isUnion,
+    LangOptions::StrictFlexArraysLevelKind StrictFlexArraysLevel) const {
+  // For compatibility with existing code, we treat arrays of length 0 or
+  // 1 as flexible array members.
+  if (const auto *CAT = Ctx.getAsConstantArrayType(Ty)) {
+    llvm::APInt Size = CAT->getSize();
+
+    using FAMKind = LangOptions::StrictFlexArraysLevelKind;
+    if (StrictFlexArraysLevel == FAMKind::IncompleteOnly)
+      return false;
+
+    // GCC extension, only allowed to represent a FAM.
+    if (Size == 0)
+      return true;
+
+    if (StrictFlexArraysLevel == FAMKind::ZeroOrIncomplete && Size.uge(1))
+      return false;
+
+    if (StrictFlexArraysLevel == FAMKind::OneZeroOrIncomplete && Size.uge(2))
+      return false;
+
+    // GCC treats an array memeber of a union as an FAM if the size is one or
+    // zero.
+    if (isUnion && (Size.isZero() || Size.isOne()))
+      return true;
+  } else if (!Ctx.getAsIncompleteArrayType(Ty)) {
+    return false;
+  }
+
+  return {};
+}
+
+bool FieldDecl::isFlexibleArrayMemberLike(
+    ASTContext &Ctx,
+    LangOptions::StrictFlexArraysLevelKind StrictFlexArraysLevel,
+    bool IgnoreTemplateOrMacroSubstitution) const {
+  // For compatibility with existing code, we treat arrays of length 0 or
+  // 1 as flexible array members.
+  if (const auto *CAT = Ctx.getAsConstantArrayType(getType())) {
+    llvm::APInt Size = CAT->getSize();
+
+    using FAMKind = LangOptions::StrictFlexArraysLevelKind;
+    if (StrictFlexArraysLevel == FAMKind::IncompleteOnly)
+      return false;
+
+    // GCC extension, only allowed to represent a FAM.
+    if (Size == 0)
+      return true;
+
+    if (StrictFlexArraysLevel == FAMKind::ZeroOrIncomplete && Size.uge(1))
+      return false;
+
+    if (StrictFlexArraysLevel == FAMKind::OneZeroOrIncomplete && Size.uge(2))
+      return false;
+
+    // GCC treats an array memeber of a union as an FAM if the size is one or
+    // zero.
+    if (getParent()->isUnion() && (Size.isZero() || Size.isOne()))
+      return true;
+  } else if (!Ctx.getAsIncompleteArrayType(getType())) {
+    return false;
+  }
+
+  if (const auto *OID = dyn_cast<ObjCIvarDecl>(this))
+    return OID->getNextIvar() == nullptr;
+
+  // Don't consider sizes resulting from macro expansions or template argument
+  // substitution to form C89 tail-padded arrays.
+  if (IgnoreTemplateOrMacroSubstitution) {
+    TypeSourceInfo *TInfo = getTypeSourceInfo();
+    while (TInfo) {
+      TypeLoc TL = TInfo->getTypeLoc();
+
+      // Look through typedefs.
+      if (TypedefTypeLoc TTL = TL.getAsAdjusted<TypedefTypeLoc>()) {
+        const TypedefNameDecl *TDL = TTL.getTypedefNameDecl();
+        TInfo = TDL->getTypeSourceInfo();
+        continue;
+      }
+
+      if (ConstantArrayTypeLoc CTL = TL.getAs<ConstantArrayTypeLoc>()) {
+        const Expr *SizeExpr = dyn_cast<IntegerLiteral>(CTL.getSizeExpr());
+        if (!SizeExpr || SizeExpr->getExprLoc().isMacroID())
+          return false;
+      }
+
+      break;
+    }
+  }
+
+  RecordDecl::field_iterator FI(
+      DeclContext::decl_iterator(const_cast<FieldDecl *>(this)));
+  return ++FI == getParent()->field_end();
+}
+
 SourceRange FieldDecl::getSourceRange() const {
   const Expr *FinalExpr = getInClassInitializer();
   if (!FinalExpr)
