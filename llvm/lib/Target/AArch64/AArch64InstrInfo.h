@@ -332,6 +332,8 @@ public:
   std::optional<RegImmPair> isAddImmediate(const MachineInstr &MI,
                                            Register Reg) const override;
 
+  bool isFunctionSafeToSplit(const MachineFunction &MF) const override;
+
   std::optional<ParamLoadedValue>
   describeLoadedValue(const MachineInstr &MI, Register Reg) const override;
 
