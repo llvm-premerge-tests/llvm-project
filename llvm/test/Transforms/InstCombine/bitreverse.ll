@@ -261,6 +261,17 @@ define i8 @rev8_mul_and_lshr(i8 %0) {
   ret i8 %10
 }
 
+define i32 @illegal_width(i32 %x) {
+; CHECK-LABEL: @illegal_width
+; CHECK-NOT: call i9 @llvm.bitreverse.i9
+  %b0 = and i32 %x, 1
+  %b1 = and i32 %x, 2
+  %shift1 = mul nuw nsw i32 %b1, 64
+  %shift0 = shl nuw nsw i32 %b0, 8
+  %reverse = add i32 %shift0, %shift1
+  ret i32 %reverse
+}
+
 define i4 @shuf_4bits(<4 x i1> %x) {
 ; CHECK-LABEL: @shuf_4bits(
 ; CHECK-NEXT:    [[TMP1:%.*]] = bitcast <4 x i1> [[X:%.*]] to i4
