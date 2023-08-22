@@ -414,6 +414,7 @@ public:
   bool ShouldEmitAsBranches(const std::vector<SwitchCG::CaseBlock> &Cases);
   bool isExportableFromCurrentBlock(const Value *V, const BasicBlock *FromBB);
   void CopyToExportRegsIfNeeded(const Value *V);
+  Register GetExportReg(const Value *V);
   void ExportFromCurrentBlock(const Value *V);
   void LowerCallTo(const CallBase &CB, SDValue Callee, bool IsTailCall,
                    bool IsMustTailCall, const BasicBlock *EHPadBB = nullptr);

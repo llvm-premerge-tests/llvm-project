@@ -833,6 +833,17 @@ bool WebAssemblyTargetLowering::isOffsetFoldingLegal(
   return isa<Function>(GV) ? false : TargetLowering::isOffsetFoldingLegal(GA);
 }
 
+bool WebAssemblyTargetLowering::isShiftAmountScalar() const { return true; }
+
+bool WebAssemblyTargetLowering::hasSplatValueUseForVectorOp(
+    const Instruction *I, const Value *Splat) const {
+  if (!I) {
+    return isShiftAmountScalar();
+  }
+
+  return I->isShift() && isShiftAmountScalar() && I->getOperand(1) == Splat;
+}
+
 EVT WebAssemblyTargetLowering::getSetCCResultType(const DataLayout &DL,
                                                   LLVMContext &C,
                                                   EVT VT) const {
@@ -2383,9 +2394,25 @@ SDValue WebAssemblyTargetLowering::LowerShift(SDValue Op,
 
   // Skip vector and operation
   ShiftVal = SkipImpliedMask(ShiftVal, LaneBits - 1);
-  ShiftVal = DAG.getSplatValue(ShiftVal);
-  if (!ShiftVal)
-    return unrollVectorShift(Op, DAG);
+  if (ShiftVal.getValueType().isVector()) {
+    auto SavedShiftVal = ShiftVal;
+    ShiftVal = DAG.getSplatValue(ShiftVal);
+    if (!ShiftVal) {
+      Register InReg;
+      if (auto splat =
+              DAG.getExportedSplatSource(SavedShiftVal.getNode(), InReg)) {
+        EVT RegisterVT = getRegisterType(
+            splat->getContext(),
+            getValueType(DAG.getDataLayout(), splat->getType()));
+        ShiftVal =
+            DAG.getCopyFromReg(DAG.getEntryNode(), DL, InReg, RegisterVT);
+      }
+
+      if (!ShiftVal) {
+        return unrollVectorShift(Op, DAG);
+      }
+    }
+  }
 
   // Skip scalar and operation
   ShiftVal = SkipImpliedMask(ShiftVal, LaneBits - 1);

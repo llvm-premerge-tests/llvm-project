@@ -879,6 +879,24 @@ public:
       getSplatVector(VT, DL, Op) : getSplatBuildVector(VT, DL, Op);
   }
 
+  /// Returns an exported splat source from another block. This helps the
+  /// WebAssembly target lowering for vector shift operation where i32 is used
+  /// as shift amount value type.
+  const Value *getExportedSplatSource(const SDNode *N, Register &Reg) const {
+    auto I = ExportedSplatValueMap.find(N);
+    if (I != ExportedSplatValueMap.end()) {
+      Reg = I->second.second;
+      return I->second.first;
+    }
+    return nullptr;
+  }
+
+  /// Set exported splat source mapping to the splat node.
+  void addExportedSplatSource(const SDNode *N, const Value *V,
+                              const unsigned Reg) {
+    ExportedSplatValueMap[N] = {V, Reg};
+  }
+
   /// Returns a vector of type ResVT whose elements contain the linear sequence
   ///   <0, Step, Step * 2, Step * 3, ...>
   SDValue getStepVector(const SDLoc &DL, EVT ResVT, APInt StepVal);
@@ -2438,6 +2456,11 @@ private:
 
   std::map<std::pair<std::string, unsigned>, SDNode *> TargetExternalSymbols;
   DenseMap<MCSymbol *, SDNode *> MCSymbols;
+
+  /// Maps the splat source value to splat vector when they are exported from
+  /// external block. This information is needed for later WebAssembly lowering.
+  DenseMap<const SDNode *, std::pair<const Value *, unsigned>>
+      ExportedSplatValueMap;
 
   FlagInserter *Inserter = nullptr;
 };
