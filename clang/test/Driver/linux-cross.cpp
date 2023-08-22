@@ -222,3 +222,40 @@
 // RELOCATABLE-SAME: {{^}}[[SYSROOT]]/usr/lib/gcc/x86_64-linux-gnu/10"
 // RELOCATABLE-NOT:  "-l
 // RELOCATABLE-NOT:  crt{{[^./]+}}.o
+
+
+
+/// MIPS find the correct env
+// RUN: %clang -c -### %s --target=mips-linux-gnu --sysroot=%S/Inputs/debian_multiarch_tree \
+// RUN:   2>&1 | FileCheck %s --check-prefix=DEBIAN_MIPS
+// DEBIAN_MIPS: "-internal-isystem" "[[SYSROOT:[^"]+]]/usr/lib/gcc-cross/mips-linux-gnu/12/../../../../mips-linux-gnu/include"
+
+/// MIPS find the correct env, -mabi=XX should not use different env
+// RUN: %clang -c -### %s --target=mips-linux-gnu -mabi=n32 --sysroot=%S/Inputs/debian_multiarch_tree \
+// RUN:   2>&1 | FileCheck %s --check-prefix=DEBIAN_MIPS-N32
+// DEBIAN_MIPS-N32: "-internal-isystem" "[[SYSROOT:[^"]+]]/usr/lib/gcc-cross/mips-linux-gnu/12/../../../../mips-linux-gnu/include"
+// DEBIAN_MIPS-N32-NOT: "-internal-isystem" "[[SYSROOT:[^"]+]]/usr/lib/gcc-cross/mips64-linux-gnuabin32/12/../../../../mips64-linux-gnuabin32/include"
+
+/// MIPSN32 find the correct env
+// RUN: %clang -c -### %s --target=mips64-linux-gnuabin32 -EL --sysroot=%S/Inputs/debian_multiarch_tree \
+// RUN:   2>&1 | FileCheck %s --check-prefix=DEBIAN_MIPSN32-EL
+// DEBIAN_MIPSN32-EL: "-internal-isystem" "[[SYSROOT:[^"]+]]/usr/lib/gcc-cross/mips64-linux-gnuabin32/12/../../../../mips64-linux-gnuabin32/include"
+// DEBIAN_MIPSN32-EL-NOT: "-internal-isystem" "[[SYSROOT:[^"]+]]/usr/lib/gcc-cross/mips64el-linux-gnuabin32/12/../../../../mips64el-linux-gnuabin32/include"
+
+/// MIPS find the correct env, -march=XX should not use different env
+// RUN: %clang -c -### %s --target=mips-linux-gnu -march=mips32r6 --sysroot=%S/Inputs/debian_multiarch_tree \
+// RUN:   2>&1 | FileCheck %s --check-prefix=DEBIAN_MIPS-R6
+// DEBIAN_MIPS-R6: "-internal-isystem" "[[SYSROOT:[^"]+]]/usr/lib/gcc-cross/mips-linux-gnu/12/../../../../mips-linux-gnu/include"
+// DEBIAN_MIPS-R6-NOT: "-internal-isystem" "[[SYSROOT:[^"]+]]/usr/lib/gcc-cross/mipsisa32r6-linux-gnu/12/../../../../mipsisa32r6-linux-gnu/include"
+
+/// MIPS can still find the correct env, if we have no env with the same as -target option
+// RUN: %clang -c -### %s --target=mips-linux-gnux -march=mips64r6 -EL -mabi=n32 --sysroot=%S/Inputs/debian_multiarch_tree \
+// RUN:   2>&1 | FileCheck %s --check-prefix=DEBIAN_MIPS-EL-N32-R6
+// DEBIAN_MIPS-EL-N32-R6: "-internal-isystem" "[[SYSROOT:[^"]+]]/usr/lib/gcc-cross/mipsisa64r6el-linux-gnuabin32/12/../../../../mipsisa64r6el-linux-gnuabin32/include"
+// DEBIAN_MIPS-EL-N32-R6-NOT: "-internal-isystem" "[[SYSROOT:[^"]+]]/usr/lib/gcc-cross/mips-linux-gnu/12/../../../../mips-linux-gnu/include"
+
+/// MIPS can still find the correct env, if we have no env with the same as -target option
+// RUN: %clang -c -### %s --target=mipsisa64r6el-linux-gnuabi64x -march=mips32r2 -EB -mabi=32 --sysroot=%S/Inputs/debian_multiarch_tree \
+// RUN:   2>&1 | FileCheck %s --check-prefix=DEBIAN_MIPS64R6EL-EB-32-R2
+// DEBIAN_MIPS64R6EL-EB-32-R2: "-internal-isystem" "[[SYSROOT:[^"]+]]/usr/lib/gcc-cross/mips-linux-gnu/12/../../../../mips-linux-gnu/include"
+// DEBIAN_MIPS64R6EL-EB-32-R2-NOT: "-internal-isystem" "[[SYSROOT:[^"]+]]/usr/lib/gcc-cross/mipsisa64r6el-linux-gnuabi64/12/../../../../mipsisa64r6el-linux-gnuabi64/include"

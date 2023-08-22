@@ -649,6 +649,14 @@ static llvm::Triple computeTargetTriple(const Driver &D,
   // If target is MIPS adjust the target triple
   // accordingly to provided ABI name.
   if (Target.isMIPS()) {
+    if ((A = Args.getLastArg(options::OPT_march_EQ))) {
+      StringRef CPUName = A->getValue();
+      llvm::Triple::SubArchType subarch =
+          llvm::StringSwitch<llvm::Triple::SubArchType>(CPUName)
+              .Cases("mips32r6", "mips64r6", llvm::Triple::MipsSubArch_r6)
+              .Default(llvm::Triple::NoSubArch);
+      Target.setArch(Target.getArch(), subarch);
+    }
     if ((A = Args.getLastArg(options::OPT_mabi_EQ))) {
       StringRef ABIName = A->getValue();
       if (ABIName == "32") {
