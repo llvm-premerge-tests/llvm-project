@@ -361,16 +361,23 @@ static Register getSPReg(const RISCVSubtarget &STI) { return RISCV::X2; }
 
 static SmallVector<CalleeSavedInfo, 8>
 getUnmanagedCSI(const MachineFunction &MF,
-                const std::vector<CalleeSavedInfo> &CSI) {
+                const std::vector<CalleeSavedInfo> &CSI,
+                bool IsRestore = false) {
   const MachineFrameInfo &MFI = MF.getFrameInfo();
   SmallVector<CalleeSavedInfo, 8> NonLibcallCSI;
+  SmallVector<CalleeSavedInfo, 8> CSRs;
 
   for (auto &CS : CSI) {
+    if (RISCV::CSRRegClass.contains(CS.getReg())) {
+      CSRs.push_back(CS);
+      continue;
+    }
     int FI = CS.getFrameIdx();
     if (FI >= 0 && MFI.getStackID(FI) == TargetStackID::Default)
       NonLibcallCSI.push_back(CS);
   }
-
+  NonLibcallCSI.insert(IsRestore ? NonLibcallCSI.begin() : NonLibcallCSI.end(),
+                       CSRs.begin(), CSRs.end());
   return NonLibcallCSI;
 }
 
@@ -567,7 +574,7 @@ void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
   // to the stack, not before.
   // FIXME: assumes exactly one instruction is used to save each callee-saved
   // register.
-  std::advance(MBBI, getUnmanagedCSI(MF, CSI).size());
+  std::advance(MBBI, getUnmanagedCSI(MF, CSI, /*IsRetore*/ false).size());
 
   // Iterate over list of callee-saved registers and emit .cfi_offset
   // directives.
@@ -721,7 +728,8 @@ void RISCVFrameLowering::emitEpilogue(MachineFunction &MF,
       --MBBI;
   }
 
-  const auto &CSI = getUnmanagedCSI(MF, MFI.getCalleeSavedInfo());
+  const auto &CSI =
+      getUnmanagedCSI(MF, MFI.getCalleeSavedInfo(), /*IsRetore*/ true);
 
   // Skip to before the restores of callee-saved registers
   // FIXME: assumes exactly one instruction is used to restore each
@@ -1386,7 +1394,7 @@ bool RISCVFrameLowering::spillCalleeSavedRegisters(
   }
 
   // Manually spill values not spilled by libcall & Push/Pop.
-  const auto &UnmanagedCSI = getUnmanagedCSI(*MF, CSI);
+  const auto &UnmanagedCSI = getUnmanagedCSI(*MF, CSI, /*IsRetore*/ false);
   for (auto &CS : UnmanagedCSI) {
     // Insert the spill to the stack frame.
     Register Reg = CS.getReg();
@@ -1416,7 +1424,7 @@ bool RISCVFrameLowering::restoreCalleeSavedRegisters(
   // first in the epilogue. It increases the opportunity to avoid the
   // load-to-use data hazard between loading RA and return by RA.
   // loadRegFromStackSlot can insert multiple instructions.
-  const auto &UnmanagedCSI = getUnmanagedCSI(*MF, CSI);
+  const auto &UnmanagedCSI = getUnmanagedCSI(*MF, CSI, /*IsRetore*/ true);
   for (auto &CS : UnmanagedCSI) {
     Register Reg = CS.getReg();
     const TargetRegisterClass *RC = TRI->getMinimalPhysRegClass(Reg);

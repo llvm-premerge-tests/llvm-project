@@ -33,8 +33,8 @@ def CSR_Interrupt : CalleeSavedRegs<(add X1, (sequence "X%u", 3, 31))>;
 
 // Same as CSR_Interrupt, but including all 32-bit FP registers.
 def CSR_XLEN_F32_Interrupt: CalleeSavedRegs<(add CSR_Interrupt,
-                                             (sequence "F%u_F", 0, 31))>;
+                                             (sequence "F%u_F", 0, 31), FCSR)>;
 
 // Same as CSR_Interrupt, but including all 64-bit FP registers.
 def CSR_XLEN_F64_Interrupt: CalleeSavedRegs<(add CSR_Interrupt,
-                                             (sequence "F%u_D", 0, 31))>;
+                                             (sequence "F%u_D", 0, 31), FCSR)>;
