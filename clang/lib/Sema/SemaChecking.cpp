@@ -2041,7 +2041,8 @@ bool Sema::CheckTSBuiltinFunctionCall(const TargetInfo &TI, unsigned BuiltinID,
 // false.
 static bool checkMathBuiltinElementType(Sema &S, SourceLocation Loc,
                                         QualType Ty) {
-  if (!Ty->getAs<VectorType>() && !ConstantMatrixType::isValidElementType(Ty)) {
+  if (!Ty->isVLSBuiltinType() && !Ty->getAs<VectorType>() &&
+      !ConstantMatrixType::isValidElementType(Ty)) {
     return S.Diag(Loc, diag::err_builtin_invalid_arg_type)
            << 1 << /* vector, integer or float ty*/ 0 << Ty;
   }
@@ -2054,6 +2055,8 @@ static bool checkFPMathBuiltinElementType(Sema &S, SourceLocation Loc,
   QualType EltTy = ArgTy;
   if (auto *VecTy = EltTy->getAs<VectorType>())
     EltTy = VecTy->getElementType();
+  else if (EltTy->isVLSBuiltinType())
+    EltTy = EltTy->getVLSEltType(S.Context);
 
   if (!EltTy->isRealFloatingType()) {
     return S.Diag(Loc, diag::err_builtin_invalid_arg_type)
@@ -2618,6 +2621,9 @@ Sema::CheckBuiltinFunctionCall(FunctionDecl *FDecl, unsigned BuiltinID,
 
     if (auto *VecTy = EltTy->getAs<VectorType>())
       EltTy = VecTy->getElementType();
+    else if (EltTy->isVLSBuiltinType())
+      EltTy = EltTy->getVLSEltType(Context);
+
     if (EltTy->isUnsignedIntegerType()) {
       Diag(TheCall->getArg(0)->getBeginLoc(),
            diag::err_builtin_invalid_arg_type)
@@ -2688,6 +2694,8 @@ Sema::CheckBuiltinFunctionCall(FunctionDecl *FDecl, unsigned BuiltinID,
 
     if (auto *VecTy = EltTy->getAs<VectorType>())
       EltTy = VecTy->getElementType();
+    else if (EltTy->isVLSBuiltinType())
+      EltTy = EltTy->getVLSEltType(Context);
 
     if (!EltTy->isIntegerType()) {
       Diag(Arg->getBeginLoc(), diag::err_builtin_invalid_arg_type)
@@ -2713,6 +2721,8 @@ Sema::CheckBuiltinFunctionCall(FunctionDecl *FDecl, unsigned BuiltinID,
 
     if (auto *VecTy = EltTy->getAs<VectorType>())
       EltTy = VecTy->getElementType();
+    else if (EltTy->isVLSBuiltinType())
+      EltTy = EltTy->getVLSEltType(Context);
 
     if (!EltTy->isIntegerType()) {
       Diag(Arg->getBeginLoc(), diag::err_builtin_invalid_arg_type)
