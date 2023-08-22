@@ -2,13 +2,6 @@
 ; RUN: opt < %s -passes=instcombine -S | FileCheck %s
 target datalayout = "E-p:64:64:64-a0:0:8-f32:32:32-f64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-v64:64:64-v128:128:128"
 
-; A multi-dimensional array in a nested loop doing vector stores that
-; aren't yet aligned. Instcombine can understand the addressing in the
-; Nice case to prove 16 byte alignment. In the Awkward case, the inner
-; array dimension is not even, so the stores to it won't always be
-; aligned. Instcombine should prove alignment in exactly one of the two
-; stores.
-
 @Nice    = global [1001 x [20000 x double]] zeroinitializer, align 32
 @Awkward = global [1001 x [20001 x double]] zeroinitializer, align 32
 
@@ -22,7 +15,7 @@ define void @foo() nounwind  {
 ; CHECK:       bb1:
 ; CHECK-NEXT:    [[J:%.*]] = phi i64 [ 0, [[BB7_OUTER]] ], [ [[INDVAR_NEXT:%.*]], [[BB1]] ]
 ; CHECK-NEXT:    [[T4:%.*]] = getelementptr [1001 x [20000 x double]], ptr @Nice, i64 0, i64 [[I]], i64 [[J]]
-; CHECK-NEXT:    store <2 x double> zeroinitializer, ptr [[T4]], align 16
+; CHECK-NEXT:    store <2 x double> zeroinitializer, ptr [[T4]], align 8
 ; CHECK-NEXT:    [[S4:%.*]] = getelementptr [1001 x [20001 x double]], ptr @Awkward, i64 0, i64 [[I]], i64 [[J]]
 ; CHECK-NEXT:    store <2 x double> zeroinitializer, ptr [[S4]], align 8
 ; CHECK-NEXT:    [[INDVAR_NEXT]] = add i64 [[J]], 2

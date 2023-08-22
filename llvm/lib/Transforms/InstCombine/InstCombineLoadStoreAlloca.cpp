@@ -1048,12 +1048,6 @@ Instruction *InstCombinerImpl::visitLoadInst(LoadInst &LI) {
   if (Instruction *Res = combineLoadToOperationType(*this, LI))
     return Res;
 
-  // Attempt to improve the alignment.
-  Align KnownAlign = getOrEnforceKnownAlignment(
-      Op, DL.getPrefTypeAlign(LI.getType()), DL, &LI, &AC, &DT);
-  if (KnownAlign > LI.getAlign())
-    LI.setAlignment(KnownAlign);
-
   // Replace GEP indices if possible.
   if (Instruction *NewGEPI = replaceGEPIdxWithZero(*this, Op, LI))
     return replaceOperand(LI, 0, NewGEPI);
@@ -1444,12 +1438,6 @@ Instruction *InstCombinerImpl::visitStoreInst(StoreInst &SI) {
   // Try to canonicalize the stored type.
   if (combineStoreToValueType(*this, SI))
     return eraseInstFromFunction(SI);
-
-  // Attempt to improve the alignment.
-  const Align KnownAlign = getOrEnforceKnownAlignment(
-      Ptr, DL.getPrefTypeAlign(Val->getType()), DL, &SI, &AC, &DT);
-  if (KnownAlign > SI.getAlign())
-    SI.setAlignment(KnownAlign);
 
   // Try to canonicalize the stored type.
   if (unpackStoreToAggregate(*this, SI))
