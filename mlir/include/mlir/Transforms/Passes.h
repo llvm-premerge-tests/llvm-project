@@ -28,6 +28,7 @@ class GreedyRewriteConfig;
 // Passes
 //===----------------------------------------------------------------------===//
 
+#define GEN_PASS_DECL_COMMUTATIVEOPERANDSORT
 #define GEN_PASS_DECL_CANONICALIZER
 #define GEN_PASS_DECL_CONTROLFLOWSINK
 #define GEN_PASS_DECL_CSEPASS
@@ -60,6 +61,9 @@ std::unique_ptr<Pass>
 createCanonicalizerPass(const GreedyRewriteConfig &config,
                         ArrayRef<std::string> disabledPatterns = std::nullopt,
                         ArrayRef<std::string> enabledPatterns = std::nullopt);
+
+/// Creates a pass to deterministically sort Commutative operation operands
+std::unique_ptr<Pass> createCommutativeOperandSortPass();
 
 /// Creates a pass to perform control-flow sinking.
 std::unique_ptr<Pass> createControlFlowSinkPass();
