@@ -547,7 +547,7 @@ void Preprocessor::SkipExcludedConditionalBlock(SourceLocation HashTokenLoc,
   } SkippingRangeState(*this);
 
   while (true) {
-    if (CurLexer->isDependencyDirectivesLexer()) {
+    if (CurLexer && CurLexer->isDependencyDirectivesLexer()) {
       CurLexer->LexDependencyDirectiveTokenWhileSkipping(Tok);
     } else {
       SkippingRangeState.beginLexPass();
