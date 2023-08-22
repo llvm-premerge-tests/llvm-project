@@ -19,6 +19,12 @@
 #  include "asan_internal.h"
 #  include "asan_mapping.h"
 
+#  if SANITIZER_X64
+#    include <asm/prctl.h>
+#    include <sys/syscall.h>
+#    include <unistd.h>
+
+#  endif
 namespace __asan {
 
 static void ProtectGap(uptr addr, uptr size) {
@@ -52,6 +58,18 @@ static void MaybeReportLinuxPIEBug() {
 #endif
 }
 
+#  if SANITIZER_X64
+__attribute__((destructor)) void __chktag_count_report(void) {
+  void *gs = nullptr;
+  syscall(SYS_arch_prctl, ARCH_GET_GS, &gs);
+
+  if ((uptr)gs != __asan_shadow_memory_dynamic_address) {
+    Report("GS %p\n", gs);
+    Die();
+  }
+}
+#  endif
+
 void InitializeShadowMemory() {
   // Set the shadow memory address to uninitialized.
   __asan_shadow_memory_dynamic_address = kDefaultShadowSentinel;
@@ -68,7 +86,10 @@ void InitializeShadowMemory() {
   }
   // Update the shadow memory address (potentially) used by instrumentation.
   __asan_shadow_memory_dynamic_address = shadow_start;
-
+#  if SANITIZER_X64
+  syscall(SYS_arch_prctl, ARCH_SET_GS,
+          (void *)__asan_shadow_memory_dynamic_address);
+#  endif
   if (kLowShadowBeg) shadow_start -= GetMmapGranularity();
 
   if (!full_shadow_is_available)

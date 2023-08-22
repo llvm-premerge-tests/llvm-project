@@ -300,6 +300,19 @@ static NOINLINE void force_interface_symbols() {
     case 50: __asan_set_shadow_f3(0, 0); break;
     case 51: __asan_set_shadow_f5(0, 0); break;
     case 52: __asan_set_shadow_f8(0, 0); break;
+    case 140: __asan_set_shadow2_00(0, 0); break;
+    case 141: __asan_set_shadow2_01(0, 0); break;
+    case 142: __asan_set_shadow2_02(0, 0); break;
+    case 143: __asan_set_shadow2_03(0, 0); break;
+    case 144: __asan_set_shadow2_04(0, 0); break;
+    case 145: __asan_set_shadow2_05(0, 0); break;
+    case 146: __asan_set_shadow2_06(0, 0); break;
+    case 147: __asan_set_shadow2_07(0, 0); break;
+    case 148: __asan_set_shadow2_f1(0, 0); break;
+    case 149: __asan_set_shadow2_f2(0, 0); break;
+    case 150: __asan_set_shadow2_f3(0, 0); break;
+    case 151: __asan_set_shadow2_f5(0, 0); break;
+    case 152: __asan_set_shadow2_f8(0, 0); break;
   }
   // clang-format on
 }

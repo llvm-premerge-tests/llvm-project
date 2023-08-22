@@ -115,6 +115,33 @@ extern "C" {
   SANITIZER_INTERFACE_ATTRIBUTE
   void __asan_set_shadow_f8(uptr addr, uptr size);
 
+  SANITIZER_INTERFACE_ATTRIBUTE
+  void __asan_set_shadow2_00(uptr addr, uptr size);
+  SANITIZER_INTERFACE_ATTRIBUTE
+  void __asan_set_shadow2_01(uptr addr, uptr size);
+  SANITIZER_INTERFACE_ATTRIBUTE
+  void __asan_set_shadow2_02(uptr addr, uptr size);
+  SANITIZER_INTERFACE_ATTRIBUTE
+  void __asan_set_shadow2_03(uptr addr, uptr size);
+  SANITIZER_INTERFACE_ATTRIBUTE
+  void __asan_set_shadow2_04(uptr addr, uptr size);
+  SANITIZER_INTERFACE_ATTRIBUTE
+  void __asan_set_shadow2_05(uptr addr, uptr size);
+  SANITIZER_INTERFACE_ATTRIBUTE
+  void __asan_set_shadow2_06(uptr addr, uptr size);
+  SANITIZER_INTERFACE_ATTRIBUTE
+  void __asan_set_shadow2_07(uptr addr, uptr size);
+  SANITIZER_INTERFACE_ATTRIBUTE
+  void __asan_set_shadow2_f1(uptr addr, uptr size);
+  SANITIZER_INTERFACE_ATTRIBUTE
+  void __asan_set_shadow2_f2(uptr addr, uptr size);
+  SANITIZER_INTERFACE_ATTRIBUTE
+  void __asan_set_shadow2_f3(uptr addr, uptr size);
+  SANITIZER_INTERFACE_ATTRIBUTE
+  void __asan_set_shadow2_f5(uptr addr, uptr size);
+  SANITIZER_INTERFACE_ATTRIBUTE
+  void __asan_set_shadow2_f8(uptr addr, uptr size);
+
   // These two functions are used by instrumented code in the
   // use-after-scope mode. They mark memory for local variables as
   // unaddressable when they leave scope and addressable before the

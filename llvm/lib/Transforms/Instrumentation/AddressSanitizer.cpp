@@ -155,7 +155,7 @@ const char kAsanStackFreeNameTemplate[] = "__asan_stack_free_";
 const char kAsanGenPrefix[] = "___asan_gen_";
 const char kODRGenPrefix[] = "__odr_asan_gen_";
 const char kSanCovGenPrefix[] = "__sancov_gen_";
-const char kAsanSetShadowPrefix[] = "__asan_set_shadow_";
+const char kAsanSetShadowPrefix[] = "__asan_set_shadow2_";
 const char kAsanPoisonStackMemoryName[] = "__asan_poison_stack_memory";
 const char kAsanUnpoisonStackMemoryName[] = "__asan_unpoison_stack_memory";
 
@@ -710,6 +710,7 @@ struct AddressSanitizer {
                                  Value *SizeArgument, uint32_t Exp);
   void instrumentMemIntrinsic(MemIntrinsic *MI);
   Value *memToShadow(Value *Shadow, IRBuilder<> &IRB);
+  Value *memToShadowGS(Value *Shadow, IRBuilder<> &IRB);
   bool suppressInstrumentationSiteForDebug(int &Instrumented);
   bool instrumentFunction(Function &F, const TargetLibraryInfo *TLI);
   bool maybeInsertAsanInitAtFunctionEntry(Function &F);
@@ -1228,6 +1229,11 @@ Value *AddressSanitizer::memToShadow(Value *Shadow, IRBuilder<> &IRB) {
     return IRB.CreateAdd(Shadow, ShadowBase);
 }
 
+Value *AddressSanitizer::memToShadowGS(Value *Shadow, IRBuilder<> &IRB) {
+  Shadow = IRB.CreateLShr(Shadow, Mapping.Scale);
+  return Shadow;
+}
+
 // Instrument memset/memmove/memcpy
 void AddressSanitizer::instrumentMemIntrinsic(MemIntrinsic *MI) {
   InstrumentationIRBuilder IRB(MI);
@@ -1722,8 +1728,30 @@ void AddressSanitizer::instrumentAddress(Instruction *OrigIns,
   InstrumentationIRBuilder IRB(InsertBefore);
   size_t AccessSizeIndex = TypeStoreSizeToSizeIndex(TypeStoreSize);
   const ASanAccessInfo AccessInfo(IsWrite, CompileKernel, AccessSizeIndex);
+  
+  const size_t Granularity = 1ULL << Mapping.Scale;
 
   if (UseCalls && ClOptimizeCallbacks) {
+
+    if ((TypeStoreSize < 8 * Granularity)) {
+      Value *AddrLong = IRB.CreatePointerCast(Addr, IntptrTy);
+      Type *ShadowTy =
+          IntegerType::get(*C, std::max(8U, TypeStoreSize >> Mapping.Scale));
+      Type *ShadowPtrTy = PointerType::get(ShadowTy, 256);
+      Value *ShadowPtr = memToShadowGS(AddrLong, IRB);
+      const uint64_t ShadowAlign = std::max<uint64_t>(
+          Alignment.valueOrOne().value() >> Mapping.Scale, 1);
+      Value *ShadowValue = IRB.CreateAlignedLoad(
+          ShadowTy, IRB.CreateIntToPtr(ShadowPtr, ShadowPtrTy),
+          Align(ShadowAlign));
+      Value *Cmp = IRB.CreateIsNotNull(ShadowValue);
+
+      Instruction *CrashTerm = SplitBlockAndInsertIfThen(
+          Cmp, InsertBefore, false,
+          MDBuilder(*C).createBranchWeights(1, 100000));
+      IRB.SetInsertPoint(CrashTerm);
+    }
+
     const ASanAccessInfo AccessInfo(IsWrite, CompileKernel, AccessSizeIndex);
     Module *M = IRB.GetInsertBlock()->getParent()->getParent();
     IRB.CreateCall(
@@ -1746,15 +1774,14 @@ void AddressSanitizer::instrumentAddress(Instruction *OrigIns,
 
   Type *ShadowTy =
       IntegerType::get(*C, std::max(8U, TypeStoreSize >> Mapping.Scale));
-  Type *ShadowPtrTy = PointerType::get(ShadowTy, 0);
-  Value *ShadowPtr = memToShadow(AddrLong, IRB);
+  Type *ShadowPtrTy = PointerType::get(ShadowTy, 256);
+  Value *ShadowPtr = memToShadowGS(AddrLong, IRB);
   const uint64_t ShadowAlign =
       std::max<uint64_t>(Alignment.valueOrOne().value() >> Mapping.Scale, 1);
   Value *ShadowValue = IRB.CreateAlignedLoad(
       ShadowTy, IRB.CreateIntToPtr(ShadowPtr, ShadowPtrTy), Align(ShadowAlign));
 
   Value *Cmp = IRB.CreateIsNotNull(ShadowValue);
-  size_t Granularity = 1ULL << Mapping.Scale;
   Instruction *CrashTerm = nullptr;
 
   if (ClAlwaysSlowPath || (TypeStoreSize < 8 * Granularity)) {
@@ -3034,7 +3061,7 @@ void FunctionStackPoisoner::copyToShadowInline(ArrayRef<uint8_t> ShadowMask,
     Value *Ptr = IRB.CreateAdd(ShadowBase, ConstantInt::get(IntptrTy, i));
     Value *Poison = IRB.getIntN(StoreSizeInBytes * 8, Val);
     IRB.CreateAlignedStore(
-        Poison, IRB.CreateIntToPtr(Ptr, Poison->getType()->getPointerTo()),
+        Poison, IRB.CreateIntToPtr(Ptr, Poison->getType()->getPointerTo(256)),
         Align(1));
 
     i += StoreSizeInBytes;
@@ -3438,7 +3465,7 @@ void FunctionStackPoisoner::processStaticAllocas() {
   const auto &ShadowAfterScope = GetShadowBytesAfterScope(SVD, L);
 
   // Poison the stack red zones at the entry.
-  Value *ShadowBase = ASan.memToShadow(LocalStackBase, IRB);
+  Value *ShadowBase = ASan.memToShadowGS(LocalStackBase, IRB);
   // As mask we must use most poisoned case: red zones and after scope.
   // As bytes we can use either the same or just red zones only.
   copyToShadow(ShadowAfterScope, ShadowAfterScope, IRB, ShadowBase);
