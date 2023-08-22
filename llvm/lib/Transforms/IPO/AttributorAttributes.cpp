@@ -7914,6 +7914,9 @@ struct AAMemoryBehaviorImpl : public AAMemoryBehavior {
 
     // Clear existing attributes.
     A.removeAttrs(IRP, AttrKinds);
+    // Clear conflicting writable attribute.
+    if (isAssumedReadNone() || isAssumedReadOnly())
+      A.removeAttrs(IRP, Attribute::Writable);
 
     // Use the generic manifest method.
     return IRAttribute::manifest(A);
@@ -8101,6 +8104,7 @@ struct AAMemoryBehaviorFunction final : public AAMemoryBehaviorImpl {
       ME = MemoryEffects::writeOnly();
 
     A.removeAttrs(getIRPosition(), AttrKinds);
+    // FIXME: Remove writable attribute if necessary.
     return A.manifestAttrs(getIRPosition(),
                            Attribute::getWithMemoryEffects(F.getContext(), ME));
   }
