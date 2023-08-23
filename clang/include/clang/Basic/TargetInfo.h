@@ -629,6 +629,11 @@ public:
     return false;
   }
 
+  /// Determine whether target supports or has FMA instructions or not.
+  virtual bool hasFMA() const{
+      return false;
+  }
+
   // Different targets may support a different maximum width for the _BitInt
   // type, depending on what operations are supported.
   virtual size_t getMaxBitIntWidth() const {

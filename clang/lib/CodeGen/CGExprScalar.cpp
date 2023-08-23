@@ -3770,7 +3770,8 @@ static Value* buildFMulAdd(llvm::Instruction *MulOp, Value *Addend,
 // Check whether it would be legal to emit an fmuladd intrinsic call to
 // represent op and if so, build the fmuladd.
 //
-// Checks that (a) the operation is fusable, and (b) -ffp-contract=on.
+// Checks that (a) the operation is fusable, and (b) -ffp-contract=on and
+// does target supports fma instructions.
 // Does NOT check the type of the operation - it's assumed that this function
 // will be called from contexts where it's known that the type is contractable.
 static Value* tryEmitFMulAdd(const BinOpInfo &op,
@@ -3782,7 +3783,9 @@ static Value* tryEmitFMulAdd(const BinOpInfo &op,
          "Only fadd/fsub can be the root of an fmuladd.");
 
   // Check whether this op is marked as fusable.
-  if (!op.FPFeatures.allowFPContractWithinStatement())
+  const bool allowFPContract = op.FPFeatures.allowFPContractWithinStatement();
+  const bool allowFMA = CGF.getContext().getTargetInfo().hasFMA();
+  if (!allowFPContract && !allowFMA)
     return nullptr;
 
   Value *LHS = op.LHS;

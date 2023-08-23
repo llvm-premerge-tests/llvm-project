@@ -419,6 +419,12 @@ public:
     return getPointerWidthV(AddrSpace);
   }
 
+  bool hasFMA() const override{
+    if(HasFMA)
+      return true;
+    else
+      return false;
+  }
 };
 
 // X86-32 generic target
