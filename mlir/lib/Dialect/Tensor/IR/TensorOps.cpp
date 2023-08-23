@@ -11,6 +11,7 @@
 #include "mlir/Dialect/Arith/Utils/Utils.h"
 #include "mlir/Dialect/Complex/IR/Complex.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
+#include "mlir/Dialect/Tensor/Utils/Utils.h"
 #include "mlir/Dialect/Utils/IndexingUtils.h"
 #include "mlir/Dialect/Utils/ReshapeOpsUtils.h"
 #include "mlir/Dialect/Utils/StaticValueUtils.h"
@@ -839,6 +840,40 @@ struct ExtractFromTensorCast : public OpRewritePattern<tensor::ExtractOp> {
   }
 };
 
+/// Canonicalizes an extract from a unit-dim-reducing `tensor.extract_slice` op:
+///
+/// %val = tensor.extract_slice %source : : tensor<1x5xi32> to tensor<5xi32>
+/// %extracted_element = tensor.extract %val[%c2] : tensor<i32>
+///
+/// to
+///
+/// %extracted_element = tensor.extract %source[%c0, %c2] : tensor<1x5xi32>
+struct ExtractFromCastLikeSlice : public OpRewritePattern<tensor::ExtractOp> {
+  using OpRewritePattern<tensor::ExtractOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tensor::ExtractOp extract,
+                                PatternRewriter &rewriter) const final {
+    auto sliceOp = extract.getTensor().getDefiningOp<tensor::ExtractSliceOp>();
+    if (!sliceOp)
+      return failure();
+
+    RankedTensorType sourceType = sliceOp.getSourceType();
+    if (!isCastLikeExtractSliceOp(sliceOp))
+      return failure();
+
+    llvm::SmallBitVector droppedDims = sliceOp.getDroppedDims();
+    SmallVector<Value> indices;
+    Value zero = rewriter.create<arith::ConstantIndexOp>(extract.getLoc(), 0);
+    unsigned extractIdx = 0;
+    for (int64_t i = 0, e = sourceType.getRank(); i < e; i++)
+      indices.push_back(droppedDims[i] ? zero
+                                       : extract.getIndices()[extractIdx++]);
+    rewriter.replaceOpWithNewOp<tensor::ExtractOp>(extract, sliceOp.getSource(),
+                                                   indices);
+    return success();
+  }
+};
+
 } // namespace
 
 void ExtractOp::getAsmResultNames(
@@ -902,7 +937,7 @@ OpFoldResult ExtractOp::fold(FoldAdaptor adaptor) {
 
 void ExtractOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
-  results.add<ExtractFromTensorCast>(context);
+  results.add<ExtractFromTensorCast, ExtractFromCastLikeSlice>(context);
 }
 
 //===----------------------------------------------------------------------===//

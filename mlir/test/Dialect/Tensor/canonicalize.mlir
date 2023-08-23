@@ -149,6 +149,36 @@ func.func @extract_from_tensor.cast(%tensor: tensor<9xf32>) -> f32 {
   return %result : f32
 }
 
+
+// -----
+
+// CHECK-LABEL: func @extract_from_cast_like_slice
+//  CHECK-SAME: %[[ARG:.+]]: tensor<1x5xf32>
+func.func @extract_from_cast_like_slice(%tensor: tensor<1x5xf32>) -> f32 {
+  %c2 = arith.constant 2 : index
+  %0 = tensor.extract_slice %tensor[0, 0][1, 5][1, 1] : tensor<1x5xf32> to tensor<5xf32>
+  // CHECK-DAG: %[[C0:.+]] = arith.constant 0 : index
+  // CHECK-DAG: %[[C2:.+]] = arith.constant 2 : index
+  //     CHECK: %[[EXTRACTED:.+]] = tensor.extract %[[ARG]][%[[C0]], %[[C2]]]
+  %1 = tensor.extract %0[%c2] : tensor<5xf32>
+  // CHECK: return %[[EXTRACTED]]
+  return %1 : f32
+}
+
+// -----
+
+// CHECK-LABEL: func @dont_fold_extract_from_non_cast_like_slice
+//  CHECK-SAME: %[[ARG:.+]]: tensor<1x5xf32>
+func.func @dont_fold_extract_from_non_cast_like_slice(%tensor: tensor<1x5xf32>) -> f32 {
+  %c2 = arith.constant 2 : index
+  // CHECK: %[[SLICE:.+]] = tensor.extract_slice %[[ARG]]
+  %0 = tensor.extract_slice %tensor[0, 0][1, 3][1, 1] : tensor<1x5xf32> to tensor<3xf32>
+  // CHECK: %[[EXTRACTED:.+]] = tensor.extract %[[SLICE]]
+  %1 = tensor.extract %0[%c2] : tensor<3xf32>
+  // CHECK: return %[[EXTRACTED]]
+  return %1 : f32
+}
+
 // -----
 
 // CHECK-LABEL: func @extract_from_tensor.from_elements
@@ -1768,7 +1798,7 @@ func.func @unpack_pack(%t: tensor<128x128xf32>) -> tensor<128x128xf32> {
 
 // Chain: NC -> NCnc -> NCnc -> NC
 // CHECK: func.func @unpack_pack(
-// CHECK-SAME: %[[T:.+]]: tensor<128x128xf32>, 
+// CHECK-SAME: %[[T:.+]]: tensor<128x128xf32>,
 // CHECK: return %[[T]] : tensor<128x128xf32>
 func.func @unpack_pack(%t: tensor<128x128xf32>, %tile1: index, %tile2: index) -> tensor<128x128xf32> {
   %tensor_empty = tensor.empty(%tile1, %tile2) : tensor<16x16x?x?xf32>
