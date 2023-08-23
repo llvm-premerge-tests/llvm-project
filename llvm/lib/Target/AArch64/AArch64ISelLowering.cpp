@@ -13902,9 +13902,30 @@ bool AArch64TargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
   case Intrinsic::aarch64_neon_ld3r:
   case Intrinsic::aarch64_neon_ld4r: {
     Info.opc = ISD::INTRINSIC_W_CHAIN;
-    // Conservatively set memVT to the entire set of vectors loaded.
-    uint64_t NumElts = DL.getTypeSizeInBits(I.getType()) / 64;
-    Info.memVT = EVT::getVectorVT(I.getType()->getContext(), MVT::i64, NumElts);
+    unsigned VecNum = 0;
+    unsigned VNumPerVec = 0;
+    Type *RetTy = I.getType();
+    Type *VecTy;
+
+    // ldx return struct with the same vec type
+    if (auto *StructTy = dyn_cast<StructType>(RetTy)) {
+      VecNum = StructTy->getNumElements();
+      VecTy = StructTy->getElementType(0);
+    } else
+      llvm_unreachable("aarch64_neon_ldx should return StructType");
+
+    MVT VecVT = MVT::getVT(VecTy);
+    MVT EleVT = VecVT.getVectorElementType();
+
+    if (Intrinsic == Intrinsic::aarch64_neon_ld2lane ||
+        Intrinsic == Intrinsic::aarch64_neon_ld3lane ||
+        Intrinsic == Intrinsic::aarch64_neon_ld4lane)
+      VNumPerVec = 1;
+    else
+      VNumPerVec = VecVT.getVectorNumElements();
+
+    Info.memVT =
+        EVT::getVectorVT(I.getType()->getContext(), EleVT, VecNum * VNumPerVec);
     Info.ptrVal = I.getArgOperand(I.arg_size() - 1);
     Info.offset = 0;
     Info.align.reset();
@@ -13922,15 +13943,29 @@ bool AArch64TargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
   case Intrinsic::aarch64_neon_st3lane:
   case Intrinsic::aarch64_neon_st4lane: {
     Info.opc = ISD::INTRINSIC_VOID;
-    // Conservatively set memVT to the entire set of vectors stored.
-    unsigned NumElts = 0;
+    unsigned VecNum = 0;
+    unsigned VNumPerVec = 0;
+    // all the vector type is same
+    Type *VecTy = I.getArgOperand(0)->getType();
+    MVT VecVT = MVT::getVT(VecTy);
+    MVT EleVT = VecVT.getVectorElementType();
+
     for (const Value *Arg : I.args()) {
       Type *ArgTy = Arg->getType();
       if (!ArgTy->isVectorTy())
         break;
-      NumElts += DL.getTypeSizeInBits(ArgTy) / 64;
+      VecNum += 1;
     }
-    Info.memVT = EVT::getVectorVT(I.getType()->getContext(), MVT::i64, NumElts);
+
+    if (Intrinsic == Intrinsic::aarch64_neon_st2lane ||
+        Intrinsic == Intrinsic::aarch64_neon_st3lane ||
+        Intrinsic == Intrinsic::aarch64_neon_st4lane)
+      VNumPerVec = 1;
+    else
+      VNumPerVec = VecVT.getVectorNumElements();
+
+    Info.memVT =
+        EVT::getVectorVT(I.getType()->getContext(), EleVT, VecNum * VNumPerVec);
     Info.ptrVal = I.getArgOperand(I.arg_size() - 1);
     Info.offset = 0;
     Info.align.reset();
