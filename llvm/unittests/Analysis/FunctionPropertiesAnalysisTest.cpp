@@ -146,6 +146,17 @@ define internal i32 @top() {
   EXPECT_EQ(DetailedBranchesFeatures.InlineAsmOperandCount, 0);
   EXPECT_EQ(DetailedBranchesFeatures.ArgumentOperandCount, 3);
   EXPECT_EQ(DetailedBranchesFeatures.UnknownOperandCount, 0);
+  EXPECT_EQ(DetailedBranchesFeatures.CriticalEdgeCount, 2);
+  EXPECT_EQ(DetailedBranchesFeatures.ControlFlowEdgeCount, 4);
+  EXPECT_EQ(DetailedBranchesFeatures.UnconditionalBranchCount, 2);
+  EXPECT_EQ(DetailedBranchesFeatures.IntrinsicCount, 0);
+  EXPECT_EQ(DetailedBranchesFeatures.DirectCallCount, 2);
+  EXPECT_EQ(DetailedBranchesFeatures.IndirectCallCount, 0);
+  EXPECT_EQ(DetailedBranchesFeatures.CallReturnsIntegerCount, 2);
+  EXPECT_EQ(DetailedBranchesFeatures.CallReturnsFloatCount, 0);
+  EXPECT_EQ(DetailedBranchesFeatures.CallReturnsPointerCount, 0);
+  EXPECT_EQ(DetailedBranchesFeatures.CallWithManyArgumentsCount, 0);
+  EXPECT_EQ(DetailedBranchesFeatures.CallWithPointerArgumentCount, 0);
   EnableDetailedFunctionProperties.setValue(false);
 }
 
@@ -186,6 +197,17 @@ finally:
   EXPECT_EQ(DetailedF1Properties.InlineAsmOperandCount, 0);
   EXPECT_EQ(DetailedF1Properties.ArgumentOperandCount, 0);
   EXPECT_EQ(DetailedF1Properties.UnknownOperandCount, 0);
+  EXPECT_EQ(DetailedF1Properties.CriticalEdgeCount, 0);
+  EXPECT_EQ(DetailedF1Properties.ControlFlowEdgeCount, 2);
+  EXPECT_EQ(DetailedF1Properties.UnconditionalBranchCount, 0);
+  EXPECT_EQ(DetailedF1Properties.IntrinsicCount, 0);
+  EXPECT_EQ(DetailedF1Properties.DirectCallCount, 0);
+  EXPECT_EQ(DetailedF1Properties.IndirectCallCount, 0);
+  EXPECT_EQ(DetailedF1Properties.CallReturnsIntegerCount, 0);
+  EXPECT_EQ(DetailedF1Properties.CallReturnsFloatCount, 0);
+  EXPECT_EQ(DetailedF1Properties.CallReturnsPointerCount, 0);
+  EXPECT_EQ(DetailedF1Properties.CallWithManyArgumentsCount, 0);
+  EXPECT_EQ(DetailedF1Properties.CallWithPointerArgumentCount, 0);
   EnableDetailedFunctionProperties.setValue(false);
 }
 
@@ -850,6 +872,75 @@ define i64 @f1(i64 %e) {
   EXPECT_EQ(DetailedF1Properties.InlineAsmOperandCount, 1);
   EXPECT_EQ(DetailedF1Properties.ArgumentOperandCount, 1);
   EXPECT_EQ(DetailedF1Properties.UnknownOperandCount, 0);
+  EXPECT_EQ(DetailedF1Properties.CriticalEdgeCount, 0);
+  EXPECT_EQ(DetailedF1Properties.ControlFlowEdgeCount, 0);
+  EXPECT_EQ(DetailedF1Properties.UnconditionalBranchCount, 0);
+  EXPECT_EQ(DetailedF1Properties.IntrinsicCount, 0);
+  EXPECT_EQ(DetailedF1Properties.DirectCallCount, 1);
+  EXPECT_EQ(DetailedF1Properties.IndirectCallCount, 0);
+  EXPECT_EQ(DetailedF1Properties.CallReturnsIntegerCount, 1);
+  EXPECT_EQ(DetailedF1Properties.CallReturnsFloatCount, 0);
+  EXPECT_EQ(DetailedF1Properties.CallReturnsPointerCount, 0);
+  EXPECT_EQ(DetailedF1Properties.CallWithManyArgumentsCount, 0);
+  EXPECT_EQ(DetailedF1Properties.CallWithPointerArgumentCount, 0);
+  EnableDetailedFunctionProperties.setValue(false);
+}
+
+TEST_F(FunctionPropertiesAnalysisTest, IntrinsicCount) {
+  LLVMContext C;
+  std::unique_ptr<Module> M = makeLLVMModule(C,
+                                             R"IR(
+define float @f1(float %a) {
+  %b = call float @llvm.cos.f32(float %a)
+  ret float %b
+}
+declare float @llvm.cos.f32(float)
+)IR");
+
+  Function *F1 = M->getFunction("f1");
+  EnableDetailedFunctionProperties.setValue(true);
+  FunctionPropertiesInfo DetailedF1Properties = buildFPI(*F1);
+  EXPECT_EQ(DetailedF1Properties.IntrinsicCount, 1);
+  EXPECT_EQ(DetailedF1Properties.DirectCallCount, 1);
+  EXPECT_EQ(DetailedF1Properties.IndirectCallCount, 0);
+  EXPECT_EQ(DetailedF1Properties.CallReturnsIntegerCount, 0);
+  EXPECT_EQ(DetailedF1Properties.CallReturnsFloatCount, 1);
+  EXPECT_EQ(DetailedF1Properties.CallReturnsPointerCount, 0);
+  EXPECT_EQ(DetailedF1Properties.CallWithManyArgumentsCount, 0);
+  EXPECT_EQ(DetailedF1Properties.CallWithPointerArgumentCount, 0);
+  EnableDetailedFunctionProperties.setValue(false);
+}
+
+TEST_F(FunctionPropertiesAnalysisTest, FunctionCallMetrics) {
+  LLVMContext C;
+  std::unique_ptr<Module> M = makeLLVMModule(C,
+                                             R"IR(
+define i64 @f1(i64 %a) {
+  %b = call i64 @f2(i64 %a, i64 %a, i64 %a, i64 %a, i64 %a)
+  %c = call ptr @f3()
+  call void @f4(ptr %c)
+  %d = call float @f5()
+  %e = call i64 %c(i64 %b)
+  ret i64 %b
+}
+
+declare i64 @f2(i64,i64,i64,i64,i64)
+declare ptr @f3()
+declare void @f4(ptr)
+declare float @f5()
+)IR");
+
+  Function *F1 = M->getFunction("f1");
+  EnableDetailedFunctionProperties.setValue(true);
+  FunctionPropertiesInfo DetailedF1Properties = buildFPI(*F1);
+  EXPECT_EQ(DetailedF1Properties.IntrinsicCount, 0);
+  EXPECT_EQ(DetailedF1Properties.DirectCallCount, 4);
+  EXPECT_EQ(DetailedF1Properties.IndirectCallCount, 1);
+  EXPECT_EQ(DetailedF1Properties.CallReturnsIntegerCount, 2);
+  EXPECT_EQ(DetailedF1Properties.CallReturnsFloatCount, 1);
+  EXPECT_EQ(DetailedF1Properties.CallReturnsPointerCount, 1);
+  EXPECT_EQ(DetailedF1Properties.CallWithManyArgumentsCount, 1);
+  EXPECT_EQ(DetailedF1Properties.CallWithPointerArgumentCount, 1);
   EnableDetailedFunctionProperties.setValue(false);
 }
 } // end anonymous namespace
