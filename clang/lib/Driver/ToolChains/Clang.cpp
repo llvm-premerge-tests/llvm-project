@@ -6552,6 +6552,12 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
     if (Args.hasFlag(options::OPT_fgpu_allow_device_init,
                      options::OPT_fno_gpu_allow_device_init, false))
       CmdArgs.push_back("-fgpu-allow-device-init");
+    if (Args.hasArg(options::OPT_hipstdpar)) {
+      CmdArgs.push_back("-hipstdpar");
+
+      if (Args.hasArg(options::OPT_hipstdpar_interpose_alloc))
+        CmdArgs.push_back("-hipstdpar-interpose-alloc");
+    }
     Args.addOptInFlag(CmdArgs, options::OPT_fhip_kernel_arg_name,
                       options::OPT_fno_hip_kernel_arg_name);
   }
