@@ -27,18 +27,3 @@
 # CHECK-OBJ-NEXT: Value: 0
 # CHECK-OBJ-NEXT: TagName: unaligned_access
 # CHECK-OBJ-NEXT: Description: No unaligned access
-
-.attribute  Tag_priv_spec, 2
-# CHECK-OBJ:      Tag: 8
-# CHECK-OBJ-NEXT: TagName: priv_spec
-# CHECK-OBJ-NEXT: Value: 2
-
-.attribute  Tag_priv_spec_minor, 0
-# CHECK-OBJ:      Tag: 10
-# CHECK-OBJ-NEXT: TagName: priv_spec_minor
-# CHECK-OBJ-NEXT: Value: 0
-
-.attribute  Tag_priv_spec_revision, 0
-# CHECK-OBJ:      Tag: 12
-# CHECK-OBJ-NEXT: TagName: priv_spec_revision
-# CHECK-OBJ-NEXT: Value: 0

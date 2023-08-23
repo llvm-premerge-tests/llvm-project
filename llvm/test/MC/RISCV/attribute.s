@@ -15,12 +15,3 @@
 
 .attribute unaligned_access, 0
 # CHECK: attribute      6, 0
-
-.attribute priv_spec, 2
-# CHECK: attribute      8, 2
-
-.attribute priv_spec_minor, 0
-# CHECK: attribute      10, 0
-
-.attribute priv_spec_revision, 0
-# CHECK: attribute      12, 0

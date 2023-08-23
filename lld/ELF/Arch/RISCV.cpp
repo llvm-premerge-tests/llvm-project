@@ -964,16 +964,13 @@ mergeAttributesSection(const SmallVector<InputSectionBase *, 0> &sections) {
         }
         continue;
 
-        // Attributes which use the default handling.
-      case RISCVAttrs::PRIV_SPEC:
-      case RISCVAttrs::PRIV_SPEC_MINOR:
-      case RISCVAttrs::PRIV_SPEC_REVISION:
+      default:
         break;
       }
 
-      // Fallback for deprecated priv_spec* and other unknown attributes: retain
-      // the attribute if all input sections agree on the value. GNU ld uses 0
-      // and empty strings as default values which are not dumped to the output.
+      // Fallback for other unknown attributes: retain the attribute if all
+      // input sections agree on the value. GNU ld uses 0 and empty strings
+      // as default values which are not dumped to the output.
       // TODO Adjust after resolution to
       // https://github.com/riscv-non-isa/riscv-elf-psabi-doc/issues/352
       if (tag.attr % 2 == 0) {
