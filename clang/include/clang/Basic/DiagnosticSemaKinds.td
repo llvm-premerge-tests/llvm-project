@@ -3587,6 +3587,9 @@ def err_attribute_weakref_not_global_context : Error<
   "weakref declaration of %0 must be in a global context">;
 def err_attribute_weakref_without_alias : Error<
   "weakref declaration of %0 must also have an alias attribute">;
+def warn_attribute_unnamed_addr : Warning<
+  "unnamed_addr should only be used on const POD (plain old data) globals">,
+  InGroup<DiagGroup<"unnamed-addr">>;
 def err_alias_not_supported_on_darwin : Error <
   "aliases are not supported on darwin">;
 def warn_attribute_wrong_decl_type_str : Warning<

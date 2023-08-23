@@ -14519,6 +14519,13 @@ void Sema::FinalizeDeclaration(Decl *ThisDecl) {
           PragmaClangRelroSection.PragmaLocation));
   }
 
+  if (VD->hasGlobalStorage() && VD->isThisDeclarationADefinition() &&
+      VD->hasAttr<UnnamedAddrAttr>() &&
+      (!VD->getType().isPODType(getASTContext()) ||
+       !VD->getType().isConstQualified())) {
+    Diag(VD->getLocation(), diag::warn_attribute_unnamed_addr);
+  }
+
   if (auto *DD = dyn_cast<DecompositionDecl>(ThisDecl)) {
     for (auto *BD : DD->bindings()) {
       FinalizeDeclaration(BD);
