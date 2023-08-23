@@ -10,7 +10,7 @@
 #define _LIBCPP___LOCALE_LOCALE_BASE_API_LOCALE_GUARD_H
 
 #include <__config>
-#include <clocale>
+#include <__locale>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header
