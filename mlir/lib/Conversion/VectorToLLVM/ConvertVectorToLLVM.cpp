@@ -762,11 +762,11 @@ public:
       result = lowerReductionWithStartValue<LLVM::vector_reduce_fmul,
                                             ReductionNeutralFPOne>(
           rewriter, loc, llvmType, operand, acc, reassociateFPReductions);
-    } else if (kind == vector::CombiningKind::MINF) {
+    } else if (kind == vector::CombiningKind::MINIMUMF) {
       result =
           createFPReductionComparisonOpLowering<LLVM::vector_reduce_fminimum>(
               rewriter, loc, llvmType, operand, acc);
-    } else if (kind == vector::CombiningKind::MAXF) {
+    } else if (kind == vector::CombiningKind::MAXIMUMF) {
       result =
           createFPReductionComparisonOpLowering<LLVM::vector_reduce_fmaximum>(
               rewriter, loc, llvmType, operand, acc);
