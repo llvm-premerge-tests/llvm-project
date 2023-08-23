@@ -103,6 +103,10 @@ public:
   /// Returns a stable storage location for `E`.
   StorageLocation &getStableStorageLocation(const Expr &E);
 
+  StorageLocation &getUnknownStorageLocation(QualType Ty);
+
+  bool isUnknownStorageLocation(const StorageLocation &Loc) const;
+
   /// Assigns `Loc` as the storage location of `D`.
   ///
   /// Requirements:
@@ -240,6 +244,8 @@ private:
   // field.
   llvm::DenseMap<QualType, PointerValue *, NullableQualTypeDenseMapInfo>
       NullPointerVals;
+
+  llvm::DenseMap<QualType, StorageLocation *> UnknownStorageLocations;
 
   Options Opts;
 

@@ -90,6 +90,32 @@ DataflowAnalysisContext::getStableStorageLocation(const Expr &E) {
   return Loc;
 }
 
+StorageLocation &
+DataflowAnalysisContext::getUnknownStorageLocation(QualType Ty) {
+  auto Res = UnknownStorageLocations.try_emplace(Ty, nullptr);
+  if (Res.second) {
+    if (!Ty.isNull() && Ty->isRecordType()) {
+      llvm::DenseMap<const ValueDecl *, StorageLocation *> FieldLocs;
+      for (const FieldDecl *Field : getModeledFields(Ty))
+        FieldLocs.insert({Field, &getUnknownStorageLocation(
+                                     Field->getType().getNonReferenceType())});
+      Res.first->second =
+          &arena().create<RecordStorageLocation>(Ty, std::move(FieldLocs));
+    } else {
+      Res.first->second = &arena().create<ScalarStorageLocation>(Ty);
+    }
+  }
+  return *Res.first->second;
+}
+
+bool DataflowAnalysisContext::isUnknownStorageLocation(
+    const StorageLocation &Loc) const {
+  auto Iter = UnknownStorageLocations.find(Loc.getType());
+  if (Iter == UnknownStorageLocations.end())
+    return false;
+  return Iter->second == &Loc;
+}
+
 PointerValue &
 DataflowAnalysisContext::getOrCreateNullPointerValue(QualType PointeeType) {
   auto CanonicalPointeeType =
