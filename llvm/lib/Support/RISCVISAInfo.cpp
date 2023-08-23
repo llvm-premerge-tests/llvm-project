@@ -1290,3 +1290,22 @@ std::string RISCVISAInfo::getTargetFeatureForExtension(StringRef Ext) {
   return isExperimentalExtension(Name) ? "experimental-" + Name.str()
                                        : Name.str();
 }
+
+
+
+unsigned RISCVISAInfo::getExtensionSerial(StringRef ExtName) {
+  verifyTables();
+
+  unsigned Offset = 1;
+  if (stripExperimentalPrefix(ExtName))
+    Offset += sizeof(SupportedExtensions) / sizeof(SupportedExtensions[0]);
+
+  for (auto ExtInfo : {ArrayRef(SupportedExtensions),
+                       ArrayRef(SupportedExperimentalExtensions)}) {
+    auto I = llvm::lower_bound(ExtInfo, ExtName, LessExtName());
+    if (I != ExtInfo.end() && I->Name == ExtName)
+      return (I - ExtInfo.begin()) + Offset;
+  }
+
+  return 0;
+}
