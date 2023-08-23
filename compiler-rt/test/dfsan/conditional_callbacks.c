@@ -80,6 +80,7 @@ int main(int Argc, char *Argv[]) {
   if (DataI) {
     result = 42;
   }
+  assert(result == 42);
 
   assert(dfsan_get_label(DataJ) == LabelJ);
 
@@ -94,8 +95,10 @@ int main(int Argc, char *Argv[]) {
   default:
     break;
   }
+  assert(result == 4242);
 
   int tainted_cond = ((DataI * DataJ) != 1);
+  dfsan_set_label(LabelIJ, &tainted_cond, sizeof(tainted_cond));
   assert(dfsan_get_label(tainted_cond) == LabelIJ);
 
   // CHECK: Label 3 used as condition
