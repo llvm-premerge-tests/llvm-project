@@ -555,6 +555,7 @@ private:
   friend struct VarArgAArch64Helper;
   friend struct VarArgPowerPC64Helper;
   friend struct VarArgSystemZHelper;
+  friend struct VarArgLoongArch64Helper;
 
   void initializeModule(Module &M);
   void initializeCallbacks(Module &M, const TargetLibraryInfo &TLI);
@@ -5834,6 +5835,123 @@ struct VarArgSystemZHelper : public VarArgHelper {
   }
 };
 
+/// LoongArch64-specific implementation of VarArgHelper.
+struct VarArgLoongArch64Helper : public VarArgHelper {
+  Function &F;
+  MemorySanitizer &MS;
+  MemorySanitizerVisitor &MSV;
+  AllocaInst *VAArgTLSCopy = nullptr;
+  Value *VAArgSize = nullptr;
+
+  SmallVector<CallInst *, 16> VAStartInstrumentationList;
+
+  VarArgLoongArch64Helper(Function &F, MemorySanitizer &MS,
+                          MemorySanitizerVisitor &MSV)
+      : F(F), MS(MS), MSV(MSV) {}
+
+  void visitCallBase(CallBase &CB, IRBuilder<> &IRB) override {
+    unsigned VAArgOffset = 0;
+    const DataLayout &DL = F.getParent()->getDataLayout();
+    for (Value *A :
+         llvm::drop_begin(CB.args(), CB.getFunctionType()->getNumParams())) {
+      Value *Base;
+      uint64_t ArgSize = DL.getTypeAllocSize(A->getType());
+      Base = getShadowPtrForVAArgument(A->getType(), IRB, VAArgOffset, ArgSize);
+      VAArgOffset += ArgSize;
+      VAArgOffset = alignTo(VAArgOffset, 8);
+      if (!Base)
+        continue;
+      IRB.CreateAlignedStore(MSV.getShadow(A), Base, kShadowTLSAlignment);
+    }
+
+    Constant *TotalVAArgSize = ConstantInt::get(IRB.getInt64Ty(), VAArgOffset);
+    // Here using VAArgOverflowSizeTLS as VAArgSizeTLS to avoid creation of
+    // a new class member i.e. it is the total size of all VarArgs.
+    IRB.CreateStore(TotalVAArgSize, MS.VAArgOverflowSizeTLS);
+  }
+
+  /// Compute the shadow address for a given va_arg.
+  Value *getShadowPtrForVAArgument(Type *Ty, IRBuilder<> &IRB,
+                                   unsigned ArgOffset, unsigned ArgSize) {
+    // Make sure we don't overflow __msan_va_arg_tls.
+    if (ArgOffset + ArgSize > kParamTLSSize)
+      return nullptr;
+    Value *Base = IRB.CreatePointerCast(MS.VAArgTLS, MS.IntptrTy);
+    Base = IRB.CreateAdd(Base, ConstantInt::get(MS.IntptrTy, ArgOffset));
+    return IRB.CreateIntToPtr(Base, PointerType::get(MSV.getShadowTy(Ty), 0),
+                              "_msarg");
+  }
+
+  void visitVAStartInst(VAStartInst &I) override {
+    IRBuilder<> IRB(&I);
+    VAStartInstrumentationList.push_back(&I);
+    Value *VAListTag = I.getArgOperand(0);
+    Value *ShadowPtr, *OriginPtr;
+    const Align Alignment = Align(8);
+    std::tie(ShadowPtr, OriginPtr) = MSV.getShadowOriginPtr(
+        VAListTag, IRB, IRB.getInt8Ty(), Alignment, /*isStore*/ true);
+    IRB.CreateMemSet(ShadowPtr, Constant::getNullValue(IRB.getInt8Ty()),
+                     /* size */ 8, Alignment, false);
+  }
+
+  void visitVACopyInst(VACopyInst &I) override {
+    IRBuilder<> IRB(&I);
+    VAStartInstrumentationList.push_back(&I);
+    Value *VAListTag = I.getArgOperand(0);
+    Value *ShadowPtr, *OriginPtr;
+    const Align Alignment = Align(8);
+    std::tie(ShadowPtr, OriginPtr) = MSV.getShadowOriginPtr(
+        VAListTag, IRB, IRB.getInt8Ty(), Alignment, /*isStore*/ true);
+    IRB.CreateMemSet(ShadowPtr, Constant::getNullValue(IRB.getInt8Ty()),
+                     /* size */ 8, Alignment, false);
+  }
+
+  void finalizeInstrumentation() override {
+    assert(!VAArgSize && !VAArgTLSCopy &&
+           "finalizeInstrumentation called twice");
+    IRBuilder<> IRB(MSV.FnPrologueEnd);
+    VAArgSize = IRB.CreateLoad(IRB.getInt64Ty(), MS.VAArgOverflowSizeTLS);
+    Value *CopySize =
+        IRB.CreateAdd(ConstantInt::get(MS.IntptrTy, 0), VAArgSize);
+
+    if (!VAStartInstrumentationList.empty()) {
+      // If there is a va_start in this function, make a backup copy of
+      // va_arg_tls somewhere in the function entry block.
+      VAArgTLSCopy = IRB.CreateAlloca(Type::getInt8Ty(*MS.C), CopySize);
+      VAArgTLSCopy->setAlignment(kShadowTLSAlignment);
+      IRB.CreateMemSet(VAArgTLSCopy, Constant::getNullValue(IRB.getInt8Ty()),
+                       CopySize, kShadowTLSAlignment, false);
+
+      Value *SrcSize = IRB.CreateBinaryIntrinsic(
+          Intrinsic::umin, CopySize,
+          ConstantInt::get(MS.IntptrTy, kParamTLSSize));
+      IRB.CreateMemCpy(VAArgTLSCopy, kShadowTLSAlignment, MS.VAArgTLS,
+                       kShadowTLSAlignment, SrcSize);
+    }
+
+    // Instrument va_start.
+    // Copy va_list shadow from the backup copy of the TLS contents.
+    for (size_t i = 0, n = VAStartInstrumentationList.size(); i < n; i++) {
+      CallInst *OrigInst = VAStartInstrumentationList[i];
+      NextNodeIRBuilder IRB(OrigInst);
+      Value *VAListTag = OrigInst->getArgOperand(0);
+      Type *RegSaveAreaPtrTy = PointerType::getUnqual(*MS.C); // i64*
+      Value *RegSaveAreaPtrPtr =
+          IRB.CreateIntToPtr(IRB.CreatePtrToInt(VAListTag, MS.IntptrTy),
+                             PointerType::get(RegSaveAreaPtrTy, 0));
+      Value *RegSaveAreaPtr =
+          IRB.CreateLoad(RegSaveAreaPtrTy, RegSaveAreaPtrPtr);
+      Value *RegSaveAreaShadowPtr, *RegSaveAreaOriginPtr;
+      const Align Alignment = Align(8);
+      std::tie(RegSaveAreaShadowPtr, RegSaveAreaOriginPtr) =
+          MSV.getShadowOriginPtr(RegSaveAreaPtr, IRB, IRB.getInt8Ty(),
+                                 Alignment, /*isStore*/ true);
+      IRB.CreateMemCpy(RegSaveAreaShadowPtr, Alignment, VAArgTLSCopy, Alignment,
+                       CopySize);
+    }
+  }
+};
+
 /// A no-op implementation of VarArgHelper.
 struct VarArgNoOpHelper : public VarArgHelper {
   VarArgNoOpHelper(Function &F, MemorySanitizer &MS,
@@ -5866,6 +5984,8 @@ static VarArgHelper *CreateVarArgHelper(Function &Func, MemorySanitizer &Msan,
     return new VarArgPowerPC64Helper(Func, Msan, Visitor);
   else if (TargetTriple.getArch() == Triple::systemz)
     return new VarArgSystemZHelper(Func, Msan, Visitor);
+  else if (TargetTriple.getArch() == Triple::loongarch64)
+    return new VarArgLoongArch64Helper(Func, Msan, Visitor);
   else
     return new VarArgNoOpHelper(Func, Msan, Visitor);
 }
