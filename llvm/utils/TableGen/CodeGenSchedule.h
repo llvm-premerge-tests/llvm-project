@@ -443,7 +443,8 @@ class CodeGenSchedModels {
 
   // Map each instruction to its unique SchedClass index considering the
   // combination of it's itinerary class, SchedRW list, and InstRW records.
-  using InstClassMapTy = DenseMap<Record*, unsigned>;
+  // Stores both the original SchedRW class index, and the InstRW override.
+  using InstClassMapTy = DenseMap<Record *, std::pair<unsigned, unsigned>>;
   InstClassMapTy InstrClassMap;
 
   std::vector<STIPredicateFunction> STIPredicates;
@@ -553,6 +554,12 @@ public:
   // itinerary, no SchedReadWrites, and no InstrReadWrites references return 0
   // for NoItinerary.
   unsigned getSchedClassIdx(const CodeGenInstruction &Inst) const;
+
+  // Get the SchedClass SchedRW/InstRW indices for an instruction. Instructions
+  // with no itinerary, no SchedReadWrites, and no InstrReadWrites references
+  // return None for NoItinerary.
+  std::optional<std::pair<unsigned, unsigned>>
+  getSchedClassIdxPair(const CodeGenInstruction &Inst) const;
 
   using SchedClassIter = std::vector<CodeGenSchedClass>::const_iterator;
   SchedClassIter schedClassBegin() const { return SchedClasses.begin(); }

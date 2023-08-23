@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "CodeGenHwModes.h"
+#include "CodeGenInstruction.h"
 #include "CodeGenSchedule.h"
 #include "CodeGenTarget.h"
 #include "PredicateExpander.h"
@@ -20,6 +21,7 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/MC/MCInstrItineraries.h"
 #include "llvm/MC/MCSchedule.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
@@ -38,6 +40,15 @@
 using namespace llvm;
 
 #define DEBUG_TYPE "subtarget-emitter"
+
+static cl::opt<bool> OptCheckSchedClassTable(
+    "check-sched-class-table",
+#ifdef EXPENSIVE_CHECKS
+    cl::init(true),
+#else
+    cl::init(false),
+#endif
+    cl::Hidden, cl::desc("Check sched class tables for inconsistencies"));
 
 namespace {
 
@@ -124,6 +135,7 @@ class SubtargetEmitter {
                            const CodeGenProcModel &ProcModel);
   void GenSchedClassTables(const CodeGenProcModel &ProcModel,
                            SchedClassTables &SchedTables);
+  void CheckSchedClassTables(SchedClassTables &SchedTables);
   void EmitSchedClassTables(SchedClassTables &SchedTables, raw_ostream &OS);
   void EmitProcessorModels(raw_ostream &OS);
   void EmitSchedModelHelpers(const std::string &ClassName, raw_ostream &OS);
@@ -1330,6 +1342,48 @@ void SubtargetEmitter::GenSchedClassTables(const CodeGenProcModel &ProcModel,
   }
 }
 
+// Check SchedClass tables for unnecessary duplication.
+void SubtargetEmitter::CheckSchedClassTables(SchedClassTables &SchedTables) {
+  ArrayRef<CodeGenSchedClass> SchedClasses = SchedModels.schedClasses();
+
+  for (const CodeGenInstruction *Inst : TGT.getInstructionsByEnumValue()) {
+    std::optional<std::pair<unsigned, unsigned>> ScIdx =
+        SchedModels.getSchedClassIdxPair(*Inst);
+    if (!ScIdx || ScIdx->first == 0 || ScIdx->first == ScIdx->second)
+      continue;
+
+    const CodeGenSchedClass &CgOrig = SchedClasses[ScIdx->first];
+    const CodeGenSchedClass &CgInst = SchedClasses[ScIdx->second];
+
+    for (CodeGenSchedModels::ProcIter PI = SchedModels.procModelBegin(),
+                                      PE = SchedModels.procModelEnd();
+         PI != PE; ++PI) {
+      if (!PI->hasInstrSchedModel())
+        continue;
+
+      // If the schedule has been overridden with values that match the base
+      // class then the override is redundant and could be removed.
+      // NOTE: Ignores missing/incorrect ReadAdvance attributes on the override.
+      const std::vector<MCSchedClassDesc> &SCTab =
+          SchedTables.ProcSchedClasses[1 + (PI - SchedModels.procModelBegin())];
+      const MCSchedClassDesc &ScOrig = SCTab[ScIdx->first];
+      const MCSchedClassDesc &ScInst = SCTab[ScIdx->second];
+      if (ScOrig.equals(ScInst, /*IgnoreReadAdvance*/ true)) {
+        for (const Record *InstrRW : CgInst.InstRWs) {
+          const Record *InstModelDef = InstrRW->getValueAsDef("SchedModel");
+          if (InstModelDef->getName() == PI->ModelName) {
+            dbgs() << "'" << PI->ModelName
+                   << "' unnecessarily overrides instruction '"
+                   << Inst->TheDef->getName() << "' from '" << CgOrig.Name
+                   << "'\n";
+            break;
+          }
+        }
+      }
+    }
+  }
+}
+
 // Emit SchedClass tables for all processors and associated global tables.
 void SubtargetEmitter::EmitSchedClassTables(SchedClassTables &SchedTables,
                                             raw_ostream &OS) {
@@ -1516,6 +1570,10 @@ void SubtargetEmitter::EmitSchedModel(raw_ostream &OS) {
   for (const CodeGenProcModel &ProcModel : SchedModels.procModels()) {
     GenSchedClassTables(ProcModel, SchedTables);
   }
+
+  if (OptCheckSchedClassTable)
+    CheckSchedClassTables(SchedTables);
+
   EmitSchedClassTables(SchedTables, OS);
 
   OS << "\n#undef DBGFIELD\n";

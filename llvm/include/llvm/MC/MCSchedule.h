@@ -142,6 +142,22 @@ struct MCSchedClassDesc {
   bool isVariant() const {
     return NumMicroOps == VariantNumMicroOps;
   }
+  bool equals(const MCSchedClassDesc &RHS,
+              bool IgnoreRHSReadAdvance = false) const {
+    // If IgnoreRHSReadAdvance is set, then ignore any mismatch with RHS
+    // (override class) as overrides are often missing them.
+    return NumMicroOps == RHS.NumMicroOps &&
+           BeginGroup == RHS.BeginGroup &&
+           EndGroup == RHS.EndGroup &&
+           RetireOOO == RHS.RetireOOO &&
+           WriteProcResIdx == RHS.WriteProcResIdx &&
+           NumWriteProcResEntries == RHS.NumWriteProcResEntries &&
+           WriteLatencyIdx == RHS.WriteLatencyIdx &&
+           NumWriteLatencyEntries == RHS.NumWriteLatencyEntries &&
+           (IgnoreRHSReadAdvance ||
+            (ReadAdvanceIdx == RHS.ReadAdvanceIdx &&
+             NumReadAdvanceEntries == RHS.NumReadAdvanceEntries));
+  }
 };
 
 /// Specify the cost of a register definition in terms of number of physical

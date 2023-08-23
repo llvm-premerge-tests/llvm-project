@@ -883,7 +883,7 @@ void CodeGenSchedModels::collectSchedClasses() {
 
     // ProcIdx == 0 indicates the class applies to all processors.
     unsigned SCIdx = addSchedClass(ItinDef, Writes, Reads, /*ProcIndices*/{0});
-    InstrClassMap[Inst->TheDef] = SCIdx;
+    InstrClassMap[Inst->TheDef] = std::make_pair(SCIdx, SCIdx);
   }
   // Create classes for InstRW defs.
   RecVec InstRWDefs = Records.getAllDerivedDefinitions("InstRW");
@@ -969,7 +969,18 @@ void CodeGenSchedModels::collectSchedClasses() {
 // Get the SchedClass index for an instruction.
 unsigned
 CodeGenSchedModels::getSchedClassIdx(const CodeGenInstruction &Inst) const {
-  return InstrClassMap.lookup(Inst.TheDef);
+  if (auto SchedPair = getSchedClassIdxPair(Inst))
+    return SchedPair->second;
+  return 0;
+}
+
+// Get the SchedClass SchedRW/InstRW pair for an instruction.
+std::optional<std::pair<unsigned, unsigned>>
+CodeGenSchedModels::getSchedClassIdxPair(const CodeGenInstruction &Inst) const {
+  auto It = InstrClassMap.find(Inst.TheDef);
+  if (It != InstrClassMap.end())
+    return It->second;
+  return std::nullopt;
 }
 
 std::string
@@ -1057,7 +1068,7 @@ void CodeGenSchedModels::createInstRWClass(Record *InstRWDef) {
     InstClassMapTy::const_iterator Pos = InstrClassMap.find(InstDef);
     if (Pos == InstrClassMap.end())
       PrintFatalError(InstDef->getLoc(), "No sched class for instruction.");
-    unsigned SCIdx = Pos->second;
+    unsigned SCIdx = Pos->second.second;
     ClassInstrs[SCIdx].push_back(InstDef);
   }
   // For each set of Instrs, create a new class if necessary, and map or remap
@@ -1071,10 +1082,9 @@ void CodeGenSchedModels::createInstRWClass(Record *InstRWDef) {
       const RecVec &RWDefs = SchedClasses[OldSCIdx].InstRWs;
       if (!RWDefs.empty()) {
         const RecVec *OrigInstDefs = Sets.expand(RWDefs[0]);
-        unsigned OrigNumInstrs =
-          count_if(*OrigInstDefs, [&](Record *OIDef) {
-                     return InstrClassMap[OIDef] == OldSCIdx;
-                   });
+        unsigned OrigNumInstrs = count_if(*OrigInstDefs, [&](Record *OIDef) {
+          return InstrClassMap[OIDef].second == OldSCIdx;
+        });
         if (OrigNumInstrs == InstDefs.size()) {
           assert(SchedClasses[OldSCIdx].ProcIndices[0] == 0 &&
                  "expected a generic SchedClass");
@@ -1136,7 +1146,7 @@ void CodeGenSchedModels::createInstRWClass(Record *InstRWDef) {
     }
     // Map each Instr to this new class.
     for (Record *InstDef : InstDefs)
-      InstrClassMap[InstDef] = SCIdx;
+      InstrClassMap[InstDef].second = SCIdx;
     SC.InstRWs.push_back(InstRWDef);
   }
 }
@@ -1274,7 +1284,7 @@ void CodeGenSchedModels::inferFromInstRWs(unsigned SCIdx) {
     const RecVec *InstDefs = Sets.expand(Rec);
     RecIter II = InstDefs->begin(), IE = InstDefs->end();
     for (; II != IE; ++II) {
-      if (InstrClassMap[*II] == SCIdx)
+      if (InstrClassMap[*II].second == SCIdx)
         break;
     }
     // If this class no longer has any instructions mapped to it, it has become
