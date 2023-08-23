@@ -23,6 +23,18 @@
 
 using namespace llvm;
 
+// These default values are chosen to represent an extremely skewed outcome for
+// a condition, but they leave some room for interpretation by later passes.
+//
+// If the documentation for __builtin_expect() was made explicit that it should
+// only be used in extreme cases, we could make this ratio higher. As it stands,
+// programmers may be using __builtin_expect() / llvm.expect to annotate that a
+// branch is likely or unlikely to be taken.
+
+static cl::opt<uint32_t> LikelyBranchWeight(
+    "likely-branch-weight", cl::Hidden, cl::init(2000),
+    cl::desc("Weight of the branch likely to be taken (default = 2000)"));
+
 namespace {
 
 // MD_prof nodes have the following layout
@@ -183,5 +195,7 @@ bool extractProfTotalWeight(const MDNode *ProfileData, uint64_t &TotalVal) {
 bool extractProfTotalWeight(const Instruction &I, uint64_t &TotalVal) {
   return extractProfTotalWeight(I.getMetadata(LLVMContext::MD_prof), TotalVal);
 }
+
+uint32_t getLikelyBranchWeight() { return LikelyBranchWeight; }
 
 } // namespace llvm

@@ -21,6 +21,7 @@
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/MDBuilder.h"
+#include "llvm/IR/ProfDataUtils.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
@@ -36,31 +37,11 @@ using namespace llvm;
 STATISTIC(ExpectIntrinsicsHandled,
           "Number of 'expect' intrinsic instructions handled");
 
-// These default values are chosen to represent an extremely skewed outcome for
-// a condition, but they leave some room for interpretation by later passes.
-//
-// If the documentation for __builtin_expect() was made explicit that it should
-// only be used in extreme cases, we could make this ratio higher. As it stands,
-// programmers may be using __builtin_expect() / llvm.expect to annotate that a
-// branch is likely or unlikely to be taken.
-
-// WARNING: these values are internal implementation detail of the pass.
-// They should not be exposed to the outside of the pass, front-end codegen
-// should emit @llvm.expect intrinsics instead of using these weights directly.
-// Transforms should use TargetTransformInfo's getPredictableBranchThreshold().
-static cl::opt<uint32_t> LikelyBranchWeight(
-    "likely-branch-weight", cl::Hidden, cl::init(2000),
-    cl::desc("Weight of the branch likely to be taken (default = 2000)"));
-static cl::opt<uint32_t> UnlikelyBranchWeight(
-    "unlikely-branch-weight", cl::Hidden, cl::init(1),
-    cl::desc("Weight of the branch unlikely to be taken (default = 1)"));
-
 static std::tuple<uint32_t, uint32_t>
 getBranchWeight(Intrinsic::ID IntrinsicID, CallInst *CI, int BranchCount) {
   if (IntrinsicID == Intrinsic::expect) {
     // __builtin_expect
-    return std::make_tuple(LikelyBranchWeight.getValue(),
-                           UnlikelyBranchWeight.getValue());
+    return std::make_tuple(getLikelyBranchWeight(), 1);
   } else {
     // __builtin_expect_with_probability
     assert(CI->getNumOperands() >= 3 &&

@@ -2,7 +2,7 @@
 ; This can happen when the sum of all counters exceeds the max size of uint32_t
 
 ; RUN: llvm-profdata merge %S/Inputs/misexpect-branch-overflow.proftext -o %t.profdata
-; RUN: opt < %s -passes="function(lower-expect),pgo-instr-use" -pgo-test-profile-file=%t.profdata -pgo-warn-misexpect -pass-remarks=misexpect -unlikely-branch-weight=2147483648 -likely-branch-weight=2147483648 -S 2>&1 | FileCheck %s --check-prefix=OVERFLOW
+; RUN: opt < %s -passes=pgo-instr-use -pgo-test-profile-file=%t.profdata -pgo-warn-misexpect -pass-remarks=misexpect -S 2>&1 | FileCheck %s --check-prefix=OVERFLOW
 
 ; OVERFLOW-NOT: warning: misexpect-branch.c:22:0: 50.00%
 ; OVERFLOW-NOT: remark: misexpect-branch.c:22:0: Potential performance regression from use of the llvm.expect intrinsic: Annotation was correct on 50.00% (2147483648 / 4294967296) of profiled executions.
@@ -32,9 +32,8 @@ entry:
   %lnot1 = xor i1 %lnot, true, !dbg !15
   %lnot.ext = zext i1 %lnot1 to i32, !dbg !15
   %conv = sext i32 %lnot.ext to i64, !dbg !15
-  %expval = call i64 @llvm.expect.i64(i64 %conv, i64 1), !dbg !15
-  %tobool = icmp ne i64 %expval, 0, !dbg !15
-  br i1 %tobool, label %if.then, label %if.else, !dbg !15
+  %tobool = icmp ne i64 %conv, 0, !dbg !15
+  br i1 %tobool, label %if.then, label %if.else, !dbg !15, !prof !21
 
 if.then:                                          ; preds = %entry
   %1 = load i32, ptr %rando, align 4, !dbg !16, !tbaa !10
@@ -100,3 +99,4 @@ attributes #4 = { nounwind }
 !18 = !DILocation(line: 25, scope: !6)
 !19 = !DILocation(line: 27, scope: !6)
 !20 = !DILocation(line: 28, scope: !6)
+!21 = !{!"branch_weights", i32 2147483648, i32 2147483648}

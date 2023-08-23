@@ -34,12 +34,12 @@ places to perform the verification.
 
 We calculate the threshold for emitting MisExpect related diagnostics
 based on the values the compiler assigns to ``llvm.expect`` intrinsics,
-which can be set through the ``-likely-branch-weight`` and
-``-unlikely-branch-weight`` LLVM options. During verification, if the
-profile weights mismatch the calculated threshold, then we will emit a
-remark or warning detailing a potential performance regression. The
-diagnostic also reports the percentage of the time the annotation was
-correct during profiling to help developers reason about how to proceed.
+which can be set through the ``-likely-branch-weight`` LLVM option.
+During verification, if the profile weights mismatch the calculated threshold,
+then we will emit a remark or warning detailing a potential performance
+regression. The diagnostic also reports the percentage of the time the
+annotation was correct during profiling to help developers reason about how
+to proceed.
 
 The diagnostics are also available in the form of optimization remarks,
 which can be serialized and processed through the ``opt-viewer.py``

@@ -99,5 +99,12 @@ bool extractProfTotalWeight(const MDNode *ProfileData, uint64_t &TotalWeights);
 /// metadata was found.
 bool extractProfTotalWeight(const Instruction &I, uint64_t &TotalWeights);
 
+/// Return the weight for a "likely branch". A 1/LikelyBranchWeight ratio
+/// corresponds to the probability of `llvm.expect` matching the expected
+/// value.
+/// Note: There is also `TargetTransformInfo::getPredictableBranchThreshold`
+/// for a value matching the current target.
+uint32_t getLikelyBranchWeight();
+
 } // namespace llvm
 #endif

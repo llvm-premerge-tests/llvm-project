@@ -1,4 +1,4 @@
-; RUN: opt -S -passes='function(lower-expect),strip-dead-prototypes' -likely-branch-weight=2147483647 -unlikely-branch-weight=1 < %s | FileCheck %s
+; RUN: opt -S -passes='function(lower-expect),strip-dead-prototypes' -likely-branch-weight=2147483647 < %s | FileCheck %s
 
 ; The C case
 ; if (__builtin_expect_with_probability(((a0 == 1) || (a1 == 1) || (a2 == 1)), 1, 0))
