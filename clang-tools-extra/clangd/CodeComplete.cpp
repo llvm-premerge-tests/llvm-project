@@ -842,6 +842,7 @@ bool contextAllowsIndex(enum CodeCompletionContext::Kind K) {
   case CodeCompletionContext::CCC_NaturalLanguage:
   case CodeCompletionContext::CCC_Recovery:
   case CodeCompletionContext::CCC_NewName:
+  case CodeCompletionContext::CCC_TopLevelOrExpression:
     return false;
   }
   llvm_unreachable("unknown code completion context");
