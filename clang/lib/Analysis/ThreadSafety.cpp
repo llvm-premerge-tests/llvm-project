@@ -2414,6 +2414,7 @@ void ThreadSafetyAnalyzer::runAnalysis(AnalysisDeclContext &AC) {
                                     AD.getTriggerStmt()->getEndLoc());
           break;
         }
+
         case CFGElement::TemporaryDtor: {
           auto TD = BI.castAs<CFGTemporaryDtor>();
 
