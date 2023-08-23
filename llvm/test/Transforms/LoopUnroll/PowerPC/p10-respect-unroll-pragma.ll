@@ -14,97 +14,97 @@ define dso_local void @test(ptr %arg) #0 {
 ; CHECK-NEXT:    [[I24_ELT:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24]], 0
 ; CHECK-NEXT:    store <16 x i8> [[I24_ELT]], ptr inttoptr (i64 48 to ptr), align 16
 ; CHECK-NEXT:    [[I24_ELT1:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24]], 1
-; CHECK-NEXT:    store <16 x i8> [[I24_ELT1]], ptr inttoptr (i64 64 to ptr), align 16
+; CHECK-NEXT:    store <16 x i8> [[I24_ELT1]], ptr inttoptr (i64 64 to ptr), align 64
 ; CHECK-NEXT:    [[I20_1:%.*]] = tail call <256 x i1> @llvm.ppc.vsx.lxvp(ptr nonnull inttoptr (i64 -32 to ptr))
 ; CHECK-NEXT:    [[I24_1:%.*]] = tail call { <16 x i8>, <16 x i8> } @llvm.ppc.vsx.disassemble.pair(<256 x i1> [[I20_1]])
 ; CHECK-NEXT:    [[I24_ELT_1:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_1]], 0
 ; CHECK-NEXT:    store <16 x i8> [[I24_ELT_1]], ptr inttoptr (i64 48 to ptr), align 16
 ; CHECK-NEXT:    [[I24_ELT1_1:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_1]], 1
-; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_1]], ptr inttoptr (i64 64 to ptr), align 16
+; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_1]], ptr inttoptr (i64 64 to ptr), align 64
 ; CHECK-NEXT:    [[I20_2:%.*]] = tail call <256 x i1> @llvm.ppc.vsx.lxvp(ptr nonnull inttoptr (i64 -32 to ptr))
 ; CHECK-NEXT:    [[I24_2:%.*]] = tail call { <16 x i8>, <16 x i8> } @llvm.ppc.vsx.disassemble.pair(<256 x i1> [[I20_2]])
 ; CHECK-NEXT:    [[I24_ELT_2:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_2]], 0
 ; CHECK-NEXT:    store <16 x i8> [[I24_ELT_2]], ptr inttoptr (i64 48 to ptr), align 16
 ; CHECK-NEXT:    [[I24_ELT1_2:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_2]], 1
-; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_2]], ptr inttoptr (i64 64 to ptr), align 16
+; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_2]], ptr inttoptr (i64 64 to ptr), align 64
 ; CHECK-NEXT:    [[I20_3:%.*]] = tail call <256 x i1> @llvm.ppc.vsx.lxvp(ptr nonnull inttoptr (i64 -32 to ptr))
 ; CHECK-NEXT:    [[I24_3:%.*]] = tail call { <16 x i8>, <16 x i8> } @llvm.ppc.vsx.disassemble.pair(<256 x i1> [[I20_3]])
 ; CHECK-NEXT:    [[I24_ELT_3:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_3]], 0
 ; CHECK-NEXT:    store <16 x i8> [[I24_ELT_3]], ptr inttoptr (i64 48 to ptr), align 16
 ; CHECK-NEXT:    [[I24_ELT1_3:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_3]], 1
-; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_3]], ptr inttoptr (i64 64 to ptr), align 16
+; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_3]], ptr inttoptr (i64 64 to ptr), align 64
 ; CHECK-NEXT:    [[I20_4:%.*]] = tail call <256 x i1> @llvm.ppc.vsx.lxvp(ptr nonnull inttoptr (i64 -32 to ptr))
 ; CHECK-NEXT:    [[I24_4:%.*]] = tail call { <16 x i8>, <16 x i8> } @llvm.ppc.vsx.disassemble.pair(<256 x i1> [[I20_4]])
 ; CHECK-NEXT:    [[I24_ELT_4:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_4]], 0
 ; CHECK-NEXT:    store <16 x i8> [[I24_ELT_4]], ptr inttoptr (i64 48 to ptr), align 16
 ; CHECK-NEXT:    [[I24_ELT1_4:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_4]], 1
-; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_4]], ptr inttoptr (i64 64 to ptr), align 16
+; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_4]], ptr inttoptr (i64 64 to ptr), align 64
 ; CHECK-NEXT:    [[I20_5:%.*]] = tail call <256 x i1> @llvm.ppc.vsx.lxvp(ptr nonnull inttoptr (i64 -32 to ptr))
 ; CHECK-NEXT:    [[I24_5:%.*]] = tail call { <16 x i8>, <16 x i8> } @llvm.ppc.vsx.disassemble.pair(<256 x i1> [[I20_5]])
 ; CHECK-NEXT:    [[I24_ELT_5:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_5]], 0
 ; CHECK-NEXT:    store <16 x i8> [[I24_ELT_5]], ptr inttoptr (i64 48 to ptr), align 16
 ; CHECK-NEXT:    [[I24_ELT1_5:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_5]], 1
-; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_5]], ptr inttoptr (i64 64 to ptr), align 16
+; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_5]], ptr inttoptr (i64 64 to ptr), align 64
 ; CHECK-NEXT:    [[I20_6:%.*]] = tail call <256 x i1> @llvm.ppc.vsx.lxvp(ptr nonnull inttoptr (i64 -32 to ptr))
 ; CHECK-NEXT:    [[I24_6:%.*]] = tail call { <16 x i8>, <16 x i8> } @llvm.ppc.vsx.disassemble.pair(<256 x i1> [[I20_6]])
 ; CHECK-NEXT:    [[I24_ELT_6:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_6]], 0
 ; CHECK-NEXT:    store <16 x i8> [[I24_ELT_6]], ptr inttoptr (i64 48 to ptr), align 16
 ; CHECK-NEXT:    [[I24_ELT1_6:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_6]], 1
-; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_6]], ptr inttoptr (i64 64 to ptr), align 16
+; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_6]], ptr inttoptr (i64 64 to ptr), align 64
 ; CHECK-NEXT:    [[I20_7:%.*]] = tail call <256 x i1> @llvm.ppc.vsx.lxvp(ptr nonnull inttoptr (i64 -32 to ptr))
 ; CHECK-NEXT:    [[I24_7:%.*]] = tail call { <16 x i8>, <16 x i8> } @llvm.ppc.vsx.disassemble.pair(<256 x i1> [[I20_7]])
 ; CHECK-NEXT:    [[I24_ELT_7:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_7]], 0
 ; CHECK-NEXT:    store <16 x i8> [[I24_ELT_7]], ptr inttoptr (i64 48 to ptr), align 16
 ; CHECK-NEXT:    [[I24_ELT1_7:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_7]], 1
-; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_7]], ptr inttoptr (i64 64 to ptr), align 16
+; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_7]], ptr inttoptr (i64 64 to ptr), align 64
 ; CHECK-NEXT:    [[I20_8:%.*]] = tail call <256 x i1> @llvm.ppc.vsx.lxvp(ptr nonnull inttoptr (i64 -32 to ptr))
 ; CHECK-NEXT:    [[I24_8:%.*]] = tail call { <16 x i8>, <16 x i8> } @llvm.ppc.vsx.disassemble.pair(<256 x i1> [[I20_8]])
 ; CHECK-NEXT:    [[I24_ELT_8:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_8]], 0
 ; CHECK-NEXT:    store <16 x i8> [[I24_ELT_8]], ptr inttoptr (i64 48 to ptr), align 16
 ; CHECK-NEXT:    [[I24_ELT1_8:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_8]], 1
-; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_8]], ptr inttoptr (i64 64 to ptr), align 16
+; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_8]], ptr inttoptr (i64 64 to ptr), align 64
 ; CHECK-NEXT:    [[I20_9:%.*]] = tail call <256 x i1> @llvm.ppc.vsx.lxvp(ptr nonnull inttoptr (i64 -32 to ptr))
 ; CHECK-NEXT:    [[I24_9:%.*]] = tail call { <16 x i8>, <16 x i8> } @llvm.ppc.vsx.disassemble.pair(<256 x i1> [[I20_9]])
 ; CHECK-NEXT:    [[I24_ELT_9:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_9]], 0
 ; CHECK-NEXT:    store <16 x i8> [[I24_ELT_9]], ptr inttoptr (i64 48 to ptr), align 16
 ; CHECK-NEXT:    [[I24_ELT1_9:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_9]], 1
-; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_9]], ptr inttoptr (i64 64 to ptr), align 16
+; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_9]], ptr inttoptr (i64 64 to ptr), align 64
 ; CHECK-NEXT:    [[I20_10:%.*]] = tail call <256 x i1> @llvm.ppc.vsx.lxvp(ptr nonnull inttoptr (i64 -32 to ptr))
 ; CHECK-NEXT:    [[I24_10:%.*]] = tail call { <16 x i8>, <16 x i8> } @llvm.ppc.vsx.disassemble.pair(<256 x i1> [[I20_10]])
 ; CHECK-NEXT:    [[I24_ELT_10:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_10]], 0
 ; CHECK-NEXT:    store <16 x i8> [[I24_ELT_10]], ptr inttoptr (i64 48 to ptr), align 16
 ; CHECK-NEXT:    [[I24_ELT1_10:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_10]], 1
-; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_10]], ptr inttoptr (i64 64 to ptr), align 16
+; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_10]], ptr inttoptr (i64 64 to ptr), align 64
 ; CHECK-NEXT:    [[I20_11:%.*]] = tail call <256 x i1> @llvm.ppc.vsx.lxvp(ptr nonnull inttoptr (i64 -32 to ptr))
 ; CHECK-NEXT:    [[I24_11:%.*]] = tail call { <16 x i8>, <16 x i8> } @llvm.ppc.vsx.disassemble.pair(<256 x i1> [[I20_11]])
 ; CHECK-NEXT:    [[I24_ELT_11:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_11]], 0
 ; CHECK-NEXT:    store <16 x i8> [[I24_ELT_11]], ptr inttoptr (i64 48 to ptr), align 16
 ; CHECK-NEXT:    [[I24_ELT1_11:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_11]], 1
-; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_11]], ptr inttoptr (i64 64 to ptr), align 16
+; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_11]], ptr inttoptr (i64 64 to ptr), align 64
 ; CHECK-NEXT:    [[I20_12:%.*]] = tail call <256 x i1> @llvm.ppc.vsx.lxvp(ptr nonnull inttoptr (i64 -32 to ptr))
 ; CHECK-NEXT:    [[I24_12:%.*]] = tail call { <16 x i8>, <16 x i8> } @llvm.ppc.vsx.disassemble.pair(<256 x i1> [[I20_12]])
 ; CHECK-NEXT:    [[I24_ELT_12:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_12]], 0
 ; CHECK-NEXT:    store <16 x i8> [[I24_ELT_12]], ptr inttoptr (i64 48 to ptr), align 16
 ; CHECK-NEXT:    [[I24_ELT1_12:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_12]], 1
-; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_12]], ptr inttoptr (i64 64 to ptr), align 16
+; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_12]], ptr inttoptr (i64 64 to ptr), align 64
 ; CHECK-NEXT:    [[I20_13:%.*]] = tail call <256 x i1> @llvm.ppc.vsx.lxvp(ptr nonnull inttoptr (i64 -32 to ptr))
 ; CHECK-NEXT:    [[I24_13:%.*]] = tail call { <16 x i8>, <16 x i8> } @llvm.ppc.vsx.disassemble.pair(<256 x i1> [[I20_13]])
 ; CHECK-NEXT:    [[I24_ELT_13:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_13]], 0
 ; CHECK-NEXT:    store <16 x i8> [[I24_ELT_13]], ptr inttoptr (i64 48 to ptr), align 16
 ; CHECK-NEXT:    [[I24_ELT1_13:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_13]], 1
-; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_13]], ptr inttoptr (i64 64 to ptr), align 16
+; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_13]], ptr inttoptr (i64 64 to ptr), align 64
 ; CHECK-NEXT:    [[I20_14:%.*]] = tail call <256 x i1> @llvm.ppc.vsx.lxvp(ptr nonnull inttoptr (i64 -32 to ptr))
 ; CHECK-NEXT:    [[I24_14:%.*]] = tail call { <16 x i8>, <16 x i8> } @llvm.ppc.vsx.disassemble.pair(<256 x i1> [[I20_14]])
 ; CHECK-NEXT:    [[I24_ELT_14:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_14]], 0
 ; CHECK-NEXT:    store <16 x i8> [[I24_ELT_14]], ptr inttoptr (i64 48 to ptr), align 16
 ; CHECK-NEXT:    [[I24_ELT1_14:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_14]], 1
-; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_14]], ptr inttoptr (i64 64 to ptr), align 16
+; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_14]], ptr inttoptr (i64 64 to ptr), align 64
 ; CHECK-NEXT:    [[I20_15:%.*]] = tail call <256 x i1> @llvm.ppc.vsx.lxvp(ptr nonnull inttoptr (i64 -32 to ptr))
 ; CHECK-NEXT:    [[I24_15:%.*]] = tail call { <16 x i8>, <16 x i8> } @llvm.ppc.vsx.disassemble.pair(<256 x i1> [[I20_15]])
 ; CHECK-NEXT:    [[I24_ELT_15:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_15]], 0
 ; CHECK-NEXT:    store <16 x i8> [[I24_ELT_15]], ptr inttoptr (i64 48 to ptr), align 16
 ; CHECK-NEXT:    [[I24_ELT1_15:%.*]] = extractvalue { <16 x i8>, <16 x i8> } [[I24_15]], 1
-; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_15]], ptr inttoptr (i64 64 to ptr), align 16
+; CHECK-NEXT:    store <16 x i8> [[I24_ELT1_15]], ptr inttoptr (i64 64 to ptr), align 64
 ; CHECK-NEXT:    br label [[BB16]], !llvm.loop [[LOOP0:![0-9]+]]
 ;
 bb:
