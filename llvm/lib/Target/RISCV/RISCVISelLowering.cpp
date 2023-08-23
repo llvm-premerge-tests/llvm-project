@@ -1236,6 +1236,12 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
         XLenVT, Expand);
   }
 
+  if (Subtarget.hasStdExtA()) {
+    setOperationAction(ISD::ATOMIC_LOAD_SUB, MVT::i32, Custom);
+    if (Subtarget.is64Bit())
+      setOperationAction(ISD::ATOMIC_LOAD_SUB, MVT::i64, Custom);
+  }
+
   if (Subtarget.hasVendorXTHeadMemIdx()) {
     for (unsigned im = (unsigned)ISD::PRE_INC; im != (unsigned)ISD::POST_DEC;
          ++im) {
@@ -2900,6 +2906,18 @@ getVSlideup(SelectionDAG &DAG, const RISCVSubtarget &Subtarget, const SDLoc &DL,
   SDValue PolicyOp = DAG.getTargetConstant(Policy, DL, Subtarget.getXLenVT());
   SDValue Ops[] = {Merge, Op, Offset, Mask, VL, PolicyOp};
   return DAG.getNode(RISCVISD::VSLIDEUP_VL, DL, VT, Ops);
+}
+
+static SDValue lowerATOMIC_LOAD_SUB(SDValue Op, SelectionDAG &DAG) {
+  SDLoc DL(Op);
+  MVT VT = Op.getSimpleValueType();
+  SDValue RHS = Op.getOperand(2);
+  AtomicSDNode *AN = cast<AtomicSDNode>(Op.getNode());
+  SDValue NewRHS =
+      DAG.getNode(ISD::SUB, DL, VT, DAG.getConstant(0, DL, VT), RHS);
+  return DAG.getAtomic(ISD::ATOMIC_LOAD_ADD, DL, AN->getMemoryVT(),
+                       Op.getOperand(0), Op.getOperand(1), NewRHS,
+                       AN->getMemOperand());
 }
 
 struct VIDSequence {
@@ -6093,6 +6111,8 @@ SDValue RISCVTargetLowering::LowerOperation(SDValue Op,
          !Subtarget.hasVInstructionsF16()))
       return SplitVPOp(Op, DAG);
     return lowerVectorFTRUNC_FCEIL_FFLOOR_FROUND(Op, DAG, Subtarget);
+  case ISD::ATOMIC_LOAD_SUB:
+    return lowerATOMIC_LOAD_SUB(Op, DAG);
   }
 }
 
@@ -10806,6 +10826,15 @@ void RISCVTargetLowering::ReplaceNodeResults(SDNode *N,
     SDVTList VTs = DAG.getVTList(Subtarget.getXLenVT(), MVT::Other);
     SDValue Res = DAG.getNode(ISD::GET_ROUNDING, DL, VTs, N->getOperand(0));
     Results.push_back(Res.getValue(0));
+    Results.push_back(Res.getValue(1));
+    break;
+  }
+  case ISD::ATOMIC_LOAD_SUB: {
+    MVT VT = N->getSimpleValueType(0);
+    assert(VT == MVT::i32 && Subtarget.is64Bit() &&
+           "Unexpected custom legalization");
+    SDValue Res = lowerATOMIC_LOAD_SUB(SDValue(N, 0), DAG);
+    Results.push_back(Res);
     Results.push_back(Res.getValue(1));
     break;
   }

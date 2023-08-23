@@ -13411,7 +13411,7 @@ define i32 @atomicrmw_sub_i32_monotonic(ptr %a, i32 %b) nounwind {
 ;
 ; RV64IA-LABEL: atomicrmw_sub_i32_monotonic:
 ; RV64IA:       # %bb.0:
-; RV64IA-NEXT:    neg a1, a1
+; RV64IA-NEXT:    negw a1, a1
 ; RV64IA-NEXT:    amoadd.w a0, a1, (a0)
 ; RV64IA-NEXT:    ret
   %1 = atomicrmw sub ptr %a, i32 %b monotonic
@@ -13447,7 +13447,7 @@ define i32 @atomicrmw_sub_i32_acquire(ptr %a, i32 %b) nounwind {
 ;
 ; RV64IA-LABEL: atomicrmw_sub_i32_acquire:
 ; RV64IA:       # %bb.0:
-; RV64IA-NEXT:    neg a1, a1
+; RV64IA-NEXT:    negw a1, a1
 ; RV64IA-NEXT:    amoadd.w.aq a0, a1, (a0)
 ; RV64IA-NEXT:    ret
   %1 = atomicrmw sub ptr %a, i32 %b acquire
@@ -13483,7 +13483,7 @@ define i32 @atomicrmw_sub_i32_release(ptr %a, i32 %b) nounwind {
 ;
 ; RV64IA-LABEL: atomicrmw_sub_i32_release:
 ; RV64IA:       # %bb.0:
-; RV64IA-NEXT:    neg a1, a1
+; RV64IA-NEXT:    negw a1, a1
 ; RV64IA-NEXT:    amoadd.w.rl a0, a1, (a0)
 ; RV64IA-NEXT:    ret
   %1 = atomicrmw sub ptr %a, i32 %b release
@@ -13519,7 +13519,7 @@ define i32 @atomicrmw_sub_i32_acq_rel(ptr %a, i32 %b) nounwind {
 ;
 ; RV64IA-LABEL: atomicrmw_sub_i32_acq_rel:
 ; RV64IA:       # %bb.0:
-; RV64IA-NEXT:    neg a1, a1
+; RV64IA-NEXT:    negw a1, a1
 ; RV64IA-NEXT:    amoadd.w.aqrl a0, a1, (a0)
 ; RV64IA-NEXT:    ret
   %1 = atomicrmw sub ptr %a, i32 %b acq_rel
@@ -13555,7 +13555,7 @@ define i32 @atomicrmw_sub_i32_seq_cst(ptr %a, i32 %b) nounwind {
 ;
 ; RV64IA-LABEL: atomicrmw_sub_i32_seq_cst:
 ; RV64IA:       # %bb.0:
-; RV64IA-NEXT:    neg a1, a1
+; RV64IA-NEXT:    negw a1, a1
 ; RV64IA-NEXT:    amoadd.w.aqrl a0, a1, (a0)
 ; RV64IA-NEXT:    ret
   %1 = atomicrmw sub ptr %a, i32 %b seq_cst

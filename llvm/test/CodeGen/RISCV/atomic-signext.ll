@@ -2330,7 +2330,7 @@ define signext i32 @atomicrmw_sub_i32_monotonic(ptr %a, i32 %b) nounwind {
 ;
 ; RV64IA-LABEL: atomicrmw_sub_i32_monotonic:
 ; RV64IA:       # %bb.0:
-; RV64IA-NEXT:    neg a1, a1
+; RV64IA-NEXT:    negw a1, a1
 ; RV64IA-NEXT:    amoadd.w a0, a1, (a0)
 ; RV64IA-NEXT:    ret
   %1 = atomicrmw sub ptr %a, i32 %b monotonic
