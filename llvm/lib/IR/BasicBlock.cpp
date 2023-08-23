@@ -397,7 +397,8 @@ bool BasicBlock::isLegalToHoistInto() const {
   assert(Term->getNumSuccessors() > 0);
 
   // Instructions should not be hoisted across exception handling boundaries.
-  return !Term->isExceptionalTerminator();
+  // Also don't hoist across callbr, which produces a value.
+  return !Term->isExceptionalTerminator() && !isa<CallBrInst>(Term);
 }
 
 bool BasicBlock::isEntryBlock() const {
