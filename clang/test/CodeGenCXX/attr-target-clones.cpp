@@ -1,6 +1,13 @@
 // RUN: %clang_cc1 -std=c++11 -triple x86_64-linux-gnu -emit-llvm %s -o - | FileCheck %s --check-prefix=LINUX
 // RUN: %clang_cc1 -std=c++11 -triple x86_64-windows-pc -emit-llvm %s -o - | FileCheck %s --check-prefix=WINDOWS
 
+// Alias for ifunc
+// LINUX: @_Z10overloadedi = weak_odr alias i32 (i32), ptr @_Z10overloadedi.ifunc
+// LINUX: @_Z10overloadedPKc = weak_odr alias i32 (ptr), ptr @_Z10overloadedPKc.ifunc
+// LINUX: @_ZN1CIssE3fooEv = weak_odr alias i32 (ptr), ptr @_ZN1CIssE3fooEv.ifunc
+// LINUX: @_ZN1CIisE3fooEv = weak_odr alias i32 (ptr), ptr @_ZN1CIisE3fooEv.ifunc
+// LINUX: @_ZN1CIdfE3fooEv = weak_odr alias i32 (ptr), ptr @_ZN1CIdfE3fooEv.ifunc
+
 // Overloaded ifuncs
 // LINUX: @_Z10overloadedi.ifunc = weak_odr ifunc i32 (i32), ptr @_Z10overloadedi.resolver
 // LINUX: @_Z10overloadedPKc.ifunc = weak_odr ifunc i32 (ptr), ptr @_Z10overloadedPKc.resolver

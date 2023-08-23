@@ -13,6 +13,13 @@
 // WINDOWS: $foo_inline = comdat any
 // WINDOWS: $foo_inline2 = comdat any
 
+// LINUX: @foo = weak_odr alias i32 (), ptr @foo.ifunc
+// LINUX: @foo_dupes = weak_odr alias void (), ptr @foo_dupes.ifunc
+// LINUX: @unused = weak_odr alias void (), ptr @unused.ifunc
+// LINUX: @foo_inline = weak_odr alias i32 (), ptr @foo_inline.ifunc
+// LINUX: @foo_inline2 = weak_odr alias i32 (), ptr @foo_inline2.ifunc
+// LINUX: @foo_used_no_defn = weak_odr alias i32 (), ptr @foo_used_no_defn.ifunc
+
 // LINUX: @foo.ifunc = weak_odr ifunc i32 (), ptr @foo.resolver
 // LINUX: @foo_dupes.ifunc = weak_odr ifunc void (), ptr @foo_dupes.resolver
 // LINUX: @unused.ifunc = weak_odr ifunc void (), ptr @unused.resolver
