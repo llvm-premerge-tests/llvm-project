@@ -163,6 +163,9 @@ Bug Fixes in This Version
   ``await_suspend`` could be misoptimized, including accesses to the awaiter
   object itself.
   (`#56301 <https://github.com/llvm/llvm-project/issues/56301>`_)
+- Clang now emits an error if it is not possible to deduce array size for a
+  variable with incomplete array type.
+  (`#37257 <https://github.com/llvm/llvm-project/issues/37257>`_)
 
 Bug Fixes to Compiler Builtins
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
