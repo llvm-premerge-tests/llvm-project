@@ -44,12 +44,6 @@
 # RUN: not ld.lld a.o b.o c.o diff_stack_align.o -o /dev/null 2>&1 | FileCheck %s --check-prefix=STACK_ALIGN --implicit-check-not=error:
 # STACK_ALIGN: error: diff_stack_align.o:(.riscv.attributes) has stack_align=32 but a.o:(.riscv.attributes) has stack_align=16
 
-## The deprecated priv_spec is not handled as GNU ld does.
-## Differing priv_spec attributes lead to an absent attribute.
-# RUN: llvm-mc -filetype=obj -triple=riscv64 diff_priv_spec.s -o diff_priv_spec.o
-# RUN: ld.lld -e 0 --fatal-warnings a.o b.o c.o diff_priv_spec.o -o diff_priv_spec
-# RUN: llvm-readobj -A diff_priv_spec | FileCheck /dev/null --implicit-check-not='TagName: priv_spec'
-
 ## Unknown tags currently lead to warnings.
 # RUN: llvm-mc -filetype=obj -triple=riscv64 unknown13.s -o unknown13.o
 # RUN: llvm-mc -filetype=obj -triple=riscv64 unknown13a.s -o unknown13a.o
@@ -97,10 +91,10 @@
 # CHECK2:      BuildAttributes {
 # CHECK2-NEXT:   FormatVersion: 0x41
 # CHECK2-NEXT:   Section 1 {
-# CHECK2-NEXT:     SectionLength: 104
+# CHECK2-NEXT:     SectionLength: 100
 # CHECK2-NEXT:     Vendor: riscv
 # CHECK2-NEXT:     Tag: Tag_File (0x1)
-# CHECK2-NEXT:     Size: 94
+# CHECK2-NEXT:     Size: 90
 # CHECK2-NEXT:     FileAttributes {
 # CHECK2-NEXT:       Attribute {
 # CHECK2-NEXT:         Tag: 4
@@ -113,16 +107,6 @@
 # CHECK2-NEXT:         Value: 1
 # CHECK2-NEXT:         TagName: unaligned_access
 # CHECK2-NEXT:         Description: Unaligned access
-# CHECK2-NEXT:       }
-# CHECK2-NEXT:       Attribute {
-# CHECK2-NEXT:         Tag: 8
-# CHECK2-NEXT:         TagName: priv_spec
-# CHECK2-NEXT:         Value: 2
-# CHECK2-NEXT:       }
-# CHECK2-NEXT:       Attribute {
-# CHECK2-NEXT:         Tag: 10
-# CHECK2-NEXT:         TagName: priv_spec_minor
-# CHECK2-NEXT:         Value: 2
 # CHECK2-NEXT:       }
 # CHECK2-NEXT:       Attribute {
 # CHECK2-NEXT:         Tag: 5
@@ -158,15 +142,11 @@
 #--- b.s
 .attribute stack_align, 16
 .attribute arch, "rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0"
-.attribute priv_spec, 2
-.attribute priv_spec_minor, 2
 
 #--- c.s
 .attribute stack_align, 16
 .attribute arch, "rv64i2p1_f2p2_zkt1p0_zve32f1p0_zve32x1p0_zvl32b1p0"
 .attribute unaligned_access, 1
-.attribute priv_spec, 2
-.attribute priv_spec_minor, 2
 
 #--- unrecognized_ext1.s
 # UNRECOGNIZED_EXT1:      BuildAttributes {
@@ -281,10 +261,6 @@
 
 #--- diff_stack_align.s
 .attribute stack_align, 32
-
-#--- diff_priv_spec.s
-.attribute priv_spec, 3
-.attribute priv_spec_minor, 3
 
 #--- unknown13.s
 .attribute 13, "0"

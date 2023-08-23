@@ -599,7 +599,7 @@ endif( LLVM_COMPILER_IS_GCC_COMPATIBLE )
 
 # Specific default warnings-as-errors for compilers accepting GCC-compatible warning flags:
 if ( LLVM_COMPILER_IS_GCC_COMPATIBLE OR CMAKE_CXX_COMPILER_ID MATCHES "XL" )
-  add_flag_if_supported("-Werror=date-time" WERROR_DATE_TIME)
+  add_flag_if_supported("-Werror=date-time -g -O0 -save-temps" WERROR_DATE_TIME)
   add_flag_if_supported("-Werror=unguarded-availability-new" WERROR_UNGUARDED_AVAILABILITY_NEW)
 endif( LLVM_COMPILER_IS_GCC_COMPATIBLE OR CMAKE_CXX_COMPILER_ID MATCHES "XL" )
 
