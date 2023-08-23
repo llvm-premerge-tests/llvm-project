@@ -25,9 +25,15 @@
 // RUN: %clang -### -o %t %s 2>&1 -no-integrated-as -fuse-ld=ld \
 // RUN:   --gcc-toolchain=%S/Inputs/basic_cross_linux_tree/usr \
 // RUN:   --target=x86_64-unknown-linux-gnu -m32 \
-// RUN:   | FileCheck --check-prefix=CHECK-I386 %s
+// RUN:   | FileCheck --check-prefix=CHECK-X86-64-M32 %s
+// CHECK-X86-64-M32: "-cc1" "-triple" "i386-unknown-linux-gnu"
+// CHECK-X86-64-M32: "{{.*}}/Inputs/basic_cross_linux_tree/usr/lib/gcc/x86_64-unknown-linux-gnu/10.2.0/../../../../x86_64-unknown-linux-gnu/bin{{/|\\\\}}as" "--32"
+// CHECK-X96-64-M32: "{{.*}}/Inputs/basic_cross_linux_tree/usr/lib/gcc/x86_64-unknown-linux-gnu/10.2.0/../../../../x86_64-unknown-linux-gnu/bin{{/|\\\\}}ld" {{.*}} "-m" "elf_i386"
 //
 // RUN: %clang -### -o %t %s 2>&1 -no-integrated-as -fuse-ld=ld \
 // RUN:   --gcc-toolchain=%S/Inputs/basic_cross_linux_tree/usr \
 // RUN:   --target=i386-unknown-linux-gnu -m64 \
-// RUN:   | FileCheck --check-prefix=CHECK-X86-64 %s
+// RUN:   | FileCheck --check-prefix=CHECK-I386-M64 %s
+// CHECK-I386-M64: "-cc1" "-triple" "x86_64-unknown-linux-gnu"
+// CHECK-I386-M64: "{{.*}}/Inputs/basic_cross_linux_tree/usr/lib/gcc/i386-unknown-linux-gnu/10.2.0/../../../../i386-unknown-linux-gnu/bin{{/|\\\\}}as" "--64"
+// CHECK-I386-M64: "{{.*}}/Inputs/basic_cross_linux_tree/usr/lib/gcc/i386-unknown-linux-gnu/10.2.0/../../../../i386-unknown-linux-gnu/bin{{/|\\\\}}ld" {{.*}} "-m" "elf_x86_64"

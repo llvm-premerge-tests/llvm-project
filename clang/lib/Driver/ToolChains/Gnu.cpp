@@ -2088,6 +2088,7 @@ void Generic_GCC::GCCInstallationDetector::init(
   TripleNoVendor = TargetTriple.getArchName().str() + "-" +
                    TargetTriple.getOSAndEnvironmentName().str();
   StringRef TripleNoVendorRef(TripleNoVendor);
+  StringRef TripleArg;
 
   // If --gcc-install-dir= is specified, skip filesystem detection.
   if (const Arg *A =
@@ -2156,6 +2157,9 @@ void Generic_GCC::GCCInstallationDetector::init(
       return;
   }
 
+  if (const Arg *A = Args.getLastArg(options::OPT_target))
+    TripleArg = A->getValue();
+
   // Loop over the various components which exist and select the best GCC
   // installation available. GCC installs are ranked by version number.
   const GCCVersion VersionZero = GCCVersion::Parse("0.0.0");
@@ -2171,6 +2175,10 @@ void Generic_GCC::GCCInstallationDetector::init(
       // Maybe filter out <libdir>/gcc and <libdir>/gcc-cross.
       bool GCCDirExists = VFS.exists(LibDir + "/gcc");
       bool GCCCrossDirExists = VFS.exists(LibDir + "/gcc-cross");
+      // Try to match the exact target triple passed by -target option.
+      if (TripleArg.size() > 1)
+        ScanLibDirForGCCTriple(TargetTriple, Args, LibDir, TripleArg, false,
+                               GCCDirExists, GCCCrossDirExists);
       // Try to match the exact target triple first.
       ScanLibDirForGCCTriple(TargetTriple, Args, LibDir, TargetTriple.str(),
                              false, GCCDirExists, GCCCrossDirExists);
