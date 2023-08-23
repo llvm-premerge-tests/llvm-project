@@ -11,6 +11,8 @@
 #include "llvm/IR/Module.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/LineIterator.h"
+#include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/raw_ostream.h"
 using namespace llvm;
 
@@ -29,6 +31,15 @@ static cl::list<std::string> ForceRemoveAttributes(
              "pair of 'function-name:attribute-name', for "
              "example -force-remove-attribute=foo:noinline. This "
              "option can be specified multiple times."));
+
+static cl::opt<std::string>
+    OptLevelAttributeName("opt-level-attribute-name", cl::init("opt-level"),
+                          cl::Hidden, cl::desc("Optimization attribute name"));
+
+static cl::opt<std::string> CSVFilePath(
+    "func-annotator-csv-file-path", cl::Hidden,
+    cl::desc("CSV file containing function names and optimization level as "
+             "attribute"));
 
 /// If F has any forced attributes given on the command line, add them.
 /// If F has any forced remove attributes given on the command line, remove
@@ -68,12 +79,41 @@ static bool hasForceAttributes() {
 }
 
 PreservedAnalyses ForceFunctionAttrsPass::run(Module &M,
-                                              ModuleAnalysisManager &) {
-  if (!hasForceAttributes())
-    return PreservedAnalyses::all();
+                                              ModuleAnalysisManager &AM) {
 
-  for (Function &F : M.functions())
-    forceAttributes(F);
+  if (!CSVFilePath.empty()) {
+
+    auto BufferOrError = MemoryBuffer::getFileOrSTDIN(CSVFilePath);
+    if (!BufferOrError) {
+      report_fatal_error("Cannot open CSV File");
+    }
+
+    StringRef Buffer = BufferOrError.get()->getBuffer();
+    auto MemoryBuffer = MemoryBuffer::getMemBuffer(Buffer);
+    line_iterator It(*MemoryBuffer);
+    for (++It; !It.is_at_end(); ++It) {
+      auto SplitPair = It->split(',');
+      if (!SplitPair.second.empty()) {
+        Function *Func = M.getFunction(SplitPair.first);
+        if (Func) {
+          if (Func->isDeclaration()) {
+            continue;
+          }
+          Func->addFnAttr(OptLevelAttributeName, SplitPair.second);
+        } else {
+          errs() << "Function in CSV file at line " << It.line_number()
+                 << " does not exist\n";
+          continue;
+        }
+      }
+    }
+  } else {
+    if (!hasForceAttributes())
+      return PreservedAnalyses::all();
+
+    for (Function &F : M.functions())
+      forceAttributes(F);
+  }
 
   // Just conservatively invalidate analyses, this isn't likely to be important.
   return PreservedAnalyses::none();
