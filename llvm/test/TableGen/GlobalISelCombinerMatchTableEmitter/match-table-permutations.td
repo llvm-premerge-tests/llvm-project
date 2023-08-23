@@ -30,7 +30,7 @@ def MyCombiner: GICombinerHelper<"GenMyCombiner", [
   Test0
 ]>;
 
-// CHECK:      bool GenMyCombiner::testMIPredicate_MI(unsigned PredicateID, const MachineInstr & MI, const MatcherState &State) const {
+// CHECK:      bool GenMyCombiner::testMIPredicate_MI(unsigned PredicateID, const MachineInstr & MI, const MatcherState &State) {
 // CHECK-NEXT:   switch (PredicateID) {
 // CHECK-NEXT:   case GICXXPred_MI_Predicate_GICombiner0: {
 // CHECK-NEXT:     // Pattern Alternatives: [a[0], b[0], c[0]]

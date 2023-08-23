@@ -63,7 +63,7 @@ public:
 
   static const char *getName() { return "AMDGPUPostLegalizerCombinerImpl"; }
 
-  bool tryCombineAll(MachineInstr &I) const;
+  bool tryCombineAll(MachineInstr &I);
 
   struct FMinFMaxLegacyInfo {
     Register LHS;

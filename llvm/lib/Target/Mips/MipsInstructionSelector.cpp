@@ -39,7 +39,7 @@ public:
   static const char *getName() { return DEBUG_TYPE; }
 
 private:
-  bool selectImpl(MachineInstr &I, CodeGenCoverage &CoverageInfo) const;
+  bool selectImpl(MachineInstr &I, CodeGenCoverage &CoverageInfo);
   bool isRegInGprb(Register Reg, MachineRegisterInfo &MRI) const;
   bool isRegInFprb(Register Reg, MachineRegisterInfo &MRI) const;
   bool materialize32BitImm(Register DestReg, APInt Imm,

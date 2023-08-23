@@ -2278,7 +2278,7 @@ GlobalISelEmitter::buildMatchTable(MutableArrayRef<RuleMatcher> Rules,
 void GlobalISelEmitter::emitAdditionalImpl(raw_ostream &OS) {
   OS << "bool " << getClassName()
      << "::selectImpl(MachineInstr &I, CodeGenCoverage "
-        "&CoverageInfo) const {\n"
+        "&CoverageInfo) {\n"
      << "  const PredicateBitset AvailableFeatures = "
         "getAvailableFeatures();\n"
      << "  NewMIVector OutMIs;\n"
@@ -2357,7 +2357,7 @@ void GlobalISelEmitter::emitAPIntImmPredicateFns(raw_ostream &OS) {
 }
 
 void GlobalISelEmitter::emitTestSimplePredicate(raw_ostream &OS) {
-  OS << "bool " << getClassName() << "::testSimplePredicate(unsigned) const {\n"
+  OS << "bool " << getClassName() << "::testSimplePredicate(unsigned) {\n"
      << "    llvm_unreachable(\"" + getClassName() +
             " does not support simple predicates!\");\n"
      << "  return false;\n"
@@ -2366,7 +2366,7 @@ void GlobalISelEmitter::emitTestSimplePredicate(raw_ostream &OS) {
 
 void GlobalISelEmitter::emitRunCustomAction(raw_ostream &OS) {
   OS << "void " << getClassName()
-     << "::runCustomAction(unsigned, const MatcherState&, NewMIVector &) const "
+     << "::runCustomAction(unsigned, const MatcherState&, NewMIVector &) "
         "{\n"
      << "    llvm_unreachable(\"" + getClassName() +
             " does not support custom C++ actions!\");\n"

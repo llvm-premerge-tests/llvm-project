@@ -73,7 +73,7 @@ public:
 private:
   // tblgen-erated 'select' implementation, used as the initial selector for
   // the patterns that don't require complex C++.
-  bool selectImpl(MachineInstr &I, CodeGenCoverage &CoverageInfo) const;
+  bool selectImpl(MachineInstr &I, CodeGenCoverage &CoverageInfo);
 
   // All instruction-specific selection that didn't happen in "select()".
   // Is basically a large Switch/Case delegating to all other select method.

@@ -98,7 +98,7 @@ class GlobalISelMatchTableExecutorEmitter {
 
     OS << "bool " << getClassName() << "::test" << ArgName << "Predicate_"
        << TypeIdentifier << "(unsigned PredicateID, " << ArgType << " "
-       << ArgName << AdditionalArgs << ") const {\n"
+       << ArgName << AdditionalArgs << ") {\n"
        << AdditionalDeclarations;
     if (!AdditionalDeclarations.empty())
       OS << "\n";

@@ -62,7 +62,7 @@ public:
 
   static const char *getName() { return "AArch64O0PreLegalizerCombiner"; }
 
-  bool tryCombineAll(MachineInstr &I) const;
+  bool tryCombineAll(MachineInstr &I);
 
 private:
 #define GET_GICOMBINER_CLASS_MEMBERS

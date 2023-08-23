@@ -39,7 +39,7 @@ public:
   static const char *getName() { return DEBUG_TYPE; }
 
 private:
-  bool selectImpl(MachineInstr &I, CodeGenCoverage &CoverageInfo) const;
+  bool selectImpl(MachineInstr &I, CodeGenCoverage &CoverageInfo);
 
   const RISCVSubtarget &STI;
   const RISCVInstrInfo &TII;

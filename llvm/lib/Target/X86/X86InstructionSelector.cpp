@@ -68,7 +68,7 @@ public:
 private:
   /// tblgen-erated 'select' implementation, used as the initial selector for
   /// the patterns that don't require complex C++.
-  bool selectImpl(MachineInstr &I, CodeGenCoverage &CoverageInfo) const;
+  bool selectImpl(MachineInstr &I, CodeGenCoverage &CoverageInfo);
 
   // TODO: remove after supported by Tablegen-erated instruction selection.
   unsigned getLoadStoreOp(const LLT &Ty, const RegisterBank &RB, unsigned Opc,

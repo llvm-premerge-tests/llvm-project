@@ -79,7 +79,7 @@ private:
     const TargetRegisterInfo &TRI) const;
 
   /// tblgen-erated 'select' implementation.
-  bool selectImpl(MachineInstr &I, CodeGenCoverage &CoverageInfo) const;
+  bool selectImpl(MachineInstr &I, CodeGenCoverage &CoverageInfo);
 
   MachineOperand getSubOperand64(MachineOperand &MO,
                                  const TargetRegisterClass &SubRC,
@@ -99,16 +99,16 @@ private:
   bool selectG_AMDGPU_MAD_64_32(MachineInstr &I) const;
   bool selectG_EXTRACT(MachineInstr &I) const;
   bool selectG_FMA_FMAD(MachineInstr &I) const;
-  bool selectG_MERGE_VALUES(MachineInstr &I) const;
+  bool selectG_MERGE_VALUES(MachineInstr &I);
   bool selectG_UNMERGE_VALUES(MachineInstr &I) const;
-  bool selectG_BUILD_VECTOR(MachineInstr &I) const;
+  bool selectG_BUILD_VECTOR(MachineInstr &I);
   bool selectG_PTR_ADD(MachineInstr &I) const;
   bool selectG_IMPLICIT_DEF(MachineInstr &I) const;
   bool selectG_INSERT(MachineInstr &I) const;
   bool selectG_SBFX_UBFX(MachineInstr &I) const;
 
-  bool selectInterpP1F16(MachineInstr &MI) const;
-  bool selectWritelane(MachineInstr &MI) const;
+  bool selectInterpP1F16(MachineInstr &MI);
+  bool selectWritelane(MachineInstr &MI);
   bool selectDivScale(MachineInstr &MI) const;
   bool selectIntrinsicCmp(MachineInstr &MI) const;
   bool selectBallot(MachineInstr &I) const;
@@ -116,18 +116,18 @@ private:
   bool selectRelocConstant(MachineInstr &I) const;
   bool selectGroupStaticSize(MachineInstr &I) const;
   bool selectReturnAddress(MachineInstr &I) const;
-  bool selectG_INTRINSIC(MachineInstr &I) const;
+  bool selectG_INTRINSIC(MachineInstr &I);
 
   bool selectEndCfIntrinsic(MachineInstr &MI) const;
   bool selectDSOrderedIntrinsic(MachineInstr &MI, Intrinsic::ID IID) const;
   bool selectDSGWSIntrinsic(MachineInstr &MI, Intrinsic::ID IID) const;
   bool selectDSAppendConsume(MachineInstr &MI, bool IsAppend) const;
-  bool selectSBarrier(MachineInstr &MI) const;
+  bool selectSBarrier(MachineInstr &MI);
   bool selectDSBvhStackIntrinsic(MachineInstr &MI) const;
 
   bool selectImageIntrinsic(MachineInstr &MI,
                             const AMDGPU::ImageDimIntrinsicInfo *Intr) const;
-  bool selectG_INTRINSIC_W_SIDE_EFFECTS(MachineInstr &I) const;
+  bool selectG_INTRINSIC_W_SIDE_EFFECTS(MachineInstr &I);
   int getS_CMPOpcode(CmpInst::Predicate P, unsigned Size) const;
   bool selectG_ICMP(MachineInstr &I) const;
   bool hasVgprParts(ArrayRef<GEPInfo> AddrInfo) const;
@@ -135,8 +135,8 @@ private:
                        SmallVectorImpl<GEPInfo> &AddrInfo) const;
 
   void initM0(MachineInstr &I) const;
-  bool selectG_LOAD_STORE_ATOMICRMW(MachineInstr &I) const;
-  bool selectG_SELECT(MachineInstr &I) const;
+  bool selectG_LOAD_STORE_ATOMICRMW(MachineInstr &I);
+  bool selectG_SELECT(MachineInstr &I);
   bool selectG_BRCOND(MachineInstr &I) const;
   bool selectG_GLOBAL_VALUE(MachineInstr &I) const;
   bool selectG_PTRMASK(MachineInstr &I) const;

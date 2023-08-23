@@ -541,7 +541,7 @@ bool AMDGPUInstructionSelector::selectG_EXTRACT(MachineInstr &I) const {
   return true;
 }
 
-bool AMDGPUInstructionSelector::selectG_MERGE_VALUES(MachineInstr &MI) const {
+bool AMDGPUInstructionSelector::selectG_MERGE_VALUES(MachineInstr &MI) {
   MachineBasicBlock *BB = MI.getParent();
   Register DstReg = MI.getOperand(0).getReg();
   LLT DstTy = MRI->getType(DstReg);
@@ -625,7 +625,7 @@ bool AMDGPUInstructionSelector::selectG_UNMERGE_VALUES(MachineInstr &MI) const {
   return true;
 }
 
-bool AMDGPUInstructionSelector::selectG_BUILD_VECTOR(MachineInstr &MI) const {
+bool AMDGPUInstructionSelector::selectG_BUILD_VECTOR(MachineInstr &MI) {
   assert(MI.getOpcode() == AMDGPU::G_BUILD_VECTOR_TRUNC ||
          MI.getOpcode() == AMDGPU::G_BUILD_VECTOR);
 
@@ -876,7 +876,7 @@ bool AMDGPUInstructionSelector::selectG_SBFX_UBFX(MachineInstr &MI) const {
   return constrainSelectedInstRegOperands(*MIB, TII, TRI, RBI);
 }
 
-bool AMDGPUInstructionSelector::selectInterpP1F16(MachineInstr &MI) const {
+bool AMDGPUInstructionSelector::selectInterpP1F16(MachineInstr &MI) {
   if (STI.getLDSBankCount() != 16)
     return selectImpl(MI, *CoverageInfo);
 
@@ -926,7 +926,7 @@ bool AMDGPUInstructionSelector::selectInterpP1F16(MachineInstr &MI) const {
 // the lane selector doesn't count as a use of the constant bus). However, it is
 // still required to abide by the 1 SGPR rule. Fix this up if we might have
 // multiple SGPRs.
-bool AMDGPUInstructionSelector::selectWritelane(MachineInstr &MI) const {
+bool AMDGPUInstructionSelector::selectWritelane(MachineInstr &MI) {
   // With a constant bus limit of at least 2, there's no issue.
   if (STI.getConstantBusLimit(AMDGPU::V_WRITELANE_B32) > 1)
     return selectImpl(MI, *CoverageInfo);
@@ -1019,7 +1019,7 @@ bool AMDGPUInstructionSelector::selectDivScale(MachineInstr &MI) const {
   return constrainSelectedInstRegOperands(*MIB, TII, TRI, RBI);
 }
 
-bool AMDGPUInstructionSelector::selectG_INTRINSIC(MachineInstr &I) const {
+bool AMDGPUInstructionSelector::selectG_INTRINSIC(MachineInstr &I) {
   unsigned IntrinsicID = cast<GIntrinsic>(I).getIntrinsicID();
   switch (IntrinsicID) {
   case Intrinsic::amdgcn_if_break: {
@@ -1709,7 +1709,7 @@ bool AMDGPUInstructionSelector::selectDSAppendConsume(MachineInstr &MI,
   return constrainSelectedInstRegOperands(*MIB, TII, TRI, RBI);
 }
 
-bool AMDGPUInstructionSelector::selectSBarrier(MachineInstr &MI) const {
+bool AMDGPUInstructionSelector::selectSBarrier(MachineInstr &MI) {
   if (TM.getOptLevel() > CodeGenOpt::None) {
     unsigned WGSize = STI.getFlatWorkGroupSizes(MF->getFunction()).second;
     if (WGSize <= STI.getWavefrontSize()) {
@@ -2027,7 +2027,7 @@ bool AMDGPUInstructionSelector::selectDSBvhStackIntrinsic(
 }
 
 bool AMDGPUInstructionSelector::selectG_INTRINSIC_W_SIDE_EFFECTS(
-    MachineInstr &I) const {
+    MachineInstr &I) {
   unsigned IntrinsicID = cast<GIntrinsic>(I).getIntrinsicID();
   switch (IntrinsicID) {
   case Intrinsic::amdgcn_end_cf:
@@ -2070,7 +2070,7 @@ bool AMDGPUInstructionSelector::selectG_INTRINSIC_W_SIDE_EFFECTS(
   return selectImpl(I, *CoverageInfo);
 }
 
-bool AMDGPUInstructionSelector::selectG_SELECT(MachineInstr &I) const {
+bool AMDGPUInstructionSelector::selectG_SELECT(MachineInstr &I) {
   if (selectImpl(I, *CoverageInfo))
     return true;
 
@@ -2698,8 +2698,7 @@ void AMDGPUInstructionSelector::initM0(MachineInstr &I) const {
   }
 }
 
-bool AMDGPUInstructionSelector::selectG_LOAD_STORE_ATOMICRMW(
-  MachineInstr &I) const {
+bool AMDGPUInstructionSelector::selectG_LOAD_STORE_ATOMICRMW(MachineInstr &I) {
   initM0(I);
   return selectImpl(I, *CoverageInfo);
 }

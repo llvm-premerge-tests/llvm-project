@@ -32,7 +32,7 @@ public:
   static const char *getName() { return DEBUG_TYPE; }
 
 private:
-  bool selectImpl(MachineInstr &I, CodeGenCoverage &CoverageInfo) const;
+  bool selectImpl(MachineInstr &I, CodeGenCoverage &CoverageInfo);
 
   const M68kTargetMachine &TM;
   const M68kInstrInfo &TII;

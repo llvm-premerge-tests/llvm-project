@@ -90,7 +90,7 @@ def MyCombiner: GICombinerHelper<"GenMyCombiner", [
 // CHECK-NEXT: }
 
 // Verify we reset MatchData on each tryCombineAll
-// CHECK:      bool GenMyCombiner::tryCombineAll(MachineInstr &I) const {
+// CHECK:      bool GenMyCombiner::tryCombineAll(MachineInstr &I) {
 // CHECK-NEXT:   const TargetSubtargetInfo &ST = MF.getSubtarget();
 // CHECK-NEXT:   const PredicateBitset AvailableFeatures = getAvailableFeatures();
 // CHECK-NEXT:   NewMIVector OutMIs;
@@ -111,7 +111,7 @@ def MyCombiner: GICombinerHelper<"GenMyCombiner", [
 // CHECK-NEXT:   GICXXCustomAction_CombineApplyGICombiner1,
 // CHECK-NEXT:   GICXXCustomAction_CombineApplyGICombiner2,
 // CHECK-NEXT: };
-// CHECK-NEXT: void GenMyCombiner::runCustomAction(unsigned ApplyID, const MatcherState &State, NewMIVector &OutMIs) const {
+// CHECK-NEXT: void GenMyCombiner::runCustomAction(unsigned ApplyID, const MatcherState &State, NewMIVector &OutMIs) {
 // CHECK-NEXT:   switch(ApplyID) {
 // CHECK-NEXT:   case GICXXCustomAction_CombineApplyGICombiner0:{
 // CHECK-NEXT:     APPLY

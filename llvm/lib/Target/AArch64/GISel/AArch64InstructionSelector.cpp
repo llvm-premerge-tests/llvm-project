@@ -93,7 +93,7 @@ public:
 private:
   /// tblgen-erated 'select' implementation, used as the initial selector for
   /// the patterns that don't require complex C++.
-  bool selectImpl(MachineInstr &I, CodeGenCoverage &CoverageInfo) const;
+  bool selectImpl(MachineInstr &I, CodeGenCoverage &CoverageInfo);
 
   // A lowering phase that runs before any selection attempts.
   // Returns true if the instruction was modified.

@@ -65,7 +65,7 @@ public:
 
   static const char *getName() { return "AMDGPURegBankCombinerImpl"; }
 
-  bool tryCombineAll(MachineInstr &I) const;
+  bool tryCombineAll(MachineInstr &I);
 
   bool isVgprRegBank(Register Reg) const;
   Register getAsVgpr(Register Reg) const;

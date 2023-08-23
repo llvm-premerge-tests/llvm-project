@@ -61,7 +61,7 @@ public:
 
   static const char *getName() { return "AMDGPUPreLegalizerCombinerImpl"; }
 
-  bool tryCombineAll(MachineInstr &I) const;
+  bool tryCombineAll(MachineInstr &I);
 
   struct ClampI64ToI16MatchInfo {
     int64_t Cmp1 = 0;

@@ -48,7 +48,7 @@ bool GIMatchTableExecutor::executeMatchTable(
     const int64_t *MatchTable, const TargetInstrInfo &TII,
     MachineRegisterInfo &MRI, const TargetRegisterInfo &TRI,
     const RegisterBankInfo &RBI, const PredicateBitset &AvailableFeatures,
-    CodeGenCoverage *CoverageInfo, GISelChangeObserver *Observer) const {
+    CodeGenCoverage *CoverageInfo, GISelChangeObserver *Observer) {
 
   uint64_t CurrentIdx = 0;
   SmallVector<uint64_t, 4> OnFailResumeAt;

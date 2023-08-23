@@ -568,37 +568,36 @@ protected:
       const int64_t *MatchTable, const TargetInstrInfo &TII,
       MachineRegisterInfo &MRI, const TargetRegisterInfo &TRI,
       const RegisterBankInfo &RBI, const PredicateBitset &AvailableFeatures,
-      CodeGenCoverage *CoverageInfo,
-      GISelChangeObserver *Observer = nullptr) const;
+      CodeGenCoverage *CoverageInfo, GISelChangeObserver *Observer = nullptr);
 
   virtual const int64_t *getMatchTable() const {
     llvm_unreachable("Should have been overridden by tablegen if used");
   }
 
-  virtual bool testImmPredicate_I64(unsigned, int64_t) const {
+  virtual bool testImmPredicate_I64(unsigned, int64_t) {
     llvm_unreachable(
         "Subclasses must override this with a tablegen-erated function");
   }
-  virtual bool testImmPredicate_APInt(unsigned, const APInt &) const {
+  virtual bool testImmPredicate_APInt(unsigned, const APInt &) {
     llvm_unreachable(
         "Subclasses must override this with a tablegen-erated function");
   }
-  virtual bool testImmPredicate_APFloat(unsigned, const APFloat &) const {
+  virtual bool testImmPredicate_APFloat(unsigned, const APFloat &) {
     llvm_unreachable(
         "Subclasses must override this with a tablegen-erated function");
   }
   virtual bool testMIPredicate_MI(unsigned, const MachineInstr &,
-                                  const MatcherState &State) const {
+                                  const MatcherState &State) {
     llvm_unreachable(
         "Subclasses must override this with a tablegen-erated function");
   }
 
-  virtual bool testSimplePredicate(unsigned) const {
+  virtual bool testSimplePredicate(unsigned) {
     llvm_unreachable("Subclass does not implement testSimplePredicate!");
   }
 
   virtual void runCustomAction(unsigned, const MatcherState &State,
-                               NewMIVector &OutMIs) const {
+                               NewMIVector &OutMIs) {
     llvm_unreachable("Subclass does not implement runCustomAction!");
   }
 

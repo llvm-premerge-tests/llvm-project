@@ -211,20 +211,20 @@ void GlobalISelMatchTableExecutorEmitter::emitTemporariesDecl(
      << "::ComplexMatcherMemFn ComplexPredicateFns[];\n"
      << "  static " << getClassName()
      << "::CustomRendererFn CustomRenderers[];\n"
-     << "  bool testImmPredicate_I64(unsigned PredicateID, int64_t Imm) const "
+     << "  bool testImmPredicate_I64(unsigned PredicateID, int64_t Imm) "
         "override;\n"
      << "  bool testImmPredicate_APInt(unsigned PredicateID, const APInt &Imm) "
-        "const override;\n"
+        "override;\n"
      << "  bool testImmPredicate_APFloat(unsigned PredicateID, const APFloat "
-        "&Imm) const override;\n"
+        "&Imm) override;\n"
      << "  const int64_t *getMatchTable() const override;\n"
      << "  bool testMIPredicate_MI(unsigned PredicateID, const MachineInstr &MI"
         ", const MatcherState &State) "
-        "const override;\n"
-     << "  bool testSimplePredicate(unsigned PredicateID) const override;\n"
+        "override;\n"
+     << "  bool testSimplePredicate(unsigned PredicateID) override;\n"
      << "  void runCustomAction(unsigned FnID, const MatcherState &State, "
         "NewMIVector &OutMIs) "
-        "const override;\n";
+        "override;\n";
   emitAdditionalTemporariesDecl(OS, "  ");
   OS << "#endif // ifdef " << IfDefName << "\n\n";
 }

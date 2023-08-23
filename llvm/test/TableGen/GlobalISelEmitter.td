@@ -76,13 +76,13 @@ def HasC : Predicate<"Subtarget->hasC()"> { let RecomputePerFunction = 1; }
 // CHECK-NEXT:    const ExecInfoTy<PredicateBitset, ComplexMatcherMemFn, CustomRendererFn> ExecInfo;
 // CHECK-NEXT:    static MyTargetInstructionSelector::ComplexMatcherMemFn ComplexPredicateFns[];
 // CHECK-NEXT:    static MyTargetInstructionSelector::CustomRendererFn CustomRenderers[];
-// CHECK-NEXT:    bool testImmPredicate_I64(unsigned PredicateID, int64_t Imm) const override;
-// CHECK-NEXT:    bool testImmPredicate_APInt(unsigned PredicateID, const APInt &Imm) const override;
-// CHECK-NEXT:    bool testImmPredicate_APFloat(unsigned PredicateID, const APFloat &Imm) const override;
+// CHECK-NEXT:    bool testImmPredicate_I64(unsigned PredicateID, int64_t Imm) override;
+// CHECK-NEXT:    bool testImmPredicate_APInt(unsigned PredicateID, const APInt &Imm) override;
+// CHECK-NEXT:    bool testImmPredicate_APFloat(unsigned PredicateID, const APFloat &Imm) override;
 // CHECK-NEXT:    const int64_t *getMatchTable() const override;
-// CHECK-NEXT:    bool testMIPredicate_MI(unsigned PredicateID, const MachineInstr &MI, const MatcherState &State) const override;
-// CHECK-NEXT:    bool testSimplePredicate(unsigned PredicateID) const override;
-// CHECK-NEXT:    void runCustomAction(unsigned FnID, const MatcherState &State, NewMIVector &OutMIs) const override;
+// CHECK-NEXT:    bool testMIPredicate_MI(unsigned PredicateID, const MachineInstr &MI, const MatcherState &State) override;
+// CHECK-NEXT:    bool testSimplePredicate(unsigned PredicateID) override;
+// CHECK-NEXT:    void runCustomAction(unsigned FnID, const MatcherState &State, NewMIVector &OutMIs) override;
 // CHECK-NEXT:  #endif // ifdef GET_GLOBALISEL_TEMPORARIES_DECL
 
 // CHECK-LABEL: #ifdef GET_GLOBALISEL_TEMPORARIES_INIT
@@ -162,7 +162,7 @@ def HasC : Predicate<"Subtarget->hasC()"> { let RecomputePerFunction = 1; }
 // CHECK-NEXT:    GICXXPred_I64_Predicate_simm8,
 // CHECK-NEXT:  };
 
-// CHECK-NEXT: bool MyTargetInstructionSelector::testImmPredicate_I64(unsigned PredicateID, int64_t Imm) const {
+// CHECK-NEXT: bool MyTargetInstructionSelector::testImmPredicate_I64(unsigned PredicateID, int64_t Imm) {
 // CHECK-NEXT:   switch (PredicateID) {
 // CHECK-NEXT:   case GICXXPred_I64_Predicate_cimm8: {
 // CHECK-NEXT:     return isInt<8>(Imm);
@@ -179,7 +179,7 @@ def HasC : Predicate<"Subtarget->hasC()"> { let RecomputePerFunction = 1; }
 // CHECK-NEXT:  enum {
 // CHECK-NEXT:    GICXXPred_APFloat_Predicate_fpimmz = GICXXPred_Invalid + 1,
 // CHECK-NEXT:  };
-// CHECK-NEXT:  bool MyTargetInstructionSelector::testImmPredicate_APFloat(unsigned PredicateID, const APFloat & Imm) const {
+// CHECK-NEXT:  bool MyTargetInstructionSelector::testImmPredicate_APFloat(unsigned PredicateID, const APFloat & Imm) {
 // CHECK-NEXT:    switch (PredicateID) {
 // CHECK-NEXT:    case GICXXPred_APFloat_Predicate_fpimmz: {
 // CHECK-NEXT:      return Imm->isExactlyValue(0.0);
@@ -193,7 +193,7 @@ def HasC : Predicate<"Subtarget->hasC()"> { let RecomputePerFunction = 1; }
 // CHECK-NEXT:  enum {
 // CHECK-NEXT:    GICXXPred_APInt_Predicate_simm9 = GICXXPred_Invalid + 1,
 // CHECK-NEXT:  };
-// CHECK-NEXT:  bool MyTargetInstructionSelector::testImmPredicate_APInt(unsigned PredicateID, const APInt & Imm) const {
+// CHECK-NEXT:  bool MyTargetInstructionSelector::testImmPredicate_APInt(unsigned PredicateID, const APInt & Imm) {
 // CHECK-NEXT:    switch (PredicateID) {
 // CHECK-NEXT:    case GICXXPred_APInt_Predicate_simm9: {
 // CHECK-NEXT:      return isInt<9>(Imm->getSExtValue());
@@ -214,7 +214,7 @@ def HasC : Predicate<"Subtarget->hasC()"> { let RecomputePerFunction = 1; }
 // CHECK-NEXT:   &MyTargetInstructionSelector::renderImm,
 // CHECK-NEXT: };
 
-// CHECK: bool MyTargetInstructionSelector::selectImpl(MachineInstr &I, CodeGenCoverage &CoverageInfo) const {
+// CHECK: bool MyTargetInstructionSelector::selectImpl(MachineInstr &I, CodeGenCoverage &CoverageInfo) {
 // CHECK-NEXT: const PredicateBitset AvailableFeatures = getAvailableFeatures();
 // CHECK-NEXT: NewMIVector OutMIs;
 // CHECK-NEXT: State.MIs.clear();

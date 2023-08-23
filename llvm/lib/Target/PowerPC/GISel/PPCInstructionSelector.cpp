@@ -46,7 +46,7 @@ public:
 private:
   /// tblgen generated 'select' implementation that is used as the initial
   /// selector for the patterns that do not require complex C++.
-  bool selectImpl(MachineInstr &I, CodeGenCoverage &CoverageInfo) const;
+  bool selectImpl(MachineInstr &I, CodeGenCoverage &CoverageInfo);
 
   bool selectFPToInt(MachineInstr &I, MachineBasicBlock &MBB,
                   MachineRegisterInfo &MRI) const;

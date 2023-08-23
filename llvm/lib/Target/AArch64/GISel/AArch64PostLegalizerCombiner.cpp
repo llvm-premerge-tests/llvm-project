@@ -358,7 +358,7 @@ public:
 
   static const char *getName() { return "AArch64PostLegalizerCombiner"; }
 
-  bool tryCombineAll(MachineInstr &I) const;
+  bool tryCombineAll(MachineInstr &I);
 
 private:
 #define GET_GICOMBINER_CLASS_MEMBERS

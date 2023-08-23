@@ -3177,8 +3177,7 @@ void GICombinerEmitter::emitRuleConfigImpl(raw_ostream &OS) {
 }
 
 void GICombinerEmitter::emitAdditionalImpl(raw_ostream &OS) {
-  OS << "bool " << getClassName()
-     << "::tryCombineAll(MachineInstr &I) const {\n"
+  OS << "bool " << getClassName() << "::tryCombineAll(MachineInstr &I) {\n"
      << "  const TargetSubtargetInfo &ST = MF.getSubtarget();\n"
      << "  const PredicateBitset AvailableFeatures = "
         "getAvailableFeatures();\n"
@@ -3244,7 +3243,7 @@ void GICombinerEmitter::emitTestSimplePredicate(raw_ostream &OS) {
   }
 
   OS << "bool " << getClassName()
-     << "::testSimplePredicate(unsigned Predicate) const {\n"
+     << "::testSimplePredicate(unsigned Predicate) {\n"
      << "    return RuleConfig.isRuleEnabled(Predicate - "
         "GICXXPred_Invalid - "
         "1);\n"
@@ -3267,7 +3266,7 @@ void GICombinerEmitter::emitRunCustomAction(raw_ostream &OS) {
 
   OS << "void " << getClassName()
      << "::runCustomAction(unsigned ApplyID, const MatcherState &State, "
-        "NewMIVector &OutMIs) const "
+        "NewMIVector &OutMIs) "
         "{\n";
   if (!ApplyCode.empty()) {
     OS << "  switch(ApplyID) {\n";
