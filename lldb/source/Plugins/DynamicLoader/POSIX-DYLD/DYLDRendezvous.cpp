@@ -25,6 +25,32 @@
 using namespace lldb;
 using namespace lldb_private;
 
+const char *DYLDRendezvous::StateToCStr(RendezvousState state) {
+  switch (state) {
+    case DYLDRendezvous::eConsistent:
+      return "eConsistent";
+    case DYLDRendezvous::eAdd:
+      return "eAdd";
+    case DYLDRendezvous::eDelete:
+      return "eDelete";
+  }
+  return "<invalid RendezvousState>";
+}
+
+const char *DYLDRendezvous::ActionToCStr(RendezvousAction action) {
+  switch (action) {
+  case DYLDRendezvous::RendezvousAction::eTakeSnapshot:
+    return "eTakeSnapshot";
+  case DYLDRendezvous::RendezvousAction::eAddModules:
+    return "eAddModules";
+  case DYLDRendezvous::RendezvousAction::eRemoveModules:
+    return "eRemoveModules";
+  case DYLDRendezvous::RendezvousAction::eNoAction:
+    return "eNoAction";
+  }
+  return "<invalid RendezvousAction>";
+}
+
 DYLDRendezvous::DYLDRendezvous(Process *process)
     : m_process(process), m_rendezvous_addr(LLDB_INVALID_ADDRESS),
       m_executable_interpreter(false), m_current(), m_previous(),
@@ -129,6 +155,13 @@ void DYLDRendezvous::UpdateExecutablePath() {
   }
 }
 
+void DYLDRendezvous::Rendezvous::DumpToLog(Log *log, const char *label) {
+  LLDB_LOGF(log, "%s Rendezvous: version = %" PRIu64 ", map_addr = 0x%16.16"
+            PRIx64 ", brk = 0x%16.16" PRIx64 ", state = %" PRIu64
+            " (%s), ldbase = 0x%16.16" PRIx64, label ? label : "", version,
+            map_addr, brk, state, StateToCStr((RendezvousState)state), ldbase);
+}
+
 bool DYLDRendezvous::Resolve() {
   Log *log = GetLog(LLDBLog::DynamicLoader);
 
@@ -176,6 +209,9 @@ bool DYLDRendezvous::Resolve() {
   m_previous = m_current;
   m_current = info;
 
+  m_previous.DumpToLog(log, "m_previous");
+  m_current.DumpToLog(log, "m_current ");
+
   if (m_current.map_addr == 0)
     return false;
 
@@ -217,6 +253,26 @@ DYLDRendezvous::RendezvousAction DYLDRendezvous::GetAction() const {
     break;
 
   case eAdd:
+    // Watch out for two eAdd states in a row and if we see this, then add
+    // modules. If any executable or shared library defines a symbol named
+    // "_r_debug", then the dynamic loader will start using its own copy for
+    // the first notification and the DT_DEBUG will point to the version from
+    // the dynamic loader. The problem happens as soon as the executable or
+    // shared library that exports another "_r_debug" is loaded by the dynamic
+    // loader due to the way symbols are found using the shared library search
+    // paths will mean that the new copy takes precedence over the one in the
+    // dynamic loader and the dynamic loader will be updating the other copy
+    // somewhere else that we won't find and that copy will have the
+    // eConsistent state.
+    if (m_previous.state == eAdd) {
+      Log *log = GetLog(LLDBLog::DynamicLoader);
+      LLDB_LOG(log, "DYLDRendezvous::GetAction() found two eAdd states in a "
+               "row, check process for multiple \"_r_debug\" symbols. "
+               "Returning eAddModules to ensure shared libraries get loaded "
+               "correctly");
+      return eAddModules;
+    }
+    return eNoAction;
   case eDelete:
     return eNoAction;
   }
@@ -225,7 +281,9 @@ DYLDRendezvous::RendezvousAction DYLDRendezvous::GetAction() const {
 }
 
 bool DYLDRendezvous::UpdateSOEntriesFromRemote() {
-  auto action = GetAction();
+  const auto action = GetAction();
+  Log *log = GetLog(LLDBLog::DynamicLoader);
+  LLDB_LOG(log, "{0} action = {1}", __PRETTY_FUNCTION__, ActionToCStr(action));
 
   if (action == eNoAction)
     return false;
@@ -263,7 +321,10 @@ bool DYLDRendezvous::UpdateSOEntriesFromRemote() {
 bool DYLDRendezvous::UpdateSOEntries() {
   m_added_soentries.clear();
   m_removed_soentries.clear();
-  switch (GetAction()) {
+  const auto action = GetAction();
+  Log *log = GetLog(LLDBLog::DynamicLoader);
+  LLDB_LOG(log, "{0} action = {1}", __PRETTY_FUNCTION__, ActionToCStr(action));
+  switch (action) {
   case eTakeSnapshot:
     m_soentries.clear();
     return TakeSnapshot(m_soentries);

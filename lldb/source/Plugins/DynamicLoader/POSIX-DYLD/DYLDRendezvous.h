@@ -21,6 +21,7 @@
 using lldb_private::LoadedModuleInfoList;
 
 namespace lldb_private {
+class Log;
 class Process;
 }
 
@@ -45,6 +46,8 @@ class DYLDRendezvous {
     lldb::addr_t ldbase = 0;
 
     Rendezvous() = default;
+
+    void DumpToLog(lldb_private::Log *log, const char *label);
   };
 
   /// Locates the address of the rendezvous structure.  It updates
@@ -275,6 +278,9 @@ protected:
     eAddModules,
     eRemoveModules
   };
+
+  static const char *StateToCStr(RendezvousState state);
+  static const char *ActionToCStr(RendezvousAction action);
 
   /// Returns the current action to be taken given the current and previous
   /// state
