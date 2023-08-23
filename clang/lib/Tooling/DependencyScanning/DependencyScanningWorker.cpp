@@ -165,7 +165,8 @@ public:
     Scanned = true;
 
     // Create a compiler instance to handle the actual work.
-    ScanInstanceStorage.emplace(std::move(PCHContainerOps));
+    ScanInstanceStorage =
+        std::make_shared<CompilerInstance>(std::move(PCHContainerOps));
     CompilerInstance &ScanInstance = *ScanInstanceStorage;
     ScanInstance.setInvocation(std::move(Invocation));
 
@@ -268,6 +269,8 @@ public:
     if (Result)
       setLastCC1Arguments(std::move(OriginalInvocation));
 
+    Consumer.handleScanInstance(ScanInstanceStorage);
+
     return Result;
   }
 
@@ -299,7 +302,7 @@ private:
   bool EagerLoadModules;
   bool DisableFree;
   std::optional<StringRef> ModuleName;
-  std::optional<CompilerInstance> ScanInstanceStorage;
+  std::shared_ptr<CompilerInstance> ScanInstanceStorage;
   std::shared_ptr<ModuleDepCollector> MDC;
   std::vector<std::string> LastCC1Arguments;
   bool Scanned = false;
