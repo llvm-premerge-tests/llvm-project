@@ -114,3 +114,26 @@ func.func @test_large_pattern(%arg0 : i32, %arg1 : i32) -> i32 {
   // CHECK-NEXT: return %[[RESULT]]
   return %result : i32
 }
+
+// CHECK-LABEL: @test_equal_ancestor_trees
+func.func @test_equal_ancestor_trees(%arg0 : i32, %arg1: i32) -> i32 {
+  // CHECK-NEXT: arith.addi
+  %0 = arith.addi %arg1, %arg1 : i32
+
+  // CHECK-NEXT: arith.addi
+  %1 = arith.addi %arg0, %arg0 : i32
+
+  // CHECK: %[[ARITH_MULI1:.*]] = arith.muli
+  %2 = arith.muli %0, %0 : i32
+
+  // CHECK-NEXT: %[[ARITH_MULI2:.*]] = arith.muli
+  %3 = arith.muli %1, %1 : i32
+
+  // Without additional logic to differentiate between block arguments, %2 and %3 are treated
+  // as equivalent, so the sorting logic keeps the original order
+  // CHECK-NEXT: %[[RESULT:.*]] = "test.op_commutative2"(%[[ARITH_MULI1]], %[[ARITH_MULI2]])
+  %result = "test.op_commutative2"(%2, %3): (i32, i32) -> i32
+
+  // CHECK-NEXT: return %[[RESULT]]
+  return %result : i32
+}

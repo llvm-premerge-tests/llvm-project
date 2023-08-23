@@ -206,6 +206,7 @@ struct CommutativeOperand {
 /// 2. The key associated with %2 is:
 ///     `{
 ///       {NON_CONSTANT_OP, "foo.mul"},
+///       {BLOCK_ARGUMENT, ""},
 ///       {BLOCK_ARGUMENT, ""}
 ///      }`
 /// 3. The key associated with %3 is:
@@ -226,11 +227,11 @@ struct CommutativeOperand {
 ///      }`
 ///
 /// Thus, the sorted `foo.commutative` is:
-/// %5 = foo.commutative %4, %3, %2, %1
-class SortCommutativeOperands : public RewritePattern {
-public:
+/// %5 = foo.commutative %4, %2, %3, %1
+struct SortCommutativeOperands final
+    : public OpTraitRewritePattern<OpTrait::IsCommutative> {
   SortCommutativeOperands(MLIRContext *context)
-      : RewritePattern(MatchAnyOpTypeTag(), /*benefit=*/5, context) {}
+      : OpTraitRewritePattern<OpTrait::IsCommutative>(context, /*benefit=*/5) {}
   LogicalResult matchAndRewrite(Operation *op,
                                 PatternRewriter &rewriter) const override {
     // Custom comparator for two commutative operands, which returns true iff
@@ -258,8 +259,12 @@ public:
           unsigned keyIndex = 0;
           while (true) {
             if (commOperandA->key.size() <= keyIndex) {
+              // Comparator must return false for equal elements
+              // B is only larger if its key size is larger than the current
+              // index or its ancestor queue is not empty
               if (commOperandA->ancestorQueue.empty())
-                return true;
+                return commOperandB->key.size() > keyIndex ||
+                       !commOperandB->ancestorQueue.empty();
               commOperandA->popFrontAndPushAdjacentUnvisitedAncestors();
               commOperandA->refreshKey();
             }
@@ -279,10 +284,6 @@ public:
             keyIndex++;
           }
         };
-
-    // If `op` is not commutative, do nothing.
-    if (!op->hasTrait<OpTrait::IsCommutative>())
-      return failure();
 
     // Populate the list of commutative operands.
     SmallVector<Value, 2> operands = op->getOperands();
