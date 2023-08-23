@@ -3391,6 +3391,11 @@ bool llvm::recognizeBSwapOrBitReverseIdiom(
   if (DemandedBW > ITy->getScalarSizeInBits())
     return false;
 
+  // Check that the bswap/bitreverse will have legal bit width.
+  auto &DL = I->getModule()->getDataLayout();
+  if (DL.isIllegalInteger(DemandedBW))
+    return false;
+
   // Now, is the bit permutation correct for a bswap or a bitreverse? We can
   // only byteswap values with an even number of bytes.
   APInt DemandedMask = APInt::getAllOnes(DemandedBW);
