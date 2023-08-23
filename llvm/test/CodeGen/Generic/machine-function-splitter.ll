@@ -6,6 +6,7 @@
 ; RUN: llc < %s -mtriple=x86_64-unknown-linux-gnu -split-machine-functions -mfs-psi-cutoff=0 -mfs-count-threshold=2000 | FileCheck %s --dump-input=always -check-prefixes=MFS-OPTS1,MFS-OPTS1-X86
 ; RUN: llc < %s -mtriple=x86_64-unknown-linux-gnu -split-machine-functions -mfs-psi-cutoff=950000 | FileCheck %s -check-prefixes=MFS-OPTS2,MFS-OPTS2-X86
 ; RUN: llc < %s -mtriple=x86_64-unknown-linux-gnu -split-machine-functions -mfs-split-ehcode | FileCheck %s -check-prefixes=MFS-EH-SPLIT,MFS-EH-SPLIT-X86
+; RUN: llc < %s -mtriple=x86_64-unknown-linux-gnu -split-machine-functions -O0 -mfs-psi-cutoff=0 -mfs-count-threshold=4000 | FileCheck %s -check-prefixes=MFS-O0,MFS-O0-X86
 
 ; COM: Machine function splitting with AFDO profiles
 ; RUN: sed 's/InstrProf/SampleProfile/g' %s > %t.ll
@@ -444,6 +445,25 @@ define void @foo15(i1 zeroext %0, i1 zeroext %1) nounwind !prof !27 {
 
 12:
   %13 = tail call i32 @qux()
+  ret void
+}
+
+define void @foo16(i1 zeroext %0) nounwind !prof !14 !section_prefix !15 {
+;; Check that an unconditional branch is only appended to a block
+;; if it would fall through to the wrong block otherwise.
+; MFS-O0-LABEL:               foo16
+; MFS-O0-X86:                 jmp
+; MFS-O0-X86-NOT:             jmp
+; MFS-O0-X86:                 .{{LBB[a-zA-Z0-9_]*:}}
+  %2 = call i32 @baz()
+  br i1 false, label %3, label %5, !prof !25
+
+3:                                                ; preds = %1
+  %4 = call i32 @bar()
+  unreachable
+
+5:                                                ; preds = %1
+  %6 = tail call i32 @qux()
   ret void
 }
 
