@@ -66,7 +66,7 @@ R600TargetMachine::R600TargetMachine(const Target &T, const Triple &TT,
 const TargetSubtargetInfo *
 R600TargetMachine::getSubtargetImpl(const Function &F) const {
   StringRef GPU = getGPUName(F);
-  StringRef FS = getFeatureString(F);
+  auto FS = getFeatureString(F);
 
   SmallString<128> SubtargetKey(GPU);
   SubtargetKey.append(FS);

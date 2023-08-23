@@ -571,11 +571,27 @@ StringRef AMDGPUTargetMachine::getGPUName(const Function &F) const {
   return GPUAttr.isValid() ? GPUAttr.getValueAsString() : getTargetCPU();
 }
 
-StringRef AMDGPUTargetMachine::getFeatureString(const Function &F) const {
+std::string AMDGPUTargetMachine::getFeatureString(const Function &F) const {
   Attribute FSAttr = F.getFnAttribute("target-features");
+  StringRef TargetFS = getTargetFeatureString();
 
-  return FSAttr.isValid() ? FSAttr.getValueAsString()
-                          : getTargetFeatureString();
+  if (FSAttr.isValid()) {
+    StringRef FunctionFS = FSAttr.getValueAsString();
+
+    // Functions from extended-image-intrinsics.ll from device_libs have the
+    // attribute "target-features"="+extended-image-insts" When compiling in
+    // wave64 on a gpu that defaults to wave32, dropping the TargetFS string
+    // makes those functions be compiled in wave32.
+    bool EnableExtendedImageInstsForFunction =
+        FunctionFS == "+extended-image-insts" &&
+        !TargetFS.contains("-extended-image-insts");
+    if (EnableExtendedImageInstsForFunction) {
+      return (FunctionFS + "," + TargetFS).str();
+    }
+    return FunctionFS.str();
+  }
+
+  return TargetFS.str();
 }
 
 /// Predicate for Internalize pass.
@@ -829,7 +845,7 @@ GCNTargetMachine::GCNTargetMachine(const Target &T, const Triple &TT,
 const TargetSubtargetInfo *
 GCNTargetMachine::getSubtargetImpl(const Function &F) const {
   StringRef GPU = getGPUName(F);
-  StringRef FS = getFeatureString(F);
+  auto FS = getFeatureString(F);
 
   SmallString<128> SubtargetKey(GPU);
   SubtargetKey.append(FS);

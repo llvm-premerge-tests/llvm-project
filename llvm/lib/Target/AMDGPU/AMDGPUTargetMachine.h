@@ -31,7 +31,7 @@ protected:
   std::unique_ptr<TargetLoweringObjectFile> TLOF;
 
   StringRef getGPUName(const Function &F) const;
-  StringRef getFeatureString(const Function &F) const;
+  std::string getFeatureString(const Function &F) const;
 
 public:
   static bool EnableLateStructurizeCFG;
