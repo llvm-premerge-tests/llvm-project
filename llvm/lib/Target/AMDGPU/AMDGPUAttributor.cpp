@@ -17,6 +17,10 @@
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/IntrinsicsAMDGPU.h"
 #include "llvm/IR/IntrinsicsR600.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/MDBuilder.h"
+#include "llvm/IR/Metadata.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Transforms/IPO/Attributor.h"
 
@@ -27,6 +31,10 @@ void initializeCycleInfoWrapperPassPass(PassRegistry &);
 }
 
 using namespace llvm;
+
+static cl::opt<unsigned> KernargPreloadCount(
+    "amdgpu-kernarg-preload-count",
+    cl::desc("How many kernel arguments to preload onto SGPRs"), cl::init(0));
 
 #define AMDGPU_ATTRIBUTE(Name, Str) Name##_POS,
 
@@ -914,6 +922,33 @@ AAAMDWavesPerEU &AAAMDWavesPerEU::createForPosition(const IRPosition &IRP,
   llvm_unreachable("AAAMDWavesPerEU is only valid for function position");
 }
 
+static void addPreloadKernArgHint(Function &F, TargetMachine &TM) {
+  const GCNSubtarget &ST = TM.getSubtarget<GCNSubtarget>(F);
+  for (unsigned I = 0;
+       I < F.arg_size() &&
+       I < std::min(KernargPreloadCount.getValue(), ST.getMaxNumUserSGPRs());
+       ++I) {
+    Argument &Arg = *F.getArg(I);
+    // Check for incompatible attributes.
+    if (Arg.hasByRefAttr() || Arg.hasNestAttr())
+      break;
+
+    Arg.addAttr(Attribute::InReg);
+  }
+
+  if (KernargPreloadCount > 0) {
+    LLVM_DEBUG(dbgs() << "Kernel \"" << F.getName()
+                      << "\" will attempt to preload " << KernargPreloadCount
+                      << " kernel arguemnts.\n");
+    LLVMContext &Ctx = F.getParent()->getContext();
+    MDBuilder MDB(Ctx);
+    F.setMetadata("preload_kernel_args",
+                  MDNode::get(Ctx, MDB.createConstant(llvm::ConstantInt::get(
+                                       IntegerType::getInt32Ty(Ctx),
+                                       KernargPreloadCount))));
+  }
+}
+
 class AMDGPUAttributor : public ModulePass {
 public:
   AMDGPUAttributor() : ModulePass(ID) {}
@@ -960,9 +995,12 @@ public:
       if (!F.isIntrinsic()) {
         A.getOrCreateAAFor<AAAMDAttributes>(IRPosition::function(F));
         A.getOrCreateAAFor<AAUniformWorkGroupSize>(IRPosition::function(F));
-        if (!AMDGPU::isEntryFunctionCC(F.getCallingConv())) {
+        CallingConv::ID CC = F.getCallingConv();
+        if (!AMDGPU::isEntryFunctionCC(CC)) {
           A.getOrCreateAAFor<AAAMDFlatWorkGroupSize>(IRPosition::function(F));
           A.getOrCreateAAFor<AAAMDWavesPerEU>(IRPosition::function(F));
+        } else if (CC == CallingConv::AMDGPU_KERNEL) {
+          addPreloadKernArgHint(F, *TM);
         }
       }
     }
