@@ -11,6 +11,12 @@
 ! RUN: %flang %s -O1 -Rno-pass-missed 2>&1 | FileCheck %s --allow-empty --check-prefix=NO-REMARKS
 ! RUN: %flang %s -O1 -Rno-pass-analysis 2>&1 | FileCheck %s --allow-empty --check-prefix=NO-REMARKS
 
+! Check "unknown remark option" warning
+! RUN: %flang %s -O1 -R 2>&1 | FileCheck %s --check-prefix=WARN
+
+! Check "unknown remark option" warning with suggestion
+! RUN: %flang %s -O1 -Rpas 2>&1 | FileCheck %s --check-prefix=WARN-SUGGEST
+
 ! Check full -Rpass message is emitted
 ! RUN: %flang %s -O1 -Rpass 2>&1 | FileCheck %s
 
@@ -21,13 +27,15 @@
 ! RUN: %flang %s -O1 -Rpass-analysis 2>&1 | FileCheck %s --check-prefix=REMARKS-ANALYSIS
 
 ! CHECK: remark: Loop deleted because it is invariant
+! REMARKS: remark:
+! NO-REMARKS-NOT: remark:
 ! REMARKS-MISSED: remark: loop not vectorized
 ! REMARKS-MISSED-NOT: instruction cannot be vectorized
 ! REMARKS-ANALYSIS: remark: loop not vectorized: instruction cannot be vectorized
 ! REMARKS-ANALYSIS-NOT: will not be inlined into {{.*}} because its definition is unavailable
 
-! REMARKS: remark:
-! NO-REMARKS-NOT: remark:
+! WARN: warning: unknown remark option '-R'
+! WARN-SUGGEST: warning: unknown remark option '-Rpas'; did you mean '-Rpass'?
 
 program forttest
     implicit none
