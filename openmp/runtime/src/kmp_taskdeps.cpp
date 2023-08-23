@@ -307,6 +307,7 @@ __kmp_depnode_link_successor(kmp_int32 gtid, kmp_info_t *thread,
     if (dep->dn.task) {
       KMP_ACQUIRE_DEPNODE(gtid, dep);
       if (dep->dn.task) {
+        if (!dep->dn.successors || dep->dn.successors->node != node) {
 #if OMPX_TASKGRAPH
         if (!(__kmp_tdg_is_recording(tdg_status)) && task)
 #endif
@@ -317,6 +318,7 @@ __kmp_depnode_link_successor(kmp_int32 gtid, kmp_info_t *thread,
                       gtid, KMP_TASK_TO_TASKDATA(dep->dn.task),
                       KMP_TASK_TO_TASKDATA(task)));
         npredecessors++;
+        }
       }
       KMP_RELEASE_DEPNODE(gtid, dep);
     }
@@ -324,6 +326,7 @@ __kmp_depnode_link_successor(kmp_int32 gtid, kmp_info_t *thread,
   return npredecessors;
 }
 
+// Add the edge 'sink' -> 'source' in the task dependency graph
 static inline kmp_int32 __kmp_depnode_link_successor(kmp_int32 gtid,
                                                      kmp_info_t *thread,
                                                      kmp_task_t *task,
@@ -346,6 +349,7 @@ static inline kmp_int32 __kmp_depnode_link_successor(kmp_int32 gtid,
     // synchronously add source to sink' list of successors
     KMP_ACQUIRE_DEPNODE(gtid, sink);
     if (sink->dn.task) {
+      if (!sink->dn.successors || sink->dn.successors->node != source) {
 #if OMPX_TASKGRAPH
       if (!(__kmp_tdg_is_recording(tdg_status)) && task)
 #endif
@@ -369,6 +373,7 @@ static inline kmp_int32 __kmp_depnode_link_successor(kmp_int32 gtid,
       }
 #endif
       npredecessors++;
+      }
     }
     KMP_RELEASE_DEPNODE(gtid, sink);
   }
