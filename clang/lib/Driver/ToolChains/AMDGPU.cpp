@@ -560,7 +560,20 @@ void amdgpu::Linker::ConstructJob(Compilation &C, const JobAction &JA,
   else if (Args.hasArg(options::OPT_mcpu_EQ))
     CmdArgs.push_back(Args.MakeArgString(
         "-plugin-opt=mcpu=" + Args.getLastArgValue(options::OPT_mcpu_EQ)));
-  CmdArgs.push_back("--no-undefined");
+
+  // If the user has manually passed -Wl,--unresolved-symbols=* as a linker
+  // option, we should not add --no-undefined
+  bool UnresolvedOpt = false;
+  for (auto A : Args)
+    if (A->getOption().matches(options::OPT_Wl_COMMA) ||
+         A->getOption().matches(options::OPT_Xlinker))
+      for (StringRef V : A->getValues())
+        if (V.contains("unresolved-symbols"))
+          UnresolvedOpt = true;
+
+  if (!UnresolvedOpt)
+    CmdArgs.push_back("--no-undefined");
+
   CmdArgs.push_back("-shared");
   CmdArgs.push_back("-o");
   CmdArgs.push_back(Output.getFilename());
