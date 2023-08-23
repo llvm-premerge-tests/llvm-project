@@ -1,7 +1,7 @@
 # Note: ls -lu prints the accessed timestamp
 # NetBSD: noatime mounts currently inhibit 'touch -a' updates
 # Windows: the last access time is disabled by default in the OS
-# UNSUPPORTED: system-netbsd, system-windows
+# UNSUPPORTED: system-netbsd, system-windows, system-darwin
 
 # Preserve dates when stripping to an output file.
 # RUN: yaml2obj %s -o %t.1.o
