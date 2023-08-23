@@ -545,6 +545,12 @@ DiagnosedSilenceableFailure transform::ApplyConversionPatternsOp::apply(
         }
         converter = defaultTypeConverter.get();
       }
+
+      // Add descriptor-specific updates to the conversion target, which may
+      // depend on the final type converter. In structural converters, the
+      // legality of types dictates the dynamic legality of an operation.
+      descriptor.updateConversionTarget(*converter, conversionTarget);
+
       descriptor.populatePatterns(*converter, patterns);
     }
   }
