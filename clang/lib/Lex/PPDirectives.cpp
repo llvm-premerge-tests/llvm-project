@@ -491,7 +491,8 @@ void Preprocessor::SkipExcludedConditionalBlock(SourceLocation HashTokenLoc,
   llvm::SaveAndRestore SARSkipping(SkippingExcludedConditionalBlock, true);
 
   ++NumSkipped;
-  assert(!CurTokenLexer && CurPPLexer && "Lexing a macro, not a file?");
+  assert(!CurTokenLexer && CurPPLexer && CurLexer &&
+         "Lexing a macro, not a file?");
 
   if (PreambleConditionalStack.reachedEOFWhileSkipping())
     PreambleConditionalStack.clearSkipInfo();
