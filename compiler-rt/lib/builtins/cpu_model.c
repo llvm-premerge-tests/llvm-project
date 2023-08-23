@@ -894,6 +894,7 @@ typedef struct __ifunc_arg_t {
 #include <asm/hwcap.h>
 
 #if defined(__ANDROID__)
+#include <android/api-level.h>
 #include <string.h>
 #include <sys/system_properties.h>
 #elif defined(__Fuchsia__)
@@ -1186,7 +1187,8 @@ struct {
   // As features grows new fields could be added
 } __aarch64_cpu_features __attribute__((visibility("hidden"), nocommon));
 
-void init_cpu_features_resolver(unsigned long hwcap, const __ifunc_arg_t *arg) {
+static void init_cpu_features_constructor(unsigned long hwcap,
+                                          const __ifunc_arg_t *arg) {
 #define setCPUFeature(F) __aarch64_cpu_features.features |= 1ULL << F
 #define getCPUFeature(id, ftr) __asm__("mrs %0, " #id : "=r"(ftr))
 #define extractBits(val, start, number)                                        \
@@ -1374,6 +1376,21 @@ void init_cpu_features_resolver(unsigned long hwcap, const __ifunc_arg_t *arg) {
   setCPUFeature(FEAT_MAX);
 }
 
+void init_cpu_features_resolver(unsigned long hwcap, const __ifunc_arg_t *arg) {
+  if (__aarch64_cpu_features.features)
+    return;
+#if defined(__ANDROID__)
+  // ifunc resolvers don't have hwcaps in arguments on Android API lower
+  // than 30. In this case set detection done and keep all CPU features
+  // unsupported (zeros).
+  if (android_get_device_api_level() < 30) {
+    setCPUFeature(FEAT_MAX);
+    return;
+  }
+#endif // defined(__ANDROID__)
+  init_cpu_features_constructor(hwcap, arg);
+}
+
 void CONSTRUCTOR_ATTRIBUTE init_cpu_features(void) {
   unsigned long hwcap;
   unsigned long hwcap2;
@@ -1399,7 +1416,7 @@ void CONSTRUCTOR_ATTRIBUTE init_cpu_features(void) {
   arg._size = sizeof(__ifunc_arg_t);
   arg._hwcap = hwcap;
   arg._hwcap2 = hwcap2;
-  init_cpu_features_resolver(hwcap | _IFUNC_ARG_HWCAP, &arg);
+  init_cpu_features_constructor(hwcap | _IFUNC_ARG_HWCAP, &arg);
 #undef extractBits
 #undef getCPUFeature
 #undef setCPUFeature
