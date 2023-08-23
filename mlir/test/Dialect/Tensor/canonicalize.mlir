@@ -137,6 +137,29 @@ func.func @fold_insert(%arg0 : index) -> (tensor<4xf32>) {
 
 // -----
 
+// CHECK-LABEL: func @scalar_insert_slice_to_insert
+//  CHECK-SAME: %[[ARG0:.+]]: f32, %[[ARG1:.+]]: f32, %[[ARG2:.+]]: tensor<4xf32>
+func.func @scalar_insert_slice_to_insert(%arg0 : f32, %arg1: f32, %arg2: tensor<4xf32>) -> (tensor<4xf32>) {
+  // Canonicalize an insert_slice into an insert.
+  // CHECK-DAG: %[[C2:.+]] = arith.constant 2 : index
+  // CHECK-DAG: %[[C3:.+]] = arith.constant 3 : index
+  %c0 = arith.constant 0 : index
+  %c2 = arith.constant 2 : index
+  %c3 = arith.constant 3 : index
+  %e1 = tensor.empty() : tensor<1xf32>
+  %e2 = tensor.empty() : tensor<f32>
+  %0 =  tensor.insert %arg0 into %e1[%c0] : tensor<1xf32>
+  %1 =  tensor.insert %arg1 into %e2[] : tensor<f32>
+  // CHECK: %[[INS:.+]] = tensor.insert %[[ARG0]] into %[[ARG2]][%[[C2]]]
+  // CHECK: %[[INS1:.+]] = tensor.insert %[[ARG1]] into %[[INS]][%[[C3]]]
+  // CHECK: return %[[INS1]]
+  %2 = tensor.insert_slice %0 into %arg2[%c2][1][1] : tensor<1xf32> into tensor<4xf32>
+  %3 = tensor.insert_slice %1 into %2[%c3][1][1] : tensor<f32> into tensor<4xf32>
+  return %3 : tensor<4xf32>
+}
+
+// -----
+
 // CHECK-LABEL: func @extract_from_tensor.cast
 // CHECK-SAME: %[[TENSOR:.*]]: tensor<9xf32>
 func.func @extract_from_tensor.cast(%tensor: tensor<9xf32>) -> f32 {

@@ -2478,6 +2478,40 @@ struct InsertSliceOpSourceCastInserter final
     return success();
   }
 };
+
+/// Canonicalizes the pattern
+/// ```
+/// %0 = tensor.insert %scalar into %t1[...] : (scalar tensor type)
+/// %1 = tensor.insert_slice %0 into %t2[<indices>]
+/// ```
+/// into
+/// ```
+/// %1 = tensor.insert %scalar into %t2[<indices>]
+/// ```
+struct InsertSliceToInsertRewriter : public OpRewritePattern<InsertSliceOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tensor::InsertSliceOp op,
+                                PatternRewriter &rewriter) const override {
+
+    RankedTensorType sourceType = op.getSourceType();
+    // The `tensor.insert` result (`insert_slice` source) should be a scalar
+    // so that we know forwarding makes sense here.
+    if (!sourceType.hasStaticShape() || sourceType.getNumElements() != 1)
+      return failure();
+
+    auto insertOp = op.getSource().getDefiningOp<tensor::InsertOp>();
+    if (!insertOp)
+      return failure();
+
+    SmallVector<Value> indices = mlir::getValueOrCreateConstantIndexOp(
+        rewriter, op.getLoc(), op.getMixedOffsets());
+    rewriter.replaceOpWithNewOp<tensor::InsertOp>(op, insertOp.getScalar(),
+                                                  op.getDest(), indices);
+    return success();
+  }
+};
+
 } // namespace
 
 llvm::SmallBitVector InsertSliceOp::getDroppedDims() {
@@ -2488,7 +2522,8 @@ void InsertSliceOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                                 MLIRContext *context) {
   results.add<InsertSliceOpConstantArgumentFolder<InsertSliceOp>,
               InsertSliceOpCastFolder<InsertSliceOp>,
-              InsertSliceOpSourceCastInserter<InsertSliceOp>>(context);
+              InsertSliceOpSourceCastInserter<InsertSliceOp>,
+              InsertSliceToInsertRewriter>(context);
 }
 
 Value mlir::tensor::createCanonicalRankReducingInsertSliceOp(OpBuilder &b,
