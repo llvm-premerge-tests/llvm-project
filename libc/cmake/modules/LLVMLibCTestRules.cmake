@@ -154,10 +154,17 @@ function(create_libc_unittest fq_target_name)
       ${LIBC_SOURCE_DIR}
       ${LIBC_INCLUDE_DIR}
   )
-  target_compile_options(
-    ${fq_build_target_name}
-    PRIVATE -fpie -ffreestanding ${LIBC_COMPILE_OPTIONS_DEFAULT}
-  )
+  if(LLVM_LIBC_FULL_BUILD)
+    target_compile_options(
+      ${fq_build_target_name}
+      PRIVATE -fpie -ffreestanding ${LIBC_COMPILE_OPTIONS_DEFAULT}
+    )
+  else()
+    target_compile_options(
+      ${fq_build_target_name}
+      PRIVATE -fpie ${LIBC_COMPILE_OPTIONS_DEFAULT}
+    )
+  endif()
   if(LIBC_UNITTEST_COMPILE_OPTIONS)
     target_compile_options(
       ${fq_build_target_name}
