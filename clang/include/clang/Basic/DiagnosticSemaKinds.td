@@ -3419,6 +3419,9 @@ def warn_alignment_not_power_of_two : Warning<
 def err_alignment_dependent_typedef_name : Error<
   "requested alignment is dependent but declaration is not dependent">;
 
+def warn_counted_by_placeholder : Warning<
+  "counted_by field %0 not found">;
+
 def warn_alignment_builtin_useless : Warning<
   "%select{aligning a value|the result of checking whether a value is aligned}0"
   " to 1 byte is %select{a no-op|always true}0">, InGroup<TautologicalCompare>;
