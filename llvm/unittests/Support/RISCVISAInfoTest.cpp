@@ -626,3 +626,10 @@ TEST(getTargetFeatureForExtension, RetrieveTargetFeatureFromOneExt) {
   EXPECT_EQ(RISCVISAInfo::getTargetFeatureForExtension(""), "");
   EXPECT_EQ(RISCVISAInfo::getTargetFeatureForExtension("zbbzihintntl"), "");
 }
+
+TEST(getExtensionSerial, RetrieveAUniqueNumberForExt) {
+  EXPECT_EQ(RISCVISAInfo::getExtensionSerial("f"), 5U);
+  EXPECT_EQ(RISCVISAInfo::getExtensionSerial("a"), 1U);
+  EXPECT_EQ(RISCVISAInfo::getExtensionSerial("foo"), 0U);
+  EXPECT_EQ(RISCVISAInfo::getExtensionSerial("experimental-zicond"), 97U);
+}
