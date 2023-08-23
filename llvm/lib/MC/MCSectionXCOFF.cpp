@@ -115,6 +115,15 @@ void MCSectionXCOFF::printSwitchToSection(const MCAsmInfo &MAI, const Triple &T,
     return;
   }
 
+  if (getKind().isReadOnlyWithRel()) {
+    if (getMappingClass() != XCOFF::XMC_RW &&
+        getMappingClass() != XCOFF::XMC_RO)
+      report_fatal_error(
+          "Unexepected storage-mapping class for ReadOnlyWithRel kind");
+    printCsectDirective(OS);
+    return;
+  }
+
   report_fatal_error("Printing for this SectionKind is unimplemented.");
 }
 
