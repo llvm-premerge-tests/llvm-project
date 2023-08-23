@@ -97,7 +97,7 @@ DataflowAnalysisContext::getOrCreateNullPointerValue(QualType PointeeType) {
   auto Res = NullPointerVals.try_emplace(CanonicalPointeeType, nullptr);
   if (Res.second) {
     auto &PointeeLoc = createStorageLocation(CanonicalPointeeType);
-    Res.first->second = &arena().create<PointerValue>(PointeeLoc);
+    Res.first->second = &arena().create<PointerValue>(&PointeeLoc);
   }
   return *Res.first->second;
 }

@@ -315,40 +315,43 @@ StorageLocation *maybeInitializeOptionalValueMember(QualType Q,
   // `Value` representing the optional (here, `OptionalVal`).
   if (auto *ValueProp = OptionalVal.getProperty("value")) {
     auto *ValuePtr = clang::cast<PointerValue>(ValueProp);
-    auto &ValueLoc = ValuePtr->getPointeeLoc();
-    if (Env.getValue(ValueLoc) != nullptr)
-      return &ValueLoc;
+    auto *ValueLoc = ValuePtr->getPointeeLoc();
+    if (ValueLoc != nullptr) {
+      if (Env.getValue(*ValueLoc) != nullptr)
+        return ValueLoc;
 
-    // The property was previously set, but the value has been lost. This can
-    // happen in various situations, for example:
-    // - Because of an environment merge (where the two environments mapped the
-    //   property to different values, which resulted in them both being
-    //   discarded).
-    // - When two blocks in the CFG, with neither a dominator of the other,
-    //   visit the same optional value. (FIXME: This is something we can and
-    //   should fix -- see also the lengthy FIXME below.)
-    // - Or even when a block is revisited during testing to collect
-    //   per-statement state.
-    // FIXME: This situation means that the optional contents are not shared
-    // between branches and the like. Practically, this lack of sharing
-    // reduces the precision of the model when the contents are relevant to
-    // the check, like another optional or a boolean that influences control
-    // flow.
-    if (ValueLoc.getType()->isRecordType()) {
-      refreshRecordValue(cast<RecordStorageLocation>(ValueLoc), Env);
-      return &ValueLoc;
-    } else {
-      auto *ValueVal = Env.createValue(ValueLoc.getType());
-      if (ValueVal == nullptr)
-        return nullptr;
-      Env.setValue(ValueLoc, *ValueVal);
-      return &ValueLoc;
+      // The property was previously set, but the value has been lost. This can
+      // happen in various situations, for example:
+      // - Because of an environment merge (where the two environments mapped
+      // the
+      //   property to different values, which resulted in them both being
+      //   discarded).
+      // - When two blocks in the CFG, with neither a dominator of the other,
+      //   visit the same optional value. (FIXME: This is something we can and
+      //   should fix -- see also the lengthy FIXME below.)
+      // - Or even when a block is revisited during testing to collect
+      //   per-statement state.
+      // FIXME: This situation means that the optional contents are not shared
+      // between branches and the like. Practically, this lack of sharing
+      // reduces the precision of the model when the contents are relevant to
+      // the check, like another optional or a boolean that influences control
+      // flow.
+      if (ValueLoc->getType()->isRecordType()) {
+        refreshStructValue(cast<RecordStorageLocation>(*ValueLoc), Env);
+        return ValueLoc;
+      } else {
+        auto *ValueVal = Env.createValue(ValueLoc->getType());
+        if (ValueVal == nullptr)
+          return nullptr;
+        Env.setValue(*ValueLoc, *ValueVal);
+        return ValueLoc;
+      }
     }
   }
 
   auto Ty = Q.getNonReferenceType();
   auto &ValueLoc = Env.createObject(Ty);
-  auto &ValuePtr = Env.create<PointerValue>(ValueLoc);
+  auto &ValuePtr = Env.create<PointerValue>(&ValueLoc);
   // FIXME:
   // The change we make to the `value` property below may become visible to
   // other blocks that aren't successors of the current block and therefore
@@ -429,7 +432,8 @@ bool isNonEmptyOptional(const Value &OptionalVal, const Environment &Env) {
 Value *getValueBehindPossiblePointer(const Expr &E, const Environment &Env) {
   Value *Val = Env.getValue(E);
   if (auto *PointerVal = dyn_cast_or_null<PointerValue>(Val))
-    return Env.getValue(PointerVal->getPointeeLoc());
+    if (PointerVal->getPointeeLoc() != nullptr)
+      return Env.getValue(*PointerVal->getPointeeLoc());
   return Val;
 }
 
@@ -450,7 +454,7 @@ void transferArrowOpCall(const Expr *UnwrapExpr, const Expr *ObjectExpr,
           getValueBehindPossiblePointer(*ObjectExpr, State.Env)) {
     if (auto *Loc = maybeInitializeOptionalValueMember(
             UnwrapExpr->getType()->getPointeeType(), *OptionalVal, State.Env)) {
-      State.Env.setValue(*UnwrapExpr, State.Env.create<PointerValue>(*Loc));
+      State.Env.setValue(*UnwrapExpr, State.Env.create<PointerValue>(Loc));
     }
   }
 }

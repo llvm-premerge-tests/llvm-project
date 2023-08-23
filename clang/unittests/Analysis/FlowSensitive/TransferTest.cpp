@@ -165,7 +165,7 @@ TEST(TransferTest, StructIncomplete) {
         ASSERT_THAT(FooValue, NotNull());
 
         EXPECT_TRUE(isa<RecordStorageLocation>(FooValue->getPointeeLoc()));
-        auto *FooPointeeValue = Env.getValue(FooValue->getPointeeLoc());
+        auto *FooPointeeValue = Env.getValue(*FooValue->getPointeeLoc());
         ASSERT_THAT(FooPointeeValue, NotNull());
         EXPECT_TRUE(isa<RecordValue>(FooPointeeValue));
       });
@@ -496,7 +496,7 @@ TEST(TransferTest, SelfReferentialReferenceVarDecl) {
     const auto &FooPtrVal =
         *cast<PointerValue>(getFieldValue(&BarLoc, *FooPtrDecl, Env));
     const auto &FooPtrPointeeLoc =
-        cast<RecordStorageLocation>(FooPtrVal.getPointeeLoc());
+        *cast<RecordStorageLocation>(FooPtrVal.getPointeeLoc());
     EXPECT_THAT(Env.getValue(FooPtrPointeeLoc), NotNull());
     EXPECT_THAT(getFieldValue(&FooPtrPointeeLoc, *BarDecl, Env), IsNull());
 
@@ -504,8 +504,9 @@ TEST(TransferTest, SelfReferentialReferenceVarDecl) {
 
     const auto &BazPtrVal =
         *cast<PointerValue>(getFieldValue(&BarLoc, *BazPtrDecl, Env));
-    const StorageLocation &BazPtrPointeeLoc = BazPtrVal.getPointeeLoc();
-    EXPECT_THAT(Env.getValue(BazPtrPointeeLoc), NotNull());
+    const StorageLocation *BazPtrPointeeLoc = BazPtrVal.getPointeeLoc();
+    ASSERT_THAT(BazPtrPointeeLoc, NotNull());
+    EXPECT_THAT(Env.getValue(*BazPtrPointeeLoc), NotNull());
   });
 }
 
@@ -534,8 +535,8 @@ TEST(TransferTest, PointerVarDecl) {
         ASSERT_TRUE(isa_and_nonnull<ScalarStorageLocation>(FooLoc));
 
         const PointerValue *FooVal = cast<PointerValue>(Env.getValue(*FooLoc));
-        const StorageLocation &FooPointeeLoc = FooVal->getPointeeLoc();
-        EXPECT_TRUE(isa<RecordStorageLocation>(&FooPointeeLoc));
+        const auto &FooPointeeLoc =
+            *cast<RecordStorageLocation>(FooVal->getPointeeLoc());
 
         const Value *FooPointeeVal = Env.getValue(FooPointeeLoc);
         EXPECT_TRUE(isa_and_nonnull<RecordValue>(FooPointeeVal));
@@ -637,28 +638,32 @@ TEST(TransferTest, SelfReferentialPointerVarDecl) {
         const auto &FooLoc =
             *cast<ScalarStorageLocation>(Env.getStorageLocation(*FooDecl));
         const auto &FooVal = *cast<PointerValue>(Env.getValue(FooLoc));
+        ASSERT_THAT(FooVal.getPointeeLoc(), NotNull());
         const auto &FooPointeeVal =
-            *cast<RecordValue>(Env.getValue(FooVal.getPointeeLoc()));
+            *cast<RecordValue>(Env.getValue(*FooVal.getPointeeLoc()));
 
         const auto &BarVal =
             *cast<PointerValue>(getFieldValue(&FooPointeeVal, *BarDecl, Env));
+        ASSERT_THAT(BarVal.getPointeeLoc(), NotNull());
         const auto &BarPointeeVal =
-            *cast<RecordValue>(Env.getValue(BarVal.getPointeeLoc()));
+            *cast<RecordValue>(Env.getValue(*BarVal.getPointeeLoc()));
 
         EXPECT_THAT(getFieldValue(&BarPointeeVal, *FooRefDecl, Env), NotNull());
 
         const auto &FooPtrVal = *cast<PointerValue>(
             getFieldValue(&BarPointeeVal, *FooPtrDecl, Env));
+        ASSERT_THAT(FooPtrVal.getPointeeLoc(), NotNull());
         const auto &FooPtrPointeeLoc =
-            cast<RecordStorageLocation>(FooPtrVal.getPointeeLoc());
+            cast<RecordStorageLocation>(*FooPtrVal.getPointeeLoc());
         EXPECT_THAT(Env.getValue(FooPtrPointeeLoc), IsNull());
 
         EXPECT_THAT(getFieldValue(&BarPointeeVal, *BazRefDecl, Env), NotNull());
 
         const auto &BazPtrVal = *cast<PointerValue>(
             getFieldValue(&BarPointeeVal, *BazPtrDecl, Env));
-        const StorageLocation &BazPtrPointeeLoc = BazPtrVal.getPointeeLoc();
-        EXPECT_THAT(Env.getValue(BazPtrPointeeLoc), NotNull());
+        const StorageLocation *BazPtrPointeeLoc = BazPtrVal.getPointeeLoc();
+        ASSERT_THAT(BazPtrPointeeLoc, NotNull());
+        EXPECT_THAT(Env.getValue(*BazPtrPointeeLoc), NotNull());
       });
 }
 
@@ -915,7 +920,8 @@ TEST(TransferTest, VarDeclInitAssignPtrDeref) {
         ASSERT_THAT(BarDecl, NotNull());
 
         const auto *BarVal = cast<PointerValue>(Env.getValue(*BarDecl));
-        EXPECT_EQ(Env.getValue(BarVal->getPointeeLoc()), FooVal);
+        ASSERT_THAT(BarVal->getPointeeLoc(), NotNull());
+        EXPECT_EQ(Env.getValue(*BarVal->getPointeeLoc()), FooVal);
 
         const ValueDecl *BazDecl = findValueDecl(ASTCtx, "Baz");
         ASSERT_THAT(BazDecl, NotNull());
@@ -1099,10 +1105,10 @@ TEST(TransferTest, PointerParamDecl) {
         ASSERT_TRUE(isa_and_nonnull<ScalarStorageLocation>(FooLoc));
 
         const PointerValue *FooVal = cast<PointerValue>(Env.getValue(*FooLoc));
-        const StorageLocation &FooPointeeLoc = FooVal->getPointeeLoc();
-        EXPECT_TRUE(isa<RecordStorageLocation>(&FooPointeeLoc));
+        const StorageLocation *FooPointeeLoc = FooVal->getPointeeLoc();
+        EXPECT_TRUE(isa<RecordStorageLocation>(FooPointeeLoc));
 
-        const Value *FooPointeeVal = Env.getValue(FooPointeeLoc);
+        const Value *FooPointeeVal = Env.getValue(*FooPointeeLoc);
         EXPECT_TRUE(isa_and_nonnull<RecordValue>(FooPointeeVal));
       });
 }
@@ -2521,21 +2527,21 @@ TEST(TransferTest, NullToPointerCast) {
         EXPECT_NE(FooXVal, BazVal);
         EXPECT_NE(BarVal, BazVal);
 
-        const StorageLocation &FooPointeeLoc = FooXVal->getPointeeLoc();
+        const StorageLocation *FooPointeeLoc = FooXVal->getPointeeLoc();
         EXPECT_TRUE(isa<ScalarStorageLocation>(FooPointeeLoc));
-        EXPECT_THAT(Env.getValue(FooPointeeLoc), IsNull());
+        EXPECT_THAT(Env.getValue(*FooPointeeLoc), IsNull());
 
-        const StorageLocation &BarPointeeLoc = BarVal->getPointeeLoc();
+        const StorageLocation *BarPointeeLoc = BarVal->getPointeeLoc();
         EXPECT_TRUE(isa<ScalarStorageLocation>(BarPointeeLoc));
-        EXPECT_THAT(Env.getValue(BarPointeeLoc), IsNull());
+        EXPECT_THAT(Env.getValue(*BarPointeeLoc), IsNull());
 
-        const StorageLocation &BazPointeeLoc = BazVal->getPointeeLoc();
+        const StorageLocation *BazPointeeLoc = BazVal->getPointeeLoc();
         EXPECT_TRUE(isa<RecordStorageLocation>(BazPointeeLoc));
-        EXPECT_THAT(Env.getValue(BazPointeeLoc), IsNull());
+        EXPECT_THAT(Env.getValue(*BazPointeeLoc), IsNull());
 
-        const StorageLocation &NullPointeeLoc = NullVal->getPointeeLoc();
+        const StorageLocation *NullPointeeLoc = NullVal->getPointeeLoc();
         EXPECT_TRUE(isa<ScalarStorageLocation>(NullPointeeLoc));
-        EXPECT_THAT(Env.getValue(NullPointeeLoc), IsNull());
+        EXPECT_THAT(Env.getValue(*NullPointeeLoc), IsNull());
       });
 }
 
@@ -2631,7 +2637,7 @@ TEST(TransferTest, AddrOfValue) {
         const auto *FooLoc =
             cast<ScalarStorageLocation>(Env.getStorageLocation(*FooDecl));
         const auto *BarVal = cast<PointerValue>(Env.getValue(*BarDecl));
-        EXPECT_EQ(&BarVal->getPointeeLoc(), FooLoc);
+        EXPECT_EQ(BarVal->getPointeeLoc(), FooLoc);
       });
 }
 
@@ -2657,7 +2663,7 @@ TEST(TransferTest, AddrOfReference) {
 
         const auto *FooVal = cast<PointerValue>(Env.getValue(*FooDecl));
         const auto *BarVal = cast<PointerValue>(Env.getValue(*BarDecl));
-        EXPECT_EQ(&BarVal->getPointeeLoc(), &FooVal->getPointeeLoc());
+        EXPECT_EQ(BarVal->getPointeeLoc(), FooVal->getPointeeLoc());
       });
 }
 
@@ -2747,8 +2753,9 @@ TEST(TransferTest, VarDeclInDoWhile) {
 
         const auto *FooVal =
             cast<PointerValue>(EnvAfterLoop.getValue(*FooDecl));
+        ASSERT_THAT(FooVal->getPointeeLoc(), NotNull());
         const auto *FooPointeeVal =
-            cast<IntegerValue>(EnvAfterLoop.getValue(FooVal->getPointeeLoc()));
+            cast<IntegerValue>(EnvAfterLoop.getValue(*FooVal->getPointeeLoc()));
 
         const auto *BarVal = cast<IntegerValue>(EnvInLoop.getValue(*BarDecl));
         EXPECT_EQ(BarVal, FooPointeeVal);
@@ -3814,8 +3821,7 @@ TEST(TransferTest, LoopWithStructReferenceAssignmentConverges) {
         auto *LVal = dyn_cast<PointerValue>(InnerEnv.getValue(*LDecl));
         ASSERT_THAT(LVal, NotNull());
 
-        EXPECT_EQ(&LVal->getPointeeLoc(),
-                  InnerEnv.getStorageLocation(*ValDecl));
+        EXPECT_EQ(LVal->getPointeeLoc(), InnerEnv.getStorageLocation(*ValDecl));
 
         // Outer.
         LVal = dyn_cast<PointerValue>(OuterEnv.getValue(*LDecl));
@@ -3823,8 +3829,7 @@ TEST(TransferTest, LoopWithStructReferenceAssignmentConverges) {
 
         // The loop body may not have been executed, so we should not conclude
         // that `l` points to `val`.
-        EXPECT_NE(&LVal->getPointeeLoc(),
-                  OuterEnv.getStorageLocation(*ValDecl));
+        EXPECT_NE(LVal->getPointeeLoc(), OuterEnv.getStorageLocation(*ValDecl));
       });
 }
 
@@ -3843,10 +3848,7 @@ TEST(TransferTest, LoopDereferencingChangingPointerConverges) {
       }
     }
   )cc";
-  // FIXME: Implement pointer value widening to make analysis converge.
-  ASSERT_THAT_ERROR(
-      checkDataflowWithNoopAnalysis(Code),
-      llvm::FailedWithMessage("maximum number of iterations reached"));
+  ASSERT_THAT_ERROR(checkDataflowWithNoopAnalysis(Code), llvm::Succeeded());
 }
 
 TEST(TransferTest, LoopDereferencingChangingRecordPointerConverges) {
@@ -3869,9 +3871,7 @@ TEST(TransferTest, LoopDereferencingChangingRecordPointerConverges) {
     }
   )cc";
   // FIXME: Implement pointer value widening to make analysis converge.
-  ASSERT_THAT_ERROR(
-      checkDataflowWithNoopAnalysis(Code),
-      llvm::FailedWithMessage("maximum number of iterations reached"));
+  ASSERT_THAT_ERROR(checkDataflowWithNoopAnalysis(Code), llvm::Succeeded());
 }
 
 TEST(TransferTest, DoesNotCrashOnUnionThisExpr) {
@@ -5470,7 +5470,8 @@ TEST(TransferTest, NewExpressions) {
 
         auto &P = getValueForDecl<PointerValue>(ASTCtx, Env, "p");
 
-        EXPECT_THAT(Env.getValue(P.getPointeeLoc()), NotNull());
+        ASSERT_THAT(P.getPointeeLoc(), NotNull());
+        EXPECT_THAT(Env.getValue(*P.getPointeeLoc()), NotNull());
       });
 }
 
@@ -5504,7 +5505,7 @@ TEST(TransferTest, NewExpressions_Structs) {
 
         auto &P = getValueForDecl<PointerValue>(ASTCtx, Env, "p");
 
-        auto &OuterLoc = cast<RecordStorageLocation>(P.getPointeeLoc());
+        auto &OuterLoc = *cast<RecordStorageLocation>(P.getPointeeLoc());
         auto &OuterFieldLoc =
             *cast<RecordStorageLocation>(OuterLoc.getChild(*OuterField));
         auto &InnerFieldLoc = *OuterFieldLoc.getChild(*InnerField);
@@ -5545,13 +5546,13 @@ TEST(TransferTest, FunctionToPointerDecayHasValue) {
             getValueForDecl<PointerValue>(ASTCtx, Env, "non_member_p1");
         auto &NonMemberP2 =
             getValueForDecl<PointerValue>(ASTCtx, Env, "non_member_p2");
-        EXPECT_EQ(&NonMemberP1.getPointeeLoc(), &NonMemberP2.getPointeeLoc());
+        EXPECT_EQ(NonMemberP1.getPointeeLoc(), NonMemberP2.getPointeeLoc());
 
         auto &MemberP1 =
             getValueForDecl<PointerValue>(ASTCtx, Env, "member_p1");
         auto &MemberP2 =
             getValueForDecl<PointerValue>(ASTCtx, Env, "member_p2");
-        EXPECT_EQ(&MemberP1.getPointeeLoc(), &MemberP2.getPointeeLoc());
+        EXPECT_EQ(MemberP1.getPointeeLoc(), MemberP2.getPointeeLoc());
       });
 }
 

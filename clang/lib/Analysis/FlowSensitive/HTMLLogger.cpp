@@ -100,8 +100,8 @@ public:
     case Value::Kind::FormulaBool:
       break;
     case Value::Kind::Pointer:
-      JOS.attributeObject(
-          "pointee", [&] { dump(cast<PointerValue>(V).getPointeeLoc()); });
+      if (StorageLocation *PointeeLoc = cast<PointerValue>(V).getPointeeLoc())
+        JOS.attributeObject("pointee", [&] { dump(*PointeeLoc); });
       break;
     case Value::Kind::Record:
       for (const auto &Child : cast<RecordValue>(V).getLoc().children())

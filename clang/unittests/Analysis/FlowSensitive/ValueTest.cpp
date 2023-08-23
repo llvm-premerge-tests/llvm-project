@@ -31,8 +31,8 @@ TEST(ValueTest, DifferentIntegerValuesNotEquivalent) {
 
 TEST(ValueTest, AliasedPointersEquivalent) {
   auto L = ScalarStorageLocation(QualType());
-  PointerValue V1(L);
-  PointerValue V2(L);
+  PointerValue V1(&L);
+  PointerValue V2(&L);
   EXPECT_TRUE(areEquivalentValues(V1, V2));
   EXPECT_TRUE(areEquivalentValues(V2, V1));
 }
@@ -60,7 +60,7 @@ TEST(ValueTest, EquivalentValuesWithDifferentPropsEquivalent) {
 TEST(ValueTest, DifferentKindsNotEquivalent) {
   Arena A;
   auto L = ScalarStorageLocation(QualType());
-  PointerValue V1(L);
+  PointerValue V1(&L);
   TopBoolValue V2(A.makeAtomRef(Atom(0)));
   EXPECT_FALSE(areEquivalentValues(V1, V2));
   EXPECT_FALSE(areEquivalentValues(V2, V1));
@@ -68,9 +68,9 @@ TEST(ValueTest, DifferentKindsNotEquivalent) {
 
 TEST(ValueTest, NotAliasedPointersNotEquivalent) {
   auto L1 = ScalarStorageLocation(QualType());
-  PointerValue V1(L1);
+  PointerValue V1(&L1);
   auto L2 = ScalarStorageLocation(QualType());
-  PointerValue V2(L2);
+  PointerValue V2(&L2);
   EXPECT_FALSE(areEquivalentValues(V1, V2));
   EXPECT_FALSE(areEquivalentValues(V2, V1));
 }

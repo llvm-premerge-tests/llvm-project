@@ -315,7 +315,7 @@ public:
       if (PointeeLoc == nullptr)
         break;
 
-      Env.setValue(*S, Env.create<PointerValue>(*PointeeLoc));
+      Env.setValue(*S, Env.create<PointerValue>(PointeeLoc));
       break;
     }
     case CK_BuiltinFnToFnPtr:
@@ -340,7 +340,8 @@ public:
       if (SubExprVal == nullptr)
         break;
 
-      Env.setStorageLocation(*S, SubExprVal->getPointeeLoc());
+      if (SubExprVal->getPointeeLoc() != nullptr)
+        Env.setStorageLocation(*S, *SubExprVal->getPointeeLoc());
       break;
     }
     case UO_AddrOf: {
@@ -349,7 +350,7 @@ public:
         break;
 
       if (StorageLocation *PointeeLoc = Env.getStorageLocation(*SubExpr))
-        Env.setValue(*S, Env.create<PointerValue>(*PointeeLoc));
+        Env.setValue(*S, Env.create<PointerValue>(PointeeLoc));
       break;
     }
     case UO_LNot: {
@@ -372,7 +373,7 @@ public:
       // `this` expression's pointee.
       return;
 
-    Env.setValue(*S, Env.create<PointerValue>(*ThisPointeeLoc));
+    Env.setValue(*S, Env.create<PointerValue>(ThisPointeeLoc));
   }
 
   void VisitCXXNewExpr(const CXXNewExpr *S) {

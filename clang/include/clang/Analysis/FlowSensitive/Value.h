@@ -169,17 +169,17 @@ public:
 /// Models a symbolic pointer. Specifically, any value of type `T*`.
 class PointerValue final : public Value {
 public:
-  explicit PointerValue(StorageLocation &PointeeLoc)
+  explicit PointerValue(StorageLocation *PointeeLoc)
       : Value(Kind::Pointer), PointeeLoc(PointeeLoc) {}
 
   static bool classof(const Value *Val) {
     return Val->getKind() == Kind::Pointer;
   }
 
-  StorageLocation &getPointeeLoc() const { return PointeeLoc; }
+  StorageLocation *getPointeeLoc() const { return PointeeLoc; }
 
 private:
-  StorageLocation &PointeeLoc;
+  StorageLocation *PointeeLoc;
 };
 
 /// Models a value of `struct` or `class` type.

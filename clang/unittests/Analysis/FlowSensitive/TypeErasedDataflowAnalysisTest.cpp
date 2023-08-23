@@ -768,7 +768,7 @@ TEST_F(WideningTest, DistinctPointersToTheSameLocationAreEquivalent) {
         const auto *FooLoc =
             cast<ScalarStorageLocation>(Env.getStorageLocation(*FooDecl));
         const auto *BarVal = cast<PointerValue>(Env.getValue(*BarDecl));
-        EXPECT_EQ(&BarVal->getPointeeLoc(), FooLoc);
+        EXPECT_EQ(BarVal->getPointeeLoc(), FooLoc);
       });
 }
 

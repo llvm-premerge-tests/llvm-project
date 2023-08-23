@@ -161,6 +161,14 @@ static Value &widenDistinctValues(QualType Type, Value &Prev,
     return CurrentEnv.makeTopBoolValue();
   }
 
+  if (auto *PrevPtr = dyn_cast<PointerValue>(&Prev)) {
+    auto &CurPtr = cast<PointerValue>(Current);
+
+    if (PrevPtr->getPointeeLoc() != CurPtr.getPointeeLoc())
+      // TODO: Preserve properties
+      return CurrentEnv.create<PointerValue>(nullptr);
+  }
+
   // FIXME: Add other built-in model widening.
 
   // Custom-model widening.
@@ -757,7 +765,7 @@ Value *Environment::createValueUnlessSelfReferential(
     StorageLocation &PointeeLoc =
         createLocAndMaybeValue(PointeeType, Visited, Depth, CreatedValuesCount);
 
-    return &arena().create<PointerValue>(PointeeLoc);
+    return &arena().create<PointerValue>(&PointeeLoc);
   }
 
   if (Type->isRecordType()) {
@@ -899,7 +907,7 @@ RecordStorageLocation *getImplicitObjectLocation(const CXXMemberCallExpr &MCE,
     return nullptr;
   if (ImplicitObject->getType()->isPointerType()) {
     if (auto *Val = cast_or_null<PointerValue>(Env.getValue(*ImplicitObject)))
-      return &cast<RecordStorageLocation>(Val->getPointeeLoc());
+      return cast_or_null<RecordStorageLocation>(Val->getPointeeLoc());
     return nullptr;
   }
   return cast_or_null<RecordStorageLocation>(
@@ -913,7 +921,7 @@ RecordStorageLocation *getBaseObjectLocation(const MemberExpr &ME,
     return nullptr;
   if (ME.isArrow()) {
     if (auto *Val = cast_or_null<PointerValue>(Env.getValue(*Base)))
-      return &cast<RecordStorageLocation>(Val->getPointeeLoc());
+      return cast_or_null<RecordStorageLocation>(Val->getPointeeLoc());
     return nullptr;
   }
   return cast_or_null<RecordStorageLocation>(Env.getStorageLocation(*Base));

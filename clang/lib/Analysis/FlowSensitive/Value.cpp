@@ -21,7 +21,7 @@ static bool areEquivalentIndirectionValues(const Value &Val1,
                                            const Value &Val2) {
   if (auto *IndVal1 = dyn_cast<PointerValue>(&Val1)) {
     auto *IndVal2 = cast<PointerValue>(&Val2);
-    return &IndVal1->getPointeeLoc() == &IndVal2->getPointeeLoc();
+    return IndVal1->getPointeeLoc() == IndVal2->getPointeeLoc();
   }
   return false;
 }
@@ -36,7 +36,7 @@ raw_ostream &operator<<(raw_ostream &OS, const Value &Val) {
   switch (Val.getKind()) {
   case Value::Kind::Pointer: {
     const auto *PV = dyn_cast<PointerValue>(&Val);
-    return OS << "Pointer(" << &PV->getPointeeLoc() << ")";
+    return OS << "Pointer(" << PV->getPointeeLoc() << ")";
   }
   // FIXME: support remaining cases.
   default:
