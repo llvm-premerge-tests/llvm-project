@@ -971,3 +971,14 @@
 
 // RUN: not %clang --target=x86_64-linux-gnu -fsanitize=undefined,function -mcmodel=large %s -### 2>&1 | FileCheck %s --check-prefix=CHECK-UBSAN-FUNCTION-CODE-MODEL
 // CHECK-UBSAN-FUNCTION-CODE-MODEL: error: invalid argument '-fsanitize=function' only allowed with '-mcmodel=small'
+
+// RUN: not %clang --target=x86_64-sie-ps5 -fsanitize=function %s -### 2>&1 | FileCheck %s --check-prefix=CHECK-UBSAN-FUNCTION
+// RUN: not %clang --target=x86_64-sie-ps5 -fsanitize=undefined,function %s -### 2>&1 | FileCheck %s --check-prefix=CHECK-UBSAN-FUNCTION
+// RUN: %clang --target=x86_64-sie-ps5 -fsanitize=undefined %s -### 2>&1 | FileCheck %s --check-prefix=CHECK-UBSAN-UNDEFINED
+
+// RUN: not %clang --target=armv6t2-eabi -mexecute-only -fsanitize=function %s -### 2>&1 | FileCheck %s --check-prefix=CHECK-UBSAN-FUNCTION
+// RUN: not %clang --target=armv6t2-eabi -mexecute-only -fsanitize=undefined,function %s -### 2>&1 | FileCheck %s --check-prefix=CHECK-UBSAN-FUNCTION
+// RUN: %clang --target=armv6t2-eabi -mexecute-only -fsanitize=undefined %s -### 2>&1 | FileCheck %s --check-prefix=CHECK-UBSAN-UNDEFINED
+
+// CHECK-UBSAN-FUNCTION: error: unsupported option '-fsanitize=function' for the execute only target {{('x86_64-sie-ps5'|'armv6t2-unknown-unknown-eabi')}}
+// CHECK-UBSAN-UNDEFINED-NOT: error: unsupported option '-fsanitize=function' for the execute only target {{('x86_64-sie-ps5'|'armv6t2-unknown-unknown-eabi')}}

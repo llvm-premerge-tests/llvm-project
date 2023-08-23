@@ -4398,6 +4398,16 @@ bool CompilerInvocation::CreateFromArgsImpl(
 
   ParseLangArgs(LangOpts, Args, DashX, T, Res.getPreprocessorOpts().Includes,
                 Diags);
+
+  // An execute-only target doesn't support the function sanitizer. Since `clang
+  // -cc1` doesn't allow group check (e.g. 'undefined') in '-fsanitize=', the
+  // value of '-fsanitize=' must be `function` if function sanitizer is enabled.
+  if (isExecuteOnlyTarget(T, Args) &&
+      LangOpts.Sanitize.has(SanitizerKind::Function)) {
+    Diags.Report(diag::err_unsupported_opt_for_execute_only_target)
+        << "-fsanitize=function" << T.getTriple();
+  }
+
   if (Res.getFrontendOpts().ProgramAction == frontend::RewriteObjC)
     LangOpts.ObjCExceptions = 1;
 

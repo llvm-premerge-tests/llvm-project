@@ -11,10 +11,15 @@
 //===----------------------------------------------------------------------===//
 
 #include "clang/Basic/Sanitizers.h"
+#include "clang/Driver/Options.h"
 #include "llvm/ADT/Hashing.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringSwitch.h"
+#include "llvm/Option/ArgList.h"
 #include "llvm/Support/MathExtras.h"
+#include "llvm/TargetParser/ARMTargetParser.h"
+#include "llvm/TargetParser/Triple.h"
+#include <algorithm>
 
 using namespace clang;
 
@@ -110,6 +115,36 @@ AsanDetectStackUseAfterReturnModeFromString(StringRef modeStr) {
       .Case("runtime", llvm::AsanDetectStackUseAfterReturnMode::Runtime)
       .Case("never", llvm::AsanDetectStackUseAfterReturnMode::Never)
       .Default(llvm::AsanDetectStackUseAfterReturnMode::Invalid);
+}
+
+bool isExecuteOnlyTarget(const llvm::Triple &Triple,
+                         const llvm::opt::ArgList &Args) {
+  if (Triple.isPS5())
+    return true;
+  // On Arm, the clang `-mexecute-only` option is used to generate the
+  // execute-only output (no data access to code sections).
+  const llvm::opt::Arg *A =
+      Args.getLastArg(clang::driver::options::OPT_mexecute_only,
+                      clang::driver::options::OPT_mno_execute_only);
+  // On Arm, `-target-feature +execute-only` is used to generate the
+  // execute-only output from the `clang_cc1` command.
+  const std::vector<std::string> Features =
+      Args.getAllArgValues(clang::driver::options::OPT_target_feature);
+
+  if ((A &&
+       A->getOption().matches(clang::driver::options::OPT_mexecute_only)) ||
+      (std::find(Features.begin(), Features.end(), "+execute-only") !=
+       Features.end())) {
+    // The execute-only output is supported only on ARMv6T2 and ARMv7 and above.
+    if (llvm::ARM::parseArchVersion(Triple.getArchName()) > 7 ||
+        llvm::ARM::parseArch(Triple.getArchName()) ==
+            llvm::ARM::ArchKind::ARMV6T2 ||
+        llvm::ARM::parseArch(Triple.getArchName()) ==
+            llvm::ARM::ArchKind::ARMV6M)
+      return true;
+  }
+
+  return false;
 }
 
 } // namespace clang
