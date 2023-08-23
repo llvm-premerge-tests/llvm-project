@@ -401,6 +401,15 @@ static bool SemaBuiltinOverflow(Sema &S, CallExpr *TheCall,
              diag::err_overflow_builtin_must_be_ptr_int)
         << Ty << Arg.get()->getSourceRange();
       return true;
+    } else {
+      // Third argument can't be short because it may be unable to hold the
+      // result of operating two `int`s.
+      auto Pty = PtrTy->getPointeeType();
+      if (S.getASTContext().getIntWidth(Pty) == 16) {
+        S.Diag(Arg.get()->getBeginLoc(),
+              diag::err_overflow_builtin_can_not_be_short);
+        return true;
+      }
     }
   }
 

@@ -8621,6 +8621,8 @@ def err_overflow_builtin_must_be_ptr_int : Error<
 def err_overflow_builtin_bit_int_max_size : Error<
   "__builtin_mul_overflow does not support 'signed _BitInt' operands of more "
   "than %0 bits">;
+def err_overflow_builtin_can_not_be_short : Warning<
+  "'short' may not be suitable to hold the result of operating two 'int's ">;
 def err_expected_struct_pointer_argument : Error<
   "expected pointer to struct as %ordinal0 argument to %1, found %2">;
 def err_expected_callable_argument : Error<
