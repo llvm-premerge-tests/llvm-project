@@ -199,8 +199,9 @@ const interpose_substitution substitution_##func_name[]             \
        ".type  " SANITIZER_STRINGIFY(TRAMPOLINE(func)) ", %function\n"         \
        SANITIZER_STRINGIFY(TRAMPOLINE(func)) ":\n"                             \
        SANITIZER_STRINGIFY(CFI_STARTPROC) "\n"                                 \
-       SANITIZER_STRINGIFY(ASM_TAIL_CALL) " __interceptor_"                    \
-         SANITIZER_STRINGIFY(ASM_PREEMPTIBLE_SYM(func)) "\n"                   \
+       C_ASM_TAIL_CALL(SANITIZER_STRINGIFY(TRAMPOLINE(func)),                  \
+                       "__interceptor_"                                        \
+                         SANITIZER_STRINGIFY(ASM_PREEMPTIBLE_SYM(func))) "\n"  \
        SANITIZER_STRINGIFY(CFI_ENDPROC) "\n"                                   \
        ".size  " SANITIZER_STRINGIFY(TRAMPOLINE(func)) ", "                    \
             ".-" SANITIZER_STRINGIFY(TRAMPOLINE(func)) "\n"                    \
