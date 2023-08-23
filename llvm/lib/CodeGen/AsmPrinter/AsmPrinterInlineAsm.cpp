@@ -71,7 +71,8 @@ unsigned AsmPrinter::addInlineAsmDiagBuffer(StringRef AsmStr,
 void AsmPrinter::emitInlineAsm(StringRef Str, const MCSubtargetInfo &STI,
                                const MCTargetOptions &MCOptions,
                                const MDNode *LocMDNode,
-                               InlineAsm::AsmDialect Dialect) const {
+                               InlineAsm::AsmDialect Dialect,
+                               const MachineInstr *MI) const {
   assert(!Str.empty() && "Can't emit empty inline asm block");
 
   // Remember if the buffer is nul terminated or not so we can avoid a copy.
@@ -126,7 +127,8 @@ void AsmPrinter::emitInlineAsm(StringRef Str, const MCSubtargetInfo &STI,
   emitInlineAsmStart();
   // Don't implicitly switch to the text section before the asm.
   (void)Parser->Run(/*NoInitialTextSection*/ true,
-                    /*NoFinalize*/ true);
+                    /*NoFinalize*/ true,
+                    MI);
   emitInlineAsmEnd(STI, &TAP->getSTI());
 }
 
@@ -415,7 +417,7 @@ void AsmPrinter::emitInlineAsm(const MachineInstr *MI) const {
   }
 
   emitInlineAsm(OS.str(), getSubtargetInfo(), TM.Options.MCOptions, LocMD,
-                MI->getInlineAsmDialect());
+                MI->getInlineAsmDialect(), MI);
 
   // Emit the #NOAPP end marker.  This has to happen even if verbose-asm isn't
   // enabled, so we use emitRawComment.

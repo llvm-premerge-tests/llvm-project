@@ -16,6 +16,7 @@
 #include "llvm/ADT/Twine.h"
 #include "llvm/MC/MCAsmMacro.h"
 #include "llvm/Support/SMLoc.h"
+#include "llvm/CodeGen/MachineInstr.h"
 #include <cstdint>
 #include <string>
 #include <utility>
@@ -177,7 +178,9 @@ public:
   void setShowParsedOperands(bool Value) { ShowParsedOperands = Value; }
 
   /// Run the parser on the input source buffer.
-  virtual bool Run(bool NoInitialTextSection, bool NoFinalize = false) = 0;
+  /// \p MI - the machine instruction of current inline asm.
+  virtual bool Run(bool NoInitialTextSection, bool NoFinalize = false,
+                   const MachineInstr *MI = nullptr) = 0;
 
   virtual void setParsingMSInlineAsm(bool V) = 0;
   virtual bool isParsingMSInlineAsm() = 0;

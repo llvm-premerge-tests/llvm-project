@@ -575,6 +575,7 @@ unsigned MipsInstrInfo::getEquivalentCompactForm(
 /// other instructions for handling forbidden slots. Consider inline assembly
 /// as unsafe as well.
 bool MipsInstrInfo::SafeInForbiddenSlot(const MachineInstr &MI) const {
+  //FIXME: Best to check whether the first instruction of inlineAsm is CTI
   if (MI.isInlineAsm())
     return false;
 

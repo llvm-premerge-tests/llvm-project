@@ -23,6 +23,7 @@
 #include "llvm/ADT/Twine.h"
 #include "llvm/BinaryFormat/Dwarf.h"
 #include "llvm/DebugInfo/CodeView/SymbolRecord.h"
+#include "llvm/CodeGen/MachineInstr.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCCodeView.h"
 #include "llvm/MC/MCContext.h"
@@ -184,15 +185,22 @@ private:
   bool AltMacroMode = false;
 
 protected:
+  /// \p MI - the machine instruction of current inline asm.
+  /// \p ErrorInfo - store the TSFlags of last machine instruction in the inline asm.
   virtual bool parseStatement(ParseStatementInfo &Info,
-                              MCAsmParserSemaCallback *SI);
+                              MCAsmParserSemaCallback *SI,
+                              const MachineInstr *MI,
+                              uint64_t &ErrorInfo);
 
   /// This routine uses the target specific ParseInstruction function to
   /// parse an instruction into Operands, and then call the target specific
   /// MatchAndEmit function to match and emit the instruction.
+  /// \p MI - the machine instruction of current inline asm.
+  /// \p ErrorInfo - store the TSFlags of last machine instruction in the inline asm.
   bool parseAndMatchAndEmitTargetInstruction(ParseStatementInfo &Info,
                                              StringRef IDVal, AsmToken ID,
-                                             SMLoc IDLoc);
+                                             SMLoc IDLoc, const MachineInstr *MI,
+                                             uint64_t &ErrorInfo);
 
   /// Should we emit DWARF describing this assembler source?  (Returns false if
   /// the source has .file directives, which means we don't want to generate
@@ -206,7 +214,9 @@ public:
   AsmParser &operator=(const AsmParser &) = delete;
   ~AsmParser() override;
 
-  bool Run(bool NoInitialTextSection, bool NoFinalize = false) override;
+  /// \p MI - the machine instruction of current inline asm.
+  bool Run(bool NoInitialTextSection, bool NoFinalize = false,
+           const MachineInstr *MI = nullptr) override;
 
   void addDirectiveHandler(StringRef Directive,
                            ExtensionDirectiveHandler Handler) override {
@@ -746,8 +756,12 @@ public:
 
   ~HLASMAsmParser() { Lexer.setSkipSpace(true); }
 
+  /// \p MI - the machine instruction of current inline asm.
+  /// \p ErrorInfo - store the TSFlags of last machine instruction in the inline asm.
   bool parseStatement(ParseStatementInfo &Info,
-                      MCAsmParserSemaCallback *SI) override;
+                      MCAsmParserSemaCallback *SI,
+                      const MachineInstr *MI,
+                      uint64_t &ErrorInfo) override;
 };
 
 } // end anonymous namespace
@@ -963,7 +977,7 @@ bool AsmParser::enabledGenDwarfForAssembly() {
   return true;
 }
 
-bool AsmParser::Run(bool NoInitialTextSection, bool NoFinalize) {
+bool AsmParser::Run(bool NoInitialTextSection, bool NoFinalize, const MachineInstr *MI) {
   LTODiscardSymbols.clear();
 
   // Create the initial section, if requested.
@@ -996,9 +1010,19 @@ bool AsmParser::Run(bool NoInitialTextSection, bool NoFinalize) {
   getTargetParser().onBeginOfFile();
 
   // While we have input, parse each statement.
+  // ErrorInfo - store the TSFlags of last machine instruction in the
+  // inline asm.  Because target mips needs this TSFlags to check whether
+  // current instruction lie in forbidden slot.  Reuse the parameter
+  // ErrorInfo of function MatchAndEmitInstruction.  The parameter passed
+  // in represents the last instruction TSFlags, passed out represents
+  // the current instruction TSFlags.
+  uint64_t ErrorInfo = 0;
   while (Lexer.isNot(AsmToken::Eof)) {
     ParseStatementInfo Info(&AsmStrRewrites);
-    bool Parsed = parseStatement(Info, nullptr);
+    // MI - the machine instruction of current inline asm.  Because target
+    // mips needs this pointer to get next machine instruction from current
+    // inlineAsm in MBB.
+    bool Parsed = parseStatement(Info, nullptr, MI, ErrorInfo);
 
     // If we have a Lexer Error we are on an Error Token. Load in Lexer Error
     // for printing ErrMsg via Lex() only if no (presumably better) parser error
@@ -1780,7 +1804,9 @@ bool AsmParser::parseBinOpRHS(unsigned Precedence, const MCExpr *&Res,
 ///   ::= Label* Directive ...Operands... EndOfStatement
 ///   ::= Label* Identifier OperandList* EndOfStatement
 bool AsmParser::parseStatement(ParseStatementInfo &Info,
-                               MCAsmParserSemaCallback *SI) {
+                               MCAsmParserSemaCallback *SI,
+                               const MachineInstr *MI,
+                               uint64_t &ErrorInfo) {
   assert(!hasPendingError() && "parseStatement started with pending error");
   // Eat initial spaces and comments
   while (Lexer.is(AsmToken::Space))
@@ -2306,20 +2332,22 @@ bool AsmParser::parseStatement(ParseStatementInfo &Info,
   if (checkForValidSection())
     return true;
 
-  return parseAndMatchAndEmitTargetInstruction(Info, IDVal, ID, IDLoc);
+  return parseAndMatchAndEmitTargetInstruction(Info, IDVal, ID, IDLoc, MI, ErrorInfo);
 }
 
 bool AsmParser::parseAndMatchAndEmitTargetInstruction(ParseStatementInfo &Info,
                                                       StringRef IDVal,
                                                       AsmToken ID,
-                                                      SMLoc IDLoc) {
+                                                      SMLoc IDLoc,
+                                                      const MachineInstr *MI,
+                                                      uint64_t &ErrorInfo) {
   // Canonicalize the opcode to lower case.
   std::string OpcodeStr = IDVal.lower();
   ParseInstructionInfo IInfo(Info.AsmRewrites);
   bool ParseHadError = getTargetParser().ParseInstruction(IInfo, OpcodeStr, ID,
                                                           Info.ParsedOperands);
   Info.ParseError = ParseHadError;
-
+  Info.ParsedOperands[0]->MIp = MI;
   // Dump the parsed representation, if requested.
   if (getShowParsedOperands()) {
     SmallString<256> Str;
@@ -2372,7 +2400,6 @@ bool AsmParser::parseAndMatchAndEmitTargetInstruction(ParseStatementInfo &Info,
 
   // If parsing succeeded, match the instruction.
   if (!ParseHadError) {
-    uint64_t ErrorInfo;
     if (getTargetParser().MatchAndEmitInstruction(
             IDLoc, Info.Opcode, Info.ParsedOperands, Out, ErrorInfo,
             getTargetParser().isParsingMSInlineAsm()))
@@ -5973,13 +6000,14 @@ bool AsmParser::parseMSInlineAsm(
   // While we have input, parse each statement.
   unsigned InputIdx = 0;
   unsigned OutputIdx = 0;
+  uint64_t ErrorInfo = 0;
   while (getLexer().isNot(AsmToken::Eof)) {
     // Parse curly braces marking block start/end
     if (parseCurlyBlockScope(AsmStrRewrites))
       continue;
 
     ParseStatementInfo Info(&AsmStrRewrites);
-    bool StatementErr = parseStatement(Info, &SI);
+    bool StatementErr = parseStatement(Info, &SI, nullptr, ErrorInfo);
 
     if (StatementErr || Info.ParseError) {
       // Emit pending errors if any exist.
@@ -6282,12 +6310,15 @@ bool HLASMAsmParser::parseAsMachineInstruction(ParseStatementInfo &Info,
   // any spaces to get to the OperandEntries.
   lexLeadingSpaces();
 
+  uint64_t ErrorInfo = 0;
   return parseAndMatchAndEmitTargetInstruction(
-      Info, OperationEntryVal, OperationEntryTok, OperationEntryLoc);
+      Info, OperationEntryVal, OperationEntryTok, OperationEntryLoc, nullptr, ErrorInfo);
 }
 
 bool HLASMAsmParser::parseStatement(ParseStatementInfo &Info,
-                                    MCAsmParserSemaCallback *SI) {
+                                    MCAsmParserSemaCallback *SI,
+                                    const MachineInstr *MI,
+                                    uint64_t &ErrorInfo) {
   assert(!hasPendingError() && "parseStatement started with pending error");
 
   // Should the first token be interpreted as a HLASM Label.

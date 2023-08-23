@@ -20,6 +20,7 @@
 #include "llvm/ADT/StringSwitch.h"
 #include "llvm/ADT/Twine.h"
 #include "llvm/BinaryFormat/ELF.h"
+#include "llvm/CodeGen/MachineBasicBlock.h"
 #include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCInst.h"
@@ -438,8 +439,11 @@ class MipsAsmParser : public MCTargetAsmParser {
 
   bool canUseATReg();
 
+  // Get MI from Operands, the parameter ErrorInfo passed in represents the last
+  // instruction TSFlags, passed out represents the current instruction TSFlags.
   bool processInstruction(MCInst &Inst, SMLoc IDLoc, MCStreamer &Out,
-                          const MCSubtargetInfo *STI);
+                          const MCSubtargetInfo *STI, OperandVector &Operands,
+                          uint64_t &ErrorInfo);
 
   // Helper function that checks if the value of a vector index is within the
   // boundaries of accepted values for each RegisterKind
@@ -1860,13 +1864,35 @@ static bool needsExpandMemInst(MCInst &Inst, const MCInstrDesc &MCID) {
 
 bool MipsAsmParser::processInstruction(MCInst &Inst, SMLoc IDLoc,
                                        MCStreamer &Out,
-                                       const MCSubtargetInfo *STI) {
+                                       const MCSubtargetInfo *STI,
+                                       OperandVector &Operands,
+                                       uint64_t &RecvErrorInfo) {
   MipsTargetStreamer &TOut = getTargetStreamer();
   const unsigned Opcode = Inst.getOpcode();
   const MCInstrDesc &MCID = MII.get(Opcode);
   bool ExpandedJalSym = false;
+  // When the previous instruction has forbidden slot and the current
+  // instruction is CTI and .set reorder has been used, need insert nop.
+  bool needInsertNop = false;
+  // When the current instruction has forbidden slot and also is the last
+  // in current inline asm, need go to check next instruction by MI from
+  // the current inline asm in MBB, if it is CTI or inline asm, need insert
+  // nop.
+  bool gonext = false;
+  // Receive the TSFlags of last instruction.
+  uint64_t LastErrorInfo = RecvErrorInfo;
+
 
   Inst.setLoc(IDLoc);
+  if ((LastErrorInfo & MipsII::HasForbiddenSlot) &&
+      (MCID.TSFlags & MipsII::IsCTI)) {
+    needInsertNop = AssemblerOptions.back()->isReorder();
+    if (needInsertNop) {
+      TOut.emitEmptyDelaySlot(hasShortDelaySlot(Inst), IDLoc, STI);
+    }
+  }
+  //Store the TSFlags of current instruction and passed out to the caller.
+  RecvErrorInfo = MCID.TSFlags;
 
   if (MCID.isBranch() || MCID.isCall()) {
     MCOperand Offset;
@@ -2352,6 +2378,23 @@ bool MipsAsmParser::processInstruction(MCInst &Inst, SMLoc IDLoc,
       TOut.emitGPRestore(CpRestoreOffset, IDLoc, STI);
     } else
       Warning(IDLoc, "no .cprestore used in PIC mode");
+  }
+
+  if (MCID.TSFlags & MipsII::HasForbiddenSlot) {
+    AsmToken ID = getTok();
+    getLexer().Lex();
+    if(getLexer().is(AsmToken::Eof)) {
+      gonext = true;
+    }
+    getLexer().UnLex(ID);
+    if (true == gonext) {
+      const MachineInstr *MIp = Operands[0]->MIp;
+      if (MIp != NULL) {
+        auto I = std::next(MIp->getIterator());
+        if (I->isInlineAsm() || (I->getDesc().TSFlags & MipsII::IsCTI))
+          TOut.emitEmptyDelaySlot(hasShortDelaySlot(Inst), IDLoc, STI);
+      }
+    }
   }
 
   return false;
@@ -5918,13 +5961,18 @@ bool MipsAsmParser::MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
                                             uint64_t &ErrorInfo,
                                             bool MatchingInlineAsm) {
   MCInst Inst;
+  uint64_t RecvErrorInfo = ErrorInfo;
   unsigned MatchResult =
       MatchInstructionImpl(Operands, Inst, ErrorInfo, MatchingInlineAsm);
 
   switch (MatchResult) {
   case Match_Success:
-    if (processInstruction(Inst, IDLoc, Out, STI))
+    if (processInstruction(Inst, IDLoc, Out, STI, Operands, RecvErrorInfo)) {
+      //Passed out TSFlags by ErrorInfo.
+      ErrorInfo = RecvErrorInfo;
       return true;
+    }
+    ErrorInfo = RecvErrorInfo;
     return false;
   case Match_MissingFeature:
     Error(IDLoc, "instruction requires a CPU feature not currently enabled");

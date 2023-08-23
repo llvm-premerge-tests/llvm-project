@@ -474,7 +474,9 @@ public:
   MasmParser &operator=(const MasmParser &) = delete;
   ~MasmParser() override;
 
-  bool Run(bool NoInitialTextSection, bool NoFinalize = false) override;
+  /// \p MI - the machine instruction of current inline asm.
+  bool Run(bool NoInitialTextSection, bool NoFinalize = false,
+           const MachineInstr *MI = nullptr) override;
 
   void addDirectiveHandler(StringRef Directive,
                            ExtensionDirectiveHandler Handler) override {
@@ -1335,7 +1337,7 @@ bool MasmParser::enabledGenDwarfForAssembly() {
   return true;
 }
 
-bool MasmParser::Run(bool NoInitialTextSection, bool NoFinalize) {
+bool MasmParser::Run(bool NoInitialTextSection, bool NoFinalize, const MachineInstr *MI) {
   // Create the initial section, if requested.
   if (!NoInitialTextSection)
     Out.initSections(false, getTargetParser().getSTI());

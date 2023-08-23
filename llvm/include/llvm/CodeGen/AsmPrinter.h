@@ -841,11 +841,13 @@ private:
   virtual void emitFunctionHeaderComment();
 
   /// Emit a blob of inline asm to the output streamer.
+  /// \p MI - the machine instruction of current inline asm.
   void
   emitInlineAsm(StringRef Str, const MCSubtargetInfo &STI,
                 const MCTargetOptions &MCOptions,
                 const MDNode *LocMDNode = nullptr,
-                InlineAsm::AsmDialect AsmDialect = InlineAsm::AD_ATT) const;
+                InlineAsm::AsmDialect AsmDialect = InlineAsm::AD_ATT,
+                const MachineInstr *MI = nullptr) const;
 
   /// This method formats and emits the specified machine instruction that is an
   /// inline asm.

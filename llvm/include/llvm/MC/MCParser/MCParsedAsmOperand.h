@@ -91,6 +91,9 @@ public:
 
   /// dump - Print to the debug stream.
   virtual void dump() const;
+
+  /// MIp - Pointer to the machine instruction of the current inlineAsm.
+  const MachineInstr *MIp;
 };
 
 //===----------------------------------------------------------------------===//
