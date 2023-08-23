@@ -15,9 +15,6 @@ static constexpr TagNameItem tagData[] = {
     {STACK_ALIGN, "Tag_stack_align"},
     {ARCH, "Tag_arch"},
     {UNALIGNED_ACCESS, "Tag_unaligned_access"},
-    {PRIV_SPEC, "Tag_priv_spec"},
-    {PRIV_SPEC_MINOR, "Tag_priv_spec_minor"},
-    {PRIV_SPEC_REVISION, "Tag_priv_spec_revision"},
 };
 
 constexpr TagNameMap RISCVAttributeTags{tagData};

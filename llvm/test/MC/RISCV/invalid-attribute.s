@@ -22,14 +22,5 @@
 .attribute unaligned_access, "0"
 # CHECK: [[@LINE-1]]:30: error: expected numeric constant
 
-.attribute priv_spec, "2"
-# CHECK: [[@LINE-1]]:23: error: expected numeric constant
-
-.attribute priv_spec_minor, "0"
-# CHECK: [[@LINE-1]]:29: error: expected numeric constant
-
-.attribute priv_spec_revision, "0"
-# CHECK: [[@LINE-1]]:32: error: expected numeric constant
-
 .attribute arch, 30
 # CHECK: [[@LINE-1]]:18: error: expected string constant

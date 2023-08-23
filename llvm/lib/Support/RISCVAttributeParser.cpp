@@ -18,18 +18,6 @@ const RISCVAttributeParser::DisplayHandler
             &ELFAttributeParser::stringAttribute,
         },
         {
-            RISCVAttrs::PRIV_SPEC,
-            &ELFAttributeParser::integerAttribute,
-        },
-        {
-            RISCVAttrs::PRIV_SPEC_MINOR,
-            &ELFAttributeParser::integerAttribute,
-        },
-        {
-            RISCVAttrs::PRIV_SPEC_REVISION,
-            &ELFAttributeParser::integerAttribute,
-        },
-        {
             RISCVAttrs::STACK_ALIGN,
             &RISCVAttributeParser::stackAlign,
         },
