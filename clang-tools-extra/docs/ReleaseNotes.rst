@@ -216,6 +216,10 @@ Changes in existing checks
   <clang-tidy/checks/misc/redundant-expression>` check to ignore
   false-positives in unevaluated context (e.g., ``decltype``).
 
+- Improved :doc:`misc-static-assert
+  <clang-tidy/checks/misc/static-assert>` check to ignore false-positives when
+  referring to non-``constexpr`` variables in non-unevaluated context.
+
 - Improved :doc:`modernize-loop-convert
   <clang-tidy/checks/modernize/loop-convert>` to support for-loops with
   iterators initialized by free functions like ``begin``, ``end``, or ``size``.
