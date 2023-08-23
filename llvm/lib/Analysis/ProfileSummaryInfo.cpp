@@ -90,6 +90,11 @@ std::optional<uint64_t> ProfileSummaryInfo::getProfileCount(
       return TotalCount;
     return std::nullopt;
   }
+  if (auto *Called = Call.getCalledFunction()) {
+    auto CalledCount = Called->getEntryCount();
+    if (CalledCount && !CalledCount->getCount())
+      return 0;
+  }
   if (BFI)
     return BFI->getBlockProfileCount(Call.getParent(), AllowSynthetic);
   return std::nullopt;
