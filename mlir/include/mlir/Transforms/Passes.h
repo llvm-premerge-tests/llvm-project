@@ -19,6 +19,7 @@
 #include "mlir/Transforms/ViewOpGraph.h"
 #include "llvm/Support/Debug.h"
 #include <limits>
+#include <memory>
 
 namespace mlir {
 
@@ -104,6 +105,9 @@ createInlinerPass(llvm::StringMap<OpPassManager> opPipelines);
 std::unique_ptr<Pass>
 createInlinerPass(llvm::StringMap<OpPassManager> opPipelines,
                   std::function<void(OpPassManager &)> defaultPipelineBuilder);
+
+/// Creates an optimization pass to remove non-live values.
+std::unique_ptr<Pass> createRemoveNonLiveValuesPass();
 
 /// Creates a pass which performs sparse conditional constant propagation over
 /// nested operations.
