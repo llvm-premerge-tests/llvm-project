@@ -41,34 +41,34 @@ void testArraySubscripts(int *p, int **pp) { // expected-note{{change type of 'p
 // expected-warning@-2{{'pp' is an unsafe pointer used for buffer access}}
   foo(p[1],             // expected-note{{used in buffer access here}}
       pp[1][1],         // expected-note{{used in buffer access here}}
-                        // expected-warning@-1{{unsafe buffer access}}
+                        // expected-warning@-1{{unsafe buffer access through raw pointer parameter variable 'pp'}}
       1[1[pp]],         // expected-note{{used in buffer access here}}
-                        // expected-warning@-1{{unsafe buffer access}}
+                        // expected-warning@-1{{unsafe buffer access through raw pointer parameter variable 'pp'}}
       1[pp][1]          // expected-note{{used in buffer access here}}
-                        // expected-warning@-1{{unsafe buffer access}}
+                        // expected-warning@-1{{unsafe buffer access through raw pointer parameter variable 'pp'}}
       );
 
   if (p[3]) {           // expected-note{{used in buffer access here}}
     void * q = p;
 
-    foo(((int*)q)[10]); // expected-warning{{unsafe buffer access}}
+    foo(((int*)q)[10]); // expected-warning{{unsafe buffer access through raw pointer expression}}
   }
 
-  foo(((int*)voidPtrCall())[3], // expected-warning{{unsafe buffer access}}
-      3[(int*)voidPtrCall()],   // expected-warning{{unsafe buffer access}}
-      charPtrCall()[3],         // expected-warning{{unsafe buffer access}}
-      3[charPtrCall()]          // expected-warning{{unsafe buffer access}}
+  foo(((int*)voidPtrCall())[3], // expected-warning{{unsafe buffer access through raw pointer expression}}
+      3[(int*)voidPtrCall()],   // expected-warning{{unsafe buffer access through raw pointer expression}}
+      charPtrCall()[3],         // expected-warning{{unsafe buffer access through raw pointer return value of function 'charPtrCall'}}
+      3[charPtrCall()]          // expected-warning{{unsafe buffer access through raw pointer return value of function 'charPtrCall'}}
       );
 
     int a[10];          // expected-warning{{'a' is an unsafe buffer that does not perform bounds checks}}
     int b[10][10];      // expected-warning{{'b' is an unsafe buffer that does not perform bounds checks}}
 
   foo(a[1], 1[a],   // expected-note2{{used in buffer access here}}
-      b[3][4],      // expected-warning{{unsafe buffer access}}
+      b[3][4],      // expected-warning{{unsafe buffer access into raw array local variable 'b'}}
                     // expected-note@-1{{used in buffer access here}}
-      4[b][3],      // expected-warning{{unsafe buffer access}}
+      4[b][3],      // expected-warning{{unsafe buffer access into raw array local variable 'b'}}
                     // expected-note@-1{{used in buffer access here}}
-      4[3[b]]);     // expected-warning{{unsafe buffer access}}
+      4[3[b]]);     // expected-warning{{unsafe buffer access into raw array local variable 'b'}}
                     // expected-note@-1{{used in buffer access here}}
 
   // Not to warn when index is zero
@@ -108,7 +108,7 @@ void testQualifiedParameters(const int * p, const int * const q, const int a[10]
       q[1], 1[q], q[-1],    // expected-note3{{used in buffer access here}}
       a[1],                 // expected-note{{used in buffer access here}}     `a` is of pointer type
       b[1][2]               // expected-note{{used in buffer access here}}     `b[1]` is of array type
-                            // expected-warning@-1{{unsafe buffer access}}
+                            // expected-warning@-1{{unsafe buffer access into raw array parameter variable 'b'}}
       );
 }
 
@@ -127,26 +127,26 @@ T_t funRetT();
 T_t * funRetTStar();
 
 void testStructMembers(struct T * sp, struct T s, T_t * sp2, T_t s2) {
-  foo(sp->a[1],     // expected-warning{{unsafe buffer access}}
-      sp->b[1],     // expected-warning{{unsafe buffer access}}
-      sp->c.a[1],   // expected-warning{{unsafe buffer access}}
-      sp->c.b[1],   // expected-warning{{unsafe buffer access}}
-      s.a[1],       // expected-warning{{unsafe buffer access}}
-      s.b[1],       // expected-warning{{unsafe buffer access}}
-      s.c.a[1],     // expected-warning{{unsafe buffer access}}
-      s.c.b[1],     // expected-warning{{unsafe buffer access}}
-      sp2->a[1],    // expected-warning{{unsafe buffer access}}
-      sp2->b[1],    // expected-warning{{unsafe buffer access}}
-      sp2->c.a[1],  // expected-warning{{unsafe buffer access}}
-      sp2->c.b[1],  // expected-warning{{unsafe buffer access}}
-      s2.a[1],      // expected-warning{{unsafe buffer access}}
-      s2.b[1],      // expected-warning{{unsafe buffer access}}
-      s2.c.a[1],           // expected-warning{{unsafe buffer access}}
-      s2.c.b[1],           // expected-warning{{unsafe buffer access}}
-      funRetT().a[1],      // expected-warning{{unsafe buffer access}}
-      funRetT().b[1],      // expected-warning{{unsafe buffer access}}
-      funRetTStar()->a[1], // expected-warning{{unsafe buffer access}}
-      funRetTStar()->b[1]  // expected-warning{{unsafe buffer access}}
+  foo(sp->a[1],     // expected-warning{{unsafe buffer access into raw array member variable 'a'}}
+      sp->b[1],     // expected-warning{{unsafe buffer access through raw pointer member variable 'b}}
+      sp->c.a[1],   // expected-warning{{unsafe buffer access into raw array member variable 'a'}}
+      sp->c.b[1],   // expected-warning{{unsafe buffer access through raw pointer member variable 'b'}}
+      s.a[1],       // expected-warning{{unsafe buffer access into raw array member variable 'a'}}
+      s.b[1],       // expected-warning{{unsafe buffer access through raw pointer member variable 'b'}}
+      s.c.a[1],     // expected-warning{{unsafe buffer access into raw array member variable 'a'}}
+      s.c.b[1],     // expected-warning{{unsafe buffer access through raw pointer member variable 'b'}}
+      sp2->a[1],    // expected-warning{{unsafe buffer access into raw array member variable 'a'}}
+      sp2->b[1],    // expected-warning{{unsafe buffer access through raw pointer member variable 'b'}}
+      sp2->c.a[1],  // expected-warning{{unsafe buffer access into raw array member variable 'a'}}
+      sp2->c.b[1],  // expected-warning{{nsafe buffer access through raw pointer member variable 'b'}}
+      s2.a[1],      // expected-warning{{unsafe buffer access into raw array member variable 'a'}}
+      s2.b[1],      // expected-warning{{unsafe buffer access through raw pointer member variable 'b'}}
+      s2.c.a[1],           // expected-warning{{unsafe buffer access into raw array member variable 'a'}}
+      s2.c.b[1],           // expected-warning{{unsafe buffer access through raw pointer member variable 'b'}}
+      funRetT().a[1],      // expected-warning{{unsafe buffer access into raw array member variable 'a'}}
+      funRetT().b[1],      // expected-warning{{unsafe buffer access through raw pointer member variable 'b'}}
+      funRetTStar()->a[1], // expected-warning{{unsafe buffer access into raw array member variable 'a'}}
+      funRetTStar()->b[1]  // expected-warning{{unsafe buffer access through raw pointer member variable 'b'}}
       );
 }
 
@@ -209,9 +209,9 @@ void testTypedefs(T_ptr_t p) {
   // expected-warning@-1{{'p' is an unsafe pointer used for buffer access}}
   foo(p[1],       // expected-note{{used in buffer access here}}
       p[1].a[1],  // expected-note{{used in buffer access here}}
-                  // expected-warning@-1{{unsafe buffer access}}
+                  // expected-warning@-1{{unsafe buffer access into raw array member variable 'a'}}
       p[1].b[1]   // expected-note{{used in buffer access here}}
-                  // expected-warning@-1{{unsafe buffer access}}
+                  // expected-warning@-1{{unsafe buffer access through raw pointer member variable 'b'}}
       );
 }
 
@@ -238,26 +238,25 @@ void testPointerArithmetic(int * p, const int **q, T * x) {
   auto y = &a[0]; // expected-warning{{'y' is an unsafe pointer used for buffer access}}
 
   foo(p + 1, 1 + p, p - 1,      // expected-note3{{used in pointer arithmetic here}}
-      *q + 1, 1 + *q, *q - 1,   // expected-warning3{{unsafe pointer arithmetic}}
+      *q + 1, 1 + *q, *q - 1,   // expected-warning3{{unsafe arithmetic over raw pointer expression}}
       x + 1, 1 + x, x - 1,      // expected-note3{{used in pointer arithmetic here}}
       y + 1, 1 + y, y - 1,      // expected-note3{{used in pointer arithmetic here}}
-      getPtr() + 1, 1 + getPtr(), getPtr() - 1 // expected-warning3{{unsafe pointer arithmetic}}
+      getPtr() + 1, 1 + getPtr(), getPtr() - 1 // expected-warning3{{unsafe arithmetic over raw pointer return value of function 'getPtr'}}
       );
 
   p += 1;  p -= 1;  // expected-note2{{used in pointer arithmetic here}}
-  *q += 1; *q -= 1; // expected-warning2{{unsafe pointer arithmetic}}
+  *q += 1; *q -= 1; // expected-warning2{{unsafe arithmetic over raw pointer expression}}
   y += 1; y -= 1;   // expected-note2{{used in pointer arithmetic here}}
   x += 1; x -= 1;   // expected-note2{{used in pointer arithmetic here}}
 }
 
 void testTemplate(int * p) {
   int *a[10];
-  foo(f(p, &p, a, a)[1]); // expected-warning{{unsafe buffer access}}
-                          // FIXME: expected note@-1{{in instantiation of function template specialization 'f<int *, 10>' requested here}}
+  foo(f(p, &p, a, a)[1]); // expected-warning{{unsafe buffer access through raw pointer return value of function 'f<int *, 10>'}}
 
   const int **q = const_cast<const int **>(&p);
 
-  testPointerArithmetic(p, q, p); //FIXME: expected note{{in instantiation of}}
+  testPointerArithmetic(p, q, p);
 }
 
 void testPointerToMember() {
@@ -270,7 +269,7 @@ void testPointerToMember() {
   int * S_t::* q = &S_t::y;
 
   foo(S.*p,
-      (S.*q)[1]);  // expected-warning{{unsafe buffer access}}
+      (S.*q)[1]);  // expected-warning{{unsafe buffer access through raw pointer expression}}
 }
 
 // test that nested callable definitions are scanned only once
@@ -362,9 +361,9 @@ int testArrayAccesses(int n) {
     int d = cArr[0][0];
     foo(cArr[0][0]);
     foo(cArr[1][2]);        // expected-note{{used in buffer access here}}
-                            // expected-warning@-1{{unsafe buffer access}}
+                            // expected-warning@-1{{unsafe buffer access into raw array local variable 'cArr'}}
     auto cPtr = cArr[1][2]; // expected-note{{used in buffer access here}}
-                            // expected-warning@-1{{unsafe buffer access}}
+                            // expected-warning@-1{{unsafe buffer access into raw array local variable 'cArr'}}
     foo(cPtr);
 
     // Typdefs
@@ -372,7 +371,7 @@ int testArrayAccesses(int n) {
     const A tArr = {4, 5, 6};
     // expected-warning@-1{{'tArr' is an unsafe buffer that does not perform bounds checks}}
     foo(tArr[0], tArr[1]);  // expected-note{{used in buffer access here}}
-    return cArr[0][1];      // expected-warning{{unsafe buffer access}}
+    return cArr[0][1];      // expected-warning{{unsafe buffer access into raw array local variable 'cArr'}}
 }
 
 void testArrayPtrArithmetic(int x[]) { // expected-warning{{'x' is an unsafe pointer used for buffer access}}

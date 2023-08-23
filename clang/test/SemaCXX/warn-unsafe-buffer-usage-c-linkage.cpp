@@ -2,7 +2,7 @@
 
 extern "C" {
 void foo(int *ptr) {
-  ptr[5] = 10;  // expected-warning{{unsafe buffer access}}
+  ptr[5] = 10;  // expected-warning{{unsafe buffer access through raw pointer parameter variable 'ptr'}}
 }
 
 void bar(int *ptr);
@@ -13,12 +13,12 @@ struct c_struct {
 }
 
 void bar(int *ptr) {
-  ptr[5] = 10;  // expected-warning{{unsafe buffer access}}
+  ptr[5] = 10;  // expected-warning{{unsafe buffer access through raw pointer parameter variable 'ptr'}}
 }
 
 void call_foo(int *p) {
   foo(p);
   struct c_struct str;
-  str.name[7] = 9;  // expected-warning{{unsafe buffer access}}
+  str.name[7] = 9;  // expected-warning{{unsafe buffer access through raw pointer member variable 'name'}}
   bar(p);
 }

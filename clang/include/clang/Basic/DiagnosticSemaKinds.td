@@ -11902,9 +11902,27 @@ def warn_unsafe_buffer_variable : Warning<
   "does not perform bounds checks}1">,
   InGroup<UnsafeBufferUsage>, DefaultIgnore;
 def warn_unsafe_buffer_operation : Warning<
-  "%select{unsafe pointer operation|unsafe pointer arithmetic|"
-  "unsafe buffer access|function introduces unsafe buffer manipulation}0">,
-  InGroup<UnsafeBufferUsage>, DefaultIgnore;
+  "%select{"
+    "unsafe buffer operation in|"
+    "unsafe arithmetic over|"
+    "unsafe buffer access through|"
+    "unsafe buffer access into|"
+    "function call introduces unsafe buffer manipulation over"
+  "}0%select{"
+    "|" // Either not captured or unclear.
+    " captured"
+  "}1 %select{|raw pointer |raw array }2%select{"
+    "expression|"
+    "variable|"
+    "local variable|"
+    "parameter variable|"
+    "static local variable|"
+    "global variable|"
+    "member variable|"
+    "static member variable|"
+    "structured binding|"
+    "return value of function"
+  "}3%select{| %5}4">, InGroup<UnsafeBufferUsage>, DefaultIgnore;
 def note_unsafe_buffer_operation : Note<
   "used%select{| in pointer arithmetic| in buffer access}0 here">;
 def note_unsafe_buffer_variable_fixit_group : Note<

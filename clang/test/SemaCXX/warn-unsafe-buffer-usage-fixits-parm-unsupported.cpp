@@ -113,12 +113,15 @@ void fn_with_try_block(int* p)    // expected-warning{{'p' is an unsafe pointer 
 
 // The following two unsupported cases are not specific to
 // parm-fixits. Adding them here in case they get forgotten.
-void isArrayDecayToPointerUPC(int a[][10], int (*b)[10]) {
-// expected-warning@-1{{'a' is an unsafe pointer used for buffer access}}
-// expected-warning@-2{{'b' is an unsafe pointer used for buffer access}}
+void isArrayDecayToPointerUPC(int a[][10], int (*b)[10]) { // \
+  // expected-warning{{'a' is an unsafe pointer used for buffer access}} \
+  // expected-warning{{'b' is an unsafe pointer used for buffer access}}
   int tmp;
 
-  tmp = a[5][5] + b[5][5];  // expected-warning2{{unsafe buffer access}}  expected-note2{{used in buffer access here}}
+  tmp = a[5][5] + b[5][5];  // \
+  // expected-warning{{unsafe buffer access into raw array parameter variable 'a'}} \
+  // expected-warning{{unsafe buffer access into raw array parameter variable 'b'}} \
+  // expected-note2{{used in buffer access here}}
 }
 
 // parameter having default values:

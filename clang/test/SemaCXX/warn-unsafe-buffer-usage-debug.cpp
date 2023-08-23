@@ -95,6 +95,6 @@ S f() { return S{new int[4]}; }
 
 void test_struct_claim_use() {
   auto [x] = f();
-  x[6] = 8;  // expected-warning{{unsafe buffer access}}
-  x++;  // expected-warning{{unsafe pointer arithmetic}}
+  x[6] = 8;  // expected-warning{{unsafe buffer access through raw pointer structured binding 'x'}}
+  x++;  // expected-warning{{unsafe arithmetic over raw pointer structured binding 'x'}}
 }

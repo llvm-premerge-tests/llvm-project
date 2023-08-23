@@ -56,11 +56,11 @@ void foo(int *x) { // \
 
   x += 5;  // \
   // ON-note    {{used in pointer arithmetic here}} \
-  // OFF-warning{{unsafe pointer arithmetic}} \
+  // OFF-warning{{unsafe arithmetic over raw pointer parameter variable 'x'}} \
   // OFF-note   {{pass -fsafe-buffer-usage-suggestions to receive code hardening suggestions}}
 
   bar(x);  // \
-  // ON-warning{{function introduces unsafe buffer manipulation}} \
-  // OFF-warning{{function introduces unsafe buffer manipulation}} \
+  // ON-warning{{function call introduces unsafe buffer manipulation over expression}} \
+  // OFF-warning{{function call introduces unsafe buffer manipulation over expression}} \
   // OFF-note   {{pass -fsafe-buffer-usage-suggestions to receive code hardening suggestions}}
 }

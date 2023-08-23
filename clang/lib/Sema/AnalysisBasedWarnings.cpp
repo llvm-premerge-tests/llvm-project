@@ -2210,57 +2210,259 @@ class UnsafeBufferUsageReporter : public UnsafeBufferUsageHandler {
     return AllVars;
   }
 
+  // These enums map to diagnostic %select directives.
+  enum class OperationKindTy: unsigned {
+    AnyOperation = 0,
+    PointerArithmetic = 1,
+    BufferAccessThroughPointer = 2,
+    BufferAccessIntoArray = 3,
+    CallToUnsafeFunction = 4
+  };
+
+  enum class IsCapturedTy: unsigned {
+    NoOrUnclear = 0,
+    Yes = 1
+  };
+
+  enum class LayoutKindTy: unsigned {
+    Unclear = 0,
+    Pointer = 1,
+    Array = 2,
+  };
+
+  enum class StorageKindTy: unsigned {
+    AnyExpression = 0,
+    AnyVariable = 1,
+    LocalVariable = 2,
+    ParameterVariable = 3,
+    StaticLocalVariable = 4,
+    GlobalVariable = 5,
+    MemberVariable = 6,
+    StaticMemberVariable = 7,
+    StructuredBinding = 8,
+    FunctionReturnValue = 9
+  };
+
+  struct OperandStorageWarningInfo {
+    IsCapturedTy IsCaptured;
+    StorageKindTy StorageKind;
+    const NamedDecl *Object;
+  };
+
+  struct OperandWarningInfo {
+    LayoutKindTy LayoutKind;
+    OperandStorageWarningInfo StorageInfo;
+    SourceLocation Loc;
+    SourceRange Range;
+  };
+
+  struct OperationWarningInfo {
+    OperationKindTy OperationKind;
+    OperandWarningInfo OperandInfo;
+  };
+
+  StorageKindTy describeVariableStorageKind(const VarDecl *VD) {
+    if (VD->isLocalVarDecl())
+      return StorageKindTy::LocalVariable;
+
+    if (isa<ParmVarDecl>(VD))
+      return StorageKindTy::ParameterVariable;
+
+    if (VD->isStaticLocal())
+      return StorageKindTy::StaticLocalVariable;
+
+    if (VD->hasGlobalStorage())
+      return StorageKindTy::GlobalVariable;
+
+    // FIXME: Implement more cases?
+    // What about __block variables?
+    // Thread locals?
+    return StorageKindTy::AnyVariable;
+  }
+
+  OperandStorageWarningInfo dontDescribeOperandStorage() {
+    return {IsCapturedTy::NoOrUnclear /*unclear*/, StorageKindTy::AnyExpression,
+            nullptr /*no object declaration*/};
+  }
+
+  OperandStorageWarningInfo describeOperandStorage(const Expr *Operand) {
+    if (const auto *DRE = dyn_cast<DeclRefExpr>(Operand)) {
+      const ValueDecl *ObjD = DRE->getDecl();
+      IsCapturedTy IsCaptured = DRE->refersToEnclosingVariableOrCapture()
+                                    ? IsCapturedTy::Yes
+                                    : IsCapturedTy::NoOrUnclear /*no*/;
+
+      if (const auto *VD = dyn_cast<VarDecl>(ObjD))
+        return {IsCaptured, describeVariableStorageKind(VD), VD};
+
+      if (const auto *BD = dyn_cast<BindingDecl>(ObjD))
+        return {IsCaptured, StorageKindTy::StructuredBinding, BD};
+
+      // FIXME: Are there other storage kinds that we don't support?
+    }
+
+    if (const auto *ME = dyn_cast<MemberExpr>(Operand)) {
+      const ValueDecl *MemberD = ME->getMemberDecl();
+
+      if (const auto *VD = dyn_cast<VarDecl>(MemberD)) {
+        assert(VD->isStaticDataMember() &&
+               "Non-static member VarDecl!");
+        return {IsCapturedTy::NoOrUnclear /*unclear (FIXME!)*/,
+                StorageKindTy::StaticMemberVariable, VD};
+      }
+
+      if (const auto *FD = dyn_cast<FieldDecl>(MemberD))
+        return {IsCapturedTy::NoOrUnclear /*unclear (FIXME!)*/,
+                StorageKindTy::MemberVariable, FD};
+
+      // FIXME: Documentation says that the other two cases are:
+      //   * a CXXMethodDecl (producing pointer-to-member-method) and
+      //   * an EnumConstantDecl (enum value).
+      // They probably can't appear here, make this an assert?
+      // Are we sure there aren't other cases?
+    }
+
+    if (const auto *CE = dyn_cast<CallExpr>(Operand)) {
+      const auto *ND = dyn_cast_or_null<NamedDecl>(CE->getCalleeDecl());
+      return {IsCapturedTy::NoOrUnclear /*no*/,
+              StorageKindTy::FunctionReturnValue, ND};
+    }
+
+    // Multi-dimensional case.
+    // FIXME: Say it out loud, and then explain if it's array of arrays or
+    // array of pointers etc.
+    if (const auto *ASE = dyn_cast<ArraySubscriptExpr>(Operand)) {
+      return describeOperandStorage(ASE->getBase()->IgnoreParenImpCasts());
+    }
+
+    // Default behavior: say nothing.
+    return dontDescribeOperandStorage();
+  }
+
+  OperandWarningInfo dontDescribeOperand(const Stmt *Operation) {
+    return {
+      LayoutKindTy::Unclear,
+      dontDescribeOperandStorage(),
+      Operation->getBeginLoc(),
+      Operation->getSourceRange()
+    };
+  }
+
+  OperandWarningInfo describeOperand(const Expr *Operand) {
+    Operand = Operand->IgnoreParenImpCasts();
+
+    LayoutKindTy LayoutKind = Operand->getType()->isAnyPointerType()
+                                  ? LayoutKindTy::Pointer
+                                  : LayoutKindTy::Array;
+    return {
+      LayoutKind,
+      describeOperandStorage(Operand),
+      Operand->getBeginLoc(),
+      Operand->getSourceRange()
+    };
+  }
+
+  OperationWarningInfo describeOperation(const Stmt *Operation) {
+    if (const auto *ASE = dyn_cast<ArraySubscriptExpr>(Operation)) {
+      OperandWarningInfo OpI = describeOperand(ASE->getBase());
+      switch (OpI.LayoutKind) {
+      case LayoutKindTy::Unclear:
+        llvm_unreachable("Operand layout actively described as unclear!");
+      case LayoutKindTy::Pointer:
+        return {OperationKindTy::BufferAccessThroughPointer, OpI};
+      case LayoutKindTy::Array:
+        return {OperationKindTy::BufferAccessIntoArray, OpI};
+      }
+    }
+
+    if (const auto *BO = dyn_cast<BinaryOperator>(Operation)) {
+      BinaryOperator::Opcode Op = BO->getOpcode();
+      if (Op == BO_Add || Op == BO_AddAssign || Op == BO_Sub ||
+          Op == BO_SubAssign) {
+        if (BO->getRHS()->getType()->isIntegerType()) {
+          return {OperationKindTy::PointerArithmetic,
+                  describeOperand(BO->getLHS())};
+        } else {
+          return {OperationKindTy::PointerArithmetic,
+                  describeOperand(BO->getRHS())};
+        }
+      }
+    }
+
+    if (const auto *UO = dyn_cast<UnaryOperator>(Operation)) {
+      UnaryOperator::Opcode Op = UO->getOpcode();
+      if (Op == UO_PreInc || Op == UO_PreDec || Op == UO_PostInc ||
+          Op == UO_PostDec) {
+        return {OperationKindTy::PointerArithmetic,
+                describeOperand(UO->getSubExpr())};
+      }
+    }
+
+    if (isa<CallExpr>(Operation)) {
+      return {OperationKindTy::CallToUnsafeFunction,
+              dontDescribeOperand(Operation)};
+    }
+
+    // Every time this is reached, it means we needed to do better above.
+    return {OperationKindTy::AnyOperation, dontDescribeOperand(Operation)};
+  }
+
 public:
   UnsafeBufferUsageReporter(Sema &S, bool SuggestSuggestions)
     : S(S), SuggestSuggestions(SuggestSuggestions) {}
 
   void handleUnsafeOperation(const Stmt *Operation,
                              bool IsRelatedToDecl) override {
-    SourceLocation Loc;
-    SourceRange Range;
-    unsigned MsgParam = 0;
-    if (const auto *ASE = dyn_cast<ArraySubscriptExpr>(Operation)) {
-      Loc = ASE->getBase()->getExprLoc();
-      Range = ASE->getBase()->getSourceRange();
-      MsgParam = 2;
-    } else if (const auto *BO = dyn_cast<BinaryOperator>(Operation)) {
-      BinaryOperator::Opcode Op = BO->getOpcode();
-      if (Op == BO_Add || Op == BO_AddAssign || Op == BO_Sub ||
-          Op == BO_SubAssign) {
-        if (BO->getRHS()->getType()->isIntegerType()) {
-          Loc = BO->getLHS()->getExprLoc();
-          Range = BO->getLHS()->getSourceRange();
-        } else {
-          Loc = BO->getRHS()->getExprLoc();
-          Range = BO->getRHS()->getSourceRange();
-        }
-        MsgParam = 1;
-      }
-    } else if (const auto *UO = dyn_cast<UnaryOperator>(Operation)) {
-      UnaryOperator::Opcode Op = UO->getOpcode();
-      if (Op == UO_PreInc || Op == UO_PreDec || Op == UO_PostInc ||
-          Op == UO_PostDec) {
-        Loc = UO->getSubExpr()->getExprLoc();
-        Range = UO->getSubExpr()->getSourceRange();
-        MsgParam = 1;
-      }
-    } else {
-      if (isa<CallExpr>(Operation)) {
-        // note_unsafe_buffer_operation doesn't have this mode yet.
-        assert(!IsRelatedToDecl && "Not implemented yet!");
-        MsgParam = 3;
-      }
-      Loc = Operation->getBeginLoc();
-      Range = Operation->getSourceRange();
-    }
+    OperationWarningInfo Info = describeOperation(Operation);
+
     if (IsRelatedToDecl) {
       assert(!SuggestSuggestions &&
              "Variables blamed for unsafe buffer usage without suggestions!");
-      S.Diag(Loc, diag::note_unsafe_buffer_operation) << MsgParam << Range;
+      assert(Info.OperationKind != OperationKindTy::CallToUnsafeFunction &&
+             "Not implemented yet!");
+
+      unsigned OperationKind;
+      switch (Info.OperationKind) {
+        case OperationKindTy::AnyOperation:
+          OperationKind = 0;
+          break;
+        case OperationKindTy::PointerArithmetic:
+          OperationKind = 1;
+          break;
+        case OperationKindTy::BufferAccessThroughPointer:
+          OperationKind = 2;
+          break;
+        case OperationKindTy::BufferAccessIntoArray:
+          OperationKind = 2; // We don't have a separate mode for this.
+          break;
+        case OperationKindTy::CallToUnsafeFunction:
+          llvm_unreachable("Not implemented yet!");
+      }
+
+      S.Diag(Info.OperandInfo.Loc, diag::note_unsafe_buffer_operation)
+          << OperationKind << Info.OperandInfo.Range;
     } else {
-      S.Diag(Loc, diag::warn_unsafe_buffer_operation) << MsgParam << Range;
+      // Introduce a scope so that the warning got emitted first.
+      {
+        auto D =
+            S.Diag(Info.OperandInfo.Loc, diag::warn_unsafe_buffer_operation);
+        D << (unsigned)Info.OperationKind
+          << (unsigned)Info.OperandInfo.StorageInfo.IsCaptured
+          << (unsigned)Info.OperandInfo.LayoutKind
+          << (unsigned)Info.OperandInfo.StorageInfo.StorageKind;
+        if (Info.OperandInfo.StorageInfo.Object) {
+          D << 1 /*provide the object name*/
+            << Info.OperandInfo.StorageInfo.Object;
+
+        } else {
+          D << 0 /*don't provide object name*/;
+        }
+        D << Info.OperandInfo.Range;
+      }
+
       if (SuggestSuggestions) {
-        S.Diag(Loc, diag::note_safe_buffer_usage_suggestions_disabled);
+        S.Diag(Info.OperandInfo.Loc,
+               diag::note_safe_buffer_usage_suggestions_disabled);
       }
     }
   }
