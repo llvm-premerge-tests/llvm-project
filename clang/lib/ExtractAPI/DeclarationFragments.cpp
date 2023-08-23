@@ -690,7 +690,7 @@ DeclarationFragmentsBuilder::getFragmentsForSpecialCXXMethod(
   std::string Name;
   if (isa<CXXConstructorDecl>(Method)) {
     Name = Method->getNameAsString();
-    if (dyn_cast<CXXConstructorDecl>(Method)->isExplicit())
+    if (cast<CXXConstructorDecl>(Method)->isExplicit())
       Fragments.append("explicit", DeclarationFragments::FragmentKind::Keyword)
           .appendSpace();
   } else if (isa<CXXDestructorDecl>(Method))
