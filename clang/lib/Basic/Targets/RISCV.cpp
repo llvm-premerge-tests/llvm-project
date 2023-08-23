@@ -346,3 +346,6 @@ void RISCVTargetInfo::fillValidTuneCPUList(
   bool Is64Bit = getTriple().isArch64Bit();
   llvm::RISCV::fillValidTuneCPUArchList(Values, Is64Bit);
 }
+unsigned RISCVTargetInfo::multiVersionSortPriority(StringRef Name) const {
+  return llvm::RISCVISAInfo::getExtensionSerial(Name);
+}
