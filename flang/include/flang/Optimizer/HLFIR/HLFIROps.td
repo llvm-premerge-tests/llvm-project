@@ -319,13 +319,15 @@ def hlfir_ParentComponentOp : hlfir_Op<"parent_comp", [AttrSizedOperandSegments,
   let hasVerifier = 1;
 }
 
-def hlfir_ConcatOp : hlfir_Op<"concat", []> {
+// Allocation effect is because this creates a hlfir.expr, which must be
+// destroyed (only once)
+def hlfir_ConcatOp : hlfir_Op<"concat", [MemoryEffects<[MemAlloc]>]> {
   let summary = "concatenate characters";
   let description = [{
     Concatenate two or more character strings of a same character kind.
   }];
 
-  let arguments = (ins Variadic<AnyScalarCharacterEntity>:$strings,
+  let arguments = (ins Arg<Variadic<AnyScalarCharacterEntity>, "", [MemRead]>:$strings,
                    AnyIntegerType:$length);
 
   let results = (outs AnyScalarCharacterExpr);
@@ -340,7 +342,9 @@ def hlfir_ConcatOp : hlfir_Op<"concat", []> {
   let hasVerifier = 1;
 }
 
-def hlfir_AllOp : hlfir_Op<"all", []> {
+// Allocation effect is because this might create a hlfir.expr, which must be
+// destroyed (only once)
+def hlfir_AllOp : hlfir_Op<"all", [MemoryEffects<[MemAlloc]>]> {
   let summary = "ALL transformational intrinsic";
   let description = [{
     Takes a logical array MASK as argument, optionally along a particular dimension,
@@ -348,7 +352,7 @@ def hlfir_AllOp : hlfir_Op<"all", []> {
   }];
 
   let arguments = (ins
-    AnyFortranLogicalArrayObject:$mask,
+    Arg<AnyFortranLogicalArrayObject, "", [MemRead]>:$mask,
     Optional<AnyIntegerType>:$dim
   );
 
@@ -361,7 +365,9 @@ def hlfir_AllOp : hlfir_Op<"all", []> {
   let hasVerifier = 1;
 }
 
-def hlfir_AnyOp : hlfir_Op<"any", []> {
+// Allocation effect is because this might create a hlfir.expr, which must be
+// destroyed (only once)
+def hlfir_AnyOp : hlfir_Op<"any", [MemoryEffects<[MemAlloc]>]> {
   let summary = "ANY transformational intrinsic";
   let description = [{
     Takes a logical array MASK as argument, optionally along a particular dimension,
@@ -369,7 +375,7 @@ def hlfir_AnyOp : hlfir_Op<"any", []> {
   }];
 
   let arguments = (ins
-    AnyFortranLogicalArrayObject:$mask,
+    Arg<AnyFortranLogicalArrayObject, "", [MemRead]>:$mask,
     Optional<AnyIntegerType>:$dim
   );
 
@@ -382,14 +388,16 @@ def hlfir_AnyOp : hlfir_Op<"any", []> {
   let hasVerifier = 1;
 }
 
-def hlfir_CountOp : hlfir_Op<"count", [AttrSizedOperandSegments]> {
+// Allocation effect is because this might create a hlfir.expr, which must be
+// destroyed (only once)
+def hlfir_CountOp : hlfir_Op<"count", [AttrSizedOperandSegments, MemoryEffects<[MemAlloc]>]> {
   let summary = "COUNT transformational intrinsic";
   let description = [{
     Takes a logical and counts the number of true values.
   }];
 
   let arguments = (ins
-    AnyFortranLogicalArrayObject:$mask,
+    Arg<AnyFortranLogicalArrayObject, "", [MemRead]>:$mask,
     Optional<AnyIntegerType>:$dim,
     Optional<AnyIntegerType>:$kind
   );
@@ -403,9 +411,11 @@ def hlfir_CountOp : hlfir_Op<"count", [AttrSizedOperandSegments]> {
   let hasVerifier = 1;
 }
 
-
+// Allocation effect is because this might create a hlfir.expr, which must be
+// destroyed (only once)
 def hlfir_ProductOp : hlfir_Op<"product", [AttrSizedOperandSegments,
-    DeclareOpInterfaceMethods<ArithFastMathInterface>]> {
+    DeclareOpInterfaceMethods<ArithFastMathInterface>,
+    MemoryEffects<[MemAlloc]>]> {
   let summary = "PRODUCT transformational intrinsic";
   let description = [{
     Multiplies the elements of an array, optionally along a particular dimension,
@@ -413,9 +423,9 @@ def hlfir_ProductOp : hlfir_Op<"product", [AttrSizedOperandSegments,
   }];
 
   let arguments = (ins
-    AnyFortranNumericalArrayObject:$array,
+    Arg<AnyFortranNumericalArrayObject, "", [MemRead]>:$array,
     Optional<AnyIntegerType>:$dim,
-    Optional<AnyFortranLogicalOrI1ArrayObject>:$mask,
+    Arg<Optional<AnyFortranLogicalOrI1ArrayObject>, "", [MemRead]>:$mask,
     DefaultValuedAttr<Arith_FastMathAttr,
                       "::mlir::arith::FastMathFlags::none">:$fastmath
   );
@@ -429,14 +439,16 @@ def hlfir_ProductOp : hlfir_Op<"product", [AttrSizedOperandSegments,
   let hasVerifier = 1;
 }
 
-def hlfir_SetLengthOp : hlfir_Op<"set_length", []> {
+// Allocation effect is because this might create a hlfir.expr, which must be
+// destroyed (only once)
+def hlfir_SetLengthOp : hlfir_Op<"set_length", [MemoryEffects<[MemAlloc]>]> {
   let summary = "change the length of a character entity";
   let description = [{
     Change the length of character entity. This trims or pads the
     character argument according to the new length.
   }];
 
-  let arguments = (ins AnyScalarCharacterEntity:$string,
+  let arguments = (ins Arg<AnyScalarCharacterEntity, "", [MemRead]>:$string,
                    AnyIntegerType:$length);
 
   let results = (outs AnyScalarCharacterExpr);
@@ -467,8 +479,11 @@ def hlfir_GetLengthOp : hlfir_Op<"get_length", [Pure]> {
   let hasCanonicalizeMethod = 1;
 }
 
+// Allocation effect is because this might create a hlfir.expr, which must be
+// destroyed (only once)
 def hlfir_SumOp : hlfir_Op<"sum", [AttrSizedOperandSegments,
-    DeclareOpInterfaceMethods<ArithFastMathInterface>]> {
+    DeclareOpInterfaceMethods<ArithFastMathInterface>,
+    MemoryEffects<[MemAlloc]>]> {
   let summary = "SUM transformational intrinsic";
   let description = [{
     Sums the elements of an array, optionally along a particular dimension,
@@ -476,7 +491,7 @@ def hlfir_SumOp : hlfir_Op<"sum", [AttrSizedOperandSegments,
   }];
 
   let arguments = (ins
-    AnyFortranNumericalArrayObject:$array,
+    Arg<AnyFortranNumericalArrayObject, "", [MemRead]>:$array,
     Optional<AnyIntegerType>:$dim,
     Optional<AnyFortranLogicalOrI1ArrayObject>:$mask,
     DefaultValuedAttr<Arith_FastMathAttr,
@@ -492,16 +507,19 @@ def hlfir_SumOp : hlfir_Op<"sum", [AttrSizedOperandSegments,
   let hasVerifier = 1;
 }
 
+// Allocation effect is because this might create a hlfir.expr, which must be
+// destroyed (only once)
 def hlfir_DotProductOp : hlfir_Op<"dot_product",
-    [DeclareOpInterfaceMethods<ArithFastMathInterface>]> {
+    [DeclareOpInterfaceMethods<ArithFastMathInterface>,
+    MemoryEffects<[MemAlloc]>]> {
   let summary = "DOT_PRODUCT transformational intrinsic";
   let description = [{
     Dot product of two vectors
   }];
 
   let arguments = (ins
-    AnyFortranNumericalOrLogicalArrayObject:$lhs,
-    AnyFortranNumericalOrLogicalArrayObject:$rhs,
+    Arg<AnyFortranNumericalOrLogicalArrayObject, "", [MemRead]>:$lhs,
+    Arg<AnyFortranNumericalOrLogicalArrayObject, "", [MemRead]>:$rhs,
     DefaultValuedAttr<Arith_FastMathAttr,
                       "::mlir::arith::FastMathFlags::none">:$fastmath
   );
@@ -515,16 +533,18 @@ def hlfir_DotProductOp : hlfir_Op<"dot_product",
   let hasVerifier = 1;
 }
 
+// Allocation effect is because this creates a hlfir.expr, which must be
+// destroyed (only once)
 def hlfir_MatmulOp : hlfir_Op<"matmul",
-    [DeclareOpInterfaceMethods<ArithFastMathInterface>]> {
+    [DeclareOpInterfaceMethods<ArithFastMathInterface>, MemoryEffects<[MemAlloc]>]> {
   let summary = "MATMUL transformational intrinsic";
   let description = [{
     Matrix multiplication
   }];
 
   let arguments = (ins
-    AnyFortranNumericalOrLogicalArrayObject:$lhs,
-    AnyFortranNumericalOrLogicalArrayObject:$rhs,
+    Arg<AnyFortranNumericalOrLogicalArrayObject, "", [MemRead]>:$lhs,
+    Arg<AnyFortranNumericalOrLogicalArrayObject, "", [MemRead]>:$rhs,
     DefaultValuedAttr<Arith_FastMathAttr,
                       "::mlir::arith::FastMathFlags::none">:$fastmath
   );
@@ -541,13 +561,15 @@ def hlfir_MatmulOp : hlfir_Op<"matmul",
   let hasVerifier = 1;
 }
 
-def hlfir_TransposeOp : hlfir_Op<"transpose", []> {
+// Allocation effect is because this creates a hlfir.expr, which must be
+// destroyed (only once)
+def hlfir_TransposeOp : hlfir_Op<"transpose", [MemoryEffects<[MemAlloc]>]> {
   let summary = "TRANSPOSE transformational intrinsic";
   let description = [{
     Transpose a rank 2 array
   }];
 
-  let arguments = (ins AnyFortranArrayObject:$array);
+  let arguments = (ins Arg<AnyFortranArrayObject, "", [MemRead]>:$array);
 
   let results = (outs hlfir_ExprType);
 
@@ -558,16 +580,19 @@ def hlfir_TransposeOp : hlfir_Op<"transpose", []> {
   let hasVerifier = 1;
 }
 
+// Allocation effect is because this creates a hlfir.expr, which must be
+// destroyed (only once)
 def hlfir_MatmulTransposeOp : hlfir_Op<"matmul_transpose",
-    [DeclareOpInterfaceMethods<ArithFastMathInterface>]> {
+    [DeclareOpInterfaceMethods<ArithFastMathInterface>,
+    MemoryEffects<[MemAlloc]>]> {
   let summary = "Optimized MATMUL(TRANSPOSE(...), ...)";
   let description = [{
     Matrix multiplication where the left hand side is transposed
   }];
 
   let arguments = (ins
-    AnyFortranNumericalOrLogicalArrayObject:$lhs,
-    AnyFortranNumericalOrLogicalArrayObject:$rhs,
+    Arg<AnyFortranNumericalOrLogicalArrayObject, "", [MemRead]>:$lhs,
+    Arg<AnyFortranNumericalOrLogicalArrayObject, "", [MemRead]>:$rhs,
     DefaultValuedAttr<Arith_FastMathAttr,
                       "::mlir::arith::FastMathFlags::none">:$fastmath
   );
@@ -581,8 +606,14 @@ def hlfir_MatmulTransposeOp : hlfir_Op<"matmul_transpose",
   let hasVerifier = 1;
 }
 
+// this needs a read effect on the source argument because it can generate
+// a fir.load when the source is polymorphic
+// An allocation effect is needed because the value produced by the associate
+// is "deallocated" by hlfir.end_associate (the end_associate must not be
+// removed, and there must be only one hlfir.end_associate).
 def hlfir_AssociateOp : hlfir_Op<"associate", [AttrSizedOperandSegments,
-    DeclareOpInterfaceMethods<fir_FortranVariableOpInterface>]> {
+    DeclareOpInterfaceMethods<fir_FortranVariableOpInterface>,
+    MemoryEffects<[MemAlloc]>]> {
   let summary = "Create a variable from an expression value";
   let description = [{
     Create a variable from an expression value.
@@ -592,7 +623,7 @@ def hlfir_AssociateOp : hlfir_Op<"associate", [AttrSizedOperandSegments,
   }];
 
   let arguments = (ins
-    AnyFortranValue:$source,
+    Arg<AnyFortranValue, "", [MemRead]>:$source,
     Optional<AnyShapeOrShiftType>:$shape,
     Variadic<AnyIntegerType>:$typeparams,
     Builtin_StringAttr:$uniq_name,
@@ -635,7 +666,7 @@ def hlfir_AssociateOp : hlfir_Op<"associate", [AttrSizedOperandSegments,
   }];
 }
 
-def hlfir_EndAssociateOp : hlfir_Op<"end_associate", []> {
+def hlfir_EndAssociateOp : hlfir_Op<"end_associate", [MemoryEffects<[MemFree]>]> {
   let summary = "Mark the end of life of a variable associated to an expression";
 
   let description = [{
@@ -652,7 +683,9 @@ def hlfir_EndAssociateOp : hlfir_Op<"end_associate", []> {
   let builders = [OpBuilder<(ins "hlfir::AssociateOp":$associate)>];
 }
 
-def hlfir_AsExprOp : hlfir_Op<"as_expr", []> {
+// Allocation effect is because this creates a hlfir.expr, which must be
+// destroyed (only once)
+def hlfir_AsExprOp : hlfir_Op<"as_expr", [MemoryEffects<[MemAlloc]>]> {
   let summary = "Take the value of an array, character or derived variable";
 
   let description = [{
@@ -669,7 +702,7 @@ def hlfir_AsExprOp : hlfir_Op<"as_expr", []> {
     hlfir.expr value without paying the price of introducing a copy.
   }];
 
-  let arguments = (ins AnyFortranVariable:$var,
+  let arguments = (ins Arg<AnyFortranVariable, "", [MemRead]>:$var,
                        Optional<I1>:$must_free);
   let results = (outs hlfir_ExprType);
 
@@ -934,7 +967,7 @@ def hlfir_DestroyOp : hlfir_Op<"destroy", [MemoryEffects<[MemFree]>]> {
   let assemblyFormat = "$expr attr-dict `:` qualified(type($expr))";
 }
 
-def hlfir_CopyInOp : hlfir_Op<"copy_in", []> {
+def hlfir_CopyInOp : hlfir_Op<"copy_in", [MemoryEffects<[MemAlloc]>]> {
   let summary = "copy a variable into a contiguous temporary if it is not contiguous";
   let description = [{
     Copy a variable into a contiguous temporary if the variable is not
@@ -954,7 +987,7 @@ def hlfir_CopyInOp : hlfir_Op<"copy_in", []> {
     is true and, when it is false, the original value will be returned instead.
   }];
 
-  let arguments = (ins fir_BaseBoxType:$var,
+  let arguments = (ins Arg<fir_BaseBoxType, "", [MemRead]>:$var,
                    Optional<I1>:$var_is_present);
 
   let results = (outs fir_BaseBoxType, I1);
@@ -981,7 +1014,7 @@ def hlfir_CopyInOp : hlfir_Op<"copy_in", []> {
   }];
 }
 
-def hlfir_CopyOutOp : hlfir_Op<"copy_out", []> {
+def hlfir_CopyOutOp : hlfir_Op<"copy_out", [MemoryEffects<[MemFree]>]> {
   let summary = "copy out a variable after a copy in";
   let description = [{
     If the variable was copied in a temporary in the related hlfir.copy_in,
@@ -994,7 +1027,7 @@ def hlfir_CopyOutOp : hlfir_Op<"copy_out", []> {
 
   let arguments = (ins fir_BaseBoxType:$temp,
                        I1:$was_copied,
-                       Optional<fir_BaseBoxType>:$var);
+                       Arg<Optional<fir_BaseBoxType>, "", [MemWrite]>:$var);
 
   let assemblyFormat = [{
     $temp `,` $was_copied (`to` $var^)?
@@ -1546,7 +1579,9 @@ def hlfir_ForallIndexOp : hlfir_Op<"forall_index", [fir_FortranVariableOpInterfa
   let hasCanonicalizeMethod = 1;
 }
 
-def hlfir_CharExtremumOp : hlfir_Op<"char_extremum", []> {
+// Allocation effect because this creates a hlfir.expr, which must be destroyed
+// (only once)
+def hlfir_CharExtremumOp : hlfir_Op<"char_extremum", [MemoryEffects<[MemAlloc]>]> {
   let summary = "Find max/min from given character strings";
   let description = [{
     Find the lexicographical minimum or maximum of two or more character 
@@ -1557,7 +1592,7 @@ def hlfir_CharExtremumOp : hlfir_Op<"char_extremum", []> {
   }];
 
   let arguments = (ins hlfir_CharExtremumPredicateAttr:$predicate,
-                  Variadic<AnyScalarCharacterEntity>:$strings
+                  Arg<Variadic<AnyScalarCharacterEntity>, "", [MemRead]>:$strings
   );
 
   let results = (outs AnyScalarCharacterExpr);
