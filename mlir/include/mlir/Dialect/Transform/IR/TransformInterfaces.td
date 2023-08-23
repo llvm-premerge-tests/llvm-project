@@ -323,6 +323,18 @@ def ConversionPatternDescriptorOpInterface
     >,
     InterfaceMethod<
       /*desc=*/[{
+        Update the ConversionTarget using the final TypeConverter. The default
+        implementation is to do nothing.
+      }],
+      /*returnType=*/"void",
+      /*name=*/"updateConversionTarget",
+      /*arguments=*/(ins "::mlir::TypeConverter &":$typeConverter,
+                         "::mlir::ConversionTarget &":$conversionTarget),
+      /*methodBody=*/"",
+      /*defaultImplementation=*/"return;"
+    >,
+    InterfaceMethod<
+      /*desc=*/[{
         Return the type converter to be used with this pattern set. If no
         type converter is specified, the default type converter of the enclosing
         "apply_conversion_patterns" op is used.
