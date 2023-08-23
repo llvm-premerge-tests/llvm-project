@@ -1512,7 +1512,8 @@ InstructionCost RISCVTTIImpl::getVectorInstrCost(unsigned Opcode, Type *Val,
   // and vslideup + vmv.s.x to insert element to vector.
   unsigned BaseCost = 1;
   // When insertelement we should add the index with 1 as the input of vslideup.
-  unsigned SlideCost = Opcode == Instruction::InsertElement ? 2 : 1;
+  InstructionCost SlideCost =
+    getVSlideCost(LT.second) + (Opcode == Instruction::InsertElement);
 
   if (Index != -1U) {
     // The type may be split. For fixed-width vectors we can normalize the
@@ -1526,7 +1527,7 @@ InstructionCost RISCVTTIImpl::getVectorInstrCost(unsigned Opcode, Type *Val,
     if (Index == 0)
       SlideCost = 0;
     else if (Opcode == Instruction::InsertElement)
-      SlideCost = 1; // With a constant index, we do not need to use addi.
+      SlideCost = getVSlideCost(LT.second); // With a constant index, we do not need to use addi.
   }
 
   // Mask vector extract/insert element is different from normal case.
