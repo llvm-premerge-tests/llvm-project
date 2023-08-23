@@ -44,6 +44,8 @@
 
 #if defined(__x86_64__) || defined(__i386__) || defined(__sparc__)
 # define ASM_TAIL_CALL jmp
+#elif defined(__mips__) && __mips_isa_rev >= 6
+#  define ASM_TAIL_CALL bc
 #elif defined(__arm__) || defined(__aarch64__) || defined(__mips__) || \
     defined(__powerpc__) || defined(__loongarch_lp64)
 # define ASM_TAIL_CALL b
@@ -51,6 +53,29 @@
 # define ASM_TAIL_CALL jg
 #elif defined(__riscv)
 # define ASM_TAIL_CALL tail
+#endif
+
+#if defined(__mips64) && __mips_isa_rev < 6
+#  define C_ASM_TAIL_CALL(tfunc, ifunc)       \
+    "lui $t8, %hi(%neg(%gp_rel(" tfunc        \
+    "))) \n"                                  \
+    "daddu $t8, $t8, $t9 \n"                  \
+    "daddu $t8, $t8, %lo(%neg(%gp_rel(" tfunc \
+    "))) \n"                                  \
+    "ld $t9, %got_disp(" ifunc                \
+    ")($t8) \n"                               \
+    "jr $t9 \n"
+#elif defined(__mips__) && __mips_isa_rev < 6
+#  define C_ASM_TAIL_CALL(tfunc, ifunc) \
+    ".set    noreorder \n"              \
+    ".cpload $t9 \n"                    \
+    ".set    reorder \n"                \
+    "lw $t9, %got(" ifunc               \
+    ")($gp) \n"                         \
+    "jr $t9 \n"
+#elif defined(ASM_TAIL_CALL)
+#  define C_ASM_TAIL_CALL(tfunc, ifunc) \
+    SANITIZER_STRINGIFY(ASM_TAIL_CALL) " " ifunc
 #endif
 
 #if defined(__ELF__) && defined(__x86_64__) || defined(__i386__) || \

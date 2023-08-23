@@ -186,12 +186,12 @@ const interpose_substitution substitution_##func_name[]             \
 #   define __ASM_WEAK_WRAPPER(func) ".weak " #func "\n"
 #  endif  // SANITIZER_FREEBSD || SANITIZER_NETBSD
 // Keep trampoline implementation in sync with sanitizer_common/sanitizer_asm.h
-#  define DECLARE_WRAPPER(ret_type, func, ...)                                 \
-     extern "C" ret_type func(__VA_ARGS__);                                    \
-     extern "C" ret_type TRAMPOLINE(func)(__VA_ARGS__);                        \
-     extern "C" ret_type __interceptor_##func(__VA_ARGS__)                     \
-       INTERCEPTOR_ATTRIBUTE __attribute__((weak)) ALIAS(WRAP(func));          \
-     asm(                                                                      \
+#    define DECLARE_WRAPPER(ret_type, func, ...)                         \
+      extern "C" ret_type func(__VA_ARGS__);                             \
+      extern "C" ret_type TRAMPOLINE(func)(__VA_ARGS__);                 \
+      extern "C" ret_type __interceptor_##func(__VA_ARGS__)              \
+          INTERCEPTOR_ATTRIBUTE __attribute__((weak)) ALIAS(WRAP(func)); \
+      asm(                                                                      \
        ".text\n"                                                               \
        __ASM_WEAK_WRAPPER(func)                                                \
        ".set " #func ", " SANITIZER_STRINGIFY(TRAMPOLINE(func)) "\n"           \
@@ -199,8 +199,9 @@ const interpose_substitution substitution_##func_name[]             \
        ".type  " SANITIZER_STRINGIFY(TRAMPOLINE(func)) ", %function\n"         \
        SANITIZER_STRINGIFY(TRAMPOLINE(func)) ":\n"                             \
        SANITIZER_STRINGIFY(CFI_STARTPROC) "\n"                                 \
-       SANITIZER_STRINGIFY(ASM_TAIL_CALL) " __interceptor_"                    \
-         SANITIZER_STRINGIFY(ASM_PREEMPTIBLE_SYM(func)) "\n"                   \
+       C_ASM_TAIL_CALL(SANITIZER_STRINGIFY(TRAMPOLINE(func)),                  \
+                       "__interceptor_"                                        \
+                         SANITIZER_STRINGIFY(ASM_PREEMPTIBLE_SYM(func))) "\n"  \
        SANITIZER_STRINGIFY(CFI_ENDPROC) "\n"                                   \
        ".size  " SANITIZER_STRINGIFY(TRAMPOLINE(func)) ", "                    \
             ".-" SANITIZER_STRINGIFY(TRAMPOLINE(func)) "\n"                    \
