@@ -2394,6 +2394,9 @@ public:
                                llvm::function_ref<void(FileEntryRef)> Visitor);
 
   bool isProcessingUpdateRecords() { return ProcessingUpdateRecords; }
+
+  /// Read the AST file signature out of a binary blob.
+  static ASTFileSignature readSignature(const char *Blob);
 };
 
 } // namespace clang

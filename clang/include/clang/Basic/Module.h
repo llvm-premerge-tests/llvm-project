@@ -58,7 +58,7 @@ struct ASTFileSignature : std::array<uint8_t, 20> {
 
   static constexpr size_t size = std::tuple_size<BaseT>::value;
 
-  ASTFileSignature(BaseT S = {{0}}) : BaseT(std::move(S)) {}
+  constexpr ASTFileSignature(BaseT S = {{0}}) : BaseT(std::move(S)) {}
 
   explicit operator bool() const { return *this != BaseT({{0}}); }
 

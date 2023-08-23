@@ -15,6 +15,7 @@
 #include "clang/Basic/FileManager.h"
 #include "clang/Lex/HeaderSearch.h"
 #include "clang/Serialization/ASTBitCodes.h"
+#include "clang/Serialization/ASTReader.h"
 #include "clang/Serialization/ModuleFile.h"
 #include "clang/Serialization/PCHContainerOperations.h"
 #include "llvm/ADT/DenseMap.h"
@@ -698,8 +699,7 @@ llvm::Error GlobalModuleIndexBuilder::loadModuleFile(const FileEntry *File) {
 
     // Get Signature.
     if (State == DiagnosticOptionsBlock && Code == SIGNATURE)
-      getModuleFileInfo(File).Signature = ASTFileSignature::create(
-          Record.begin(), Record.begin() + ASTFileSignature::size);
+      getModuleFileInfo(File).Signature = ASTReader::readSignature(Blob.data());
 
     // We don't care about this record.
   }

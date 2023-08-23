@@ -111,7 +111,7 @@ private:
   llvm::BitstreamWriter &Stream;
 
   /// The buffer associated with the bitstream.
-  const SmallVectorImpl<char> &Buffer;
+  SmallVectorImpl<char> &Buffer;
 
   /// The PCM manager which manages memory buffers for pcm files.
   InMemoryModuleCache &ModuleCache;
@@ -128,10 +128,17 @@ private:
   /// The module we're currently writing, if any.
   Module *WritingModule = nullptr;
 
+  /// The byte range representing all the UNHASHED_CONTROL_BLOCK.
+  std::pair<uint64_t, uint64_t> UnhashedControlBlockRange;
+  /// The byte offset of the AST block hash blob.
+  uint64_t ASTBlockHashOffset = 0;
+  /// The byte offset of the signature blob.
+  uint64_t SignatureOffset = 0;
+
   /// The offset of the first bit inside the AST_BLOCK.
   uint64_t ASTBlockStartOffset = 0;
 
-  /// The range representing all the AST_BLOCK.
+  /// The byte range representing all the AST_BLOCK.
   std::pair<uint64_t, uint64_t> ASTBlockRange;
 
   /// The base directory for any relative paths we emit.
@@ -495,12 +502,11 @@ private:
                          StringRef isysroot);
 
   /// Write out the signature and diagnostic options, and return the signature.
-  ASTFileSignature writeUnhashedControlBlock(Preprocessor &PP,
-                                             ASTContext &Context);
+  void writeUnhashedControlBlock(Preprocessor &PP, ASTContext &Context);
+  ASTFileSignature backpatchSignature();
 
   /// Calculate hash of the pcm content.
-  static std::pair<ASTFileSignature, ASTFileSignature>
-  createSignature(StringRef AllBytes, StringRef ASTBlockBytes);
+  std::pair<ASTFileSignature, ASTFileSignature> createSignature() const;
 
   void WriteInputFiles(SourceManager &SourceMgr, HeaderSearchOptions &HSOpts);
   void WriteSourceManagerBlock(SourceManager &SourceMgr,
