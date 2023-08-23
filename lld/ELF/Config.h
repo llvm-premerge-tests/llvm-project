@@ -148,6 +148,8 @@ public:
 struct Config {
   uint8_t osabi = 0;
   uint32_t andFeatures = 0;
+  SmallVector<uint8_t, 16> aarch64PauthAbiTag;
+  SmallVector<uint8_t, 16> gnuPropAarch64Pauth;
   llvm::CachePruningPolicy thinLTOCachePolicy;
   llvm::SetVector<llvm::CachedHashString> dependencyFiles; // for --dependency-file
   llvm::StringMap<uint64_t> sectionStartMap;

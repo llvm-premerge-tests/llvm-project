@@ -217,6 +217,8 @@ protected:
 
 public:
   uint32_t andFeatures = 0;
+  SmallVector<uint8_t, 16> aarch64PauthAbiTag;
+  SmallVector<uint8_t, 16> gnuPropAarch64Pauth;
   bool hasCommonSyms = false;
 };
 

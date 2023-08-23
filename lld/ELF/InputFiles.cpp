@@ -877,25 +877,23 @@ void ObjFile<ELFT>::initializeSections(bool ignoreComdats,
     handleSectionGroup<ELFT>(this->sections, entries);
 }
 
-// If a source file is compiled with x86 hardware-assisted call flow control
-// enabled, the generated object file contains feature flags indicating that
-// fact. This function reads the feature flags and returns it.
-//
-// Essentially we want to read a single 32-bit value in this function, but this
-// function is rather complicated because the value is buried deep inside a
-// .note.gnu.property section.
-//
-// The section consists of one or more NOTE records. Each NOTE record consists
-// of zero or more type-length-value fields. We want to find a field of a
-// certain type. It seems a bit too much to just store a 32-bit value, perhaps
-// the ABI is unnecessarily complicated.
-template <class ELFT> static uint32_t readAndFeatures(const InputSection &sec) {
+// Extract and write to the corresponding ObjFile fields the following values
+// from the .note.gnu.property section:
+// - andFeatures (storing info about hardware-assisted CFI on x86 and aarch64)
+// - compatibility info for aarch64 pointer authentication according to the
+//   following ABI documentation:
+//   https://github.com/ARM-software/abi-aa/blob/main/pauthabielf64/pauthabielf64.rst#appendix-alternative-elf-marking-using-gnu-program-properties
+template <class ELFT>
+static void parseGnuProperty(const InputSection &sec, ObjFile<ELFT> &f) {
+  if (config->emachine != EM_386 && config->emachine != EM_X86_64 &&
+      config->emachine != EM_AARCH64)
+    return;
+
   using Elf_Nhdr = typename ELFT::Nhdr;
   using Elf_Note = typename ELFT::Note;
-
   uint32_t featuresSet = 0;
   ArrayRef<uint8_t> data = sec.content();
-  auto reportFatal = [&](const uint8_t *place, const char *msg) {
+  auto reportFatal = [&](const uint8_t *place, const Twine &msg) {
     fatal(toString(sec.file) + ":(" + sec.name + "+0x" +
           Twine::utohexstr(place - sec.content().data()) + "): " + msg);
   };
@@ -924,9 +922,12 @@ template <class ELFT> static uint32_t readAndFeatures(const InputSection &sec) {
         reportFatal(place, "program property is too short");
       uint32_t type = read32<ELFT::TargetEndianness>(desc.data());
       uint32_t size = read32<ELFT::TargetEndianness>(desc.data() + 4);
+      uint32_t sizeWithPadding = alignTo<(ELFT::Is64Bits ? 8 : 4)>(size);
       desc = desc.slice(8);
       if (desc.size() < size)
         reportFatal(place, "program property is too short");
+      if (desc.size() < sizeWithPadding)
+        reportFatal(place, "missing required padding after program property");
 
       if (type == featureAndType) {
         // We found a FEATURE_1_AND field. There may be more than one of these
@@ -935,17 +936,65 @@ template <class ELFT> static uint32_t readAndFeatures(const InputSection &sec) {
         if (size < 4)
           reportFatal(place, "FEATURE_1_AND entry is too short");
         featuresSet |= read32<ELFT::TargetEndianness>(desc.data());
+      } else if (config->emachine == EM_AARCH64 &&
+                 type == GNU_PROPERTY_AARCH64_FEATURE_PAUTH) {
+        if (size < 16)
+          reportFatal(place, "too short aarch64 pauth compatibility info "
+                             "(at least 16 bytes expected)");
+        f.gnuPropAarch64Pauth = SmallVector<uint8_t, 16>(iterator_range(desc));
       }
 
       // Padding is present in the note descriptor, if necessary.
-      desc = desc.slice(alignTo<(ELFT::Is64Bits ? 8 : 4)>(size));
+      desc = desc.slice(sizeWithPadding);
     }
 
     // Go to next NOTE record to look for more FEATURE_1_AND descriptions.
     data = data.slice(nhdr->getSize(sec.addralign));
   }
 
-  return featuresSet;
+  f.andFeatures = featuresSet;
+}
+
+// Extract compatibility info for aarch64 pointer authentication from the
+// .note.AARCH64-PAUTH-ABI-tag section and write it to the corresponding ObjFile
+// field. See the following ABI documentation:
+// https://github.com/ARM-software/abi-aa/blob/main/pauthabielf64/pauthabielf64.rst#elf-marking
+template <class ELFT>
+static void parseAarch64PauthAbiTag(const InputSection &sec, ObjFile<ELFT> &f) {
+  if (config->emachine != EM_AARCH64)
+    return;
+
+  using Elf_Nhdr = typename ELFT::Nhdr;
+  using Elf_Note = typename ELFT::Note;
+  ArrayRef<uint8_t> data = sec.content();
+  auto reportFatal = [&](const Twine &msg) {
+    fatal(toString(sec.file) + ":(" + sec.name + "): " + msg);
+  };
+
+  // Such a cast is a bad idea since values in the struct's fields depend on
+  // host's endianness. We already do the same in multiple other places (for
+  // example, parseGnuProperty above), so use it here as a temporary solution.
+  // TODO: here and in other similar places read the ELF note header data
+  // properly independently of host's endianness.
+  auto *nhdr = reinterpret_cast<const Elf_Nhdr *>(data.data());
+  if (data.size() < sizeof(Elf_Nhdr) ||
+      data.size() < nhdr->getSize(sec.addralign))
+    reportFatal("section is too short");
+
+  Elf_Note note(*nhdr);
+  if (nhdr->n_type != NT_ARM_TYPE_PAUTH_ABI_TAG)
+    reportFatal("invalid type field value " + Twine(nhdr->n_type) + " (" +
+                Twine(NT_ARM_TYPE_PAUTH_ABI_TAG) + " expected)");
+  if (note.getName() != "ARM")
+    reportFatal("invalid name field value " + note.getName() +
+                " (ARM expected)");
+
+  ArrayRef<uint8_t> desc = note.getDesc(sec.addralign);
+  if (desc.size() < 16)
+    reportFatal("too short aarch64 pauth compatibility info "
+                "(at least 16 bytes expected)");
+
+  f.aarch64PauthAbiTag = SmallVector<uint8_t, 16>(iterator_range(desc));
 }
 
 template <class ELFT>
@@ -1002,7 +1051,12 @@ InputSectionBase *ObjFile<ELFT>::createInputSection(uint32_t idx,
     // .note.gnu.property containing a single AND'ed bitmap, we discard an input
     // file's .note.gnu.property section.
     if (name == ".note.gnu.property") {
-      this->andFeatures = readAndFeatures<ELFT>(InputSection(*this, sec, name));
+      parseGnuProperty<ELFT>(InputSection(*this, sec, name), *this);
+      return &InputSection::discarded;
+    }
+
+    if (name == ".note.AARCH64-PAUTH-ABI-tag") {
+      parseAarch64PauthAbiTag<ELFT>(InputSection(*this, sec, name), *this);
       return &InputSection::discarded;
     }
 

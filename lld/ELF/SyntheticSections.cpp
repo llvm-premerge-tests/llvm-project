@@ -313,23 +313,87 @@ GnuPropertySection::GnuPropertySection()
     : SyntheticSection(llvm::ELF::SHF_ALLOC, llvm::ELF::SHT_NOTE,
                        config->wordsize, ".note.gnu.property") {}
 
-void GnuPropertySection::writeTo(uint8_t *buf) {
-  uint32_t featureAndType = config->emachine == EM_AARCH64
-                                ? GNU_PROPERTY_AARCH64_FEATURE_1_AND
-                                : GNU_PROPERTY_X86_FEATURE_1_AND;
+void GnuPropertySection::finalizeContents() {
+  if (config->andFeatures) {
+    uint32_t andFeaturesType = config->emachine == EM_AARCH64
+                                   ? GNU_PROPERTY_AARCH64_FEATURE_1_AND
+                                   : GNU_PROPERTY_X86_FEATURE_1_AND;
+    SmallVector<uint8_t, 4> andFeaturesData(4);
+    write32(andFeaturesData.data(), config->andFeatures);
+    props.emplace_back(andFeaturesType, std::move(andFeaturesData));
+  }
 
-  write32(buf, 4);                                   // Name size
-  write32(buf + 4, config->is64 ? 16 : 12);          // Content size
-  write32(buf + 8, NT_GNU_PROPERTY_TYPE_0);          // Type
-  memcpy(buf + 12, "GNU", 4);                        // Name string
-  write32(buf + 16, featureAndType);                 // Feature type
-  write32(buf + 20, 4);                              // Feature size
-  write32(buf + 24, config->andFeatures);            // Feature flags
-  if (config->is64)
-    write32(buf + 28, 0); // Padding
+  if (!config->gnuPropAarch64Pauth.empty()) {
+    assert(config->emachine == EM_AARCH64);
+    SmallVector<uint8_t, 4> data(iterator_range(config->gnuPropAarch64Pauth));
+    props.emplace_back(GNU_PROPERTY_AARCH64_FEATURE_PAUTH, std::move(data));
+  }
 }
 
-size_t GnuPropertySection::getSize() const { return config->is64 ? 32 : 28; }
+bool GnuPropertySection::isNeeded() const {
+  // We call this before finalizeContents, so need to duplicate the logic here.
+  return config->andFeatures || !config->gnuPropAarch64Pauth.empty();
+}
+
+void GnuPropertySection::writeTo(uint8_t *buf) {
+  assert(!props.empty());
+
+  write32(buf, 4);                          // Name size
+  write32(buf + 4, getSize() - 16);         // Content size
+  write32(buf + 8, NT_GNU_PROPERTY_TYPE_0); // Type
+  memcpy(buf + 12, "GNU", 4);               // Name string
+
+  buf += 16;
+  for (const Elf_Prop &prop : props) {
+    write32(buf + 0, prop.type);
+    write32(buf + 4, prop.data.size());
+    memcpy(buf + 8, prop.data.data(), prop.data.size());
+    memset(buf + 8 + prop.data.size(), 0,
+           prop.sizeWithPadding - (4 + 4 + prop.data.size()));
+    buf += prop.sizeWithPadding;
+  }
+}
+
+size_t GnuPropertySection::getSize() const {
+  // We call this after finalizeContents, so props are already here.
+  if (props.empty())
+    return 0;
+
+  return 16 + std::accumulate(props.begin(), props.end(), 0,
+                              [](uint32_t sum, const Elf_Prop &e) {
+                                return sum + e.sizeWithPadding;
+                              });
+}
+
+GnuPropertySection::Elf_Prop::Elf_Prop(uint32_t type,
+                                       SmallVector<uint8_t, 4> data)
+    : type(type), data(std::move(data)),
+      sizeWithPadding(
+          alignToPowerOf2(4 + 4 + this->data.size(), config->is64 ? 8 : 4)) {}
+
+Aarch64PauthAbiTag::Aarch64PauthAbiTag()
+    : SyntheticSection(llvm::ELF::SHF_ALLOC, llvm::ELF::SHT_NOTE,
+                       config->wordsize, ".note.AARCH64-PAUTH-ABI-tag") {}
+
+bool Aarch64PauthAbiTag::isNeeded() const {
+  return !config->aarch64PauthAbiTag.empty();
+}
+
+void Aarch64PauthAbiTag::writeTo(uint8_t *buf) {
+  assert(isNeeded());
+  const SmallVector<uint8_t, 16> &data = config->aarch64PauthAbiTag;
+  write32(buf, 4);                             // Name size
+  write32(buf + 4, data.size());               // Content size
+  write32(buf + 8, NT_ARM_TYPE_PAUTH_ABI_TAG); // Type
+  memcpy(buf + 12, "ARM", 4);                  // Name string
+  memcpy(buf + 16, data.data(), data.size());
+  memset(buf + 16 + data.size(), 0, getSize() - 16 - data.size()); // Padding
+}
+
+size_t Aarch64PauthAbiTag::getSize() const {
+  return alignToPowerOf2(16 + config->aarch64PauthAbiTag.size(),
+                         config->is64 ? 8 : 4);
+}
 
 BuildIdSection::BuildIdSection()
     : SyntheticSection(SHF_ALLOC, SHT_NOTE, 4, ".note.gnu.build-id"),
