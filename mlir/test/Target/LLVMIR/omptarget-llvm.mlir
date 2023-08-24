@@ -2,17 +2,18 @@
 
 llvm.func @_QPopenmp_target_data() {
   %0 = llvm.mlir.constant(1 : i64) : i64
-  %1 = llvm.alloca %0 x i32 {bindc_name = "i", in_type = i32, operandSegmentSizes = array<i32: 0, 0>, uniq_name = "_QFopenmp_target_dataEi"} : (i64) -> !llvm.ptr<i32>
-  omp.target_data   map((tofrom -> %1 : !llvm.ptr<i32>)) {
-    %2 = llvm.mlir.constant(99 : i32) : i32
-    llvm.store %2, %1 : !llvm.ptr<i32>
+  %1 = llvm.alloca %0 x i32 {bindc_name = "i", in_type = i32, operand_segment_sizes = array<i32: 0, 0>, uniq_name = "_QFopenmp_target_dataEi"} : (i64) -> !llvm.ptr<i32>
+  %2 = omp.map_entry var_ptr(%1 : !llvm.ptr<i32>)   map_type_value(35) capture(ByRef) -> !llvm.ptr<i32> {name = ""}
+  omp.target_data map_entries((tofrom -> %2 : !llvm.ptr<i32>)) {
+    %3 = llvm.mlir.constant(99 : i32) : i32
+    llvm.store %3, %1 : !llvm.ptr<i32>
     omp.terminator
   }
   llvm.return
 }
 
 // CHECK:         @.offload_sizes = private unnamed_addr constant [1 x i64] [i64 4]
-// CHECK:         @.offload_maptypes = private unnamed_addr constant [1 x i64] [i64 3]
+// CHECK:         @.offload_maptypes = private unnamed_addr constant [1 x i64] [i64 35]
 // CHECK-LABEL: define void @_QPopenmp_target_data() {
 // CHECK:         %[[VAL_0:.*]] = alloca [1 x ptr], align 8
 // CHECK:         %[[VAL_1:.*]] = alloca [1 x ptr], align 8
@@ -38,20 +39,21 @@ llvm.func @_QPopenmp_target_data() {
 // -----
 
 llvm.func @_QPopenmp_target_data_region(%1 : !llvm.ptr<array<1024 x i32>>) {
-  omp.target_data   map((from -> %1 : !llvm.ptr<array<1024 x i32>>)) {
-    %2 = llvm.mlir.constant(99 : i32) : i32
-    %3 = llvm.mlir.constant(1 : i64) : i64
+  %2 = omp.map_entry var_ptr(%1 : !llvm.ptr<array<1024 x i32>>)   map_type_value(35) capture(ByRef) -> !llvm.ptr<array<1024 x i32>> {name = ""}
+  omp.target_data map_entries((tofrom -> %2 : !llvm.ptr<array<1024 x i32>>)) {
+    %3 = llvm.mlir.constant(99 : i32) : i32
     %4 = llvm.mlir.constant(1 : i64) : i64
-    %5 = llvm.mlir.constant(0 : i64) : i64
-    %6 = llvm.getelementptr %1[0, %5] : (!llvm.ptr<array<1024 x i32>>, i64) -> !llvm.ptr<i32>
-    llvm.store %2, %6 : !llvm.ptr<i32>
+    %5 = llvm.mlir.constant(1 : i64) : i64
+    %6 = llvm.mlir.constant(0 : i64) : i64
+    %7 = llvm.getelementptr %1[0, %6] : (!llvm.ptr<array<1024 x i32>>, i64) -> !llvm.ptr<i32>
+    llvm.store %3, %7 : !llvm.ptr<i32>
     omp.terminator
   }
   llvm.return
 }
 
 // CHECK:         @.offload_sizes = private unnamed_addr constant [1 x i64] [i64 4096]
-// CHECK:         @.offload_maptypes = private unnamed_addr constant [1 x i64] [i64 2]
+// CHECK:         @.offload_maptypes = private unnamed_addr constant [1 x i64] [i64 35]
 // CHECK-LABEL: define void @_QPopenmp_target_data_region
 // CHECK:         (ptr %[[ARG_0:.*]]) {
 // CHECK:         %[[VAL_0:.*]] = alloca [1 x ptr], align 8
@@ -90,19 +92,23 @@ llvm.func @_QPomp_target_enter_exit(%1 : !llvm.ptr<array<1024 x i32>>, %3 : !llv
   %11 = llvm.mlir.constant(10 : i32) : i32
   %12 = llvm.icmp "slt" %10, %11 : i32
   %13 = llvm.load %5 : !llvm.ptr<i32>
-  omp.target_enter_data   if(%12 : i1) device(%13 : i32) map((to -> %1 : !llvm.ptr<array<1024 x i32>>), (alloc -> %3 : !llvm.ptr<array<512 x i32>>))
+  %map1 = omp.map_entry var_ptr(%1 : !llvm.ptr<array<1024 x i32>>)   map_type_value(33) capture(ByRef) -> !llvm.ptr<array<1024 x i32>> {name = ""}
+  %map2 = omp.map_entry var_ptr(%3 : !llvm.ptr<array<512 x i32>>)   map_type_value(32) capture(ByRef) -> !llvm.ptr<array<512 x i32>> {name = ""}
+  omp.target_enter_data   if(%12 : i1) device(%13 : i32) map_entries((to -> %map1 : !llvm.ptr<array<1024 x i32>>), (alloc -> %map2 : !llvm.ptr<array<512 x i32>>))
   %14 = llvm.load %7 : !llvm.ptr<i32>
   %15 = llvm.mlir.constant(10 : i32) : i32
   %16 = llvm.icmp "sgt" %14, %15 : i32
   %17 = llvm.load %5 : !llvm.ptr<i32>
-  omp.target_exit_data   if(%16 : i1) device(%17 : i32) map((from -> %1 : !llvm.ptr<array<1024 x i32>>), (release -> %3 : !llvm.ptr<array<512 x i32>>))
+  %map3 = omp.map_entry var_ptr(%1 : !llvm.ptr<array<1024 x i32>>)   map_type_value(34) capture(ByRef) -> !llvm.ptr<array<1024 x i32>> {name = ""}
+  %map4 = omp.map_entry var_ptr(%3 : !llvm.ptr<array<512 x i32>>)   map_type_value(32) capture(ByRef) -> !llvm.ptr<array<512 x i32>> {name = ""}
+  omp.target_exit_data   if(%16 : i1) device(%17 : i32) map_entries((from -> %map3 : !llvm.ptr<array<1024 x i32>>), (release -> %map4 : !llvm.ptr<array<512 x i32>>))
   llvm.return
 }
 
 // CHECK:         @.offload_sizes = private unnamed_addr constant [2 x i64] [i64 4096, i64 2048]
-// CHECK:         @.offload_maptypes = private unnamed_addr constant [2 x i64] [i64 1, i64 0]
+// CHECK:         @.offload_maptypes = private unnamed_addr constant [2 x i64] [i64 33, i64 32]
 // CHECK:         @.offload_sizes.1 = private unnamed_addr constant [2 x i64] [i64 4096, i64 2048]
-// CHECK:         @.offload_maptypes.2 = private unnamed_addr constant [2 x i64] [i64 2, i64 0]
+// CHECK:         @.offload_maptypes.2 = private unnamed_addr constant [2 x i64] [i64 34, i64 32]
 // CHECK-LABEL: define void @_QPomp_target_enter_exit
 // CHECK:         (ptr %[[ARG_0:.*]], ptr %[[ARG_1:.*]]) {
 // CHECK:         %[[VAL_0:.*]] = alloca [2 x ptr], align 8
@@ -172,7 +178,8 @@ llvm.func @_QPomp_target_enter_exit(%1 : !llvm.ptr<array<1024 x i32>>, %3 : !llv
 llvm.func @_QPopenmp_target_use_dev_ptr() {
   %0 = llvm.mlir.constant(1 : i64) : i64
   %a = llvm.alloca %0 x !llvm.ptr<!llvm.ptr<i32>> : (i64) -> !llvm.ptr<!llvm.ptr<i32>>
-  omp.target_data  map((from -> %a : !llvm.ptr<!llvm.ptr<i32>>)) use_device_ptr(%a : !llvm.ptr<!llvm.ptr<i32>>)  {
+  %map1 = omp.map_entry var_ptr(%a : !llvm.ptr<!llvm.ptr<i32>>)   map_type_value(34) capture(ByRef) -> !llvm.ptr<!llvm.ptr<i32>> {name = ""}
+  omp.target_data  map_entries((from -> %map1 : !llvm.ptr<!llvm.ptr<i32>>)) use_device_ptr(%a : !llvm.ptr<!llvm.ptr<i32>>)  {
   ^bb0(%arg0: !llvm.ptr<!llvm.ptr<i32>>):
     %1 = llvm.mlir.constant(10 : i32) : i32
     %2 = llvm.load %arg0 : !llvm.ptr<!llvm.ptr<i32>>
@@ -183,7 +190,7 @@ llvm.func @_QPopenmp_target_use_dev_ptr() {
 }
 
 // CHECK:         @.offload_sizes = private unnamed_addr constant [1 x i64] [i64 8]
-// CHECK:         @.offload_maptypes = private unnamed_addr constant [1 x i64] [i64 66]
+// CHECK:         @.offload_maptypes = private unnamed_addr constant [1 x i64] [i64 98]
 // CHECK-LABEL: define void @_QPopenmp_target_use_dev_ptr
 // CHECK:         %[[VAL_0:.*]] = alloca [1 x ptr], align 8
 // CHECK:         %[[VAL_1:.*]] = alloca [1 x ptr], align 8
@@ -215,7 +222,8 @@ llvm.func @_QPopenmp_target_use_dev_ptr() {
 llvm.func @_QPopenmp_target_use_dev_addr() {
   %0 = llvm.mlir.constant(1 : i64) : i64
   %a = llvm.alloca %0 x !llvm.ptr<!llvm.ptr<i32>> : (i64) -> !llvm.ptr<!llvm.ptr<i32>>
-  omp.target_data  map((from -> %a : !llvm.ptr<!llvm.ptr<i32>>)) use_device_addr(%a : !llvm.ptr<!llvm.ptr<i32>>)  {
+  %map = omp.map_entry var_ptr(%a : !llvm.ptr<!llvm.ptr<i32>>)   map_type_value(34) capture(ByRef) -> !llvm.ptr<!llvm.ptr<i32>> {name = ""}
+  omp.target_data  map_entries((from -> %map : !llvm.ptr<!llvm.ptr<i32>>)) use_device_addr(%a : !llvm.ptr<!llvm.ptr<i32>>)  {
   ^bb0(%arg0: !llvm.ptr<!llvm.ptr<i32>>):
     %1 = llvm.mlir.constant(10 : i32) : i32
     %2 = llvm.load %arg0 : !llvm.ptr<!llvm.ptr<i32>>
@@ -226,7 +234,7 @@ llvm.func @_QPopenmp_target_use_dev_addr() {
 }
 
 // CHECK:         @.offload_sizes = private unnamed_addr constant [1 x i64] [i64 8]
-// CHECK:         @.offload_maptypes = private unnamed_addr constant [1 x i64] [i64 66]
+// CHECK:         @.offload_maptypes = private unnamed_addr constant [1 x i64] [i64 98]
 // CHECK-LABEL: define void @_QPopenmp_target_use_dev_addr
 // CHECK:         %[[VAL_0:.*]] = alloca [1 x ptr], align 8
 // CHECK:         %[[VAL_1:.*]] = alloca [1 x ptr], align 8
@@ -256,7 +264,8 @@ llvm.func @_QPopenmp_target_use_dev_addr() {
 llvm.func @_QPopenmp_target_use_dev_addr_no_ptr() {
   %0 = llvm.mlir.constant(1 : i64) : i64
   %a = llvm.alloca %0 x !llvm.ptr<i32> : (i64) -> !llvm.ptr<i32>
-  omp.target_data  map((tofrom -> %a : !llvm.ptr<i32>)) use_device_addr(%a : !llvm.ptr<i32>)  {
+  %map = omp.map_entry var_ptr(%a : !llvm.ptr<i32>)   map_type_value(35) capture(ByRef) -> !llvm.ptr<i32> {name = ""}
+  omp.target_data  map_entries((tofrom -> %map : !llvm.ptr<i32>)) use_device_addr(%a : !llvm.ptr<i32>)  {
   ^bb0(%arg0: !llvm.ptr<i32>):
     %1 = llvm.mlir.constant(10 : i32) : i32
     llvm.store %1, %arg0 : !llvm.ptr<i32>
@@ -266,7 +275,7 @@ llvm.func @_QPopenmp_target_use_dev_addr_no_ptr() {
 }
 
 // CHECK:         @.offload_sizes = private unnamed_addr constant [1 x i64] [i64 4]
-// CHECK:         @.offload_maptypes = private unnamed_addr constant [1 x i64] [i64 67]
+// CHECK:         @.offload_maptypes = private unnamed_addr constant [1 x i64] [i64 99]
 // CHECK-LABEL: define void @_QPopenmp_target_use_dev_addr_no_ptr
 // CHECK:         %[[VAL_0:.*]] = alloca [1 x ptr], align 8
 // CHECK:         %[[VAL_1:.*]] = alloca [1 x ptr], align 8
@@ -297,7 +306,8 @@ llvm.func @_QPopenmp_target_use_dev_addr_nomap() {
   %a = llvm.alloca %0 x !llvm.ptr<!llvm.ptr<i32>> : (i64) -> !llvm.ptr<!llvm.ptr<i32>>
   %1 = llvm.mlir.constant(1 : i64) : i64
   %b = llvm.alloca %0 x !llvm.ptr<!llvm.ptr<i32>> : (i64) -> !llvm.ptr<!llvm.ptr<i32>>
-  omp.target_data  map((from -> %b : !llvm.ptr<!llvm.ptr<i32>>)) use_device_addr(%a : !llvm.ptr<!llvm.ptr<i32>>)  {
+  %map = omp.map_entry var_ptr(%b : !llvm.ptr<!llvm.ptr<i32>>)   map_type_value(34) capture(ByRef) -> !llvm.ptr<!llvm.ptr<i32>> {name = ""}
+  omp.target_data  map_entries((from -> %map : !llvm.ptr<!llvm.ptr<i32>>)) use_device_addr(%a : !llvm.ptr<!llvm.ptr<i32>>)  {
   ^bb0(%arg0: !llvm.ptr<!llvm.ptr<i32>>):
     %2 = llvm.mlir.constant(10 : i32) : i32
     %3 = llvm.load %arg0 : !llvm.ptr<!llvm.ptr<i32>>
@@ -311,7 +321,7 @@ llvm.func @_QPopenmp_target_use_dev_addr_nomap() {
 }
 
 // CHECK:         @.offload_sizes = private unnamed_addr constant [2 x i64] [i64 8, i64 0]
-// CHECK:         @.offload_maptypes = private unnamed_addr constant [2 x i64] [i64 2, i64 64]
+// CHECK:         @.offload_maptypes = private unnamed_addr constant [2 x i64] [i64 34, i64 64]
 // CHECK-LABEL: define void @_QPopenmp_target_use_dev_addr_nomap
 // CHECK:         %[[VAL_0:.*]] = alloca [2 x ptr], align 8
 // CHECK:         %[[VAL_1:.*]] = alloca [2 x ptr], align 8
@@ -352,7 +362,9 @@ llvm.func @_QPopenmp_target_use_dev_both() {
   %a = llvm.alloca %0 x !llvm.ptr<!llvm.ptr<i32>> : (i64) -> !llvm.ptr<!llvm.ptr<i32>>
   %1 = llvm.mlir.constant(1 : i64) : i64
   %b = llvm.alloca %0 x !llvm.ptr<!llvm.ptr<i32>> : (i64) -> !llvm.ptr<!llvm.ptr<i32>>
-  omp.target_data  map((tofrom -> %a : !llvm.ptr<!llvm.ptr<i32>>), (tofrom -> %b : !llvm.ptr<!llvm.ptr<i32>>)) use_device_ptr(%a : !llvm.ptr<!llvm.ptr<i32>>) use_device_addr(%b : !llvm.ptr<!llvm.ptr<i32>>)  {
+  %map = omp.map_entry var_ptr(%a : !llvm.ptr<!llvm.ptr<i32>>)   map_type_value(35) capture(ByRef) -> !llvm.ptr<!llvm.ptr<i32>> {name = ""}
+  %map1 = omp.map_entry var_ptr(%b : !llvm.ptr<!llvm.ptr<i32>>)   map_type_value(35) capture(ByRef) -> !llvm.ptr<!llvm.ptr<i32>> {name = ""}
+  omp.target_data  map_entries((tofrom -> %map : !llvm.ptr<!llvm.ptr<i32>>), (tofrom -> %map1 : !llvm.ptr<!llvm.ptr<i32>>)) use_device_ptr(%a : !llvm.ptr<!llvm.ptr<i32>>) use_device_addr(%b : !llvm.ptr<!llvm.ptr<i32>>)  {
   ^bb0(%arg0: !llvm.ptr<!llvm.ptr<i32>>, %arg1: !llvm.ptr<!llvm.ptr<i32>>):
     %2 = llvm.mlir.constant(10 : i32) : i32
     %3 = llvm.load %arg0 : !llvm.ptr<!llvm.ptr<i32>>
@@ -366,7 +378,7 @@ llvm.func @_QPopenmp_target_use_dev_both() {
 }
 
 // CHECK:         @.offload_sizes = private unnamed_addr constant [2 x i64] [i64 8, i64 8]
-// CHECK:         @.offload_maptypes = private unnamed_addr constant [2 x i64] [i64 67, i64 67]
+// CHECK:         @.offload_maptypes = private unnamed_addr constant [2 x i64] [i64 99, i64 99]
 // CHECK-LABEL: define void @_QPopenmp_target_use_dev_both
 // CHECK:         %[[VAL_0:.*]] = alloca [2 x ptr], align 8
 // CHECK:         %[[VAL_1:.*]] = alloca [2 x ptr], align 8
