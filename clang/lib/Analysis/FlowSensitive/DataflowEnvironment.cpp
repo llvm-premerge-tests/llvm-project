@@ -161,6 +161,16 @@ static Value &widenDistinctValues(QualType Type, Value &Prev,
     return CurrentEnv.makeTopBoolValue();
   }
 
+  if (auto *PrevPtr = dyn_cast<PointerValue>(&Prev)) {
+    auto &CurPtr = cast<PointerValue>(Current);
+
+    if (&PrevPtr->getPointeeLoc() != &CurPtr.getPointeeLoc())
+      // TODO: Widen properties
+      return CurrentEnv.create<PointerValue>(
+          CurrentEnv.getDataflowAnalysisContext().getUnknownStorageLocation(
+              CurPtr.getPointeeLoc().getType()));
+  }
+
   // FIXME: Add other built-in model widening.
 
   // Custom-model widening.
@@ -658,6 +668,20 @@ PointerValue &Environment::getOrCreateNullPointerValue(QualType PointeeType) {
 void Environment::setValue(const StorageLocation &Loc, Value &Val) {
   assert(!isa<RecordValue>(&Val) || &cast<RecordValue>(&Val)->getLoc() == &Loc);
 
+  // TODO: Currently, if `Loc` is an unknown storage location, just bail out.
+  // But is this the right thing to do?
+  // Alternatives:
+  // - Assert that `Loc` is not an unknown storage location. But then that
+  //   potentially puts the burden of testing on the caller. And what else would
+  //   they do except not set the value?
+  // - Because the unknown storage location is conceptually a "top", it
+  //   effectively refers to the set of _all_ possible storage locations. So,
+  //   because we could be potentially setting the value of any storage,
+  //   maybe we should blow away _all_ of the entries in `LocToVal`? Or at least
+  //   those whose type is one that is compatible with `Loc` in the sense that
+  //   it can refer to a value of type `Loc.getType()`?
+  if (getDataflowAnalysisContext().isUnknownStorageLocation(Loc))
+    return;
   LocToVal[&Loc] = &Val;
 }
 
@@ -686,6 +710,8 @@ void Environment::setValue(const Expr &E, Value &Val) {
 }
 
 Value *Environment::getValue(const StorageLocation &Loc) const {
+  if (getDataflowAnalysisContext().isUnknownStorageLocation(Loc))
+    return nullptr;
   return LocToVal.lookup(&Loc);
 }
 
