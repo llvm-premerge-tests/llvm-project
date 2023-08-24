@@ -759,32 +759,17 @@ define void @splat_allones_with_use_v4i64(ptr %x) {
 ; LMULMAX2-NEXT:    vse64.v v8, (a0)
 ; LMULMAX2-NEXT:    ret
 ;
-; LMULMAX1-RV32-LABEL: splat_allones_with_use_v4i64:
-; LMULMAX1-RV32:       # %bb.0:
-; LMULMAX1-RV32-NEXT:    vsetivli zero, 2, e64, m1, ta, ma
-; LMULMAX1-RV32-NEXT:    vle64.v v8, (a0)
-; LMULMAX1-RV32-NEXT:    addi a1, a0, 16
-; LMULMAX1-RV32-NEXT:    vle64.v v9, (a1)
-; LMULMAX1-RV32-NEXT:    vsetivli zero, 4, e32, m1, ta, ma
-; LMULMAX1-RV32-NEXT:    vmv.v.i v10, -1
-; LMULMAX1-RV32-NEXT:    vsetivli zero, 2, e64, m1, ta, ma
-; LMULMAX1-RV32-NEXT:    vadd.vv v9, v9, v10
-; LMULMAX1-RV32-NEXT:    vadd.vv v8, v8, v10
-; LMULMAX1-RV32-NEXT:    vse64.v v8, (a0)
-; LMULMAX1-RV32-NEXT:    vse64.v v9, (a1)
-; LMULMAX1-RV32-NEXT:    ret
-;
-; LMULMAX1-RV64-LABEL: splat_allones_with_use_v4i64:
-; LMULMAX1-RV64:       # %bb.0:
-; LMULMAX1-RV64-NEXT:    vsetivli zero, 2, e64, m1, ta, ma
-; LMULMAX1-RV64-NEXT:    addi a1, a0, 16
-; LMULMAX1-RV64-NEXT:    vle64.v v8, (a1)
-; LMULMAX1-RV64-NEXT:    vle64.v v9, (a0)
-; LMULMAX1-RV64-NEXT:    vadd.vi v8, v8, -1
-; LMULMAX1-RV64-NEXT:    vadd.vi v9, v9, -1
-; LMULMAX1-RV64-NEXT:    vse64.v v9, (a0)
-; LMULMAX1-RV64-NEXT:    vse64.v v8, (a1)
-; LMULMAX1-RV64-NEXT:    ret
+; LMULMAX1-LABEL: splat_allones_with_use_v4i64:
+; LMULMAX1:       # %bb.0:
+; LMULMAX1-NEXT:    vsetivli zero, 2, e64, m1, ta, ma
+; LMULMAX1-NEXT:    addi a1, a0, 16
+; LMULMAX1-NEXT:    vle64.v v8, (a1)
+; LMULMAX1-NEXT:    vle64.v v9, (a0)
+; LMULMAX1-NEXT:    vadd.vi v8, v8, -1
+; LMULMAX1-NEXT:    vadd.vi v9, v9, -1
+; LMULMAX1-NEXT:    vse64.v v9, (a0)
+; LMULMAX1-NEXT:    vse64.v v8, (a1)
+; LMULMAX1-NEXT:    ret
   %a = load <4 x i64>, ptr %x
   %b = add <4 x i64> %a, <i64 -1, i64 -1, i64 -1, i64 -1>
   store <4 x i64> %b, ptr %x

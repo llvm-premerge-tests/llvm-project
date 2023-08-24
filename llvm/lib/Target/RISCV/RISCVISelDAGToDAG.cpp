@@ -2957,16 +2957,44 @@ bool RISCVDAGToDAGISel::selectVLOp(SDValue N, SDValue &VL) {
 
 static SDValue findVSplat(SDValue N) {
   SDValue Splat = N;
+
+  // A common pattern on RV32 is a splat that's been obfuscated through
+  // bitcasts, e.g. (insert_subvector nxv2i64 (bitcast v2i64 (extract_subvector
+  // v4i32 (vmv_v_x_vl nxv4i32)))
+  //
+  // The index doesn't matter here since is it's inserting into undef.
+  if (Splat.getOpcode() == ISD::INSERT_SUBVECTOR &&
+      Splat.getOperand(0).isUndef())
+    Splat = Splat.getOperand(1);
+  Splat = peekThroughBitcasts(Splat);
+  // The index doesn't matter here because an extract of a splat will have the
+  // same value no matter where it extracts from.
+  if (Splat.getOpcode() == ISD::EXTRACT_SUBVECTOR)
+    Splat = Splat.getOperand(0);
+
   if (Splat.getOpcode() != RISCVISD::VMV_V_X_VL ||
       !Splat.getOperand(0).isUndef())
     return SDValue();
   assert(Splat.getNumOperands() == 3 && "Unexpected number of operands");
+
+  // If the original element size is smaller than the splat's, then from the
+  // perspective of N's type it's not a splat but a repeated sequence, e.g:
+  //
+  // (insert_subvector nxv4i32 (bitcast v4i32 (extract_subvector v2i64
+  // (vmv_v_x_vl nxv2i64)))
+  if (N.getSimpleValueType().getScalarSizeInBits() <
+      Splat.getSimpleValueType().getScalarSizeInBits())
+    return SDValue();
   return Splat;
 }
 
 bool RISCVDAGToDAGISel::selectVSplat(SDValue N, SDValue &SplatVal) {
   SDValue Splat = findVSplat(N);
   if (!Splat)
+    return false;
+
+  if (Splat.getSimpleValueType().getVectorElementType() !=
+      N.getSimpleValueType().getVectorElementType())
     return false;
 
   SplatVal = Splat.getOperand(1);
@@ -2981,7 +3009,12 @@ static bool selectVSplatImmHelper(SDValue N, SDValue &SplatVal,
   if (!Splat || !isa<ConstantSDNode>(Splat.getOperand(1)))
     return false;
 
+  // Extract the constant from a RISCVISD::VMV_V_X_VL. This takes into account
+  // the fact that the VMV_V_X_VL could have a smaller element type that was
+  // then bitcasted to VT's larger element type.
+  const unsigned EltSize = N.getScalarValueSizeInBits();
   const unsigned SplatEltSize = Splat.getScalarValueSizeInBits();
+  assert(EltSize >= SplatEltSize);
   assert(Subtarget.getXLenVT() == Splat.getOperand(1).getSimpleValueType() &&
          "Unexpected splat operand type");
 
@@ -2994,7 +3027,13 @@ static bool selectVSplatImmHelper(SDValue N, SDValue &SplatVal,
   // sign-extending to (XLenVT -1).
   APInt SplatConst = Splat.getConstantOperandAPInt(1).sextOrTrunc(SplatEltSize);
 
-  int64_t SplatImm = SplatConst.getSExtValue();
+  // Get the splat value, which may be smaller than N's element size if it was
+  // bitcasted.
+  APInt Const(EltSize, 0);
+  for (unsigned I = 0; I < EltSize / SplatEltSize; I++)
+    Const.insertBits(SplatConst, I * SplatEltSize);
+
+  int64_t SplatImm = Const.getSExtValue();
 
   if (!ValidateImm(SplatImm))
     return false;

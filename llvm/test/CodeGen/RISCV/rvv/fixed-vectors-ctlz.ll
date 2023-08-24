@@ -475,10 +475,7 @@ define void @ctlz_v2i64(ptr %x, ptr %y) nounwind {
 ; LMULMAX2-RV32I-NEXT:    li a1, 32
 ; LMULMAX2-RV32I-NEXT:    vsrl.vx v9, v8, a1
 ; LMULMAX2-RV32I-NEXT:    vor.vv v8, v8, v9
-; LMULMAX2-RV32I-NEXT:    vsetivli zero, 4, e32, m1, ta, ma
-; LMULMAX2-RV32I-NEXT:    vmv.v.i v9, -1
-; LMULMAX2-RV32I-NEXT:    vsetivli zero, 2, e64, m1, ta, ma
-; LMULMAX2-RV32I-NEXT:    vxor.vv v8, v8, v9
+; LMULMAX2-RV32I-NEXT:    vnot.v v8, v8
 ; LMULMAX2-RV32I-NEXT:    vsrl.vi v9, v8, 1
 ; LMULMAX2-RV32I-NEXT:    lui a1, 349525
 ; LMULMAX2-RV32I-NEXT:    addi a1, a1, 1365
@@ -1172,10 +1169,7 @@ define void @ctlz_v4i64(ptr %x, ptr %y) nounwind {
 ; LMULMAX2-RV32I-NEXT:    li a1, 32
 ; LMULMAX2-RV32I-NEXT:    vsrl.vx v10, v8, a1
 ; LMULMAX2-RV32I-NEXT:    vor.vv v8, v8, v10
-; LMULMAX2-RV32I-NEXT:    vsetivli zero, 8, e32, m2, ta, ma
-; LMULMAX2-RV32I-NEXT:    vmv.v.i v10, -1
-; LMULMAX2-RV32I-NEXT:    vsetivli zero, 4, e64, m2, ta, ma
-; LMULMAX2-RV32I-NEXT:    vxor.vv v8, v8, v10
+; LMULMAX2-RV32I-NEXT:    vnot.v v8, v8
 ; LMULMAX2-RV32I-NEXT:    vsrl.vi v10, v8, 1
 ; LMULMAX2-RV32I-NEXT:    lui a1, 349525
 ; LMULMAX2-RV32I-NEXT:    addi a1, a1, 1365
@@ -1797,10 +1791,7 @@ define void @ctlz_zero_undef_v2i64(ptr %x, ptr %y) nounwind {
 ; LMULMAX2-RV32I-NEXT:    li a1, 32
 ; LMULMAX2-RV32I-NEXT:    vsrl.vx v9, v8, a1
 ; LMULMAX2-RV32I-NEXT:    vor.vv v8, v8, v9
-; LMULMAX2-RV32I-NEXT:    vsetivli zero, 4, e32, m1, ta, ma
-; LMULMAX2-RV32I-NEXT:    vmv.v.i v9, -1
-; LMULMAX2-RV32I-NEXT:    vsetivli zero, 2, e64, m1, ta, ma
-; LMULMAX2-RV32I-NEXT:    vxor.vv v8, v8, v9
+; LMULMAX2-RV32I-NEXT:    vnot.v v8, v8
 ; LMULMAX2-RV32I-NEXT:    vsrl.vi v9, v8, 1
 ; LMULMAX2-RV32I-NEXT:    lui a1, 349525
 ; LMULMAX2-RV32I-NEXT:    addi a1, a1, 1365
@@ -2464,10 +2455,7 @@ define void @ctlz_zero_undef_v4i64(ptr %x, ptr %y) nounwind {
 ; LMULMAX2-RV32I-NEXT:    li a1, 32
 ; LMULMAX2-RV32I-NEXT:    vsrl.vx v10, v8, a1
 ; LMULMAX2-RV32I-NEXT:    vor.vv v8, v8, v10
-; LMULMAX2-RV32I-NEXT:    vsetivli zero, 8, e32, m2, ta, ma
-; LMULMAX2-RV32I-NEXT:    vmv.v.i v10, -1
-; LMULMAX2-RV32I-NEXT:    vsetivli zero, 4, e64, m2, ta, ma
-; LMULMAX2-RV32I-NEXT:    vxor.vv v8, v8, v10
+; LMULMAX2-RV32I-NEXT:    vnot.v v8, v8
 ; LMULMAX2-RV32I-NEXT:    vsrl.vi v10, v8, 1
 ; LMULMAX2-RV32I-NEXT:    lui a1, 349525
 ; LMULMAX2-RV32I-NEXT:    addi a1, a1, 1365
