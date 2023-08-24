@@ -170,6 +170,77 @@ DiagnosedSilenceableFailure transform::MakeLoopIndependentOp::applyToOne(
 }
 
 //===----------------------------------------------------------------------===//
+// ShareForallOperandsOp
+//===----------------------------------------------------------------------===//
+
+DiagnosedSilenceableFailure transform::ShareForallOperandsOp::applyToOne(
+    transform::TransformRewriter &rewriter, scf::ForallOp forallOp,
+    transform::ApplyToEachResultList &results,
+    transform::TransformState &state) {
+  SmallVector<int64_t> shareOperands(getShareOperands());
+  // Empty case: consider all operands need to be shared.
+  if (shareOperands.empty()) {
+    shareOperands =
+        llvm::to_vector(llvm::seq<int64_t>(0, forallOp.getOutputs().size()));
+  }
+  for (int64_t outputIdx : getShareOperands()) {
+    if (outputIdx < 0 || outputIdx >= forallOp.getOutputs().size())
+      return mlir::emitDefiniteFailure(forallOp, "operand idx overflow");
+    Value toShare = forallOp.getOutputs()[outputIdx];
+    if (std::distance(toShare.getUses().begin(), toShare.getUses().end()) !=
+        2) {
+      /*return mlir::emitSilenceableFailure(
+          forallOp,
+          "operand to share must have exactly 2 uses, the forall op "
+          "and an extract_slice op.");*/
+      continue;
+    }
+    tensor::ExtractSliceOp extractSliceOp;
+    for (Operation *user : toShare.getUsers()) {
+      extractSliceOp = dyn_cast<tensor::ExtractSliceOp>(user);
+      if (extractSliceOp)
+        break;
+    }
+    if (!extractSliceOp) {
+      /*return mlir::emitSilenceableFailure(
+        forallOp,
+        "shared operands use must be extractSliceOp.");*/
+      continue;
+    }
+    // Get the corresponding bbArg.
+    BlockArgument bbArg = forallOp.getOutputBlockArguments()[outputIdx];
+
+    // Check if the extract_slice has a matching parallel_insert_slice
+    // (i.e., same source/target, offsets, sizes and strides).
+    auto isMatchingParallelInsertSlice = [&](Operation &op) {
+      auto insertSlice = dyn_cast<tensor::ParallelInsertSliceOp>(&op);
+      if (!insertSlice)
+        return false;
+      if (insertSlice.getDest() != bbArg)
+        return false;
+      return llvm::equal(insertSlice.getMixedOffsets(),
+                         extractSliceOp.getMixedOffsets()) &&
+             llvm::equal(insertSlice.getMixedSizes(),
+                         extractSliceOp.getMixedSizes()) &&
+             llvm::equal(insertSlice.getMixedStrides(),
+                         extractSliceOp.getMixedStrides());
+    };
+    if (llvm::none_of(forallOp.getTerminator().getYieldingOps(),
+                      isMatchingParallelInsertSlice)) {
+      continue;
+    }
+
+    // Promote extract_slice source to bbArg.
+    rewriter.updateRootInPlace(extractSliceOp, [&]() {
+      extractSliceOp.getSourceMutable().assign(bbArg);
+    });
+  }
+
+  results.push_back(forallOp);
+  return DiagnosedSilenceableFailure::success();
+}
+
+//===----------------------------------------------------------------------===//
 // Transform op registration
 //===----------------------------------------------------------------------===//
 

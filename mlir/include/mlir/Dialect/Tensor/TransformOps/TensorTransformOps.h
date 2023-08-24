@@ -16,6 +16,9 @@
 
 namespace mlir {
 class DialectRegistry;
+namespace scf {
+class ForallOp;
+} // namespace scf
 
 namespace tensor {
 void registerTransformDialectExtension(DialectRegistry &registry);
