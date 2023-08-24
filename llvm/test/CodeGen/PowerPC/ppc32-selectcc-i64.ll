@@ -21,9 +21,9 @@ define i1 @cmp(i8* %a, i8* %b) {
 ; CHECK-NEXT:    blr
 ; CHECK-NEXT:  .LBB0_2: # %res_block
 ; CHECK-NEXT:    cmplw 7, 8
-; CHECK-NEXT:    cmplw 1, 5, 6
 ; CHECK-NEXT:    li 3, 1
 ; CHECK-NEXT:    li 4, -1
+; CHECK-NEXT:    cmplw 1, 5, 6
 ; CHECK-NEXT:    crandc 20, 0, 2
 ; CHECK-NEXT:    crand 21, 2, 4
 ; CHECK-NEXT:    cror 20, 21, 20
