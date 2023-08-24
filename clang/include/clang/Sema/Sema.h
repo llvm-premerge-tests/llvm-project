@@ -3614,9 +3614,10 @@ public:
   /// in a 'block', this returns the containing context.
   NamedDecl *getCurFunctionOrMethodDecl() const;
 
-  /// getCurLocalScopeDecl - Return the Decl for either of:
-  /// block, lambda, captured statement, function, or nullptr.
-  Decl *getCurLocalScopeDecl();
+  /// Returns the current DeclContext that can be used to determine the value
+  /// for PredefinedExpr. This can be either a block, lambda, captured
+  /// statement, function, otherwise a nullptr.
+  DeclContext *getPredefinedExprDeclContext();
 
   /// Add this decl to the scope shadowed decl chains.
   void PushOnScopeChains(NamedDecl *D, Scope *S, bool AddToContext = true);
