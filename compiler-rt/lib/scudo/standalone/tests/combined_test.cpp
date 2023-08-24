@@ -14,6 +14,7 @@
 #include "combined.h"
 #include "mem_map.h"
 
+#include <algorithm>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
@@ -69,6 +70,8 @@ void checkMemoryTaggingMaybe(AllocatorT *Allocator, void *P, scudo::uptr Size,
   }
 }
 
+static size_t NumAllocatorInstances = 0;
+
 template <typename Config> struct TestAllocator : scudo::Allocator<Config> {
   TestAllocator() {
     this->initThreadMaybe();
@@ -78,13 +81,11 @@ template <typename Config> struct TestAllocator : scudo::Allocator<Config> {
   }
   ~TestAllocator() { this->unmapTestOnly(); }
 
-  void *operator new(size_t size) {
-    void *p = nullptr;
-    EXPECT_EQ(0, posix_memalign(&p, alignof(TestAllocator), size));
-    return p;
+  void *operator new(size_t size);
+  void operator delete(void *ptr) {
+    ASSERT_EQ(NumAllocatorInstances, 1u);
+    NumAllocatorInstances--;
   }
-
-  void operator delete(void *ptr) { free(ptr); }
 };
 
 template <class TypeParam> struct ScudoCombinedTest : public Test {
@@ -111,11 +112,25 @@ template <typename T> using ScudoCombinedDeathTest = ScudoCombinedTest<T>;
 #define SCUDO_TYPED_TEST_ALL_TYPES(FIXTURE, NAME)                              \
   SCUDO_TYPED_TEST_TYPE(FIXTURE, NAME, AndroidSvelteConfig)                    \
   SCUDO_TYPED_TEST_TYPE(FIXTURE, NAME, FuchsiaConfig)
+constexpr size_t kMaxSize =
+    std::max({sizeof(TestAllocator<scudo::FuchsiaConfig>),
+              sizeof(TestAllocator<scudo::AndroidSvelteConfig>)});
+constexpr size_t kMaxAlign =
+    std::max({alignof(TestAllocator<scudo::FuchsiaConfig>),
+              alignof(TestAllocator<scudo::AndroidSvelteConfig>)});
 #else
 #define SCUDO_TYPED_TEST_ALL_TYPES(FIXTURE, NAME)                              \
   SCUDO_TYPED_TEST_TYPE(FIXTURE, NAME, AndroidSvelteConfig)                    \
   SCUDO_TYPED_TEST_TYPE(FIXTURE, NAME, DefaultConfig)                          \
   SCUDO_TYPED_TEST_TYPE(FIXTURE, NAME, AndroidConfig)
+constexpr size_t kMaxSize =
+    std::max({sizeof(TestAllocator<scudo::DefaultConfig>),
+              sizeof(TestAllocator<scudo::AndroidSvelteConfig>),
+              sizeof(TestAllocator<scudo::AndroidConfig>)});
+constexpr size_t kMaxAlign =
+    std::max({alignof(TestAllocator<scudo::DefaultConfig>),
+              alignof(TestAllocator<scudo::AndroidSvelteConfig>),
+              alignof(TestAllocator<scudo::AndroidConfig>)});
 #endif
 
 #define SCUDO_TYPED_TEST_TYPE(FIXTURE, NAME, TYPE)                             \
@@ -129,6 +144,20 @@ template <typename T> using ScudoCombinedDeathTest = ScudoCombinedTest<T>;
   };                                                                           \
   SCUDO_TYPED_TEST_ALL_TYPES(FIXTURE, NAME)                                    \
   template <class TypeParam> void FIXTURE##NAME<TypeParam>::Run()
+
+// The allocator is over 4MB large. Rather than creating an instance of this on
+// the heap, keep it in a global storage to reduce fragmentation from having to
+// mmap this at the start of every test.
+alignas(kMaxAlign) static uint8_t AllocatorStorage[kMaxSize];
+
+template <typename Config>
+void *TestAllocator<Config>::operator new(size_t size) {
+  assert(size <= sizeof(AllocatorStorage) &&
+         "Allocation size doesn't fit in the allocator storage");
+  assert(NumAllocatorInstances == 0 && "Allocator storage already in use");
+  NumAllocatorInstances++;
+  return AllocatorStorage;
+}
 
 SCUDO_TYPED_TEST(ScudoCombinedTest, IsOwned) {
   auto *Allocator = this->Allocator.get();
