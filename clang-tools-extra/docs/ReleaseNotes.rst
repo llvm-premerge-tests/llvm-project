@@ -113,6 +113,10 @@ Improvements to clang-tidy
 
 - Improved `--dump-config` to print check options in alphabetical order.
 
+- Improved :doc:`readability-identifier-naming
+  <clang-tidy/checks/readability/IdentifierNamingCheck>` check to allow for
+  Leading_upper_snake_case naming convention.
+
 New checks
 ^^^^^^^^^^
 

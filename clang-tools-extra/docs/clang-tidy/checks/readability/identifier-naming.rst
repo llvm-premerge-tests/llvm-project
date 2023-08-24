@@ -17,7 +17,8 @@ Casing types include:
  - ``CamelCase``,
  - ``camel_Snake_Back``,
  - ``Camel_Snake_Case``,
- - ``aNy_CasE``.
+ - ``aNy_CasE``,
+ - ``Leading_upper_snake_case``.
 
 It also supports a fixed prefix and suffix that will be prepended or appended
 to the identifiers, regardless of the casing.
@@ -2099,7 +2100,7 @@ After:
 
 For example using values of:
 
-   - StructCase of ``lower_case``
+   - StructCase of ``Leading_upper_snake_case``
    - StructPrefix of ``pre_``
    - StructSuffix of ``_post``
 
@@ -2118,9 +2119,9 @@ After:
 
 .. code-block:: c++
 
-    struct pre_foo_post {
-      pre_foo_post();
-      ~pre_foo_post();
+    struct pre_Foo_post {
+      pre_Foo_post();
+      ~pre_Foo_post();
     };
 
 .. option:: TemplateParameterCase
