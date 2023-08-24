@@ -142,6 +142,20 @@ NVPTXTargetInfo::NVPTXTargetInfo(const llvm::Triple &Triple,
   // we need all classes to be defined on both the host and device.
   MaxAtomicInlineWidth = HostTarget->getMaxAtomicInlineWidth();
 
+  // For certain builtin types support on the host target, claim they are
+  // support to pass the compilation of the host code during the device-side
+  // compilation.
+  //
+  // FIXME: As the side effect, we also accept `__float128` uses in the device
+  // code, but use 'double' as the underlying type, so host/device
+  // representation of the type is different. This is similar to what happens to
+  // long double.
+
+  if (HostTarget->hasFloat128Type()) {
+    HasFloat128 = true;
+    Float128Format = DoubleFormat;
+  }
+
   // Properties intentionally not copied from host:
   // - LargeArrayMinWidth, LargeArrayAlign: Not visible across the
   //   host/device boundary.
