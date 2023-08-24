@@ -8017,14 +8017,6 @@ void VPRecipeBuilder::createHeaderMask(VPlan &Plan) {
     return;
   }
 
-  // If we're using the active lane mask for control flow, then we get the
-  // mask from the active lane mask PHI that is cached in the VPlan.
-  TailFoldingStyle TFStyle = CM.getTailFoldingStyle();
-  if (useActiveLaneMaskForControlFlow(TFStyle)) {
-    BlockMaskCache[Header] = Plan.getActiveLaneMaskPhi();
-    return;
-  }
-
   // Introduce the early-exit compare IV <= BTC to form header block mask.
   // This is used instead of IV < TC because TC may wrap, unlike BTC. Start by
   // constructing the desired canonical IV in the header block as its first
@@ -8038,14 +8030,8 @@ void VPRecipeBuilder::createHeaderMask(VPlan &Plan) {
   VPBuilder::InsertPointGuard Guard(Builder);
   Builder.setInsertPoint(HeaderVPBB, NewInsertionPoint);
   VPValue *BlockMask = nullptr;
-  if (useActiveLaneMask(TFStyle)) {
-    VPValue *TC = Plan.getTripCount();
-    BlockMask = Builder.createNaryOp(VPInstruction::ActiveLaneMask, {IV, TC},
-                                     nullptr, "active.lane.mask");
-  } else {
-    VPValue *BTC = Plan.getOrCreateBackedgeTakenCount();
-    BlockMask = Builder.createNaryOp(VPInstruction::ICmpULE, {IV, BTC});
-  }
+  VPValue *BTC = Plan.getOrCreateBackedgeTakenCount();
+  BlockMask = Builder.createNaryOp(VPInstruction::ICmpULE, {IV, BTC});
   BlockMaskCache[Header] = BlockMask;
 }
 
@@ -8583,8 +8569,8 @@ void LoopVectorizationPlanner::buildVPlansWithVPRecipes(ElementCount MinVF,
 
 // Add the necessary canonical IV and branch recipes required to control the
 // loop.
-static void addCanonicalIVRecipes(VPlan &Plan, Type *IdxTy, DebugLoc DL,
-                                  TailFoldingStyle Style) {
+static void addCanonicalIVRecipes(VPlan &Plan, Type *IdxTy, bool HasNUW,
+                                  DebugLoc DL) {
   Value *StartIdx = ConstantInt::get(IdxTy, 0);
   auto *StartV = Plan.getVPValueOrAddLiveIn(StartIdx);
 
@@ -8596,93 +8582,19 @@ static void addCanonicalIVRecipes(VPlan &Plan, Type *IdxTy, DebugLoc DL,
 
   // Add a CanonicalIVIncrement{NUW} VPInstruction to increment the scalar
   // IV by VF * UF.
-  bool HasNUW = Style == TailFoldingStyle::None;
   auto *CanonicalIVIncrement =
       new VPInstruction(VPInstruction::CanonicalIVIncrement, {CanonicalIVPHI},
                         {HasNUW, false}, DL, "index.next");
   CanonicalIVPHI->addOperand(CanonicalIVIncrement);
 
   VPBasicBlock *EB = TopRegion->getExitingBasicBlock();
-  if (useActiveLaneMaskForControlFlow(Style)) {
-    // Create the active lane mask instruction in the vplan preheader.
-    VPBasicBlock *VecPreheader =
-        cast<VPBasicBlock>(Plan.getVectorLoopRegion()->getSinglePredecessor());
+  EB->appendRecipe(CanonicalIVIncrement);
 
-    // We can't use StartV directly in the ActiveLaneMask VPInstruction, since
-    // we have to take unrolling into account. Each part needs to start at
-    //   Part * VF
-    auto *CanonicalIVIncrementParts =
-        new VPInstruction(VPInstruction::CanonicalIVIncrementForPart, {StartV},
-                          {HasNUW, false}, DL, "index.part.next");
-    VecPreheader->appendRecipe(CanonicalIVIncrementParts);
-
-    // Create the ActiveLaneMask instruction using the correct start values.
-    VPValue *TC = Plan.getTripCount();
-
-    VPValue *TripCount, *IncrementValue;
-    if (Style == TailFoldingStyle::DataAndControlFlowWithoutRuntimeCheck) {
-      // When avoiding a runtime check, the active.lane.mask inside the loop
-      // uses a modified trip count and the induction variable increment is
-      // done after the active.lane.mask intrinsic is called.
-      auto *TCMinusVF =
-          new VPInstruction(VPInstruction::CalculateTripCountMinusVF, {TC}, DL);
-      VecPreheader->appendRecipe(TCMinusVF);
-      IncrementValue = CanonicalIVPHI;
-      TripCount = TCMinusVF;
-    } else {
-      // When the loop is guarded by a runtime overflow check for the loop
-      // induction variable increment by VF, we can increment the value before
-      // the get.active.lane mask and use the unmodified tripcount.
-      EB->appendRecipe(CanonicalIVIncrement);
-      IncrementValue = CanonicalIVIncrement;
-      TripCount = TC;
-    }
-
-    auto *EntryALM = new VPInstruction(VPInstruction::ActiveLaneMask,
-                                       {CanonicalIVIncrementParts, TC}, DL,
-                                       "active.lane.mask.entry");
-    VecPreheader->appendRecipe(EntryALM);
-
-    // Now create the ActiveLaneMaskPhi recipe in the main loop using the
-    // preheader ActiveLaneMask instruction.
-    auto *LaneMaskPhi = new VPActiveLaneMaskPHIRecipe(EntryALM, DebugLoc());
-    Header->insert(LaneMaskPhi, Header->getFirstNonPhi());
-
-    // Create the active lane mask for the next iteration of the loop.
-    CanonicalIVIncrementParts =
-        new VPInstruction(VPInstruction::CanonicalIVIncrementForPart,
-                          {IncrementValue}, {HasNUW, false}, DL);
-    EB->appendRecipe(CanonicalIVIncrementParts);
-
-    auto *ALM = new VPInstruction(VPInstruction::ActiveLaneMask,
-                                  {CanonicalIVIncrementParts, TripCount}, DL,
-                                  "active.lane.mask.next");
-    EB->appendRecipe(ALM);
-    LaneMaskPhi->addOperand(ALM);
-
-    if (Style == TailFoldingStyle::DataAndControlFlowWithoutRuntimeCheck) {
-      // Do the increment of the canonical IV after the active.lane.mask, because
-      // that value is still based off %CanonicalIVPHI
-      EB->appendRecipe(CanonicalIVIncrement);
-    }
-
-    // We have to invert the mask here because a true condition means jumping
-    // to the exit block.
-    auto *NotMask = new VPInstruction(VPInstruction::Not, ALM, DL);
-    EB->appendRecipe(NotMask);
-
-    VPInstruction *BranchBack =
-        new VPInstruction(VPInstruction::BranchOnCond, {NotMask}, DL);
-    EB->appendRecipe(BranchBack);
-  } else {
-    EB->appendRecipe(CanonicalIVIncrement);
-
-    // Add the BranchOnCount VPInstruction to the latch.
-    VPInstruction *BranchBack = new VPInstruction(
-        VPInstruction::BranchOnCount,
-        {CanonicalIVIncrement, &Plan.getVectorTripCount()}, DL);
-    EB->appendRecipe(BranchBack);
-  }
+  // Add the BranchOnCount VPInstruction to the latch.
+  VPInstruction *BranchBack =
+      new VPInstruction(VPInstruction::BranchOnCount,
+                        {CanonicalIVIncrement, &Plan.getVectorTripCount()}, DL);
+  EB->appendRecipe(BranchBack);
 }
 
 // Add exit values to \p Plan. VPLiveOuts are added for each LCSSA phi in the
@@ -8771,8 +8683,8 @@ LoopVectorizationPlanner::tryToBuildVPlanWithVPRecipes(VFRange &Range) {
   Instruction *DLInst =
       getDebugLocFromInstOrOperands(Legal->getPrimaryInduction());
   addCanonicalIVRecipes(*Plan, Legal->getWidestInductionType(),
-                        DLInst ? DLInst->getDebugLoc() : DebugLoc(),
-                        CM.getTailFoldingStyle(IVUpdateMayOverflow));
+                        CM.getTailFoldingStyle() == TailFoldingStyle::None,
+                        DLInst ? DLInst->getDebugLoc() : DebugLoc());
 
   // Proactively create header mask. Masks for other blocks are created on
   // demand.
@@ -8941,6 +8853,11 @@ LoopVectorizationPlanner::tryToBuildVPlanWithVPRecipes(VFRange &Range) {
   if (!VPlanTransforms::adjustFixedOrderRecurrences(*Plan, Builder))
     return nullptr;
 
+  auto Style = CM.getTailFoldingStyle(IVUpdateMayOverflow);
+  if (useActiveLaneMask(Style))
+    VPlanTransforms::addActiveLaneMask(
+        *Plan, useActiveLaneMaskForControlFlow(Style),
+        Style == TailFoldingStyle::DataAndControlFlowWithoutRuntimeCheck);
   return Plan;
 }
 
@@ -8975,8 +8892,8 @@ VPlanPtr LoopVectorizationPlanner::buildVPlan(VFRange &Range) {
       Plan->getVectorLoopRegion()->getExitingBasicBlock()->getTerminator();
   Term->eraseFromParent();
 
-  addCanonicalIVRecipes(*Plan, Legal->getWidestInductionType(), DebugLoc(),
-                        CM.getTailFoldingStyle());
+  addCanonicalIVRecipes(*Plan, Legal->getWidestInductionType(), true,
+                        DebugLoc());
   return Plan;
 }
 

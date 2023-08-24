@@ -1121,6 +1121,8 @@ public:
     };
     llvm_unreachable("switch should return");
   }
+
+  DebugLoc getDebugLoc() const { return DL; }
 };
 
 /// VPWidenRecipe is a recipe for producing a copy of vector type its
@@ -2061,6 +2063,7 @@ public:
   const Type *getScalarType() const {
     return getOperand(0)->getLiveInIRValue()->getType();
   }
+  Type *getScalarType() { return getOperand(0)->getLiveInIRValue()->getType(); }
 
   /// Returns true if the recipe only uses the first lane of operand \p Op.
   bool onlyFirstLaneUsed(const VPValue *Op) const override {
@@ -2652,10 +2655,6 @@ public:
     }
     return cast<VPCanonicalIVPHIRecipe>(&*EntryVPBB->begin());
   }
-
-  /// Find and return the VPActiveLaneMaskPHIRecipe from the header - there
-  /// be only one at most. If there isn't one, then return nullptr.
-  VPActiveLaneMaskPHIRecipe *getActiveLaneMaskPhi();
 
   void addLiveOut(PHINode *PN, VPValue *V);
 

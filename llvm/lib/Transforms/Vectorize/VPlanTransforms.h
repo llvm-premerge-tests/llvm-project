@@ -67,6 +67,13 @@ struct VPlanTransforms {
   /// regions until no improvements are remaining.
   static void createAndOptimizeReplicateRegions(VPlan &Plan);
 
+  /// Replace (ICMP_ULE, wide canonical IV, backedge-taken-count) checks with an
+  /// active-lane-mask recipe. If \p UseActiveLaneMaskForControlFlow is true,
+  /// introduce an VPActiveLaneMaskPHIRecipe.
+  static void addActiveLaneMask(VPlan &Plan,
+                                bool UseActiveLaneMaskForControlFlow,
+                                bool DataAndControlFlowWithoutRuntimeCheck);
+
 private:
   /// Remove redundant VPBasicBlocks by merging them into their predecessor if
   /// the predecessor has a single successor.

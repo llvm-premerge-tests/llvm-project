@@ -94,6 +94,9 @@ define void @simple_memset(i32 %val, ptr %ptr, i64 %n) #0 {
 ; CHECK-NEXT:    [[TMP59:%.*]] = mul i64 [[TMP58]], 12
 ; CHECK-NEXT:    [[TMP60:%.*]] = getelementptr i32, ptr [[TMP47]], i64 [[TMP59]]
 ; CHECK-NEXT:    call void @llvm.masked.store.nxv4i32.p0(<vscale x 4 x i32> [[BROADCAST_SPLAT]], ptr [[TMP60]], i32 4, <vscale x 4 x i1> [[ACTIVE_LANE_MASK9]])
+; CHECK-NEXT:    [[TMP70:%.*]] = call i64 @llvm.vscale.i64()
+; CHECK-NEXT:    [[TMP71:%.*]] = mul i64 [[TMP70]], 16
+; CHECK-NEXT:    [[INDEX_NEXT13]] = add i64 [[INDEX6]], [[TMP71]]
 ; CHECK-NEXT:    [[TMP61:%.*]] = call i64 @llvm.vscale.i64()
 ; CHECK-NEXT:    [[TMP62:%.*]] = mul i64 [[TMP61]], 4
 ; CHECK-NEXT:    [[TMP63:%.*]] = add i64 [[INDEX6]], [[TMP62]]
@@ -107,9 +110,6 @@ define void @simple_memset(i32 %val, ptr %ptr, i64 %n) #0 {
 ; CHECK-NEXT:    [[ACTIVE_LANE_MASK_NEXT10]] = call <vscale x 4 x i1> @llvm.get.active.lane.mask.nxv4i1.i64(i64 [[TMP63]], i64 [[TMP20]])
 ; CHECK-NEXT:    [[ACTIVE_LANE_MASK_NEXT11]] = call <vscale x 4 x i1> @llvm.get.active.lane.mask.nxv4i1.i64(i64 [[TMP66]], i64 [[TMP25]])
 ; CHECK-NEXT:    [[ACTIVE_LANE_MASK_NEXT12]] = call <vscale x 4 x i1> @llvm.get.active.lane.mask.nxv4i1.i64(i64 [[TMP69]], i64 [[TMP30]])
-; CHECK-NEXT:    [[TMP70:%.*]] = call i64 @llvm.vscale.i64()
-; CHECK-NEXT:    [[TMP71:%.*]] = mul i64 [[TMP70]], 16
-; CHECK-NEXT:    [[INDEX_NEXT13]] = add i64 [[INDEX6]], [[TMP71]]
 ; CHECK-NEXT:    [[TMP72:%.*]] = xor <vscale x 4 x i1> [[ACTIVE_LANE_MASK_NEXT]], shufflevector (<vscale x 4 x i1> insertelement (<vscale x 4 x i1> poison, i1 true, i64 0), <vscale x 4 x i1> poison, <vscale x 4 x i32> zeroinitializer)
 ; CHECK-NEXT:    [[TMP73:%.*]] = xor <vscale x 4 x i1> [[ACTIVE_LANE_MASK_NEXT10]], shufflevector (<vscale x 4 x i1> insertelement (<vscale x 4 x i1> poison, i1 true, i64 0), <vscale x 4 x i1> poison, <vscale x 4 x i32> zeroinitializer)
 ; CHECK-NEXT:    [[TMP74:%.*]] = xor <vscale x 4 x i1> [[ACTIVE_LANE_MASK_NEXT11]], shufflevector (<vscale x 4 x i1> insertelement (<vscale x 4 x i1> poison, i1 true, i64 0), <vscale x 4 x i1> poison, <vscale x 4 x i32> zeroinitializer)
@@ -262,6 +262,9 @@ define void @cond_memset(i32 %val, ptr noalias readonly %cond_ptr, ptr noalias %
 ; CHECK-NEXT:    [[TMP81:%.*]] = mul i64 [[TMP80]], 12
 ; CHECK-NEXT:    [[TMP82:%.*]] = getelementptr i32, ptr [[TMP65]], i64 [[TMP81]]
 ; CHECK-NEXT:    call void @llvm.masked.store.nxv4i32.p0(<vscale x 4 x i32> [[BROADCAST_SPLAT]], ptr [[TMP82]], i32 4, <vscale x 4 x i1> [[TMP72]])
+; CHECK-NEXT:    [[TMP92:%.*]] = call i64 @llvm.vscale.i64()
+; CHECK-NEXT:    [[TMP93:%.*]] = mul i64 [[TMP92]], 16
+; CHECK-NEXT:    [[INDEX_NEXT16]] = add i64 [[INDEX6]], [[TMP93]]
 ; CHECK-NEXT:    [[TMP83:%.*]] = call i64 @llvm.vscale.i64()
 ; CHECK-NEXT:    [[TMP84:%.*]] = mul i64 [[TMP83]], 4
 ; CHECK-NEXT:    [[TMP85:%.*]] = add i64 [[INDEX6]], [[TMP84]]
@@ -275,9 +278,6 @@ define void @cond_memset(i32 %val, ptr noalias readonly %cond_ptr, ptr noalias %
 ; CHECK-NEXT:    [[ACTIVE_LANE_MASK_NEXT13]] = call <vscale x 4 x i1> @llvm.get.active.lane.mask.nxv4i1.i64(i64 [[TMP85]], i64 [[TMP20]])
 ; CHECK-NEXT:    [[ACTIVE_LANE_MASK_NEXT14]] = call <vscale x 4 x i1> @llvm.get.active.lane.mask.nxv4i1.i64(i64 [[TMP88]], i64 [[TMP25]])
 ; CHECK-NEXT:    [[ACTIVE_LANE_MASK_NEXT15]] = call <vscale x 4 x i1> @llvm.get.active.lane.mask.nxv4i1.i64(i64 [[TMP91]], i64 [[TMP30]])
-; CHECK-NEXT:    [[TMP92:%.*]] = call i64 @llvm.vscale.i64()
-; CHECK-NEXT:    [[TMP93:%.*]] = mul i64 [[TMP92]], 16
-; CHECK-NEXT:    [[INDEX_NEXT16]] = add i64 [[INDEX6]], [[TMP93]]
 ; CHECK-NEXT:    [[TMP94:%.*]] = xor <vscale x 4 x i1> [[ACTIVE_LANE_MASK_NEXT]], shufflevector (<vscale x 4 x i1> insertelement (<vscale x 4 x i1> poison, i1 true, i64 0), <vscale x 4 x i1> poison, <vscale x 4 x i32> zeroinitializer)
 ; CHECK-NEXT:    [[TMP95:%.*]] = xor <vscale x 4 x i1> [[ACTIVE_LANE_MASK_NEXT13]], shufflevector (<vscale x 4 x i1> insertelement (<vscale x 4 x i1> poison, i1 true, i64 0), <vscale x 4 x i1> poison, <vscale x 4 x i32> zeroinitializer)
 ; CHECK-NEXT:    [[TMP96:%.*]] = xor <vscale x 4 x i1> [[ACTIVE_LANE_MASK_NEXT14]], shufflevector (<vscale x 4 x i1> insertelement (<vscale x 4 x i1> poison, i1 true, i64 0), <vscale x 4 x i1> poison, <vscale x 4 x i32> zeroinitializer)

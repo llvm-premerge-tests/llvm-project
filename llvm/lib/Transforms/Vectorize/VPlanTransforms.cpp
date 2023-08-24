@@ -515,7 +515,6 @@ static VPValue *createScalarIVSteps(VPlan &Plan, const InductionDescriptor &ID,
                                    TruncI ? TruncI->getType() : nullptr);
     HeaderVPBB->insert(BaseIV->getDefiningRecipe(), IP);
   }
-
   VPScalarIVStepsRecipe *Steps = new VPScalarIVStepsRecipe(ID, BaseIV, Step);
   HeaderVPBB->insert(Steps, IP);
   return Steps;
@@ -810,4 +809,133 @@ void VPlanTransforms::optimize(VPlan &Plan, ScalarEvolution &SE) {
 
   removeRedundantExpandSCEVRecipes(Plan);
   mergeBlocksIntoPredecessors(Plan);
+}
+
+// Add a VPActiveLaneMaskPHIRecipe to \p Plan.
+static VPActiveLaneMaskPHIRecipe *
+addVPLaneMaskPhi(VPlan &Plan, bool DataAndControlFlowWithoutRuntimeCheck) {
+  VPRegionBlock *TopRegion = Plan.getVectorLoopRegion();
+  VPBasicBlock *EB = TopRegion->getExitingBasicBlock();
+  auto *CanonicalIVPHI = Plan.getCanonicalIV();
+  VPValue *StartV = CanonicalIVPHI->getOperand(0);
+
+  // Create the active lane mask instruction in the vplan preheader.
+  VPBasicBlock *VecPreheader =
+      cast<VPBasicBlock>(Plan.getVectorLoopRegion()->getSinglePredecessor());
+  auto *CanonicalIVIncrement =
+      cast<VPInstruction>(CanonicalIVPHI->getOperand(1));
+  CanonicalIVIncrement->dropPoisonGeneratingFlags();
+  DebugLoc DL = CanonicalIVIncrement->getDebugLoc();
+  // We can't use StartV directly in the ActiveLaneMask VPInstruction, since
+  // we have to take unrolling into account. Each part needs to start at
+  //   Part * VF
+  auto *CanonicalIVIncrementParts =
+      new VPInstruction(VPInstruction::CanonicalIVIncrementForPart, {StartV},
+                        {false, false}, DL, "index.part.next");
+  VecPreheader->appendRecipe(CanonicalIVIncrementParts);
+
+  // Create the ActiveLaneMask instruction using the correct start values.
+  VPValue *TC = Plan.getTripCount();
+
+  VPValue *TripCount, *IncrementValue;
+  if (DataAndControlFlowWithoutRuntimeCheck) {
+    // When avoiding a runtime check, the active.lane.mask inside the loop
+    // uses a modified trip count and the induction variable increment is
+    // done after the active.lane.mask intrinsic is called.
+    auto *TCMinusVF =
+        new VPInstruction(VPInstruction::CalculateTripCountMinusVF, {TC}, DL);
+    VecPreheader->appendRecipe(TCMinusVF);
+    IncrementValue = CanonicalIVPHI;
+    TripCount = TCMinusVF;
+  } else {
+    // When the loop is guarded by a runtime overflow check for the loop
+    // induction variable increment by VF, we can increment the value before
+    // the get.active.lane mask and use the unmodified tripcount.
+    IncrementValue = CanonicalIVPHI->getOperand(1);
+    TripCount = TC;
+  }
+
+  EB->getTerminator()->eraseFromParent();
+  auto *EntryALM = new VPInstruction(VPInstruction::ActiveLaneMask,
+                                     {CanonicalIVIncrementParts, TC}, DL,
+                                     "active.lane.mask.entry");
+  VecPreheader->appendRecipe(EntryALM);
+
+  // Now create the ActiveLaneMaskPhi recipe in the main loop using the
+  // preheader ActiveLaneMask instruction.
+  auto LaneMaskPhi = new VPActiveLaneMaskPHIRecipe(EntryALM, DebugLoc());
+  LaneMaskPhi->insertAfter(CanonicalIVPHI);
+
+  // Create the active lane mask for the next iteration of the loop.
+  CanonicalIVIncrementParts =
+      new VPInstruction(VPInstruction::CanonicalIVIncrementForPart,
+                        {IncrementValue}, {false, false}, DL);
+  EB->appendRecipe(CanonicalIVIncrementParts);
+
+  auto *ALM = new VPInstruction(VPInstruction::ActiveLaneMask,
+                                {CanonicalIVIncrementParts, TripCount}, DL,
+                                "active.lane.mask.next");
+  EB->appendRecipe(ALM);
+  LaneMaskPhi->addOperand(ALM);
+
+  // We have to invert the mask here because a true condition means jumping
+  // to the exit block.
+  auto *NotMask = new VPInstruction(VPInstruction::Not, ALM, DL);
+  EB->appendRecipe(NotMask);
+
+  VPInstruction *BranchBack =
+      new VPInstruction(VPInstruction::BranchOnCond, {NotMask}, DL);
+  EB->appendRecipe(BranchBack);
+  return LaneMaskPhi;
+}
+
+// Helper to iterate over all users of \p Start recursively and call \p Fn the
+// users. Iteration stops once \p Fn returns true.
+static void vp_for_all_users(VPUser *Start, function_ref<bool(VPUser *U)> Fn) {
+  SmallSetVector<VPUser *, 4> Worklist;
+  Worklist.insert(Start);
+  for (unsigned I = 0; I != Worklist.size(); ++I) {
+    VPUser *U = Worklist[I];
+    if (auto *R = dyn_cast<VPRecipeBase>(U)) {
+      for (auto *VPV : R->definedValues())
+        Worklist.insert(VPV->user_begin(), VPV->user_end());
+    }
+    if (Fn(U))
+      return;
+  }
+}
+
+void VPlanTransforms::addActiveLaneMask(
+    VPlan &Plan, bool UseActiveLaneMaskForControlFlow,
+    bool DataAndControlFlowWithoutRuntimeCheck) {
+  VPActiveLaneMaskPHIRecipe *LaneMaskPhi =
+      UseActiveLaneMaskForControlFlow
+          ? addVPLaneMaskPhi(Plan, DataAndControlFlowWithoutRuntimeCheck)
+          : nullptr;
+
+  // Walk users of the canonical induction and replace all compares of the form
+  // (ICMP_ULE, wide canonical IV, backedge-taken-count) with an
+  // active-lane-mask.
+  vp_for_all_users(Plan.getCanonicalIV(), [&](VPUser *U) {
+    auto *VPI = dyn_cast<VPInstruction>(U);
+    if (!VPI || VPI->getOpcode() != VPInstruction::ICmpULE ||
+        !isa<VPWidenCanonicalIVRecipe>(VPI->getOperand(0)) ||
+        VPI->getOperand(1) != Plan.getOrCreateBackedgeTakenCount()) {
+      return false;
+    }
+
+    if (LaneMaskPhi) {
+      VPI->replaceAllUsesWith(LaneMaskPhi);
+    } else {
+      auto *BlockMask =
+          new VPInstruction(VPInstruction::ActiveLaneMask,
+                            {VPI->getOperand(0), Plan.getTripCount()}, nullptr,
+                            "active.lane.mask");
+      BlockMask->insertAfter(
+          cast<VPWidenCanonicalIVRecipe>(VPI->getOperand(0)));
+      VPI->replaceAllUsesWith(BlockMask);
+      VPI->eraseFromParent();
+    }
+    return false;
+  });
 }
