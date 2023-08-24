@@ -15,6 +15,7 @@
 #include "mlir/Dialect/LLVMIR/FunctionCallUtils.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/Vector/IR/VectorOps.h"
 #include "mlir/Dialect/Vector/Interfaces/MaskableOpInterface.h"
 #include "mlir/Dialect/Vector/Transforms/LoweringPatterns.h"
 #include "mlir/Dialect/Vector/Transforms/VectorTransforms.h"
@@ -595,6 +596,52 @@ createFPReductionComparisonOpLowering(ConversionPatternRewriter &rewriter,
   return result;
 }
 
+/// Reduction neutral classes for overloading
+class MaskNeutralFMaximum {};
+class MaskNeutralFMinimum {};
+
+/// Create the mask neutral floating point maximum value
+static Value createMaskNeutralValue(MaskNeutralFMaximum,
+                                    ConversionPatternRewriter &rewriter,
+                                    Location loc, Type llvmType) {
+  auto floatType = cast<FloatType>(llvmType);
+  return rewriter.create<LLVM::ConstantOp>(
+      loc, llvmType,
+      rewriter.getFloatAttr(
+          llvmType, llvm::APFloat::getSmallest(floatType.getFloatSemantics(),
+                                               /*Negative=*/true)));
+}
+
+/// Create the mask neutral floating point minimum value
+static Value createMaskNeutralValue(MaskNeutralFMinimum,
+                                    ConversionPatternRewriter &rewriter,
+                                    Location loc, Type llvmType) {
+  auto floatType = cast<FloatType>(llvmType);
+  return rewriter.create<LLVM::ConstantOp>(
+      loc, llvmType,
+      rewriter.getFloatAttr(
+          llvmType, llvm::APFloat::getLargest(floatType.getFloatSemantics(),
+                                              /*Negative=*/false)));
+}
+
+/// Lowers masked `fmaximum` and `fminimum` reductions using the non-masked
+/// intrinsics. It is a workaround to overcome the lack of masked intrinsics for
+/// `fmaximum`/`fminimum`.
+/// More information: https://github.com/llvm/llvm-project/issues/64940
+template <class LLVMRedIntrinOp, class MaskNeutral>
+static Value lowerMaskedReductionWithRegular(
+    ConversionPatternRewriter &rewriter, Location loc, Type llvmType,
+    Value vectorOperand, Value accumulator, Value mask) {
+  const Value singleMaskNeutral =
+      createMaskNeutralValue(MaskNeutral{}, rewriter, loc, llvmType);
+  const Value vectorMaskNeutral = rewriter.create<BroadcastOp>(
+      loc, vectorOperand.getType(), singleMaskNeutral);
+  const Value selectedVectorByMask = rewriter.create<arith::SelectOp>(
+      loc, mask, vectorOperand, vectorMaskNeutral);
+  return createFPReductionComparisonOpLowering<LLVMRedIntrinOp>(
+      rewriter, loc, llvmType, selectedVectorByMask, accumulator);
+}
+
 /// Overloaded methods to lower a reduction to an llvm instrinsic that requires
 /// a start value. This start value format spans across fp reductions without
 /// mask and all the masked reduction intrinsics.
@@ -893,10 +940,16 @@ public:
                                             ReductionNeutralFPMin>(
           rewriter, loc, llvmType, operand, acc, maskOp.getMask());
       break;
-    default:
-      return rewriter.notifyMatchFailure(
-          maskOp,
-          "lowering to LLVM is not implemented for this masked operation");
+    case CombiningKind::MAXIMUMF:
+      result = lowerMaskedReductionWithRegular<LLVM::vector_reduce_fmaximum,
+                                               MaskNeutralFMaximum>(
+          rewriter, loc, llvmType, operand, acc, maskOp.getMask());
+      break;
+    case CombiningKind::MINIMUMF:
+      result = lowerMaskedReductionWithRegular<LLVM::vector_reduce_fminimum,
+                                               MaskNeutralFMinimum>(
+          rewriter, loc, llvmType, operand, acc, maskOp.getMask());
+      break;
     }
 
     // Replace `vector.mask` operation altogether.
