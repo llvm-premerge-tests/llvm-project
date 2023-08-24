@@ -1491,16 +1491,11 @@ NamedDecl *Sema::getCurFunctionOrMethodDecl() const {
   return nullptr;
 }
 
-Decl *Sema::getCurLocalScopeDecl() {
-  if (const BlockScopeInfo *BSI = getCurBlock())
-    return BSI->TheDecl;
-  if (const LambdaScopeInfo *LSI = getCurLambda())
-    return LSI->CallOperator;
-  if (const CapturedRegionScopeInfo *CSI = getCurCapturedRegion())
-    return CSI->TheCapturedDecl;
-  if (NamedDecl *ND = getCurFunctionOrMethodDecl())
-    return ND;
-  return nullptr;
+DeclContext *Sema::getPredefinedExprDeclContext() {
+  DeclContext *DC = CurContext;
+  while (DC && !isa<BlockDecl, CapturedDecl, FunctionDecl, ObjCMethodDecl>(DC))
+    DC = DC->getParent();
+  return DC;
 }
 
 LangAS Sema::getDefaultCXXMethodAddrSpace() const {
