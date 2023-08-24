@@ -625,7 +625,8 @@ void DIBuilder::retainType(DIScope *T) {
   assert((isa<DIType>(T) || (isa<DISubprogram>(T) &&
                              cast<DISubprogram>(T)->isDefinition() == false)) &&
          "Expected type or subprogram declaration");
-  AllRetainTypes.emplace_back(T);
+  if (!isa_and_nonnull<DILocalScope>(T->getScope()))
+    AllRetainTypes.emplace_back(T);
 }
 
 DIBasicType *DIBuilder::createUnspecifiedParameter() { return nullptr; }
