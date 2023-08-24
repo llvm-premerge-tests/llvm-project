@@ -30,13 +30,29 @@
 // RUN:     --target=aarch64-unknown-linux-android21 \
 // RUN:     -resource-dir=%S/Inputs/resource_dir_with_per_target_subdir \
 // RUN:   | FileCheck --check-prefix=CHECK-FILE-NAME-ANDROID21 %s
-// CHECK-FILE-NAME-ANDROID21: lib{{/|\\}}aarch64-unknown-linux-android21{{/|\\}}libclang_rt.builtins.a
+// CHECK-FILE-NAME-ANDROID21: lib{{/|\\}}aarch64-unknown-linux-android{{/|\\}}libclang_rt.builtins.a
 
 // RUN: %clang -rtlib=compiler-rt -print-file-name=libclang_rt.builtins.a 2>&1 \
 // RUN:     --target=aarch64-unknown-linux-android23 \
 // RUN:     -resource-dir=%S/Inputs/resource_dir_with_per_target_subdir \
 // RUN:   | FileCheck --check-prefix=CHECK-FILE-NAME-ANDROID23 %s
-// CHECK-FILE-NAME-ANDROID23: lib{{/|\\}}aarch64-unknown-linux-android{{/|\\}}libclang_rt.builtins.a
+// CHECK-FILE-NAME-ANDROID23: lib{{/|\\}}aarch64-unknown-linux-android23{{/|\\}}libclang_rt.builtins.a
+
+// RUN: %clang -rtlib=compiler-rt -print-file-name=libclang_rt.builtins.a 2>&1 \
+// RUN:     --target=aarch64-unknown-linux-android26 \
+// RUN:     -resource-dir=%S/Inputs/resource_dir_with_per_target_subdir \
+// RUN:   | FileCheck --check-prefix=CHECK-FILE-NAME-ANDROID23 %s
+
+// RUN: %clang -rtlib=compiler-rt -print-file-name=libclang_rt.builtins.a 2>&1 \
+// RUN:     --target=aarch64-unknown-linux-android29 \
+// RUN:     -resource-dir=%S/Inputs/resource_dir_with_per_target_subdir \
+// RUN:   | FileCheck --check-prefix=CHECK-FILE-NAME-ANDROID29 %s
+// CHECK-FILE-NAME-ANDROID29: lib{{/|\\}}aarch64-unknown-linux-android29{{/|\\}}libclang_rt.builtins.a
+
+// RUN: %clang -rtlib=compiler-rt -print-file-name=libclang_rt.builtins.a 2>&1 \
+// RUN:     --target=aarch64-unknown-linux-android31 \
+// RUN:     -resource-dir=%S/Inputs/resource_dir_with_per_target_subdir \
+// RUN:   | FileCheck --check-prefix=CHECK-FILE-NAME-ANDROID29 %s
 
 // RUN: %clang -rtlib=compiler-rt -print-file-name=libclang_rt.builtins.a 2>&1 \
 // RUN:     --target=aarch64-unknown-linux-android \
