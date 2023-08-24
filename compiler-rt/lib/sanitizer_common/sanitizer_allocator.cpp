@@ -145,7 +145,8 @@ void *LowLevelAllocator::Allocate(uptr size) {
   // Align allocation size.
   size = RoundUpTo(size, low_level_alloc_min_alignment);
   if (allocated_end_ - allocated_current_ < (sptr)size) {
-    uptr size_to_allocate = RoundUpTo(size, GetPageSizeCached());
+    uptr size_to_allocate = RoundUpTo(
+        size, GetPageSizeCached() * SANITIZER_LOW_LEVEL_ALLOCATOR_NUM_PAGES);
     allocated_current_ = (char *)MmapOrDie(size_to_allocate, __func__);
     allocated_end_ = allocated_current_ + size_to_allocate;
     if (low_level_alloc_callback) {

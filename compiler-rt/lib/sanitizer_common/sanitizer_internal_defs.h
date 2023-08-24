@@ -86,6 +86,17 @@
 // And then use it as: if (compare_hook) compare_hook(a, b);
 //----------------------------------------------------------------------------//
 
+// This defines the minimum number of pages the LowLevelAllocator will mmap when
+// it needs more space for an allocation. Increasing this will reduce
+// fragmentation for heavily used LowLevelAllocators but less space-efficient
+// for allocators used a few times.
+#ifndef SANITIZER_LOW_LEVEL_ALLOCATOR_NUM_PAGES
+#  if SANITIZER_FUCHSIA
+#    define SANITIZER_LOW_LEVEL_ALLOCATOR_NUM_PAGES 16
+#  else
+#    define SANITIZER_LOW_LEVEL_ALLOCATOR_NUM_PAGES 1
+#  endif
+#endif  // defined(SANITIZER_LOW_LEVEL_ALLOCATOR_NUM_PAGES)
 
 // We can use .preinit_array section on Linux to call sanitizer initialization
 // functions very early in the process startup (unless PIC macro is defined).
