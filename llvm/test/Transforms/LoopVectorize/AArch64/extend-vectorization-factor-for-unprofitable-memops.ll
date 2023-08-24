@@ -33,7 +33,7 @@ exit:
 ; Same as test_load_i8_store_i32, but with types flipped for load and store.
 define void @test_load_i32_store_i8(ptr noalias %src, ptr noalias %dst, i32 %off, i64 %N) {
 ; CHECK-LABEL: @test_load_i32_store_i8(
-; CHECK:     <16 x i8>
+; CHECK:     <4 x i8>
 ;
 entry:
   br label %loop

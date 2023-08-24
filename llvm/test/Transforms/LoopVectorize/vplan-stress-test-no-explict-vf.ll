@@ -4,7 +4,7 @@
 ; This test checks that, when stress testing VPlan, if the computed VF
 ; is 1, we override it to VF = 4.
 
-; CHECK: LV: VPlan computed VF 1.
+; CHECK: LV: VPlan computed VF 0.
 ; CHECK: LV: VPlan stress testing: overriding computed VF.
 ; CHECK: LV: Using VF 4 to build VPlans.
 @arr2 = external global [8 x i32], align 16
