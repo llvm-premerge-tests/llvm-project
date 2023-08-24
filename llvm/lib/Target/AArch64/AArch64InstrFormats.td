@@ -6292,24 +6292,27 @@ multiclass SIMDTwoVectorFPNoException<bit U, bit S, bits<5> opc, string asm,
     : SIMDTwoVectorFP<U, S, opc, asm, OpNode, 0>;
 
 // Supports only S and D element sizes
-let mayRaiseFPException = 1, Uses = [FPCR] in
-multiclass SIMDTwoVectorSD<bit U, bits<5> opc, string asm,
+multiclass SIMDTwoVectorSD<bit U, bit opc, string asm,
                            SDPatternOperator OpNode = null_frag> {
-
-  def v2f32 : BaseSIMDTwoSameVector<0, U, 00, opc, 0b00, V64,
+  let mayRaiseFPException = 1, Uses = [FPCR] in {
+    def v2f32 : BaseSIMDTwoSameVector<0, U, 00, {0b1111, opc}, 0b00, V64,
                                 asm, ".2s", ".2s",
                           [(set (v2f32 V64:$Rd), (OpNode (v2f32 V64:$Rn)))]>;
-  def v4f32 : BaseSIMDTwoSameVector<1, U, 00, opc, 0b00, V128,
+    def v4f32 : BaseSIMDTwoSameVector<1, U, 00, {0b1111, opc}, 0b00, V128,
                                 asm, ".4s", ".4s",
                           [(set (v4f32 V128:$Rd), (OpNode (v4f32 V128:$Rn)))]>;
-  def v2f64 : BaseSIMDTwoSameVector<1, U, 01, opc, 0b00, V128,
+    def v2f64 : BaseSIMDTwoSameVector<1, U, 01, {0b1111, opc}, 0b00, V128,
                                 asm, ".2d", ".2d",
                           [(set (v2f64 V128:$Rd), (OpNode (v2f64 V128:$Rn)))]>;
+  }
+
+  def : Pat<(v1f64 (OpNode (v1f64 FPR64:$Rn))),
+           (!cast<Instruction>(NAME # Dr) FPR64:$Rn)>;
 }
 
 multiclass FRIntNNTVector<bit U, bit op, string asm,
                           SDPatternOperator OpNode = null_frag> :
-           SIMDTwoVectorSD<U, {0b1111,op}, asm, OpNode>;
+           SIMDTwoVectorSD<U, op, asm, OpNode>;
 
 // Supports only S element size.
 multiclass SIMDTwoVectorS<bit U, bit S, bits<5> opc, string asm,
