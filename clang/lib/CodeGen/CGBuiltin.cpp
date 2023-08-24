@@ -3188,6 +3188,9 @@ RValue CodeGenFunction::EmitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
 
     if (auto *VecTy = QT->getAs<VectorType>())
       QT = VecTy->getElementType();
+    else if (QT->isVLSBuiltinType())
+      QT = QT->getVLSEltType(getContext());
+
     if (QT->isIntegerType())
       Result = Builder.CreateBinaryIntrinsic(
           llvm::Intrinsic::abs, EmitScalarExpr(E->getArg(0)),
@@ -3263,6 +3266,9 @@ RValue CodeGenFunction::EmitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
     QualType Ty = E->getArg(0)->getType();
     if (auto *VecTy = Ty->getAs<VectorType>())
       Ty = VecTy->getElementType();
+    else if (Ty->isVLSBuiltinType())
+      Ty = Ty->getVLSEltType(getContext());
+
     bool IsSigned = Ty->isSignedIntegerType();
     unsigned Opc;
     if (BuiltinIDIfNoAsmLabel == Builtin::BI__builtin_elementwise_add_sat)
@@ -3281,6 +3287,9 @@ RValue CodeGenFunction::EmitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
       QualType Ty = E->getArg(0)->getType();
       if (auto *VecTy = Ty->getAs<VectorType>())
         Ty = VecTy->getElementType();
+      else if (Ty->isVLSBuiltinType())
+        Ty = Ty->getVLSEltType(getContext());
+
       Result = Builder.CreateBinaryIntrinsic(Ty->isSignedIntegerType()
                                                  ? llvm::Intrinsic::smax
                                                  : llvm::Intrinsic::umax,
