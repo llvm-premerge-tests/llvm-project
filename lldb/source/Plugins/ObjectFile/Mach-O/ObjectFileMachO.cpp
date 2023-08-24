@@ -70,6 +70,7 @@
 #include <bitset>
 #include <memory>
 #include <optional>
+#include <sstream>
 
 // Unfortunately the signpost header pulls in the system MachO header, too.
 #ifdef CPU_TYPE_ARM
@@ -5669,6 +5670,79 @@ bool ObjectFileMachO::GetCorefileMainBinaryInfo(addr_t &value,
   return false;
 }
 
+bool ObjectFileMachO::GetCorefileThreadExtraInfos(std::vector<tid_t> &tids) {
+  tids.clear();
+  Log *log(GetLog(LLDBLog::Object | LLDBLog::Process | LLDBLog::Thread));
+  ModuleSP module_sp(GetModule());
+  if (!module_sp)
+    return false;
+
+  std::lock_guard<std::recursive_mutex> guard(module_sp->GetMutex());
+  offset_t offset = MachHeaderSizeFromMagic(m_header.magic);
+  for (uint32_t i = 0; i < m_header.ncmds; ++i) {
+    const uint32_t cmd_offset = offset;
+    llvm::MachO::load_command lc = {};
+    if (m_data.GetU32(&offset, &lc.cmd, 2) == nullptr)
+      break;
+    if (lc.cmd == LC_NOTE) {
+      char data_owner[17];
+      memset(data_owner, 0, sizeof(data_owner));
+      m_data.CopyData(offset, 16, data_owner);
+      offset += 16;
+      uint64_t fileoff = m_data.GetU64_unchecked(&offset);
+      uint64_t size = m_data.GetU64_unchecked(&offset);
+
+      if (strcmp("thread extrainfo", data_owner) == 0 && size >= 8) {
+        offset = fileoff;
+        uint32_t version;
+        if (!m_data.GetU32(&offset, &version, 1) || version != 1) {
+          LLDB_LOGF(log,
+                    "Unable to read 'thread extrainfo' LC_NOTE version, or "
+                    "version %d is not handled",
+                    version);
+          return false;
+        }
+        uint32_t elem_size;
+        if (!m_data.GetU32(&offset, &elem_size, 1)) {
+          LLDB_LOGF(log, "Unable to read 'thread extrainfo' LC_NOTE version, "
+                         "could not read element size");
+          return false;
+        }
+        const uint32_t num_threads = GetNumThreadContexts();
+        for (uint32_t i = 0; i < num_threads; i++) {
+          tid_t tid;
+          offset_t element_offset = offset;
+          if (!m_data.GetU64(&offset, &tid, 1)) {
+            LLDB_LOGF(log,
+                      "Unable to read tid %u from 'thread extrainfo' LC_NOTE",
+                      i);
+            return false;
+          }
+          if (tid == 0)
+            tid = LLDB_INVALID_THREAD_ID;
+          tids.push_back(tid);
+          offset = element_offset + elem_size;
+        }
+        if (log) {
+          std::stringstream logmsg;
+          logmsg << "LC_NOTE 'thread extrainfo' found, version " << version;
+          logmsg << " elem_size " << elem_size << ": ";
+          for (tid_t tid : tids) {
+            if (tid == LLDB_INVALID_THREAD_ID)
+              logmsg << " LLDB_INVALID_THREAD_ID";
+            else
+              logmsg << "0x" << std::hex << tid;
+          }
+          LLDB_LOGF(log, "%s", logmsg.str().c_str());
+        }
+        return true;
+      }
+    }
+    offset = cmd_offset + lc.cmdsize;
+  }
+  return false;
+}
+
 lldb::RegisterContextSP
 ObjectFileMachO::GetThreadContextAtIndex(uint32_t idx,
                                          lldb_private::Thread &thread) {
@@ -6652,6 +6726,10 @@ bool ObjectFileMachO::SaveCore(const lldb::ProcessSP &process_sp,
           mach_header.sizeofcmds += sizeof(llvm::MachO::note_command);
         }
 
+        // LC_NOTE "thread extrainfo"
+        mach_header.ncmds++;
+        mach_header.sizeofcmds += sizeof(llvm::MachO::note_command);
+
         // LC_NOTE "all image infos"
         mach_header.ncmds++;
         mach_header.sizeofcmds += sizeof(llvm::MachO::note_command);
@@ -6693,6 +6771,22 @@ bool ObjectFileMachO::SaveCore(const lldb::ProcessSP &process_sp,
 
           lc_notes.push_back(std::move(addrable_bits_lcnote_up));
         }
+
+        // Add "thread extrainfo" LC_NOTE
+        std::unique_ptr<LCNoteEntry> thread_extrainfo_lcnote_up(
+            new LCNoteEntry(addr_byte_size, byte_order));
+        thread_extrainfo_lcnote_up->name = "thread extrainfo";
+        thread_extrainfo_lcnote_up->payload_file_offset = file_offset;
+        thread_extrainfo_lcnote_up->payload.PutHex32(1); // version
+        thread_extrainfo_lcnote_up->payload.PutHex32(8); // elem_size
+        for (uint32_t thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
+          ThreadSP thread_sp(thread_list.GetThreadAtIndex(thread_idx));
+          thread_extrainfo_lcnote_up->payload.PutHex64(
+              thread_sp->GetID()); // tid
+        }
+        file_offset += thread_extrainfo_lcnote_up->payload.GetSize();
+        file_offset = llvm::alignTo(file_offset, 16);
+        lc_notes.push_back(std::move(thread_extrainfo_lcnote_up));
 
         // Add "all image infos" LC_NOTE
         std::unique_ptr<LCNoteEntry> all_image_infos_lcnote_up(
@@ -6848,8 +6942,8 @@ bool ObjectFileMachO::SaveCore(const lldb::ProcessSP &process_sp,
 ObjectFileMachO::MachOCorefileAllImageInfos
 ObjectFileMachO::GetCorefileAllImageInfos() {
   MachOCorefileAllImageInfos image_infos;
-  Log *log(
-      GetLog(LLDBLog::Symbols | LLDBLog::Process | LLDBLog::DynamicLoader));
+  Log *log(GetLog(LLDBLog::Object | LLDBLog::Symbols | LLDBLog::Process |
+                  LLDBLog::DynamicLoader));
 
   // Look for an "all image infos" LC_NOTE.
   lldb::offset_t offset = MachHeaderSizeFromMagic(m_header.magic);
@@ -6957,7 +7051,7 @@ ObjectFileMachO::GetCorefileAllImageInfos() {
 
 bool ObjectFileMachO::LoadCoreFileImages(lldb_private::Process &process) {
   MachOCorefileAllImageInfos image_infos = GetCorefileAllImageInfos();
-  Log *log = GetLog(LLDBLog::DynamicLoader);
+  Log *log = GetLog(LLDBLog::Object | LLDBLog::DynamicLoader);
   Status error;
 
   bool found_platform_binary = false;
