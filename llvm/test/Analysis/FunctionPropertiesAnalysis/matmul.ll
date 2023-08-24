@@ -57,6 +57,13 @@ entry:
 ; DETAILED-PROPERTIES-DAG: InlineAsmOperandCount: 0
 ; DETAILED-PROPERTIES-DAG: ArgumentOperandCount: 0
 ; DETAILED-PROPERTIES-DAG: UnknownOperandCount: 0
+; DETAILED-PROPERTIES-DAG: DirectCallCount: 1
+; DETAILED-PROPERTIES-DAG: IndirectCallCount: 0
+; DETAILED-PROPERTIES-DAG: CallReturnsIntegerCount: 0
+; DETAILED-PROPERTIES-DAG: CallReturnsFloatCount: 0
+; DETAILED-PROPERTIES-DAG: CallReturnsPointerCount: 0
+; DETAILED-PROPERTIES-DAG: CallWithManyArgumentsCount: 0
+; DETAILED-PROPERTIES-DAG: CallWithPointerArgumentCount: 1
 
 define void @multiply([2 x i32]* %mat1, [2 x i32]* %mat2, [2 x i32]* %res) {
 ; CHECK-DAG: Printing analysis results of CFA for function 'multiply':
@@ -201,4 +208,11 @@ for.end26:                                        ; preds = %for.cond
 ; DETAILED-PROPERTIES-DAG: InlineAsmOperandCount: 0
 ; DETAILED-PROPERTIES-DAG: ArgumentOperandCount: 3
 ; DETAILED-PROPERTIES-DAG: UnknownOperandCount: 0
+; DETAILED-PROPERTIES-DAG: DirectCallCount: 0
+; DETAILED-PROPERTIES-DAG: IndirectCallCount: 0
+; DETAILED-PROPERTIES-DAG: CallReturnsIntegerCount: 0
+; DETAILED-PROPERTIES-DAG: CallReturnsFloatCount: 0
+; DETAILED-PROPERTIES-DAG: CallReturnsPointerCount: 0
+; DETAILED-PROPERTIES-DAG: CallWithManyArgumentsCount: 0
+; DETAILED-PROPERTIES-DAG: CallWithPointerArgumentCount: 0
 
