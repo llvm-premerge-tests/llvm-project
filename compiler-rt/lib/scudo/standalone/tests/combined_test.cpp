@@ -14,6 +14,7 @@
 #include "combined.h"
 #include "mem_map.h"
 
+#include <algorithm>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
@@ -78,13 +79,8 @@ template <typename Config> struct TestAllocator : scudo::Allocator<Config> {
   }
   ~TestAllocator() { this->unmapTestOnly(); }
 
-  void *operator new(size_t size) {
-    void *p = nullptr;
-    EXPECT_EQ(0, posix_memalign(&p, alignof(TestAllocator), size));
-    return p;
-  }
-
-  void operator delete(void *ptr) { free(ptr); }
+  void *operator new(size_t size);
+  void operator delete(void *ptr) {}
 };
 
 template <class TypeParam> struct ScudoCombinedTest : public Test {
@@ -111,11 +107,25 @@ template <typename T> using ScudoCombinedDeathTest = ScudoCombinedTest<T>;
 #define SCUDO_TYPED_TEST_ALL_TYPES(FIXTURE, NAME)                              \
   SCUDO_TYPED_TEST_TYPE(FIXTURE, NAME, AndroidSvelteConfig)                    \
   SCUDO_TYPED_TEST_TYPE(FIXTURE, NAME, FuchsiaConfig)
+constexpr size_t kMaxSize =
+    std::max({sizeof(TestAllocator<scudo::FuchsiaConfig>),
+              sizeof(TestAllocator<scudo::AndroidSvelteConfig>)});
+constexpr size_t kMaxAlign =
+    std::max({alignof(TestAllocator<scudo::FuchsiaConfig>),
+              alignof(TestAllocator<scudo::AndroidSvelteConfig>)});
 #else
 #define SCUDO_TYPED_TEST_ALL_TYPES(FIXTURE, NAME)                              \
   SCUDO_TYPED_TEST_TYPE(FIXTURE, NAME, AndroidSvelteConfig)                    \
   SCUDO_TYPED_TEST_TYPE(FIXTURE, NAME, DefaultConfig)                          \
   SCUDO_TYPED_TEST_TYPE(FIXTURE, NAME, AndroidConfig)
+constexpr size_t kMaxSize =
+    std::max({sizeof(TestAllocator<scudo::FuchsiaConfig>),
+              sizeof(TestAllocator<scudo::AndroidSvelteConfig>),
+              sizeof(TestAllocator<scudo::AndroidConfig>)});
+constexpr size_t kMaxAlign =
+    std::max({alignof(TestAllocator<scudo::FuchsiaConfig>),
+              alignof(TestAllocator<scudo::AndroidSvelteConfig>),
+              alignof(TestAllocator<scudo::AndroidConfig>)});
 #endif
 
 #define SCUDO_TYPED_TEST_TYPE(FIXTURE, NAME, TYPE)                             \
@@ -129,6 +139,13 @@ template <typename T> using ScudoCombinedDeathTest = ScudoCombinedTest<T>;
   };                                                                           \
   SCUDO_TYPED_TEST_ALL_TYPES(FIXTURE, NAME)                                    \
   template <class TypeParam> void FIXTURE##NAME<TypeParam>::Run()
+
+alignas(kMaxAlign) static uint8_t AllocatorStorage[kMaxSize];
+
+template <typename Config>
+void *TestAllocator<Config>::operator new(size_t size) {
+  return AllocatorStorage;
+}
 
 SCUDO_TYPED_TEST(ScudoCombinedTest, IsOwned) {
   auto *Allocator = this->Allocator.get();
