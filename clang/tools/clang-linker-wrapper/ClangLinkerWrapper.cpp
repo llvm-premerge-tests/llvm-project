@@ -403,11 +403,18 @@ Expected<StringRef> clang(ArrayRef<StringRef> InputFiles, const ArgList &Args) {
     llvm::copy(LinkerArgs, std::back_inserter(CmdArgs));
   }
 
+  // pass on -mllvm options to the clang
+  for (const opt::Arg *Arg : Args.filtered(OPT_mllvm)) {
+    CmdArgs.push_back("-mllvm");
+    CmdArgs.push_back(Arg->getValue());
+  }
+
   if (Args.hasArg(OPT_debug))
     CmdArgs.push_back("-g");
 
-  if (SaveTemps)
+  if (SaveTemps) {
     CmdArgs.push_back("-save-temps");
+  }
 
   if (Verbose)
     CmdArgs.push_back("-v");
