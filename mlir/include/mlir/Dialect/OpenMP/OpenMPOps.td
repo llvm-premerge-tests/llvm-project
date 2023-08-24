@@ -28,6 +28,7 @@ def OpenMP_Dialect : Dialect {
   let cppNamespace = "::mlir::omp";
   let dependentDialects = ["::mlir::LLVM::LLVMDialect, ::mlir::func::FuncDialect"];
   let useDefaultAttributePrinterParser = 1;
+  let useDefaultTypePrinterParser = 1;
   let usePropertiesForAttributes = 1;
 }
 
@@ -88,6 +89,10 @@ def IntLikeType : AnyTypeOf<[AnyInteger, Index]>;
 
 def OpenMP_PointerLikeType : TypeAlias<OpenMP_PointerLikeTypeInterface,
 	"OpenMP-compatible variable type">;
+
+class OpenMP_Type<string name, string typeMnemonic> : TypeDef<OpenMP_Dialect, name> {
+  let mnemonic = typeMnemonic;
+}
 
 //===----------------------------------------------------------------------===//
 //  2.12.7 Declare Target Directive
@@ -1004,6 +1009,155 @@ def FlushOp : OpenMP_Op<"flush"> {
   }];
 }
 
+//===----------------------------------------------------------------------===//
+// Map related constructs
+//===----------------------------------------------------------------------===//
+
+def CaptureThis : I32EnumAttrCase<"This", 0>;
+def CaptureByRef : I32EnumAttrCase<"ByRef", 1>;
+def CaptureByCopy : I32EnumAttrCase<"ByCopy", 2>;
+def CaptureVLAType : I32EnumAttrCase<"VLAType", 3>;
+
+def VariableCaptureKind : I32EnumAttr<
+    "VariableCaptureKind",
+    "variable capture kind",
+    [CaptureThis, CaptureByRef, CaptureByCopy, CaptureVLAType]> {
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::mlir::omp";
+}
+
+def VariableCaptureKindAttr : EnumAttr<OpenMP_Dialect, VariableCaptureKind,
+                                       "variable_capture_kind"> {
+  let assemblyFormat = "`(` $value `)`";
+}
+
+def DataBoundsType : OpenMP_Type<"DataBounds", "data_bounds_ty"> {
+  let summary = "Type for representing omp data clause bounds information";
+}
+
+def DataBoundsOp : OpenMP_Op<"bounds",
+    [AttrSizedOperandSegments, NoMemoryEffect]> {
+  let summary = "Represents normalized bounds information for map and data clauses.";
+
+  let description = [{
+    This operation is a variation on the OpenACC dialects DataBoundsOp 
+    it is used to record bounds used in map and data clauses in a
+    normalized fashion (zero-based). This works well with the `PointerLikeType`
+    requirement in data clauses - since a `lower_bound` of 0 means looking
+    at data at the zero offset from pointer.
+
+    The operation must have an `upper_bound` or `extent` (or both are allowed -
+    but not checked for consistency). When the source language's arrays are
+    not zero-based, the `start_idx` must specify the zero-position index.
+
+    Examples below show copying a slice of 10-element array except first element.
+    To simplify examples, the constants are used directly in the acc.bounds 
+    operands - this is not the syntax of operation.
+
+    C++:
+    ```
+    int array[10];
+    #pragma target map(array[1:9])
+    ```
+    =>
+    ```mlir
+    omp.bounds lower_bound(1) upper_bound(9) extent(9) start_idx(0)
+    ```
+
+    Fortran:
+    ```
+    integer :: array(1:10)
+    !$target map(array(2:10))
+    ```
+    =>
+    ```mlir
+    omp.bounds lower_bound(1) upper_bound(9) extent(9) start_idx(1)
+    ```
+  }];
+
+  let arguments = (ins Optional<IntLikeType>:$lower_bound,
+                       Optional<IntLikeType>:$upper_bound,
+                       Optional<IntLikeType>:$extent,
+                       Optional<IntLikeType>:$stride,
+                       DefaultValuedAttr<BoolAttr, "false">:$stride_in_bytes,
+                       Optional<IntLikeType>:$start_idx);
+  let results = (outs DataBoundsType:$result);
+
+  let assemblyFormat = [{
+    oilist(
+        `lower_bound` `(` $lower_bound `:` type($lower_bound) `)`
+      | `upper_bound` `(` $upper_bound `:` type($upper_bound) `)`
+      | `extent` `(` $extent `:` type($extent) `)`
+      | `stride` `(` $stride `:` type($stride) `)`
+      | `start_idx` `(` $start_idx `:` type($start_idx) `)`
+    ) attr-dict
+  }];
+
+  let extraClassDeclaration = [{
+    /// The number of variable operands.
+    unsigned getNumVariableOperands() {
+      return getNumOperands();
+    }
+
+    /// The i-th variable operand passed.
+    Value getVariableOperand(unsigned i) {
+      return getOperands()[i];
+    }
+  }];
+
+  let hasVerifier = 1;
+}
+
+def MapEntryOp : OpenMP_Op<"map_entry", [AttrSizedOperandSegments]> {
+  let arguments = (ins OpenMP_PointerLikeType:$var_ptr,
+                       Optional<OpenMP_PointerLikeType>:$var_ptr_ptr,
+                       Variadic<DataBoundsType>:$bounds, /* rank-0 to rank-{n-1} */
+                       OptionalAttr<I64Attr>:$map_type,
+                       OptionalAttr<VariableCaptureKindAttr>:$map_capture_type,
+                       DefaultValuedAttr<BoolAttr, "false">:$implicit,
+                       OptionalAttr<StrAttr>:$name);
+  let results = (outs OpenMP_PointerLikeType:$omp_ptr);
+
+  let description = [{
+    Description of arguments:
+    - `var_ptr`: The address of variable to copy.
+    - `var_ptr_ptr`: Specifies the address of varPtr - only used when the variable 
+    copied is a field in a struct.
+    - `bounds`: Used when copying just slice of array or array's bounds are not
+    encoded in type. They are in rank order where rank 0 is inner-most dimension.
+    - `implicit`: specified explicitly in a map clause or captured implicitly by 
+      being used in a target region with no map or other data mapping construct.
+    - 'map_type': OpenMP map type for this map capture, for example: from, to and 
+      always, usually mixed in with other map type signifiers such as if it's implicit
+      or a parameter.
+    - 'map_capture_type': Capture type for the variable e.g. byref, byvalue, byvla this 
+       can affect lowering.  
+    - `name`: Holds the name of variable as specified in user clause (including bounds).
+  }];
+
+  let assemblyFormat = [{
+    `var_ptr` `(` $var_ptr `:` type($var_ptr) `)`
+    oilist(
+        `var_ptr_ptr` `(` $var_ptr_ptr `:` type($var_ptr_ptr) `)`
+      | `map_type_value` `(` $map_type `)`
+      | `capture` `(` custom<CaptureType>($map_capture_type) `)`
+      | `bounds` `(` $bounds `)`
+    ) `->` type($omp_ptr) attr-dict
+  }];
+
+  let extraClassDeclaration = [{
+    /// The number of variable operands.
+    unsigned getNumVariableOperands() {
+      return getNumOperands();
+    }
+
+    /// The i-th variable operand passed.
+    Value getVariableOperand(unsigned i) {
+      return getOperands()[i];
+    }
+  }];
+}
+
 //===---------------------------------------------------------------------===//
 // 2.14.2 target data Construct
 //===---------------------------------------------------------------------===//
@@ -1044,16 +1198,14 @@ def Target_DataOp: OpenMP_Op<"target_data", [AttrSizedOperandSegments]>{
                        Optional<AnyInteger>:$device,
                        Variadic<OpenMP_PointerLikeType>:$use_device_ptr,
                        Variadic<OpenMP_PointerLikeType>:$use_device_addr,
-                       Variadic<OpenMP_PointerLikeType>:$map_operands,
-                       OptionalAttr<I64ArrayAttr>:$map_types);
+                       Variadic<OpenMP_PointerLikeType>:$map_operands);
 
   let regions = (region AnyRegion:$region);
 
   let assemblyFormat = [{
     oilist(`if` `(` $if_expr `:` type($if_expr) `)`
     | `device` `(` $device `:` type($device) `)`
-    | `map`
-      `(` custom<MapClause>($map_operands, type($map_operands), $map_types) `)`
+    | `map_entries` `(` custom<MapClause>($map_operands, type($map_operands)) `)`
     | `use_device_ptr` `(` $use_device_ptr `:` type($use_device_ptr) `)`
     | `use_device_addr` `(` $use_device_addr `:` type($use_device_addr) `)`)
     $region attr-dict
@@ -1095,14 +1247,13 @@ def Target_EnterDataOp: OpenMP_Op<"target_enter_data",
   let arguments = (ins Optional<I1>:$if_expr,
                        Optional<AnyInteger>:$device,
                        UnitAttr:$nowait,
-                       Variadic<OpenMP_PointerLikeType>:$map_operands,
-                       I64ArrayAttr:$map_types);
+                       Variadic<OpenMP_PointerLikeType>:$map_operands);
 
   let assemblyFormat = [{
     oilist(`if` `(` $if_expr `:` type($if_expr) `)`
     | `device` `(` $device `:` type($device) `)`
-    | `nowait` $nowait)
-    `map` `(` custom<MapClause>($map_operands, type($map_operands), $map_types) `)`
+    | `nowait` $nowait
+    | `map_entries` `(` custom<MapClause>($map_operands, type($map_operands)) `)`)
     attr-dict
    }];
 
@@ -1142,14 +1293,13 @@ def Target_ExitDataOp: OpenMP_Op<"target_exit_data",
   let arguments = (ins Optional<I1>:$if_expr,
                        Optional<AnyInteger>:$device,
                        UnitAttr:$nowait,
-                       Variadic<OpenMP_PointerLikeType>:$map_operands,
-                       I64ArrayAttr:$map_types);
+                       Variadic<OpenMP_PointerLikeType>:$map_operands);
 
   let assemblyFormat = [{
     oilist(`if` `(` $if_expr `:` type($if_expr) `)`
     | `device` `(` $device `:` type($device) `)`
-    | `nowait` $nowait)
-    `map` `(` custom<MapClause>($map_operands, type($map_operands), $map_types) `)`
+    | `nowait` $nowait
+    | `map_entries` `(` custom<MapClause>($map_operands, type($map_operands)) `)`)
     attr-dict
    }];
 
@@ -1186,8 +1336,7 @@ def TargetOp : OpenMP_Op<"target",[AttrSizedOperandSegments]> {
                        Optional<AnyInteger>:$device,
                        Optional<AnyInteger>:$thread_limit,
                        UnitAttr:$nowait,
-                       Variadic<OpenMP_PointerLikeType>:$map_operands,
-                       OptionalAttr<I64ArrayAttr>:$map_types);
+                       Variadic<OpenMP_PointerLikeType>:$map_operands);
 
   let regions = (region AnyRegion:$region);
 
@@ -1196,7 +1345,7 @@ def TargetOp : OpenMP_Op<"target",[AttrSizedOperandSegments]> {
     | `device` `(` $device `:` type($device) `)`
     | `thread_limit` `(` $thread_limit `:` type($thread_limit) `)`
     | `nowait` $nowait
-    | `map` `(` custom<MapClause>($map_operands, type($map_operands), $map_types) `)`
+    | `map_entries` `(` custom<MapClause>($map_operands, type($map_operands)) `)`
     ) $region attr-dict
   }];
 
