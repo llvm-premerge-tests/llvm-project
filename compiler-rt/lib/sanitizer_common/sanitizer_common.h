@@ -224,6 +224,8 @@ typedef void (*LowLevelAllocateCallback)(uptr ptr, uptr size);
 // Passing NULL removes the callback.
 void SetLowLevelAllocateCallback(LowLevelAllocateCallback callback);
 
+LowLevelAllocator &GetGlobalLowLevelAllocator();
+
 // IO
 void CatastrophicErrorWrite(const char *buffer, uptr length);
 void RawWrite(const char *buffer);
