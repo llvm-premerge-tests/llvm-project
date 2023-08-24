@@ -1,4 +1,6 @@
 // RUN: %clang_cc1 -O3 -triple %itanium_abi_triple -emit-llvm -o - %s | FileCheck %s
+// RUN: %clang_cc1 -fexperimental-strict-floating-point -O3 \
+// RUN:   -triple %itanium_abi_triple -emit-llvm -o - %s | FileCheck %s
 
 // Is FP_CONTRACT honored in a simple case?
 float fp_contract_1(float a, float b, float c) {
@@ -66,4 +68,19 @@ float fp_contract_6(float a, float b, float c) {
   // CHECK: %[[M:.+]] = fmul float %a, %b
   // CHECK-NEXT: fadd float %[[M]], %c
   return a * b + c;
+}
+
+
+#pragma clang fp contract(fast)
+float fp_contract_7(float a) {
+// CHECK: _Z13fp_contract_7f
+// CHECK: tail call contract float @llvm.sqrt.f32(float %a)
+  return __builtin_sqrtf(a);
+}
+
+float fp_contract_8(float a) {
+// CHECK: _Z13fp_contract_8f
+// CHECK: tail call float @llvm.sqrt.f32(float %a)
+#pragma clang fp contract(off)
+  return __builtin_sqrtf(a);
 }
