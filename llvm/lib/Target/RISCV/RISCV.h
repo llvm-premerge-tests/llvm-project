@@ -42,6 +42,10 @@ void initializeRISCVMakeCompressibleOptPass(PassRegistry &);
 FunctionPass *createRISCVGatherScatterLoweringPass();
 void initializeRISCVGatherScatterLoweringPass(PassRegistry &);
 
+FunctionPass *createRISCVOptAMOInstrsPass();
+void initializeRISCVOptAMOInstrsPass(PassRegistry &);
+extern char &RISCVOptAMOInstrsID;
+
 FunctionPass *createRISCVOptWInstrsPass();
 void initializeRISCVOptWInstrsPass(PassRegistry &);
 

@@ -81,6 +81,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeRISCVTarget() {
   initializeRISCVGatherScatterLoweringPass(*PR);
   initializeRISCVCodeGenPreparePass(*PR);
   initializeRISCVMergeBaseOffsetOptPass(*PR);
+  initializeRISCVOptAMOInstrsPass(*PR);
   initializeRISCVOptWInstrsPass(*PR);
   initializeRISCVPreRAExpandPseudoPass(*PR);
   initializeRISCVExpandPseudoPass(*PR);
@@ -394,7 +395,7 @@ void RISCVPassConfig::addPreRegAlloc() {
 
 void RISCVPassConfig::addOptimizedRegAlloc() {
   insertPass(&DetectDeadLanesID, &RISCVInitUndefID);
-
+  insertPass(&DetectDeadLanesID, &RISCVOptAMOInstrsID);
   TargetPassConfig::addOptimizedRegAlloc();
 }
 

@@ -111,6 +111,7 @@
 ; CHECK-NEXT:       RISC-V Insert Read/Write CSR Pass
 ; CHECK-NEXT:       Detect Dead Lanes
 ; CHECK-NEXT:       RISC-V init undef pass
+; CHECK-NEXT:       RISC-V Optimize AMO Instructions
 ; CHECK-NEXT:       Process Implicit Definitions
 ; CHECK-NEXT:       Remove unreachable machine basic blocks
 ; CHECK-NEXT:       Live Variable Analysis
