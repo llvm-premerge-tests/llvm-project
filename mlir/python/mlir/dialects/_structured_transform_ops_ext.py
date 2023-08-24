@@ -783,16 +783,32 @@ class VectorizeOp:
         self,
         target: Union[Operation, Value],
         *,
-        vectorize_padding: Union[bool, BoolAttr] = False,
+        disable_multi_reduction_to_contract_patterns: Union[bool, UnitAttr] = False,
+        disable_transfer_permutation_map_lowering_patterns: Union[bool, UnitAttr] = False,
+        vectorize_nd_extract: Union[bool, UnitAttr] = False,
+        vectorize_padding: Union[bool, UnitAttr] = False,
         loc=None,
         ip=None,
     ):
         pdl_operation_type = pdl.OperationType.get()
-        if isinstance(vectorize_padding, bool):
+        if isinstance(disable_multi_reduction_to_contract_patterns, bool) and bool(
+            disable_multi_reduction_to_contract_patterns
+        ):
+            disable_multi_reduction_to_contract_patterns = UnitAttr.get()
+        if isinstance(
+            disable_transfer_permutation_map_lowering_patterns, bool
+        ) and bool(disable_transfer_permutation_map_lowering_patterns):
+            disable_transfer_permutation_map_lowering_patterns = UnitAttr.get()
+        if isinstance(vectorize_nd_extract, bool) and bool(vectorize_nd_extract):
+            vectorize_nd_extract = UnitAttr.get()
+        if isinstance(vectorize_padding, bool) and bool(vectorize_padding):
             vectorize_padding = UnitAttr.get()
         super().__init__(
             pdl_operation_type,
             _get_op_result_or_value(target),
+            disable_multi_reduction_to_contract_patterns=disable_multi_reduction_to_contract_patterns,
+            disable_transfer_permutation_map_lowering_patterns=disable_transfer_permutation_map_lowering_patterns,
+            vectorize_nd_extract=vectorize_nd_extract,
             vectorize_padding=vectorize_padding,
             loc=loc,
             ip=ip,
