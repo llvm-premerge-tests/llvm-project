@@ -13,6 +13,9 @@
 
 namespace llvm {
 
+/// Holds target-specific properties for a symbol.
+using TargetFlagsType = uint8_t;
+
 class RuntimeDyldCheckerImpl {
   friend class RuntimeDyldChecker;
   friend class RuntimeDyldCheckerExprEval;
@@ -25,17 +28,23 @@ class RuntimeDyldCheckerImpl {
   using GetGOTInfoFunction = RuntimeDyldChecker::GetGOTInfoFunction;
 
 public:
-  RuntimeDyldCheckerImpl(
-      IsSymbolValidFunction IsSymbolValid, GetSymbolInfoFunction GetSymbolInfo,
-      GetSectionInfoFunction GetSectionInfo, GetStubInfoFunction GetStubInfo,
-      GetGOTInfoFunction GetGOTInfo, support::endianness Endianness,
-      MCDisassembler *Disassembler, MCInstPrinter *InstPrinter,
-      llvm::raw_ostream &ErrStream);
+  RuntimeDyldCheckerImpl(IsSymbolValidFunction IsSymbolValid,
+                         GetSymbolInfoFunction GetSymbolInfo,
+                         GetSectionInfoFunction GetSectionInfo,
+                         GetStubInfoFunction GetStubInfo,
+                         GetGOTInfoFunction GetGOTInfo,
+                         support::endianness Endianness, Triple &TT,
+                         SubtargetFeatures &TF, llvm::raw_ostream &ErrStream);
 
   bool check(StringRef CheckExpr) const;
   bool checkAllRulesInBuffer(StringRef RulePrefix, MemoryBuffer *MemBuf) const;
 
 private:
+  Expected<std::unique_ptr<MCDisassembler>>
+  getDisassembler(StringRef Symbol) const;
+
+  Expected<std::unique_ptr<MCInstPrinter>>
+  getInstPrinter(StringRef Symbol) const;
 
   // StubMap typedefs.
 
@@ -48,6 +57,9 @@ private:
   uint64_t readMemoryAtAddr(uint64_t Addr, unsigned Size) const;
 
   StringRef getSymbolContent(StringRef Symbol) const;
+
+  TargetFlagsType getTargetFlag(StringRef Symbol) const;
+  Triple getTripleFromTargetFlag(TargetFlagsType Flag) const;
 
   std::pair<uint64_t, std::string> getSectionAddr(StringRef FileName,
                                                   StringRef SectionName,
@@ -65,8 +77,8 @@ private:
   GetStubInfoFunction GetStubInfo;
   GetGOTInfoFunction GetGOTInfo;
   support::endianness Endianness;
-  MCDisassembler *Disassembler;
-  MCInstPrinter *InstPrinter;
+  Triple &TT;
+  SubtargetFeatures &TF;
   llvm::raw_ostream &ErrStream;
 };
 }
