@@ -15,6 +15,19 @@ foreach(proj ${LLVM_ENABLE_RUNTIMES})
   STRING(REGEX REPLACE "-" "_" canon_name ${canon_name})
   set(LLVM_EXTERNAL_${canon_name}_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../${proj}")
 endforeach()
+if(LLVM_EXTERNAL_RUNTIMES)
+  string(REPLACE ";" "|" LLVM_EXTERNAL_RUNTIMES_PASSTHROUGH "${LLVM_EXTERNAL_RUNTIMES}")
+  list(APPEND EXTERNAL_RUNTIMES_CMAKE_ARGS -DLLVM_EXTERNAL_RUNTIMES=${LLVM_EXTERNAL_RUNTIMES_PASSTHROUGH})
+endif()
+foreach(proj ${LLVM_EXTERNAL_RUNTIMES})
+  string(TOUPPER "${proj}" canon_name)
+  STRING(REGEX REPLACE "-" "_" canon_name ${canon_name})
+  set(LLVM_EXTERNAL_${canon_name}_SOURCE_DIR
+    "${LLVM_EXTERNAL_${canon_name}_SOURCE_DIR}"
+    CACHE PATH "Path to ${proj} source directory")
+  list(APPEND EXTERNAL_RUNTIMES_CMAKE_ARGS
+    "-DLLVM_EXTERNAL_${canon_name}_SOURCE_DIR=${LLVM_EXTERNAL_${canon_name}_SOURCE_DIR}")
+endforeach()
 
 function(get_compiler_rt_path path)
   foreach(entry ${runtimes})
@@ -240,6 +253,7 @@ function(runtime_default_target)
                                       -DCMAKE_CXX_COMPILER_WORKS=ON
                                       -DCMAKE_ASM_COMPILER_WORKS=ON
                                       ${COMMON_CMAKE_ARGS}
+                                      ${EXTERNAL_RUNTIMES_CMAKE_ARGS}
                                       ${RUNTIMES_CMAKE_ARGS}
                                       ${ARG_CMAKE_ARGS}
                            PASSTHROUGH_PREFIXES LLVM_ENABLE_RUNTIMES
@@ -348,6 +362,7 @@ function(runtime_register_target name)
                                       -DCOMPILER_RT_DEFAULT_TARGET_ONLY=ON
                                       -DLLVM_RUNTIMES_TARGET=${name}
                                       ${COMMON_CMAKE_ARGS}
+                                      ${EXTERNAL_RUNTIMES_CMAKE_ARGS}
                                       ${${name}_extra_args}
                            EXTRA_TARGETS ${${name}_extra_targets}
                                          ${${name}_test_targets}

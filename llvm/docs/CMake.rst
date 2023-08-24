@@ -625,6 +625,14 @@ enabled sub-projects. Nearly all of these variable names begin with
   -DLLVM_EXTERNAL_FOO_SOURCE_DIR=/src/foo
   -DLLVM_EXTERNAL_BAR_SOURCE_DIR=/src/bar``.
 
+**LLVM_EXTERNAL_RUNTIMES**:STRING
+  Semicolon-separated list of additional external runtimes to build. For each
+  additional runtime LLVM_EXTERNAL_<NAME>_SOURCE_DIR has to be specified with
+  the path for the source code of the project. Example:
+  ``-DLLVM_EXTERNAL_RUNTIMES="mylib1;mylib2"
+  -DLLVM_EXTERNAL_MYLIB1_SOURCE_DIR=/src/mylib1
+  -DLLVM_EXTERNAL_MYLIB2_SOURCE_DIR=/src/mylib2``.
+
 **LLVM_EXTERNALIZE_DEBUGINFO**:BOOL
   Generate dSYM files and strip executables and libraries (Darwin Only).
   Defaults to OFF.
