@@ -5,8 +5,10 @@ float fp_contract_1(float a, float b, float c) {
 // CHECK: _Z13fp_contract_1fff
 // CHECK: %[[M:.+]] = fmul contract float %a, %b
 // CHECK-NEXT: fadd contract float %[[M]], %c
+// CHECK-NEXT: tail call contract float @llvm.sqrt.f32(float %a)
+
 #pragma clang fp contract(fast)
-  return a * b + c;
+  return a * b + c + __builtin_sqrtf(a);
 }
 
 // Is FP_CONTRACT state cleared on exiting compound statements?
