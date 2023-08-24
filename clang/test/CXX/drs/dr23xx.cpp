@@ -5,6 +5,16 @@
 // RUN: %clang_cc1 -std=c++20 %s -verify -fexceptions -fcxx-exceptions -pedantic-errors 2>&1 | FileCheck %s
 // RUN: %clang_cc1 -std=c++23 %s -verify -fexceptions -fcxx-exceptions -pedantic-errors 2>&1 | FileCheck %s
 
+namespace std {
+  __extension__ typedef __SIZE_TYPE__ size_t;
+
+  template<typename E> struct initializer_list {
+    const E *p; size_t n;
+    initializer_list(const E *p, size_t n);
+    initializer_list();
+  };
+}
+
 #if __cplusplus >= 201103L
 namespace dr2303 { // dr2303: 12
 template <typename... T>
@@ -36,6 +46,80 @@ void g() {
 }
 } //namespace dr2303
 #endif
+
+namespace dr2311 {  // dr2311: 18 open
+#if __cplusplus >= 201707L
+template<typename T>
+void test() {
+  // Ensure none of these expressions try to call a move constructor.
+  T a = T{T(0)};
+  T b{T(0)};
+  auto c{T(0)};
+  T d = {T(0)};
+  auto e = {T(0)};
+#if __cplusplus >= 202302L
+  auto f = auto{T(0)};
+#endif
+  void(*fn)(T);
+  fn({T(0)});
+}
+
+struct NonMovable {
+  NonMovable(int);
+  NonMovable(NonMovable&&) = delete;
+};
+struct NonMovableNonApplicableIList {
+  NonMovableNonApplicableIList(int);
+  NonMovableNonApplicableIList(NonMovableNonApplicableIList&&) = delete;
+  NonMovableNonApplicableIList(std::initializer_list<int>);
+};
+struct ExplicitMovable {
+  ExplicitMovable(int);
+  explicit ExplicitMovable(ExplicitMovable&&);
+};
+struct ExplicitNonMovable {
+  ExplicitNonMovable(int);
+  explicit ExplicitNonMovable(ExplicitNonMovable&&) = delete;
+};
+struct ExplicitNonMovableNonApplicableIList {
+  ExplicitNonMovableNonApplicableIList(int);
+  explicit ExplicitNonMovableNonApplicableIList(ExplicitNonMovableNonApplicableIList&&) = delete;
+  ExplicitNonMovableNonApplicableIList(std::initializer_list<int>);
+};
+struct CopyOnly {
+  CopyOnly(int);
+  CopyOnly(const CopyOnly&);
+  CopyOnly(CopyOnly&&) = delete;
+};
+struct ExplicitCopyOnly {
+  ExplicitCopyOnly(int);
+  explicit ExplicitCopyOnly(const ExplicitCopyOnly&);
+  explicit ExplicitCopyOnly(ExplicitCopyOnly&&) = delete;
+};
+
+template void test<NonMovable>();
+template void test<NonMovableNonApplicableIList>();
+template void test<ExplicitMovable>();
+template void test<ExplicitNonMovable>();
+template void test<ExplicitNonMovableNonApplicableIList>();
+template void test<CopyOnly>();
+template void test<ExplicitCopyOnly>();
+
+struct any {
+    template<typename T>
+    any(T&&);
+};
+
+template<typename T>
+struct X {
+    X();
+    X(T) = delete;  // expected-note {{'X' has been explicitly marked deleted here}}
+};
+
+X<std::initializer_list<any>> x{ X<std::initializer_list<any>>() };  // expected-error {{call to deleted constructor of 'X<std::initializer_list<any>>'}}
+
+#endif
+}
 
 // dr2331: na
 

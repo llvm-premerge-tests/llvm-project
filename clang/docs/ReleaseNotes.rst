@@ -98,6 +98,11 @@ Resolutions to C++ Defect Reports
   Clang used to err on the lack of space when the literal suffix identifier was invalid in
   all the language modes, which contradicted the deprecation of the whitespaces.
   Also turn on ``-Wdeprecated-literal-operator`` by default in all the language modes.
+- Implemented `CWG2137 <https://wg21.link/CWG2137>`_ which allows
+  list-initialization from objects of the same type.
+- Have an implementation for `CWG2311 <https://wg21.link/CWG2311>`_: given a prvalue ``e`` of object type
+  ``T``, ``T{e}`` will try to resolve an initializer list constructor and will use it if successful (CWG2137).
+  Otherwise, if there is no initializer list constructor, the copy will be elided as if it was ``T(e)``.
 
 C Language Changes
 ------------------
