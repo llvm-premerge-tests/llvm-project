@@ -73,7 +73,6 @@ add_clang_library(clangDriver
   ToolChains/Minix.cpp
   ToolChains/MSP430.cpp
   ToolChains/MSVC.cpp
-  ToolChains/Myriad.cpp
   ToolChains/NaCl.cpp
   ToolChains/NetBSD.cpp
   ToolChains/OHOS.cpp
