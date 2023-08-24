@@ -8091,9 +8091,9 @@ define void @pr38938(ptr %a0, ptr %a1) nounwind {
 ; X64-NOBMI-LABEL: pr38938:
 ; X64-NOBMI:       # %bb.0:
 ; X64-NOBMI-NEXT:    movl (%rsi), %eax
-; X64-NOBMI-NEXT:    shrl $21, %eax
-; X64-NOBMI-NEXT:    andl $1023, %eax # imm = 0x3FF
-; X64-NOBMI-NEXT:    incl (%rdi,%rax,4)
+; X64-NOBMI-NEXT:    shrl $19, %eax
+; X64-NOBMI-NEXT:    andl $4092, %eax # imm = 0xFFC
+; X64-NOBMI-NEXT:    incl (%rdi,%rax)
 ; X64-NOBMI-NEXT:    retq
 ;
 ; X64-BMINOTBM-LABEL: pr38938:
@@ -8301,9 +8301,9 @@ define i64 @c2_i64(i64 %arg) nounwind {
 ;
 ; X64-LABEL: c2_i64:
 ; X64:       # %bb.0:
-; X64-NEXT:    movq %rdi, %rax
-; X64-NEXT:    shrq $49, %rax
-; X64-NEXT:    andl $4092, %eax # imm = 0xFFC
+; X64-NEXT:    shrq $51, %rdi
+; X64-NEXT:    andl $1023, %edi # imm = 0x3FF
+; X64-NEXT:    leal (,%rdi,4), %eax
 ; X64-NEXT:    retq
   %tmp0 = lshr i64 %arg, 51
   %tmp1 = and i64 %tmp0, 1023
@@ -8588,8 +8588,9 @@ define void @c7_i64(i64 %arg, ptr %ptr) nounwind {
 ;
 ; X64-LABEL: c7_i64:
 ; X64:       # %bb.0:
-; X64-NEXT:    shrq $49, %rdi
-; X64-NEXT:    andl $4092, %edi # imm = 0xFFC
+; X64-NEXT:    shrq $51, %rdi
+; X64-NEXT:    andl $1023, %edi # imm = 0x3FF
+; X64-NEXT:    shll $2, %edi
 ; X64-NEXT:    movq %rdi, (%rsi)
 ; X64-NEXT:    retq
   %tmp0 = lshr i64 %arg, 51
