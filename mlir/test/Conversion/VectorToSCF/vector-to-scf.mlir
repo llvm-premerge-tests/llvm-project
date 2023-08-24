@@ -635,3 +635,35 @@ func.func @vector_print_scalable_vector(%arg0: vector<[4]xi32>) {
 // CHECK:           vector.print
 // CHECK:           return
 // CHECK:         }
+
+// -----
+
+func.func @transfer_read_array_of_scalable(%arg0: memref<1x?xf32>) -> vector<1x[4]xf32> {
+  %c0 = arith.constant 0 : index
+  %c1 = arith.constant 1 : index
+  %cst = arith.constant 0.000000e+00 : f32
+  %dim = memref.dim %arg0, %c1 : memref<1x?xf32>
+  %mask = vector.create_mask %c1, %dim : vector<1x[4]xi1>
+  %read = vector.transfer_read %arg0[%c0, %c0], %cst, %mask {in_bounds = [true, true]} : memref<1x?xf32>, vector<1x[4]xf32>
+  return %read : vector<1x[4]xf32>
+}
+// CHECK-LABEL:   func.func @transfer_read_array_of_scalable(
+// CHECK-SAME:                                          %[[VAL_0:.*]]: memref<1x?xf32>) -> vector<1x[4]xf32> {
+// CHECK:           %[[PADDING:.*]] = arith.constant 0.000000e+00 : f32
+// CHECK:           %[[C0:.*]] = arith.constant 0 : index
+// CHECK:           %[[C1:.*]] = arith.constant 1 : index
+// CHECK:           %[[ALLOCA_VECTOR:.*]] = memref.alloca() : memref<vector<1x[4]xf32>>
+// CHECK:           %[[ALLOCA_MASK:.*]] = memref.alloca() : memref<vector<1x[4]xi1>>
+// CHECK:           %[[DIM_SIZE:.*]] = memref.dim %[[VAL_0]], %[[C1]] : memref<1x?xf32>
+// CHECK:           %[[MASK:.*]] = vector.create_mask %[[C1]], %[[DIM_SIZE]] : vector<1x[4]xi1>
+// CHECK:           memref.store %[[MASK]], %[[ALLOCA_MASK]][] : memref<vector<1x[4]xi1>>
+// CHECK:           %[[UNPACK_DIM_VECTOR:.*]] = vector.type_cast %[[ALLOCA_VECTOR]] : memref<vector<1x[4]xf32>> to memref<1xvector<[4]xf32>>
+// CHECK:           %[[UNPACK_DIM_MASK:.*]] = vector.type_cast %[[ALLOCA_MASK]] : memref<vector<1x[4]xi1>> to memref<1xvector<[4]xi1>>
+// CHECK:           scf.for %[[VAL_10:.*]] = %[[C0]] to %[[C1]] step %[[C1]] {
+// CHECK:             %[[MASK_SLICE:.*]] = memref.load %[[UNPACK_DIM_MASK]]{{\[}}%[[VAL_10]]] : memref<1xvector<[4]xi1>>
+// CHECK:             %[[READ_SLICE:.*]] = vector.transfer_read %[[VAL_0]]{{\[}}%[[VAL_10]], %[[C0]]], %[[PADDING]], %[[MASK_SLICE]] {in_bounds = [true]} : memref<1x?xf32>, vector<[4]xf32>
+// CHECK:             memref.store %[[READ_SLICE]], %[[UNPACK_DIM_VECTOR]]{{\[}}%[[VAL_10]]] : memref<1xvector<[4]xf32>>
+// CHECK:           }
+// CHECK:           %[[RESULT:.*]] = memref.load %[[ALLOCA_VECTOR]][] : memref<vector<1x[4]xf32>>
+// CHECK:           return %[[RESULT]] : vector<1x[4]xf32>
+// CHECK:         }
