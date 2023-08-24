@@ -1603,13 +1603,25 @@ private:
                            ? TotalSamples - CalleeProfile.getTotalSamples()
                            : 0;
         TotalSamples += CalleeProfile.getHeadSamplesEstimate();
+
+      }
+    }
+
+    // FlattenNestedProfile adds new FunctionSamples to the output, which may
+    // invalidate the reference Profile, so it needs to be reset after all
+    // flattening.
+    for (const auto &I : FS.getCallsiteSamples()) {
+      for (const auto &Callee : I.second) {
+        const auto &CalleeProfile = Callee.second;
         // Recursively convert callee profile.
         flattenNestedProfile(OutputProfiles, CalleeProfile);
       }
     }
-    Profile.addTotalSamples(TotalSamples);
+    FunctionSamples &NewProfile = OutputProfiles[Context];
 
-    Profile.setHeadSamples(Profile.getHeadSamplesEstimate());
+    NewProfile.addTotalSamples(TotalSamples);
+
+    NewProfile.setHeadSamples(NewProfile.getHeadSamplesEstimate());
   }
 
   // Nest all children profiles into the profile of Node.
