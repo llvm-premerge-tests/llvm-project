@@ -103,6 +103,7 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetOperations.h"
 #include "llvm/ADT/SetVector.h"
+#include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/iterator.h"
 #include "llvm/Analysis/AssumeBundleQueries.h"
 #include "llvm/Analysis/CFG.h"
@@ -130,6 +131,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/ModRef.h"
 #include "llvm/Support/TimeProfiler.h"
+#include "llvm/Support/TypeSize.h"
 #include "llvm/TargetParser/Triple.h"
 #include "llvm/Transforms/Utils/CallGraphUpdater.h"
 
@@ -5958,6 +5960,18 @@ struct AAPointerInfo : public AbstractAttribute {
   /// See AbstractAttribute::getIdAddr()
   const char *getIdAddr() const override { return &ID; }
 
+  /// Get the Ranges
+  const DenseMap<AA::RangeTy, llvm::SmallSet<unsigned, 4>> *
+  getOffsetBinsAddr() const {
+    return AAPointerInfoOffsetBins;
+  }
+
+  /// Set the RangeList Object
+  void
+  setOffsetBinsAddr(DenseMap<AA::RangeTy, llvm::SmallSet<unsigned, 4>> *Bins) {
+    AAPointerInfoOffsetBins = Bins;
+  }
+
   /// Call \p CB on all accesses that might interfere with \p Range and return
   /// true if all such accesses were known and the callback returned true for
   /// all of them, false otherwise. An access interferes with an offset-size
@@ -5985,6 +5999,9 @@ struct AAPointerInfo : public AbstractAttribute {
   static bool classof(const AbstractAttribute *AA) {
     return (AA->getIdAddr() == &ID);
   }
+
+  /// Internal RangeList object
+  DenseMap<AA::RangeTy, llvm::SmallSet<unsigned, 4>> *AAPointerInfoOffsetBins;
 
   /// Unique ID (due to the unique address)
   static const char ID;
@@ -6106,6 +6123,42 @@ struct AAAddressSpace : public StateWrapper<BooleanState, AbstractAttribute> {
   static const int32_t NoAddressSpace = -1;
 
   /// Unique ID (due to the unique address)
+  static const char ID;
+};
+
+struct AAAllocationInfo : public StateWrapper<BooleanState, AbstractAttribute> {
+  AAAllocationInfo(const IRPosition &IRP, Attributor &A)
+      : StateWrapper<BooleanState, AbstractAttribute>(IRP) {}
+
+  /// See AbstractAttribute::isValidIRPositionForInit
+  static bool isValidIRPositionForInit(Attributor &A, const IRPosition &IRP) {
+    if (!IRP.getAssociatedType()->isPtrOrPtrVectorTy())
+      return false;
+    return AbstractAttribute::isValidIRPositionForInit(A, IRP);
+  }
+
+  /// Create an abstract attribute view for the position \p IRP.
+  static AAAllocationInfo &createForPosition(const IRPosition &IRP,
+                                             Attributor &A);
+
+  virtual std::optional<TypeSize> getAllocatedSize() const = 0;
+
+  /// See AbstractAttribute::getName()
+  const std::string getName() const override { return "AAAllocationInfo"; }
+
+  /// See AbstractAttribute::getIdAddr()
+  const char *getIdAddr() const override { return &ID; }
+
+  /// This function should return true if the type of the \p AA is
+  /// AAAllocationInfo
+  static bool classof(const AbstractAttribute *AA) {
+    return (AA->getIdAddr() == &ID);
+  }
+
+  // NOAllocatedSize means it doesn't have any allocated size.
+  constexpr static const std::optional<TypeSize> NOAllocatedSize =
+      std::optional<TypeSize>(TypeSize(-1, true));
+
   static const char ID;
 };
 
