@@ -13,6 +13,7 @@
 #include "llvm/Object/Binary.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/BinaryFormat/Magic.h"
+#include "llvm/Object/AIXLinkerImportFile.h"
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/Error.h"
 #include "llvm/Object/MachOUniversal.h"
@@ -95,6 +96,8 @@ Expected<std::unique_ptr<Binary>> object::createBinary(MemoryBufferRef Buffer,
     return MinidumpFile::create(Buffer);
   case file_magic::tapi_file:
     return TapiUniversal::create(Buffer);
+  case file_magic::aix_linker_import_file:
+    return AIXLinkerImportFile::create(Buffer);
   }
   llvm_unreachable("Unexpected Binary File Type");
 }

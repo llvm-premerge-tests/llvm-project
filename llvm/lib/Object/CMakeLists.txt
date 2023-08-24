@@ -1,4 +1,5 @@
 add_llvm_component_library(LLVMObject
+  AIXLinkerImportFile.cpp
   Archive.cpp
   ArchiveWriter.cpp
   Binary.cpp

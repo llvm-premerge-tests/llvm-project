@@ -52,6 +52,10 @@
 # RUN: yaml2obj -DFLAG=0x2000 --docnum=2 %s -o %t_shared.o
 # RUN: llvm-nm --export-symbols %t_shared.o | count 0
 
+## Test ignoring the parsing an imported symbol file that  begins with #!
+# RUN: echo "#!" > imp.txt
+# RUN: llvm-nm --export-symbols imp.txt 2>&1 | FileCheck --allow-empty --implicit-check-not={{.}} %s
+
 --- !XCOFF
 FileHeader:
   MagicNumber:       0x1DF
