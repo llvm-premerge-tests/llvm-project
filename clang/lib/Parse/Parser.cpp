@@ -53,6 +53,7 @@ Parser::Parser(Preprocessor &pp, Sema &actions, bool skipFunctionBodies)
     : PP(pp), PreferredType(pp.isCodeCompletionEnabled()), Actions(actions),
       Diags(PP.getDiagnostics()), GreaterThanIsOperator(true),
       ColonIsSacred(false), InMessageExpression(false),
+      InAmbiguousCXXParenExprParsing(false),
       TemplateParameterDepth(0), ParsingInObjCContainer(false) {
   SkipFunctionBodies = pp.isCodeCompletionEnabled() || skipFunctionBodies;
   Tok.startToken();

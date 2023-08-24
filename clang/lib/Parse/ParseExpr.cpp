@@ -28,6 +28,7 @@
 #include "clang/Parse/RAIIObjectsForParser.h"
 #include "clang/Sema/DeclSpec.h"
 #include "clang/Sema/EnterExpressionEvaluationContext.h"
+#include "clang/Sema/Ownership.h"
 #include "clang/Sema/ParsedTemplate.h"
 #include "clang/Sema/Scope.h"
 #include "clang/Sema/TypoCorrection.h"
@@ -3162,6 +3163,14 @@ Parser::ParseParenExpression(ParenParseOption &ExprType, bool stopIfCastExpr,
           isFoldOperator(Tok.getKind()) && NextToken().is(tok::ellipsis)) {
         ExprType = FoldExpr;
         return ParseFoldExpression(ArgExprs[0], T);
+      }
+
+      // If we find an ellipsis, this cannot be part of a cast expression,
+      // stop there and try to parse a simple expression instead.
+      // This handles `(T())(expr...)`.
+      if(InAmbiguousCXXParenExprParsing && isTypeCast && Tok.is(tok::ellipsis)
+          && ExprType == Parser::CastExpr && getLangOpts().CPlusPlus) {
+        return ExprError();
       }
 
       ExprType = SimpleExpr;

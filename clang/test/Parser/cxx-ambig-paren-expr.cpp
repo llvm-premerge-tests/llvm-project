@@ -70,3 +70,24 @@ void test(int i) {
     return;
 }
 
+namespace GH64926 {
+template<typename T, typename... Args>
+void PackInAmbiguousCastExpression(Args... args) {
+	  (void) (Args::foo()...); // expected-error {{expression contains unexpanded parameter pack 'Args'}} \
+                            // expected-error {{expected ')'}} expected-note {{to match this '('}}
+
+    (void) (args...);  // expected-error {{expression contains unexpanded parameter pack 'args'}} \
+                       // expected-error {{expected ')'}} expected-note {{to match this '('}}
+
+    (void) (((args))...);  // expected-error {{expression contains unexpanded parameter pack 'args'}} \
+                           // expected-error {{expected ')'}} expected-note {{to match this '('}}
+
+    (void) (((args...)));  // expected-error {{expression contains unexpanded parameter pack 'args'}} \
+                           // expected-error {{expected ')'}} expected-note {{to match this '('}}
+    (T()) (Args::foo()...);
+    (T()) (args...);
+    (T()) (((args))...);
+    (T()) (((args...))); // expected-error {{expression contains unexpanded parameter pack 'args'}} \
+                         // expected-error {{expected ')'}} expected-note {{to match this '('}}
+}
+}

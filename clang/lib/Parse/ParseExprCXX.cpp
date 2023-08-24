@@ -3981,6 +3981,7 @@ Parser::ParseCXXAmbiguousParenExpression(ParenParseOption &ExprType,
       // If it is not a cast-expression, NotCastExpr will be true and no token
       // will be consumed.
       ColonProt.restore();
+      SaveAndRestore AmbiguousParenRAII(InAmbiguousCXXParenExprParsing, true);
       Result = ParseCastExpression(AnyCastExpr,
                                    false/*isAddressofOperand*/,
                                    NotCastExpr,

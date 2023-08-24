@@ -245,6 +245,10 @@ class Parser : public CodeCompletionHandler {
   /// should not be set directly.
   bool InMessageExpression;
 
+  /// Track whether we are currently trying to parse an ambiguous
+  /// paren expression after a cast expression.
+  bool InAmbiguousCXXParenExprParsing;
+
   /// Gets set to true after calling ProduceSignatureHelp, it is for a
   /// workaround to make sure ProduceSignatureHelp is only called at the deepest
   /// function call.

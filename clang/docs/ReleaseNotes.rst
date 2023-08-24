@@ -198,6 +198,10 @@ Bug Fixes to C++ Support
 - Update ``FunctionDeclBitfields.NumFunctionDeclBits``. This fixes:
   (`#64171 <https://github.com/llvm/llvm-project/issues/64171>`_).
 
+- Correctly parse ``(T())(pack...)`` as a call to ``T::operator()``
+  instead of an invalid cast expression.
+  (`#64926 <https://github.com/llvm/llvm-project/issues/64926>`_)
+
 Bug Fixes to AST Handling
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 - Fixed an import failure of recursive friend class template.
