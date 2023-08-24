@@ -1163,6 +1163,12 @@ multiclass SOPP_With_Relaxation <string opName, dag ins,
 
 def S_NOP : SOPP_Pseudo<"s_nop" , (ins i16imm:$simm16), "$simm16">;
 
+// Define variant marked as having side effects for use with intrinsic
+def S_NOP_SE : SOPP_Pseudo<"" , (ins i16imm:$simm16), "$simm16",
+  [(int_amdgcn_s_nop timm:$simm16)]> {
+  let hasSideEffects = 1;
+}
+
 let isTerminator = 1 in {
 def S_ENDPGM : SOPP_Pseudo<"s_endpgm", (ins Endpgm:$simm16), "$simm16", [], ""> {
   let isBarrier = 1;
