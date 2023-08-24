@@ -259,12 +259,18 @@ void aarch64::getAArch64TargetFeatures(const Driver &D,
   // Enable NEON by default.
   Features.push_back("+neon");
   llvm::StringRef WaMArch;
-  if (ForAS)
+  if (ForAS) {
+    // Some target-specific options are only handled in AddAArch64TargetArgs,
+    // not called for assembler input. Claim them.
+    Args.claimAllArgs(options::OPT_mbranch_protection_EQ,
+                                options::OPT_msign_return_address_EQ);
+
     for (const auto *A :
          Args.filtered(options::OPT_Wa_COMMA, options::OPT_Xassembler))
       for (StringRef Value : A->getValues())
         if (Value.startswith("-march="))
           WaMArch = Value.substr(7);
+  }
   // Call getAArch64ArchFeaturesFromMarch only if "-Wa,-march=" or
   // "-Xassembler -march" is detected. Otherwise it may return false
   // and causes Clang to error out.

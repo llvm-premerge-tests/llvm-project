@@ -75,6 +75,9 @@
 // RUN: %clang -target arm-arm-none-eabi -march=armv7-r -c %s -### -mbranch-protection=bti 2>&1 | \
 // RUN: FileCheck %s --check-prefix=INCOMPATIBLE-ARCH
 
+/// Don't warn for assembler input.
+// RUN: %clang -### -Werror --target=arm-arm-none-eabi -march=armv7-m -x assembler -c %s -mbranch-protection=pac-ret
+
 // RA-OFF: "-msign-return-address=none"
 // RA-NON-LEAF: "-msign-return-address=non-leaf"
 // RA-ALL: "-msign-return-address=all"

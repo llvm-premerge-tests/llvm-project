@@ -27,8 +27,12 @@
 // RUN: not %clang --target=aarch64 -c %s -### -mbranch-protection=bar     2>&1 | \
 // RUN: FileCheck %s --check-prefix=BAD-BP-PROTECTION --check-prefix=WARN
 
-// RUN: %clang --target=aarch64 -### -o /dev/null -mbranch-protection=standard /dev/null 2>&1 | \
-// RUN: FileCheck --allow-empty %s --check-prefix=LINKER-DRIVER
+/// Check that the linker driver doesn't warn about -mbranch-protection=standard
+/// as an unused option.
+// RUN: %clang --target=aarch64 -Werror -### -o /dev/null -mbranch-protection=standard /dev/null
+
+/// Don't warn for assembler input.
+// RUN: %clang -### --target=aarch64 -Werror -c -x assembler %s -mbranch-protection=standard -msign-return-address=all
 
 // WARN-NOT: warning: ignoring '-mbranch-protection=' option because the 'aarch64' architecture does not support it [-Wbranch-protection]
 
@@ -49,7 +53,3 @@
 
 // BAD-B-KEY-COMBINATION: unsupported argument 'b-key' to option '-mbranch-protection='
 // BAD-LEAF-COMBINATION: unsupported argument 'leaf' to option '-mbranch-protection='
-
-// Check that the linker driver doesn't warn about -mbranch-protection=standard
-// as an unused option.
-// LINKER-DRIVER-NOT: warning: argument unused during compilation: '-mbranch-protection=standard'
