@@ -13,7 +13,7 @@
 // CHECK-NEXT:   external_resources: {
 // CHECK-NEXT:     external: {
 // CHECK-NEXT:       bool: true,
-// CHECK-NEXT:       string: "string"
+// CHECK-NEXT:       string: "\22string\22"
 // CHECK-NEXT:     },
 // CHECK-NEXT:     other_stuff: {
 // CHECK-NEXT:       bool: true
@@ -32,7 +32,7 @@
     external: {
       blob: "0x08000000010000000000000002000000000000000300000000000000",
       bool: true,
-      string: "string"
+      string: "\"string\"" // with escape characters
     },
     other_stuff: {
       bool: true
