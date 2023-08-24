@@ -6,8 +6,15 @@ set(LLVM_LINK_COMPONENTS
   TargetParser
   )
 
+find_package(CUDAToolkit)
+if(CUDAToolkit_FOUND)
+  get_property(LIBCUDART_PATH TARGET CUDA::cudart PROPERTY LOCATION)
+  add_compile_definitions(LIBCUDART_PATH="${LIBCUDART_PATH}")
+endif()
+
 add_clang_unittest(ClangReplInterpreterTests
   IncrementalProcessingTest.cpp
+  InteractiveCudaTest.cpp
   InterpreterTest.cpp
   )
 target_link_libraries(ClangReplInterpreterTests PUBLIC
