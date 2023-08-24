@@ -110,6 +110,11 @@ struct _LIBCXXABI_HIDDEN __dynamic_cast_info
     bool found_any_static_type;
     // Set whenever a search can be stopped
     bool search_done;
+
+    // Data that modifies the search mechanism.
+
+    // There is no object (seen when we throw a null pointer to object).
+    bool have_object;
 };
 
 // Has no base class

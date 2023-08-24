@@ -42,6 +42,7 @@
 // is_equal() with use_strcmp=false so the string names are not compared.
 
 #include <cstdint>
+#include <cassert>
 #include <string.h>
 
 #ifdef _LIBCXXABI_FORGIVING_DYNAMIC_CAST
@@ -233,7 +234,9 @@ __class_type_info::can_catch(const __shim_type_info* thrown_type,
     if (thrown_class_type == 0)
         return false;
     // bullet 2
-    __dynamic_cast_info info = {thrown_class_type, 0, this, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,};
+    assert (adjustedPtr && "catching a class without an object?");
+    __dynamic_cast_info info = {thrown_class_type, 0, this,
+                                -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, true};
     info.number_of_dst_type = 1;
     thrown_class_type->has_unambiguous_public_base(&info, adjustedPtr, public_path);
     if (info.path_dst_ptr_to_static_ptr == public_path)
@@ -253,7 +256,7 @@ __class_type_info::process_found_base_class(__dynamic_cast_info* info,
                                                void* adjustedPtr,
                                                int path_below) const
 {
-    if (info->dst_ptr_leading_to_static_ptr == 0)
+    if (info->number_to_static_ptr == 0)
     {
         // First time here
         info->dst_ptr_leading_to_static_ptr = adjustedPtr;
@@ -301,15 +304,26 @@ __base_class_type_info::has_unambiguous_public_base(__dynamic_cast_info* info,
                                                     void* adjustedPtr,
                                                     int path_below) const
 {
+    bool is_virtual = __offset_flags & __virtual_mask;
     ptrdiff_t offset_to_base = 0;
-    if (adjustedPtr != nullptr)
+    if (info->have_object)
     {
+        /* We have an object to inspect, we can look through its vtables to
+           find the layout.  */
         offset_to_base = __offset_flags >> __offset_shift;
-        if (__offset_flags & __virtual_mask)
+        if (is_virtual)
         {
             const char* vtable = *static_cast<const char*const*>(adjustedPtr);
             offset_to_base = update_offset_to_base(vtable, offset_to_base);
         }
+    } else if (! is_virtual) {
+        /* We have no object - so we cannot use it for determining layout when
+           we have a virtual base (since we cannot indirect through the vtable
+           to find the actual object offset).  However, for non-virtual bases,
+           we can pretend to have an object based at '0' */
+        offset_to_base = __offset_flags >> __offset_shift;
+    } else {
+      // write me.
     }
     __base_type->has_unambiguous_public_base(
             info,
@@ -334,6 +348,8 @@ __vmi_class_type_info::has_unambiguous_public_base(__dynamic_cast_info* info,
         {
             do
             {
+                if (! (p->__offset_flags & __base_class_type_info::__public_mask))
+                   continue;
                 p->has_unambiguous_public_base(info, adjustedPtr, path_below);
                 if (info->search_done)
                     break;
@@ -431,13 +447,22 @@ __pointer_type_info::can_catch(const __shim_type_info* thrown_type,
         dynamic_cast<const __class_type_info*>(thrown_pointer_type->__pointee);
     if (thrown_class_type == 0)
         return false;
-    __dynamic_cast_info info = {thrown_class_type, 0, catch_class_type, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,};
+    bool have_object = adjustedPtr != nullptr;
+    __dynamic_cast_info info = {thrown_class_type, 0, catch_class_type, -1,
+                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			        have_object };
     info.number_of_dst_type = 1;
     thrown_class_type->has_unambiguous_public_base(&info, adjustedPtr, public_path);
     if (info.path_dst_ptr_to_static_ptr == public_path)
     {
-        if (adjustedPtr != NULL)
+        // In the case of a thrown null pointer, we have no object but we might
+        // well have computed the offset to where a public sub-object would be.
+        // However, we do not want to return that offset to the user; we still
+        // want them to catch a null ptr.
+        if (have_object)
             adjustedPtr = const_cast<void*>(info.dst_ptr_leading_to_static_ptr);
+        else
+            adjustedPtr = nullptr;
         return true;
     }
     return false;
