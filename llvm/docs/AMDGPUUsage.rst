@@ -999,6 +999,13 @@ The AMDGPU backend implements the following LLVM IR intrinsics.
   :ref:`llvm.stacksave.p5 <int_stacksave>`         Implemented, must use the alloca address space.
   :ref:`llvm.stackrestore.p5 <int_stackrestore>`   Implemented, must use the alloca address space.
 
+  :ref:`llvm.get.fpmode.i32 <int_get_fpmode>`      The natural floating-point mode type is i32. This
+                                                   implemented by extracting relevant bits out of the MODE
+                                                   register with s_getreg_b32. The first 10 bits are the
+                                                   core floating-point mode. Bits 12:18 are the exception
+                                                   mask. On gfx9+, bit 23 is FP16_OVFL. Bitfields not
+                                                   relevant to floating-point instructions are 0s.
+
   llvm.amdgcn.wave.reduce.umin                     Performs an arithmetic unsigned min reduction on the unsigned values
                                                    provided by each lane in the wavefront.
                                                    Intrinsic takes a hint for reduction strategy using second operand
