@@ -142,4 +142,18 @@ struct ThrowOnMove {
 
 #endif // TEST_HAS_NO_EXCEPTIONS
 
+struct MoveOnlyErrorType {
+  constexpr MoveOnlyErrorType(int) {}
+  MoveOnlyErrorType(MoveOnlyErrorType&&) {}
+  MoveOnlyErrorType(const MoveOnlyErrorType&&) {}
+  MoveOnlyErrorType(const MoveOnlyErrorType&)            = delete;
+  MoveOnlyErrorType& operator=(const MoveOnlyErrorType&) = delete;
+};
+
+struct CopyConstructibleErrorType {
+  constexpr CopyConstructibleErrorType(int) {}
+  CopyConstructibleErrorType(CopyConstructibleErrorType&) {}
+  CopyConstructibleErrorType(const CopyConstructibleErrorType&) {}
+};
+
 #endif // TEST_STD_UTILITIES_EXPECTED_TYPES_H

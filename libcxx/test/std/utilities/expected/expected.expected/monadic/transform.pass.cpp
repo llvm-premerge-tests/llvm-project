@@ -26,6 +26,8 @@
 #include <type_traits>
 #include <utility>
 
+#include "../../types.h"
+
 struct LVal {
   constexpr int operator()(int&) { return 1; }
   int operator()(const int&)  = delete;
@@ -98,11 +100,17 @@ concept has_transform =
       { std::forward<E>(e).transform(std::forward<F>(f)) };
     };
 
+// clang-format off
 // [LWG 3877] https://cplusplus.github.io/LWG/issue3877, check constraint failing but not compile error inside the function body.
 static_assert(!has_transform<const std::expected<int, std::unique_ptr<int>>&, int()>);
 static_assert(!has_transform<const std::expected<int, std::unique_ptr<int>>&&, int()>);
 
-// clang-format off
+// [LWG 3983] https://cplusplus.github.io/LWG/issue3938, check std::expected monadic ops well-formed with move-only error_type.
+static_assert(has_transform<std::expected<int, CopyConstructibleErrorType>&, int(int&)>);
+// There are no effects for `const &` overload, because the constraints requires is_constructible_v<E, decltype(error())> is true.
+static_assert(has_transform<std::expected<int, MoveOnlyErrorType>&&, int(int)>);
+static_assert(has_transform<const std::expected<int, MoveOnlyErrorType>&&, int(const int)>);
+
 constexpr void test_val_types() {
   // Test & overload
   {

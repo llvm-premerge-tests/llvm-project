@@ -22,6 +22,8 @@
 #include <type_traits>
 #include <utility>
 
+#include "../../types.h"
+
 struct LVal {
   constexpr std::expected<int, int> operator()(int&) { return 1; }
   std::expected<int, int> operator()(const int&)  = delete;
@@ -153,6 +155,7 @@ concept has_and_then = requires(E&& e, F&& f) {
   {std::forward<E>(e).and_then(std::forward<F>(f))};
 };
 
+// clang-format off
 static_assert( has_and_then<std::expected<int, int>&, std::expected<int, int>(int&)>);
 static_assert(!has_and_then<std::expected<int, NonCopyable>&, std::expected<int, NonCopyable>(int&)>);
 static_assert( has_and_then<const std::expected<int, int>&, std::expected<int, int>(const int&)>);
@@ -166,7 +169,12 @@ static_assert(!has_and_then<const std::expected<int, NonMovable>&&, std::expecte
 static_assert(!has_and_then<const std::expected<int, std::unique_ptr<int>>&, int()>);
 static_assert(!has_and_then<const std::expected<int, std::unique_ptr<int>>&&, int()>);
 
-// clang-format off
+// [LWG 3983] https://cplusplus.github.io/LWG/issue3938, check std::expected monadic ops well-formed with move-only error_type.
+static_assert(has_and_then<std::expected<int, CopyConstructibleErrorType>&, std::expected<int, CopyConstructibleErrorType>(int&)>);
+// There are no effects for `const &` overload, because the constraints requires is_constructible_v<E, decltype(error())> is true.
+static_assert(has_and_then<std::expected<int, MoveOnlyErrorType>&&, std::expected<int, MoveOnlyErrorType>(int)>);
+static_assert(has_and_then<const std::expected<int, MoveOnlyErrorType>&&, std::expected<int, MoveOnlyErrorType>(const int)>);
+
 constexpr void test_val_types() {
   // Test & overload
   {
