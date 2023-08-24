@@ -14,6 +14,11 @@ module cstd [system] {
     header "stdbool.h"
   }
 
+  // In both directories (compiler support version wins, does not forward)
+  module stdckdint {
+    header "stdckdint.h"
+  }
+
   // In both directories (compiler support version wins, forwards)
   module stdint {
     header "stdint.h"
