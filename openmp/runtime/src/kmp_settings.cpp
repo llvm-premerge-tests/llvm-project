@@ -5338,6 +5338,33 @@ static void __kmp_stg_print_task_throttling(kmp_str_buf_t *buffer,
   __kmp_stg_print_bool(buffer, name, __kmp_enable_task_throttling);
 } // __kmp_stg_print_task_throttling
 
+// -----------------------------------------------------------------------------
+// KMP_TASK_MAXIMUM
+static void __kmp_stg_parse_task_maximum(char const *name, char const *value,
+                                         void *data) {
+  __kmp_stg_parse_int(name, value, 1, INT_MAX, &__kmp_task_maximum);
+} // __kmp_stg_parse_task_maximum
+
+static void __kmp_stg_print_task_maximum(kmp_str_buf_t *buffer,
+                                         char const *name, void *data) {
+  __kmp_stg_print_int(buffer, name, __kmp_task_maximum);
+} // __kmp_stg_print_task_maximum
+
+// -----------------------------------------------------------------------------
+// KMP_TASK_MAXIMUM_READY
+static void __kmp_stg_parse_task_maximum_ready_per_thread(char const *name,
+                                                          char const *value,
+                                                          void *data) {
+  __kmp_stg_parse_int(name, value, 1, INT_MAX,
+                      &__kmp_task_maximum_ready_per_thread);
+} // __kmp_stg_parse_task_maximum_ready_per_thread
+
+static void __kmp_stg_print_task_maximum_ready_per_thread(kmp_str_buf_t *buffer,
+                                                          char const *name,
+                                                          void *data) {
+  __kmp_stg_print_int(buffer, name, __kmp_task_maximum_ready_per_thread);
+} // __kmp_stg_print_task_maximum_ready_per_thread
+
 #if KMP_HAVE_MWAIT || KMP_HAVE_UMWAIT
 // -----------------------------------------------------------------------------
 // KMP_USER_LEVEL_MWAIT
@@ -5728,6 +5755,13 @@ static kmp_setting_t __kmp_stg_table[] = {
     {"KMP_ENABLE_TASK_THROTTLING", __kmp_stg_parse_task_throttling,
      __kmp_stg_print_task_throttling, NULL, 0, 0},
 
+    {"KMP_TASK_MAXIMUM", __kmp_stg_parse_task_maximum,
+     __kmp_stg_print_task_maximum, NULL, 0, 0},
+
+    {"KMP_TASK_MAXIMUM_READY_PER_THREAD",
+     __kmp_stg_parse_task_maximum_ready_per_thread,
+     __kmp_stg_print_task_maximum_ready_per_thread, NULL, 0, 0},
+
     {"OMP_DISPLAY_ENV", __kmp_stg_parse_omp_display_env,
      __kmp_stg_print_omp_display_env, NULL, 0, 0},
     {"OMP_CANCELLATION", __kmp_stg_parse_omp_cancellation,
@@ -5742,7 +5776,8 @@ static kmp_setting_t __kmp_stg_table[] = {
 #if OMPX_TASKGRAPH
     {"KMP_MAX_TDGS", __kmp_stg_parse_max_tdgs, __kmp_std_print_max_tdgs, NULL,
      0, 0},
-    {"KMP_TDG_DOT", __kmp_stg_parse_tdg_dot, __kmp_stg_print_tdg_dot, NULL, 0, 0},
+    {"KMP_TDG_DOT", __kmp_stg_parse_tdg_dot, __kmp_stg_print_tdg_dot, NULL, 0,
+     0},
 #endif
 
 #if OMPT_SUPPORT
