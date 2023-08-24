@@ -77,6 +77,7 @@ void testva (int n, ...) {
   // CHECK: call void @f(ptr noundef [[V5]])
 
   int* v6 = va_arg (ap, int[4]);  // an unusual aggregate type
+  // expected-warning@-1{{second argument to 'va_arg' is of promotable type 'int[4]'}}
   f(v6);
   // CHECK: [[I:%[a-z0-9]+]] = load ptr, ptr [[AP]]
   // CHECK: [[P:%[a-z0-9]+]] = load ptr, ptr [[I]]
