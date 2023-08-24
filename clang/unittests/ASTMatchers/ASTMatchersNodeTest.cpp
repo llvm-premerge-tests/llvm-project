@@ -2129,6 +2129,21 @@ TEST_P(ASTMatchersTest, TypeAliasTemplateDecl) {
       notMatches(Code, typeAliasTemplateDecl(hasName("typeAliasDecl"))));
 }
 
+TEST_P(ASTMatchersTest, TypeLocTest_DoesNotBindToSyntheticParams) {
+  if (!GetParam().isCXX11OrLater()) {
+    return;
+  }
+  EXPECT_TRUE(notMatches(
+      R"cpp(
+        struct Base { Base(int); };
+        struct Derived : Base { using Base::Base; };
+        Derived d(42); // force constructor to exist
+      )cpp",
+      cxxRecordDecl(hasAnyName("Derived"),
+                    hasDescendant(typeLoc(
+                        anyOf(loc(functionType()), loc(asString("int"))))))));
+}
+
 TEST_P(ASTMatchersTest, QualifiedTypeLocTest_BindsToConstIntVarDecl) {
   EXPECT_TRUE(matches("const int x = 0;",
                       qualifiedTypeLoc(loc(asString("const int")))));

@@ -13890,10 +13890,6 @@ Sema::findInheritingConstructor(SourceLocation Loc,
       return cast<CXXConstructorDecl>(Ctor);
 
   DeclarationNameInfo NameInfo(Name, UsingLoc);
-  TypeSourceInfo *TInfo =
-      Context.getTrivialTypeSourceInfo(BaseCtor->getType(), UsingLoc);
-  FunctionProtoTypeLoc ProtoLoc =
-      TInfo->getTypeLoc().IgnoreParens().castAs<FunctionProtoTypeLoc>();
 
   // Check the inherited constructor is valid and find the list of base classes
   // from which it was inherited.
@@ -13905,8 +13901,9 @@ Sema::findInheritingConstructor(SourceLocation Loc,
                                         false, BaseCtor, &ICI);
 
   CXXConstructorDecl *DerivedCtor = CXXConstructorDecl::Create(
-      Context, Derived, UsingLoc, NameInfo, TInfo->getType(), TInfo,
-      BaseCtor->getExplicitSpecifier(), getCurFPFeatures().isFPConstrained(),
+      Context, Derived, UsingLoc, NameInfo, BaseCtor->getType(),
+      /*TInfo=*/nullptr, BaseCtor->getExplicitSpecifier(),
+      getCurFPFeatures().isFPConstrained(),
       /*isInline=*/true,
       /*isImplicitlyDeclared=*/true,
       Constexpr ? BaseCtor->getConstexprKind() : ConstexprSpecKind::Unspecified,
@@ -13916,7 +13913,8 @@ Sema::findInheritingConstructor(SourceLocation Loc,
     DerivedCtor->setInvalidDecl();
 
   // Build an unevaluated exception specification for this fake constructor.
-  const FunctionProtoType *FPT = TInfo->getType()->castAs<FunctionProtoType>();
+  const FunctionProtoType *FPT =
+      BaseCtor->getType()->castAs<FunctionProtoType>();
   FunctionProtoType::ExtProtoInfo EPI = FPT->getExtProtoInfo();
   EPI.ExceptionSpec.Type = EST_Unevaluated;
   EPI.ExceptionSpec.SourceDecl = DerivedCtor;
@@ -13926,18 +13924,15 @@ Sema::findInheritingConstructor(SourceLocation Loc,
   // Build the parameter declarations.
   SmallVector<ParmVarDecl *, 16> ParamDecls;
   for (unsigned I = 0, N = FPT->getNumParams(); I != N; ++I) {
-    TypeSourceInfo *TInfo =
-        Context.getTrivialTypeSourceInfo(FPT->getParamType(I), UsingLoc);
     ParmVarDecl *PD = ParmVarDecl::Create(
         Context, DerivedCtor, UsingLoc, UsingLoc, /*IdentifierInfo=*/nullptr,
-        FPT->getParamType(I), TInfo, SC_None, /*DefArg=*/nullptr);
+        FPT->getParamType(I), /*TInfo=*/nullptr, SC_None, /*DefArg=*/nullptr);
     PD->setScopeInfo(0, I);
     PD->setImplicit();
     // Ensure attributes are propagated onto parameters (this matters for
     // format, pass_object_size, ...).
     mergeDeclAttributes(PD, BaseCtor->getParamDecl(I));
     ParamDecls.push_back(PD);
-    ProtoLoc.setParam(I, PD);
   }
 
   // Set up the new constructor.
