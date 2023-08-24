@@ -148,13 +148,25 @@ DECLARE_REAL_AND_INTERCEPTOR(void, free, void *)
     }
 
 template <class Mmap>
-static void* mmap_interceptor(Mmap real_mmap, void *addr, SIZE_T length,
+static void *mmap_interceptor(Mmap real_mmap, void *addr, SIZE_T length,
                               int prot, int flags, int fd, OFF64_T offset) {
+  SIZE_T rounded_length = RoundUpTo(length, GetPageSize());
+  void *end_addr = (char *)addr + (rounded_length - 1);
+  // Do not mmap outside mapping, or it will have invalid shadow memory address
+  if (addr && length &&
+      (!AddrInMapping(reinterpret_cast<uptr>(addr)) ||
+       !AddrInMapping(reinterpret_cast<uptr>(end_addr)))) {
+    if (flags & map_fixed) {
+      errno = errno_EINVAL;
+      return (void *)-1;
+    } else {
+      addr = nullptr;
+    }
+  }
   void *res = real_mmap(addr, length, prot, flags, fd, offset);
   if (length && res != (void *)-1) {
     const uptr beg = reinterpret_cast<uptr>(res);
     DCHECK(IsAligned(beg, GetPageSize()));
-    SIZE_T rounded_length = RoundUpTo(length, GetPageSize());
     // Only unpoison shadow if it's an ASAN managed address.
     if (AddrIsInMem(beg) && AddrIsInMem(beg + rounded_length - 1))
       PoisonShadow(beg, RoundUpTo(length, GetPageSize()), 0);

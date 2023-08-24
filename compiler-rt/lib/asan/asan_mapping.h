@@ -384,6 +384,11 @@ static inline uptr ShadowToMem(uptr p) {
   return SHADOW_TO_MEM(p);
 }
 
+static inline bool AddrInMapping(uptr a) {
+  PROFILE_ASAN_MAPPING();
+  return AddrIsInMem(a) || AddrIsInShadowGap(a) || AddrIsInShadow(a);
+}
+
 static inline bool AddrIsAlignedByGranularity(uptr a) {
   PROFILE_ASAN_MAPPING();
   return (a & (ASAN_SHADOW_GRANULARITY - 1)) == 0;
