@@ -13926,11 +13926,9 @@ Sema::findInheritingConstructor(SourceLocation Loc,
   // Build the parameter declarations.
   SmallVector<ParmVarDecl *, 16> ParamDecls;
   for (unsigned I = 0, N = FPT->getNumParams(); I != N; ++I) {
-    TypeSourceInfo *TInfo =
-        Context.getTrivialTypeSourceInfo(FPT->getParamType(I), UsingLoc);
     ParmVarDecl *PD = ParmVarDecl::Create(
         Context, DerivedCtor, UsingLoc, UsingLoc, /*IdentifierInfo=*/nullptr,
-        FPT->getParamType(I), TInfo, SC_None, /*DefArg=*/nullptr);
+        FPT->getParamType(I), nullptr, SC_None, /*DefArg=*/nullptr);
     PD->setScopeInfo(0, I);
     PD->setImplicit();
     // Ensure attributes are propagated onto parameters (this matters for
