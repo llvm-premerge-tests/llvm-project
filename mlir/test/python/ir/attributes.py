@@ -360,6 +360,58 @@ def testDenseArrayGetItem():
         print_item("array<f64: 3.0, 4.0>")
 
 
+# CHECK-LABEL: TEST: testDenseArrayAttrConstruction
+@run
+def testDenseArrayAttrConstruction():
+    with Context(), Location.unknown():
+
+        def create_and_print(x):
+            try:
+                darr = DenseI8ArrayAttr.get(x)
+                print(f"input: {x} ({type(x)}), result: {darr}")
+            except Exception as ex:
+                print(f"input: {x} ({type(x)}), error: {ex}")
+
+        # CHECK: input: [4, 2] (<class 'list'>), result: array<i8: 4, 2>
+        create_and_print([4, 2])
+
+        # CHECK: input: [4, 2.0] (<class 'list'>), error: Unable to cast Python instance
+        create_and_print([4, 2.0])
+
+        # CHECK: input: [40000, 2] (<class 'list'>), error: Unable to cast Python instance
+        create_and_print([40000, 2])
+
+        # CHECK: input: range(0, 4) (<class 'range'>), result: array<i8: 0, 1, 2, 3>
+        create_and_print(range(4))
+
+        # CHECK: input: [4, 2] (<class '{{.*}}.ArrayAttr'>), result: array<i8: 4, 2>
+        create_and_print(Attribute.parse("[4, 2]"))
+
+        # CHECK: input: [4 : i8, 2 : ui16] (<class '{{.*}}.ArrayAttr'>), result: array<i8: 4, 2>
+        create_and_print(Attribute.parse("[4 : i8, 2 : ui16]"))
+
+        # CHECK: input: [4, 2.000000e+00] (<class '{{.*}}.ArrayAttr'>), error: Unable to cast Python instance
+        create_and_print(Attribute.parse("[4, 2.0]"))
+
+        # CHECK: input: [4000, 2] (<class '{{.*}}.ArrayAttr'>), error: Unable to cast Python instance
+        create_and_print(Attribute.parse("[4000, 2]"))
+
+        # CHECK: input: {{\[}}[]] (<class '{{.*}}.ArrayAttr'>), error: '{{.*}}.ArrayAttr' object has no attribute 'value'
+        create_and_print(Attribute.parse("[[]]"))
+
+        # CHECK: input: [IntegerAttr(4 : i64), IntegerAttr(2 : i64)] (<class 'list'>), result: array<i8: 4, 2>
+        create_and_print([Attribute.parse(f"{x}") for x in [4, 2]])
+
+        # CHECK: input: [IntegerAttr(4000 : i64), IntegerAttr(2 : i64)] (<class 'list'>), error: Unable to cast Python instance
+        create_and_print([Attribute.parse(f"{x}") for x in [4000, 2]])
+
+        # CHECK: input: [IntegerAttr(4 : i64), FloatAttr(2.000000e+00 : f64)] (<class 'list'>), error: Unable to cast Python instance
+        create_and_print([Attribute.parse(f"{x}") for x in [4, 2.0]])
+
+        # CHECK: input: [IntegerAttr(4 : i8), IntegerAttr(2 : ui16)] (<class 'list'>), result: array<i8: 4, 2>
+        create_and_print([Attribute.parse(s) for s in ["4 : i8", "2 : ui16"]])
+
+
 # CHECK-LABEL: TEST: testDenseIntAttrGetItem
 @run
 def testDenseIntAttrGetItem():

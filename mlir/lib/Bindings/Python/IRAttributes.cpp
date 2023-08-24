@@ -74,6 +74,8 @@ Raises:
 
 namespace {
 
+class PyArrayAttribute;
+
 static MlirStringRef toMlirStringRef(const std::string &s) {
   return mlirStringRefCreate(s.data(), s.size());
 }
@@ -158,16 +160,20 @@ public:
 
   /// Bind the attribute class.
   static void bindDerived(typename PyConcreteAttribute<DerivedT>::ClassTy &c) {
-    // Bind the constructor.
-    c.def_static(
-        "get",
-        [](const std::vector<EltTy> &values, DefaultingPyMlirContext ctx) {
-          MlirAttribute attr =
-              DerivedT::getAttribute(ctx->get(), values.size(), values.data());
-          return DerivedT(ctx->getRef(), attr);
-        },
-        py::arg("values"), py::arg("context") = py::none(),
-        "Gets a uniqued dense array attribute");
+    // Bind the constructors.
+    c.def_static("get", get, py::arg("values"), py::arg("context") = py::none(),
+                 "Gets a uniqued dense array attribute from the given list of "
+                 "Python values, which must be castable to the element type.");
+    c.def_static("get", getFromList, py::arg("values"),
+                 py::arg("context") = py::none(),
+                 "Gets a uniqued dense array attribute from the given list of "
+                 "Python values and attributes, which must be are castable to "
+                 "the element type.");
+    c.def_static("get", getFromArrayAttr, py::arg("arr"),
+                 py::arg("context") = py::none(),
+                 "Gets a uniqued dense array attribute from the elements of "
+                 "the given array attribute, which must be castable to the "
+                 "element type.");
     // Bind the array methods.
     c.def("__getitem__", [](DerivedT &arr, intptr_t i) {
       if (i >= mlirDenseArrayGetNumElements(arr))
@@ -192,6 +198,31 @@ public:
       return DerivedT(arr.getContext(), attr);
     });
   }
+
+private:
+  static DerivedT get(const std::vector<EltTy> &values,
+                      DefaultingPyMlirContext ctx) {
+    MlirAttribute attr =
+        DerivedT::getAttribute(ctx->get(), values.size(), values.data());
+    return DerivedT(ctx->getRef(), attr);
+  }
+
+  static DerivedT getFromList(py::list &values, DefaultingPyMlirContext ctx) {
+    std::vector<EltTy> typedValues;
+    for (auto pyValue : values) {
+      if (py::isinstance<PyAttribute>(pyValue)) {
+        EltTy value = pyValue.attr("value").cast<EltTy>();
+        typedValues.push_back(value);
+      } else {
+        EltTy value = pyValue.cast<EltTy>();
+        typedValues.push_back(value);
+      }
+    }
+    return get(typedValues, ctx);
+  }
+
+  static DerivedT getFromArrayAttr(PyArrayAttribute arr,
+                                   DefaultingPyMlirContext ctx);
 };
 
 /// Instantiate the python dense array classes.
@@ -338,6 +369,20 @@ public:
     });
   }
 };
+
+template <typename EltTy, typename DerivedT>
+DerivedT PyDenseArrayAttribute<EltTy, DerivedT>::getFromArrayAttr(
+    PyArrayAttribute arr, DefaultingPyMlirContext ctx) {
+  std::vector<EltTy> values;
+  intptr_t numOldElements = mlirArrayAttrGetNumElements(arr);
+  values.reserve(numOldElements);
+  for (intptr_t i = 0; i < numOldElements; ++i) {
+    py::object pyAttr = py::cast(arr.getItem(i));
+    EltTy value = py::cast<EltTy>(pyAttr.attr("value"));
+    values.push_back(value);
+  }
+  return get(values, ctx);
+}
 
 /// Float Point Attribute subclass - FloatAttr.
 class PyFloatAttribute : public PyConcreteAttribute<PyFloatAttribute> {
