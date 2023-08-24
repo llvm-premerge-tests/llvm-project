@@ -677,6 +677,46 @@ const char *ToolChain::getCompilerRTArgString(const llvm::opt::ArgList &Args,
   return Args.MakeArgString(getCompilerRT(Args, Component, Type));
 }
 
+// Android target triples contain a target version. If we don't have libraries
+// for the exact target version, we should fall back to the next newest version
+// or a versionless path, if any.
+std::optional<std::string> ToolChain::getFallbackAndroidRuntimePath() const {
+  llvm::Triple TripleWithoutLevel(getTriple());
+  TripleWithoutLevel.setEnvironmentName("android"); // remove any version number
+  const std::string &TripleWithoutLevelStr = TripleWithoutLevel.str();
+  unsigned TripleVersion = getTriple().getEnvironmentVersion().getMajor();
+  unsigned BestVersion = 0;
+
+  SmallString<128> LibDir(D.ResourceDir);
+  llvm::sys::path::append(LibDir, "lib");
+  SmallString<32> TripleDir;
+  std::error_code EC;
+  for (llvm::vfs::directory_iterator LI = getVFS().dir_begin(LibDir, EC), LE;
+       !EC && LI != LE; LI = LI.increment(EC)) {
+    StringRef DirName = llvm::sys::path::filename(LI->path());
+    StringRef DirNameSuffix = DirName;
+    if (DirNameSuffix.consume_front(TripleWithoutLevelStr)) {
+      if (DirNameSuffix.empty() && TripleDir.empty()) {
+        TripleDir = DirName;
+      } else {
+        unsigned Version;
+        if (!DirNameSuffix.getAsInteger(10, Version) && Version > BestVersion &&
+            Version < TripleVersion) {
+          BestVersion = Version;
+          TripleDir = DirName;
+        }
+      }
+    }
+  }
+
+  if (!TripleDir.empty()) {
+    llvm::sys::path::append(LibDir, TripleDir);
+    return std::string(LibDir);
+  }
+
+  return {};
+}
+
 std::optional<std::string> ToolChain::getRuntimePath() const {
   auto getPathForTriple =
       [this](const llvm::Triple &Triple) -> std::optional<std::string> {
@@ -712,15 +752,8 @@ std::optional<std::string> ToolChain::getRuntimePath() const {
       return *Path;
   }
 
-  // Android targets may include an API level at the end. We still want to fall
-  // back on a path without the API level.
-  if (getTriple().isAndroid() &&
-      getTriple().getEnvironmentName() != "android") {
-    llvm::Triple TripleWithoutLevel = getTriple();
-    TripleWithoutLevel.setEnvironmentName("android");
-    if (auto Path = getPathForTriple(TripleWithoutLevel))
-      return *Path;
-  }
+  if (getTriple().isAndroid())
+    return getFallbackAndroidRuntimePath();
 
   return {};
 }
