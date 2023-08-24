@@ -13,8 +13,6 @@
 // are provided by vcruntime/UCRT's new.h. However, that header actually only
 // declares set_new_handler - it's missing a declaration of get_new_handler.
 
-// XFAIL: msvc && stdlib=libc++
-
 #include <new>
 #include <cassert>
 

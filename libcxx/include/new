@@ -146,10 +146,6 @@ public:
     const char* what() const _NOEXCEPT override;
 };
 
-typedef void (*new_handler)();
-_LIBCPP_EXPORTED_FROM_ABI new_handler set_new_handler(new_handler) _NOEXCEPT;
-_LIBCPP_EXPORTED_FROM_ABI new_handler get_new_handler() _NOEXCEPT;
-
 #elif defined(_HAS_EXCEPTIONS) && _HAS_EXCEPTIONS == 0 // !_LIBCPP_ABI_VCRUNTIME
 
 // When _HAS_EXCEPTIONS == 0, these complete definitions are needed,
@@ -169,6 +165,16 @@ public:
   bad_array_new_length() noexcept : bad_alloc("bad array new length") {}
 };
 #endif // defined(_LIBCPP_ABI_VCRUNTIME) && defined(_HAS_EXCEPTIONS) && _HAS_EXCEPTIONS == 0
+
+#if defined(_LIBCPP_ABI_VCRUNTIME)
+#define _NEW_HANDLER_EXPORTED
+#else
+#define _NEW_HANDLER_EXPORTED _LIBCPP_EXPORTED_FROM_ABI
+#endif
+
+typedef void (*new_handler)();
+_NEW_HANDLER_EXPORTED new_handler set_new_handler(new_handler) _NOEXCEPT;
+_NEW_HANDLER_EXPORTED new_handler get_new_handler() _NOEXCEPT;
 
 _LIBCPP_NORETURN _LIBCPP_EXPORTED_FROM_ABI void __throw_bad_alloc();  // not in C++ spec
 
