@@ -385,3 +385,121 @@ module {
 // CHECK:     scf.yield %[[L1]] : tensor<4096x2x64xf32>
 // CHECK:   %[[OUT2:.*]] = linalg.generic {indexing_maps = [{{.*}}, {{.*}}], iterator_types = ["parallel", "reduction", "reduction"]} ins(%{{.*}} : tensor<4096x2x64xf32>) outs(%{{.*}} : tensor<4096xf32>)
 // CHECK:  return %[[OUT2]] : tensor<4096xf32>
+
+// -----
+
+#map = affine_map<(d0, d1, d2) -> (d1, d2)>
+#map1 = affine_map<(d0, d1, d2) -> (d0, d1, d2)>
+#map2 = affine_map<(d0, d1, d2) -> (d0)>
+module {
+  func.func @reduction_tile_multiple_reduction_parallel(%arg0: tensor<32x128xf32>, %arg1: tensor<4x32x128xf32>, %arg2: tensor<4xf32>) -> tensor<4xf32> {
+    %0 = linalg.generic {indexing_maps = [#map, #map1, #map2], iterator_types = ["parallel", "reduction", "reduction"]} ins(%arg0, %arg1 : tensor<32x128xf32>, tensor<4x32x128xf32>) outs(%arg2 : tensor<4xf32>) {
+    ^bb0(%in: f32, %in_0: f32, %out: f32):
+      %1 = arith.mulf %in, %in_0 : f32
+      %2 = arith.addf %1, %out : f32
+      linalg.yield %2 : f32
+    } -> tensor<4xf32>
+    return %0 : tensor<4xf32>
+  }
+  transform.sequence  failures(propagate) {
+  ^bb0(%arg0: !transform.any_op):
+    %0 = transform.structured.match ops{["linalg.generic"]} in %arg0 : (!transform.any_op) -> !transform.any_op
+    %loop, %1, %2, %3 = transform.structured.tile_reduction_using_forall %0 by num_threads = [4, 2], tile_sizes = [], mapping = [#gpu.thread<z>, #gpu.thread<y>] : (!transform.any_op) -> (!transform.any_op, !transform.any_op, !transform.any_op, !transform.any_op)
+  }
+}
+
+//  CHECK-DAG: #[[MAP:.*]] = affine_map<(d0) -> (d0 * 16)>
+//  CHECK-DAG: #[[MAP1:.*]] = affine_map<(d0, d1, d2) -> (d1, d2)>
+//  CHECK-DAG: #[[MAP2:.*]] = affine_map<(d0, d1, d2) -> (d0, d1, d2)>
+//  CHECK-DAG: #[[MAP3:.*]] = affine_map<(d0, d1, d2) -> (d0)>
+//  CHECK-DAG: #[[MAP4:.*]] = affine_map<(d0, d1) -> (d0, d1)>
+//  CHECK-DAG: #[[MAP5:.*]] = affine_map<(d0, d1) -> (d0)>
+//      CHECK: func @reduction_tile_multiple_reduction_parallel(%[[ARG0:.+]]: tensor<32x128xf32>, %[[ARG1:.+]]: tensor<4x32x128xf32>, %[[ARG2:.+]]: tensor<4xf32>
+//      CHECK:   %[[F:.*]] = linalg.fill ins(%{{.*}} : f32) outs(%{{.*}} : tensor<4x2xf32>) -> tensor<4x2xf32>
+//      CHECK:   %[[L:.*]] = scf.forall (%[[Z:.+]], %[[Y:.+]]) in (4, 2) shared_outs(%[[ARG5:.+]] = %[[F]]) -> (tensor<4x2xf32>) {
+//      CHECK:     %[[ER:.+]] = tensor.extract_slice %[[ARG5]][0, %[[Y]]] [4, 1] [1, 1] : tensor<4x2xf32> to tensor<4xf32>
+//      CHECK:     %[[OFF:.+]] = affine.apply #[[MAP]](%[[Y]])
+//      CHECK:     %[[ESIN0:.+]] = tensor.extract_slice %[[ARG0]][%[[OFF]], 0] [16, 128] [1, 1] : tensor<32x128xf32> to tensor<16x128xf32>
+//      CHECK:     %[[ESIN1:.+]] = tensor.extract_slice %[[ARG1]][%[[Z]], %[[OFF]], 0] [1, 16, 128] [1, 1, 1] : tensor<4x32x128xf32> to tensor<1x16x128xf32>
+//      CHECK:     %[[EP:.+]] = tensor.extract_slice %[[ER]][%[[Z]]] [1] [1] : tensor<4xf32> to tensor<1xf32>
+//      CHECK:     %[[PARTIAL:.+]] = linalg.generic
+// CHECK-SAME:      indexing_maps = [#[[MAP1]], #[[MAP2]], #[[MAP3]]]
+// CHECK-SAME:      iterator_types = ["parallel", "reduction", "reduction"]
+// CHECK-SAME:      ins(%[[ESIN0]], %[[ESIN1]] : tensor<16x128xf32>, tensor<1x16x128xf32>)
+// CHECK-SAME:      outs(%[[EP]] : tensor<1xf32>) {
+//      CHECK:        arith.mulf
+//      CHECK:        arith.addf
+//      CHECK:        linalg.yield
+//      CHECK:     } -> tensor<1xf32>
+//      CHECK:     scf.forall.in_parallel {
+//      CHECK:       tensor.parallel_insert_slice %[[PARTIAL]] into %[[ARG5]][%[[Z]], %[[Y]]] [1, 1] [1, 1] : tensor<1xf32> into tensor<4x2xf32>
+//      CHECK:     }
+//      CHECK:   } {mapping = [#gpu.thread<z>, #gpu.thread<y>]}
+//      CHECK:   %[[R:.*]] = linalg.generic
+// CHECK-SAME:    indexing_maps = [#[[MAP4]], #[[MAP5]]]
+// CHECK-SAME:    iterator_types = ["parallel", "reduction"]
+// CHECK-SAME:    ins(%[[L]] : tensor<4x2xf32>)
+// CHECK-SAME:    outs(%[[ARG2]] : tensor<4xf32>) {
+//      CHECK:      arith.addf
+//      CHECK:      linalg.yield
+//      CHECK:   } -> tensor<4xf32>
+//      CHECK:   return %[[R]] : tensor<4xf32>
+
+
+// -----
+
+#map = affine_map<(d0, d1, d2) -> (d1, d2)>
+#map1 = affine_map<(d0, d1, d2) -> (d0, d1, d2)>
+#map2 = affine_map<(d0, d1, d2) -> (d0)>
+module {
+  func.func @reduction_tile_multiple_reduction_parallel_all_dims(%arg0: tensor<32x128xf32>, %arg1: tensor<4x32x128xf32>, %arg2: tensor<4xf32>) -> tensor<4xf32> {
+    %0 = linalg.generic {indexing_maps = [#map, #map1, #map2], iterator_types = ["parallel", "reduction", "reduction"]} ins(%arg0, %arg1 : tensor<32x128xf32>, tensor<4x32x128xf32>) outs(%arg2 : tensor<4xf32>) {
+    ^bb0(%in: f32, %in_0: f32, %out: f32):
+      %1 = arith.mulf %in, %in_0 : f32
+      %2 = arith.addf %1, %out : f32
+      linalg.yield %2 : f32
+    } -> tensor<4xf32>
+    return %0 : tensor<4xf32>
+  }
+  transform.sequence  failures(propagate) {
+  ^bb0(%arg0: !transform.any_op):
+    %0 = transform.structured.match ops{["linalg.generic"]} in %arg0 : (!transform.any_op) -> !transform.any_op
+    %loop, %1, %2, %3 = transform.structured.tile_reduction_using_forall %0 by num_threads = [0, 2, 4], tile_sizes = [], mapping = [#gpu.thread<z>, #gpu.thread<y>] : (!transform.any_op) -> (!transform.any_op, !transform.any_op, !transform.any_op, !transform.any_op)
+  }
+}
+
+//  CHECK-DAG: #[[MAP:.*]] = affine_map<(d0) -> (d0 * 16)>
+//  CHECK-DAG: #[[MAP1:.*]] = affine_map<(d0) -> (d0 * 32)>
+//  CHECK-DAG: #[[MAP2:.*]] = affine_map<(d0, d1, d2) -> (d1, d2)>
+//  CHECK-DAG: #[[MAP3:.*]] = affine_map<(d0, d1, d2) -> (d0, d1, d2)>
+//  CHECK-DAG: #[[MAP4:.*]] = affine_map<(d0, d1, d2) -> (d0)>
+//      CHECK: func @reduction_tile_multiple_reduction_parallel_all_dims(%[[ARG0:.+]]: tensor<32x128xf32>, %[[ARG1:.+]]: tensor<4x32x128xf32>, %[[ARG2:.+]]: tensor<4xf32>
+//      CHECK:   %[[F:.*]] = linalg.fill ins(%{{.*}} : f32) outs(%{{.*}} : tensor<4x2x4xf32>) -> tensor<4x2x4xf32>
+//      CHECK:   %[[L:.*]] = scf.forall (%[[Z:.+]], %[[Y:.+]]) in (2, 4) shared_outs(%[[ARG5:.+]] = %[[F]]) -> (tensor<4x2x4xf32>) {
+//      CHECK:     %[[ER:.+]] = tensor.extract_slice %[[ARG5]][0, %[[Z]], %[[Y]]] [4, 1, 1] [1, 1, 1] : tensor<4x2x4xf32> to tensor<4xf32>
+//      CHECK:     %[[OFFZ:.+]] = affine.apply #[[MAP]](%[[Z]])
+//      CHECK:     %[[OFFY:.+]] = affine.apply #[[MAP1]](%[[Y]])
+//      CHECK:     %[[ESIN0:.+]] = tensor.extract_slice %[[ARG0]][%[[OFFZ]], %[[OFFY]]] [16, 32] [1, 1] : tensor<32x128xf32> to tensor<16x32xf32>
+//      CHECK:     %[[ESIN1:.+]] = tensor.extract_slice %[[ARG1]][0, %[[OFFZ]], %[[OFFY]]] [4, 16, 32] [1, 1, 1] : tensor<4x32x128xf32> to tensor<4x16x32xf32>
+//      CHECK:     %[[PARTIAL:.+]] = linalg.generic
+// CHECK-SAME:      indexing_maps = [#[[MAP2]], #[[MAP3]], #[[MAP4]]]
+// CHECK-SAME:      iterator_types = ["parallel", "reduction", "reduction"]
+// CHECK-SAME:      ins(%[[ESIN0]], %[[ESIN1]] : tensor<16x32xf32>, tensor<4x16x32xf32>)
+// CHECK-SAME:      outs(%[[ER]] : tensor<4xf32>) {
+//      CHECK:        arith.mulf
+//      CHECK:        arith.addf
+//      CHECK:        linalg.yield
+//      CHECK:     } -> tensor<4xf32>
+//      CHECK:     scf.forall.in_parallel {
+//      CHECK:       tensor.parallel_insert_slice %[[PARTIAL]] into %[[ARG5]][0, %[[Z]], %[[Y]]] [4, 1, 1] [1, 1, 1] : tensor<4xf32> into tensor<4x2x4xf32>
+//      CHECK:     }
+//      CHECK:   } {mapping = [#gpu.thread<z>, #gpu.thread<y>]}
+//      CHECK:   %[[R:.*]] = linalg.generic
+// CHECK-SAME:    indexing_maps = [#[[MAP3]], #[[MAP4]]]
+// CHECK-SAME:    iterator_types = ["parallel", "reduction", "reduction"]
+// CHECK-SAME:    ins(%[[L]] : tensor<4x2x4xf32>)
+// CHECK-SAME:    outs(%[[ARG2]] : tensor<4xf32>) {
+//      CHECK:      arith.addf
+//      CHECK:      linalg.yield
+//      CHECK:   } -> tensor<4xf32>
+//      CHECK:   return %[[R]] : tensor<4xf32>
