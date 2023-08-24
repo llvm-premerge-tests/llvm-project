@@ -25,6 +25,17 @@ using namespace acc;
 #include "mlir/Dialect/OpenACC/OpenACCOpsEnums.cpp.inc"
 #include "mlir/Dialect/OpenACC/OpenACCTypeInterfaces.cpp.inc"
 
+namespace {
+/// Model for pointer-like types that already provide a `getElementType` method.
+template <typename T>
+struct PointerLikeModel
+    : public PointerLikeType::ExternalModel<PointerLikeModel<T>, T> {
+  Type getElementType(Type pointer) const {
+    return llvm::cast<T>(pointer).getElementType();
+  }
+};
+} // namespace
+
 //===----------------------------------------------------------------------===//
 // OpenACC operations
 //===----------------------------------------------------------------------===//
@@ -46,8 +57,9 @@ void OpenACCDialect::initialize() {
   // By attaching interfaces here, we make the OpenACC dialect dependent on
   // the other dialects. This is probably better than having dialects like LLVM
   // and memref be dependent on OpenACC.
-  LLVM::LLVMPointerType::attachInterface<PointerLikeType>(*getContext());
-  MemRefType::attachInterface<PointerLikeType>(*getContext());
+  LLVM::LLVMPointerType::attachInterface<
+      PointerLikeModel<LLVM::LLVMPointerType>>(*getContext());
+  MemRefType::attachInterface<PointerLikeModel<MemRefType>>(*getContext());
 }
 
 //===----------------------------------------------------------------------===//
@@ -973,6 +985,157 @@ Value EnterDataOp::getDataOperand(unsigned i) {
 void EnterDataOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                               MLIRContext *context) {
   results.add<RemoveConstantIfCondition<EnterDataOp>>(context);
+}
+
+//===----------------------------------------------------------------------===//
+// AtomicReadOp
+//===----------------------------------------------------------------------===//
+
+LogicalResult AtomicReadOp::verify() {
+  if (getX() == getV())
+    return emitError(
+        "read and write must not be to the same location for atomic reads");
+
+  return success();
+}
+
+//===----------------------------------------------------------------------===//
+// AtomicWriteOp
+//===----------------------------------------------------------------------===//
+
+LogicalResult AtomicWriteOp::verify() {
+  Type elementType = getAddress().getType().getElementType();
+  if (elementType && elementType != getValue().getType())
+    return emitError("address must dereference to value type");
+  return success();
+}
+
+//===----------------------------------------------------------------------===//
+// AtomicUpdateOp
+//===----------------------------------------------------------------------===//
+
+bool AtomicUpdateOp::isNoOp() {
+  YieldOp yieldOp = dyn_cast<YieldOp>(getFirstOp());
+  return (yieldOp &&
+          yieldOp.getOperands().front() == getRegion().front().getArgument(0));
+}
+
+Value AtomicUpdateOp::getWriteOpVal() {
+  YieldOp yieldOp = dyn_cast<YieldOp>(getFirstOp());
+  if (yieldOp &&
+      yieldOp.getOperands().front() != getRegion().front().getArgument(0))
+    return yieldOp.getOperands().front();
+  return nullptr;
+}
+
+LogicalResult AtomicUpdateOp::canonicalize(AtomicUpdateOp op,
+                                           PatternRewriter &rewriter) {
+  if (op.isNoOp()) {
+    rewriter.eraseOp(op);
+    return success();
+  }
+
+  if (Value writeVal = op.getWriteOpVal()) {
+    rewriter.replaceOpWithNewOp<AtomicWriteOp>(op, op.getX(), writeVal);
+    return success();
+  }
+
+  return failure();
+}
+
+LogicalResult AtomicUpdateOp::verify() {
+  if (getRegion().getNumArguments() != 1)
+    return emitError("the region must accept exactly one argument");
+
+  Type elementType = getX().getType().getElementType();
+  if (elementType && elementType != getRegion().getArgument(0).getType()) {
+    return emitError("the type of the operand must be a pointer type whose "
+                     "element type is the same as that of the region argument");
+  }
+
+  return success();
+}
+
+LogicalResult AtomicUpdateOp::verifyRegions() {
+  YieldOp yieldOp = *getRegion().getOps<YieldOp>().begin();
+
+  if (yieldOp.getOperands().size() != 1)
+    return emitError("only updated value must be returned");
+  if (yieldOp.getOperands().front().getType() !=
+      getRegion().getArgument(0).getType())
+    return emitError("input and yielded value must have the same type");
+  return success();
+}
+
+//===----------------------------------------------------------------------===//
+// AtomicCaptureOp
+//===----------------------------------------------------------------------===//
+
+Operation *AtomicCaptureOp::getFirstOp() {
+  return &getRegion().front().getOperations().front();
+}
+
+Operation *AtomicCaptureOp::getSecondOp() {
+  auto &ops = getRegion().front().getOperations();
+  return ops.getNextNode(ops.front());
+}
+
+AtomicReadOp AtomicCaptureOp::getAtomicReadOp() {
+  if (auto op = dyn_cast<AtomicReadOp>(getFirstOp()))
+    return op;
+  return dyn_cast<AtomicReadOp>(getSecondOp());
+}
+
+AtomicWriteOp AtomicCaptureOp::getAtomicWriteOp() {
+  if (auto op = dyn_cast<AtomicWriteOp>(getFirstOp()))
+    return op;
+  return dyn_cast<AtomicWriteOp>(getSecondOp());
+}
+
+AtomicUpdateOp AtomicCaptureOp::getAtomicUpdateOp() {
+  if (auto op = dyn_cast<AtomicUpdateOp>(getFirstOp()))
+    return op;
+  return dyn_cast<AtomicUpdateOp>(getSecondOp());
+}
+
+LogicalResult AtomicCaptureOp::verify() { return success(); }
+
+LogicalResult AtomicCaptureOp::verifyRegions() {
+  Block::OpListType &ops = getRegion().front().getOperations();
+  if (ops.size() != 3)
+    return emitError()
+           << "expected three operations in acc.atomic.capture region (one "
+              "terminator, and two atomic ops)";
+  auto &firstOp = ops.front();
+  auto &secondOp = *ops.getNextNode(firstOp);
+  auto firstReadStmt = dyn_cast<AtomicReadOp>(firstOp);
+  auto firstUpdateStmt = dyn_cast<AtomicUpdateOp>(firstOp);
+  auto secondReadStmt = dyn_cast<AtomicReadOp>(secondOp);
+  auto secondUpdateStmt = dyn_cast<AtomicUpdateOp>(secondOp);
+  auto secondWriteStmt = dyn_cast<AtomicWriteOp>(secondOp);
+
+  if (!((firstUpdateStmt && secondReadStmt) ||
+        (firstReadStmt && secondUpdateStmt) ||
+        (firstReadStmt && secondWriteStmt)))
+    return ops.front().emitError()
+           << "invalid sequence of operations in the capture region";
+  if (firstUpdateStmt && secondReadStmt &&
+      firstUpdateStmt.getX() != secondReadStmt.getX())
+    return firstUpdateStmt.emitError()
+           << "updated variable in acc.atomic.update must be captured in "
+              "second operation";
+  if (firstReadStmt && secondUpdateStmt &&
+      firstReadStmt.getX() != secondUpdateStmt.getX())
+    return firstReadStmt.emitError()
+           << "captured variable in acc.atomic.read must be updated in second "
+              "operation";
+  if (firstReadStmt && secondWriteStmt &&
+      firstReadStmt.getX() != secondWriteStmt.getAddress())
+    return firstReadStmt.emitError()
+           << "captured variable in acc.atomic.read must be updated in "
+              "second operation";
+
+  return success();
 }
 
 //===----------------------------------------------------------------------===//
