@@ -198,6 +198,10 @@ Bug Fixes to C++ Support
 - Update ``FunctionDeclBitfields.NumFunctionDeclBits``. This fixes:
   (`#64171 <https://github.com/llvm/llvm-project/issues/64171>`_).
 
+- Fix a crash when an immediate invocation is not a constant expression
+  and appear in an implicit cast.
+  (`#64949 <https://github.com/llvm/llvm-project/issues/64949>`_).
+
 Bug Fixes to AST Handling
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 - Fixed an import failure of recursive friend class template.
