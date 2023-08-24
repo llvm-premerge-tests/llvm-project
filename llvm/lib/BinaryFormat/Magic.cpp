@@ -31,7 +31,7 @@ static bool startswith(StringRef Magic, const char (&S)[N]) {
 
 /// Identify the magic in magic.
 file_magic llvm::identify_magic(StringRef Magic) {
-  if (Magic.size() < 4)
+  if (Magic.size() < 2)
     return file_magic::unknown;
   switch ((unsigned char)Magic[0]) {
   case 0x00: {
@@ -250,7 +250,10 @@ file_magic llvm::identify_magic(StringRef Magic) {
     if (Magic[1] == char(0xA6))
       return file_magic::coff_object;
     break;
-
+  case '#':
+    if (Magic[1] == '!')
+      return file_magic::aix_linker_import_file;
+    break;
   default:
     break;
   }

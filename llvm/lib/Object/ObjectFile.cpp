@@ -190,8 +190,9 @@ ObjectFile::createObjectFile(MemoryBufferRef Object, file_magic Type,
     return createXCOFFObjectFile(Object, Binary::ID_XCOFF64);
   case file_magic::wasm_object:
     return createWasmObjectFile(Object);
+  default:
+    llvm_unreachable("Unexpected Object File Type");
   }
-  llvm_unreachable("Unexpected Object File Type");
 }
 
 Expected<OwningBinary<ObjectFile>>
