@@ -9393,8 +9393,7 @@ def err_defaulted_copy_assign_not_ref : Error<
   "the parameter for an explicitly-defaulted copy assignment operator must be an "
   "lvalue reference type">;
 def err_incorrect_defaulted_constexpr : Error<
-  "defaulted definition of %sub{select_special_member_kind}0 "
-  "is not constexpr">;
+  "%sub{select_special_member_kind}0 cannot be 'constexpr' in a class or struct with virtual base classes">;
 def err_incorrect_defaulted_consteval : Error<
   "defaulted declaration of %sub{select_special_member_kind}0 "
   "cannot be consteval because implicit definition is not constexpr">;
