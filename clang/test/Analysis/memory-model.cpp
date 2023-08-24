@@ -66,8 +66,8 @@ void field_ref(S a) {
 
 void field_ptr(S *a) {
   clang_analyzer_dump(&a->f);             // expected-warning {{Element{SymRegion{reg_$0<S * a>},0 S64b,struct S}.f}}
-  clang_analyzer_dumpExtent(&a->f);       // expected-warning {{4 S64b}}
-  clang_analyzer_dumpElementCount(&a->f); // expected-warning {{1 S64b}}
+  clang_analyzer_dumpExtent(&a->f);       // expected-warning {{extent_$1{SymRegion{reg_$0<S * a>}}}}
+  clang_analyzer_dumpElementCount(&a->f); // expected-warning {{(extent_$1{SymRegion{reg_$0<S * a>}}) / 4U}}
 }
 
 void symbolic_array() {
@@ -90,7 +90,7 @@ void symbolic_placement_new() {
 void symbolic_malloc() {
   int *a = (int *)malloc(12);
   clang_analyzer_dump(a);             // expected-warning {{Element{HeapSymRegion{conj}}
-  clang_analyzer_dumpExtent(a);       // expected-warning {{12 U64b}}
+  clang_analyzer_dumpExtent(a);       // expected-warning {{12 S64b}}
   clang_analyzer_dumpElementCount(a); // expected-warning {{3 S64b}}
   free(a);
 }
@@ -98,22 +98,22 @@ void symbolic_malloc() {
 void symbolic_alloca() {
   int *a = (int *)alloca(12);
   clang_analyzer_dump(a);             // expected-warning {{Element{HeapSymRegion{conj}}
-  clang_analyzer_dumpExtent(a);       // expected-warning {{12 U64b}}
+  clang_analyzer_dumpExtent(a);       // expected-warning {{12 S64b}}
   clang_analyzer_dumpElementCount(a); // expected-warning {{3 S64b}}
 }
 
 void symbolic_complex() {
   int *a = (int *)malloc(4);
-  clang_analyzer_dumpExtent(a);       // expected-warning {{4 U64b}}
+  clang_analyzer_dumpExtent(a);       // expected-warning {{4 S64b}}
   clang_analyzer_dumpElementCount(a); // expected-warning {{1 S64b}}
 
   int *b = (int *)realloc(a, sizeof(int) * 2);
-  clang_analyzer_dumpExtent(b);       // expected-warning {{8 U64b}}
+  clang_analyzer_dumpExtent(b);       // expected-warning {{8 S64b}}
   clang_analyzer_dumpElementCount(b); // expected-warning {{2 S64b}}
   free(b);
 
   int *c = (int *)calloc(3, 4);
-  clang_analyzer_dumpExtent(c);       // expected-warning {{12 U64b}}
+  clang_analyzer_dumpExtent(c);       // expected-warning {{12 S64b}}
   clang_analyzer_dumpElementCount(c); // expected-warning {{3 S64b}}
   free(c);
 }
@@ -123,7 +123,7 @@ void signedness_equality() {
   char *b = (char *)malloc(13);
 
   clang_analyzer_dump(clang_analyzer_getExtent(a)); // expected-warning {{13 S64b}}
-  clang_analyzer_dump(clang_analyzer_getExtent(b)); // expected-warning {{13 U64b}}
+  clang_analyzer_dump(clang_analyzer_getExtent(b)); // expected-warning {{13 S64b}}
   clang_analyzer_eval(clang_analyzer_getExtent(a) ==
                       clang_analyzer_getExtent(b));
   // expected-warning@-2 {{TRUE}}

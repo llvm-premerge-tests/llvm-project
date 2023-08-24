@@ -199,7 +199,8 @@ void ArrayBoundCheckerV2::checkLocation(SVal location, bool isLoad,
   }
 
   // CHECK UPPER BOUND
-  DefinedOrUnknownSVal Size = getDynamicExtent(state, Reg, svalBuilder);
+  SVal Size = svalBuilder.convertToArrayIndex(
+      getDynamicExtent(state, Reg, svalBuilder));
   if (auto KnownSize = Size.getAs<NonLoc>()) {
     auto [state_withinUpperBound, state_exceedsUpperBound] =
         compareValueToThreshold(state, ByteOffset, *KnownSize, svalBuilder);

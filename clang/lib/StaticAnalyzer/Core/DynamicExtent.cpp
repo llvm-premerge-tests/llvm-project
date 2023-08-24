@@ -79,6 +79,19 @@ SVal getDynamicExtentWithOffset(ProgramStateRef State, SVal BufV) {
                                SvalBuilder.getArrayIndexType());
 }
 
+DefinedOrUnknownSVal getDynamicElementCountWithOffset(ProgramStateRef State,
+                                                      SVal BufV,
+                                                      QualType ElementTy) {
+  SVal Size = getDynamicExtentWithOffset(State, BufV);
+  SValBuilder &SVB = State->getStateManager().getSValBuilder();
+  SVal ElementSize = getElementExtent(ElementTy, SVB);
+
+  SVal ElementCount =
+      SVB.evalBinOp(State, BO_Div, Size, ElementSize, SVB.getArrayIndexType());
+
+  return ElementCount.castAs<DefinedOrUnknownSVal>();
+}
+
 ProgramStateRef setDynamicExtent(ProgramStateRef State, const MemRegion *MR,
                                  DefinedOrUnknownSVal Size, SValBuilder &SVB) {
   MR = MR->StripCasts();

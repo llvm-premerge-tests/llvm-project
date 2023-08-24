@@ -161,18 +161,33 @@ void MPIChecker::allRegionsUsedByWait(
       return;
     }
 
-    DefinedOrUnknownSVal ElementCount = getDynamicElementCount(
-        Ctx.getState(), SuperRegion, Ctx.getSValBuilder(),
-        CE.getArgExpr(1)->getType()->getPointeeType());
+    QualType ElemType = CE.getArgExpr(1)->getType()->getPointeeType();
+    ProgramStateRef State = Ctx.getState();
+    SValBuilder &SVB = Ctx.getSValBuilder();
+    ASTContext &ASTCtx = Ctx.getASTContext();
+    DefinedOrUnknownSVal ElementCount =
+        getDynamicElementCountWithOffset(State, CE.getArgSVal(1), ElemType);
     const llvm::APSInt &ArrSize =
         ElementCount.castAs<nonloc::ConcreteInt>().getValue();
 
+    SVal Count = CE.getArgSVal(0);
+    const NonLoc MROffset =
+        SVB.makeArrayIndex(MR->getAsOffset().getOffset() /
+                           ASTCtx.getTypeSizeInChars(ElemType).getQuantity() /
+                           ASTCtx.getCharWidth());
     for (size_t i = 0; i < ArrSize; ++i) {
       const NonLoc Idx = Ctx.getSValBuilder().makeArrayIndex(i);
+      SVal CountReached =
+          SVB.evalBinOp(State, BO_GE, Idx, Count, ASTCtx.BoolTy);
+      if (!CountReached.isUndef() &&
+          State->assume(*CountReached.getAs<DefinedOrUnknownSVal>(), true))
+        break;
 
       const ElementRegion *const ER = RegionManager.getElementRegion(
-          CE.getArgExpr(1)->getType()->getPointeeType(), Idx, SuperRegion,
-          Ctx.getASTContext());
+          ElemType,
+          SVB.evalBinOp(State, BO_Add, Idx, MROffset, SVB.getArrayIndexType())
+              .castAs<NonLoc>(),
+          SuperRegion, Ctx.getASTContext());
 
       ReqRegions.push_back(ER->getAs<MemRegion>());
     }
