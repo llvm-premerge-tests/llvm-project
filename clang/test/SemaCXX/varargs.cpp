@@ -30,22 +30,28 @@ void record_context(int a, ...) {
 
 // Ensure the correct behavior for promotable type UB checking.
 void promotable(int a, ...) {
-  enum Unscoped1 { One = 0x7FFFFFFF };
+  enum Unscoped1 { U = 0x7FFFFFFF };
   (void)__builtin_va_arg(ap, Unscoped1); // ok
 
-  enum Unscoped2 { Two = 0xFFFFFFFF };
+  enum Unscoped2 { I = 0xFFFFFFFF };
   (void)__builtin_va_arg(ap, Unscoped2); // ok
 
-  enum class Scoped { Three };
+  enum Unscoped3 { UL = 0x7FFFFFFFFFFFFFFF };
+  (void)__builtin_va_arg(ap, Unscoped3); // ok
+
+  enum Unscoped4 { L = 0xFFFFFFFFFFFFFFFFu };
+  (void)__builtin_va_arg(ap, Unscoped4); // ok
+
+  enum class Scoped { One };
   (void)__builtin_va_arg(ap, Scoped); // ok
 
-  enum Fixed : int { Four };
+  enum Fixed : int { Two };
   (void)__builtin_va_arg(ap, Fixed); // ok
 
-  enum FixedSmall : char { Five };
+  enum FixedSmall : char { Three };
   (void)__builtin_va_arg(ap, FixedSmall); // expected-warning {{second argument to 'va_arg' is of promotable type 'FixedSmall'; this va_arg has undefined behavior because arguments will be promoted to 'int'}}
 
-  enum FixedLarge : long long { Six };
+  enum FixedLarge : long long { Four };
   (void)__builtin_va_arg(ap, FixedLarge); // ok
 
   // Ensure that qualifiers are ignored.
@@ -55,6 +61,24 @@ void promotable(int a, ...) {
   (void)__builtin_va_arg(ap, unsigned int);
 
   (void)__builtin_va_arg(ap, bool); // expected-warning {{second argument to 'va_arg' is of promotable type 'bool'; this va_arg has undefined behavior because arguments will be promoted to 'int'}}
+
+  (void)__builtin_va_arg(ap, float); // expected-warning {{second argument to 'va_arg' is of promotable type 'float'; this va_arg has undefined behavior because arguments will be promoted to 'double'}}
+  (void)__builtin_va_arg(ap, __fp16); // expected-warning {{second argument to 'va_arg' is of promotable type '__fp16'; this va_arg has undefined behavior because arguments will be promoted to 'double'}}
+
+#if __cplusplus >= 201103L
+  (void)__builtin_va_arg(ap, decltype(nullptr)); // expected-warning {{second argument to 'va_arg' is of promotable type 'decltype(nullptr)' (aka 'std::nullptr_t'); this va_arg has undefined behavior because arguments will be promoted to 'void *'}}
+#endif
+
+  (void)__builtin_va_arg(ap, int[3]); // expected-warning {{second argument to 'va_arg' is of promotable type 'int[3]'; this va_arg has undefined behavior because arguments will be promoted to 'int *'}}
+  (void)__builtin_va_arg(ap, const int[3]); // expected-warning {{second argument to 'va_arg' is of promotable type 'const int[3]'; this va_arg has undefined behavior because arguments will be promoted to 'const int *'}}
+
+  // _BitInts aren't promoted
+  (void)__builtin_va_arg(ap, _BitInt(7));
+  (void)__builtin_va_arg(ap, unsigned _BitInt(7));
+  (void)__builtin_va_arg(ap, _BitInt(32));
+  (void)__builtin_va_arg(ap, unsigned _BitInt(32));
+  (void)__builtin_va_arg(ap, _BitInt(33));
+  (void)__builtin_va_arg(ap, unsigned _BitInt(33));
 }
 
 #if __cplusplus >= 201103L
