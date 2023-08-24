@@ -1125,6 +1125,24 @@ def Builtin_Vector : Builtin_Type<"Vector", [ShapedTypeInterface], "Type"> {
     /// provided shape is `std::nullopt`, the current shape of the type is used.
     VectorType cloneWith(std::optional<ArrayRef<int64_t>> shape,
                          Type elementType) const;
+
+    /// Return a new vector type which results from dropping the first \p n
+    /// dimensions of this vector type.
+    VectorType dropFrontDims(size_t n) const;
+
+    /// Return a new vector type which results from dropping the last \p n
+    /// dimensions of this vector type.
+    VectorType dropBackDims(size_t n) const;
+
+    /// Alias for dropFrontDims(1)
+    VectorType dropFrontDim() const { return dropFrontDims(1); }
+
+    /// Alias for dropBackDims(1)
+    VectorType dropBackDim() const { return dropBackDims(1); }
+
+    /// Return a new vector type which results from dropping the first \p n
+    /// dimensions and keeping \p m following dimensions.
+    VectorType sliceDims(size_t n, size_t m) const;
   }];
   let skipDefaultBuilders = 1;
   let genVerifyDecl = 1;
