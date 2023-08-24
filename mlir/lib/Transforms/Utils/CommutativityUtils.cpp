@@ -15,145 +15,96 @@
 
 #include "mlir/Transforms/CommutativityUtils.h"
 
-#include <queue>
-
 using namespace mlir;
 
-/// The possible "types" of ancestors. Here, an ancestor is an op or a block
-/// argument present in the backward slice of a value.
-enum AncestorType {
-  /// Pertains to a block argument.
-  BLOCK_ARGUMENT,
+AncestorKey::AncestorKey(Operation *op) {
+  if (!op) {
+    type = BLOCK_ARGUMENT;
+  } else {
+    type =
+        op->hasTrait<OpTrait::ConstantLike>() ? CONSTANT_OP : NON_CONSTANT_OP;
+    opName = op->getName().getStringRef();
+  }
+}
 
-  /// Pertains to a non-constant-like op.
-  NON_CONSTANT_OP,
+bool AncestorKey::operator<(const AncestorKey &key) const {
+  return std::tie(type, opName) < std::tie(key.type, key.opName);
+}
 
-  /// Pertains to a constant-like op.
-  CONSTANT_OP
-};
+void CommutativeOperand::pushAncestor(Operation *op) {
+  ancestorQueue.push(op);
+  if (op)
+    visitedAncestors.insert(op);
+}
 
-/// Stores the "key" associated with an ancestor.
-struct AncestorKey {
-  /// Holds `BLOCK_ARGUMENT`, `NON_CONSTANT_OP`, or `CONSTANT_OP`, depending on
-  /// the ancestor.
-  AncestorType type;
+void CommutativeOperand::refreshKey() {
+  if (ancestorQueue.empty())
+    return;
 
-  /// Holds the op name of the ancestor if its `type` is `NON_CONSTANT_OP` or
-  /// `CONSTANT_OP`. Else, holds "".
-  StringRef opName;
+  Operation *frontAncestor = ancestorQueue.front();
+  AncestorKey frontAncestorKey(frontAncestor);
+  key.push_back(frontAncestorKey);
+}
 
-  /// Constructor for `AncestorKey`.
-  AncestorKey(Operation *op) {
-    if (!op) {
-      type = BLOCK_ARGUMENT;
-    } else {
-      type =
-          op->hasTrait<OpTrait::ConstantLike>() ? CONSTANT_OP : NON_CONSTANT_OP;
-      opName = op->getName().getStringRef();
+void CommutativeOperand::popFrontAndPushAdjacentUnvisitedAncestors() {
+  if (ancestorQueue.empty())
+    return;
+  Operation *frontAncestor = ancestorQueue.front();
+  ancestorQueue.pop();
+  if (!frontAncestor)
+    return;
+  for (Value operand : frontAncestor->getOperands()) {
+    Operation *operandDefOp = operand.getDefiningOp();
+    if (!operandDefOp || !visitedAncestors.contains(operandDefOp))
+      pushAncestor(operandDefOp);
+  }
+}
+
+bool CommutativeOperand::commutativeOperandComparator(
+    const std::unique_ptr<CommutativeOperand> &constCommOperandA,
+    const std::unique_ptr<CommutativeOperand> &constCommOperandB) {
+  if (constCommOperandA->operand == constCommOperandB->operand)
+    return false;
+
+  auto &commOperandA =
+      const_cast<std::unique_ptr<CommutativeOperand> &>(constCommOperandA);
+  auto &commOperandB =
+      const_cast<std::unique_ptr<CommutativeOperand> &>(constCommOperandB);
+
+  // Iteratively perform the BFS's of both operands until an order among
+  // them can be determined.
+  unsigned keyIndex = 0;
+  while (true) {
+    if (commOperandA->key.size() <= keyIndex) {
+      if (commOperandA->ancestorQueue.empty())
+        return true;
+      commOperandA->popFrontAndPushAdjacentUnvisitedAncestors();
+      commOperandA->refreshKey();
     }
-  }
-
-  /// Overloaded operator `<` for `AncestorKey`.
-  ///
-  /// AncestorKeys of type `BLOCK_ARGUMENT` are considered the smallest, those
-  /// of type `CONSTANT_OP`, the largest, and `NON_CONSTANT_OP` types come in
-  /// between. Within the types `NON_CONSTANT_OP` and `CONSTANT_OP`, the smaller
-  /// ones are the ones with smaller op names (lexicographically).
-  ///
-  /// TODO: Include other information like attributes, value type, etc., to
-  /// enhance this comparison. For example, currently this comparison doesn't
-  /// differentiate between `cmpi sle` and `cmpi sgt` or `addi (in i32)` and
-  /// `addi (in i64)`. Such an enhancement should only be done if the need
-  /// arises.
-  bool operator<(const AncestorKey &key) const {
-    return std::tie(type, opName) < std::tie(key.type, key.opName);
-  }
-};
-
-/// Stores a commutative operand along with its BFS traversal information.
-struct CommutativeOperand {
-  /// Stores the operand.
-  Value operand;
-
-  /// Stores the queue of ancestors of the operand's BFS traversal at a
-  /// particular point in time.
-  std::queue<Operation *> ancestorQueue;
-
-  /// Stores the list of ancestors that have been visited by the BFS traversal
-  /// at a particular point in time.
-  DenseSet<Operation *> visitedAncestors;
-
-  /// Stores the operand's "key". This "key" is defined as a list of the
-  /// "AncestorKeys" associated with the ancestors of this operand, in a
-  /// breadth-first order.
-  ///
-  /// So, if an operand, say `A`, was produced as follows:
-  ///
-  /// `<block argument>`  `<block argument>`
-  ///             \          /
-  ///              \        /
-  ///             `arith.subi`           `arith.constant`
-  ///                       \            /
-  ///                        `arith.addi`
-  ///                              |
-  ///                         returns `A`
-  ///
-  /// Then, the ancestors of `A`, in the breadth-first order are:
-  /// `arith.addi`, `arith.subi`, `arith.constant`, `<block argument>`, and
-  /// `<block argument>`.
-  ///
-  /// Thus, the "key" associated with operand `A` is:
-  /// {
-  ///  {type: `NON_CONSTANT_OP`, opName: "arith.addi"},
-  ///  {type: `NON_CONSTANT_OP`, opName: "arith.subi"},
-  ///  {type: `CONSTANT_OP`, opName: "arith.constant"},
-  ///  {type: `BLOCK_ARGUMENT`, opName: ""},
-  ///  {type: `BLOCK_ARGUMENT`, opName: ""}
-  /// }
-  SmallVector<AncestorKey, 4> key;
-
-  /// Push an ancestor into the operand's BFS information structure. This
-  /// entails it being pushed into the queue (always) and inserted into the
-  /// "visited ancestors" list (iff it is an op rather than a block argument).
-  void pushAncestor(Operation *op) {
-    ancestorQueue.push(op);
-    if (op)
-      visitedAncestors.insert(op);
-  }
-
-  /// Refresh the key.
-  ///
-  /// Refreshing a key entails making it up-to-date with the operand's BFS
-  /// traversal that has happened till that point in time, i.e, appending the
-  /// existing key with the front ancestor's "AncestorKey". Note that a key
-  /// directly reflects the BFS and thus needs to be refreshed during the
-  /// progression of the traversal.
-  void refreshKey() {
-    if (ancestorQueue.empty())
-      return;
-
-    Operation *frontAncestor = ancestorQueue.front();
-    AncestorKey frontAncestorKey(frontAncestor);
-    key.push_back(frontAncestorKey);
-  }
-
-  /// Pop the front ancestor, if any, from the queue and then push its adjacent
-  /// unvisited ancestors, if any, to the queue (this is the main body of the
-  /// BFS algorithm).
-  void popFrontAndPushAdjacentUnvisitedAncestors() {
-    if (ancestorQueue.empty())
-      return;
-    Operation *frontAncestor = ancestorQueue.front();
-    ancestorQueue.pop();
-    if (!frontAncestor)
-      return;
-    for (Value operand : frontAncestor->getOperands()) {
-      Operation *operandDefOp = operand.getDefiningOp();
-      if (!operandDefOp || !visitedAncestors.contains(operandDefOp))
-        pushAncestor(operandDefOp);
+    if (commOperandB->key.size() <= keyIndex) {
+      if (commOperandB->ancestorQueue.empty())
+        return false;
+      commOperandB->popFrontAndPushAdjacentUnvisitedAncestors();
+      commOperandB->refreshKey();
     }
+    // Try comparing the keys at the current keyIndex
+    if (keyIndex < commOperandA->key.size() &&
+        keyIndex < commOperandB->key.size()) {
+      if (commOperandA->key[keyIndex] < commOperandB->key[keyIndex])
+        return true;
+      if (commOperandB->key[keyIndex] < commOperandA->key[keyIndex])
+        return false;
+    } else { // keyIndex exceeds one or both key sizes
+      // Compare key sizes if the values at every possible keyIndex were
+      // equal Both operands must have fully generated key and cannot
+      // have anything in the ancestorQueue
+      if (commOperandA->ancestorQueue.empty() &&
+          commOperandB->ancestorQueue.empty())
+        return commOperandA->key.size() < commOperandB->key.size();
+    }
+    keyIndex++;
   }
-};
+}
 
 /// Sorts the operands of `op` in ascending order of the "key" associated with
 /// each operand iff `op` is commutative. This is a stable sort.
@@ -206,6 +157,7 @@ struct CommutativeOperand {
 /// 2. The key associated with %2 is:
 ///     `{
 ///       {NON_CONSTANT_OP, "foo.mul"},
+///       {BLOCK_ARGUMENT, ""},
 ///       {BLOCK_ARGUMENT, ""}
 ///      }`
 /// 3. The key associated with %3 is:
@@ -226,64 +178,13 @@ struct CommutativeOperand {
 ///      }`
 ///
 /// Thus, the sorted `foo.commutative` is:
-/// %5 = foo.commutative %4, %3, %2, %1
-class SortCommutativeOperands : public RewritePattern {
-public:
+/// %5 = foo.commutative %4, %2, %3, %1
+struct SortCommutativeOperands final
+    : public OpTraitRewritePattern<OpTrait::IsCommutative> {
   SortCommutativeOperands(MLIRContext *context)
-      : RewritePattern(MatchAnyOpTypeTag(), /*benefit=*/5, context) {}
+      : OpTraitRewritePattern<OpTrait::IsCommutative>(context, /*benefit=*/5) {}
   LogicalResult matchAndRewrite(Operation *op,
                                 PatternRewriter &rewriter) const override {
-    // Custom comparator for two commutative operands, which returns true iff
-    // the "key" of `constCommOperandA` < the "key" of `constCommOperandB`,
-    // i.e.,
-    // 1. In the first unequal pair of corresponding AncestorKeys, the
-    // AncestorKey in `constCommOperandA` is smaller, or,
-    // 2. Both the AncestorKeys in every pair are the same and the size of
-    // `constCommOperandA`'s "key" is smaller.
-    auto commutativeOperandComparator =
-        [](const std::unique_ptr<CommutativeOperand> &constCommOperandA,
-           const std::unique_ptr<CommutativeOperand> &constCommOperandB) {
-          if (constCommOperandA->operand == constCommOperandB->operand)
-            return false;
-
-          auto &commOperandA =
-              const_cast<std::unique_ptr<CommutativeOperand> &>(
-                  constCommOperandA);
-          auto &commOperandB =
-              const_cast<std::unique_ptr<CommutativeOperand> &>(
-                  constCommOperandB);
-
-          // Iteratively perform the BFS's of both operands until an order among
-          // them can be determined.
-          unsigned keyIndex = 0;
-          while (true) {
-            if (commOperandA->key.size() <= keyIndex) {
-              if (commOperandA->ancestorQueue.empty())
-                return true;
-              commOperandA->popFrontAndPushAdjacentUnvisitedAncestors();
-              commOperandA->refreshKey();
-            }
-            if (commOperandB->key.size() <= keyIndex) {
-              if (commOperandB->ancestorQueue.empty())
-                return false;
-              commOperandB->popFrontAndPushAdjacentUnvisitedAncestors();
-              commOperandB->refreshKey();
-            }
-            if (commOperandA->ancestorQueue.empty() ||
-                commOperandB->ancestorQueue.empty())
-              return commOperandA->key.size() < commOperandB->key.size();
-            if (commOperandA->key[keyIndex] < commOperandB->key[keyIndex])
-              return true;
-            if (commOperandB->key[keyIndex] < commOperandA->key[keyIndex])
-              return false;
-            keyIndex++;
-          }
-        };
-
-    // If `op` is not commutative, do nothing.
-    if (!op->hasTrait<OpTrait::IsCommutative>())
-      return failure();
-
     // Populate the list of commutative operands.
     SmallVector<Value, 2> operands = op->getOperands();
     SmallVector<std::unique_ptr<CommutativeOperand>, 2> commOperands;
@@ -298,7 +199,7 @@ public:
 
     // Sort the operands.
     std::stable_sort(commOperands.begin(), commOperands.end(),
-                     commutativeOperandComparator);
+                     CommutativeOperand::commutativeOperandComparator);
     SmallVector<Value, 2> sortedOperands;
     for (const std::unique_ptr<CommutativeOperand> &commOperand : commOperands)
       sortedOperands.push_back(commOperand->operand);

@@ -6,3 +6,5 @@ target_link_libraries(MLIRTransformsTests
   PRIVATE
   MLIRParser
   MLIRTransforms)
+
+add_subdirectory(Utils)
