@@ -205,8 +205,6 @@ public:
         E.setKind(ppc64::CallBranchDeltaRestoreTOC);
         this->StubKind = LongBranchSaveR2;
         E.setTarget(this->getEntryForTarget(G, E.getTarget()));
-        // We previously set branching to local entry. Now reverse that
-        // operation.
         E.setAddend(0);
       } else
         // TODO: There are cases a local function call need a call stub.
