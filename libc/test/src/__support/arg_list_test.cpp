@@ -56,3 +56,78 @@ TEST(LlvmLibcArgListTest, CopyConstructor) {
   ASSERT_EQ(sum_two_nums(3, 5, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024),
             40);
 }
+
+bool check_primitives(int first, ...) {
+  va_list vlist;
+  va_start(vlist, first);
+  __llvm_libc::internal::ArgList args(vlist);
+  va_end(vlist);
+
+  if (args.next_var<int>() != 0)
+    return false;
+  if (args.next_var<int>() != 0)
+    return false;
+  if (args.next_var<int>() != 0)
+    return false;
+  if (args.next_var<long>() != 0)
+    return false;
+  if (args.next_var<long>() != 0)
+    return false;
+  if (args.next_var<intmax_t>() != 0)
+    return false;
+  if (args.next_var<size_t>() != 0)
+    return false;
+  if (args.next_var<ptrdiff_t>() != 0)
+    return false;
+  if (args.next_var<double>() != 0)
+    return false;
+  if (args.next_var<double>() != 0)
+    return false;
+  if (args.next_var<long>() != 0)
+    return false;
+  if (args.next_var<void *>() != 0)
+    return false;
+  return true;
+}
+
+TEST(LlvmLibcArgListTest, TestPrimitiveTypes) {
+  char x1 = 0;
+  short x2 = 0;
+  int x3 = 0;
+  long x4 = 0;
+  long long x5 = 0;
+  intmax_t x6 = 0;
+  size_t x7 = 0;
+  ptrdiff_t x8 = 0;
+  float x9 = 0;
+  double x10 = 0;
+  long double x11 = 0;
+  void *x12 = 0;
+  ASSERT_TRUE(
+      check_primitives(0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12));
+}
+
+struct S {
+  char c;
+  short s;
+  int i;
+  long l;
+  float f;
+  double d;
+};
+
+long int check_struct_type(int first, ...) {
+  va_list vlist;
+  va_start(vlist, first);
+  __llvm_libc::internal::ArgList args(vlist);
+  va_end(vlist);
+
+  S s = args.next_var<S>();
+  int last = args.next_var<int>();
+  return s.c + s.s + s.i + s.l + s.f + s.d + last;
+}
+
+TEST(LlvmLibcArgListTest, TestStructTypes) {
+  S s{'\x1', 1, 1, 1l, 1.0f, 1.0};
+  ASSERT_EQ(check_struct_type(0, s, 1), 7l);
+}
