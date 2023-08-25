@@ -35,16 +35,16 @@ AVAILABLE_EXTERNALLY_ALTERNATE void *memmove(void *a, const void *b, size_t c) {
 // CHECK-NEXT:    store ptr [[A:%.*]], ptr [[A_ADDR]], align 8
 // CHECK-NEXT:    store ptr [[B:%.*]], ptr [[B_ADDR]], align 8
 // CHECK-NEXT:    store i64 [[C:%.*]], ptr [[C_ADDR]], align 8
-// CHECK-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[A_ADDR]], align 8
-// CHECK-NEXT:    [[TMP1:%.*]] = load ptr, ptr [[B_ADDR]], align 8
-// CHECK-NEXT:    [[TMP2:%.*]] = load i64, ptr [[C_ADDR]], align 8
+// CHECK-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[A_ADDR]], align 8, !freeze_bits [[FREEZE_BITS2:![0-9]+]]
+// CHECK-NEXT:    [[TMP1:%.*]] = load ptr, ptr [[B_ADDR]], align 8, !freeze_bits [[FREEZE_BITS2]]
+// CHECK-NEXT:    [[TMP2:%.*]] = load i64, ptr [[C_ADDR]], align 8, !freeze_bits [[FREEZE_BITS2]]
 // CHECK-NEXT:    store ptr [[TMP0]], ptr [[A_ADDR_I]], align 8
 // CHECK-NEXT:    store ptr [[TMP1]], ptr [[B_ADDR_I]], align 8
 // CHECK-NEXT:    store i64 [[TMP2]], ptr [[C_ADDR_I]], align 8
-// CHECK-NEXT:    call void asm sideeffect "# memcpy.inline marker", "~{dirflag},~{fpsr},~{flags}"() #[[ATTR3:[0-9]+]], !srcloc !2
-// CHECK-NEXT:    [[TMP3:%.*]] = load ptr, ptr [[A_ADDR_I]], align 8
-// CHECK-NEXT:    [[TMP4:%.*]] = load ptr, ptr [[B_ADDR_I]], align 8
-// CHECK-NEXT:    [[TMP5:%.*]] = load i64, ptr [[C_ADDR_I]], align 8
+// CHECK-NEXT:    call void asm sideeffect "# memcpy.inline marker", "~{dirflag},~{fpsr},~{flags}"() #[[ATTR3:[0-9]+]], !srcloc !3
+// CHECK-NEXT:    [[TMP3:%.*]] = load ptr, ptr [[A_ADDR_I]], align 8, !freeze_bits [[FREEZE_BITS2]]
+// CHECK-NEXT:    [[TMP4:%.*]] = load ptr, ptr [[B_ADDR_I]], align 8, !freeze_bits [[FREEZE_BITS2]]
+// CHECK-NEXT:    [[TMP5:%.*]] = load i64, ptr [[C_ADDR_I]], align 8, !freeze_bits [[FREEZE_BITS2]]
 // CHECK-NEXT:    call void @llvm.memcpy.p0.p0.i64(ptr align 1 [[TMP3]], ptr align 1 [[TMP4]], i64 [[TMP5]], i1 false)
 // CHECK-NEXT:    ret ptr [[TMP3]]
 //
@@ -63,16 +63,16 @@ void *foo(void *a, const void *b, size_t c) {
 // CHECK-NEXT:    store ptr [[A:%.*]], ptr [[A_ADDR]], align 8
 // CHECK-NEXT:    store ptr [[B:%.*]], ptr [[B_ADDR]], align 8
 // CHECK-NEXT:    store i64 [[C:%.*]], ptr [[C_ADDR]], align 8
-// CHECK-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[A_ADDR]], align 8
-// CHECK-NEXT:    [[TMP1:%.*]] = load ptr, ptr [[B_ADDR]], align 8
-// CHECK-NEXT:    [[TMP2:%.*]] = load i64, ptr [[C_ADDR]], align 8
+// CHECK-NEXT:    [[TMP0:%.*]] = load ptr, ptr [[A_ADDR]], align 8, !freeze_bits [[FREEZE_BITS2]]
+// CHECK-NEXT:    [[TMP1:%.*]] = load ptr, ptr [[B_ADDR]], align 8, !freeze_bits [[FREEZE_BITS2]]
+// CHECK-NEXT:    [[TMP2:%.*]] = load i64, ptr [[C_ADDR]], align 8, !freeze_bits [[FREEZE_BITS2]]
 // CHECK-NEXT:    store ptr [[TMP0]], ptr [[A_ADDR_I]], align 8
 // CHECK-NEXT:    store ptr [[TMP1]], ptr [[B_ADDR_I]], align 8
 // CHECK-NEXT:    store i64 [[TMP2]], ptr [[C_ADDR_I]], align 8
-// CHECK-NEXT:    call void asm sideeffect "# memmove.inline marker", "~{dirflag},~{fpsr},~{flags}"() #[[ATTR3]], !srcloc !3
-// CHECK-NEXT:    [[TMP3:%.*]] = load ptr, ptr [[A_ADDR_I]], align 8
-// CHECK-NEXT:    [[TMP4:%.*]] = load ptr, ptr [[B_ADDR_I]], align 8
-// CHECK-NEXT:    [[TMP5:%.*]] = load i64, ptr [[C_ADDR_I]], align 8
+// CHECK-NEXT:    call void asm sideeffect "# memmove.inline marker", "~{dirflag},~{fpsr},~{flags}"() #[[ATTR3]], !srcloc !4
+// CHECK-NEXT:    [[TMP3:%.*]] = load ptr, ptr [[A_ADDR_I]], align 8, !freeze_bits [[FREEZE_BITS2]]
+// CHECK-NEXT:    [[TMP4:%.*]] = load ptr, ptr [[B_ADDR_I]], align 8, !freeze_bits [[FREEZE_BITS2]]
+// CHECK-NEXT:    [[TMP5:%.*]] = load i64, ptr [[C_ADDR_I]], align 8, !freeze_bits [[FREEZE_BITS2]]
 // CHECK-NEXT:    call void @llvm.memmove.p0.p0.i64(ptr align 1 [[TMP3]], ptr align 1 [[TMP4]], i64 [[TMP5]], i1 false)
 // CHECK-NEXT:    ret ptr [[TMP3]]
 //
@@ -89,15 +89,15 @@ void *foo_alt(void *a, const void *b, size_t c) {
 // CHECK-NEXT:    store ptr [[A:%.*]], ptr [[A_ADDR]], align 8
 // CHECK-NEXT:    store ptr [[B:%.*]], ptr [[B_ADDR]], align 8
 // CHECK-NEXT:    store i64 [[C:%.*]], ptr [[C_ADDR]], align 8
-// CHECK-NEXT:    [[TMP0:%.*]] = load i64, ptr [[C_ADDR]], align 8
+// CHECK-NEXT:    [[TMP0:%.*]] = load i64, ptr [[C_ADDR]], align 8, !freeze_bits [[FREEZE_BITS2]]
 // CHECK-NEXT:    [[CMP:%.*]] = icmp ugt i64 [[TMP0]], 10
 // CHECK-NEXT:    [[TMP1:%.*]] = zext i1 [[CMP]] to i64
 // CHECK-NEXT:    [[COND:%.*]] = select i1 [[CMP]], ptr @memcpy, ptr @foo
 // CHECK-NEXT:    store ptr [[COND]], ptr [[CPY]], align 8
-// CHECK-NEXT:    [[TMP2:%.*]] = load ptr, ptr [[CPY]], align 8
-// CHECK-NEXT:    [[TMP3:%.*]] = load ptr, ptr [[A_ADDR]], align 8
-// CHECK-NEXT:    [[TMP4:%.*]] = load ptr, ptr [[B_ADDR]], align 8
-// CHECK-NEXT:    [[TMP5:%.*]] = load i64, ptr [[C_ADDR]], align 8
+// CHECK-NEXT:    [[TMP2:%.*]] = load ptr, ptr [[CPY]], align 8, !freeze_bits [[FREEZE_BITS2]]
+// CHECK-NEXT:    [[TMP3:%.*]] = load ptr, ptr [[A_ADDR]], align 8, !freeze_bits [[FREEZE_BITS2]]
+// CHECK-NEXT:    [[TMP4:%.*]] = load ptr, ptr [[B_ADDR]], align 8, !freeze_bits [[FREEZE_BITS2]]
+// CHECK-NEXT:    [[TMP5:%.*]] = load i64, ptr [[C_ADDR]], align 8, !freeze_bits [[FREEZE_BITS2]]
 // CHECK-NEXT:    [[CALL:%.*]] = call ptr [[TMP2]](ptr noundef [[TMP3]], ptr noundef [[TMP4]], i64 noundef [[TMP5]])
 // CHECK-NEXT:    ret void
 //
@@ -115,15 +115,15 @@ void bar(void *a, const void *b, size_t c) {
 // CHECK-NEXT:    store ptr [[A:%.*]], ptr [[A_ADDR]], align 8
 // CHECK-NEXT:    store ptr [[B:%.*]], ptr [[B_ADDR]], align 8
 // CHECK-NEXT:    store i64 [[C:%.*]], ptr [[C_ADDR]], align 8
-// CHECK-NEXT:    [[TMP0:%.*]] = load i64, ptr [[C_ADDR]], align 8
+// CHECK-NEXT:    [[TMP0:%.*]] = load i64, ptr [[C_ADDR]], align 8, !freeze_bits [[FREEZE_BITS2]]
 // CHECK-NEXT:    [[CMP:%.*]] = icmp ugt i64 [[TMP0]], 10
 // CHECK-NEXT:    [[TMP1:%.*]] = zext i1 [[CMP]] to i64
 // CHECK-NEXT:    [[COND:%.*]] = select i1 [[CMP]], ptr @memmove, ptr @foo_alt
 // CHECK-NEXT:    store ptr [[COND]], ptr [[CPY]], align 8
-// CHECK-NEXT:    [[TMP2:%.*]] = load ptr, ptr [[CPY]], align 8
-// CHECK-NEXT:    [[TMP3:%.*]] = load ptr, ptr [[A_ADDR]], align 8
-// CHECK-NEXT:    [[TMP4:%.*]] = load ptr, ptr [[B_ADDR]], align 8
-// CHECK-NEXT:    [[TMP5:%.*]] = load i64, ptr [[C_ADDR]], align 8
+// CHECK-NEXT:    [[TMP2:%.*]] = load ptr, ptr [[CPY]], align 8, !freeze_bits [[FREEZE_BITS2]]
+// CHECK-NEXT:    [[TMP3:%.*]] = load ptr, ptr [[A_ADDR]], align 8, !freeze_bits [[FREEZE_BITS2]]
+// CHECK-NEXT:    [[TMP4:%.*]] = load ptr, ptr [[B_ADDR]], align 8, !freeze_bits [[FREEZE_BITS2]]
+// CHECK-NEXT:    [[TMP5:%.*]] = load i64, ptr [[C_ADDR]], align 8, !freeze_bits [[FREEZE_BITS2]]
 // CHECK-NEXT:    [[CALL:%.*]] = call ptr [[TMP2]](ptr noundef [[TMP3]], ptr noundef [[TMP4]], i64 noundef [[TMP5]])
 // CHECK-NEXT:    ret void
 //

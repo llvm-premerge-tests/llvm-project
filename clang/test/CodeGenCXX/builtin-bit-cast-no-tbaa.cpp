@@ -4,7 +4,7 @@ void test_scalar() {
   // CHECK-LABEL: define{{.*}} void @_Z11test_scalarv
   __builtin_bit_cast(float, 42);
 
-  // CHECK: load float, ptr {{.*}}, align 4, !tbaa ![[MAY_ALIAS_TBAA:.*]]
+  // CHECK: load float, ptr {{.*}}, align 4, !tbaa ![[MAY_ALIAS_TBAA:[0-9]+]]
 }
 
 void test_scalar2() {

@@ -63,7 +63,7 @@ void implicit_maps_template_type_capture (int a){
   // CK18-DAG: [[P1:%.+]] = getelementptr inbounds {{.+}}[[PS]], i32 0, i32 0
   // CK18-DAG: store i[[sz:64|32]] [[VAL:%.+]], ptr [[BP1]]
   // CK18-DAG: store i[[sz]] [[VAL]], ptr [[P1]]
-  // CK18-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%.+]],
+  // CK18-DAG: [[VAL]] = load i[[sz]], ptr [[ADDR:%[^,]+]],
   // CK18-64-DAG: store i32 {{.+}}, ptr [[ADDR]],
 
   // CK18: call void [[KERNEL:@.+]](i[[sz]] [[VAL]])

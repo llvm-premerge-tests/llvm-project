@@ -19,7 +19,7 @@ struct C {
 
 int f1(B *b) {
 // CHECK-LABEL: _Z2f1P1B
-// CHECK: load i32, {{.*}}, !tbaa [[TAG_A_y:!.*]]
+// CHECK: load i32, {{.*}}, !tbaa [[TAG_A_y:![0-9]+]]
   return b->y;
 }
 

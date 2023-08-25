@@ -33,26 +33,26 @@ for.body:                                         ; preds = %for.body, %entry
 
   %arrayidxA = getelementptr inbounds i32, ptr %a, i64 %ind
 ; Scope 1
-; LV: = load {{.*}} !alias.scope !0
+; LV: = load {{.*}} !alias.scope [[ALIAS_SCOPE0:![0-9]+]]
   %loadA = load i32, ptr %arrayidxA, align 4
 
   %add = add nuw i32 %loadA, 2
 
   %arrayidxC = getelementptr inbounds i32, ptr %c, i64 %ind
 ; Noalias with scope 1 and 6
-; LV: store {{.*}} !alias.scope !3, !noalias !5
+; LV: store {{.*}} !alias.scope [[ALIAS_SCOPE1:![0-9]+]], !noalias [[NOALIAS:![0-9]+]]
 ; DSE-NOT: store
   store i32 %add, ptr %arrayidxC, align 4
 
   %arrayidxB = getelementptr inbounds i32, ptr %b, i64 %ind
 ; Scope 6
-; LV: = load {{.*}} !alias.scope !7
+; LV: = load {{.*}} !alias.scope [[ALIAS_SCOPE2:![0-9]+]]
   %loadB = load i32, ptr %arrayidxB, align 4
 
   %add2 = add nuw i32 %add, %loadB
 
 ; Noalias with scope 1 and 6
-; LV: store {{.*}} !alias.scope !3, !noalias !5
+; LV: store {{.*}} !alias.scope [[ALIAS_SCOPE1]], !noalias [[NOALIAS]]
 ; DSE: store
   store i32 %add2, ptr %arrayidxC, align 4
 
@@ -68,11 +68,11 @@ for.end:                                          ; preds = %for.body
   ret void
 }
 
-; LV: !0 = !{!1}
-; LV: !1 = distinct !{!1, !2}
-; LV: !2 = distinct !{!2, !"LVerDomain"}
-; LV: !3 = !{!4}
-; LV: !4 = distinct !{!4, !2}
-; LV: !5 = !{!1, !6}
-; LV: !6 = distinct !{!6, !2}
-; LV: !7 = !{!6}
+; LV: [[ALIAS_SCOPE0]] = !{[[DISTINCT0:![0-9]+]]}
+; LV: [[DISTINCT0]] = distinct !{[[DISTINCT0]], [[DISTINCT1:![0-9]+]]}
+; LV: [[DISTINCT1]] = distinct !{[[DISTINCT1]], !"LVerDomain"}
+; LV: [[ALIAS_SCOPE1]] = !{[[DISTINCT2:![0-9]+]]}
+; LV: [[DISTINCT2]] = distinct !{[[DISTINCT2]], [[DISTINCT1]]}
+; LV: [[NOALIAS]] = !{[[DISTINCT0]], [[DISTINCT3:![0-9]+]]}
+; LV: [[DISTINCT3]] = distinct !{[[DISTINCT3]], [[DISTINCT1]]}
+; LV: [[ALIAS_SCOPE2]] = !{[[DISTINCT3]]}
