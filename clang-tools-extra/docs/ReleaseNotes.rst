@@ -259,6 +259,10 @@ Changes in existing checks
   <clang-tidy/checks/readability/static-accessed-through-instance>` check to
   identify calls to static member functions with out-of-class inline definitions.
 
+- Improved :doc:`readability-identifier-naming
+  <clang-tidy/checks/readability/IdentifierNamingCheck>` Leading_upper_snake_case ->
+  Leading_upper_snake_case. allow for -> support
+
 Removed checks
 ^^^^^^^^^^^^^^
 
