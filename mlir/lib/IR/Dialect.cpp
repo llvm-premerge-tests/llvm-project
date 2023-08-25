@@ -248,8 +248,9 @@ void DialectRegistry::applyExtensions(Dialect *dialect) const {
     extension.apply(ctx, requiredDialects);
   };
 
-  for (const auto &extension : extensions)
-    applyExtension(*extension);
+  // Note: Additional extensions may be added while applying an extension.
+  for (int i = 0; i < extensions.size(); ++i)
+    applyExtension(*extensions[i]);
 }
 
 void DialectRegistry::applyExtensions(MLIRContext *ctx) const {
@@ -274,8 +275,9 @@ void DialectRegistry::applyExtensions(MLIRContext *ctx) const {
     extension.apply(ctx, requiredDialects);
   };
 
-  for (const auto &extension : extensions)
-    applyExtension(*extension);
+  // Note: Additional extensions may be added while applying an extension.
+  for (int i = 0; i < extensions.size(); ++i)
+    applyExtension(*extensions[i]);
 }
 
 bool DialectRegistry::isSubsetOf(const DialectRegistry &rhs) const {
