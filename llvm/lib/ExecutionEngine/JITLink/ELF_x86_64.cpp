@@ -240,10 +240,11 @@ class ELFJITLinker_x86_64 : public JITLinker<ELFJITLinker_x86_64> {
 public:
   ELFJITLinker_x86_64(std::unique_ptr<JITLinkContext> Ctx,
                       std::unique_ptr<LinkGraph> G,
-                      PassConfiguration PassConfig)
+                      PassConfiguration PassConfig, bool DefaultPasses)
       : JITLinker(std::move(Ctx), std::move(G), std::move(PassConfig)) {
-    getPassConfig().PostAllocationPasses.push_back(
-        [this](LinkGraph &G) { return getOrCreateGOTSymbol(G); });
+    if (DefaultPasses)
+      getPassConfig().PostAllocationPasses.push_back(
+          [this](LinkGraph &G) { return getOrCreateGOTSymbol(G); });
   }
 
 private:
@@ -363,9 +364,9 @@ identifyELFSectionStartAndEndSymbols(LinkGraph &G, Symbol &Sym) {
 void link_ELF_x86_64(std::unique_ptr<LinkGraph> G,
                      std::unique_ptr<JITLinkContext> Ctx) {
   PassConfiguration Config;
-
+  bool DefaultPasses = false;
   if (Ctx->shouldAddDefaultTargetPasses(G->getTargetTriple())) {
-
+    DefaultPasses = true;
     Config.PrePrunePasses.push_back(DWARFRecordSectionSplitter(".eh_frame"));
     Config.PrePrunePasses.push_back(EHFrameEdgeFixer(
         ".eh_frame", x86_64::PointerSize, x86_64::Pointer32, x86_64::Pointer64,
@@ -394,7 +395,8 @@ void link_ELF_x86_64(std::unique_ptr<LinkGraph> G,
   if (auto Err = Ctx->modifyPassConfig(*G, Config))
     return Ctx->notifyFailed(std::move(Err));
 
-  ELFJITLinker_x86_64::link(std::move(Ctx), std::move(G), std::move(Config));
+  ELFJITLinker_x86_64::link(std::move(Ctx), std::move(G), std::move(Config),
+                            DefaultPasses);
 }
 } // end namespace jitlink
 } // end namespace llvm
