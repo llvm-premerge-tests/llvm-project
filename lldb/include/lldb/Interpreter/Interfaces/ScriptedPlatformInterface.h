@@ -10,7 +10,7 @@
 #define LLDB_INTERPRETER_SCRIPTEDPLATFORMINTERFACE_H
 
 #include "lldb/Core/StructuredDataImpl.h"
-#include "lldb/Interpreter/ScriptedInterface.h"
+#include "lldb/Interpreter/Interfaces/ScriptedInterface.h"
 
 #include "lldb/lldb-private.h"
 
