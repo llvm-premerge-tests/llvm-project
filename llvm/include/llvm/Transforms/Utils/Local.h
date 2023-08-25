@@ -26,6 +26,7 @@ class DataLayout;
 class Value;
 class WeakTrackingVH;
 class WeakVH;
+template <typename T, unsigned N> class SmallSetVector;
 template <typename T> class SmallVectorImpl;
 class AAResults;
 class AllocaInst;
@@ -162,7 +163,11 @@ bool TryToSimplifyUncondBranchFromEmptyBlock(BasicBlock *BB,
 /// Check for and eliminate duplicate PHI nodes in this block. This doesn't try
 /// to be clever about PHI nodes which differ only in the order of the incoming
 /// values, but instcombine orders them so it usually won't matter.
-bool EliminateDuplicatePHINodes(BasicBlock *BB);
+///
+/// If ToRemove is specified, then phi nodes will be added to this vector
+/// instead of being directly removed.
+bool EliminateDuplicatePHINodes(
+    BasicBlock *BB, SmallSetVector<PHINode *, 4> *ToRemove = nullptr);
 
 /// This function is used to do simplification of a CFG.  For example, it
 /// adjusts branches to branches to eliminate the extra hop, it eliminates
