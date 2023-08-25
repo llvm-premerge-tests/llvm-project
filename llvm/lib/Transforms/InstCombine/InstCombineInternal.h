@@ -589,6 +589,10 @@ public:
   Instruction *foldICmpInstWithConstantAllowUndef(ICmpInst &Cmp,
                                                   const APInt &C);
   Instruction *foldICmpBinOp(ICmpInst &Cmp, const SimplifyQuery &SQ);
+  Instruction *foldICmpWithMinMaxImpl(Instruction &I, Value *X, Value *Y,
+                                      Value *Z, Intrinsic::ID MinMaxIntrinsic,
+                                      ICmpInst::Predicate Pred);
+  Instruction *foldICmpWithMinMax(ICmpInst &Cmp);
   Instruction *foldICmpEquality(ICmpInst &Cmp);
   Instruction *foldIRemByPowerOfTwoToBitTest(ICmpInst &I);
   Instruction *foldSignBitTest(ICmpInst &I);
