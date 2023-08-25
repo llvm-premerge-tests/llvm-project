@@ -128,6 +128,8 @@ public:
                                  lldb_private::UUID &uuid,
                                  ObjectFile::BinaryType &type) override;
 
+  bool GetCorefileThreadExtraInfos(std::vector<lldb::tid_t> &tids) override;
+
   bool LoadCoreFileImages(lldb_private::Process &process) override;
 
   lldb::RegisterContextSP
