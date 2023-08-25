@@ -43,6 +43,9 @@ void MPIChecker::checkDoubleNonblocking(const CallEvent &PreCallEvent,
   // double nonblocking detected
   if (Req && Req->CurrentState == Request::State::Nonblocking) {
     ExplodedNode *ErrorNode = Ctx.generateNonFatalErrorNode();
+    if (!ErrorNode)
+      return;
+
     BReporter.reportDoubleNonblocking(PreCallEvent, *Req, MR, ErrorNode,
                                       Ctx.getBugReporter());
     Ctx.addTransition(ErrorNode->getState(), ErrorNode);
@@ -83,6 +86,9 @@ void MPIChecker::checkUnmatchedWaits(const CallEvent &PreCallEvent,
     if (!Req) {
       if (!ErrorNode) {
         ErrorNode = Ctx.generateNonFatalErrorNode(State, &Tag);
+        if (!ErrorNode)
+          break;
+
         State = ErrorNode->getState();
       }
       // A wait has no matching nonblocking call.
@@ -115,6 +121,9 @@ void MPIChecker::checkMissingWaits(SymbolReaper &SymReaper,
 
         if (!ErrorNode) {
           ErrorNode = Ctx.generateNonFatalErrorNode(State, &Tag);
+          if (!ErrorNode)
+            break;
+
           State = ErrorNode->getState();
         }
         BReporter.reportMissingWait(Req.second, Req.first, ErrorNode,
@@ -161,20 +170,41 @@ void MPIChecker::allRegionsUsedByWait(
       return;
     }
 
-    DefinedOrUnknownSVal ElementCount = getDynamicElementCount(
-        Ctx.getState(), SuperRegion, Ctx.getSValBuilder(),
-        CE.getArgExpr(1)->getType()->getPointeeType());
-    const llvm::APSInt &ArrSize =
-        ElementCount.castAs<nonloc::ConcreteInt>().getValue();
+    QualType ElemType = CE.getArgExpr(1)->getType()->getPointeeType();
+    ProgramStateRef State = Ctx.getState();
+    SValBuilder &SVB = Ctx.getSValBuilder();
+    ASTContext &ASTCtx = Ctx.getASTContext();
 
+    auto ElementCount =
+        getDynamicElementCountWithOffset(State, CE.getArgSVal(1), ElemType)
+            .getAs<nonloc::ConcreteInt>();
+    if (!ElementCount)
+      return;
+    const llvm::APSInt &ArrSize = ElementCount->getValue();
+
+    CharUnits ElemSizeInChars = ASTCtx.getTypeSizeInChars(ElemType);
+    int64_t ElemSizeInBits =
+        (ElemSizeInChars.isZero() ? 1 : ElemSizeInChars.getQuantity()) *
+        ASTCtx.getCharWidth();
+    const NonLoc MROffset =
+        SVB.makeArrayIndex(MR->getAsOffset().getOffset() / ElemSizeInBits);
+
+    SVal Count = CE.getArgSVal(0);
     for (size_t i = 0; i < ArrSize; ++i) {
       const NonLoc Idx = Ctx.getSValBuilder().makeArrayIndex(i);
+      auto CountReached = SVB.evalBinOp(State, BO_GE, Idx, Count, ASTCtx.BoolTy)
+                              .getAs<DefinedOrUnknownSVal>();
+      if (CountReached && State->assume(*CountReached, true))
+        break;
 
-      const ElementRegion *const ER = RegionManager.getElementRegion(
-          CE.getArgExpr(1)->getType()->getPointeeType(), Idx, SuperRegion,
-          Ctx.getASTContext());
-
-      ReqRegions.push_back(ER->getAs<MemRegion>());
+      auto ElementRegionIndex =
+          SVB.evalBinOp(State, BO_Add, Idx, MROffset, SVB.getArrayIndexType())
+              .getAs<NonLoc>();
+      if (ElementRegionIndex) {
+        const ElementRegion *const ER = RegionManager.getElementRegion(
+            ElemType, *ElementRegionIndex, SuperRegion, Ctx.getASTContext());
+        ReqRegions.push_back(ER);
+      }
     }
   } else if (FuncClassifier->isMPI_Wait(CE.getCalleeIdentifier())) {
     ReqRegions.push_back(MR);
