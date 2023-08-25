@@ -747,8 +747,7 @@ define void @bitreverse_v4i64(ptr %x, ptr %y) {
 ; LMULMAX2-RV32-NEXT:    vand.vx v12, v12, a3
 ; LMULMAX2-RV32-NEXT:    vor.vv v10, v12, v10
 ; LMULMAX2-RV32-NEXT:    li a4, 85
-; LMULMAX2-RV32-NEXT:    vsetivli zero, 1, e8, mf8, ta, ma
-; LMULMAX2-RV32-NEXT:    vmv.v.x v0, a4
+; LMULMAX2-RV32-NEXT:    vmv.s.x v0, a4
 ; LMULMAX2-RV32-NEXT:    vsetivli zero, 8, e32, m2, ta, ma
 ; LMULMAX2-RV32-NEXT:    vmv.v.i v12, 0
 ; LMULMAX2-RV32-NEXT:    lui a4, 1044480

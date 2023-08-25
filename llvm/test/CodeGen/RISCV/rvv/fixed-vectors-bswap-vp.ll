@@ -593,9 +593,8 @@ define <4 x i64> @vp_bswap_v4i64(<4 x i64> %va, <4 x i1> %m, i32 zeroext %evl) {
 ; RV32-NEXT:    vor.vv v12, v14, v12, v0.t
 ; RV32-NEXT:    vsrl.vi v14, v8, 8, v0.t
 ; RV32-NEXT:    li a4, 85
-; RV32-NEXT:    vsetivli zero, 1, e8, mf8, ta, ma
-; RV32-NEXT:    vmv.v.x v0, a4
 ; RV32-NEXT:    vsetivli zero, 8, e32, m2, ta, ma
+; RV32-NEXT:    vmv.s.x v0, a4
 ; RV32-NEXT:    vmv.v.i v16, 0
 ; RV32-NEXT:    lui a4, 1044480
 ; RV32-NEXT:    vmerge.vxm v16, v16, a4, v0
@@ -672,9 +671,8 @@ define <4 x i64> @vp_bswap_v4i64_unmasked(<4 x i64> %va, i32 zeroext %evl) {
 ; RV32-NEXT:    vand.vx v12, v8, a4
 ; RV32-NEXT:    vsll.vi v12, v12, 24
 ; RV32-NEXT:    li a5, 85
-; RV32-NEXT:    vsetivli zero, 1, e8, mf8, ta, ma
-; RV32-NEXT:    vmv.v.x v0, a5
 ; RV32-NEXT:    vsetivli zero, 8, e32, m2, ta, ma
+; RV32-NEXT:    vmv.s.x v0, a5
 ; RV32-NEXT:    vmv.v.i v14, 0
 ; RV32-NEXT:    lui a5, 1044480
 ; RV32-NEXT:    vmerge.vxm v14, v14, a5, v0
@@ -752,9 +750,8 @@ define <8 x i64> @vp_bswap_v8i64(<8 x i64> %va, <8 x i1> %m, i32 zeroext %evl) {
 ; RV32-NEXT:    vsrl.vi v24, v8, 8, v0.t
 ; RV32-NEXT:    lui a4, 5
 ; RV32-NEXT:    addi a4, a4, 1365
-; RV32-NEXT:    vsetivli zero, 1, e16, mf4, ta, ma
-; RV32-NEXT:    vmv.v.x v0, a4
 ; RV32-NEXT:    vsetivli zero, 16, e32, m4, ta, ma
+; RV32-NEXT:    vmv.s.x v0, a4
 ; RV32-NEXT:    vmv.v.i v16, 0
 ; RV32-NEXT:    lui a4, 1044480
 ; RV32-NEXT:    vmerge.vxm v16, v16, a4, v0
@@ -832,9 +829,8 @@ define <8 x i64> @vp_bswap_v8i64_unmasked(<8 x i64> %va, i32 zeroext %evl) {
 ; RV32-NEXT:    vsll.vi v16, v16, 24
 ; RV32-NEXT:    lui a5, 5
 ; RV32-NEXT:    addi a5, a5, 1365
-; RV32-NEXT:    vsetivli zero, 1, e16, mf4, ta, ma
-; RV32-NEXT:    vmv.v.x v0, a5
 ; RV32-NEXT:    vsetivli zero, 16, e32, m4, ta, ma
+; RV32-NEXT:    vmv.s.x v0, a5
 ; RV32-NEXT:    vmv.v.i v20, 0
 ; RV32-NEXT:    lui a5, 1044480
 ; RV32-NEXT:    vmerge.vxm v20, v20, a5, v0
@@ -951,14 +947,12 @@ define <15 x i64> @vp_bswap_v15i64(<15 x i64> %va, <15 x i1> %m, i32 zeroext %ev
 ; RV32-NEXT:    vs8r.v v24, (a5) # Unknown-size Folded Spill
 ; RV32-NEXT:    li a5, 32
 ; RV32-NEXT:    vsetvli zero, a5, e32, m8, ta, ma
-; RV32-NEXT:    lui a6, 349525
-; RV32-NEXT:    addi a6, a6, 1365
+; RV32-NEXT:    lui a5, 349525
+; RV32-NEXT:    addi a5, a5, 1365
+; RV32-NEXT:    vmv.s.x v0, a5
+; RV32-NEXT:    lui a5, 1044480
 ; RV32-NEXT:    vmv.v.i v24, 0
-; RV32-NEXT:    vsetivli zero, 1, e32, mf2, ta, ma
-; RV32-NEXT:    lui a7, 1044480
-; RV32-NEXT:    vmv.v.x v0, a6
-; RV32-NEXT:    vsetvli zero, a5, e32, m8, ta, ma
-; RV32-NEXT:    vmerge.vxm v24, v24, a7, v0
+; RV32-NEXT:    vmerge.vxm v24, v24, a5, v0
 ; RV32-NEXT:    addi a5, sp, 16
 ; RV32-NEXT:    vs8r.v v24, (a5) # Unknown-size Folded Spill
 ; RV32-NEXT:    vsetvli zero, a0, e64, m8, ta, ma
@@ -1103,13 +1097,11 @@ define <15 x i64> @vp_bswap_v15i64_unmasked(<15 x i64> %va, i32 zeroext %evl) {
 ; RV32-NEXT:    li a4, 32
 ; RV32-NEXT:    vsetvli zero, a4, e32, m8, ta, ma
 ; RV32-NEXT:    vmv.v.i v24, 0
-; RV32-NEXT:    lui a5, 349525
-; RV32-NEXT:    addi a5, a5, 1365
-; RV32-NEXT:    vsetivli zero, 1, e32, mf2, ta, ma
-; RV32-NEXT:    vmv.v.x v0, a5
-; RV32-NEXT:    lui a5, 1044480
-; RV32-NEXT:    vsetvli zero, a4, e32, m8, ta, ma
-; RV32-NEXT:    vmerge.vxm v24, v24, a5, v0
+; RV32-NEXT:    lui a4, 349525
+; RV32-NEXT:    addi a4, a4, 1365
+; RV32-NEXT:    vmv.s.x v0, a4
+; RV32-NEXT:    lui a4, 1044480
+; RV32-NEXT:    vmerge.vxm v24, v24, a4, v0
 ; RV32-NEXT:    vsetvli zero, a0, e64, m8, ta, ma
 ; RV32-NEXT:    vsrl.vi v0, v8, 8
 ; RV32-NEXT:    vand.vv v0, v0, v24
@@ -1235,14 +1227,12 @@ define <16 x i64> @vp_bswap_v16i64(<16 x i64> %va, <16 x i1> %m, i32 zeroext %ev
 ; RV32-NEXT:    vs8r.v v24, (a5) # Unknown-size Folded Spill
 ; RV32-NEXT:    li a5, 32
 ; RV32-NEXT:    vsetvli zero, a5, e32, m8, ta, ma
-; RV32-NEXT:    lui a6, 349525
-; RV32-NEXT:    addi a6, a6, 1365
+; RV32-NEXT:    lui a5, 349525
+; RV32-NEXT:    addi a5, a5, 1365
+; RV32-NEXT:    vmv.s.x v0, a5
+; RV32-NEXT:    lui a5, 1044480
 ; RV32-NEXT:    vmv.v.i v24, 0
-; RV32-NEXT:    vsetivli zero, 1, e32, mf2, ta, ma
-; RV32-NEXT:    lui a7, 1044480
-; RV32-NEXT:    vmv.v.x v0, a6
-; RV32-NEXT:    vsetvli zero, a5, e32, m8, ta, ma
-; RV32-NEXT:    vmerge.vxm v24, v24, a7, v0
+; RV32-NEXT:    vmerge.vxm v24, v24, a5, v0
 ; RV32-NEXT:    addi a5, sp, 16
 ; RV32-NEXT:    vs8r.v v24, (a5) # Unknown-size Folded Spill
 ; RV32-NEXT:    vsetvli zero, a0, e64, m8, ta, ma
@@ -1387,13 +1377,11 @@ define <16 x i64> @vp_bswap_v16i64_unmasked(<16 x i64> %va, i32 zeroext %evl) {
 ; RV32-NEXT:    li a4, 32
 ; RV32-NEXT:    vsetvli zero, a4, e32, m8, ta, ma
 ; RV32-NEXT:    vmv.v.i v24, 0
-; RV32-NEXT:    lui a5, 349525
-; RV32-NEXT:    addi a5, a5, 1365
-; RV32-NEXT:    vsetivli zero, 1, e32, mf2, ta, ma
-; RV32-NEXT:    vmv.v.x v0, a5
-; RV32-NEXT:    lui a5, 1044480
-; RV32-NEXT:    vsetvli zero, a4, e32, m8, ta, ma
-; RV32-NEXT:    vmerge.vxm v24, v24, a5, v0
+; RV32-NEXT:    lui a4, 349525
+; RV32-NEXT:    addi a4, a4, 1365
+; RV32-NEXT:    vmv.s.x v0, a4
+; RV32-NEXT:    lui a4, 1044480
+; RV32-NEXT:    vmerge.vxm v24, v24, a4, v0
 ; RV32-NEXT:    vsetvli zero, a0, e64, m8, ta, ma
 ; RV32-NEXT:    vsrl.vi v0, v8, 8
 ; RV32-NEXT:    vand.vv v0, v0, v24

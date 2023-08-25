@@ -56,7 +56,7 @@ define <1 x i1> @fcmp_ogt_vf_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_ogt_vf_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -72,7 +72,7 @@ define <1 x i1> @fcmp_ogt_fv_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_ogt_fv_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -101,7 +101,7 @@ define <1 x i1> @fcmp_oge_vf_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_oge_vf_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -117,7 +117,7 @@ define <1 x i1> @fcmp_oge_fv_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_oge_fv_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -146,7 +146,7 @@ define <1 x i1> @fcmp_olt_vf_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_olt_vf_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -162,7 +162,7 @@ define <1 x i1> @fcmp_olt_fv_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_olt_fv_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -191,7 +191,7 @@ define <1 x i1> @fcmp_ole_vf_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_ole_vf_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -207,7 +207,7 @@ define <1 x i1> @fcmp_ole_fv_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_ole_fv_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -241,7 +241,7 @@ define <1 x i1> @fcmp_one_vf_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_one_vf_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v10, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v11, v8, v8
 ; CHECK-NEXT:    vmand.mm v9, v11, v10
@@ -262,7 +262,7 @@ define <1 x i1> @fcmp_one_fv_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_one_fv_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v10, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v11, v8, v8
 ; CHECK-NEXT:    vmand.mm v9, v10, v11
@@ -295,7 +295,7 @@ define <1 x i1> @fcmp_ord_vf_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_ord_vf_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, ma
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v8, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v8, v9
@@ -310,7 +310,7 @@ define <1 x i1> @fcmp_ord_fv_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_ord_fv_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, ma
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v8, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v8
@@ -343,7 +343,7 @@ define <1 x i1> @fcmp_ueq_vf_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_ueq_vf_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v10, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v11, v8, v8
 ; CHECK-NEXT:    vmand.mm v9, v11, v10
@@ -364,7 +364,7 @@ define <1 x i1> @fcmp_ueq_fv_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_ueq_fv_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v10, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v11, v8, v8
 ; CHECK-NEXT:    vmand.mm v9, v10, v11
@@ -399,7 +399,7 @@ define <1 x i1> @fcmp_ugt_vf_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_ugt_vf_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -416,7 +416,7 @@ define <1 x i1> @fcmp_ugt_fv_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_ugt_fv_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -447,7 +447,7 @@ define <1 x i1> @fcmp_uge_vf_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_uge_vf_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -464,7 +464,7 @@ define <1 x i1> @fcmp_uge_fv_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_uge_fv_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -495,7 +495,7 @@ define <1 x i1> @fcmp_ult_vf_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_ult_vf_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -512,7 +512,7 @@ define <1 x i1> @fcmp_ult_fv_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_ult_fv_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -543,7 +543,7 @@ define <1 x i1> @fcmp_ule_vf_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_ule_vf_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -560,7 +560,7 @@ define <1 x i1> @fcmp_ule_fv_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_ule_fv_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -623,7 +623,7 @@ define <1 x i1> @fcmp_uno_vf_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_uno_vf_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, ma
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfne.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfne.vv v8, v8, v8
 ; CHECK-NEXT:    vmor.mm v0, v8, v9
@@ -638,7 +638,7 @@ define <1 x i1> @fcmp_uno_fv_v1f16(<1 x half> %va, half %b) nounwind strictfp {
 ; CHECK-LABEL: fcmp_uno_fv_v1f16:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e16, mf4, ta, ma
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfne.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfne.vv v8, v8, v8
 ; CHECK-NEXT:    vmor.mm v0, v9, v8
@@ -4040,7 +4040,7 @@ define <1 x i1> @fcmp_ogt_vf_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_ogt_vf_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -4056,7 +4056,7 @@ define <1 x i1> @fcmp_ogt_fv_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_ogt_fv_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -4085,7 +4085,7 @@ define <1 x i1> @fcmp_oge_vf_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_oge_vf_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -4101,7 +4101,7 @@ define <1 x i1> @fcmp_oge_fv_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_oge_fv_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -4130,7 +4130,7 @@ define <1 x i1> @fcmp_olt_vf_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_olt_vf_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -4146,7 +4146,7 @@ define <1 x i1> @fcmp_olt_fv_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_olt_fv_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -4175,7 +4175,7 @@ define <1 x i1> @fcmp_ole_vf_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_ole_vf_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -4191,7 +4191,7 @@ define <1 x i1> @fcmp_ole_fv_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_ole_fv_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -4225,7 +4225,7 @@ define <1 x i1> @fcmp_one_vf_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_one_vf_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v10, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v11, v8, v8
 ; CHECK-NEXT:    vmand.mm v9, v11, v10
@@ -4246,7 +4246,7 @@ define <1 x i1> @fcmp_one_fv_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_one_fv_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v10, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v11, v8, v8
 ; CHECK-NEXT:    vmand.mm v9, v10, v11
@@ -4279,7 +4279,7 @@ define <1 x i1> @fcmp_ord_vf_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_ord_vf_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, ma
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v8, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v8, v9
@@ -4294,7 +4294,7 @@ define <1 x i1> @fcmp_ord_fv_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_ord_fv_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, ma
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v8, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v8
@@ -4327,7 +4327,7 @@ define <1 x i1> @fcmp_ueq_vf_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_ueq_vf_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v10, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v11, v8, v8
 ; CHECK-NEXT:    vmand.mm v9, v11, v10
@@ -4348,7 +4348,7 @@ define <1 x i1> @fcmp_ueq_fv_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_ueq_fv_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v10, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v11, v8, v8
 ; CHECK-NEXT:    vmand.mm v9, v10, v11
@@ -4383,7 +4383,7 @@ define <1 x i1> @fcmp_ugt_vf_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_ugt_vf_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -4400,7 +4400,7 @@ define <1 x i1> @fcmp_ugt_fv_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_ugt_fv_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -4431,7 +4431,7 @@ define <1 x i1> @fcmp_uge_vf_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_uge_vf_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -4448,7 +4448,7 @@ define <1 x i1> @fcmp_uge_fv_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_uge_fv_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -4479,7 +4479,7 @@ define <1 x i1> @fcmp_ult_vf_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_ult_vf_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -4496,7 +4496,7 @@ define <1 x i1> @fcmp_ult_fv_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_ult_fv_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -4527,7 +4527,7 @@ define <1 x i1> @fcmp_ule_vf_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_ule_vf_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -4544,7 +4544,7 @@ define <1 x i1> @fcmp_ule_fv_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_ule_fv_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -4607,7 +4607,7 @@ define <1 x i1> @fcmp_uno_vf_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_uno_vf_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, ma
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfne.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfne.vv v8, v8, v8
 ; CHECK-NEXT:    vmor.mm v0, v8, v9
@@ -4622,7 +4622,7 @@ define <1 x i1> @fcmp_uno_fv_v1f32(<1 x float> %va, float %b) nounwind strictfp 
 ; CHECK-LABEL: fcmp_uno_fv_v1f32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e32, mf2, ta, ma
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfne.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfne.vv v8, v8, v8
 ; CHECK-NEXT:    vmor.mm v0, v9, v8
@@ -7337,7 +7337,7 @@ define <1 x i1> @fcmp_ogt_vf_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_ogt_vf_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -7353,7 +7353,7 @@ define <1 x i1> @fcmp_ogt_fv_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_ogt_fv_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -7382,7 +7382,7 @@ define <1 x i1> @fcmp_oge_vf_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_oge_vf_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -7398,7 +7398,7 @@ define <1 x i1> @fcmp_oge_fv_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_oge_fv_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -7427,7 +7427,7 @@ define <1 x i1> @fcmp_olt_vf_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_olt_vf_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -7443,7 +7443,7 @@ define <1 x i1> @fcmp_olt_fv_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_olt_fv_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -7472,7 +7472,7 @@ define <1 x i1> @fcmp_ole_vf_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_ole_vf_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -7488,7 +7488,7 @@ define <1 x i1> @fcmp_ole_fv_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_ole_fv_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -7522,7 +7522,7 @@ define <1 x i1> @fcmp_one_vf_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_one_vf_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v10, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v11, v8, v8
 ; CHECK-NEXT:    vmand.mm v9, v11, v10
@@ -7543,7 +7543,7 @@ define <1 x i1> @fcmp_one_fv_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_one_fv_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v10, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v11, v8, v8
 ; CHECK-NEXT:    vmand.mm v9, v10, v11
@@ -7576,7 +7576,7 @@ define <1 x i1> @fcmp_ord_vf_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_ord_vf_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, ma
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v8, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v8, v9
@@ -7591,7 +7591,7 @@ define <1 x i1> @fcmp_ord_fv_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_ord_fv_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, ma
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v8, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v8
@@ -7624,7 +7624,7 @@ define <1 x i1> @fcmp_ueq_vf_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_ueq_vf_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v10, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v11, v8, v8
 ; CHECK-NEXT:    vmand.mm v9, v11, v10
@@ -7645,7 +7645,7 @@ define <1 x i1> @fcmp_ueq_fv_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_ueq_fv_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v10, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v11, v8, v8
 ; CHECK-NEXT:    vmand.mm v9, v10, v11
@@ -7680,7 +7680,7 @@ define <1 x i1> @fcmp_ugt_vf_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_ugt_vf_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -7697,7 +7697,7 @@ define <1 x i1> @fcmp_ugt_fv_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_ugt_fv_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -7728,7 +7728,7 @@ define <1 x i1> @fcmp_uge_vf_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_uge_vf_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -7745,7 +7745,7 @@ define <1 x i1> @fcmp_uge_fv_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_uge_fv_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -7776,7 +7776,7 @@ define <1 x i1> @fcmp_ult_vf_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_ult_vf_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -7793,7 +7793,7 @@ define <1 x i1> @fcmp_ult_fv_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_ult_fv_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -7824,7 +7824,7 @@ define <1 x i1> @fcmp_ule_vf_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_ule_vf_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v9, v10
@@ -7841,7 +7841,7 @@ define <1 x i1> @fcmp_ule_fv_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_ule_fv_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, mu
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfeq.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfeq.vv v10, v8, v8
 ; CHECK-NEXT:    vmand.mm v0, v10, v9
@@ -7904,7 +7904,7 @@ define <1 x i1> @fcmp_uno_vf_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_uno_vf_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, ma
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfne.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfne.vv v8, v8, v8
 ; CHECK-NEXT:    vmor.mm v0, v8, v9
@@ -7919,7 +7919,7 @@ define <1 x i1> @fcmp_uno_fv_v1f64(<1 x double> %va, double %b) nounwind strictf
 ; CHECK-LABEL: fcmp_uno_fv_v1f64:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 1, e64, m1, ta, ma
-; CHECK-NEXT:    vfmv.v.f v9, fa0
+; CHECK-NEXT:    vfmv.s.f v9, fa0
 ; CHECK-NEXT:    vmfne.vf v9, v9, fa0
 ; CHECK-NEXT:    vmfne.vv v8, v8, v8
 ; CHECK-NEXT:    vmor.mm v0, v9, v8

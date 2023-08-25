@@ -2956,7 +2956,10 @@ bool RISCVDAGToDAGISel::selectVLOp(SDValue N, SDValue &VL) {
 }
 
 bool RISCVDAGToDAGISel::selectVSplat(SDValue N, SDValue &SplatVal) {
-  if (N.getOpcode() != RISCVISD::VMV_V_X_VL || !N.getOperand(0).isUndef())
+  if (N.getOpcode() != RISCVISD::VMV_V_X_VL &&
+      N.getOpcode() != RISCVISD::VMV_S_X_VL)
+    return false;
+  if (!N.getOperand(0).isUndef())
     return false;
   assert(N.getNumOperands() == 3 && "Unexpected number of operands");
   SplatVal = N.getOperand(1);
@@ -2965,17 +2968,25 @@ bool RISCVDAGToDAGISel::selectVSplat(SDValue N, SDValue &SplatVal) {
 
 using ValidateFn = bool (*)(int64_t);
 
+static bool selectVSplatImmHelper(SDValue N, int64_t &SplatImm) {
+  if (N.getOpcode() != RISCVISD::VMV_V_X_VL &&
+      N.getOpcode() != RISCVISD::VMV_S_X_VL)
+    return false;
+  if (!N.getOperand(0).isUndef() || !isa<ConstantSDNode>(N.getOperand(1)))
+    return false;
+  assert(N.getNumOperands() == 3 && "Unexpected number of operands");
+
+  SplatImm = cast<ConstantSDNode>(N.getOperand(1))->getSExtValue();
+  return true;
+}
+
 static bool selectVSplatSimmHelper(SDValue N, SDValue &SplatVal,
                                    SelectionDAG &DAG,
                                    const RISCVSubtarget &Subtarget,
                                    ValidateFn ValidateImm) {
-  if (N.getOpcode() != RISCVISD::VMV_V_X_VL || !N.getOperand(0).isUndef() ||
-      !isa<ConstantSDNode>(N.getOperand(1)))
+  int64_t SplatImm;
+  if (!selectVSplatImmHelper(N, SplatImm))
     return false;
-  assert(N.getNumOperands() == 3 && "Unexpected number of operands");
-
-  int64_t SplatImm =
-      cast<ConstantSDNode>(N.getOperand(1))->getSExtValue();
 
   // The semantics of RISCVISD::VMV_V_X_VL is that when the operand
   // type is wider than the resulting vector element type: an implicit
@@ -3019,12 +3030,9 @@ bool RISCVDAGToDAGISel::selectVSplatSimm5Plus1NonZero(SDValue N,
 
 bool RISCVDAGToDAGISel::selectVSplatUimm(SDValue N, unsigned Bits,
                                          SDValue &SplatVal) {
-  if (N.getOpcode() != RISCVISD::VMV_V_X_VL || !N.getOperand(0).isUndef() ||
-      !isa<ConstantSDNode>(N.getOperand(1)))
+  int64_t SplatImm;
+  if (!selectVSplatImmHelper(N, SplatImm))
     return false;
-
-  int64_t SplatImm =
-      cast<ConstantSDNode>(N.getOperand(1))->getSExtValue();
 
   if (!isUIntN(Bits, SplatImm))
     return false;
