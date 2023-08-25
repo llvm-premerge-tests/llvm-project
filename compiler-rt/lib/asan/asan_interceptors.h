@@ -120,9 +120,10 @@ void InitializePlatformInterceptors();
 # define ASAN_INTERCEPT_TRYJOIN 0
 #endif
 
-#if SANITIZER_LINUX &&                                                \
-    (defined(__arm__) || defined(__aarch64__) || defined(__i386__) || \
-     defined(__x86_64__) || SANITIZER_RISCV64 || SANITIZER_LOONGARCH64)
+#if SANITIZER_LINUX &&                                                    \
+    (defined(__arm__) || defined(__aarch64__) || defined(__i386__) ||     \
+     defined(__x86_64__) || SANITIZER_RISCV64 || SANITIZER_LOONGARCH64 || \
+     defined(__mips))
 # define ASAN_INTERCEPT_VFORK 1
 #else
 # define ASAN_INTERCEPT_VFORK 0
