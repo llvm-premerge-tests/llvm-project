@@ -56,3 +56,99 @@ TEST(LlvmLibcArgListTest, CopyConstructor) {
   ASSERT_EQ(sum_two_nums(3, 5, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024),
             40);
 }
+
+long int check_primitives(int first, ...) {
+  va_list vlist;
+  va_start(vlist, first);
+  __llvm_libc::internal::ArgList args(vlist);
+  va_end(vlist);
+
+  long int count = 0;
+  count += args.next_var<int>();
+  count += args.next_var<int>();
+  count += args.next_var<int>();
+  count += args.next_var<long>();
+  count += args.next_var<long>();
+  count += args.next_var<intmax_t>();
+  count += args.next_var<size_t>();
+  count += args.next_var<ptrdiff_t>();
+  count += args.next_var<double>();
+  count += args.next_var<double>();
+  count += args.next_var<long double>();
+  count += *args.next_var<int *>();
+  return count;
+}
+
+TEST(LlvmLibcArgListTest, TestPrimitiveTypes) {
+  char c = '\x01';
+  short s = 2;
+  int i = 3;
+  long l = 4l;
+  long long ll = 5ll;
+  intmax_t m = 6ll;
+  size_t st = 7ll;
+  ptrdiff_t pt = 8ll;
+  float f = 9.0f;
+  double d = 10.0;
+  long double ld = 11.0L;
+  long v = 12;
+  void *p = &v;
+  ASSERT_EQ(check_primitives(0, c, s, i, l, ll, m, st, pt, f, d, ld, p), 78l);
+}
+
+struct S {
+  char c;
+  short s;
+  int i;
+  long l;
+  float f;
+  double d;
+};
+
+long int check_struct_type(int first, ...) {
+  va_list vlist;
+  va_start(vlist, first);
+  __llvm_libc::internal::ArgList args(vlist);
+  va_end(vlist);
+
+  S s = args.next_var<S>();
+  int last = args.next_var<int>();
+  return s.c + s.s + s.i + s.l + s.f + s.d + last;
+}
+
+TEST(LlvmLibcArgListTest, TestStructTypes) {
+  S s{'\x1', 2, 3, 4l, 5.0f, 6.0};
+  ASSERT_EQ(check_struct_type(0, s, 1), 22l);
+}
+
+// Test vector extensions from clang.
+#if LIBC_HAS_ATTRIBUTE(ext_vector_type)
+
+using int1 = int __attribute__((ext_vector_type(1)));
+using int2 = int __attribute__((ext_vector_type(2)));
+using int3 = int __attribute__((ext_vector_type(3)));
+using int4 = int __attribute__((ext_vector_type(4)));
+
+int check_vector_type(int first, ...) {
+  va_list vlist;
+  va_start(vlist, first);
+  __llvm_libc::internal::ArgList args(vlist);
+  va_end(vlist);
+
+  int1 v1 = args.next_var<int1>();
+  int2 v2 = args.next_var<int2>();
+  int3 v3 = args.next_var<int3>();
+  int4 v4 = args.next_var<int4>();
+
+  return v1.x + v2.x + v2.y + v3.x + v3.y + v3.z + v4.x + v4.y + v4.z + v4.w;
+}
+
+TEST(LlvmLibcArgListTest, TestVectorTypes) {
+  int1 v1 = {1};
+  int2 v2 = {1, 2};
+  int3 v3 = {1, 2, 3};
+  int4 v4 = {1, 2, 3, 4};
+  ASSERT_EQ(check_vector_type(0, v1, v2, v3, v4), 20);
+}
+
+#endif
