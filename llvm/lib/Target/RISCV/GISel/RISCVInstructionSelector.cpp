@@ -46,6 +46,8 @@ private:
                            bool GetAllRegSet = false) const;
 
   bool selectImpl(MachineInstr &I, CodeGenCoverage &CoverageInfo) const;
+  bool selectCmp(MachineInstr &MI, MachineIRBuilder &MIB,
+                 MachineRegisterInfo &MRI) const;
   bool selectCopy(MachineInstr &MI, MachineRegisterInfo &MRI) const;
   bool selectConstant(MachineInstr &MI, MachineIRBuilder &MIB,
                       MachineRegisterInfo &MRI) const;
@@ -117,6 +119,20 @@ bool RISCVInstructionSelector::select(MachineInstr &MI) {
     if (!selectConstant(MI, MIB, MRI))
       return false;
     break;
+  case TargetOpcode::G_IMPLICIT_DEF: {
+    MI.setDesc(TII.get(TargetOpcode::IMPLICIT_DEF));
+    const LLT DstTy = MRI.getType(MI.getOperand(0).getReg());
+    const Register DstReg = MI.getOperand(0).getReg();
+    const RegisterBank &DstRB = *RBI.getRegBank(DstReg, MRI, TRI);
+    const TargetRegisterClass *DstRC = getRegClassForTypeOnBank(DstTy, DstRB);
+    RBI.constrainGenericRegister(DstReg, *DstRC, MRI);
+    return true;
+  }
+  case TargetOpcode::G_ICMP: {
+    if (!selectCmp(MI, MIB, MRI))
+      return false;
+    break;
+  }
   default:
     return false;
   }
@@ -135,6 +151,141 @@ const TargetRegisterClass *RISCVInstructionSelector::getRegClassForTypeOnBank(
 
   // TODO: Non-GPR register classes.
   return nullptr;
+}
+
+bool RISCVInstructionSelector::selectCmp(MachineInstr &MI,
+                                         MachineIRBuilder &MIB,
+                                         MachineRegisterInfo &MRI) const {
+  if (MI.getOpcode() != TargetOpcode::G_ICMP)
+    return false;
+
+  Register DstReg = MI.getOperand(0).getReg();
+  const CmpInst::Predicate Pred =
+      static_cast<CmpInst::Predicate>(MI.getOperand(1).getPredicate());
+  Register SrcReg1 = MI.getOperand(2).getReg();
+  Register SrcReg2 = MI.getOperand(3).getReg();
+
+  // Check if there's an immediate
+  bool HasImm = false;
+  int64_t Imm;
+  const MachineInstr *Src2 = MRI.getVRegDef(SrcReg2);
+  if (Src2->getOpcode() == TargetOpcode::G_CONSTANT) {
+    Imm = Src2->getOperand(1).getCImm()->getSExtValue();
+    HasImm = isInt<12>(Imm);
+  }
+
+  auto buildLT = [&MIB, this](Register DstReg, Register SrcReg1,
+                              Register SrcReg2, bool IsSigned) {
+    MachineInstr *Result = MIB.buildInstr(IsSigned ? RISCV::SLT : RISCV::SLTU)
+                               .addDef(DstReg)
+                               .addReg(SrcReg1)
+                               .addReg(SrcReg2);
+    return constrainSelectedInstRegOperands(*Result, TII, TRI, RBI);
+  };
+
+  auto buildLTImm = [&MIB, this](Register DstReg, Register SrcReg, int64_t Imm,
+                                 bool IsSigned) {
+    MachineInstr *Result = MIB.buildInstr(IsSigned ? RISCV::SLTI : RISCV::SLTIU)
+                               .addDef(DstReg)
+                               .addReg(SrcReg)
+                               .addImm(Imm);
+    return constrainSelectedInstRegOperands(*Result, TII, TRI, RBI);
+  };
+
+  auto buildNOT = [&MIB, this](Register DstReg, Register SrcReg) {
+    MachineInstr *Result =
+        MIB.buildInstr(RISCV::XORI).addDef(DstReg).addReg(SrcReg).addImm(1);
+    errs() << "THERE\n";
+    return constrainSelectedInstRegOperands(*Result, TII, TRI, RBI);
+  };
+
+  auto buildSUBI = [&MIB, this](Register DstReg, Register SrcReg, int64_t Imm) {
+    MachineInstr *Result = MIB.buildInstr(RISCV::ADDI)
+                               .addDef(DstReg)
+                               .addReg(SrcReg)
+                               .addImm(Imm - 1);
+    return constrainSelectedInstRegOperands(*Result, TII, TRI, RBI);
+  };
+
+  auto buildXOR = [&MIB, this](Register DstReg, Register SrcReg1,
+                               Register SrcReg2) {
+    MachineInstr *Result = MIB.buildInstr(RISCV::XOR)
+                               .addDef(DstReg)
+                               .addReg(SrcReg1)
+                               .addReg(SrcReg2);
+    return constrainSelectedInstRegOperands(*Result, TII, TRI, RBI);
+  };
+
+  switch (Pred) {
+  case CmpInst::Predicate::ICMP_UGT:
+  case CmpInst::Predicate::ICMP_SGT: {
+    bool IsSigned = Pred == CmpInst::Predicate::ICMP_SGT;
+    Register TmpReg = MRI.createVirtualRegister(&RISCV::GPRRegClass);
+
+    if (!HasImm && !buildLT(DstReg, SrcReg2, SrcReg1, IsSigned))
+      return false;
+
+    if (!HasImm)
+      break;
+
+    if (!buildLTImm(TmpReg, SrcReg1, Imm + 1, IsSigned))
+      return false;
+
+    if (!buildNOT(DstReg, TmpReg))
+      return false;
+
+    break;
+  }
+  case CmpInst::Predicate::ICMP_EQ:
+  case CmpInst::Predicate::ICMP_NE: {
+    bool IsEQ = Pred == CmpInst::Predicate::ICMP_EQ;
+    Register TmpReg = MRI.createVirtualRegister(&RISCV::GPRRegClass);
+
+    if (!HasImm && !buildXOR(TmpReg, SrcReg1, SrcReg2))
+      return false;
+
+    if (HasImm && !Imm)
+      TmpReg = SrcReg1;
+
+    if (HasImm && Imm && !buildSUBI(TmpReg, SrcReg1, Imm))
+      return false;
+
+    if (IsEQ && !buildLTImm(DstReg, TmpReg, 1, /* IsSigned */ false))
+      return false;
+
+    if (!IsEQ && !buildLT(DstReg, RISCV::X0, TmpReg, /* IsSigned */ false))
+      return false;
+
+    break;
+  }
+  case CmpInst::Predicate::ICMP_ULE:
+  case CmpInst::Predicate::ICMP_SLE:
+  case CmpInst::Predicate::ICMP_UGE:
+  case CmpInst::Predicate::ICMP_SGE: {
+    bool IsSigned = Pred == CmpInst::Predicate::ICMP_SLE ||
+                    Pred == CmpInst::Predicate::ICMP_SGE;
+    bool IsLE = Pred == CmpInst::Predicate::ICMP_ULE ||
+                Pred == CmpInst::Predicate::ICMP_SLE;
+    Register TmpReg = MRI.createVirtualRegister(&RISCV::GPRRegClass);
+
+    if (!IsLE)
+      std::swap(SrcReg1, SrcReg2);
+
+    if (!buildLT(TmpReg, SrcReg1, SrcReg2, IsSigned))
+      return false;
+
+    if (!buildNOT(DstReg, TmpReg))
+      return false;
+
+    errs() << "HERE\n";
+
+    break;
+  }
+  default:
+    llvm_unreachable("Not handled pred!");
+  }
+
+  return true;
 }
 
 bool RISCVInstructionSelector::selectCopy(MachineInstr &MI,
