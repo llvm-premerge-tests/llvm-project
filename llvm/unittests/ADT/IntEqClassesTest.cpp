@@ -103,4 +103,17 @@ TEST(IntEqClasses, Simple) {
   EXPECT_EQ(0u, ec.findLeader(9));
 }
 
+TEST(IntEqClasses, JoinReturnsLeader) {
+  IntEqClasses ec(10);
+  EXPECT_EQ(1u, ec.join(1, 2));
+  EXPECT_EQ(1u, ec.join(1, 3));
+  EXPECT_EQ(0u, ec.join(0, 1));
+  EXPECT_EQ(0u, ec.findLeader(1));
+  // At this point, EC[2] = EC[3] = 1, but EC[1] = 0. Be sure that trying to
+  // join EC[2] and EC[3] returns the correct leader, 0, and not their common
+  // node 1.
+  EXPECT_EQ(0u, ec.join(2, 3));
+  EXPECT_EQ(0u, ec.findLeader(2));
+}
+
 } // end anonymous namespace

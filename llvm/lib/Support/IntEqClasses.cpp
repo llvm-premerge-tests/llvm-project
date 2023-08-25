@@ -47,6 +47,9 @@ unsigned IntEqClasses::join(unsigned a, unsigned b) {
       eca = EC[a];
     }
 
+  // Make sure that eca is actually the leader of the equivalence class (this
+  // can happen if a and b were already in the same equivalence class).
+  eca = findLeader(eca);
   return eca;
 }
 
