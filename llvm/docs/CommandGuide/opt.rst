@@ -97,6 +97,11 @@ OPTIONS
 
  Print all available passes and exit.
 
+.. option:: -strip-optnone
+
+ Strips the ``optnone`` attribute from all functions in the loaded module which
+ allows for function passes to run over all functions within the module.
+
 EXIT STATUS
 -----------
 

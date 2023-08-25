@@ -280,6 +280,10 @@ static cl::list<std::string>
     PassPlugins("load-pass-plugin",
                 cl::desc("Load passes from plugin library"));
 
+static cl::opt<bool> StripOptnone(
+    "strip-optnone",
+    cl::desc("Strip the optnone attribute from all functions in the module."));
+
 //===----------------------------------------------------------------------===//
 // CodeGen-related helper functions.
 //
@@ -539,6 +543,12 @@ int main(int argc, char **argv) {
   if (!M) {
     Err.print(argv[0], errs());
     return 1;
+  }
+
+  if (StripOptnone) {
+    for (Function &F : *M) {
+      F.removeFnAttr(Attribute::AttrKind::OptimizeNone);
+    }
   }
 
   // Strip debug info before running the verifier.
