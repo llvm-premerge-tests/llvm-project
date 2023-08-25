@@ -18,7 +18,10 @@
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/ConstraintSystem.h"
 #include "llvm/Analysis/GlobalsModRef.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
+#include "llvm/Analysis/ScalarEvolution.h"
+#include "llvm/Analysis/ScalarEvolutionExpressions.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/Dominators.h"
@@ -104,6 +107,10 @@ struct FactOrCheck {
     Use *U;
     ConditionTy Cond;
   };
+  /// A pre-condition that must hold for the current fact to be added to the
+  /// system.
+  ConditionTy DoesHold;
+
   unsigned NumIn;
   unsigned NumOut;
   bool HasInst;
@@ -111,26 +118,32 @@ struct FactOrCheck {
   bool HasCond = false;
 
   FactOrCheck(DomTreeNode *DTN, Instruction *Inst, bool Not)
-      : Inst(Inst), NumIn(DTN->getDFSNumIn()), NumOut(DTN->getDFSNumOut()),
-        HasInst(true), Not(Not) {}
+      : Inst(Inst), DoesHold(CmpInst::BAD_ICMP_PREDICATE, nullptr, nullptr),
+        NumIn(DTN->getDFSNumIn()), NumOut(DTN->getDFSNumOut()), HasInst(true),
+        Not(Not) {}
 
   FactOrCheck(DomTreeNode *DTN, Use *U)
-      : U(U), NumIn(DTN->getDFSNumIn()), NumOut(DTN->getDFSNumOut()),
-        HasInst(false), Not(false) {}
+      : U(U), DoesHold(CmpInst::BAD_ICMP_PREDICATE, nullptr, nullptr),
+        NumIn(DTN->getDFSNumIn()), NumOut(DTN->getDFSNumOut()), HasInst(false),
+        Not(false) {}
 
-  FactOrCheck(DomTreeNode *DTN, CmpInst::Predicate Pred, Value *Op0, Value *Op1)
-      : Cond(Pred, Op0, Op1), NumIn(DTN->getDFSNumIn()),
-        NumOut(DTN->getDFSNumOut()), HasInst(false), Not(false), HasCond(true) {
-  }
+  FactOrCheck(DomTreeNode *DTN, CmpInst::Predicate Pred, Value *Op0, Value *Op1,
+              CmpInst::Predicate PrecondPred = CmpInst::BAD_ICMP_PREDICATE,
+              Value *PrecondA = nullptr, Value *PrecondB = nullptr)
+      : Cond(Pred, Op0, Op1), DoesHold(PrecondPred, PrecondA, PrecondB),
+        NumIn(DTN->getDFSNumIn()), NumOut(DTN->getDFSNumOut()), HasInst(false),
+        Not(false), HasCond(true) {}
 
   static FactOrCheck getFact(DomTreeNode *DTN, Instruction *Inst,
                              bool Not = false) {
     return FactOrCheck(DTN, Inst, Not);
   }
 
-  static FactOrCheck getFact(DomTreeNode *DTN, CmpInst::Predicate Pred,
-                             Value *Op0, Value *Op1) {
-    return FactOrCheck(DTN, Pred, Op0, Op1);
+  static FactOrCheck
+  getFact(DomTreeNode *DTN, CmpInst::Predicate Pred, Value *Op0, Value *Op1,
+          CmpInst::Predicate PrecondPred = CmpInst::BAD_ICMP_PREDICATE,
+          Value *PrecondA = nullptr, Value *PrecondB = nullptr) {
+    return FactOrCheck(DTN, Pred, Op0, Op1, PrecondPred, PrecondA, PrecondB);
   }
 
   static FactOrCheck getCheck(DomTreeNode *DTN, Use *U) {
@@ -167,12 +180,19 @@ struct FactOrCheck {
 /// Keep state required to build worklist.
 struct State {
   DominatorTree &DT;
+  LoopInfo &LI;
+  ScalarEvolution &SE;
   SmallVector<FactOrCheck, 64> WorkList;
 
-  State(DominatorTree &DT) : DT(DT) {}
+  State(DominatorTree &DT, LoopInfo &LI, ScalarEvolution &SE)
+      : DT(DT), LI(LI), SE(SE) {}
 
   /// Process block \p BB and add known facts to work-list.
   void addInfoFor(BasicBlock &BB);
+
+  /// Try to add facts for loop inductions (AddRecs) in EQ/NE compares
+  /// controlling the loop header.
+  void addInfoForInductions(BasicBlock &BB);
 
   /// Returns true if we can add a known condition from BB to its successor
   /// block Succ.
@@ -777,7 +797,112 @@ static void dumpConstraint(ArrayRef<int64_t> C,
 }
 #endif
 
+void State::addInfoForInductions(BasicBlock &BB) {
+  auto *L = LI.getLoopFor(&BB);
+  if (!L || L->getHeader() != &BB)
+    return;
+
+  Value *A;
+  Value *B;
+  CmpInst::Predicate Pred;
+
+  if (!match(BB.getTerminator(),
+             m_Br(m_ICmp(Pred, m_Value(A), m_Value(B)), m_Value(), m_Value())))
+    return;
+  PHINode *PN = dyn_cast<PHINode>(A);
+  if (!PN) {
+    std::swap(A, B);
+    PN = dyn_cast<PHINode>(A);
+  }
+
+  if (!PN || PN->getParent() != &BB || PN->getNumIncomingValues() != 2 ||
+      !SE.isSCEVable(PN->getType()))
+    return;
+
+  BasicBlock *Succ = nullptr;
+  if (Pred == CmpInst::ICMP_NE)
+    Succ = cast<BranchInst>(BB.getTerminator())->getSuccessor(0);
+  else if (Pred == CmpInst::ICMP_EQ)
+    Succ = cast<BranchInst>(BB.getTerminator())->getSuccessor(1);
+  else
+    return;
+
+  if (!L->contains(Succ) || !L->isLoopExiting(&BB) || Succ == &BB)
+    return;
+
+  auto *AR = dyn_cast_or_null<SCEVAddRecExpr>(SE.getSCEV(PN));
+  if (!AR)
+    return;
+
+  const SCEV *StartSCEV = AR->getStart();
+  Value *StartValue = nullptr;
+  if (auto *C = dyn_cast<SCEVConstant>(StartSCEV))
+    StartValue = C->getValue();
+  else if (auto *U = dyn_cast<SCEVUnknown>(StartSCEV))
+    StartValue = U->getValue();
+
+  if (!StartValue)
+    return;
+
+  Type *StepTy = AR->getType();
+  const DataLayout &DL = BB.getModule()->getDataLayout();
+  unsigned BitWidth = StepTy->isPointerTy() ? DL.getIndexTypeSizeInBits(StepTy)
+                                            : StepTy->getScalarSizeInBits();
+  APInt StepOffset(BitWidth, 0);
+  if (auto *C = dyn_cast<SCEVConstant>(AR->getStepRecurrence(SE)))
+    StepOffset = C->getAPInt();
+  else
+    return;
+
+  // Make sure AR either steps by 1 or that the value we compare against is a
+  // GEP based on the same start value and all offsets are a multiple of the
+  // step size, to guarantee that the induction will reach the value.
+  if (StepOffset.isZero() || StepOffset.isNegative())
+    return;
+
+  if (!StepOffset.isOne()) {
+    auto *UpperGEP = dyn_cast<GetElementPtrInst>(B);
+    if (!UpperGEP || UpperGEP->getPointerOperand() != StartValue ||
+        !UpperGEP->isInBounds())
+      return;
+
+    MapVector<Value *, APInt> UpperVariableOffsets;
+    APInt UpperConstantOffset(BitWidth, 0);
+    if (!UpperGEP->collectOffset(DL, BitWidth, UpperVariableOffsets,
+                                 UpperConstantOffset))
+      return;
+    // All variable offsets and the constant offset have to be a multiple of the
+    // step.
+    if (!UpperConstantOffset.urem(StepOffset).isZero() ||
+        any_of(UpperVariableOffsets, [&StepOffset](const auto &P) {
+          return !P.second.urem(StepOffset).isZero();
+        }))
+      return;
+  }
+
+  auto *DTN = DT.getNode(Succ);
+  auto Inc = SE.getMonotonicPredicateType(AR, CmpInst::ICMP_UGT);
+  if (Inc && *Inc == ScalarEvolution::MonotonicallyIncreasing) {
+    // SCEV guarantees that AR does not wrap, so PN >= StartValue can be added
+    // unconditionally.
+    // TODO: Extend to allow steps > 1.
+    WorkList.push_back(
+        FactOrCheck::getFact(DTN, CmpInst::ICMP_UGE, PN, StartValue));
+  } else {
+    // AR may wrap. Add PN >= StartValue conditional on StartValue <= B which
+    // guarantees that the loop exits before wrapping in combination with the
+    // restrictions on B and the step above.
+    WorkList.push_back(FactOrCheck::getFact(DTN, CmpInst::ICMP_UGE, PN,
+                                            StartValue, CmpInst::ICMP_ULE,
+                                            StartValue, B));
+  }
+  WorkList.push_back(FactOrCheck::getFact(DTN, CmpInst::ICMP_ULT, PN, B,
+                                          CmpInst::ICMP_ULE, StartValue, B));
+}
+
 void State::addInfoFor(BasicBlock &BB) {
+  addInfoForInductions(BB);
+
   // True as long as long as the current instruction is guaranteed to execute.
   bool GuaranteedToExecute = true;
   // Queue conditions and assumes.
@@ -1142,6 +1267,7 @@ static bool checkAndSecondOpImpliedByFirst(
     FactOrCheck &CB, ConstraintInfo &Info, Module *ReproducerModule,
     SmallVectorImpl<ReproducerEntry> &ReproducerCondStack,
     SmallVectorImpl<StackEntry> &DFSInStack) {
+
   CmpInst::Predicate Pred;
   Value *A, *B;
   Instruction *And = CB.getContextInst();
@@ -1285,7 +1411,8 @@ tryToSimplifyOverflowMath(IntrinsicInst *II, ConstraintInfo &Info,
   return Changed;
 }
 
-static bool eliminateConstraints(Function &F, DominatorTree &DT,
+static bool eliminateConstraints(Function &F, DominatorTree &DT, LoopInfo &LI,
+                                 ScalarEvolution &SE,
                                  OptimizationRemarkEmitter &ORE) {
   bool Changed = false;
   DT.updateDFSNumbers();
@@ -1293,7 +1420,7 @@ static bool eliminateConstraints(Function &F, DominatorTree &DT,
   for (Value &Arg : F.args())
     FunctionArgs.push_back(&Arg);
   ConstraintInfo Info(F.getParent()->getDataLayout(), FunctionArgs);
-  State S(DT);
+  State S(DT, LI, SE);
   std::unique_ptr<Module> ReproducerModule(
       DumpReproducers ? new Module(F.getName(), F.getContext()) : nullptr);
 
@@ -1391,6 +1518,10 @@ static bool eliminateConstraints(Function &F, DominatorTree &DT,
     }
 
     auto AddFact = [&](CmpInst::Predicate Pred, Value *A, Value *B) {
+      LLVM_DEBUG(dbgs() << "fact to add to the system: "
+                        << CmpInst::getPredicateName(Pred) << " ";
+                 A->printAsOperand(dbgs()); dbgs() << ", ";
+                 B->printAsOperand(dbgs()); dbgs() << "\n");
       if (Info.getCS(CmpInst::isSigned(Pred)).size() > MaxRows) {
         LLVM_DEBUG(
             dbgs()
@@ -1439,6 +1570,9 @@ static bool eliminateConstraints(Function &F, DominatorTree &DT,
       Pred = CB.Cond.Pred;
       A = CB.Cond.Op0;
       B = CB.Cond.Op1;
+      if (CB.DoesHold.Pred != CmpInst::BAD_ICMP_PREDICATE &&
+          !Info.doesHold(CB.DoesHold.Pred, CB.DoesHold.Op0, CB.DoesHold.Op1))
+        continue;
     } else {
       Value *Cmp = CB.Inst;
       match(Cmp, m_Intrinsic<Intrinsic::assume>(m_Value(Cmp)));
@@ -1479,12 +1613,16 @@ static bool eliminateConstraints(Function &F, DominatorTree &DT,
 PreservedAnalyses ConstraintEliminationPass::run(Function &F,
                                                  FunctionAnalysisManager &AM) {
   auto &DT = AM.getResult<DominatorTreeAnalysis>(F);
+  auto &LI = AM.getResult<LoopAnalysis>(F);
+  auto &SE = AM.getResult<ScalarEvolutionAnalysis>(F);
   auto &ORE = AM.getResult<OptimizationRemarkEmitterAnalysis>(F);
-  if (!eliminateConstraints(F, DT, ORE))
+  if (!eliminateConstraints(F, DT, LI, SE, ORE))
     return PreservedAnalyses::all();
 
   PreservedAnalyses PA;
   PA.preserve<DominatorTreeAnalysis>();
+  PA.preserve<LoopAnalysis>();
+  PA.preserve<ScalarEvolutionAnalysis>();
   PA.preserveSet<CFGAnalyses>();
   return PA;
 }
