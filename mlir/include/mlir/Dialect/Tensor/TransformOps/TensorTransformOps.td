@@ -157,4 +157,72 @@ def MakeLoopIndependentOp
   }];
 }
 
+def ShareForallOperandsOp : Op<Transform_Dialect, "share_forall_operands",
+  [FunctionalStyleTransformOpTrait, MemoryEffectsOpInterface,
+   TransformEachOpTrait, TransformOpInterface,
+   ReportTrackingListenerFailuresOpTrait]> {
+  let description = [{
+    Target a single scf.forall op and shares all uses of the specified
+    `share_operands` operand indices.
+
+    Sharing can be thought of as the inverse of traditional privatization.
+    Privatization consists in determining that a part of memory is only accessed
+    by a single thread to and subsequently slicing out that part into a
+    thread_private storage that has smaller footprint, better locality and better
+    alignment properties.
+    In the case of scf.forall on tensors, tensor values are immutable
+    and the same tensor value may be passed as `shared_outs` and also captured
+    for internal uses.
+    Due to the immutability property, the whole tensor values are private by
+    construction and result in alloc + copy of the whole tensor on every thread
+    to maintain the original SSA value after bufferizing.
+
+    An analysis similar to privatization is needed to ensure that only a private
+    slice is needed and that the whole tensor can be shared.
+    This transformation amounts to injecting the result of such an analysis as
+    static information in the program.
+    The transformation checks that the values captured are `tensor.extract_slice`
+    with a matching `tensor.parallel_insert_slice`, to approximate the lack of
+    a cross-thread dependence analysis.
+    However this can still be unsafe wrt parallelism so use carefully!
+
+    Sharing consists in rewriting all uses of the operands passed as
+    `shared_outs` that are also captured wihtin the `scf.forall` region
+    into the matching `shared_outs` bbarg.
+
+    Only those operands whose indices are specified in `share_operands` are
+    shared. An empty `share_operands` specification considers all operands to
+    be shared.
+
+    #### Return modes
+
+    If any of the `share_operands` indices overflow, a definite error is produced.
+
+    If a `share_operands` fails a sharing precondition, it is ignored.
+    In the future, we should emit a notification.
+
+    This transform consumes the target handle and produces a result handle to
+    the modified `scf.forall` op.
+  }];
+
+  let arguments = (
+      ins TransformHandleTypeInterface:$forall_op,
+          DefaultValuedOptionalAttr<DenseI64ArrayAttr, "{}">:$share_operands
+  );
+  let results = (outs TransformHandleTypeInterface:$result);
+
+  let assemblyFormat = [{
+    $forall_op (`share_operands` `=` $share_operands^ )? attr-dict
+      `:` functional-type(operands, results)
+  }];
+
+  let extraClassDeclaration = [{
+    ::mlir::DiagnosedSilenceableFailure applyToOne(
+        ::mlir::transform::TransformRewriter &rewriter,
+        ::mlir::scf::ForallOp forallOp,
+        ::mlir::transform::ApplyToEachResultList &results,
+        ::mlir::transform::TransformState &state);
+  }];
+}
+
 #endif // TENSOR_TRANSFORM_OPS
