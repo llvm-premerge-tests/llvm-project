@@ -327,8 +327,9 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
                                     KernelArgs.NumArgs, Args, Ptrs);
 
   uint32_t NumThreads = getNumThreads(GenericDevice, KernelArgs.ThreadLimit);
-  uint64_t NumBlocks = getNumBlocks(GenericDevice, KernelArgs.NumTeams,
-                                    KernelArgs.Tripcount, NumThreads);
+  uint64_t NumBlocks =
+      getNumBlocks(GenericDevice, KernelArgs.NumTeams, KernelArgs.Tripcount,
+                   NumThreads, NumThreads == KernelArgs.ThreadLimit[0]);
 
   if (auto Err =
           printLaunchInfo(GenericDevice, KernelArgs, NumThreads, NumBlocks))
@@ -371,7 +372,8 @@ uint32_t GenericKernelTy::getNumThreads(GenericDeviceTy &GenericDevice,
 uint64_t GenericKernelTy::getNumBlocks(GenericDeviceTy &GenericDevice,
                                        uint32_t NumTeamsClause[3],
                                        uint64_t LoopTripCount,
-                                       uint32_t &NumThreads) const {
+                                       uint32_t &NumThreads,
+                                       bool IsNumThreadsFromUser) const {
   assert(NumTeamsClause[1] == 0 && NumTeamsClause[2] == 0 &&
          "Multi dimensional launch not supported yet.");
 
@@ -412,13 +414,17 @@ uint64_t GenericKernelTy::getNumBlocks(GenericDeviceTy &GenericDevice,
         auto NumThreadsDefaultBlocksP2 =
             llvm::PowerOf2Ceil(NumThreadsDefaultBlocks);
         // Do not increase a thread limit given be the user.
-        NumThreads = std::min(NumThreads, uint32_t(NumThreadsDefaultBlocksP2));
+        if (!IsNumThreadsFromUser)
+          NumThreads =
+              std::min(NumThreads, uint32_t(NumThreadsDefaultBlocksP2));
         assert(NumThreads >= MinThreads &&
                "Expected sufficient inner parallelism.");
         TripCountNumBlocks = ((LoopTripCount - 1) / NumThreads) + 1;
       } else {
-        // Not enough parallelism for teams and threads, limit both.
-        NumThreads = std::min(NumThreads, MinThreads);
+        // Not enough parallelism for teams and threads, limit both NumThreads
+        // value is not from user.
+        if (!IsNumThreadsFromUser)
+          NumThreads = std::min(NumThreads, MinThreads);
         TripCountNumBlocks = ((LoopTripCount - 1) / NumThreads) + 1;
       }
 
