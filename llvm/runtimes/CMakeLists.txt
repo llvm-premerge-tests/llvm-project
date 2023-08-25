@@ -13,6 +13,7 @@ foreach(proj ${LLVM_ENABLE_RUNTIMES})
   endif()
   string(TOUPPER "${proj}" canon_name)
   STRING(REGEX REPLACE "-" "_" canon_name ${canon_name})
+  list(APPEND RUNTIMES_CMAKE_PREFIXES "${canon_name}_")
   set(LLVM_EXTERNAL_${canon_name}_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../${proj}")
 endforeach()
 
@@ -349,6 +350,7 @@ function(runtime_register_target name)
                                       -DLLVM_RUNTIMES_TARGET=${name}
                                       ${COMMON_CMAKE_ARGS}
                                       ${${name}_extra_args}
+                           PASSTHROUGH_PREFIXES ${RUNTIMES_CMAKE_PREFIXES}
                            EXTRA_TARGETS ${${name}_extra_targets}
                                          ${${name}_test_targets}
                            USE_TOOLCHAIN
