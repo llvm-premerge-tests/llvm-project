@@ -593,11 +593,12 @@ void PipelineSolver::populateReadyList(
   for (; I != E; ++I) {
     std::vector<std::pair<SUnit *, SUnit *>> AddedEdges;
     int CandSGID = *I;
-    SchedGroup *Match;
+    SchedGroup *Match = nullptr;
     for (auto &SG : SyncPipeline) {
       if (SG.getSGID() == CandSGID)
         Match = &SG;
     }
+    assert(Match);
 
     if (UseCostHeur) {
       if (Match->isFull()) {
@@ -739,11 +740,12 @@ void PipelineSolver::greedyFind(
   for (; I != E; ++I) {
     std::vector<std::pair<SUnit *, SUnit *>> AddedEdges;
     int CandSGID = *I;
-    SchedGroup *Match;
+    SchedGroup *Match = nullptr;
     for (auto &SG : SyncPipeline) {
       if (SG.getSGID() == CandSGID)
         Match = &SG;
     }
+    assert(Match);
 
     LLVM_DEBUG(dbgs() << "Trying SGID # " << CandSGID << " with Mask "
                       << (int)Match->getMask() << "\n");
