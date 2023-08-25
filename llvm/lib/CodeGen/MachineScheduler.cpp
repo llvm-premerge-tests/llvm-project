@@ -70,6 +70,7 @@
 #include <vector>
 
 using namespace llvm;
+using namespace mdl;
 
 #define DEBUG_TYPE "machine-scheduler"
 
@@ -2227,21 +2228,48 @@ void SchedBoundary::reset() {
 void SchedRemainder::
 init(ScheduleDAGMI *DAG, const TargetSchedModel *SchedModel) {
   reset();
-  if (!SchedModel->hasInstrSchedModel())
-    return;
   RemainingCounts.resize(SchedModel->getNumProcResourceKinds());
-  for (SUnit &SU : DAG->SUnits) {
-    const MCSchedClassDesc *SC = DAG->getSchedClass(&SU);
-    RemIssueCount += SchedModel->getNumMicroOps(SU.getInstr(), SC)
-      * SchedModel->getMicroOpFactor();
-    for (TargetSchedModel::ProcResIter
-           PI = SchedModel->getWriteProcResBegin(SC),
-           PE = SchedModel->getWriteProcResEnd(SC); PI != PE; ++PI) {
-      unsigned PIdx = PI->ProcResourceIdx;
-      unsigned Factor = SchedModel->getResourceFactor(PIdx);
-      assert(PI->ReleaseAtCycle >= PI->AcquireAtCycle);
-      RemainingCounts[PIdx] +=
+
+  // The MDL version of this is essentially the same as the InstrSchedModel
+  // version, except that we use precomputed resource factors based on
+  // pool size rather than resource id.
+  if (auto *Cpu = SchedModel->getCpuInfo()) {
+    for (SUnit &SU : DAG->SUnits) {
+      mdl::Instr Ins(SU.getInstr(), SchedModel->getSubtargetInfo());
+      RemIssueCount += Cpu->numMicroOps(Ins) * SchedModel->getMicroOpFactor();
+      if (auto *Subunit = Ins.getSubunit()) {
+        if (auto *Refs = (*Subunit)[0].getUsedResourceReferences())
+          for (const auto &Ref : ReferenceIter<ResourceRef>(Refs, &Ins))
+            if (Ref.isFus() && Ref.hasResourceId() && Ref.getCycles())
+              RemainingCounts[Ref.getResourceId()] +=
+                           Ref.getCycles() * SchedModel->getResourceFactor(1);
+        if (auto *Prefs = (*Subunit)[0].getPooledResourceReferences())
+          for (const auto &Ref : ReferenceIter<PooledResourceRef>(Prefs, &Ins))
+            if (Ref.isFus()) {
+              int Factor = SchedModel->getResourceFactor(Ref.getSize());
+              int Cycles = Ref.getCycles() * Factor;
+              for (int res = Ref.getFirst(); res <= Ref.getLast(); res++)
+                RemainingCounts[Ref.getResourceIds()[res]] += Cycles;
+            }
+      }
+    }
+    return;
+  }
+
+  if (SchedModel->hasInstrSchedModel()) {
+    for (SUnit &SU : DAG->SUnits) {
+      const MCSchedClassDesc *SC = DAG->getSchedClass(&SU);
+      RemIssueCount += SchedModel->getNumMicroOps(SU.getInstr(), SC)
+        * SchedModel->getMicroOpFactor();
+      for (TargetSchedModel::ProcResIter
+            PI = SchedModel->getWriteProcResBegin(SC),
+            PE = SchedModel->getWriteProcResEnd(SC); PI != PE; ++PI) {
+        unsigned PIdx = PI->ProcResourceIdx;
+        unsigned Factor = SchedModel->getResourceFactor(PIdx);
+        assert(PI->ReleaseAtCycle >= PI->AcquireAtCycle);
+        RemainingCounts[PIdx] +=
           (Factor * (PI->ReleaseAtCycle - PI->AcquireAtCycle));
+      }
     }
   }
 }
@@ -2252,6 +2280,17 @@ init(ScheduleDAGMI *dag, const TargetSchedModel *smodel, SchedRemainder *rem) {
   DAG = dag;
   SchedModel = smodel;
   Rem = rem;
+  // For an MDL-based model, pools and groups are handled in the MDL compiler,
+  // so we don't need to deal with them here.
+  if (SchedModel->hasMdlModel()) {
+    unsigned ResourceCount = SchedModel->getNumProcResourceKinds();
+    ReservedCycles.resize(ResourceCount, InvalidCycle);
+    ReservedCyclesIndex.resize(ResourceCount);
+    ExecutedResCounts.resize(ResourceCount);
+    for (unsigned Idx = 0; Idx < ResourceCount; ++Idx)
+      ReservedCyclesIndex[Idx] = Idx;
+    return;
+  }
   if (SchedModel->hasInstrSchedModel()) {
     unsigned ResourceCount = SchedModel->getNumProcResourceKinds();
     ReservedCyclesIndex.resize(ResourceCount);
@@ -2330,11 +2369,15 @@ SchedBoundary::getNextResourceCycle(const MCSchedClassDesc *SC, unsigned PIdx,
   unsigned MinNextUnreserved = InvalidCycle;
   unsigned InstanceIdx = 0;
   unsigned StartIndex = ReservedCyclesIndex[PIdx];
-  unsigned NumberOfInstances = SchedModel->getProcResource(PIdx)->NumUnits;
-  assert(NumberOfInstances > 0 &&
+  unsigned NumberOfInstances = 1;
+  if (!SchedModel->hasMdlModel()) {
+    NumberOfInstances = SchedModel->getProcResource(PIdx)->NumUnits;
+    assert(NumberOfInstances > 0 &&
          "Cannot have zero instances of a ProcResource");
+  }
 
-  if (isUnbufferedGroup(PIdx)) {
+  // Mdl-based models don't need to deal with explicitly-defined groups.
+  if (!SchedModel->hasMdlModel() && isUnbufferedGroup(PIdx)) {
     // If any subunits are used by the instruction, report that the
     // subunits of the resource group are available at the first cycle
     // in which the unit is available, effectively removing the group
@@ -2421,7 +2464,64 @@ bool SchedBoundary::checkHazard(SUnit *SU) {
     return true;
   }
 
-  if (SchedModel->hasInstrSchedModel() && SU->hasReservedResource) {
+  if (!SU->hasReservedResource) return false;
+
+  if (SchedModel->hasMdlModel()) {
+    mdl::Instr Ins(SU->getInstr(), SchedModel->getSubtargetInfo());
+    if (auto *Subunit = Ins.getSubunit()) {
+      if (auto *Refs = (*Subunit)[0].getUsedResourceReferences())
+        for (const auto &Ref : ReferenceIter<ResourceRef>(Refs, &Ins)) {
+          if (Ref.hasResourceId()) {
+            unsigned ResIdx = Ref.getResourceId();
+            auto [NRCycle, InstanceIdx] =
+                      getNextResourceCycle(nullptr, ResIdx, Ref.getCycles(),
+                                           Ref.getPhase(&Ins));
+            if (NRCycle > CurrCycle) {
+#if LLVM_ENABLE_ABI_BREAKING_CHECKS
+              MaxObservedStall = std::max((unsigned)Ref.getCycles(), MaxObservedStall);
+#endif
+              LLVM_DEBUG(dbgs() << "  SU(" << SU->NodeNum << ") "
+                                << SchedModel->getResourceName(ResIdx)
+                                << '[' << InstanceIdx - ReservedCyclesIndex[ResIdx]  << ']'
+                                << "=" << NRCycle << "c\n");
+              return true;
+            }
+          }
+        }
+      if (auto *Prefs = (*Subunit)[0].getPooledResourceReferences())
+        for (const auto &Ref : ReferenceIter<PooledResourceRef>(Prefs, &Ins)) {
+          if (Ref.isFus() && Ref.getCycles()) {
+            double Cycles = Ref.getCycles();
+            unsigned MinRes = 0, InstanceIdx, NRCycle = InvalidCycle;
+            for (int Res = Ref.getFirst(); Res <= Ref.getLast(); Res++) {
+              auto [NextUnreserved, NextInstanceIdx] =
+                       getNextResourceCycle(nullptr, Ref.getResourceIds()[Res],
+                                            Cycles, Ref.getPhase(&Ins));
+              if (NRCycle > NextUnreserved) {
+                InstanceIdx = NextInstanceIdx;
+                NRCycle = NextUnreserved;
+                MinRes = Res;
+              }
+            }
+            if (NRCycle != InvalidCycle && NRCycle > CurrCycle) {
+#if LLVM_ENABLE_ABI_BREAKING_CHECKS
+              MaxObservedStall = std::max(Ref.getCycles(), MaxObservedStall);
+#endif
+              LLVM_DEBUG(dbgs() << "  SU(" << SU->NodeNum << ") "
+                                << SchedModel->getResourceName(MinRes)
+                                << '['
+                                << InstanceIdx - ReservedCyclesIndex[MinRes]
+                                << ']'
+                                << "=" << NRCycle << "c\n");
+              return true;
+            }
+          }
+        }
+    }
+    return false;
+  }
+
+  if (SchedModel->hasInstrSchedModel()) {
     const MCSchedClassDesc *SC = DAG->getSchedClass(SU);
     for (const MCWriteProcResEntry &PE :
           make_range(SchedModel->getWriteProcResBegin(SC),
@@ -2472,7 +2572,7 @@ findMaxLatency(ArrayRef<SUnit*> ReadySUs) {
 unsigned SchedBoundary::
 getOtherResourceCount(unsigned &OtherCritIdx) {
   OtherCritIdx = 0;
-  if (!SchedModel->hasInstrSchedModel())
+  if (!SchedModel->hasInstrSchedModel() && !SchedModel->hasMdlModel())
     return 0;
 
   unsigned OtherCritCount = Rem->RemIssueCount
@@ -2480,18 +2580,19 @@ getOtherResourceCount(unsigned &OtherCritIdx) {
   LLVM_DEBUG(dbgs() << "  " << Available.getName() << " + Remain MOps: "
                     << OtherCritCount / SchedModel->getMicroOpFactor() << '\n');
   for (unsigned PIdx = 1, PEnd = SchedModel->getNumProcResourceKinds();
-       PIdx != PEnd; ++PIdx) {
+      PIdx != PEnd; ++PIdx) {
     unsigned OtherCount = getResourceCount(PIdx) + Rem->RemainingCounts[PIdx];
     if (OtherCount > OtherCritCount) {
       OtherCritCount = OtherCount;
       OtherCritIdx = PIdx;
     }
   }
+  // TODO-MDL - Need an MDL-specific version of this
   if (OtherCritIdx) {
     LLVM_DEBUG(
         dbgs() << "  " << Available.getName() << " + Remain CritRes: "
-               << OtherCritCount / SchedModel->getResourceFactor(OtherCritIdx)
-               << " " << SchedModel->getResourceName(OtherCritIdx) << "\n");
+              << OtherCritCount / SchedModel->getResourceFactor(OtherCritIdx)
+              << " " << SchedModel->getResourceName(OtherCritIdx) << "\n");
   }
   return OtherCritCount;
 }
@@ -2586,9 +2687,8 @@ void SchedBoundary::incExecutedResources(unsigned PIdx, unsigned Count) {
 /// oversubscribing resources.
 unsigned SchedBoundary::countResource(const MCSchedClassDesc *SC, unsigned PIdx,
                                       unsigned ReleaseAtCycle,
-                                      unsigned NextCycle,
+                                      unsigned Factor,
                                       unsigned AcquireAtCycle) {
-  unsigned Factor = SchedModel->getResourceFactor(PIdx);
   unsigned Count = Factor * (ReleaseAtCycle- AcquireAtCycle);
   LLVM_DEBUG(dbgs() << "  " << SchedModel->getResourceName(PIdx) << " +"
                     << ReleaseAtCycle << "x" << Factor << "u\n");
@@ -2635,7 +2735,6 @@ void SchedBoundary::bumpNode(SUnit *SU) {
   }
   // checkHazard should prevent scheduling multiple instructions per cycle that
   // exceed the issue width.
-  const MCSchedClassDesc *SC = DAG->getSchedClass(SU);
   unsigned IncMOps = SchedModel->getNumMicroOps(SU->getInstr());
   assert(
       (CurrMOps == 0 || (CurrMOps + IncMOps) <= SchedModel->getIssueWidth()) &&
@@ -2666,8 +2765,8 @@ void SchedBoundary::bumpNode(SUnit *SU) {
   }
   RetiredMOps += IncMOps;
 
-  // Update resource counts and critical resource.
-  if (SchedModel->hasInstrSchedModel()) {
+  // Update critical resource
+  if (SchedModel->hasInstrSchedModel() || SchedModel->hasMdlModel()) {
     unsigned DecRemIssue = IncMOps * SchedModel->getMicroOpFactor();
     assert(Rem->RemIssueCount >= DecRemIssue && "MOps double counted");
     Rem->RemIssueCount -= DecRemIssue;
@@ -2686,11 +2785,81 @@ void SchedBoundary::bumpNode(SUnit *SU) {
                           << "c\n");
       }
     }
+  }
+
+  // Update resource counts for MdlModel.
+  if (SchedModel->hasMdlModel()) {
+    Instr Ins(SU->getInstr(), SchedModel->getSubtargetInfo());
+    if (auto *Subunit = Ins.getSubunit()) {
+      auto *Refs = (*Subunit)[0].getUsedResourceReferences();
+      if (Refs)
+        for (const auto &Ref : ReferenceIter<ResourceRef>(Refs, &Ins))
+          if (Ref.isFus() && Ref.hasResourceId() && Ref.getCycles()) {
+            unsigned Factor = SchedModel->getResourceFactor(1);
+            unsigned Pidx = Ref.getResourceId();
+            NextCycle = std::max(NextCycle,
+                       countResource(nullptr, Pidx, Ref.getCycles(), Factor,
+                                     Ref.getPhase(&Ins)));
+          }
+      auto *Prefs = (*Subunit)[0].getPooledResourceReferences();
+      if (Prefs)
+        for (const auto &Ref : ReferenceIter<PooledResourceRef>(Prefs, &Ins)) {
+          if (Ref.isFus()) {
+            unsigned Factor = SchedModel->getResourceFactor(Ref.getSize());
+            unsigned Cycles = Ref.getCycles();
+            for (int Res = Ref.getFirst(); Res <= Ref.getLast(); Res++) {
+              unsigned ResId = Ref.getResourceIds()[Res];
+              NextCycle = std::max(NextCycle,
+                                countResource(nullptr, ResId, Cycles, Factor,
+                                              Ref.getPhase(&Ins)));
+            }
+          }
+        }
+      // For reserved resources, record the highest cycle using the resource.
+      if (SU->hasReservedResource) {
+        if (Refs)
+          for (const auto &Ref: ReferenceIter<ResourceRef>(Refs, &Ins))
+            if (Ref.isFus() && Ref.hasResourceId() && Ref.getCycles()) {
+              if (!Ref.isBuffered()) {
+                auto [ReservedUntil, InstanceIdx] =
+                      getNextResourceCycle(nullptr, Ref.getResourceId(),
+                                           Ref.getCycles(), Ref.getPhase(&Ins));
+                if (isTop())
+                    ReservedCycles[InstanceIdx] =
+                            std::max(ReservedUntil, NextCycle + Ref.getCycles());
+                else ReservedCycles[InstanceIdx] = NextCycle;
+              }
+            }
+        if (Prefs)
+          for (const auto &Ref: ReferenceIter<PooledResourceRef>(Prefs, &Ins)) {
+            if (Ref.isFus()) {
+              unsigned Cycles = Ref.getCycles();
+              for (int Res = Ref.getFirst(); Res <= Ref.getLast(); Res++) {
+                unsigned ResId = Ref.getResourceIds()[Res];
+                if (!Ref.isBuffered()) {
+                  auto [ReservedUntil, InstanceIdx] =
+                      getNextResourceCycle(nullptr, ResId,
+                                           Ref.getCycles(), Ref.getPhase(&Ins));
+                  if (isTop())
+                    ReservedCycles[InstanceIdx] =
+                                    std::max(ReservedUntil, NextCycle + Cycles);
+                  else ReservedCycles[InstanceIdx] = NextCycle;
+                }
+              }
+            }
+          }
+      }
+    }
+  }
+  // Update resource counts for InstrSchedModel.
+  else if (SchedModel->hasInstrSchedModel()) {
+    const MCSchedClassDesc *SC = DAG->getSchedClass(SU);
     for (TargetSchedModel::ProcResIter
            PI = SchedModel->getWriteProcResBegin(SC),
            PE = SchedModel->getWriteProcResEnd(SC); PI != PE; ++PI) {
+      unsigned Factor = SchedModel->getResourceFactor(PI->ProcResourceIdx);
       unsigned RCycle =
-          countResource(SC, PI->ProcResourceIdx, PI->ReleaseAtCycle, NextCycle,
+          countResource(SC, PI->ProcResourceIdx, PI->ReleaseAtCycle, Factor,
                         PI->AcquireAtCycle);
       if (RCycle > NextCycle)
         NextCycle = RCycle;
@@ -2920,6 +3089,35 @@ initResourceDelta(const ScheduleDAGMI *DAG,
                   const TargetSchedModel *SchedModel) {
   if (!Policy.ReduceResIdx && !Policy.DemandResIdx)
     return;
+
+  if (SchedModel->hasMdlModel()) {
+    Instr Ins(SU->getInstr(), SchedModel->getSubtargetInfo());
+    if (auto *Subunit = Ins.getSubunit()) {
+      if (auto *Refs = (*Subunit)[0].getUsedResourceReferences())
+        for (const auto &Ref: ReferenceIter<ResourceRef>(Refs, &Ins)) {
+          if (Ref.isFus() && Ref.hasResourceId() && Ref.getCycles()) {
+            unsigned ResId = Ref.getResourceId();
+            if (ResId == Policy.ReduceResIdx)
+            ResDelta.CritResources += Ref.getCycles();
+            if (ResId == Policy.DemandResIdx)
+              ResDelta.DemandedResources += Ref.getCycles();
+          }
+        }
+      if (auto *Prefs = (*Subunit)[0].getPooledResourceReferences())
+        for (const auto &Ref: ReferenceIter<PooledResourceRef>(Prefs, &Ins)) {
+          if (Ref.isFus() && Ref.getCycles()) {
+            for (int Res = Ref.getFirst(); Res <= Ref.getLast(); Res++) {
+              unsigned ResId = Ref.getResourceIds()[Res];
+              if (ResId == Policy.ReduceResIdx)
+                ResDelta.CritResources += Ref.getCycles();
+              if (ResId == Policy.DemandResIdx)
+                ResDelta.DemandedResources += Ref.getCycles();
+            }
+          }
+        }
+    }
+    return;
+  }
 
   const MCSchedClassDesc *SC = DAG->getSchedClass(SU);
   for (TargetSchedModel::ProcResIter

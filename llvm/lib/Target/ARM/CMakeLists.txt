@@ -16,8 +16,50 @@ tablegen(LLVM ARMGenRegisterBank.inc -gen-register-bank)
 tablegen(LLVM ARMGenRegisterInfo.inc -gen-register-info)
 tablegen(LLVM ARMGenSubtargetInfo.inc -gen-subtarget)
 tablegen(LLVM ARMGenSystemRegister.inc -gen-searchable-tables)
+tablegen(LLVM ARM.txt -print-records)
 
 add_public_tablegen_target(ARMCommonTableGen)
+
+############### Begin Mdl
+if(LLVM_ENABLE_MDL)
+  add_custom_target(TdScanARM
+    COMMAND tdscan -gen_arch_spec --nowarnings ARM.txt
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        COMMENT "Generating ARM.mdl..."
+                    DEPENDS ARMCommonTableGen
+                    VERBATIM)
+
+  set(MdlDatabaseARM
+    "${CMAKE_CURRENT_BINARY_DIR}/ARMGenMdlInfo.inc"
+    "${CMAKE_CURRENT_BINARY_DIR}/ARMGenMdlInfo.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/ARMGenMdlTarget.inc"
+  )
+
+  add_custom_command(OUTPUT ${MdlDatabaseARM}
+    COMMAND mdl ARM.mdl
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        COMMENT "Generating ARMGenMdlInfo.inc..."
+                    DEPENDS TdScanARM
+                    VERBATIM)
+
+  # tablegen macro
+  set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${MdlDatabaseARM})
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} "${CMAKE_CURRENT_BINARY_DIR}/ARMGenMdlInfo.inc")
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} "${CMAKE_CURRENT_BINARY_DIR}/ARMGenMdlInfo.h")
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} "${CMAKE_CURRENT_BINARY_DIR}/ARMGenMdlTarget.inc")
+  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${MdlDatabaseARM} PROPERTIES GENERATED 1)
+
+  # add_public_tablegen_target macro
+  add_custom_target(MdlARM DEPENDS ${TABLEGEN_OUTPUT})
+
+  if(LLVM_COMMON_DEPENDS)
+    add_dependencies(MdlARM ${LLVM_COMMON_DEPENDS})
+  endif()
+
+  set_target_properties(MdlARM PROPERTIES FOLDER "MdlGeneration")
+  set(LLVM_COMMON_DEPENDS ${LLVM_COMMON_DEPENDS} MdlARM)
+endif()
+############### End Mdl
 
 add_llvm_target(ARMCodeGen
   A15SDOptimizer.cpp

@@ -26,8 +26,50 @@ tablegen(LLVM AArch64GenRegisterInfo.inc -gen-register-info)
 tablegen(LLVM AArch64GenSubtargetInfo.inc -gen-subtarget)
 tablegen(LLVM AArch64GenSystemOperands.inc -gen-searchable-tables)
 tablegen(LLVM AArch64GenExegesis.inc -gen-exegesis)
+tablegen(LLVM AArch64.txt -print-records)
 
 add_public_tablegen_target(AArch64CommonTableGen)
+
+############### Begin Mdl
+if(LLVM_ENABLE_MDL)
+  add_custom_target(TdScanAArch64
+    COMMAND tdscan -gen_arch_spec --nowarnings AArch64.txt
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        COMMENT "Generating AArch64.mdl..."
+                    DEPENDS AArch64CommonTableGen
+                    VERBATIM)
+
+  set(MdlDatabaseAArch64
+    "${CMAKE_CURRENT_BINARY_DIR}/AArch64GenMdlInfo.inc"
+    "${CMAKE_CURRENT_BINARY_DIR}/AArch64GenMdlInfo.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/AArch64GenMdlTarget.inc"
+  )
+
+  add_custom_command(OUTPUT ${MdlDatabaseAArch64}
+    COMMAND mdl AArch64.mdl
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        COMMENT "Generating AArch64GenMdlInfo.inc..."
+                    DEPENDS TdScanAArch64
+                    VERBATIM)
+
+  # tablegen macro
+  set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${MdlDatabaseAArch64})
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} "${CMAKE_CURRENT_BINARY_DIR}/AArch64GenMdlInfo.inc")
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} "${CMAKE_CURRENT_BINARY_DIR}/AArch64GenMdlInfo.h")
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} "${CMAKE_CURRENT_BINARY_DIR}/AArch64GenMdlTarget.inc")
+  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${MdlDatabaseAArch64} PROPERTIES GENERATED 1)
+
+  # add_public_tablegen_target macro
+  add_custom_target(MdlAArch64 DEPENDS ${TABLEGEN_OUTPUT})
+
+  if(LLVM_COMMON_DEPENDS)
+    add_dependencies(MdlAArch64 ${LLVM_COMMON_DEPENDS})
+  endif()
+
+  set_target_properties(MdlAArch64 PROPERTIES FOLDER "MdlGeneration")
+  set(LLVM_COMMON_DEPENDS ${LLVM_COMMON_DEPENDS} MdlAArch64)
+endif()
+############### End Mdl
 
 add_llvm_target(AArch64CodeGen
   GISel/AArch64CallLowering.cpp

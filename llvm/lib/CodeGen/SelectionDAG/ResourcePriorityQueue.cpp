@@ -20,6 +20,7 @@
 
 #include "llvm/CodeGen/ResourcePriorityQueue.h"
 #include "llvm/CodeGen/DFAPacketizer.h"
+#include "llvm/CodeGen/ScheduleHazardRecognizer.h"
 #include "llvm/CodeGen/SelectionDAGISel.h"
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
@@ -40,12 +41,15 @@ static cl::opt<int> RegPressureThreshold(
     "dfa-sched-reg-pressure-threshold", cl::Hidden, cl::init(5),
     cl::desc("Track reg pressure and switch priority to in-depth"));
 
-ResourcePriorityQueue::ResourcePriorityQueue(SelectionDAGISel *IS)
-    : Picker(this), InstrItins(IS->MF->getSubtarget().getInstrItineraryData()) {
+ResourcePriorityQueue::ResourcePriorityQueue(SelectionDAGISel *IS,
+                                             ScheduleHazardRecognizer *HazardRec)
+    : Picker(this), InstrItins(IS->MF->getSubtarget().getInstrItineraryData()),
+      HazardRec(HazardRec) {
   const TargetSubtargetInfo &STI = IS->MF->getSubtarget();
   TRI = STI.getRegisterInfo();
   TLI = IS->TLI;
   TII = STI.getInstrInfo();
+  Cpu = STI.getCpuInfo();
   ResourcesModel.reset(TII->CreateTargetScheduleState(STI));
   // This hard requirement could be relaxed, but for now
   // do not let it proceed.
@@ -233,6 +237,15 @@ void ResourcePriorityQueue::push(SUnit *SU) {
   Queue.push_back(SU);
 }
 
+void ResourcePriorityQueue::reset() {
+  if (Cpu) {
+    HazardRec->Reset();
+  } else {
+    ResourcesModel->clearResources();
+    Packet.clear();
+  }
+}
+
 /// Check if scheduling of this SU is possible
 /// in the current packet.
 bool ResourcePriorityQueue::isResourceAvailable(SUnit *SU) {
@@ -249,6 +262,11 @@ bool ResourcePriorityQueue::isResourceAvailable(SUnit *SU) {
   if (SU->getNode()->isMachineOpcode())
     switch (SU->getNode()->getMachineOpcode()) {
     default:
+      if (Cpu) {
+        if (!HazardRec->canReserveResources(*SU->getInstr()))
+          return false;
+        break;
+      }
       if (!ResourcesModel->canReserveResources(&TII->get(
           SU->getNode()->getMachineOpcode())))
            return false;
@@ -279,14 +297,15 @@ bool ResourcePriorityQueue::isResourceAvailable(SUnit *SU) {
 
 /// Keep track of available resources.
 void ResourcePriorityQueue::reserveResources(SUnit *SU) {
-  // If this SU does not fit in the packet
-  // start a new one.
-  if (!isResourceAvailable(SU) || SU->getNode()->getGluedNode()) {
-    ResourcesModel->clearResources();
-    Packet.clear();
-  }
+  // If this SU does not fit in the packet start a new one.
+  if (!isResourceAvailable(SU) || SU->getNode()->getGluedNode()) reset();
 
   if (SU->getNode() && SU->getNode()->isMachineOpcode()) {
+    if (Cpu) {
+      HazardRec->reserveResources(*SU->getInstr());
+      if (HazardRec->IssueSize() >= Cpu->getMaxIssue()) reset();
+      return;
+    }
     switch (SU->getNode()->getMachineOpcode()) {
     default:
       ResourcesModel->reserveResources(&TII->get(
@@ -297,22 +316,17 @@ void ResourcePriorityQueue::reserveResources(SUnit *SU) {
     case TargetOpcode::SUBREG_TO_REG:
     case TargetOpcode::REG_SEQUENCE:
     case TargetOpcode::IMPLICIT_DEF:
-      break;
+        break;
     }
-    Packet.push_back(SU);
+        Packet.push_back(SU);
   }
   // Forcefully end packet for PseudoOps.
-  else {
-    ResourcesModel->clearResources();
-    Packet.clear();
-  }
+  else reset();
 
   // If packet is now full, reset the state so in the next cycle
   // we start fresh.
-  if (Packet.size() >= InstrItins->SchedModel.IssueWidth) {
-    ResourcesModel->clearResources();
-    Packet.clear();
-  }
+    if (Packet.size() >= InstrItins->SchedModel.IssueWidth)
+      reset();
 }
 
 int ResourcePriorityQueue::rawRegPressureDelta(SUnit *SU, unsigned RCId) {

@@ -89,7 +89,7 @@ CSKYSubtarget &CSKYSubtarget::initializeSubtargetDependencies(
 
 CSKYSubtarget::CSKYSubtarget(const Triple &TT, StringRef CPU, StringRef TuneCPU,
                              StringRef FS, const TargetMachine &TM)
-    : CSKYGenSubtargetInfo(TT, CPU, TuneCPU, FS),
+    : CSKYGenSubtargetInfo(TT, CPU, TuneCPU, FS, nullptr),
       FrameLowering(initializeSubtargetDependencies(TT, CPU, TuneCPU, FS)),
       InstrInfo(*this), RegInfo(), TLInfo(TM, *this) {}
 

@@ -15,8 +15,50 @@ tablegen(LLVM PPCGenSubtargetInfo.inc -gen-subtarget)
 tablegen(LLVM PPCGenExegesis.inc -gen-exegesis)
 tablegen(LLVM PPCGenRegisterBank.inc -gen-register-bank)
 tablegen(LLVM PPCGenGlobalISel.inc -gen-global-isel)
+tablegen(LLVM PPC.txt -print-records)
 
 add_public_tablegen_target(PowerPCCommonTableGen)
+
+############### Begin Mdl
+if(LLVM_ENABLE_MDL)
+  add_custom_target(TdScanPPC
+    COMMAND tdscan -gen_arch_spec --nowarnings PPC.txt
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        COMMENT "Generating PPC.mdl..."
+                    DEPENDS PowerPCCommonTableGen
+                    VERBATIM)
+
+  set(MdlDatabasePPC
+    "${CMAKE_CURRENT_BINARY_DIR}/PPCGenMdlInfo.inc"
+    "${CMAKE_CURRENT_BINARY_DIR}/PPCGenMdlInfo.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/PPCGenMdlTarget.inc"
+  )
+
+  add_custom_command(OUTPUT ${MdlDatabasePPC}
+    COMMAND mdl PPC.mdl
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        COMMENT "Generating PPCGenMdlInfo.inc..."
+                    DEPENDS TdScanPPC
+                    VERBATIM)
+
+  # tablegen macro
+  set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${MdlDatabasePPC})
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} "${CMAKE_CURRENT_BINARY_DIR}/PPCGenMdlInfo.inc")
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} "${CMAKE_CURRENT_BINARY_DIR}/PPCGenMdlInfo.h")
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} "${CMAKE_CURRENT_BINARY_DIR}/PPCGenMdlTarget.inc")
+  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${MdlDatabasePPC} PROPERTIES GENERATED 1)
+
+  # add_public_tablegen_target macro
+  add_custom_target(MdlPPC DEPENDS ${TABLEGEN_OUTPUT})
+
+  if(LLVM_COMMON_DEPENDS)
+    add_dependencies(MdlPPC ${LLVM_COMMON_DEPENDS})
+  endif()
+
+  set_target_properties(MdlPPC PROPERTIES FOLDER "MdlGeneration")
+  set(LLVM_COMMON_DEPENDS ${LLVM_COMMON_DEPENDS} MdlPPC)
+endif()
+############### End Mdl
 
 add_llvm_target(PowerPCCodeGen
   GISel/PPCInstructionSelector.cpp

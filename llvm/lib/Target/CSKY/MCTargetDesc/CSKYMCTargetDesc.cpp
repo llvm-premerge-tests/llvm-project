@@ -74,7 +74,8 @@ static MCSubtargetInfo *createCSKYMCSubtargetInfo(const Triple &TT,
   std::string CPUName = std::string(CPU);
   if (CPUName.empty())
     CPUName = "generic";
-  return createCSKYMCSubtargetInfoImpl(TT, CPUName, /*TuneCPU=*/CPUName, FS);
+  return createCSKYMCSubtargetInfoImpl(TT, CPUName, /*TuneCPU=*/CPUName, FS,
+                                       nullptr);
 }
 
 static MCTargetStreamer *

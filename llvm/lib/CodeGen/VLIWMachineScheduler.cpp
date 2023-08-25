@@ -27,6 +27,7 @@
 #include "llvm/CodeGen/TargetRegisterInfo.h"
 #include "llvm/CodeGen/TargetSchedule.h"
 #include "llvm/CodeGen/TargetSubtargetInfo.h"
+#include "llvm/MC/MDLInfo.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
@@ -63,8 +64,13 @@ static cl::opt<float> RPThreshold("vliw-misched-reg-pressure", cl::Hidden,
                                   cl::desc("High register pressure threhold."));
 
 VLIWResourceModel::VLIWResourceModel(const TargetSubtargetInfo &STI,
-                                     const TargetSchedModel *SM)
-    : TII(STI.getInstrInfo()), SchedModel(SM) {
+                                     const TargetSchedModel *SM,
+                                     ScheduleHazardRecognizer *HazardRec)
+    : TII(STI.getInstrInfo()), 
+      HazardRec(HazardRec),
+      SchedModel(SM),
+      Cpu(STI.getCpuInfo()) {
+
   ResourcesModel = createPacketizer(STI);
 
   // This hard requirement could be relaxed,
@@ -81,7 +87,9 @@ void VLIWResourceModel::reset() {
   ResourcesModel->clearResources();
 }
 
-VLIWResourceModel::~VLIWResourceModel() { delete ResourcesModel; }
+VLIWResourceModel::~VLIWResourceModel() {
+  delete ResourcesModel;
+}
 
 /// Return true if there is a dependence between SUd and SUu.
 bool VLIWResourceModel::hasDependence(const SUnit *SUd, const SUnit *SUu) {
@@ -113,6 +121,12 @@ bool VLIWResourceModel::isResourceAvailable(SUnit *SU, bool IsTop) {
   // in the current cycle.
   switch (SU->getInstr()->getOpcode()) {
   default:
+    // Use MDL to see if the instruction can be issued in this packet
+    if (Cpu) {
+      if (!HazardRec->canReserveResources(*SU->getInstr()))
+        return false;
+      break;
+    }
     if (!ResourcesModel->canReserveResources(*SU->getInstr()))
       return false;
     break;
@@ -161,7 +175,13 @@ bool VLIWResourceModel::reserveResources(SUnit *SU, bool IsTop) {
 
   switch (SU->getInstr()->getOpcode()) {
   default:
-    ResourcesModel->reserveResources(*SU->getInstr());
+    // use MDL method to reserve resources
+    if (Cpu) {
+      HazardRec->reserveResources(*SU->getInstr());
+    } else {
+      ResourcesModel->reserveResources(*SU->getInstr());
+      Packet.push_back(SU);
+    }
     break;
   case TargetOpcode::EXTRACT_SUBREG:
   case TargetOpcode::INSERT_SUBREG:
@@ -174,9 +194,12 @@ bool VLIWResourceModel::reserveResources(SUnit *SU, bool IsTop) {
   case TargetOpcode::COPY:
   case TargetOpcode::INLINEASM:
   case TargetOpcode::INLINEASM_BR:
+    if (!Cpu)
+      Packet.push_back(SU);
+    else
+      HazardRec->reserveResources(*SU->getInstr());
     break;
   }
-  Packet.push_back(SU);
 
 #ifndef NDEBUG
   LLVM_DEBUG(dbgs() << "Packet[" << TotalPackets << "]:\n");
@@ -286,8 +309,10 @@ void ConvergingVLIWScheduler::initialize(ScheduleDAGMI *dag) {
 
   delete Top.ResourceModel;
   delete Bot.ResourceModel;
-  Top.ResourceModel = createVLIWResourceModel(STI, DAG->getSchedModel());
-  Bot.ResourceModel = createVLIWResourceModel(STI, DAG->getSchedModel());
+  Top.ResourceModel =
+        createVLIWResourceModel(STI, DAG->getSchedModel(), Top.HazardRec);
+  Bot.ResourceModel =
+        createVLIWResourceModel(STI, DAG->getSchedModel(), Bot.HazardRec);
 
   const std::vector<unsigned> &MaxPressure =
       DAG->getRegPressure().MaxSetPressure;
@@ -303,8 +328,9 @@ void ConvergingVLIWScheduler::initialize(ScheduleDAGMI *dag) {
 }
 
 VLIWResourceModel *ConvergingVLIWScheduler::createVLIWResourceModel(
-    const TargetSubtargetInfo &STI, const TargetSchedModel *SchedModel) const {
-  return new VLIWResourceModel(STI, SchedModel);
+    const TargetSubtargetInfo &STI, const TargetSchedModel *SchedModel,
+    ScheduleHazardRecognizer *HazardRec) const {
+  return new VLIWResourceModel(STI, SchedModel, HazardRec);
 }
 
 void ConvergingVLIWScheduler::releaseTopNode(SUnit *SU) {

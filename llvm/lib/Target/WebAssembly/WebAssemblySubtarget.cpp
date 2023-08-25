@@ -41,7 +41,7 @@ WebAssemblySubtarget::WebAssemblySubtarget(const Triple &TT,
                                            const std::string &CPU,
                                            const std::string &FS,
                                            const TargetMachine &TM)
-    : WebAssemblyGenSubtargetInfo(TT, CPU, /*TuneCPU*/ CPU, FS),
+    : WebAssemblyGenSubtargetInfo(TT, CPU, /*TuneCPU*/ CPU, FS, nullptr),
       TargetTriple(TT), InstrInfo(initializeSubtargetDependencies(CPU, FS)),
       TLInfo(TM, *this) {}
 

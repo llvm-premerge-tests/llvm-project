@@ -43,9 +43,9 @@ VESubtarget &VESubtarget::initializeSubtargetDependencies(StringRef CPU,
 
 VESubtarget::VESubtarget(const Triple &TT, const std::string &CPU,
                          const std::string &FS, const TargetMachine &TM)
-    : VEGenSubtargetInfo(TT, CPU, /*TuneCPU=*/CPU, FS), TargetTriple(TT),
-      InstrInfo(initializeSubtargetDependencies(CPU, FS)), TLInfo(TM, *this),
-      FrameLowering(*this) {}
+    : VEGenSubtargetInfo(TT, CPU, /*TuneCPU=*/CPU, FS, nullptr),
+      TargetTriple(TT), InstrInfo(initializeSubtargetDependencies(CPU, FS)),
+      TLInfo(TM, *this), FrameLowering(*this) {}
 
 uint64_t VESubtarget::getAdjustedFrameSize(uint64_t FrameSize) const {
   // Calculate adjusted frame size by adding the size of RSA frame,

@@ -18,6 +18,7 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/MC/MCInstrItineraries.h"
 #include "llvm/MC/MCSchedule.h"
+#include "llvm/MC/MDLInfo.h"
 #include "llvm/TargetParser/SubtargetFeature.h"
 #include "llvm/TargetParser/Triple.h"
 #include <cassert>
@@ -92,6 +93,10 @@ class MCSubtargetInfo {
   FeatureBitset FeatureBits;           // Feature bits for current CPU + FS
   std::string FeatureString;           // Feature string
 
+  // Machine Description based machine model
+  const mdl::CpuTableDef *CpuTable = nullptr;
+  mdl::CpuInfo *CpuModel = nullptr;
+
 public:
   MCSubtargetInfo(const MCSubtargetInfo &) = default;
   MCSubtargetInfo(const Triple &TT, StringRef CPU, StringRef TuneCPU,
@@ -99,7 +104,8 @@ public:
                   ArrayRef<SubtargetSubTypeKV> PD,
                   const MCWriteProcResEntry *WPR, const MCWriteLatencyEntry *WL,
                   const MCReadAdvanceEntry *RA, const InstrStage *IS,
-                  const unsigned *OC, const unsigned *FP);
+                  const unsigned *OC, const unsigned *FP,
+                  const mdl::CpuTableDef *MDL);
   MCSubtargetInfo() = delete;
   MCSubtargetInfo &operator=(const MCSubtargetInfo &) = delete;
   MCSubtargetInfo &operator=(MCSubtargetInfo &&) = delete;
@@ -161,6 +167,10 @@ public:
 
   /// Get the machine model for this subtarget's CPU.
   const MCSchedModel &getSchedModel() const { return *CPUSchedModel; }
+
+  const mdl::CpuTableDef *getCpuTable() const { return CpuTable; }
+  mdl::CpuInfo *getCpuInfo() const { return CpuModel; }
+  bool hasMdlModel() const { return CpuModel; }
 
   /// Return an iterator at the first process resource consumed by the given
   /// scheduling class.

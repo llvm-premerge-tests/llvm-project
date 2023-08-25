@@ -187,8 +187,8 @@ void SystemZHazardRecognizer::dumpSU(SUnit *SU, raw_ostream &OS) const {
       FU = "LSU";
     OS << "/" << FU;
 
-    if (PI->Cycles > 1)
-      OS << "(" << PI->Cycles << "cyc)";
+    if (PI->ReleaseAtCycle > 1)
+      OS << "(" << PI->ReleaseAtCycle << "cyc)";
   }
 
   if (SC->NumMicroOps > 1)
@@ -266,6 +266,8 @@ static inline bool isBranchRetTrap(MachineInstr *MI) {
           MI->getOpcode() == SystemZ::CondTrap);
 }
 
+// TODO-MDL - Write an MDL-specific version of this.
+
 // Update state with SU as the next scheduled unit.
 void SystemZHazardRecognizer::
 EmitInstruction(SUnit *SU) {
@@ -301,7 +303,7 @@ EmitInstruction(SUnit *SU) {
       continue;
     int &CurrCounter =
       ProcResourceCounters[PI->ProcResourceIdx];
-    CurrCounter += PI->Cycles;
+    CurrCounter += PI->ReleaseAtCycle;
     // Check if this is now the new critical resource.
     if ((CurrCounter > ProcResCostLim) &&
         (CriticalResourceIdx == UINT_MAX ||
@@ -383,6 +385,7 @@ bool SystemZHazardRecognizer::isFPdOpPreferred_distance(SUnit *SU) const {
   return ((SUCycleIdx - LastFPdOpCycleIdx) == 3);
 }
 
+// TODO-MDL - Write an MDL-specific version of this.
 int SystemZHazardRecognizer::
 resourcesCost(SUnit *SU) {
   int Cost = 0;
@@ -401,12 +404,13 @@ resourcesCost(SUnit *SU) {
            PI = SchedModel->getWriteProcResBegin(SC),
            PE = SchedModel->getWriteProcResEnd(SC); PI != PE; ++PI)
       if (PI->ProcResourceIdx == CriticalResourceIdx)
-        Cost = PI->Cycles;
+        Cost = PI->ReleaseAtCycle;
   }
 
   return Cost;
 }
 
+// TODO-MDL - Write an MDL-specific version of this.
 void SystemZHazardRecognizer::emitInstruction(MachineInstr *MI,
                                               bool TakenBranch) {
   // Make a temporary SUnit.

@@ -11,6 +11,7 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/MC/MCInstrItineraries.h"
 #include "llvm/MC/MCSchedule.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/TargetParser/SubtargetFeature.h"
@@ -20,6 +21,9 @@
 #include <optional>
 
 using namespace llvm;
+
+static cl::opt<bool> EnableSchedMdl("schedmdl", cl::Hidden, cl::init(true),
+                                    cl::desc("Use MDL for scheduling"));
 
 /// Find KV in array using binary search.
 template <typename T>
@@ -215,6 +219,10 @@ void MCSubtargetInfo::InitMCProcessorInfo(StringRef CPU, StringRef TuneCPU,
     CPUSchedModel = &getSchedModelForCPU(TuneCPU);
   else
     CPUSchedModel = &MCSchedModel::GetDefaultSchedModel();
+
+  // Initialize MDL database, look up the Cpu name in the table.
+  if (EnableSchedMdl && !TuneCPU.empty() && CpuTable != nullptr)
+    CpuModel = CpuTable->getCpu(TuneCPU.str());
 }
 
 void MCSubtargetInfo::setDefaultFeatures(StringRef CPU, StringRef TuneCPU,
@@ -230,11 +238,12 @@ MCSubtargetInfo::MCSubtargetInfo(const Triple &TT, StringRef C, StringRef TC,
                                  const MCWriteLatencyEntry *WL,
                                  const MCReadAdvanceEntry *RA,
                                  const InstrStage *IS, const unsigned *OC,
-                                 const unsigned *FP)
+                                 const unsigned *FP,
+                                 const mdl::CpuTableDef *MDL)
     : TargetTriple(TT), CPU(std::string(C)), TuneCPU(std::string(TC)),
       ProcFeatures(PF), ProcDesc(PD), WriteProcResTable(WPR),
       WriteLatencyTable(WL), ReadAdvanceTable(RA), Stages(IS),
-      OperandCycles(OC), ForwardingPaths(FP) {
+      OperandCycles(OC), ForwardingPaths(FP), CpuTable(MDL) {
   InitMCProcessorInfo(CPU, TuneCPU, FS);
 }
 

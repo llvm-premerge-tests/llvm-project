@@ -37,6 +37,7 @@
 #include <utility>
 
 using namespace llvm;
+using namespace mdl;
 
 #define DEBUG_TYPE "machine-trace-metrics"
 
@@ -115,27 +116,55 @@ MachineTraceMetrics::getResources(const MachineBasicBlock *MBB) {
     if (MI.isCall())
       FBI->HasCalls = true;
 
-    // Count processor resources used.
-    if (!SchedModel.hasInstrSchedModel())
-      continue;
-    const MCSchedClassDesc *SC = SchedModel.resolveSchedClass(&MI);
-    if (!SC->isValid())
-      continue;
+    // Count processor resources used for MDL-based model.
+    if (SchedModel.hasMdlModel()) {
+      Instr Ins(&MI, SchedModel.getSubtargetInfo());
+      if (auto *Subunit = Ins.getSubunit()) {
+        int ResFactor = SchedModel.getResourceFactor(1);
+        if (auto *Refs = (*Subunit)[0].getUsedResourceReferences())
+          for (const auto &Ref : ReferenceIter<ResourceRef>(Refs, &Ins))
+            if (Ref.isFus() && Ref.hasResourceId() && Ref.getCycles())
+              PRCycles[Ref.getResourceId()] += Ref.getCycles() * ResFactor;
 
-    for (TargetSchedModel::ProcResIter
-         PI = SchedModel.getWriteProcResBegin(SC),
-         PE = SchedModel.getWriteProcResEnd(SC); PI != PE; ++PI) {
-      assert(PI->ProcResourceIdx < PRKinds && "Bad processor resource kind");
-      PRCycles[PI->ProcResourceIdx] += PI->ReleaseAtCycle;
+        if (auto *Prefs = (*Subunit)[0].getPooledResourceReferences())
+          for (const auto &Ref : ReferenceIter<PooledResourceRef>(Prefs, &Ins))
+            if (Ref.isFus()) {
+              int Factor = SchedModel.getResourceFactor(Ref.getSize());
+              int Cycles = Ref.getCycles() * Factor;
+              for (int res = Ref.getFirst(); res <= Ref.getLast(); res++)
+                PRCycles[Ref.getResourceIds()[res]] += Cycles;
+            }
+      }
+      continue;
+    }
+
+    // Count processor resources used for SchedModel-based model.
+    if (SchedModel.hasInstrSchedModel()) {
+      const MCSchedClassDesc *SC = SchedModel.resolveSchedClass(&MI);
+      if (!SC->isValid())
+        continue;
+
+      for (TargetSchedModel::ProcResIter
+          PI = SchedModel.getWriteProcResBegin(SC),
+          PE = SchedModel.getWriteProcResEnd(SC); PI != PE; ++PI) {
+        assert(PI->ProcResourceIdx < PRKinds && "Bad processor resource kind");
+        PRCycles[PI->ProcResourceIdx] += PI->ReleaseAtCycle;
+      }
     }
   }
   FBI->InstrCount = InstrCount;
-
-  // Scale the resource cycles so they are comparable.
   unsigned PROffset = MBB->getNumber() * PRKinds;
-  for (unsigned K = 0; K != PRKinds; ++K)
-    ProcReleaseAtCycles[PROffset + K] =
-      PRCycles[K] * SchedModel.getResourceFactor(K);
+
+  // Save release cycles for each resource.
+  if (SchedModel.hasMdlModel()) {
+    for (unsigned K = 0; K != PRKinds; ++K)
+      ProcReleaseAtCycles[PROffset + K] = PRCycles[K];
+  } else {
+    // Scale the resource cycles so they are comparable.
+    for (unsigned K = 0; K != PRKinds; ++K)
+      ProcReleaseAtCycles[PROffset + K] =
+        PRCycles[K] * SchedModel.getResourceFactor(K);
+  }
 
   return FBI;
 }
@@ -877,6 +906,7 @@ computeInstrDepths(const MachineBasicBlock *MBB) {
     TBI.CriticalPath = 0;
 
     // Print out resource depths here as well.
+    // TODO-MDL - Need an MDL-specific version of this
     LLVM_DEBUG({
       dbgs() << format("%7u Instructions\n", TBI.InstrDepth);
       ArrayRef<unsigned> PRDepths = getProcResourceDepths(MBB->getNumber());
@@ -1057,6 +1087,7 @@ computeInstrHeights(const MachineBasicBlock *MBB) {
     TBI.HasValidInstrHeights = true;
     TBI.CriticalPath = 0;
 
+    // TODO-MDL - Need an MDL-specific version of this
     LLVM_DEBUG({
       dbgs() << format("%7u Instructions\n", TBI.InstrHeight);
       ArrayRef<unsigned> PRHeights = getProcResourceHeights(MBB->getNumber());
@@ -1225,6 +1256,7 @@ unsigned MachineTraceMetrics::Trace::getResourceDepth(bool Bottom) const {
   return std::max(Instrs, PRMax);
 }
 
+// TODO-MDL - Need an MDL-specific version of this
 unsigned MachineTraceMetrics::Trace::getResourceLength(
     ArrayRef<const MachineBasicBlock *> Extrablocks,
     ArrayRef<const MCSchedClassDesc *> ExtraInstrs,

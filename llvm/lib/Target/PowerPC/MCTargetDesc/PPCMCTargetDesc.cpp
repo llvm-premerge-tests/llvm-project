@@ -20,6 +20,7 @@
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/BinaryFormat/ELF.h"
+#include "llvm/Config/config.h"
 #include "llvm/MC/MCAsmBackend.h"
 #include "llvm/MC/MCAssembler.h"
 #include "llvm/MC/MCCodeEmitter.h"
@@ -57,6 +58,14 @@ using namespace llvm;
 #define GET_REGINFO_MC_DESC
 #include "PPCGenRegisterInfo.inc"
 
+// Include the generated MDL database.
+#if ENABLE_MDL_USE
+#include "PPCGenMdlInfo.inc"
+#define PPCCpuTable &PPC::CpuTable
+#else
+#define PPCCpuTable nullptr
+#endif
+
 PPCTargetStreamer::PPCTargetStreamer(MCStreamer &S) : MCTargetStreamer(S) {}
 
 // Pin the vtable to this file.
@@ -91,7 +100,8 @@ static MCSubtargetInfo *createPPCMCSubtargetInfo(const Triple &TT,
       FullFS = "+aix";
   }
 
-  return createPPCMCSubtargetInfoImpl(TT, CPU, /*TuneCPU*/ CPU, FullFS);
+  return createPPCMCSubtargetInfoImpl(TT, CPU, /*TuneCPU*/ CPU, FullFS,
+                                      PPCCpuTable);
 }
 
 static MCAsmInfo *createPPCMCAsmInfo(const MCRegisterInfo &MRI,

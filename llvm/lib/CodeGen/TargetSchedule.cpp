@@ -20,8 +20,11 @@
 #include "llvm/MC/MCInstrDesc.h"
 #include "llvm/MC/MCInstrItineraries.h"
 #include "llvm/MC/MCSchedule.h"
+#include "llvm/MC/MDLInfo.h"
+#include "llvm/MC/MDLInstrInfo.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
 #include <cassert>
@@ -29,6 +32,7 @@
 #include <numeric>
 
 using namespace llvm;
+using namespace mdl;
 
 static cl::opt<bool> EnableSchedModel("schedmodel", cl::Hidden, cl::init(true),
   cl::desc("Use TargetSchedModel for latency lookup"));
@@ -48,14 +52,33 @@ bool TargetSchedModel::hasInstrItineraries() const {
   return EnableSchedItins && !InstrItins.isEmpty();
 }
 
+bool TargetSchedModel::hasMdlModel() const { return STI->hasMdlModel(); }
+mdl::CpuInfo *TargetSchedModel::getCpuInfo() const { return STI->getCpuInfo(); }
+
 void TargetSchedModel::init(const TargetSubtargetInfo *TSInfo) {
   STI = TSInfo;
   SchedModel = TSInfo->getSchedModel();
   TII = TSInfo->getInstrInfo();
   STI->initInstrItins(InstrItins);
 
+  // ResourceLCM is computed in the MDL compiler for each CPU.
+  if (hasMdlModel()) {
+    ResourceLCM = STI->getCpuInfo()->getResourceFactor();
+    MicroOpFactor = ResourceLCM / STI->getCpuInfo()->getMaxIssue();
+
+    // MDL functional unit resources don't have "NumUnits", instead we use
+    // explicit "pools" to allocate them.  So here we pre-compute all 
+    // feasible pool size factors into ResourceFactors, then index it with
+    // the pool size.
+    ResourceFactors.resize(ResourceLCM + 1);
+    for (unsigned PoolSize = 1; PoolSize <= ResourceLCM; PoolSize++)
+      ResourceFactors[PoolSize] = ResourceLCM / PoolSize;
+    return;
+  }
+
   unsigned NumRes = SchedModel.getNumProcResourceKinds();
   ResourceFactors.resize(NumRes);
+
   ResourceLCM = SchedModel.IssueWidth;
   for (unsigned Idx = 0; Idx < NumRes; ++Idx) {
     unsigned NumUnits = SchedModel.getProcResource(Idx)->NumUnits;
@@ -69,9 +92,10 @@ void TargetSchedModel::init(const TargetSubtargetInfo *TSInfo) {
   }
 }
 
-/// Returns true only if instruction is specified as single issue.
+/// Returns true only if instruction is specified as beginning an issue group.
 bool TargetSchedModel::mustBeginGroup(const MachineInstr *MI,
                                      const MCSchedClassDesc *SC) const {
+  if (hasMdlModel()) return STI->getCpuInfo()->mustBeginGroup(MI, STI);
   if (hasInstrSchedModel()) {
     if (!SC)
       SC = resolveSchedClass(MI);
@@ -81,8 +105,10 @@ bool TargetSchedModel::mustBeginGroup(const MachineInstr *MI,
   return false;
 }
 
+/// Returns true only if instruction is specified as ending an issue group.
 bool TargetSchedModel::mustEndGroup(const MachineInstr *MI,
                                      const MCSchedClassDesc *SC) const {
+  if (hasMdlModel()) return STI->getCpuInfo()->mustEndGroup(MI, STI);
   if (hasInstrSchedModel()) {
     if (!SC)
       SC = resolveSchedClass(MI);
@@ -94,6 +120,8 @@ bool TargetSchedModel::mustEndGroup(const MachineInstr *MI,
 
 unsigned TargetSchedModel::getNumMicroOps(const MachineInstr *MI,
                                           const MCSchedClassDesc *SC) const {
+  if (hasMdlModel()) return STI->getCpuInfo()->numMicroOps(MI, STI);
+
   if (hasInstrItineraries()) {
     int UOps = InstrItins.getNumMicroOps(MI->getDesc().getSchedClass());
     return (UOps >= 0) ? UOps : TII->getNumMicroOps(&InstrItins, *MI);
@@ -168,14 +196,59 @@ static unsigned findUseIdx(const MachineInstr *MI, unsigned UseOperIdx) {
   return UseIdx;
 }
 
+static unsigned compareLatencies(const TargetInstrInfo *TII,
+                                 const MachineInstr *Def, int DefOpIdx,
+                                 const MachineInstr *Use, int UseOpIdx,
+                                 int MdlLatency, unsigned BaseLatency,
+                                 int Advance) {
+  // Adjust LLVM Schedule-based latency by the Advance amount.
+  unsigned Latency = BaseLatency - Advance;
+  if (Advance > 0 && (unsigned)Advance > BaseLatency) // unsigned wrap
+    Latency = 0;
+
+  if (MdlLatency == -1 || MdlLatency == (int)Latency) return Latency;
+
+#if 0       // Enable this to debug latency calculation
+  if (Use == nullptr || UseOpIdx == -1) {
+    llvm::dbgs() << formatv("[{0}<{1}> nullptr <-1> ] ",
+                            Def->getOpcode(), DefOpIdx);
+  } else {
+    llvm::dbgs() << formatv("[{0}<{1}> {2}<{3}> ] ",
+                 Def->getOpcode(), DefOpIdx, Use->getOpcode(), UseOpIdx);
+  }
+
+  llvm::dbgs() << formatv("{0}-->", TII->getName(Def->getOpcode()));
+
+  if (Use == nullptr || UseOpIdx == -1)
+    llvm::dbgs() << "<none> == ";
+  else
+    llvm::dbgs() << formatv("{0} == ", TII->getName(Use->getOpcode()));
+
+  llvm::dbgs() << formatv("Expected: {0}({1}) Calculated: {2}\n",
+               Latency, Advance, MdlLatency);
+  // llvm_unreachable("MDLCheckLatency :: Different calculated latencies");
+#endif
+
+  return MdlLatency;
+}
+
+#include <stdio.h>
+
 // Top-level API for clients that know the operand indices.
 unsigned TargetSchedModel::computeOperandLatency(
   const MachineInstr *DefMI, unsigned DefOperIdx,
   const MachineInstr *UseMI, unsigned UseOperIdx) const {
 
-  if (!hasInstrSchedModel() && !hasInstrItineraries())
+  if (!hasAnySchedModel())
     return TII->defaultDefLatency(SchedModel, *DefMI);
 
+  // If we have an MDL model, use it to determine the latency.
+  int MdlLatency = -1;
+  if (hasMdlModel())
+    return llvm::mdl::calculateOperandLatency(DefMI, DefOperIdx,
+                                              UseMI, UseOperIdx, STI);
+
+  // Use itineraries to calculate the latency.
   if (hasInstrItineraries()) {
     int OperLatency = 0;
     if (UseMI) {
@@ -187,7 +260,8 @@ unsigned TargetSchedModel::computeOperandLatency(
       OperLatency = InstrItins.getOperandCycle(DefClass, DefOperIdx);
     }
     if (OperLatency >= 0)
-      return OperLatency;
+      return compareLatencies(TII, DefMI, DefOperIdx, UseMI, UseOperIdx,
+                              MdlLatency, OperLatency, 0);
 
     // No operand latency was found.
     unsigned InstrLatency = TII->getInstrLatency(&InstrItins, *DefMI);
@@ -199,7 +273,8 @@ unsigned TargetSchedModel::computeOperandLatency(
     // special cases without TII hooks.
     InstrLatency =
         std::max(InstrLatency, TII->defaultDefLatency(SchedModel, *DefMI));
-    return InstrLatency;
+    return compareLatencies(TII, DefMI, DefOperIdx, UseMI, UseOperIdx,
+                              MdlLatency, InstrLatency, 0);
   }
   // hasInstrSchedModel()
   const MCSchedClassDesc *SCDesc = resolveSchedClass(DefMI);
@@ -211,17 +286,18 @@ unsigned TargetSchedModel::computeOperandLatency(
     unsigned WriteID = WLEntry->WriteResourceID;
     unsigned Latency = capLatency(WLEntry->Cycles);
     if (!UseMI)
-      return Latency;
+      return compareLatencies(TII, DefMI, DefOperIdx, UseMI, UseOperIdx,
+                              MdlLatency, Latency, 0);
 
     // Lookup the use's latency adjustment in SubtargetInfo.
     const MCSchedClassDesc *UseDesc = resolveSchedClass(UseMI);
     if (UseDesc->NumReadAdvanceEntries == 0)
-      return Latency;
+      return compareLatencies(TII, DefMI, DefOperIdx, UseMI, UseOperIdx,
+                              MdlLatency, Latency, 0);
     unsigned UseIdx = findUseIdx(UseMI, UseOperIdx);
     int Advance = STI->getReadAdvanceCycles(UseDesc, UseIdx, WriteID);
-    if (Advance > 0 && (unsigned)Advance > Latency) // unsigned wrap
-      return 0;
-    return Latency - Advance;
+    return compareLatencies(TII, DefMI, DefOperIdx, UseMI, UseOperIdx,
+                              MdlLatency, Latency, Advance);
   }
   // If DefIdx does not exist in the model (e.g. implicit defs), then return
   // unit latency (defaultDefLatency may be too conservative).
@@ -237,7 +313,10 @@ unsigned TargetSchedModel::computeOperandLatency(
   // FIXME: Automatically giving all implicit defs defaultDefLatency is
   // undesirable. We should only do it for defs that are known to the MC
   // desc like flags. Truly implicit defs should get 1 cycle latency.
-  return DefMI->isTransient() ? 0 : TII->defaultDefLatency(SchedModel, *DefMI);
+  unsigned Latency = DefMI->isTransient()
+                        ? 0 : TII->defaultDefLatency(SchedModel, *DefMI);
+  return compareLatencies(TII, DefMI, DefOperIdx, UseMI, UseOperIdx,
+                          MdlLatency, Latency, 0);
 }
 
 unsigned
@@ -252,6 +331,10 @@ unsigned TargetSchedModel::computeInstrLatency(unsigned Opcode) const {
 }
 
 unsigned TargetSchedModel::computeInstrLatency(const MCInst &Inst) const {
+  if (hasMdlModel()) {
+    return llvm::mdl::calculateInstructionLatency(&Inst, STI, TII);
+  }
+
   if (hasInstrSchedModel())
     return capLatency(SchedModel.computeInstrLatency(*STI, *TII, Inst));
   return computeInstrLatency(Inst.getOpcode());
@@ -260,6 +343,12 @@ unsigned TargetSchedModel::computeInstrLatency(const MCInst &Inst) const {
 unsigned
 TargetSchedModel::computeInstrLatency(const MachineInstr *MI,
                                       bool UseDefaultDefLatency) const {
+
+  // If we have an MDL model, use it to determine the latency.
+  if (hasMdlModel()) {
+    return llvm::mdl::calculateInstructionLatency(MI, STI);
+  }
+
   // For the itinerary model, fall back to the old subtarget hook.
   // Allow subtargets to compute Bundle latencies outside the machine model.
   if (hasInstrItineraries() || MI->isBundle() ||
@@ -296,6 +385,20 @@ computeOutputLatency(const MachineInstr *DefMI, unsigned DefOperIdx,
 
   // If we have a per operand scheduling model, check if this def is writing
   // an unbuffered resource. If so, it treated like an in-order cpu.
+  if (hasMdlModel()) {
+    Instr Ins(DefMI, getSubtargetInfo());
+    if (auto *Subunit = Ins.getSubunit()) {
+      if (auto *Refs = (*Subunit)[0].getUsedResourceReferences())
+        for (const auto &Ref : ReferenceIter<ResourceRef>(Refs, &Ins))
+          if (Ref.isFus() && Ref.getCycles() && Ref.isBuffered()) return 1;
+
+      if (auto *Prefs = (*Subunit)[0].getPooledResourceReferences())
+        for (const auto &Ref : ReferenceIter<PooledResourceRef>(Prefs, &Ins))
+          if (Ref.isFus() && Ref.isBuffered()) return 1;
+    }
+    return 0;
+  }
+
   if (hasInstrSchedModel()) {
     const MCSchedClassDesc *SCDesc = resolveSchedClass(DefMI);
     if (SCDesc->isValid()) {
@@ -311,12 +414,14 @@ computeOutputLatency(const MachineInstr *DefMI, unsigned DefOperIdx,
 
 double
 TargetSchedModel::computeReciprocalThroughput(const MachineInstr *MI) const {
+  if (hasMdlModel()) 
+    return STI->getCpuInfo()->getReciprocalThroughput(STI, MI);
+
   if (hasInstrItineraries()) {
     unsigned SchedClass = MI->getDesc().getSchedClass();
     return MCSchedModel::getReciprocalThroughput(SchedClass,
                                                  *getInstrItineraries());
   }
-
   if (hasInstrSchedModel())
     return MCSchedModel::getReciprocalThroughput(*STI, *resolveSchedClass(MI));
 
@@ -340,6 +445,8 @@ TargetSchedModel::computeReciprocalThroughput(unsigned Opcode) const {
 
 double
 TargetSchedModel::computeReciprocalThroughput(const MCInst &MI) const {
+  if (hasMdlModel())
+    return STI->getCpuInfo()->getReciprocalThroughput(STI, TII, &MI);
   if (hasInstrSchedModel())
     return SchedModel.getReciprocalThroughput(*STI, *TII, MI);
   return computeReciprocalThroughput(MI.getOpcode());

@@ -67,7 +67,8 @@ static MCSubtargetInfo *createM68kMCSubtargetInfo(const Triple &TT,
       ArchFS = FS.str();
     }
   }
-  return createM68kMCSubtargetInfoImpl(TT, CPU, /*TuneCPU=*/CPU, ArchFS);
+  return createM68kMCSubtargetInfoImpl(TT, CPU, /*TuneCPU=*/CPU, ArchFS,
+                                       nullptr);
 }
 
 static MCAsmInfo *createM68kMCAsmInfo(const MCRegisterInfo &MRI,
