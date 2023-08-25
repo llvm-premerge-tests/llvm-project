@@ -477,6 +477,8 @@ private:
                      std::map<LineLocation, StringRef> &IRAnchors);
   void findProfileAnchors(const FunctionSamples &FS,
                           std::map<LineLocation, StringSet<>> &ProfileAnchors);
+  void computeHashMismatchSamples(const FunctionSamples &FS,
+                                  uint64_t &MismatchedSamples);
   void countProfileMismatches(
       const Function &F, const FunctionSamples &FS,
       const std::map<LineLocation, StringRef> &IRAnchors,
@@ -2166,6 +2168,22 @@ void SampleProfileMatcher::findIRAnchors(
   }
 }
 
+void SampleProfileMatcher::computeHashMismatchSamples(
+    const FunctionSamples &FS, uint64_t &MismatchedSamples) {
+  const auto *FuncDesc = ProbeManager->getDesc(FS.getName());
+  // Skip the function that is external or renamed.
+  if (!FuncDesc)
+    return;
+
+  if (ProbeManager->profileIsHashMismatched(*FuncDesc, FS)) {
+    MismatchedSamples += FS.getTotalSamples();
+    return;
+  }
+  for (const auto &I : FS.getCallsiteSamples())
+    for (const auto &CS : I.second)
+      computeHashMismatchSamples(CS.second, MismatchedSamples);
+}
+
 void SampleProfileMatcher::countProfileMismatches(
     const Function &F, const FunctionSamples &FS,
     const std::map<LineLocation, StringRef> &IRAnchors,
@@ -2175,10 +2193,13 @@ void SampleProfileMatcher::countProfileMismatches(
     uint64_t Count = FS.getTotalSamples();
     TotalFuncHashSamples += Count;
     TotalProfiledFunc++;
-    if (!ProbeManager->profileIsValid(F, FS)) {
-      MismatchedFuncHashSamples += Count;
-      NumMismatchedFuncHash++;
-      IsFuncHashMismatch = true;
+    const auto *FuncDesc = ProbeManager->getDesc(F);
+    if (FuncDesc) {
+      if (ProbeManager->profileIsHashMismatched(*FuncDesc, FS)) {
+        NumMismatchedFuncHash++;
+        IsFuncHashMismatch = true;
+      }
+      computeHashMismatchSamples(FS, MismatchedFuncHashSamples);
     }
   }
 
