@@ -9319,7 +9319,7 @@ void VPReductionRecipe::execute(VPTransformState &State) {
       NewRed = createTargetReduction(State.Builder, TTI, RdxDesc, NewVecOp);
     }
     if (RecurrenceDescriptor::isMinMaxRecurrenceKind(Kind)) {
-      NextInChain = createMinMaxOp(State.Builder, RdxDesc.getRecurrenceKind(),
+      NextInChain = createMinMaxOp(State.Builder, RdxDesc->getRecurrenceKind(),
                                    NewRed, PrevInChain);
     } else if (IsOrdered)
       NextInChain = NewRed;
