@@ -222,6 +222,312 @@ Alternatively,
 skips the analysis and inserts a copy on every buffer write, just like the
 dialect conversion-based bufferization.
 
+## Buffer Deallocation
+
+One-Shot Bufferize does not deallocate any buffers that it allocates. This job
+is delegated to the
+[`-buffer-deallocation`](https://mlir.llvm.org/docs/Passes/#-buffer-deallocation-adds-all-required-dealloc-operations-for-all-allocations-in-the-input-program)
+pass. This pass processes operations implementing `FunctionOpInterface`
+one-by-one without analysing the call-graph. This means, that there have to be
+[some rules](#function-boundary-api) on how MemRefs are handled when being
+passed from one function to another. The rest of the pass revolves heavily
+around the `bufferization.dealloc` operation which is inserted at the end of
+each basic block with appropriate operands and should be optimized using the
+Buffer Deallocation Simplification pass (`--buffer-deallocation-simplification`)
+and the regular canonicalizer (`--canonicalize`). Lowering the
+`bufferization.dealloc` operation directly using
+`--convert-bufferization-to-memref` without beforehand optimization is not
+recommended as it will lead to very inefficient code (the runtime-cost of
+`bufferization.dealloc` is `O(|memrefs|^2+|memref|*|retained|)`).
+
+### Function boundary ABI
+
+The Buffer Deallocation pass operates on the level of operations implementing
+the `FunctionOpInterface`. Such operations can take MemRefs as argument, but
+also return them. To ensure compatibility among all functions (including
+external ones), some rules have to be enforced:
+*   When a MemRef is passed as a function argument, ownership is never consumed.
+    It is always the caller's responsibility to deallocate such MemRefs.
+*   Returning a MemRef from a function always passes ownership to the caller,
+    i.e., it is also the caller's responsibility to deallocate memrefs returned
+    from a called function.
+*   A function must not return a MemRef that aliases one of its arguments (in
+    this case a copy has to be created). Note that in this context two subviews
+    of the same buffer that don't overlap are also considered to alias.
+
+### Inserting `bufferization.dealloc` operations
+
+`bufferization.dealloc` operations are unconditionally inserted at the end of
+each basic block (just before the terminator). The majority of the pass is about
+finding the correct operands for this operation. There are three variadic
+operand lists to be populated, the first contains all MemRef values that may
+need to be deallocated, the second list contains their associated ownership
+values (of `i1` type), and the third list contains MemRef values that are still
+needed at a later point and should thus not be deallocated. The genericity of
+this operation allows us to deal with any kind of aliasing behavior since it
+inserts runtime aliasing checks when not enough information can be collected
+statically.  Additionally, it allows us to only think about correctness and
+split off optimizations reducing the number of operands and
+`bufferization.dealloc` operations into simple canonicalization patterns instead
+of having to do all of them as part of this pass.
+
+**Ownerships**
+
+To do so, we use a concept of
+ownership of memrefs which allows us to materialize an `i1` value for any SSA
+value of `memref` type on demand, indicating whether the basic block in which it
+was materialized has ownership of this MemRef. Ideally, this is a constant
+`true` or `false`, but might also be a non-constant SSA value. To keep track of
+those ownership values without immediately materializing them (which might
+require insertion of `bufferization.clone` operations or operations checking for
+aliasing at runtime at positions where we don't actually need a materialized
+value), we use the `Ownership` class. This class represents the ownership in
+three states forming a lattice on a partial order:
+```
+forall X in SSA values. uninitialized < unique(X) < unknown
+forall X, Y in SSA values.
+  unique(X) == unique(Y) iff X and Y always evaluate to the same value
+  unique(X) != unique(Y) otherwise
+```
+Intuitively, the states have the following meaning:
+*   Uninitialized: the ownership is not initialized yet, this is the default
+    state; once an operation is finished processing the ownership of all
+    operation results with MemRef type should not be uninitialized anymore.
+*   Unique: there is a specific SSA value that can be queried to check ownership
+    without materializing any additional IR
+*   Unknown: no specific SSA value is available without materializing additional
+    IR, typically this is because two ownerships in 'Unique' state would have to
+    be merged manually (e.g., the result of an `arith.select` either has the
+    ownership of the then or else case depending on the condition value,
+    inserting another `arith.select` for the ownership values can perform the
+    merge and provide a 'Unique' ownership for the result), however, in the
+    general case this 'Unknown' state has to be assigned.
+
+Implied by the above partial order, the pass combines two ownerships in the
+following way:
+
+| Ownership 1   | Ownership 2   | Combined Ownership |
+|:--------------|:--------------|:-------------------|
+| uninitialized | uninitialized | uninitialized      |
+| unique(X)     | uninitialized | unique(X)          |
+| unique(X)     | unique(X)     | unique(X)          |
+| unique(X)     | unique(Y)     | unknown            |
+| unknown       | unique        | unknown            |
+| unknown       | uninitialized | unknown            |
+| <td colspan=3> + symmetric cases                   |
+
+**Collecting the list of MemRefs that potentially needs to be deallocated**
+
+For a given block, the list of MemRefs that potentially need to be deallocated
+at the end of that block is computed by keeping track of all values for which
+the block potentially takes over ownership. This includes MemRefs provided as
+basic block arguments, interface handlers for operations like `memref.alloc` and
+`func.call`, but also liveness information in regions with multiple basic
+blocks.  More concretely, it is computed by taking the MemRefs in the 'in' set
+of the liveness analysis of the current basic block B, appended by the MemRef
+block arguments and by the set of MemRefs allocated in B itself (determined by
+the interface handlers), then subtracted (also determined by the interface
+handlers) by the set of MemRefs deallocated in B.
+
+Note that we don't have to take the intersection of the liveness 'in' set with
+the 'out' set of the predecessor block because a value that is in the 'in' set
+must be defined in an ancestor block that dominates all direct predecessors and
+thus the 'in' set of this block is a subset of the 'out' sets of each
+predecessor.
+
+```
+memrefs = filter((liveIn(block) U
+  allocated(block) U arguments(block)) \ deallocated(block), isMemRef)
+```
+
+The list of conditions for the second variadic operands list of
+`bufferization.dealloc` is computed by querying the stored ownership value for
+each of the MemRefs collected as described above. The ownership state is updated
+by the interface handlers while processing the basic block.
+
+**Collecting the list of MemRefs to retain**
+
+Given a basic block B, the list of MemRefs that have to be retained can be
+different for each successor block S.  For the two basic blocks B and S and the
+values passed via block arguments to the destination block S, we compute the
+list of MemRefs that have to be retained in B by taking the MemRefs in the
+successor operand list of the terminator and the MemRefs in the 'out' set of the
+liveness analysis for B intersected with the 'in' set of the destination block
+S.
+
+This list of retained values makes sure that we cannot run into use-after-free
+situations even if no aliasing information is present at compile-time.
+
+```
+toRetain = filter(successorOperands + (liveOut(fromBlock) insersect
+  liveIn(toBlock)), isMemRef)
+```
+
+### Supported interfaces
+
+The pass uses liveness analysis and a few interfaces:
+*   `FunctionOpInterface`
+*   `CallOpInterface`
+*   `MemoryEffectOpInterface`
+*   `RegionBranchOpInterface`
+*   `RegionBranchTerminatorOpInterface`
+
+Due to insufficient information provided by the interface, it also special-cases
+on the `cf.cond_br` operation and makes some assumptions about operations
+implementing the `RegionBranchOpInterface` at the moment, but improving the
+interfaces would allow us to remove those dependencies in the future.
+
+### Limitations
+
+The Buffer Deallocation pass has some requirements and limitations on the input
+IR. These are checked in the beginning of the pass and errors are emitted
+accordingly:
+*   The set of interfaces the pass operates on must be implemented (correctly).
+    E.g., if there is an operation present with a nested region, but does not
+    implement the `RegionBranchOpInterface`, an error is emitted because the
+    pass cannot know the semantics of this nested region (and does not make any
+    default assumptions on it).
+*   Operations or interfaces that are not considered in the pass, but would have
+    an important effect (in terms of correctness) on deallocation should not be
+    present.
+*   No explicit control-flow loops are present. Currently, only loops using
+    structural-control-flow are supported.  However, this limitation could be
+    lifted in the future.
+*   Deallocation operations should not be present already. The pass should
+    handle them correctly already (at least in most cases), but it's not
+    supported yet due to insufficient testing.
+*   Terminators must implement either `RegionBranchTerminatorOpInterface` or
+    `BranchOpInterface`, but not both. Terminators with more than one successor
+    are not supported (except `cf.cond_br`). This is not a fundamental
+    limitation, but there is no use-case justifying the more complex
+    implementation at the moment.
+
+### Example
+
+The following example contains a few interesting cases:
+*   Basic block arguments are modified to also pass along the ownership
+    indicator, but not for entry bocks for non-private functions (assuming the
+    `private-function-dynamic-ownership` pass option is disabled) where the
+    function boundary ABI is applied instead.
+*   The result of `arith.select` initially has 'Unknown' assigned as ownership,
+    but once the `bufferization.dealloc` operation is inserted it is put in the
+    'retained' list (since it has uses in a later basic block) and thus the
+    'Unknown' ownership can be replaced with a 'Unique' ownership using the
+    corresponding result of the dealloc operation.
+*   The `cf.cond_br` 
+
+```mlir
+func.func @example(%memref: memref<?xi8>, %select_cond: i1, %br_cond: i1) {
+  %alloc = memref.alloc() : memref<?xi8>
+  %alloca = memref.alloca() : memref<?xi8>
+  %select = arith.select %select_cond, %alloc, %alloca : memref<?xi8>
+  cf.cond_br %br_cond, ^bb1(%alloc : memref<?xi8>), ^bb1(%memref : memref<?xi8>)
+^bb1(%bbarg: memref<?xi8>):
+  test.copy(%bbarg, %select) : (memref<?xi8>, memref<?xi8>)
+  return
+}
+```
+
+After running `--buffer-deallocation`, it looks like the following:
+
+```mlir
+// Since this is not a private function, the signature will not be modified even
+// when private-function-dynamic-ownership is enabled.
+func.func @example(%memref: memref<?xi8>, %select_cond: i1, %br_cond: i1) {
+  %false = arith.constant false
+  %true = arith.constant true
+  %alloc = memref.alloc() : memref<?xi8>
+  %alloca = memref.alloca() : memref<?xi8>
+  %select = arith.select %select_cond, %alloc, %alloca : memref<?xi8>
+
+  // We use `memref.extract_strided_metadata` to get the base memref since it is
+  // not allowed to pass arbitrary memrefs to `memref.dealloc`. This property is
+  // already enforced for `bufferization.dealloc`
+  %base_buffer_memref, ... = memref.extract_strided_metadata %memref
+    : memref<?xi8> -> memref<i8>, index, index, index
+  %base_buffer_alloc, ... = memref.extract_strided_metadata %alloc
+    : memref<?xi8> -> memref<i8>, index, index, index
+  %base_buffer_alloca, ... = memref.extract_strided_metadata %alloca
+    : memref<?xi8> -> memref<i8>, index, index, index
+
+  // The deallocation conditions need to be adjusted to incorporate the branch
+  // condition. In this example, this requires only a single negation, but might
+  // also require multiple arith.andi operations.
+  %not_br_cond = arith.xori %true, %br_cond : i1
+
+  // There are two dealloc operations inserted in this basic block, one per
+  // successor. Both have the same list of MemRefs to deallocate and and the
+  // conditions only differ by the branch condition conjunct.
+  // Note, however, that the retained list differs. Here, both contain the
+  // %select value because it is used in both successors (since it's the same
+  // block), but the value passed via block argument differs (%memref vs.
+  // %alloc).
+  %10:2 = bufferization.dealloc
+           (%base_buffer_memref, %base_buffer_alloc, %base_buffer_alloca
+             : memref<i8>, memref<i8>, memref<i8>)
+        if (%false, %br_cond, %false)
+    retain (%alloc, %select : memref<?xi8>, memref<?xi8>)
+
+  %11:2 = bufferization.dealloc
+           (%base_buffer_memref, %base_buffer_alloc, %base_buffer_alloca
+             : memref<i8>, memref<i8>, memref<i8>)
+        if (%false, %not_br_cond, %false)
+    retain (%memref, %select : memref<?xi8>, memref<?xi8>)
+  
+  // Because %select is used in ^bb1 without passing it via block argument, we
+  // need to update it's ownership value here by merging the ownership values
+  // returned by the dealloc operations
+  %new_ownership = arith.select %br_cond, %10#1, %11#1 : i1
+
+  // The terminator is modified to pass along the ownership indicator values
+  // with each MemRef value.
+  cf.cond_br %br_cond, ^bb1(%alloc, %10#0 : memref<?xi8>, i1),
+                       ^bb1(%memref, %11#0 : memref<?xi8>, i1)
+
+// All non-entry basic blocks are modified to have an additional i1 argument for
+// each MemRef value in the argument list.
+^bb1(%13: memref<?xi8>, %14: i1):  // 2 preds: ^bb0, ^bb0
+  test.copy(%13, %select) : (memref<?xi8>, memref<?xi8>)
+
+  %base_buffer_13, ... = memref.extract_strided_metadata %13
+    : memref<?xi8> -> memref<i8>, index, index, index
+  %base_buffer_select, ... = memref.extract_strided_metadata %select
+    : memref<?xi8> -> memref<i8>, index, index, index
+
+  // Here, we don't have a retained list, because the block has no successors
+  // and the return has no operands.
+  bufferization.dealloc (%base_buffer_13, %base_buffer_select
+                          : memref<i8>, memref<i8>)
+                     if (%14, %new_ownership)
+  return
+}
+```
+
+## Buffer Deallocation Simplification Pass
+
+The [semantics of the `bufferization.dealloc` operation](https://mlir.llvm.org/docs/Dialects/BufferizationOps/#bufferizationdealloc-bufferizationdeallocop)
+provide a lot of opportunities for optimizations which can be conveniently split
+into patterns using the greedy pattern rewriter. Some of those patterns need
+access to additional analyses such as an analysis that can determine whether two
+MemRef values must, may, or never originate from the same buffer allocation.
+These patterns are collected in the Buffer Deallocation Simplification pass,
+while patterns that don't need additional analyses are registered as part of the
+regular canonicalizer pass. This pass is best run after `--buffer-deallocation`
+followed by `--canonicalize`.
+
+The pass applies patterns for the following simplifications:
+*   Remove MemRefs from retain list when guaranteed to not alias with any value
+    in the 'memref' operand list. This avoids an additional aliasing check with
+    the removed value.
+*   Split off values in the 'memref' list to new `bufferization.dealloc`
+    operations only containing this value in the 'memref' list when it is
+    guaranteed to not alias with any other value in the 'memref' list. This
+    avoids at least one aliasing check at runtime and enables using a more
+    efficient lowering for this new `bufferization.dealloc` operation.
+*   Remove values from the 'memref' operand list when it is guaranteed to alias
+    with at least one value in the 'retained' list and may not alias any other
+    value in the 'retain' list.
+
 ## Memory Layouts
 
 One-Shot Bufferize bufferizes ops from top to bottom. This works well when all
