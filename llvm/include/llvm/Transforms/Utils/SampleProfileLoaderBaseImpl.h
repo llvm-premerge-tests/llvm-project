@@ -102,10 +102,17 @@ public:
     }
   }
 
-  const PseudoProbeDescriptor *getDesc(const Function &F) const {
-    auto I = GUIDToProbeDescMap.find(
-        Function::getGUID(FunctionSamples::getCanonicalFnName(F)));
+  const PseudoProbeDescriptor *getDesc(uint64_t GUID) const {
+    auto I = GUIDToProbeDescMap.find(GUID);
     return I == GUIDToProbeDescMap.end() ? nullptr : &I->second;
+  }
+
+  const PseudoProbeDescriptor *getDesc(StringRef FProfileName) const {
+    return getDesc(Function::getGUID(FProfileName));
+  }
+
+  const PseudoProbeDescriptor *getDesc(const Function &F) const {
+    return getDesc(Function::getGUID(FunctionSamples::getCanonicalFnName(F)));
   }
 
   bool moduleIsProbed(const Module &M) const {
