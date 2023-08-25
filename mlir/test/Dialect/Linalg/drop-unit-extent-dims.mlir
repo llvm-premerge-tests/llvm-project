@@ -922,3 +922,31 @@ func.func @drop_all_loops(%arg0 : memref<1x1xf32, 3>) -> memref<1x1xf32, 3>
 // CHECK-SLICES-LABEL: func @drop_all_loops
 //       CHECK-SLICES:   memref.subview %{{.*}}[0, 0] [1, 1] [1, 1] : memref<1x1xf32, 3> to memref<f32, strided<[]>, 3>
 //       CHECK-SLICES:   linalg.generic{{.*}}memref<f32, strided<[]>, 3>
+
+// -----
+
+#map4 = affine_map<(d0, d1, d2) -> (d0, d1)>
+#map5 = affine_map<(d0, d1, d2) -> (d0, d1, d2)>
+
+func.func @dynamic_dim_not_collapsible(%arg0: memref<?x28x4xf16>, %arg1: tensor<1x28xf16>) {
+  linalg.generic {indexing_maps = [#map4, #map5], iterator_types = ["parallel", "parallel", "parallel"]}
+      ins(%arg1 : tensor<1x28xf16>) outs(%arg0 : memref<?x28x4xf16>) {
+  ^bb0(%in: f16, %out: f16):
+    linalg.yield %in : f16
+  }
+  return
+}
+
+// CHECK-LABEL: func @dynamic_dim_not_collapsible(
+//  CHECK-SAME:     %[[arg0:.*]]: memref<?x28x4xf16>, %[[arg1:.*]]: tensor<1x28xf16>
+//       CHECK:   %[[c1:.*]] = tensor.collapse_shape %[[arg1]] {{\[}}[0, 1]] : tensor<1x28xf16> into tensor<28xf16>
+//       CHECK:   %[[cast:.*]] = memref.cast %[[arg0]] : memref<?x28x4xf16> to memref<1x28x4xf16>
+//       CHECK:   %[[c2:.*]] = memref.collapse_shape %[[cast]] {{\[}}[0, 1], [2]] : memref<1x28x4xf16> into memref<28x4xf16>
+//       CHECK:   linalg.generic {{.*}} ins(%[[c1]] : tensor<28xf16>) outs(%[[c2]] : memref<28x4xf16>)
+
+// CHECK-SLICES-LABEL: func @dynamic_dim_not_collapsible(
+//  CHECK-SLICES-SAME:     %[[arg0:.*]]: memref<?x28x4xf16>, %[[arg1:.*]]: tensor<1x28xf16>
+//       CHECK-SLICES:   %[[c1:.*]] = tensor.extract_slice %[[arg1]][0, 0] [1, 28] [1, 1] : tensor<1x28xf16> to tensor<28xf16>
+//       CHECK-SLICES:   %[[cast:.*]] = memref.cast %[[arg0]] : memref<?x28x4xf16> to memref<1x28x4xf16>
+//       CHECK-SLICES:   %[[c2:.*]] = memref.subview %[[cast]][0, 0, 0] [1, 28, 4] [1, 1, 1] : memref<1x28x4xf16> to memref<28x4xf16, strided<[4, 1]>>
+//       CHECK-SLICES:   linalg.generic {{.*}} ins(%[[c1]] : tensor<28xf16>) outs(%[[c2]] : memref<28x4xf16, strided<[4, 1]>>)

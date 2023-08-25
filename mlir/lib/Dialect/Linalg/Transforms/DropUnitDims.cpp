@@ -335,7 +335,9 @@ struct UnitExtentReplacementInfo {
   AffineMap indexMap;
   SmallVector<ReassociationIndices> reassociation;
   SmallVector<int64_t> targetShape;
+  SmallVector<int64_t> collapsedDims;
 };
+
 static UnitExtentReplacementInfo dropUnitExtentFromOperandMetadata(
     MLIRContext *context, GenericOp genericOp, OpOperand *opOperand,
     llvm::SmallDenseMap<unsigned, unsigned> &oldDimsToNewDimsMap,
@@ -362,8 +364,10 @@ static UnitExtentReplacementInfo dropUnitExtentFromOperandMetadata(
   };
 
   unsigned dim = 0;
-  while (dim < operandShape.size() && isUnitDim(dim))
+  while (dim < operandShape.size() && isUnitDim(dim)) {
+    info.collapsedDims.push_back(dim);
     reassociationGroup.push_back(dim++);
+  }
   while (dim < operandShape.size()) {
     assert(!isUnitDim(dim) && "expected non unit-extent");
     reassociationGroup.push_back(dim);
@@ -373,6 +377,7 @@ static UnitExtentReplacementInfo dropUnitExtentFromOperandMetadata(
     ++dim;
     // Fold all following dimensions that are unit-extent.
     while (dim < operandShape.size() && isUnitDim(dim)) {
+      info.collapsedDims.push_back(dim);
       reassociationGroup.push_back(dim++);
     }
     info.reassociation.push_back(reassociationGroup);
@@ -382,6 +387,24 @@ static UnitExtentReplacementInfo dropUnitExtentFromOperandMetadata(
       AffineMap::get(oldDimsToNewDimsMap.size(), indexingMap.getNumSymbols(),
                      newIndexExprs, context);
   return info;
+}
+
+/// Cast the given shaped value to the specified shape.
+static Value castToShape(OpBuilder &b, Value shapedValue,
+                         ArrayRef<int64_t> shape) {
+  if (auto tensorType = dyn_cast<RankedTensorType>(shapedValue.getType())) {
+    auto targetType = RankedTensorType::get(shape, tensorType.getElementType(),
+                                            tensorType.getEncoding());
+    return b.create<tensor::CastOp>(shapedValue.getLoc(), targetType,
+                                    shapedValue);
+  }
+
+  auto memrefType = cast<MemRefType>(shapedValue.getType());
+  MemRefLayoutAttrInterface layout;
+  auto targetType = MemRefType::get(shape, memrefType.getElementType(), layout,
+                                    memrefType.getMemorySpace());
+  return b.create<memref::CastOp>(shapedValue.getLoc(), targetType,
+                                  shapedValue);
 }
 
 LogicalResult linalg::dropUnitDims(RewriterBase &rewriter, GenericOp genericOp,
@@ -451,7 +474,7 @@ LogicalResult linalg::dropUnitDims(RewriterBase &rewriter, GenericOp genericOp,
   SmallVector<AffineMap> newIndexingMaps;
   SmallVector<SmallVector<ReassociationIndices>> reassociations;
   SmallVector<SmallVector<int64_t>> targetShapes;
-  SmallVector<bool> collapsed;
+  SmallVector<SmallVector<int64_t>> collapsedDims;
   auto hasCollapsibleType = [](OpOperand &operand) {
     Type operandType = operand.get().getType();
     if (auto memrefOperandType = dyn_cast_or_null<MemRefType>(operandType)) {
@@ -470,7 +493,7 @@ LogicalResult linalg::dropUnitDims(RewriterBase &rewriter, GenericOp genericOp,
           dimReplacements, ArrayRef<AffineExpr>{}, oldDimToNewDimMap.size(), 0);
       newIndexingMaps.push_back(newIndexingMap);
       targetShapes.push_back(llvm::to_vector(shape));
-      collapsed.push_back(false);
+      collapsedDims.push_back({});
       reassociations.push_back({});
       continue;
     }
@@ -480,8 +503,7 @@ LogicalResult linalg::dropUnitDims(RewriterBase &rewriter, GenericOp genericOp,
     reassociations.push_back(replacementInfo.reassociation);
     newIndexingMaps.push_back(replacementInfo.indexMap);
     targetShapes.push_back(replacementInfo.targetShape);
-    collapsed.push_back(!(replacementInfo.indexMap.getNumResults() ==
-                          indexingMap.getNumResults()));
+    collapsedDims.push_back(replacementInfo.collapsedDims);
   }
 
   // Abort if the indexing maps of the result operation are not invertible
@@ -490,19 +512,40 @@ LogicalResult linalg::dropUnitDims(RewriterBase &rewriter, GenericOp genericOp,
       !inversePermutation(concatAffineMaps(newIndexingMaps)))
     return failure();
 
-  Location loc = genericOp.getLoc();
   // 4. For each of the operands, collapse the operand to convert
   //    from original shape to shape in the modified operation if needed,
   //    either through use of reshapes or rank-reducing slices as
   //    specified in `options`.
+  Location loc = genericOp.getLoc();
   SmallVector<Value> newOperands;
   for (OpOperand &opOperand : genericOp->getOpOperands()) {
     int64_t idx = opOperand.getOperandNumber();
-    if (!collapsed[idx]) {
+
+    // Check if there are any dims to collapse.
+    if (collapsedDims[idx].empty()) {
       newOperands.push_back(opOperand.get());
       continue;
     }
-    newOperands.push_back(collapseValue(rewriter, loc, opOperand.get(),
+
+    // Look for operand dims that should be collapsed but have a dynamic size.
+    // Cast such dims to static `1`.
+    SmallVector<int64_t> operandShape(
+        cast<ShapedType>(opOperand.get().getType()).getShape());
+    bool castNeeded = false;
+    for (int64_t i = 0; i < collapsedDims[idx].size(); ++i) {
+      auto dim = collapsedDims[idx][i];
+      if (operandShape[dim] != 1) {
+        assert(ShapedType::isDynamic(operandShape[dim]) &&
+               "expected dynamic dim size");
+        operandShape[dim] = 1;
+        castNeeded = true;
+      }
+    }
+
+    Value source = castNeeded
+                       ? castToShape(rewriter, opOperand.get(), operandShape)
+                       : opOperand.get();
+    newOperands.push_back(collapseValue(rewriter, loc, source,
                                         targetShapes[idx], reassociations[idx],
                                         options.rankReductionStrategy));
   }
@@ -527,13 +570,12 @@ LogicalResult linalg::dropUnitDims(RewriterBase &rewriter, GenericOp genericOp,
   replaceUnitDimIndexOps(replacementOp, unitDims, rewriter);
 
   // 6. If any result type changes, insert a reshape/slice to convert from the
-  // original
-  //    type to the new type.
+  // original type to the new type.
   SmallVector<Value> resultReplacements;
   for (auto [index, result] : llvm::enumerate(replacementOp.getResults())) {
     unsigned opOperandIndex = index + replacementOp.getNumDpsInputs();
     Value origDest = genericOp.getDpsInitOperand(index)->get();
-    if (!collapsed[opOperandIndex]) {
+    if (collapsedDims[opOperandIndex].empty()) {
       resultReplacements.push_back(result);
       continue;
     }
