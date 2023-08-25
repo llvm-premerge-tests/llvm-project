@@ -60,11 +60,13 @@ void fuchsia::Linker::ConstructJob(Compilation &C, const JobAction &JA,
   if (llvm::sys::path::filename(Exec).equals_insensitive("ld.lld") ||
       llvm::sys::path::stem(Exec).equals_insensitive("ld.lld")) {
     CmdArgs.push_back("-z");
+    CmdArgs.push_back("rel");
+    CmdArgs.push_back("-z");
     CmdArgs.push_back("rodynamic");
     CmdArgs.push_back("-z");
     CmdArgs.push_back("separate-loadable-segments");
     CmdArgs.push_back("-z");
-    CmdArgs.push_back("rel");
+    CmdArgs.push_back("start-stop-visibility=hidden");
     CmdArgs.push_back("--pack-dyn-relocs=relr");
   }
 
