@@ -1036,8 +1036,8 @@ define i32 @rmw32_sub_seq_cst(ptr %p) nounwind {
 ; RV32-ATOMIC:       # %bb.0:
 ; RV32-ATOMIC-NEXT:    addi sp, sp, -16
 ; RV32-ATOMIC-NEXT:    sw ra, 12(sp) # 4-byte Folded Spill
-; RV32-ATOMIC-NEXT:    li a1, 1
-; RV32-ATOMIC-NEXT:    call __sync_fetch_and_sub_4@plt
+; RV32-ATOMIC-NEXT:    li a1, -1
+; RV32-ATOMIC-NEXT:    call __sync_fetch_and_add_4@plt
 ; RV32-ATOMIC-NEXT:    lw ra, 12(sp) # 4-byte Folded Reload
 ; RV32-ATOMIC-NEXT:    addi sp, sp, 16
 ; RV32-ATOMIC-NEXT:    ret
@@ -1046,8 +1046,8 @@ define i32 @rmw32_sub_seq_cst(ptr %p) nounwind {
 ; RV32-ATOMIC-TRAILING:       # %bb.0:
 ; RV32-ATOMIC-TRAILING-NEXT:    addi sp, sp, -16
 ; RV32-ATOMIC-TRAILING-NEXT:    sw ra, 12(sp) # 4-byte Folded Spill
-; RV32-ATOMIC-TRAILING-NEXT:    li a1, 1
-; RV32-ATOMIC-TRAILING-NEXT:    call __sync_fetch_and_sub_4@plt
+; RV32-ATOMIC-TRAILING-NEXT:    li a1, -1
+; RV32-ATOMIC-TRAILING-NEXT:    call __sync_fetch_and_add_4@plt
 ; RV32-ATOMIC-TRAILING-NEXT:    lw ra, 12(sp) # 4-byte Folded Reload
 ; RV32-ATOMIC-TRAILING-NEXT:    addi sp, sp, 16
 ; RV32-ATOMIC-TRAILING-NEXT:    ret
@@ -1067,8 +1067,8 @@ define i32 @rmw32_sub_seq_cst(ptr %p) nounwind {
 ; RV64-ATOMIC:       # %bb.0:
 ; RV64-ATOMIC-NEXT:    addi sp, sp, -16
 ; RV64-ATOMIC-NEXT:    sd ra, 8(sp) # 8-byte Folded Spill
-; RV64-ATOMIC-NEXT:    li a1, 1
-; RV64-ATOMIC-NEXT:    call __sync_fetch_and_sub_4@plt
+; RV64-ATOMIC-NEXT:    li a1, -1
+; RV64-ATOMIC-NEXT:    call __sync_fetch_and_add_4@plt
 ; RV64-ATOMIC-NEXT:    ld ra, 8(sp) # 8-byte Folded Reload
 ; RV64-ATOMIC-NEXT:    addi sp, sp, 16
 ; RV64-ATOMIC-NEXT:    ret
@@ -1077,8 +1077,8 @@ define i32 @rmw32_sub_seq_cst(ptr %p) nounwind {
 ; RV64-ATOMIC-TRAILING:       # %bb.0:
 ; RV64-ATOMIC-TRAILING-NEXT:    addi sp, sp, -16
 ; RV64-ATOMIC-TRAILING-NEXT:    sd ra, 8(sp) # 8-byte Folded Spill
-; RV64-ATOMIC-TRAILING-NEXT:    li a1, 1
-; RV64-ATOMIC-TRAILING-NEXT:    call __sync_fetch_and_sub_4@plt
+; RV64-ATOMIC-TRAILING-NEXT:    li a1, -1
+; RV64-ATOMIC-TRAILING-NEXT:    call __sync_fetch_and_add_4@plt
 ; RV64-ATOMIC-TRAILING-NEXT:    ld ra, 8(sp) # 8-byte Folded Reload
 ; RV64-ATOMIC-TRAILING-NEXT:    addi sp, sp, 16
 ; RV64-ATOMIC-TRAILING-NEXT:    ret
@@ -3134,8 +3134,8 @@ define i64 @rmw64_sub_seq_cst(ptr %p) nounwind {
 ; RV64-ATOMIC:       # %bb.0:
 ; RV64-ATOMIC-NEXT:    addi sp, sp, -16
 ; RV64-ATOMIC-NEXT:    sd ra, 8(sp) # 8-byte Folded Spill
-; RV64-ATOMIC-NEXT:    li a1, 1
-; RV64-ATOMIC-NEXT:    call __sync_fetch_and_sub_8@plt
+; RV64-ATOMIC-NEXT:    li a1, -1
+; RV64-ATOMIC-NEXT:    call __sync_fetch_and_add_8@plt
 ; RV64-ATOMIC-NEXT:    ld ra, 8(sp) # 8-byte Folded Reload
 ; RV64-ATOMIC-NEXT:    addi sp, sp, 16
 ; RV64-ATOMIC-NEXT:    ret
@@ -3144,8 +3144,8 @@ define i64 @rmw64_sub_seq_cst(ptr %p) nounwind {
 ; RV64-ATOMIC-TRAILING:       # %bb.0:
 ; RV64-ATOMIC-TRAILING-NEXT:    addi sp, sp, -16
 ; RV64-ATOMIC-TRAILING-NEXT:    sd ra, 8(sp) # 8-byte Folded Spill
-; RV64-ATOMIC-TRAILING-NEXT:    li a1, 1
-; RV64-ATOMIC-TRAILING-NEXT:    call __sync_fetch_and_sub_8@plt
+; RV64-ATOMIC-TRAILING-NEXT:    li a1, -1
+; RV64-ATOMIC-TRAILING-NEXT:    call __sync_fetch_and_add_8@plt
 ; RV64-ATOMIC-TRAILING-NEXT:    ld ra, 8(sp) # 8-byte Folded Reload
 ; RV64-ATOMIC-TRAILING-NEXT:    addi sp, sp, 16
 ; RV64-ATOMIC-TRAILING-NEXT:    ret

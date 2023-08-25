@@ -1226,6 +1226,11 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
     }
   }
 
+  if (Subtarget.hasStdExtA())
+    setOperationAction(ISD::ATOMIC_LOAD_SUB, XLenVT, Expand);
+  else
+    setOperationAction(ISD::ATOMIC_LOAD_SUB, XLenVT, LibCall);
+
   if (Subtarget.hasForcedAtomics()) {
     // Set atomic rmw/cas operations to expand to force __sync libcalls.
     setOperationAction(
