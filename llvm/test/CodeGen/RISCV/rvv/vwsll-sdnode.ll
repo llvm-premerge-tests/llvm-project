@@ -287,52 +287,22 @@ define <vscale x 4 x i32> @vwsll_vv_nxv4i32_zext(<vscale x 4 x i16> %a, <vscale 
 }
 
 define <vscale x 4 x i32> @vwsll_vx_i64_nxv4i32(<vscale x 4 x i16> %a, i64 %b) {
-; CHECK-RV32-LABEL: vwsll_vx_i64_nxv4i32:
-; CHECK-RV32:       # %bb.0:
-; CHECK-RV32-NEXT:    addi sp, sp, -16
-; CHECK-RV32-NEXT:    .cfi_def_cfa_offset 16
-; CHECK-RV32-NEXT:    sw a1, 12(sp)
-; CHECK-RV32-NEXT:    sw a0, 8(sp)
-; CHECK-RV32-NEXT:    addi a0, sp, 8
-; CHECK-RV32-NEXT:    vsetvli a1, zero, e32, m2, ta, ma
-; CHECK-RV32-NEXT:    vlse64.v v12, (a0), zero
-; CHECK-RV32-NEXT:    vzext.vf2 v10, v8
-; CHECK-RV32-NEXT:    vnsrl.wi v8, v12, 0
-; CHECK-RV32-NEXT:    vsll.vv v8, v10, v8
-; CHECK-RV32-NEXT:    addi sp, sp, 16
-; CHECK-RV32-NEXT:    ret
+; CHECK-LABEL: vwsll_vx_i64_nxv4i32:
+; CHECK:       # %bb.0:
+; CHECK-NEXT:    vsetvli a1, zero, e64, m4, ta, ma
+; CHECK-NEXT:    vmv.v.x v12, a0
+; CHECK-NEXT:    vsetvli zero, zero, e32, m2, ta, ma
+; CHECK-NEXT:    vzext.vf2 v10, v8
+; CHECK-NEXT:    vnsrl.wi v8, v12, 0
+; CHECK-NEXT:    vsll.vv v8, v10, v8
+; CHECK-NEXT:    ret
 ;
-; CHECK-RV64-LABEL: vwsll_vx_i64_nxv4i32:
-; CHECK-RV64:       # %bb.0:
-; CHECK-RV64-NEXT:    vsetvli a1, zero, e64, m4, ta, ma
-; CHECK-RV64-NEXT:    vmv.v.x v12, a0
-; CHECK-RV64-NEXT:    vsetvli zero, zero, e32, m2, ta, ma
-; CHECK-RV64-NEXT:    vzext.vf2 v10, v8
-; CHECK-RV64-NEXT:    vnsrl.wi v8, v12, 0
-; CHECK-RV64-NEXT:    vsll.vv v8, v10, v8
-; CHECK-RV64-NEXT:    ret
-;
-; CHECK-ZVBB32-LABEL: vwsll_vx_i64_nxv4i32:
-; CHECK-ZVBB32:       # %bb.0:
-; CHECK-ZVBB32-NEXT:    addi sp, sp, -16
-; CHECK-ZVBB32-NEXT:    .cfi_def_cfa_offset 16
-; CHECK-ZVBB32-NEXT:    sw a1, 12(sp)
-; CHECK-ZVBB32-NEXT:    sw a0, 8(sp)
-; CHECK-ZVBB32-NEXT:    addi a0, sp, 8
-; CHECK-ZVBB32-NEXT:    vsetvli a1, zero, e32, m2, ta, ma
-; CHECK-ZVBB32-NEXT:    vlse64.v v12, (a0), zero
-; CHECK-ZVBB32-NEXT:    vzext.vf2 v10, v8
-; CHECK-ZVBB32-NEXT:    vnsrl.wi v8, v12, 0
-; CHECK-ZVBB32-NEXT:    vsll.vv v8, v10, v8
-; CHECK-ZVBB32-NEXT:    addi sp, sp, 16
-; CHECK-ZVBB32-NEXT:    ret
-;
-; CHECK-ZVBB64-LABEL: vwsll_vx_i64_nxv4i32:
-; CHECK-ZVBB64:       # %bb.0:
-; CHECK-ZVBB64-NEXT:    vsetvli a1, zero, e16, m1, ta, ma
-; CHECK-ZVBB64-NEXT:    vwsll.vx v10, v8, a0
-; CHECK-ZVBB64-NEXT:    vmv2r.v v8, v10
-; CHECK-ZVBB64-NEXT:    ret
+; CHECK-ZVBB-LABEL: vwsll_vx_i64_nxv4i32:
+; CHECK-ZVBB:       # %bb.0:
+; CHECK-ZVBB-NEXT:    vsetvli a1, zero, e16, m1, ta, ma
+; CHECK-ZVBB-NEXT:    vwsll.vx v10, v8, a0
+; CHECK-ZVBB-NEXT:    vmv2r.v v8, v10
+; CHECK-ZVBB-NEXT:    ret
   %head = insertelement <vscale x 4 x i64> poison, i64 %b, i32 0
   %splat = shufflevector <vscale x 4 x i64> %head, <vscale x 4 x i64> poison, <vscale x 4 x i32> zeroinitializer
   %x = zext <vscale x 4 x i16> %a to <vscale x 4 x i32>
@@ -528,61 +498,25 @@ define <vscale x 8 x i16> @vwsll_vv_nxv8i16_zext(<vscale x 8 x i8> %a, <vscale x
 }
 
 define <vscale x 8 x i16> @vwsll_vx_i64_nxv8i16(<vscale x 8 x i8> %a, i64 %b) {
-; CHECK-RV32-LABEL: vwsll_vx_i64_nxv8i16:
-; CHECK-RV32:       # %bb.0:
-; CHECK-RV32-NEXT:    addi sp, sp, -16
-; CHECK-RV32-NEXT:    .cfi_def_cfa_offset 16
-; CHECK-RV32-NEXT:    sw a1, 12(sp)
-; CHECK-RV32-NEXT:    sw a0, 8(sp)
-; CHECK-RV32-NEXT:    addi a0, sp, 8
-; CHECK-RV32-NEXT:    vsetvli a1, zero, e16, m2, ta, ma
-; CHECK-RV32-NEXT:    vlse64.v v16, (a0), zero
-; CHECK-RV32-NEXT:    vzext.vf2 v10, v8
-; CHECK-RV32-NEXT:    vsetvli zero, zero, e32, m4, ta, ma
-; CHECK-RV32-NEXT:    vnsrl.wi v12, v16, 0
-; CHECK-RV32-NEXT:    vsetvli zero, zero, e16, m2, ta, ma
-; CHECK-RV32-NEXT:    vnsrl.wi v8, v12, 0
-; CHECK-RV32-NEXT:    vsll.vv v8, v10, v8
-; CHECK-RV32-NEXT:    addi sp, sp, 16
-; CHECK-RV32-NEXT:    ret
+; CHECK-LABEL: vwsll_vx_i64_nxv8i16:
+; CHECK:       # %bb.0:
+; CHECK-NEXT:    vsetvli a1, zero, e64, m8, ta, ma
+; CHECK-NEXT:    vmv.v.x v16, a0
+; CHECK-NEXT:    vsetvli zero, zero, e16, m2, ta, ma
+; CHECK-NEXT:    vzext.vf2 v10, v8
+; CHECK-NEXT:    vsetvli zero, zero, e32, m4, ta, ma
+; CHECK-NEXT:    vnsrl.wi v12, v16, 0
+; CHECK-NEXT:    vsetvli zero, zero, e16, m2, ta, ma
+; CHECK-NEXT:    vnsrl.wi v8, v12, 0
+; CHECK-NEXT:    vsll.vv v8, v10, v8
+; CHECK-NEXT:    ret
 ;
-; CHECK-RV64-LABEL: vwsll_vx_i64_nxv8i16:
-; CHECK-RV64:       # %bb.0:
-; CHECK-RV64-NEXT:    vsetvli a1, zero, e64, m8, ta, ma
-; CHECK-RV64-NEXT:    vmv.v.x v16, a0
-; CHECK-RV64-NEXT:    vsetvli zero, zero, e16, m2, ta, ma
-; CHECK-RV64-NEXT:    vzext.vf2 v10, v8
-; CHECK-RV64-NEXT:    vsetvli zero, zero, e32, m4, ta, ma
-; CHECK-RV64-NEXT:    vnsrl.wi v12, v16, 0
-; CHECK-RV64-NEXT:    vsetvli zero, zero, e16, m2, ta, ma
-; CHECK-RV64-NEXT:    vnsrl.wi v8, v12, 0
-; CHECK-RV64-NEXT:    vsll.vv v8, v10, v8
-; CHECK-RV64-NEXT:    ret
-;
-; CHECK-ZVBB32-LABEL: vwsll_vx_i64_nxv8i16:
-; CHECK-ZVBB32:       # %bb.0:
-; CHECK-ZVBB32-NEXT:    addi sp, sp, -16
-; CHECK-ZVBB32-NEXT:    .cfi_def_cfa_offset 16
-; CHECK-ZVBB32-NEXT:    sw a1, 12(sp)
-; CHECK-ZVBB32-NEXT:    sw a0, 8(sp)
-; CHECK-ZVBB32-NEXT:    addi a0, sp, 8
-; CHECK-ZVBB32-NEXT:    vsetvli a1, zero, e16, m2, ta, ma
-; CHECK-ZVBB32-NEXT:    vlse64.v v16, (a0), zero
-; CHECK-ZVBB32-NEXT:    vzext.vf2 v10, v8
-; CHECK-ZVBB32-NEXT:    vsetvli zero, zero, e32, m4, ta, ma
-; CHECK-ZVBB32-NEXT:    vnsrl.wi v12, v16, 0
-; CHECK-ZVBB32-NEXT:    vsetvli zero, zero, e16, m2, ta, ma
-; CHECK-ZVBB32-NEXT:    vnsrl.wi v8, v12, 0
-; CHECK-ZVBB32-NEXT:    vsll.vv v8, v10, v8
-; CHECK-ZVBB32-NEXT:    addi sp, sp, 16
-; CHECK-ZVBB32-NEXT:    ret
-;
-; CHECK-ZVBB64-LABEL: vwsll_vx_i64_nxv8i16:
-; CHECK-ZVBB64:       # %bb.0:
-; CHECK-ZVBB64-NEXT:    vsetvli a1, zero, e8, m1, ta, ma
-; CHECK-ZVBB64-NEXT:    vwsll.vx v10, v8, a0
-; CHECK-ZVBB64-NEXT:    vmv2r.v v8, v10
-; CHECK-ZVBB64-NEXT:    ret
+; CHECK-ZVBB-LABEL: vwsll_vx_i64_nxv8i16:
+; CHECK-ZVBB:       # %bb.0:
+; CHECK-ZVBB-NEXT:    vsetvli a1, zero, e8, m1, ta, ma
+; CHECK-ZVBB-NEXT:    vwsll.vx v10, v8, a0
+; CHECK-ZVBB-NEXT:    vmv2r.v v8, v10
+; CHECK-ZVBB-NEXT:    ret
   %head = insertelement <vscale x 4 x i64> poison, i64 %b, i32 0
   %splat = shufflevector <vscale x 4 x i64> %head, <vscale x 4 x i64> poison, <vscale x 8 x i32> zeroinitializer
   %x = zext <vscale x 8 x i8> %a to <vscale x 8 x i16>
@@ -705,3 +639,8 @@ define <vscale x 8 x i16> @vwsll_vi_nxv8i16(<vscale x 8 x i8> %a) {
   %z = shl <vscale x 8 x i16> %x, shufflevector(<vscale x 8 x i16> insertelement(<vscale x 8 x i16> poison, i16 2, i32 0), <vscale x 8 x i16> poison, <vscale x 8 x i32> zeroinitializer)
   ret <vscale x 8 x i16> %z
 }
+;; NOTE: These prefixes are unused and the list is autogenerated. Do not add tests below this line:
+; CHECK-RV32: {{.*}}
+; CHECK-RV64: {{.*}}
+; CHECK-ZVBB32: {{.*}}
+; CHECK-ZVBB64: {{.*}}

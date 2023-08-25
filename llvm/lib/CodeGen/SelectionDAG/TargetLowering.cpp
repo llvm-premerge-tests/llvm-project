@@ -1164,6 +1164,20 @@ bool TargetLowering::SimplifyDemandedBits(
     Known = KnownScl.trunc(BitWidth);
     break;
   }
+  case ISD::SPLAT_VECTOR_PARTS: {
+    unsigned NumSclBits = Op.getOperand(0).getScalarValueSizeInBits();
+    assert(NumSclBits * Op.getNumOperands() == BitWidth &&
+           "Expected SPLAT_VECTOR_PARTS scalars to cover element width");
+    for (auto [I, Scl] : enumerate(Op->ops())) {
+      APInt DemandedSclBits =
+          DemandedBits.extractBits(NumSclBits, NumSclBits * I);
+      KnownBits KnownScl;
+      if (SimplifyDemandedBits(Scl, DemandedSclBits, KnownScl, TLO, Depth + 1))
+        return true;
+      Known.insertBits(KnownScl, NumSclBits * I);
+    }
+    break;
+  }
   case ISD::LOAD: {
     auto *LD = cast<LoadSDNode>(Op);
     if (getTargetConstantFromLoad(LD)) {
