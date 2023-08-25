@@ -50,8 +50,8 @@ void M68kSubtarget::anchor() {}
 
 M68kSubtarget::M68kSubtarget(const Triple &TT, StringRef CPU, StringRef FS,
                              const M68kTargetMachine &TM)
-    : M68kGenSubtargetInfo(TT, CPU, /*TuneCPU*/ CPU, FS), TM(TM), TSInfo(),
-      InstrInfo(initializeSubtargetDependencies(CPU, TT, FS, TM)),
+    : M68kGenSubtargetInfo(TT, CPU, /*TuneCPU*/ CPU, FS, nullptr), TM(TM),
+      TSInfo(), InstrInfo(initializeSubtargetDependencies(CPU, TT, FS, TM)),
       FrameLowering(*this, this->getStackAlignment()), TLInfo(TM, *this),
       TargetTriple(TT) {
   CallLoweringInfo.reset(new M68kCallLowering(*getTargetLowering()));

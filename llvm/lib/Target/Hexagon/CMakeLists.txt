@@ -12,8 +12,50 @@ tablegen(LLVM HexagonGenInstrInfo.inc -gen-instr-info)
 tablegen(LLVM HexagonGenMCCodeEmitter.inc -gen-emitter)
 tablegen(LLVM HexagonGenRegisterInfo.inc -gen-register-info)
 tablegen(LLVM HexagonGenSubtargetInfo.inc -gen-subtarget)
+tablegen(LLVM Hexagon.txt -print-records)
 
 add_public_tablegen_target(HexagonCommonTableGen)
+
+############### Begin Mdl
+if(LLVM_ENABLE_MDL)
+  add_custom_target(TdScanHexagon
+    COMMAND tdscan -gen_arch_spec --nowarnings Hexagon.txt
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        COMMENT "Generating Hexagon.mdl..."
+                    DEPENDS HexagonCommonTableGen
+                    VERBATIM)
+
+  set(MdlDatabaseHexagon
+    "${CMAKE_CURRENT_BINARY_DIR}/HexagonGenMdlInfo.inc"
+    "${CMAKE_CURRENT_BINARY_DIR}/HexagonGenMdlInfo.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/HexagonGenMdlTarget.inc"
+  )
+
+  add_custom_command(OUTPUT ${MdlDatabaseHexagon}
+    COMMAND mdl Hexagon.mdl
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        COMMENT "Generating HexagonGenMdlInfo.inc..."
+                    DEPENDS TdScanHexagon
+                    VERBATIM)
+
+  # tablegen macro
+  set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${MdlDatabaseHexagon})
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} "${CMAKE_CURRENT_BINARY_DIR}/HexagonGenMdlInfo.inc")
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} "${CMAKE_CURRENT_BINARY_DIR}/HexagonGenMdlInfo.h")
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} "${CMAKE_CURRENT_BINARY_DIR}/HexagonGenMdlTarget.inc")
+  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${MdlDatabaseHexagon} PROPERTIES GENERATED 1)
+
+  # add_public_tablegen_target macro
+  add_custom_target(MdlHexagon DEPENDS ${TABLEGEN_OUTPUT})
+
+  if(LLVM_COMMON_DEPENDS)
+    add_dependencies(MdlHexagon ${LLVM_COMMON_DEPENDS})
+  endif()
+
+  set_target_properties(MdlHexagon PROPERTIES FOLDER "MdlGeneration")
+  set(LLVM_COMMON_DEPENDS ${LLVM_COMMON_DEPENDS} MdlHexagon)
+endif()
+############### End Mdl
 
 add_llvm_target(HexagonCodeGen
   BitTracker.cpp

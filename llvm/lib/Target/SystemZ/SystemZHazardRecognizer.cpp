@@ -187,7 +187,7 @@ void SystemZHazardRecognizer::dumpSU(SUnit *SU, raw_ostream &OS) const {
       FU = "LSU";
     OS << "/" << FU;
 
-    if (PI->ReleaseAtCycle> 1)
+    if (PI->ReleaseAtCycle > 1)
       OS << "(" << PI->ReleaseAtCycle << "cyc)";
   }
 
@@ -265,6 +265,8 @@ static inline bool isBranchRetTrap(MachineInstr *MI) {
   return (MI->isBranch() || MI->isReturn() ||
           MI->getOpcode() == SystemZ::CondTrap);
 }
+
+// TODO-MDL - Write an MDL-specific version of this.
 
 // Update state with SU as the next scheduled unit.
 void SystemZHazardRecognizer::
@@ -383,6 +385,7 @@ bool SystemZHazardRecognizer::isFPdOpPreferred_distance(SUnit *SU) const {
   return ((SUCycleIdx - LastFPdOpCycleIdx) == 3);
 }
 
+// TODO-MDL - Write an MDL-specific version of this.
 int SystemZHazardRecognizer::
 resourcesCost(SUnit *SU) {
   int Cost = 0;
@@ -407,6 +410,7 @@ resourcesCost(SUnit *SU) {
   return Cost;
 }
 
+// TODO-MDL - Write an MDL-specific version of this.
 void SystemZHazardRecognizer::emitInstruction(MachineInstr *MI,
                                               bool TakenBranch) {
   // Make a temporary SUnit.

@@ -18,8 +18,50 @@ tablegen(LLVM MipsGenRegisterBank.inc -gen-register-bank)
 tablegen(LLVM MipsGenRegisterInfo.inc -gen-register-info)
 tablegen(LLVM MipsGenSubtargetInfo.inc -gen-subtarget)
 tablegen(LLVM MipsGenExegesis.inc -gen-exegesis)
+tablegen(LLVM Mips.txt -print-records)
 
 add_public_tablegen_target(MipsCommonTableGen)
+
+############### Begin Mdl
+if(LLVM_ENABLE_MDL)
+  add_custom_target(TdScanMips
+    COMMAND tdscan -gen_arch_spec --nowarnings Mips.txt
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        COMMENT "Generating Mips.mdl..."
+                    DEPENDS MipsCommonTableGen
+                    VERBATIM)
+
+  set(MdlDatabaseMips
+    "${CMAKE_CURRENT_BINARY_DIR}/MipsGenMdlInfo.inc"
+    "${CMAKE_CURRENT_BINARY_DIR}/MipsGenMdlInfo.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/MipsGenMdlTarget.inc"
+  )
+
+  add_custom_command(OUTPUT ${MdlDatabaseMips}
+    COMMAND mdl Mips.mdl
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        COMMENT "Generating MipsGenMdlInfo.inc..."
+                    DEPENDS TdScanMips
+                    VERBATIM)
+
+  # tablegen macro
+  set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${MdlDatabaseMips})
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} "${CMAKE_CURRENT_BINARY_DIR}/MipsGenMdlInfo.inc")
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} "${CMAKE_CURRENT_BINARY_DIR}/MipsGenMdlInfo.h")
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} "${CMAKE_CURRENT_BINARY_DIR}/MipsGenMdlTarget.inc")
+  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${MdlDatabaseMips} PROPERTIES GENERATED 1)
+
+  # add_public_tablegen_target macro
+  add_custom_target(MdlMips DEPENDS ${TABLEGEN_OUTPUT})
+
+  if(LLVM_COMMON_DEPENDS)
+    add_dependencies(MdlMips ${LLVM_COMMON_DEPENDS})
+  endif()
+
+  set_target_properties(MdlMips PROPERTIES FOLDER "MdlGeneration")
+  set(LLVM_COMMON_DEPENDS ${LLVM_COMMON_DEPENDS} MdlMips)
+endif()
+############### End Mdl
 
 add_llvm_target(MipsCodeGen
   Mips16FrameLowering.cpp

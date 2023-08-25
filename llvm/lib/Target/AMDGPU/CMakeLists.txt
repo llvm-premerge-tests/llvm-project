@@ -14,6 +14,7 @@ tablegen(LLVM AMDGPUGenRegisterBank.inc -gen-register-bank)
 tablegen(LLVM AMDGPUGenRegisterInfo.inc -gen-register-info)
 tablegen(LLVM AMDGPUGenSearchableTables.inc -gen-searchable-tables)
 tablegen(LLVM AMDGPUGenSubtargetInfo.inc -gen-subtarget)
+tablegen(LLVM AMDGPU.txt -print-records)
 
 set(LLVM_TARGET_DEFINITIONS AMDGPUGISel.td)
 tablegen(LLVM AMDGPUGenGlobalISel.inc -gen-global-isel)
@@ -33,12 +34,90 @@ tablegen(LLVM R600GenInstrInfo.inc -gen-instr-info)
 tablegen(LLVM R600GenMCCodeEmitter.inc -gen-emitter)
 tablegen(LLVM R600GenRegisterInfo.inc -gen-register-info)
 tablegen(LLVM R600GenSubtargetInfo.inc -gen-subtarget)
+tablegen(LLVM R600.txt -print-records)
 
 add_public_tablegen_target(AMDGPUCommonTableGen)
 
 set(LLVM_TARGET_DEFINITIONS InstCombineTables.td)
 tablegen(LLVM InstCombineTables.inc -gen-searchable-tables)
 add_public_tablegen_target(InstCombineTableGen)
+
+############### Begin Mdl
+if(LLVM_ENABLE_MDL)
+  add_custom_target(TdScanAMDGPU
+    COMMAND tdscan -gen_arch_spec --nowarnings AMDGPU.txt
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        COMMENT "Generating AMDGPU.mdl..."
+                    DEPENDS AMDGPUCommonTableGen
+                    VERBATIM)
+
+  set(MdlDatabaseAMDGPU
+    "${CMAKE_CURRENT_BINARY_DIR}/AMDGPUGenMdlInfo.inc"
+    "${CMAKE_CURRENT_BINARY_DIR}/AMDGPUGenMdlInfo.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/AMDGPUGenMdlTarget.inc"
+  )
+
+  add_custom_command(OUTPUT ${MdlDatabaseAMDGPU}
+    COMMAND mdl AMDGPU.mdl
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        COMMENT "Generating AMDGPUGenMdlInfo.inc..."
+                    DEPENDS TdScanAMDGPU
+                    VERBATIM)
+
+  # Generate MDL for R600
+  add_custom_target(TdScanR600
+    COMMAND tdscan -gen_arch_spec --nowarnings R600.txt
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        COMMENT "Generating R600.mdl..."
+        DEPENDS AMDGPUCommonTableGen
+                    VERBATIM)
+
+  set(MdlDatabaseR600
+        "${CMAKE_CURRENT_BINARY_DIR}/R600GenMdlInfo.inc"
+        "${CMAKE_CURRENT_BINARY_DIR}/R600GenMdlInfo.h"
+        "${CMAKE_CURRENT_BINARY_DIR}/R600GenMdlTarget.inc"
+  )
+
+  add_custom_command(OUTPUT ${MdlDatabaseR600}
+    COMMAND mdl R600.mdl
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        COMMENT "Generating R600GenMdlInfo.inc..."
+        DEPENDS TdScanR600
+                    VERBATIM)
+
+  # tablegen macro
+  set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${MdlDatabaseAMDGPU} ${MdlDatabaseR600})
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT}
+    "${CMAKE_CURRENT_BINARY_DIR}/AMDGPUGenMdlInfo.inc")
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT}
+    "${CMAKE_CURRENT_BINARY_DIR}/AMDGPUGenMdlInfo.h")
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT}
+    "${CMAKE_CURRENT_BINARY_DIR}/AMDGPUGenMdlTarget.inc")
+  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${MdlDatabaseAMDGPU}
+    PROPERTIES GENERATED 1)
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT}
+    "${CMAKE_CURRENT_BINARY_DIR}/R600GenMdlInfo.inc")
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT}
+    "${CMAKE_CURRENT_BINARY_DIR}/R600GenMdlInfo.h")
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT}
+    "${CMAKE_CURRENT_BINARY_DIR}/R600GenMdlTarget.inc")
+  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${MdlDatabaseR600}
+    PROPERTIES GENERATED 1)
+
+  # add_public_tablegen_target macro
+  add_custom_target(MdlAMDGPU DEPENDS ${TABLEGEN_OUTPUT})
+  add_custom_target(MdlR600 DEPENDS ${TABLEGEN_OUTPUT})
+
+  if(LLVM_COMMON_DEPENDS)
+    add_dependencies(MdlAMDGPU ${LLVM_COMMON_DEPENDS})
+    add_dependencies(MdlR600 ${LLVM_COMMON_DEPENDS})
+  endif()
+
+  set_target_properties(MdlAMDGPU PROPERTIES FOLDER "MdlGeneration")
+  set_target_properties(MdlR600 PROPERTIES FOLDER "MdlGeneration")
+  set(LLVM_COMMON_DEPENDS ${LLVM_COMMON_DEPENDS} MdlAMDGPU MdlR600)
+endif()
+############### End Mdl
 
 add_llvm_target(AMDGPUCodeGen
   AMDGPUAliasAnalysis.cpp

@@ -85,7 +85,7 @@ LoongArchSubtarget::LoongArchSubtarget(const Triple &TT, StringRef CPU,
                                        StringRef TuneCPU, StringRef FS,
                                        StringRef ABIName,
                                        const TargetMachine &TM)
-    : LoongArchGenSubtargetInfo(TT, CPU, TuneCPU, FS),
+    : LoongArchGenSubtargetInfo(TT, CPU, TuneCPU, FS, nullptr),
       FrameLowering(
           initializeSubtargetDependencies(TT, CPU, TuneCPU, FS, ABIName)),
       InstrInfo(*this), RegInfo(getHwMode()), TLInfo(TM, *this) {}

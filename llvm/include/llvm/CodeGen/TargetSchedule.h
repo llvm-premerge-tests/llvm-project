@@ -20,6 +20,8 @@
 #include "llvm/Config/llvm-config.h"
 #include "llvm/MC/MCInstrItineraries.h"
 #include "llvm/MC/MCSchedule.h"
+#include "llvm/MC/MDLInfo.h"
+#include <string>
 
 namespace llvm {
 
@@ -85,17 +87,29 @@ public:
     return nullptr;
   }
 
+  /// Return true if this target uses MDL for modeling instruction behaviors.
+  bool hasMdlModel() const;
+  mdl::CpuInfo *getCpuInfo() const;
+
   /// Return true if this machine model includes an instruction-level
   /// scheduling model or cycle-to-cycle itinerary data.
   bool hasInstrSchedModelOrItineraries() const {
     return hasInstrSchedModel() || hasInstrItineraries();
+  }
+
+  bool hasAnySchedModel() const {
+    return hasInstrSchedModel() || hasInstrItineraries() || hasMdlModel();
   }
   bool enableIntervals() const;
   /// Identify the processor corresponding to the current subtarget.
   unsigned getProcessorID() const { return SchedModel.getProcessorID(); }
 
   /// Maximum number of micro-ops that may be scheduled per cycle.
-  unsigned getIssueWidth() const { return SchedModel.IssueWidth; }
+  unsigned getIssueWidth() const {
+    if (hasMdlModel())
+      return STI->getCpuInfo()->getMaxIssue();
+    return SchedModel.IssueWidth;
+  }
 
   /// Return true if new group must begin.
   bool mustBeginGroup(const MachineInstr *MI,
@@ -110,6 +124,8 @@ public:
 
   /// Get the number of kinds of resources for this target.
   unsigned getNumProcResourceKinds() const {
+    if (hasMdlModel())
+      return STI->getCpuInfo()->getMaxFuncUnitId() + 1;
     return SchedModel.getNumProcResourceKinds();
   }
 
@@ -119,7 +135,9 @@ public:
   }
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
-  const char *getResourceName(unsigned PIdx) const {
+  std::string getResourceName(unsigned PIdx) const {
+    if (hasMdlModel())
+      return (std::string) "U" + std::to_string(PIdx);
     if (!PIdx)
       return "MOps";
     return SchedModel.getProcResource(PIdx)->Name;
@@ -140,6 +158,7 @@ public:
 
   /// Multiply the number of units consumed for a resource by this factor
   /// to normalize it relative to other resources.
+  /// The MDL passes in a pool size (or 1), rather than a resource id.
   unsigned getResourceFactor(unsigned ResIdx) const {
     return ResourceFactors[ResIdx];
   }
@@ -157,11 +176,17 @@ public:
   }
 
   /// Number of micro-ops that may be buffered for OOO execution.
-  unsigned getMicroOpBufferSize() const { return SchedModel.MicroOpBufferSize; }
+  unsigned getMicroOpBufferSize() const {
+    if (hasMdlModel())
+      return STI->getCpuInfo()->getReorderBufferSize();
+    return SchedModel.MicroOpBufferSize;
+  }
 
   /// Number of resource units that may be buffered for OOO execution.
   /// \return The buffer size in resource units or -1 for unlimited.
   int getResourceBufferSize(unsigned PIdx) const {
+    if (hasMdlModel())
+      return 1; // currently unused
     return SchedModel.getProcResource(PIdx)->BufferSize;
   }
 

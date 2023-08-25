@@ -13,6 +13,7 @@
 #include "llvm/CodeGen/TargetInstrInfo.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/BinaryFormat/Dwarf.h"
+#include "llvm/CodeGen/MDLHazardRecognizer.h"
 #include "llvm/CodeGen/MachineCombinerPattern.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
@@ -1259,6 +1260,9 @@ CreateTargetHazardRecognizer(const TargetSubtargetInfo *STI,
 // Default implementation of CreateTargetMIHazardRecognizer.
 ScheduleHazardRecognizer *TargetInstrInfo::CreateTargetMIHazardRecognizer(
     const InstrItineraryData *II, const ScheduleDAGMI *DAG) const {
+  auto &STI = DAG->MF.getSubtarget();
+  if (STI.getCpuInfo())
+    return new MDLHazardRecognizer(&STI, "machine-scheduler-mdl");
   return new ScoreboardHazardRecognizer(II, DAG, "machine-scheduler");
 }
 
@@ -1266,6 +1270,9 @@ ScheduleHazardRecognizer *TargetInstrInfo::CreateTargetMIHazardRecognizer(
 ScheduleHazardRecognizer *TargetInstrInfo::
 CreateTargetPostRAHazardRecognizer(const InstrItineraryData *II,
                                    const ScheduleDAG *DAG) const {
+  auto &STI = DAG->MF.getSubtarget();
+  if (STI.getCpuInfo())
+    return new MDLHazardRecognizer(&STI, "post-RA-sched-mdl");
   return new ScoreboardHazardRecognizer(II, DAG, "post-RA-sched");
 }
 

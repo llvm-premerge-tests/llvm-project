@@ -212,6 +212,7 @@ MachineCombiner::getDepth(SmallVectorImpl<MachineInstr *> &InsInstrs,
                           MachineTraceMetrics::Trace BlockTrace,
                           const MachineBasicBlock &MBB) {
   SmallVector<unsigned, 16> InstrDepth;
+
   // For each instruction in the new sequence compute the depth based on the
   // operands. Use the trace information when possible. For new operands which
   // are tracked in the InstrIdxForVirtReg map depth is looked up in InstrDepth
@@ -445,6 +446,9 @@ bool MachineCombiner::preservesResourceLen(
     MachineBasicBlock *MBB, MachineTraceMetrics::Trace BlockTrace,
     SmallVectorImpl<MachineInstr *> &InsInstrs,
     SmallVectorImpl<MachineInstr *> &DelInstrs) {
+
+  // TODO-MDL: Implement this for MDL model.
+
   if (!TSchedModel.hasInstrSchedModel())
     return true;
 
@@ -551,7 +555,7 @@ void MachineCombiner::verifyPatternOrder(
     // Found pattern, but did not generate alternative sequence.
     // This can happen e.g. when an immediate could not be materialized
     // in a single instruction.
-    if (InsInstrs.empty() || !TSchedModel.hasInstrSchedModelOrItineraries())
+    if (InsInstrs.empty() || !TSchedModel.hasAnySchedModel())
       continue;
 
     unsigned NewRootLatency, RootLatency;

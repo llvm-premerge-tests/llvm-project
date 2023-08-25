@@ -44,6 +44,7 @@
 #include "llvm/IR/Value.h"
 #include "llvm/MC/LaneBitmask.h"
 #include "llvm/MC/MCRegisterInfo.h"
+#include "llvm/MC/MDLInfo.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Compiler.h"
@@ -58,6 +59,7 @@
 #include <vector>
 
 using namespace llvm;
+using namespace mdl;
 
 #define DEBUG_TYPE "machine-scheduler"
 
@@ -599,6 +601,32 @@ void ScheduleDAGInstrs::initSUnits() {
     // Unbuffered resources prevent execution of subsequent instructions that
     // require the same resources. This is used for in-order execution pipelines
     // within an out-of-order core. These are identified by BufferSize=1.
+    if (SchedModel.hasMdlModel()) {
+      Instr Ins(SU->getInstr(), SchedModel.getSubtargetInfo());
+      if (auto *Subunit = Ins.getSubunit()) {
+        if (auto *Refs = (*Subunit)[0].getUsedResourceReferences())
+          for (const auto &Ref : ReferenceIter<ResourceRef>(Refs, &Ins)) {
+            if (Ref.isFus() && Ref.getCycles()) {
+              if (Ref.isUnreserved())
+                SU->isUnbuffered = true;
+              if (!Ref.isBuffered())
+                SU->hasReservedResource = true;
+            }
+          }
+        if (auto *Prefs = (*Subunit)[0].getPooledResourceReferences())
+          for (const auto &Ref :
+               ReferenceIter<PooledResourceRef>(Prefs, &Ins)) {
+            if (Ref.isFus()) {
+              if (Ref.isUnreserved())
+                SU->isUnbuffered = true;
+              if (!Ref.isBuffered())
+                SU->hasReservedResource = true;
+            }
+          }
+      }
+      continue;
+    }
+
     if (SchedModel.hasInstrSchedModel()) {
       const MCSchedClassDesc *SC = getSchedClass(SU);
       for (const MCWriteProcResEntry &PRE :
