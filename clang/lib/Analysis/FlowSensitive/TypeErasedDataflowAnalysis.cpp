@@ -58,6 +58,7 @@ static bool isLoopHead(const CFGBlock &B) {
       case Stmt::WhileStmtClass:
       case Stmt::DoStmtClass:
       case Stmt::ForStmtClass:
+      case Stmt::CXXForRangeStmtClass:
         return true;
       default:
         return false;
@@ -107,6 +108,9 @@ public:
       return extendFlowCondition(*Cond);
     return {nullptr, false};
   }
+
+  // Don't do anything special for CXXForRangeStmt, because the condition (being
+  // implicitly generated) isn't visible from the loop body.
 
   TerminatorVisitorRetTy VisitBinaryOperator(const BinaryOperator *S) {
     assert(S->getOpcode() == BO_LAnd || S->getOpcode() == BO_LOr);

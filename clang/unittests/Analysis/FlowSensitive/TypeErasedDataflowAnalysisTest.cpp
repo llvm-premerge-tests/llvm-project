@@ -1612,4 +1612,23 @@ TEST_F(TopTest, TopUnusedBeforeLoopHeadJoinsToTop) {
 
       });
 }
+
+TEST_F(TopTest, ForRangeStmtConverges) {
+  std::string Code = R"(
+    void target(bool Foo) {
+      int Ints[10];
+      bool B = false;
+      for (int I : Ints)
+        B = true;
+      (void)0;
+      // [[after_loop]]
+    }
+  )";
+  runDataflow(
+      Code,
+      [](const llvm::StringMap<DataflowAnalysisState<NoopLattice>> &Results,
+         const AnalysisOutputs &) {
+        EXPECT_THAT(Results.keys(), UnorderedElementsAre("after_loop"));
+      });
+}
 } // namespace
