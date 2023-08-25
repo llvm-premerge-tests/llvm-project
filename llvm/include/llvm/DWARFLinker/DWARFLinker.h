@@ -14,6 +14,7 @@
 #include "llvm/CodeGen/AccelTable.h"
 #include "llvm/CodeGen/NonRelocatableStringpool.h"
 #include "llvm/DWARFLinker/DWARFLinkerCompileUnit.h"
+#include "llvm/DWARFLinker/DWARFLinkerRelocs.h"
 #include "llvm/DebugInfo/DWARF/DWARFContext.h"
 #include "llvm/DebugInfo/DWARF/DWARFDebugLine.h"
 #include "llvm/DebugInfo/DWARF/DWARFDebugRangeList.h"
@@ -23,12 +24,20 @@
 
 namespace llvm {
 class DWARFExpression;
+class DWARFLinker;
 class DWARFUnit;
 class DataExtractor;
 class DeclContextTree;
+
 template <typename T> class SmallVectorImpl;
 
 enum class DwarfLinkerClient { Dsymutil, LLD, General };
+
+struct AttributeLinkedOffsetFixup {
+  int64_t LinkedOffsetFixupVal;
+  uint64_t InputAttrStartOffset;
+  uint64_t InputAttrEndOffset;
+};
 
 /// AddressesMap represents information about valid addresses used
 /// by debug information. Valid addresses are those which points to
@@ -62,12 +71,22 @@ public:
   virtual std::optional<int64_t>
   getSubprogramRelocAdjustment(const DWARFDie &DIE) = 0;
 
+  /// Returns the file name associated to the AddessesMap
+  virtual std::optional<StringRef> getFileName() = 0;
+
   /// Apply the valid relocations to the buffer \p Data, taking into
   /// account that Data is at \p BaseOffset in the .debug_info section.
   ///
   /// \returns true whether any reloc has been applied.
   virtual bool applyValidRelocs(MutableArrayRef<char> Data, uint64_t BaseOffset,
                                 bool IsLittleEndian) = 0;
+
+  /// Save relocation values to be serialized
+  virtual void saveValidRelocs(int64_t LinkedOffset, uint64_t StartOffset,
+                               uint64_t EndOffset) = 0;
+
+  /// Add the valid relocations to be serialized to the relocation map
+  virtual void addValidRelocs(RelocMap *RM) = 0;
 
   /// Erases all data.
   virtual void clear() = 0;
@@ -640,6 +659,9 @@ private:
                                    CompileUnit::DIEInfo &MyInfo,
                                    unsigned Flags);
 
+  void visitCompileUnitDIE(AddressesMap &RelocMgr, const DWARFDie &DIE,
+                           CompileUnit::DIEInfo &MyInfo);
+
   /// Resolve the DIE attribute reference that has been extracted in \p
   /// RefValue. The resulting DIE might be in another CompileUnit which is
   /// stored into \p ReferencedCU. \returns null if resolving fails for any
@@ -749,6 +771,9 @@ private:
 
       /// Is there a DW_AT_str_offsets_base in the CU?
       bool AttrStrOffsetBaseSeen = false;
+
+      /// Is there a DW_AT_APPLE_origin in the CU?
+      bool AttrAppleOriginSeen = false;
 
       AttributesInfo() = default;
     };
