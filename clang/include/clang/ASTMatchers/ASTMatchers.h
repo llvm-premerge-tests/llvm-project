@@ -3968,6 +3968,15 @@ AST_POLYMORPHIC_MATCHER_P_OVERLOAD(
   return false;
 }
 
+/// Matches the type object that represents this TypeDecl.
+AST_MATCHER_P(TypeDecl, hasTypeForDecl, internal::Matcher<QualType>,
+              InnerMatcher) {
+  QualType QT(Node.getTypeForDecl(), 0);
+  if (!QT.isNull())
+    return InnerMatcher.matches(QT, Finder, Builder);
+  return false;
+}
+
 /// Overloaded to match the declaration of the expression's or value
 /// declaration's type.
 ///
@@ -7048,6 +7057,124 @@ extern const AstTypeMatcher<AutoType> autoType;
 /// decltypeType()
 ///   matches "decltype(i + j)"
 extern const AstTypeMatcher<DecltypeType> decltypeType;
+
+/// Matches _BitInt types.
+///
+/// Given
+/// \code
+///   _BitInt(10) i;
+/// \endcode
+/// bitIntType()
+///   matches "_BitInt(10) i"
+extern const AstTypeMatcher<BitIntType> bitIntType;
+
+/// Matches matrix types of constant size.
+///
+/// Given
+/// \code
+///   typedef int __attribute__((matrix_type(5, 5))) X;
+/// \endcode
+/// constantMatrixType()
+///   matches the type of the typedef declaration "X".
+extern const AstTypeMatcher<ConstantMatrixType> constantMatrixType;
+
+/// Matches an extended address space qualifier where the input address space
+/// value is dependent.
+///
+/// Given
+/// \code
+///   template<typename T, int AddrSpace>
+///   class AddressSpace {
+///     typedef T __attribute__((address_space(AddrSpace))) X;
+///   };
+/// \endcode
+/// dependentAddressSpaceType()
+///   matches the type of the typedef declaration "X".
+extern const AstTypeMatcher<DependentAddressSpaceType>
+    dependentAddressSpaceType;
+
+/// Matches bitint types where the bitwidth is dependent.
+///
+/// Given
+/// \code
+///   template<int Width> using X = _BitInt(Width);
+/// \endcode
+/// dependentBitIntType()
+///   matches the type of the type alias declaration "X".
+extern const AstTypeMatcher<DependentBitIntType> dependentBitIntType;
+
+/// Matches vector types where either the type or size is dependent.
+///
+/// Given
+/// \code
+///   template<typename T, int Size>
+///   class vector {
+///     typedef T __attribute__((vector_size(Size))) X;
+///   };
+///   typedef int __attribute__((vector_size(12))) Y;
+/// \endcode
+/// dependentVectorType()
+///   matches the type of the typedef declaration "X" but not "Y".
+extern const AstTypeMatcher<DependentVectorType> dependentVectorType;
+
+/// Matches a matrix type where the type and the number of rows and columns
+/// is dependent.
+///
+/// Given
+/// \code
+///   template<typename T, int Rows, int Cols>
+///   class matrix {
+///     typedef T __attribute__((matrix_type(Rows, Cols))) X;
+///   };
+///   typedef int __attribute__((matrix_type(3, 3))) Y;
+/// \endcode
+/// dependentSizedMatrixType()
+///   matches the type of the typedef declaration "X" but not "Y".
+extern const AstTypeMatcher<DependentSizedMatrixType> dependentSizedMatrixType;
+
+/// Matches vector types.
+///
+/// Given
+/// \code
+///   typedef int __attribute__((vector_size(12))) X;
+/// \endcode
+/// vectorType()
+///   matches the type of the typedef declaration "X".
+extern const AstTypeMatcher<VectorType> vectorType;
+
+/// Matches Objective-C type parameter types.
+///
+/// Given
+/// \code
+///   @interface Dictionary <FirstParam: id>
+///   @end
+/// \endcode
+/// objcTypeParamType()
+///   matches the type of type-parameter "FirstParam".
+extern const AstTypeMatcher<ObjCTypeParamType> objcTypeParamType;
+
+/// Matches the declaration of an Objective-C type parameter.
+///
+/// Given
+/// \code
+///   @interface Dictionary <FirstParam: id>
+///   @end
+/// \endcode
+/// objcTypeParamDecl()
+///   matches the type-parameter declaration "FirstParam".
+extern const internal::VariadicDynCastAllOfMatcher<Decl, ObjCTypeParamDecl>
+    objcTypeParamDecl;
+
+/// Matches OpenCL pipe types.
+///
+/// Given
+/// \code
+///   typedef pipe int X;
+///   typedef int Y;
+/// \endcode
+/// pipeType()
+///   matches the type of the typedef declaration \c X but not \c Y.
+extern const AstTypeMatcher<PipeType> pipeType;
 
 /// Matches \c AutoType nodes where the deduced type is a specific type.
 ///
