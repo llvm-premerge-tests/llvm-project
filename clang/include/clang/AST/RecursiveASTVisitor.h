@@ -463,15 +463,13 @@ public:
   bool TraverseConceptTypeRequirement(concepts::TypeRequirement *R);
   bool TraverseConceptExprRequirement(concepts::ExprRequirement *R);
   bool TraverseConceptNestedRequirement(concepts::NestedRequirement *R);
+  bool TraverseConceptReference(const ConceptReference &C);
 
   bool dataTraverseNode(Stmt *S, DataRecursionQueue *Queue);
 
 private:
   // These are helper methods used by more than one Traverse* method.
   bool TraverseTemplateParameterListHelper(TemplateParameterList *TPL);
-  /// Traverses the qualifier, name and template arguments of a concept
-  /// reference.
-  bool TraverseConceptReferenceHelper(const ConceptReference &C);
 
   // Traverses template parameter lists of either a DeclaratorDecl or TagDecl.
   template <typename T>
@@ -507,7 +505,7 @@ template <typename Derived>
 bool RecursiveASTVisitor<Derived>::TraverseTypeConstraint(
     const TypeConstraint *C) {
   if (!getDerived().shouldVisitImplicitCode()) {
-    TRY_TO(TraverseConceptReferenceHelper(*C));
+    TRY_TO(TraverseConceptReference(*C));
     return true;
   }
   if (Expr *IDC = C->getImmediatelyDeclaredConstraint()) {
@@ -517,7 +515,7 @@ bool RecursiveASTVisitor<Derived>::TraverseTypeConstraint(
     // if we have an immediately-declared-constraint, otherwise
     // we'll end up visiting the concept and the arguments in
     // the TC twice.
-    TRY_TO(TraverseConceptReferenceHelper(*C));
+    TRY_TO(TraverseConceptReference(*C));
   }
   return true;
 }
@@ -541,7 +539,7 @@ bool RecursiveASTVisitor<Derived>::TraverseConceptRequirement(
 }
 
 template <typename Derived>
-bool RecursiveASTVisitor<Derived>::TraverseConceptReferenceHelper(
+bool RecursiveASTVisitor<Derived>::TraverseConceptReference(
     const ConceptReference &C) {
   TRY_TO(TraverseNestedNameSpecifierLoc(C.getNestedNameSpecifierLoc()));
   TRY_TO(TraverseDeclarationNameInfo(C.getConceptNameInfo()));
@@ -2904,7 +2902,7 @@ DEF_TRAVERSE_STMT(CoyieldExpr, {
 })
 
 DEF_TRAVERSE_STMT(ConceptSpecializationExpr,
-                  { TRY_TO(TraverseConceptReferenceHelper(*S)); })
+                  { TRY_TO(TraverseConceptReference(*S)); })
 
 DEF_TRAVERSE_STMT(RequiresExpr, {
   TRY_TO(TraverseDecl(S->getBody()));

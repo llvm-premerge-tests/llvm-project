@@ -232,6 +232,15 @@ public:
     return true;
   }
 
+  bool VisitConceptDecl(ConceptDecl *CD) {
+    report(CD->getLocation(), CD);
+    return true;
+  }
+
+  bool TraverseConceptReference(const ConceptReference &C) {
+    report(C.getConceptNameLoc(), C.getFoundDecl());
+    return RecursiveASTVisitor::TraverseConceptReference(C);
+  }
   // Report a reference from explicit specializations to the specialized
   // template. Implicit ones are filtered out by RAV and explicit instantiations
   // are already traversed through typelocs.
