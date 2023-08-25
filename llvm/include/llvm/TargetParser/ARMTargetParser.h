@@ -259,6 +259,9 @@ StringRef computeDefaultTargetABI(const Triple &TT, StringRef CPU);
 /// string then the triple's arch name is used.
 StringRef getARMCPUForArch(const llvm::Triple &Triple, StringRef MArch = {});
 
+/// Return true if the arch supports the execute-only output. Currently, the
+/// execute-only output is only supported on ARMv6T2 and ARMv7 and above.
+bool supportedExecuteOnly(const Triple &TT);
 } // namespace ARM
 } // namespace llvm
 

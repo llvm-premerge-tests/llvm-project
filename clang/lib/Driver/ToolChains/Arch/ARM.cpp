@@ -843,10 +843,9 @@ fp16_fml_fallthrough:
     // Cannot be combined with -mno-movt.
     if (Arg *A = Args.getLastArg(options::OPT_mexecute_only, options::OPT_mno_execute_only)) {
       if (A->getOption().matches(options::OPT_mexecute_only)) {
-        if (getARMSubArchVersionNumber(Triple) < 7 &&
-            llvm::ARM::parseArch(Triple.getArchName()) != llvm::ARM::ArchKind::ARMV6T2 &&
-            llvm::ARM::parseArch(Triple.getArchName()) != llvm::ARM::ArchKind::ARMV6M)
-              D.Diag(diag::err_target_unsupported_execute_only) << Triple.getArchName();
+        if (!llvm::ARM::supportedExecuteOnly(Triple))
+          D.Diag(diag::err_target_unsupported_execute_only)
+              << Triple.getArchName();
         else if (llvm::ARM::parseArch(Triple.getArchName()) == llvm::ARM::ArchKind::ARMV6M) {
           if (Arg *PIArg = Args.getLastArg(options::OPT_fropi, options::OPT_frwpi,
                                            options::OPT_fpic, options::OPT_fpie,

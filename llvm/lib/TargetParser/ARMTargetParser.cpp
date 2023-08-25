@@ -598,3 +598,11 @@ StringRef ARM::getARMCPUForArch(const llvm::Triple &Triple, StringRef MArch) {
 
   llvm_unreachable("invalid arch name");
 }
+
+bool ARM::supportedExecuteOnly(const Triple &TT) {
+  if (parseArchVersion(TT.getArchName()) < 7 &&
+      parseArch(TT.getArchName()) != ArchKind::ARMV6T2 &&
+      parseArch(TT.getArchName()) != ArchKind::ARMV6M)
+    return false;
+  return true;
+}

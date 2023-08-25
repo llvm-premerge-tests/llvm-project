@@ -37,6 +37,8 @@ static const SanitizerMask NeedsUbsanCxxRt =
     SanitizerKind::Vptr | SanitizerKind::CFI;
 static const SanitizerMask NotAllowedWithTrap = SanitizerKind::Vptr;
 static const SanitizerMask NotAllowedWithMinimalRuntime = SanitizerKind::Vptr;
+static const SanitizerMask NotAllowedWithExecuteOnly =
+    SanitizerKind::Function | SanitizerKind::KCFI;
 static const SanitizerMask RequiresPIE =
     SanitizerKind::DataFlow | SanitizerKind::Scudo;
 static const SanitizerMask NeedsUnwindTables =
@@ -395,6 +397,22 @@ SanitizerArgs::SanitizerArgs(const ToolChain &TC,
           DiagnosedKinds |= SanitizerKind::Function;
         }
       }
+      // -fsanitize=function and -fsanitize=kcfi instrument indirect function
+      // calls to load a type hash before the function label. Therefore, an
+      // execute-only target doesn't support the function and kcfi sanitizers.
+      const llvm::Triple &Triple = TC.getTriple();
+      if (isExecuteOnlyTarget(Triple, Args)) {
+        if (SanitizerMask KindsToDiagnose =
+                Add & NotAllowedWithExecuteOnly & ~DiagnosedKinds) {
+          if (DiagnoseErrors) {
+            std::string Desc = describeSanitizeArg(Arg, KindsToDiagnose);
+            D.Diag(diag::err_unsupported_opt_for_execute_only_target)
+                << Desc << Triple.str();
+          }
+          DiagnosedKinds |= KindsToDiagnose;
+        }
+        Add &= ~NotAllowedWithExecuteOnly;
+      }
 
       // FIXME: Make CFI on member function calls compatible with cross-DSO CFI.
       // There are currently two problems:
@@ -456,6 +474,11 @@ SanitizerArgs::SanitizerArgs(const ToolChain &TC,
       Add &= ~InvalidTrappingKinds;
       if (MinimalRuntime) {
         Add &= ~NotAllowedWithMinimalRuntime;
+      }
+      // `-fsanitize=function` is silently discarded on an execute-only target
+      // if implicitly enabled through group expansion.
+      if (isExecuteOnlyTarget(Triple, Args)) {
+        Add &= ~NotAllowedWithExecuteOnly;
       }
       if (CfiCrossDso)
         Add &= ~SanitizerKind::CFIMFCall;
