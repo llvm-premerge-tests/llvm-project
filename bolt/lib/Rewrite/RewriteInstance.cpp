@@ -766,6 +766,15 @@ void RewriteInstance::discoverFileObjects() {
     }
   };
   std::unordered_map<SymbolRef, StringRef, SymbolRefHash> SymbolToFileName;
+  auto isSymbolGlobal = [](const ELFSymbolRef &Sym) {
+    if (cantFail(Sym.getFlags()) & SymbolRef::SF_Global)
+      return true;
+    // Hidden symbols are globals that were demoted to local at link-time.
+    // They should still be unique names at DSO-level.
+    if (cantFail(Sym.getFlags()) & SymbolRef::SF_Hidden)
+      return true;
+    return false;
+  };
   for (const ELFSymbolRef &Symbol : InputFile->symbols()) {
     Expected<StringRef> NameOrError = Symbol.getName();
     if (NameOrError && NameOrError->startswith("__asan_init")) {
@@ -793,8 +802,7 @@ void RewriteInstance::discoverFileObjects() {
       SeenFileName = true;
       continue;
     }
-    if (!FileSymbolName.empty() &&
-        !(cantFail(Symbol.getFlags()) & SymbolRef::SF_Global))
+    if (!FileSymbolName.empty() && !(isSymbolGlobal(Symbol)))
       SymbolToFileName[Symbol] = FileSymbolName;
   }
 
@@ -951,7 +959,7 @@ void RewriteInstance::discoverFileObjects() {
     std::string AlternativeName;
     if (Name.empty()) {
       UniqueName = "ANONYMOUS." + std::to_string(AnonymousId++);
-    } else if (cantFail(Symbol.getFlags()) & SymbolRef::SF_Global) {
+    } else if (isSymbolGlobal(Symbol)) {
       if (const BinaryData *BD = BC->getBinaryDataByName(Name)) {
         if (BD->getSize() == ELFSymbolRef(Symbol).getSize() &&
             BD->getAddress() == Address) {

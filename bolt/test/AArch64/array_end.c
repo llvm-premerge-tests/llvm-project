@@ -8,7 +8,7 @@
 // RUN: llvm-bolt %t.exe -o %t.bolt --print-disasm \
 // RUN:  --print-only="callFini" | FileCheck %s
 
-// CHECK: adr [[REG:x[0-28]+]], "__fini_array_end/1"
+// CHECK: adr [[REG:x[0-28]+]], __fini_array_end
 
 __attribute__((destructor)) void destr() {}
 
