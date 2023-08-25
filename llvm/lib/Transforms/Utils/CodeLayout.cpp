@@ -952,7 +952,6 @@ private:
                 const double DL = ChainDensity[L];
                 const double DR = ChainDensity[R];
                 // Compare by density and break ties by chain identifiers.
-                return (DL != DR) ? (DL > DR) : (L->Id < R->Id);
                 return std::make_tuple(-DL, L->Id) <
                        std::make_tuple(-DR, R->Id);
               });
