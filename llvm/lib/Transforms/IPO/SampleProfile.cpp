@@ -142,11 +142,6 @@ static cl::opt<bool> PersistProfileStaleness(
     cl::desc("Compute stale profile statistical metrics and write it into the "
              "native object file(.llvm_stats section)."));
 
-static cl::opt<bool> FlattenProfileForMatching(
-    "flatten-profile-for-matching", cl::Hidden, cl::init(true),
-    cl::desc(
-        "Use flattened profile for stale profile detection and matching."));
-
 static cl::opt<bool> ProfileSampleAccurate(
     "profile-sample-accurate", cl::Hidden, cl::init(false),
     cl::desc("If the sample profile is accurate, we will mark all un-sampled "
@@ -466,12 +461,7 @@ class SampleProfileMatcher {
 public:
   SampleProfileMatcher(Module &M, SampleProfileReader &Reader,
                        const PseudoProbeManager *ProbeManager)
-      : M(M), Reader(Reader), ProbeManager(ProbeManager) {
-    if (FlattenProfileForMatching) {
-      ProfileConverter::flattenProfile(Reader.getProfiles(), FlattenedProfiles,
-                                       FunctionSamples::ProfileIsCS);
-    }
-  }
+      : M(M), Reader(Reader), ProbeManager(ProbeManager){};
   void runOnModule();
 
 private:
@@ -482,7 +472,7 @@ private:
       return &It->second;
     return nullptr;
   }
-  void runOnFunction(const Function &F, const FunctionSamples &FS);
+  void runOnFunction(const Function &F);
   void findIRAnchors(const Function &F,
                      std::map<LineLocation, StringRef> &IRAnchors);
   void findProfileAnchors(const FunctionSamples &FS,
@@ -2385,8 +2375,15 @@ void SampleProfileMatcher::runStaleProfileMatching(
   }
 }
 
-void SampleProfileMatcher::runOnFunction(const Function &F,
-                                         const FunctionSamples &FS) {
+void SampleProfileMatcher::runOnFunction(const Function &F) {
+  const auto *FS = Reader.getSamplesFor(F);
+  // Use flattened function samples to populate profile locations as function
+  // samples under different context may have different callsites, so merge them
+  // together for the matching.
+  const auto *FSFlattened = getFlattenedSamplesFor(F);
+  if (!FSFlattened)
+    return;
+
   // Anchors for IR. It's a map from IR location to callee name, callee name is
   // empty for non-call instruction and use a dummy name(UnknownIndirectCallee)
   // for unknown indrect callee name.
@@ -2395,17 +2392,17 @@ void SampleProfileMatcher::runOnFunction(const Function &F,
   // Anchors for profile. It's a map from callsite location to a set of callee
   // name.
   std::map<LineLocation, StringSet<>> ProfileAnchors;
-  findProfileAnchors(FS, ProfileAnchors);
+  findProfileAnchors(*FSFlattened, ProfileAnchors);
 
   // Detect profile mismatch for profile staleness metrics report.
-  if (ReportProfileStaleness || PersistProfileStaleness) {
-    countProfileMismatches(F, FS, IRAnchors, ProfileAnchors);
+  if (FS && (ReportProfileStaleness || PersistProfileStaleness)) {
+    countProfileMismatches(F, *FS, IRAnchors, ProfileAnchors);
   }
 
   // Run profile matching for checksum mismatched profile, currently only
   // support for pseudo-probe.
   if (SalvageStaleProfile && FunctionSamples::ProfileIsProbeBased &&
-      !ProbeManager->profileIsValid(F, FS)) {
+      !ProbeManager->profileIsValid(F, *FSFlattened)) {
     // The matching result will be saved to IRToProfileLocationMap, create a new
     // map for each function.
     runStaleProfileMatching(F, IRAnchors, ProfileAnchors,
@@ -2414,17 +2411,12 @@ void SampleProfileMatcher::runOnFunction(const Function &F,
 }
 
 void SampleProfileMatcher::runOnModule() {
+  ProfileConverter::flattenProfile(Reader.getProfiles(), FlattenedProfiles,
+                                   FunctionSamples::ProfileIsCS);
   for (auto &F : M) {
     if (F.isDeclaration() || !F.hasFnAttribute("use-sample-profile"))
       continue;
-    FunctionSamples *FS = nullptr;
-    if (FlattenProfileForMatching)
-      FS = getFlattenedSamplesFor(F);
-    else
-      FS = Reader.getSamplesFor(F);
-    if (!FS)
-      continue;
-    runOnFunction(F, *FS);
+    runOnFunction(F);
   }
   if (SalvageStaleProfile)
     distributeIRToProfileLocationMap();
