@@ -455,6 +455,11 @@ unsigned RISCVMCCodeEmitter::getImmOpValue(const MCInst &MI, unsigned OpNo,
     } else if (MIFrm == RISCVII::InstFormatI) {
       FixupKind = RISCV::fixup_riscv_12_i;
     }
+  } else if (Kind == MCExpr::Binary &&
+             cast<MCBinaryExpr>(Expr)->getOpcode() == MCBinaryExpr::Sub) {
+    // Needed to support "li xi, a-b" which is translated to "addi xi, x0, a-b"
+    if (MIFrm == RISCVII::InstFormatI)
+      FixupKind = RISCV::fixup_riscv_12_i;
   }
 
   assert(FixupKind != RISCV::fixup_riscv_invalid && "Unhandled expression!");
