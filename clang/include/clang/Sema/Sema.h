@@ -2175,20 +2175,17 @@ public:
       const FunctionProtoType *Old, SourceLocation OldLoc,
       const FunctionProtoType *New, SourceLocation NewLoc);
   bool handlerCanCatch(QualType HandlerType, QualType ExceptionType);
-  bool CheckExceptionSpecSubset(const PartialDiagnostic &DiagID,
-                                const PartialDiagnostic &NestedDiagID,
-                                const PartialDiagnostic &NoteID,
-                                const PartialDiagnostic &NoThrowDiagID,
-                                const FunctionProtoType *Superset,
-                                SourceLocation SuperLoc,
-                                const FunctionProtoType *Subset,
-                                SourceLocation SubLoc);
-  bool CheckParamExceptionSpec(const PartialDiagnostic &NestedDiagID,
-                               const PartialDiagnostic &NoteID,
-                               const FunctionProtoType *Target,
-                               SourceLocation TargetLoc,
-                               const FunctionProtoType *Source,
-                               SourceLocation SourceLoc);
+  bool CheckExceptionSpecSubset(
+      const PartialDiagnostic &DiagID, const PartialDiagnostic &NestedDiagID,
+      const PartialDiagnostic &NoteID, const PartialDiagnostic &NoThrowDiagID,
+      const FunctionProtoType *Superset, bool SkipSupersetFirstParameter,
+      SourceLocation SuperLoc, const FunctionProtoType *Subset,
+      bool SkipSubsetFirstParameter, SourceLocation SubLoc);
+  bool CheckParamExceptionSpec(
+      const PartialDiagnostic &NestedDiagID, const PartialDiagnostic &NoteID,
+      const FunctionProtoType *Target, bool SkipTargetFirstParameter,
+      SourceLocation TargetLoc, const FunctionProtoType *Source,
+      bool SkipSourceFirstParameter, SourceLocation SourceLoc);
 
   TypeResult ActOnTypeName(Scope *S, Declarator &D);
 
@@ -3005,7 +3002,8 @@ public:
   Attr *getImplicitCodeSegOrSectionAttrForFunction(const FunctionDecl *FD,
                                                    bool IsDefinition);
   void CheckFunctionOrTemplateParamDeclarator(Scope *S, Declarator &D);
-  Decl *ActOnParamDeclarator(Scope *S, Declarator &D);
+  Decl *ActOnParamDeclarator(Scope *S, Declarator &D,
+                             SourceLocation ExplicitThisLoc = {});
   ParmVarDecl *BuildParmVarDeclForTypedef(DeclContext *DC,
                                           SourceLocation Loc,
                                           QualType T);
@@ -3774,7 +3772,7 @@ public:
                              bool UseMemberUsingDeclRules);
   bool IsOverload(FunctionDecl *New, FunctionDecl *Old,
                   bool UseMemberUsingDeclRules, bool ConsiderCudaAttrs = true,
-                  bool ConsiderRequiresClauses = true);
+                  bool UseOverrideRules = false);
 
   // Calculates whether the expression Constraint depends on an enclosing
   // template, for the purposes of [temp.friend] p9.
@@ -3832,6 +3830,12 @@ public:
                                  QualType &ConvertedType);
   bool IsBlockPointerConversion(QualType FromType, QualType ToType,
                                 QualType& ConvertedType);
+
+  bool FunctionParamTypesAreEqual(ArrayRef<QualType> Old,
+                                  ArrayRef<QualType> New,
+                                  unsigned *ArgPos = nullptr,
+                                  bool Reversed = false);
+
   bool FunctionParamTypesAreEqual(const FunctionProtoType *OldType,
                                   const FunctionProtoType *NewType,
                                   unsigned *ArgPos = nullptr,
@@ -3872,10 +3876,11 @@ public:
                                        ExprResult Init,
                                        bool TopLevelOfInitList = false,
                                        bool AllowExplicit = false);
-  ExprResult PerformObjectArgumentInitialization(Expr *From,
-                                                 NestedNameSpecifier *Qualifier,
-                                                 NamedDecl *FoundDecl,
-                                                 CXXMethodDecl *Method);
+  ExprResult InitializeExplicitObjectArgument(Sema &S, Expr *Obj,
+                                              FunctionDecl *Fun);
+  ExprResult PerformImplicitObjectArgumentInitialization(
+      Expr *From, NestedNameSpecifier *Qualifier, NamedDecl *FoundDecl,
+      CXXMethodDecl *Method);
 
   /// Check that the lifetime of the initializer (and its subobjects) is
   /// sufficient for initializing the entity, and perform lifetime extension
@@ -4197,9 +4202,8 @@ public:
       QualType DestTypeForComplaining = QualType(),
       unsigned DiagIDForComplaining = 0);
 
-  Expr *FixOverloadedFunctionReference(Expr *E,
-                                       DeclAccessPair FoundDecl,
-                                       FunctionDecl *Fn);
+  ExprResult FixOverloadedFunctionReference(Expr *E, DeclAccessPair FoundDecl,
+                                            FunctionDecl *Fn);
   ExprResult FixOverloadedFunctionReference(ExprResult,
                                             DeclAccessPair FoundDecl,
                                             FunctionDecl *Fn);
@@ -5762,6 +5766,10 @@ public:
                           Expr *Input, bool IsAfterAmp = false);
 
   bool isQualifiedMemberAccess(Expr *E);
+  bool DiagnoseMissingQualifiersInAddressOfOperand(SourceLocation OpLoc,
+                                                   const Expr *Op,
+                                                   const CXXMethodDecl *MD);
+
   QualType CheckAddressOfOperand(ExprResult &Operand, SourceLocation OpLoc);
 
   bool CheckTypeTraitArity(unsigned Arity, SourceLocation Loc, size_t N);
@@ -7186,6 +7194,8 @@ public:
       StorageClass SC, ArrayRef<ParmVarDecl *> Params,
       bool HasExplicitResultType);
 
+  void DiagnoseInvalidExplicitObjectParameterInLambda(CXXMethodDecl *Method);
+
   /// Perform initialization analysis of the init-capture and perform
   /// any implicit conversions such as an lvalue-to-rvalue conversion if
   /// not being used to initialize a reference.
@@ -7856,6 +7866,13 @@ public:
   void DefineDefaultedComparison(SourceLocation Loc, FunctionDecl *FD,
                                  DefaultedComparisonKind DCK);
 
+  void CheckExplicitObjectMemberFunction(Declarator &D, DeclarationName Name,
+                                         QualType R, bool IsLambda,
+                                         DeclContext *DC = nullptr);
+  void CheckExplicitObjectMemberFunction(DeclContext *DC, Declarator &D,
+                                         DeclarationName Name, QualType R);
+  void CheckExplicitObjectLambda(Declarator &D);
+
   //===--------------------------------------------------------------------===//
   // C++ Derived Classes
   //
@@ -7906,6 +7923,10 @@ public:
   /// covariant, according to C++ [class.virtual]p5.
   bool CheckOverridingFunctionReturnType(const CXXMethodDecl *New,
                                          const CXXMethodDecl *Old);
+
+  // Check that the overriding method has no explicit object parameter.
+  bool CheckExplicitObjectOverride(CXXMethodDecl *New,
+                                   const CXXMethodDecl *Old);
 
   /// CheckOverridingFunctionExceptionSpec - Checks whether the exception
   /// spec is a subset of base spec.
@@ -9148,6 +9169,7 @@ public:
       TemplateArgumentListInfo *ExplicitTemplateArgs, ArrayRef<Expr *> Args,
       FunctionDecl *&Specialization, sema::TemplateDeductionInfo &Info,
       bool PartialOverloading, bool AggregateDeductionCandidate,
+      QualType ObjectType, Expr::Classification ObjectClassification,
       llvm::function_ref<bool(ArrayRef<QualType>)> CheckNonDependent);
 
   TemplateDeductionResult
@@ -9158,11 +9180,10 @@ public:
                           sema::TemplateDeductionInfo &Info,
                           bool IsAddressOfFunction = false);
 
-  TemplateDeductionResult
-  DeduceTemplateArguments(FunctionTemplateDecl *FunctionTemplate,
-                          QualType ToType,
-                          CXXConversionDecl *&Specialization,
-                          sema::TemplateDeductionInfo &Info);
+  TemplateDeductionResult DeduceTemplateArguments(
+      FunctionTemplateDecl *FunctionTemplate, QualType ObjectType,
+      Expr::Classification ObjectClassification, QualType ToType,
+      CXXConversionDecl *&Specialization, sema::TemplateDeductionInfo &Info);
 
   TemplateDeductionResult
   DeduceTemplateArguments(FunctionTemplateDecl *FunctionTemplate,
