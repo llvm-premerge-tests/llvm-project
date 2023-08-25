@@ -83,6 +83,16 @@ static Instruction *getContextInstForUse(Use &U) {
 }
 
 namespace {
+/// Struct to express a condition of the form %Op0 Pred %Op1.
+struct ConditionTy {
+  CmpInst::Predicate Pred;
+  Value *Op0;
+  Value *Op1;
+
+  ConditionTy(CmpInst::Predicate Pred, Value *Op0, Value *Op1)
+      : Pred(Pred), Op0(Op0), Op1(Op1) {}
+};
+
 /// Represents either
 ///  * a condition that holds on entry to a block (=conditional fact)
 ///  * an assume (=assume fact)
@@ -92,11 +102,13 @@ struct FactOrCheck {
   union {
     Instruction *Inst;
     Use *U;
+    ConditionTy Cond;
   };
   unsigned NumIn;
   unsigned NumOut;
   bool HasInst;
   bool Not;
+  bool HasCond = false;
 
   FactOrCheck(DomTreeNode *DTN, Instruction *Inst, bool Not)
       : Inst(Inst), NumIn(DTN->getDFSNumIn()), NumOut(DTN->getDFSNumOut()),
@@ -106,9 +118,19 @@ struct FactOrCheck {
       : U(U), NumIn(DTN->getDFSNumIn()), NumOut(DTN->getDFSNumOut()),
         HasInst(false), Not(false) {}
 
+  FactOrCheck(DomTreeNode *DTN, CmpInst::Predicate Pred, Value *Op0, Value *Op1)
+      : Cond(Pred, Op0, Op1), NumIn(DTN->getDFSNumIn()),
+        NumOut(DTN->getDFSNumOut()), HasInst(false), Not(false), HasCond(true) {
+  }
+
   static FactOrCheck getFact(DomTreeNode *DTN, Instruction *Inst,
                              bool Not = false) {
     return FactOrCheck(DTN, Inst, Not);
+  }
+
+  static FactOrCheck getFact(DomTreeNode *DTN, CmpInst::Predicate Pred,
+                             Value *Op0, Value *Op1) {
+    return FactOrCheck(DTN, Pred, Op0, Op1);
   }
 
   static FactOrCheck getCheck(DomTreeNode *DTN, Use *U) {
@@ -120,8 +142,9 @@ struct FactOrCheck {
   }
 
   bool isCheck() const {
-    return !HasInst ||
-           match(Inst, m_Intrinsic<Intrinsic::ssub_with_overflow>());
+    return !HasCond &&
+           (!HasInst ||
+            match(Inst, m_Intrinsic<Intrinsic::ssub_with_overflow>()));
   }
 
   Instruction *getContextInst() const {
@@ -136,7 +159,9 @@ struct FactOrCheck {
     // The use may have been simplified to a constant already.
     return dyn_cast<Instruction>(*U);
   }
-  bool isConditionFact() const { return !isCheck() && isa<CmpInst>(Inst); }
+  bool isConditionFact() const {
+    return HasCond || (!isCheck() && isa<CmpInst>(Inst));
+  }
 };
 
 /// Keep state required to build worklist.
@@ -172,19 +197,9 @@ struct StackEntry {
         ValuesToRelease(ValuesToRelease) {}
 };
 
-/// Struct to express a pre-condition of the form %Op0 Pred %Op1.
-struct PreconditionTy {
-  CmpInst::Predicate Pred;
-  Value *Op0;
-  Value *Op1;
-
-  PreconditionTy(CmpInst::Predicate Pred, Value *Op0, Value *Op1)
-      : Pred(Pred), Op0(Op0), Op1(Op1) {}
-};
-
 struct ConstraintTy {
   SmallVector<int64_t, 8> Coefficients;
-  SmallVector<PreconditionTy, 2> Preconditions;
+  SmallVector<ConditionTy, 2> Preconditions;
 
   SmallVector<SmallVector<int64_t, 8>> ExtraInfo;
 
@@ -330,7 +345,7 @@ struct Decomposition {
 } // namespace
 
 static Decomposition decompose(Value *V,
-                               SmallVectorImpl<PreconditionTy> &Preconditions,
+                               SmallVectorImpl<ConditionTy> &Preconditions,
                                bool IsSigned, const DataLayout &DL);
 
 static bool canUseSExt(ConstantInt *CI) {
@@ -339,7 +354,7 @@ static bool canUseSExt(ConstantInt *CI) {
 }
 
 static Decomposition
-decomposeGEP(GEPOperator &GEP, SmallVectorImpl<PreconditionTy> &Preconditions,
+decomposeGEP(GEPOperator &GEP, SmallVectorImpl<ConditionTy> &Preconditions,
              bool IsSigned, const DataLayout &DL) {
   // Do not reason about pointers where the index size is larger than 64 bits,
   // as the coefficients used to encode constraints are 64 bit integers.
@@ -401,7 +416,7 @@ decomposeGEP(GEPOperator &GEP, SmallVectorImpl<PreconditionTy> &Preconditions,
 // Variable } where Coefficient * Variable. The sum of the constant offset and
 // pairs equals \p V.
 static Decomposition decompose(Value *V,
-                               SmallVectorImpl<PreconditionTy> &Preconditions,
+                               SmallVectorImpl<ConditionTy> &Preconditions,
                                bool IsSigned, const DataLayout &DL) {
 
   auto MergeResults = [&Preconditions, IsSigned, &DL](Value *A, Value *B,
@@ -544,7 +559,7 @@ ConstraintInfo::getConstraint(CmpInst::Predicate Pred, Value *Op0, Value *Op1,
       Pred != CmpInst::ICMP_SLE && Pred != CmpInst::ICMP_SLT)
     return {};
 
-  SmallVector<PreconditionTy, 4> Preconditions;
+  SmallVector<ConditionTy, 4> Preconditions;
   bool IsSigned = CmpInst::isSigned(Pred);
   auto &Value2Index = getValue2Index(IsSigned);
   auto ADec = decompose(Op0->stripPointerCastsSameRepresentation(),
@@ -654,7 +669,7 @@ ConstraintTy ConstraintInfo::getConstraintForSolving(CmpInst::Predicate Pred,
 
 bool ConstraintTy::isValid(const ConstraintInfo &Info) const {
   return Coefficients.size() > 0 &&
-         all_of(Preconditions, [&Info](const PreconditionTy &C) {
+         all_of(Preconditions, [&Info](const ConditionTy &C) {
            return Info.doesHold(C.Pred, C.Op0, C.Op1);
          });
 }
@@ -789,15 +804,16 @@ void State::addInfoFor(BasicBlock &BB) {
       continue;
     }
 
-    Value *Cond;
+    Value *A, *B;
+    CmpInst::Predicate Pred;
     // For now, just handle assumes with a single compare as condition.
-    if (match(&I, m_Intrinsic<Intrinsic::assume>(m_Value(Cond))) &&
-        isa<ICmpInst>(Cond)) {
+    if (match(&I, m_Intrinsic<Intrinsic::assume>(
+                      m_ICmp(Pred, m_Value(A), m_Value(B))))) {
       if (GuaranteedToExecute) {
         // The assume is guaranteed to execute when BB is entered, hence Cond
         // holds on entry to BB.
-        WorkList.emplace_back(FactOrCheck::getFact(DT.getNode(I.getParent()),
-                                                   cast<Instruction>(Cond)));
+        WorkList.emplace_back(
+            FactOrCheck::getFact(DT.getNode(I.getParent()), Pred, A, B));
       } else {
         WorkList.emplace_back(
             FactOrCheck::getFact(DT.getNode(I.getParent()), &I));
@@ -837,8 +853,11 @@ void State::addInfoFor(BasicBlock &BB) {
       while (!CondWorkList.empty()) {
         Value *Cur = CondWorkList.pop_back_val();
         if (auto *Cmp = dyn_cast<ICmpInst>(Cur)) {
-          WorkList.emplace_back(
-              FactOrCheck::getFact(DT.getNode(Successor), Cmp, IsOr));
+          WorkList.emplace_back(FactOrCheck::getFact(
+              DT.getNode(Successor),
+              IsOr ? CmpInst::getInversePredicate(Cmp->getPredicate())
+                   : Cmp->getPredicate(),
+              Cmp->getOperand(0), Cmp->getOperand(1)));
           continue;
         }
         if (IsOr && match(Cur, m_LogicalOr(m_Value(Op0), m_Value(Op1)))) {
@@ -1296,8 +1315,9 @@ static bool eliminateConstraints(Function &F, DominatorTree &DT,
   // transfer logic.
   stable_sort(S.WorkList, [](const FactOrCheck &A, const FactOrCheck &B) {
     auto HasNoConstOp = [](const FactOrCheck &B) {
-      return !isa<ConstantInt>(B.Inst->getOperand(0)) &&
-             !isa<ConstantInt>(B.Inst->getOperand(1));
+      Value *V0 = B.HasCond ? B.Cond.Op0 : B.Inst->getOperand(0);
+      Value *V1 = B.HasCond ? B.Cond.Op1 : B.Inst->getOperand(1);
+      return !isa<ConstantInt>(V0) && !isa<ConstantInt>(V1);
     };
     // If both entries have the same In numbers, conditional facts come first.
     // Otherwise use the relative order in the basic block.
@@ -1370,7 +1390,6 @@ static bool eliminateConstraints(Function &F, DominatorTree &DT,
       continue;
     }
 
-    LLVM_DEBUG(dbgs() << "fact to add to the system: " << *CB.Inst << "\n");
     auto AddFact = [&](CmpInst::Predicate Pred, Value *A, Value *B) {
       if (Info.getCS(CmpInst::isSigned(Pred)).size() > MaxRows) {
         LLVM_DEBUG(
@@ -1378,6 +1397,15 @@ static bool eliminateConstraints(Function &F, DominatorTree &DT,
             << "Skip adding constraint because system has too many rows.\n");
         return;
       }
+
+      LLVM_DEBUG({
+        dbgs() << "Processing fact to add to the system: "
+               << CmpInst::getPredicateName(Pred) << " ";
+        A->printAsOperand(dbgs());
+        dbgs() << ", ";
+        B->printAsOperand(dbgs());
+        dbgs() << "\n";
+      });
 
       Info.addFact(Pred, A, B, CB.NumIn, CB.NumOut, DFSInStack);
       if (ReproducerModule && DFSInStack.size() > ReproducerCondStack.size())
@@ -1397,23 +1425,31 @@ static bool eliminateConstraints(Function &F, DominatorTree &DT,
     };
 
     ICmpInst::Predicate Pred;
-    if (auto *MinMax = dyn_cast<MinMaxIntrinsic>(CB.Inst)) {
-      Pred = ICmpInst::getNonStrictPredicate(MinMax->getPredicate());
-      AddFact(Pred, MinMax, MinMax->getLHS());
-      AddFact(Pred, MinMax, MinMax->getRHS());
-      continue;
+    if (!CB.HasCond) {
+      if (auto *MinMax = dyn_cast<MinMaxIntrinsic>(CB.Inst)) {
+        Pred = ICmpInst::getNonStrictPredicate(MinMax->getPredicate());
+        AddFact(Pred, MinMax, MinMax->getLHS());
+        AddFact(Pred, MinMax, MinMax->getRHS());
+        continue;
+      }
     }
 
-    Value *A, *B;
-    Value *Cmp = CB.Inst;
-    match(Cmp, m_Intrinsic<Intrinsic::assume>(m_Value(Cmp)));
-    if (match(Cmp, m_ICmp(Pred, m_Value(A), m_Value(B)))) {
-      // Use the inverse predicate if required.
-      if (CB.Not)
-        Pred = CmpInst::getInversePredicate(Pred);
-
+    Value *A = nullptr, *B = nullptr;
+    if (CB.HasCond) {
+      Pred = CB.Cond.Pred;
+      A = CB.Cond.Op0;
+      B = CB.Cond.Op1;
+    } else {
+      Value *Cmp = CB.Inst;
+      match(Cmp, m_Intrinsic<Intrinsic::assume>(m_Value(Cmp)));
+      if (match(Cmp, m_ICmp(Pred, m_Value(A), m_Value(B)))) {
+        // Use the inverse predicate if required.
+        if (CB.Not)
+          Pred = CmpInst::getInversePredicate(Pred);
+      }
+    }
+    if (A)
       AddFact(Pred, A, B);
-    }
   }
 
   if (ReproducerModule && !ReproducerModule->functions().empty()) {
