@@ -3335,6 +3335,13 @@ void Verifier::visitCallBase(CallBase &Call) {
   // Verify call attributes.
   verifyFunctionAttrs(FTy, Attrs, &Call, IsIntrinsic, Call.isInlineAsm());
 
+  // Verify strictfp attributes match.
+  if (Call.getFunction()->hasFnAttribute(Attribute::StrictFP))
+    Check(Call.isStrictFP(),
+          "Functions with the strictfp attribute and their contained calls "
+          "and invokes must match in use of attribute strictfp!",
+          Call.getFunction(), &Call);
+
   // Conservatively check the inalloca argument.
   // We have a bug if we can find that there is an underlying alloca without
   // inalloca.
@@ -6088,6 +6095,9 @@ void Verifier::visitVPIntrinsic(VPIntrinsic &VPI) {
 void Verifier::visitConstrainedFPIntrinsic(ConstrainedFPIntrinsic &FPI) {
   unsigned NumOperands;
   bool HasRoundingMD;
+  Check(FPI.getCaller()->hasFnAttribute(Attribute::StrictFP),
+        "Constrained FP intrinsics require functions have strictfp attribute.",
+        FPI.getCaller());
   switch (FPI.getIntrinsicID()) {
 #define INSTRUCTION(NAME, NARG, ROUND_MODE, INTRINSIC)                         \
   case Intrinsic::INTRINSIC:                                                   \
