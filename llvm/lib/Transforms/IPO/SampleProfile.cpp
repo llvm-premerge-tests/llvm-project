@@ -1819,7 +1819,14 @@ bool SampleProfileLoader::emitAnnotations(Function &F) {
   bool Changed = false;
 
   if (FunctionSamples::ProfileIsProbeBased) {
-    if (!ProbeManager->profileIsValid(F, *Samples)) {
+    const auto *FuncDesc = ProbeManager->getDesc(F);
+    if (!FuncDesc) {
+      LLVM_DEBUG(dbgs() << "There is no probe_desc for " << F.getName()
+                        << " or it's an imported function."
+                        << "\n");
+      return false;
+    }
+    if (!ProbeManager->profileIsHashMismatched(*FuncDesc, *Samples)) {
       LLVM_DEBUG(
           dbgs() << "Profile is invalid due to CFG mismatch for Function "
                  << F.getName() << "\n");
@@ -2268,7 +2275,8 @@ void SampleProfileMatcher::runOnFunction(const Function &F,
     uint64_t Count = FS.getTotalSamples();
     TotalFuncHashSamples += Count;
     TotalProfiledFunc++;
-    if (!ProbeManager->profileIsValid(F, FS)) {
+    const auto *FuncDesc = ProbeManager->getDesc(F);
+    if (FuncDesc && ProbeManager->profileIsHashMismatched(*FuncDesc, FS)) {
       MismatchedFuncHashSamples += Count;
       NumMismatchedFuncHash++;
       IsFuncHashMismatch = true;
