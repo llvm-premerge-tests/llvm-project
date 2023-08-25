@@ -2944,18 +2944,6 @@ static MemRefType getCanonicalSubViewResultType(
                          nonRankReducedType.getMemorySpace());
 }
 
-/// Compute the canonical result type of a SubViewOp. Call `inferResultType`
-/// to deduce the result type. Additionally, reduce the rank of the inferred
-/// result type if `currentResultType` is lower rank than `sourceType`.
-static MemRefType getCanonicalSubViewResultType(
-    MemRefType currentResultType, MemRefType sourceType,
-    ArrayRef<OpFoldResult> mixedOffsets, ArrayRef<OpFoldResult> mixedSizes,
-    ArrayRef<OpFoldResult> mixedStrides) {
-  return getCanonicalSubViewResultType(currentResultType, sourceType,
-                                       sourceType, mixedOffsets, mixedSizes,
-                                       mixedStrides);
-}
-
 Value mlir::memref::createCanonicalRankReducingSubViewOp(
     OpBuilder &b, Location loc, Value memref, ArrayRef<int64_t> targetShape) {
   auto memrefType = llvm::cast<MemRefType>(memref.getType());
@@ -3108,9 +3096,32 @@ struct SubViewReturnTypeCanonicalizer {
   MemRefType operator()(SubViewOp op, ArrayRef<OpFoldResult> mixedOffsets,
                         ArrayRef<OpFoldResult> mixedSizes,
                         ArrayRef<OpFoldResult> mixedStrides) {
-    return getCanonicalSubViewResultType(op.getType(), op.getSourceType(),
-                                         mixedOffsets, mixedSizes,
-                                         mixedStrides);
+    // Infer a memref type without taking into account any rank reductions.
+    MemRefType nonReducedType = cast<MemRefType>(SubViewOp::inferResultType(
+        op.getSourceType(), mixedOffsets, mixedSizes, mixedStrides));
+
+    // Directly return the non-rank reduced type if there are no dropped dims.
+    llvm::SmallBitVector droppedDims = op.getDroppedDims();
+    if (droppedDims.empty())
+      return nonReducedType;
+
+    // Take the strides and offset from the non-rank reduced type.
+    auto [nonReducedStrides, offset] = getStridesAndOffset(nonReducedType);
+
+    // Drop dims from shape and strides.
+    SmallVector<int64_t> targetShape;
+    SmallVector<int64_t> targetStrides;
+    for (int64_t i = 0; i < mixedSizes.size(); ++i) {
+      if (droppedDims.test(i))
+        continue;
+      targetStrides.push_back(nonReducedStrides[i]);
+      targetShape.push_back(nonReducedType.getDimSize(i));
+    }
+
+    return MemRefType::get(targetShape, nonReducedType.getElementType(),
+                           StridedLayoutAttr::get(nonReducedType.getContext(),
+                                                  offset, targetStrides),
+                           nonReducedType.getMemorySpace());
   }
 };
 
