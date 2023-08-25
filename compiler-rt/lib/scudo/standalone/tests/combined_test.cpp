@@ -14,6 +14,7 @@
 #include "combined.h"
 #include "mem_map.h"
 
+#include <algorithm>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
@@ -78,13 +79,8 @@ template <typename Config> struct TestAllocator : scudo::Allocator<Config> {
   }
   ~TestAllocator() { this->unmapTestOnly(); }
 
-  void *operator new(size_t size) {
-    void *p = nullptr;
-    EXPECT_EQ(0, posix_memalign(&p, alignof(TestAllocator), size));
-    return p;
-  }
-
-  void operator delete(void *ptr) { free(ptr); }
+  void *operator new(size_t size);
+  void operator delete(void *ptr);
 };
 
 template <class TypeParam> struct ScudoCombinedTest : public Test {
@@ -111,11 +107,25 @@ template <typename T> using ScudoCombinedDeathTest = ScudoCombinedTest<T>;
 #define SCUDO_TYPED_TEST_ALL_TYPES(FIXTURE, NAME)                              \
   SCUDO_TYPED_TEST_TYPE(FIXTURE, NAME, AndroidSvelteConfig)                    \
   SCUDO_TYPED_TEST_TYPE(FIXTURE, NAME, FuchsiaConfig)
+constexpr size_t kMaxSize =
+    std::max({sizeof(TestAllocator<scudo::FuchsiaConfig>),
+              sizeof(TestAllocator<scudo::AndroidSvelteConfig>)});
+constexpr size_t kMaxAlign =
+    std::max({alignof(TestAllocator<scudo::FuchsiaConfig>),
+              alignof(TestAllocator<scudo::AndroidSvelteConfig>)});
 #else
 #define SCUDO_TYPED_TEST_ALL_TYPES(FIXTURE, NAME)                              \
   SCUDO_TYPED_TEST_TYPE(FIXTURE, NAME, AndroidSvelteConfig)                    \
   SCUDO_TYPED_TEST_TYPE(FIXTURE, NAME, DefaultConfig)                          \
   SCUDO_TYPED_TEST_TYPE(FIXTURE, NAME, AndroidConfig)
+constexpr size_t kMaxSize =
+    std::max({sizeof(TestAllocator<scudo::DefaultConfig>),
+              sizeof(TestAllocator<scudo::AndroidSvelteConfig>),
+              sizeof(TestAllocator<scudo::AndroidConfig>)});
+constexpr size_t kMaxAlign =
+    std::max({alignof(TestAllocator<scudo::DefaultConfig>),
+              alignof(TestAllocator<scudo::AndroidSvelteConfig>),
+              alignof(TestAllocator<scudo::AndroidConfig>)});
 #endif
 
 #define SCUDO_TYPED_TEST_TYPE(FIXTURE, NAME, TYPE)                             \
@@ -129,6 +139,56 @@ template <typename T> using ScudoCombinedDeathTest = ScudoCombinedTest<T>;
   };                                                                           \
   SCUDO_TYPED_TEST_ALL_TYPES(FIXTURE, NAME)                                    \
   template <class TypeParam> void FIXTURE##NAME<TypeParam>::Run()
+
+#if SCUDO_RISCV64
+// The allocator is over 4MB large. Rather than creating an instance of this on
+// the heap, keep it in a global storage to reduce fragmentation from having to
+// mmap this at the start of every test.
+//
+// Note that this is a workaround for allowing the combined tests to run on
+// RISCV with a 39-bit VMA under asan. This unique environment means we're more
+// limited on the space we can mmap, especially if there's two allocators
+// reserving a lot of contiguous space. Using storage mixed in with globals
+// reduces overal fragments.
+struct TestAllocatorStorage {
+  static void *get() NO_THREAD_SAFETY_ANALYSIS {
+    M.lock();
+    return AllocatorStorage;
+  }
+
+  static void release(void *ptr) NO_THREAD_SAFETY_ANALYSIS {
+    M.assertHeld();
+    M.unlock();
+    ASSERT_EQ(ptr, AllocatorStorage);
+  }
+
+  static scudo::HybridMutex M;
+  static uint8_t AllocatorStorage[kMaxSize];
+};
+scudo::HybridMutex TestAllocatorStorage::M;
+alignas(kMaxAlign) uint8_t TestAllocatorStorage::AllocatorStorage[kMaxSize];
+#else
+struct TestAllocatorStorage {
+  static void *get() NO_THREAD_SAFETY_ANALYSIS {
+    void *p = nullptr;
+    EXPECT_EQ(0, posix_memalign(&p, kMaxAlign, kMaxSize));
+    return p;
+  }
+  static void release(void *ptr) NO_THREAD_SAFETY_ANALYSIS { free(ptr); }
+};
+#endif
+
+template <typename Config>
+void *TestAllocator<Config>::operator new(size_t size) {
+  assert(size <= kMaxSize &&
+         "Allocation size doesn't fit in the allocator storage");
+  return TestAllocatorStorage::get();
+}
+
+template <typename Config>
+void TestAllocator<Config>::operator delete(void *ptr) {
+  TestAllocatorStorage::release(ptr);
+}
 
 SCUDO_TYPED_TEST(ScudoCombinedTest, IsOwned) {
   auto *Allocator = this->Allocator.get();
