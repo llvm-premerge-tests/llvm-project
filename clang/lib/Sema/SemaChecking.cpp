@@ -370,6 +370,22 @@ static bool SemaBuiltinOverflow(Sema &S, CallExpr *TheCall,
   if (checkArgCount(S, TheCall, 3))
     return true;
 
+  bool CkdOperation = false;
+  SourceManager &SM = S.getSourceManager();
+  if (BuiltinID == Builtin::BI__builtin_add_overflow &&
+        TheCall->getExprLoc().isMacroID() && Lexer::getImmediateMacroName(
+        TheCall->getExprLoc(), SM, S.getLangOpts()) == "ckd_add") {
+    CkdOperation = true;
+  } else if (BuiltinID == Builtin::BI__builtin_sub_overflow &&
+    TheCall->getExprLoc().isMacroID() && Lexer::getImmediateMacroName(
+    TheCall->getExprLoc(), SM, S.getLangOpts()) == "ckd_sub") {
+      CkdOperation = true;
+  } else if (BuiltinID == Builtin::BI__builtin_mul_overflow &&
+    TheCall->getExprLoc().isMacroID() && Lexer::getImmediateMacroName(
+      TheCall->getExprLoc(), SM, S.getLangOpts()) == "ckd_mul") {
+      CkdOperation = true;
+  }
+
   // First two arguments should be integers.
   for (unsigned I = 0; I < 2; ++I) {
     ExprResult Arg = S.DefaultFunctionArrayLvalueConversion(TheCall->getArg(I));
@@ -377,7 +393,8 @@ static bool SemaBuiltinOverflow(Sema &S, CallExpr *TheCall,
     TheCall->setArg(I, Arg.get());
 
     QualType Ty = Arg.get()->getType();
-    if (!Ty->isIntegerType()) {
+    bool IsInt = CkdOperation ? Ty->isPureIntegerType() : Ty->isIntegerType();
+    if (!IsInt) {
       S.Diag(Arg.get()->getBeginLoc(), diag::err_overflow_builtin_must_be_int)
           << Ty << Arg.get()->getSourceRange();
       return true;
@@ -396,11 +413,21 @@ static bool SemaBuiltinOverflow(Sema &S, CallExpr *TheCall,
     const auto *PtrTy = Ty->getAs<PointerType>();
     if (!PtrTy ||
         !PtrTy->getPointeeType()->isIntegerType() ||
+        (!PtrTy->getPointeeType()->isPureIntegerType() && CkdOperation) ||
         PtrTy->getPointeeType().isConstQualified()) {
       S.Diag(Arg.get()->getBeginLoc(),
              diag::err_overflow_builtin_must_be_ptr_int)
         << Ty << Arg.get()->getSourceRange();
       return true;
+    } else if (CkdOperation){
+      // Third argument can't be short because it may be unable to hold the
+      // result of operating two `int`s.
+      auto Pty = PtrTy->getPointeeType();
+      if (S.getASTContext().getIntWidth(Pty) == 16) {
+        S.Diag(Arg.get()->getBeginLoc(),
+              diag::warn_overflow_builtin_can_not_be_short);
+        return true;
+      }
     }
   }
 

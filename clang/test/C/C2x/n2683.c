@@ -1,0 +1,47 @@
+// RUN: %clang_cc1 -verify -ffreestanding -std=c23 %s
+
+/* WG14 N2683: Clang 18
+ * Towards Integer Safety
+ */
+#include <stdckdint.h>
+#include <stdint.h>
+
+void test_semantic() {
+  int64_t result64 = 0;
+  int32_t result32 = 0;
+  bool flag_add = ckd_add(&result64, INT32_MAX, 1);
+  bool flag_sub = ckd_sub(&result32, INT32_MAX, -1);
+  bool flag_mul = ckd_mul(&result64, INT64_MAX, 1);
+
+  // FIXME: add static_assert calls to check the resulting values for correctness
+  // once the constant expression interpreter is able to handle the checked arithmetic
+  // builtins in C. Currently, they're only a valid constant expression in C++ due to
+  // looking for an ICE in C. Also all values in the tests of n2683_2.c should be checked.
+}
+
+void test_invalid_input() {
+  _BitInt(33) a33 = 1;
+  char char_var = 'd'; // The ascii value of `d` is 100
+  bool bool_var = 1;
+  const int const_result = 0;
+  enum week{Mon, Tue, Wed};
+  enum week day = Mon;
+  short short_result = 0;
+  int a = 100;
+  int b = 55;
+  int result = 10;
+  char plain_char[] = {U'牛'}; /* expected-warning {{implicit conversion from 'unsigned int' to 'char' changes value from 29275 to 91}}  */
+
+  // invalid operand argument
+  bool flag_no_bitint = ckd_add(&result, a33, a); /* expected-error {{operand argument to overflow builtin must be an integer ('_BitInt(33)' invalid)}} */
+  bool flag_no_bool = ckd_sub(&result, bool_var, b); /* expected-error {{operand argument to overflow builtin must be an integer ('bool' invalid)}} */
+  bool flag_no_char = ckd_mul(&result, char_var, a); /* expected-error {{operand argument to overflow builtin must be an integer ('char' invalid)}} */
+  bool flag_no_enum = ckd_mul(&result, day, b); /* expected-error {{operand argument to overflow builtin must be an integer ('enum week' invalid)}} */
+
+  // invalid result type
+  bool flag_nostr = ckd_sub(&plain_char, a, b); /* expected-error {{result argument to overflow builtin must be a pointer to a non-const integer ('char (*)[1]' invalid)}} */
+  bool flag_nobool = ckd_mul(&bool_var, a, b); /* expected-error {{result argument to overflow builtin must be a pointer to a non-const integer ('bool *' invalid)}} */
+  bool flag_noptr = ckd_add(result, a, b); /* expected-error {{result argument to overflow builtin must be a pointer to a non-const integer ('int' invalid)}} */
+  bool flag_noconst = ckd_sub(&const_result, a, b); /* expected-error {{result argument to overflow builtin must be a pointer to a non-const integer ('const int *' invalid)}} */
+  bool flag_noshort = ckd_mul(&short_result, a, b); /* expected-warning {{'short' may not be suitable to hold the result of operating two 'int's}} */
+}

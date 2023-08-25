@@ -385,6 +385,7 @@ bool ModuleMap::isBuiltinHeader(StringRef FileName) {
            .Case("stdarg.h", true)
            .Case("stdatomic.h", true)
            .Case("stdbool.h", true)
+           .Case("stdckdint.h", true)
            .Case("stddef.h", true)
            .Case("stdint.h", true)
            .Case("tgmath.h", true)
