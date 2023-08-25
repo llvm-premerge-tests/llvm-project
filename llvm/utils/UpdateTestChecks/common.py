@@ -980,6 +980,7 @@ ir_nameless_values = [
     ),
     NamelessValue(r"DBG", "!", r"!dbg ", r"![0-9]+", None),
     NamelessValue(r"DIASSIGNID", "!", r"!DIAssignID ", r"![0-9]+", None),
+    NamelessValue(r'FPMATH', '!', r'!fpmath ', r'![0-9]+', None),
     NamelessValue(r'FREEZE_BITS', '!', r'!freeze_bits ', r'![0-9]+', None),
     NamelessValue(r"PROF", "!", r"!prof ", r"![0-9]+", None),
     NamelessValue(r"TBAA", "!", r"!tbaa ", r"![0-9]+", None),
