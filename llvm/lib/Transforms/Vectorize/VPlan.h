@@ -2476,6 +2476,9 @@ class VPlan {
   /// Represents the vector trip count.
   VPValue VectorTripCount;
 
+  /// Represents the loop-invariant runtime VF * UF of the vector loop region.
+  VPValue RuntimeVFxUF;
+
   /// Holds a mapping between Values and their corresponding VPValue inside
   /// VPlan.
   Value2VPValueTy Value2VPValue;
@@ -2552,6 +2555,9 @@ public:
 
   /// The vector trip count.
   VPValue &getVectorTripCount() { return VectorTripCount; }
+
+  /// Returns runtime VF * UF for the vector loop region.
+  VPValue &getRuntimeVFxUF() { return RuntimeVFxUF; }
 
   /// Mark the plan to indicate that using Value2VPValue is not safe any
   /// longer, because it may be stale.
