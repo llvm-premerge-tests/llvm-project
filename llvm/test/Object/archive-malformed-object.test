@@ -18,8 +18,8 @@
 
 # ERR2: error: bad.a: 'input.o': section header table goes past the end of the file: e_shoff = 0x9999
 
-## Don't emit an error if the symbol table is not required.
-# RUN: llvm-ar rcS good.a input.o input.bc
+## Don't emit an error if the symbol table is not required for gnu format.
+# RUN: llvm-ar --format=gnu rcS good.a input.o input.bc
 # RUN: llvm-ar t good.a | FileCheck %s --check-prefix=CONTENTS
 
 # CONTENTS:      input.o
