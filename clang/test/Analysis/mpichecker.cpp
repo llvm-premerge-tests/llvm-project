@@ -272,6 +272,55 @@ void nestedRequest() {
   MPI_Wait(&rs.req2, MPI_STATUS_IGNORE);
 } // no error
 
+void nestedRequestWithCount() {
+  typedef struct {
+    MPI_Request req[3];
+    MPI_Request req2;
+  } ReqStruct;
+
+  ReqStruct rs;
+  int rank = 0;
+  double buf = 0;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+  MPI_Ireduce(MPI_IN_PLACE, &buf, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD,
+              &rs.req[0]);
+  MPI_Ireduce(MPI_IN_PLACE, &buf, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD,
+              &rs.req[1]);
+  MPI_Ireduce(MPI_IN_PLACE, &buf, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD,
+              &rs.req[2]);
+  MPI_Ireduce(MPI_IN_PLACE, &buf, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD,
+              &rs.req2);
+  MPI_Waitall(2, rs.req, MPI_STATUSES_IGNORE);
+  MPI_Waitall(1, rs.req + 2, MPI_STATUSES_IGNORE);
+  MPI_Wait(&rs.req2, MPI_STATUS_IGNORE);
+} // no error
+
+void nestedRequestWithCountMissingNonBlockingWait() {
+  typedef struct {
+    MPI_Request req[3];
+    MPI_Request req2;
+  } ReqStruct;
+
+  ReqStruct rs;
+  int rank = 0;
+  double buf = 0;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+  MPI_Ireduce(MPI_IN_PLACE, &buf, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD,
+              &rs.req[0]);
+  MPI_Ireduce(MPI_IN_PLACE, &buf, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD,
+              &rs.req[1]);
+  MPI_Ireduce(MPI_IN_PLACE, &buf, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD,
+              &rs.req[2]);
+  MPI_Ireduce(MPI_IN_PLACE, &buf, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD,
+              &rs.req2);
+  MPI_Waitall(1, rs.req, MPI_STATUSES_IGNORE);
+  // MPI_Waitall(1, rs.req + 1, MPI_STATUSES_IGNORE);
+  MPI_Waitall(1, rs.req + 2, MPI_STATUSES_IGNORE);
+  MPI_Wait(&rs.req2, MPI_STATUS_IGNORE);
+} // expected-warning{{Request 'rs.req[1]' has no matching wait.}}
+
 void singleRequestInWaitall() {
   MPI_Request r;
   int rank = 0;
