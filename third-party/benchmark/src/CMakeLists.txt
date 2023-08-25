@@ -51,6 +51,10 @@ endif()
 # We need extra libraries on Solaris
 if(${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
   target_link_libraries(benchmark PRIVATE kstat)
+  # Solaris ld with -z defs requires libm dependency to be specified explicitly.
+  if(BUILD_SHARED_LIBS)
+    target_link_libraries(benchmark PRIVATE m)
+  endif()
 endif()
 
 # Benchmark main library

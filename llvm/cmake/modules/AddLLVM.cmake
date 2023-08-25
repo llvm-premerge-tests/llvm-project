@@ -644,6 +644,13 @@ function(llvm_add_library name)
         SOVERSION ${LLVM_VERSION_MAJOR}${LLVM_VERSION_SUFFIX}
         VERSION ${LLVM_VERSION_MAJOR}${LLVM_VERSION_SUFFIX})
     endif()
+
+    # Solaris ld with -z defs requires dependencies to be specified
+    # explicitly when building shared objects.  Many LLVM libs require
+    # libm, so do this globally.
+    if(${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
+      set_target_properties(${name} PROPERTIES INTERFACE_LINK_LIBRARIES m)
+    endif()
   endif()
 
   if(ARG_MODULE OR ARG_SHARED)
