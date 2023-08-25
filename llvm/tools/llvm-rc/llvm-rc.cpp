@@ -130,20 +130,24 @@ ErrorOr<std::string> findClang(const char *Argv0, StringRef Triple) {
   if (MainExecPath.empty())
     MainExecPath = Argv0;
 
-  StringRef Parent = llvm::sys::path::parent_path(MainExecPath);
   ErrorOr<std::string> Path = std::error_code();
   std::string TargetClang = (Triple + "-clang").str();
   std::string VersionedClang = ("clang-" + Twine(LLVM_VERSION_MAJOR)).str();
-  if (!Parent.empty()) {
-    // First look for the tool with all potential names in the specific
-    // directory of Argv0, if known
-    for (const auto *Name :
-         {TargetClang.c_str(), VersionedClang.c_str(), "clang", "clang-cl"}) {
-      Path = sys::findProgramByName(Name, Parent);
-      if (Path)
-        return Path;
+  for (const StringRef Parent :
+       {llvm::sys::path::parent_path(MainExecPath),
+        llvm::sys::path::parent_path(Argv0)}) {
+    if (!Parent.empty()) {
+      // First look for the tool with all potential names in the specific
+      // directory of Argv0, if known
+      for (const auto *Name :
+           {TargetClang.c_str(), VersionedClang.c_str(), "clang", "clang-cl"}) {
+        Path = sys::findProgramByName(Name, Parent);
+        if (Path)
+          return Path;
+      }
     }
   }
+
   // If no parent directory known, or not found there, look everywhere in PATH
   for (const auto *Name : {"clang", "clang-cl"}) {
     Path = sys::findProgramByName(Name);
