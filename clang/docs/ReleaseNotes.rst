@@ -172,6 +172,8 @@ Bug Fixes in This Version
 - Clang now prints unnamed members in diagnostic messages instead of giving an
   empty ''. Fixes
   (`#63759 <https://github.com/llvm/llvm-project/issues/63759>`_)
+- Fixed an assertion if a function has cleanups and fatal erors.
+  (`#48974 <https://github.com/llvm/llvm-project/issues/48974>`_)
 
 Bug Fixes to Compiler Builtins
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
