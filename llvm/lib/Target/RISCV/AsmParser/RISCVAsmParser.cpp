@@ -2508,8 +2508,14 @@ bool RISCVAsmParser::parseOperand(OperandVector &Operands, StringRef Mnemonic) {
     return true;
 
   // Attempt to parse token as a register.
-  if (parseRegister(Operands, true).isSuccess())
+  if (parseRegister(Operands, true).isSuccess()) {
+    // Parse memory base register if present (core-v only)
+    if (getSTI().getFeatureBits()[RISCV::FeatureVendorXCVmem]) {
+      if (getLexer().is(AsmToken::LParen))
+        return !parseMemOpBaseReg(Operands).isSuccess();
+    }
     return false;
+  }
 
   // Attempt to parse token as an immediate
   if (parseImmediate(Operands).isSuccess()) {
