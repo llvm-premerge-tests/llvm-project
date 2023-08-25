@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+
+import argparse
+import dumputils as du
+
+import pdb
+
+def get_fragment(dump, path):
+  lst = path.split('/')
+  p = dump.passes[int(lst[0])]
+  if len(lst) < 2:
+    return p
+  f = p.functions[lst[1]]
+  if len(lst) < 3:
+    return f
+  b = f.blocks[lst[2]]
+  return b
+
+def cmd_list(dump, prune=False):
+  pprev = None
+  for pidx, p in enumerate(dump.passes):
+    if prune and pprev is not None and p == pprev:
+      continue
+
+    print('{} {} {}'.format('*' if pprev is None or p != pprev else ' ', pidx, p.name))
+    for fkey, f in p.functions.items():
+      fprev = pprev.functions.get(fkey) if pprev is not None else None
+      print('        {}{} ['.format('*' if fprev is None or fprev != f else '', f.name), end='')
+      for bkey, b in f.blocks.items():
+        bprev = fprev.blocks.get(bkey) if fprev is not None else None
+        print(' {}{}'.format('*' if bprev is None or bprev != b else '', b.name), end='')
+      print(' ]')
+
+    pprev = p
+
+def cmd_compare(dump, other):
+  for idx, _ in enumerate(dump.passes):
+    p = dump.passes[idx]
+    pother = other.passes[idx]
+    assert p.name == pother.name
+    if p == pother:
+      continue
+    print('Mismatch in pass: {} {}'.format(idx, p.name))
+    for fkey, f in p.functions.items():
+      fother = pother.functions.get(fkey)
+      if fother is not None and f == fother:
+        continue
+      print('  Mismatch in function: {}'.format(f.name))
+      for bkey, b in f.blocks.items():
+        bother = fother.blocks.get(bkey)
+        if bother is not None and b == bother:
+          continue
+        print('    Mismatch in block: {}'.format(b.name))
+  
+
+parser = argparse.ArgumentParser(description='A "Swizz Army Knife" tool for analyzing llc -print-after-all dumps')
+parser.add_argument('--primary', action='store', required=True, help='Specify the primary dump-file')
+parser.add_argument('--secondary', action='store', help='Specify the secondary dump-file')
+parser.add_argument('--list', action='store_true', help='List contents of the primary dump (\'*\' indicates that the fragment was modified)')
+parser.add_argument('--list-pruned', action='store_true', help='Same as --list but pruning those pass invocations that did not modify')
+parser.add_argument('--compare', action='store_true', help='Compare the primary and secondary dumps')
+parser.add_argument('--primary-frag', action='store', help='Specify the fragment (format is \'passidx/function/block\') inside the primary dump')
+parser.add_argument('--secondary-frag', action='store', help='Specify the fragment (format is \'passidx/function/block\') inside the secondary dump')
+parser.add_argument('--graph', action='store_true', help='View the CFG of the specified primary function fragment')
+parser.add_argument('--view', action='store_true', help='View the specified primary fragment')
+parser.add_argument('--diff', action='store_true', help='Diff the primary and secondary fragment')
+
+args = parser.parse_args()
+
+primary = du.DumpFile(args.primary)
+secondary = du.DumpFile(args.secondary) if args.secondary else None
+
+primary_frag = get_fragment(primary, args.primary_frag) if args.primary_frag else None
+secondary_frag = get_fragment(secondary, args.secondary_frag) if args.secondary_frag else None
+
+if args.list:
+  cmd_list(primary)
+if args.list_pruned:
+  cmd_list(primary, True)
+if args.compare and secondary is not None:
+  cmd_compare(primary, secondary)
+if args.graph and primary_frag:
+  du.graph(primary_frag)
+if args.view and primary_frag:
+  du.view(primary_frag)
+if args.diff and primary_frag and secondary_frag:
+  du.diff(primary_frag, secondary_frag)
