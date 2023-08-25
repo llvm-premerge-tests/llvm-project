@@ -382,6 +382,22 @@ public:
   void emitPatchableFunctionEntries();
 
   //===------------------------------------------------------------------===//
+  // Branch Probability Dumping Implementation
+  //===------------------------------------------------------------------===//
+
+  struct BranchProbEntry {
+    const MCSymbol *Sym;
+    double Probability;
+  };
+
+  // All the branch probabilities to be emitted.
+  std::vector<BranchProbEntry> BranchProbs;
+
+  void emitLabelAndRecordBranchProb(double Probability);
+
+  void emitBranchProbabilitySection();
+
+  //===------------------------------------------------------------------===//
   // MachineFunctionPass Implementation.
   //===------------------------------------------------------------------===//
 

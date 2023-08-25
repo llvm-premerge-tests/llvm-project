@@ -22,6 +22,7 @@
 #include "llvm/ADT/APInt.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/ScopeExit.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
@@ -40,6 +41,7 @@
 #include "llvm/CodeGen/GCMetadataPrinter.h"
 #include "llvm/CodeGen/LazyMachineBlockFrequencyInfo.h"
 #include "llvm/CodeGen/MachineBasicBlock.h"
+#include "llvm/CodeGen/MachineBranchProbabilityInfo.h"
 #include "llvm/CodeGen/MachineConstantPool.h"
 #include "llvm/CodeGen/MachineDominators.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
@@ -119,6 +121,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cinttypes>
+#include <cmath>
 #include <cstdint>
 #include <iterator>
 #include <memory>
@@ -137,6 +140,10 @@ static cl::opt<std::string> BasicBlockProfileDump(
              "matching up BBs with afterwards, the compilation must be "
              "performed with -basic-block-sections=labels. Enabling this "
              "flag during in-process ThinLTO is not supported."));
+
+static cl::opt<bool> EnableBranchProbabilityDumping(
+    "emit-asm-branch-probabilities", cl::init(false), cl::Hidden,
+    cl::desc("Dump branch probabilities during asm printing to debug section"));
 
 const char DWARFGroupName[] = "dwarf";
 const char DWARFGroupDescription[] = "DWARF Emission";
@@ -1597,6 +1604,24 @@ static bool needFuncLabels(const MachineFunction &MF) {
       classifyEHPersonality(MF.getFunction().getPersonalityFn()));
 }
 
+/// Calculates probability of taking the branch target if MBPI is available.
+static std::optional<double>
+getBranchProbForCondBr(const MachineInstr &MI,
+                       MachineBranchProbabilityInfo *MBPI) {
+  assert(MI.isConditionalBranch() && !MI.isCall());
+
+  const MachineBasicBlock *Parent = MI.getParent();
+  const TargetInstrInfo *TII =
+      Parent->getParent()->getSubtarget().getInstrInfo();
+  assert(TII);
+
+  const MachineBasicBlock *Target = TII->getBranchDestBlock(MI);
+  const auto TargetProb = MBPI->getEdgeProbability(Parent, Target);
+  const double Probability =
+      double(TargetProb.getNumerator()) / double(TargetProb.getDenominator());
+  return Probability;
+}
+
 /// EmitFunctionBody - This method emits the body and trailer for a
 /// function.
 void AsmPrinter::emitFunctionBody() {
@@ -1629,6 +1654,7 @@ void AsmPrinter::emitFunctionBody() {
   bool IsEHa = MMI->getModule()->getModuleFlag("eh-asynch");
 
   bool CanDoExtraAnalysis = ORE->allowExtraAnalysis(DEBUG_TYPE);
+  const bool CanDumpBranchProbs = EnableBranchProbabilityDumping;
   for (auto &MBB : *MF) {
     // Print a label for the basic block.
     emitBasicBlockStart(MBB);
@@ -1731,6 +1757,13 @@ void AsmPrinter::emitFunctionBody() {
         // purely meta information.
         break;
       default:
+        if (CanDumpBranchProbs && MI.isConditionalBranch() && !MI.isCall()) {
+          if (auto *MBPI =
+                  getAnalysisIfAvailable<MachineBranchProbabilityInfo>()) {
+            if (auto Prob = getBranchProbForCondBr(MI, MBPI))
+              emitLabelAndRecordBranchProb(*Prob);
+          }
+        }
         emitInstruction(&MI);
         if (CanDoExtraAnalysis) {
           MCInst MCI;
@@ -1921,6 +1954,8 @@ void AsmPrinter::emitFunctionBody() {
   emitStackUsage(*MF);
 
   emitPatchableFunctionEntries();
+
+  emitBranchProbabilitySection();
 
   if (isVerbose())
     OutStreamer->getCommentOS() << "-- End function\n";
@@ -4140,6 +4175,47 @@ void AsmPrinter::emitPatchableFunctionEntries() {
         F.hasComdat(), MCSection::NonUniqueID, LinkedToSym));
     emitAlignment(Align(PointerSize));
     OutStreamer->emitSymbolValue(CurrentPatchableFunctionEntrySym, PointerSize);
+  }
+}
+
+void AsmPrinter::emitLabelAndRecordBranchProb(const double Probability) {
+  assert(Probability >= 0.0 && Probability <= 1.0 &&
+         "branch probability should be in range [0.0,1.0]");
+
+  MCSymbol *Label = OutStreamer->getContext().createTempSymbol("branch_prob");
+  Label->setUsedInReloc();
+  OutStreamer->emitLabel(Label);
+
+  BranchProbs.push_back({Label, Probability});
+}
+
+void AsmPrinter::emitBranchProbabilitySection() {
+  if (BranchProbs.empty())
+    return;
+
+  MCSection* BranchProbSec =
+      getObjFileLowering().getBranchProbabilitySection(*getCurrentSection());
+  if (!BranchProbSec)
+    return;
+
+  unsigned WordSizeBytes = MAI->getCodePointerSize();
+
+  OutStreamer->pushSection();
+  auto OnExit = make_scope_exit([&] { OutStreamer->popSection(); });
+  OutStreamer->switchSection(BranchProbSec);
+
+  for (auto [Label, Prob] : BranchProbs) {
+    OutStreamer->emitSymbolValue(Label, WordSizeBytes);
+
+    // Encode all data within 4 bytes to support 32 and 64 bit targets.
+    // Convert branch probability to value 0 - 10000 using 14 bits.
+    const long Val = lround(Prob * 10000.0);
+    assert(Val >= 0 && Val <= 10000);
+    const uint32_t Encoded = static_cast<uint32_t>(Val & 0x3fff);
+    OutStreamer->emitInt32(Encoded);
+
+    // Pad for alignment and reserved for future use
+    OutStreamer->emitZeros(WordSizeBytes - sizeof(Encoded));
   }
 }
 

@@ -3214,6 +3214,14 @@ bool X86InstrInfo::analyzeBranch(MachineBasicBlock &MBB,
   return AnalyzeBranchImpl(MBB, TBB, FBB, Cond, CondBranches, AllowModify);
 }
 
+MachineBasicBlock *
+X86InstrInfo::getBranchDestBlock(const MachineInstr &MI) const {
+  assert(MI.getDesc().isBranch() && !MI.getDesc().isIndirectBranch() &&
+         !MI.getDesc().isCall() && "Unexpected opcode!");
+  // direct jumps and direct conditional jumps have target in first operand
+  return MI.getOperand(0).getMBB();
+}
+
 static int getJumpTableIndexFromAddr(const MachineInstr &MI) {
   const MCInstrDesc &Desc = MI.getDesc();
   int MemRefBegin = X86II::getMemoryOperandNo(Desc.TSFlags);
