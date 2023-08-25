@@ -1,0 +1,28 @@
+# RUN: yaml2obj %s -o %t.o
+# RUN: llvm-nm --print-size %t.o | FileCheck %s --strict-whitespace
+# RUN: llvm-nm -S %t.o | FileCheck %s --strict-whitespace
+
+--- !WASM
+FileHeader:
+  Version:         0x1
+Sections:
+  - Type:            DATA
+    Segments:
+      - SectionOffset:   6
+        InitFlags:       0
+        Offset:
+          Opcode:          I32_CONST
+          Value:           0
+        Content:         '00000000'
+  - Type:            CUSTOM
+    Name:            linking
+    Version:         2
+    SymbolTable:
+      - Index:           0
+        Kind:            DATA
+        Name:            a_symbol
+        Flags:           [  ]
+        Segment:         0
+        Size:            32
+
+# CHECK: 00000000 00000020 D a_symbol
