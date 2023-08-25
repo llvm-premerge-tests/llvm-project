@@ -33,6 +33,9 @@ foreach(archive IN ZIP_LISTS
     PROPERTIES
       ARCHIVE_OUTPUT_NAME ${archive_0}
   )
+  if(LLVM_LIBC_FULL_BUILD)
+    add_dependencies(${archive_1} libc-headers)
+  endif()
   list(APPEND added_archive_targets ${archive_1})
 endforeach()
 
