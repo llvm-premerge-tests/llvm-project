@@ -2358,6 +2358,14 @@ int UnwindCursor<A, R>::stepWithTBTable(pint_t pc, tbtable *TBTable,
     // Restore the condition register from sigcontext.
     newRegisters.setCR(sigContext->sc_jmpbuf.jmp_context.cr);
 
+    // Save the LR in sigcontext for stepping up when the function that
+    // raised the signal is a leaf function. This LR has the return address
+    // to the caller of the leaf function.
+    newRegisters.setLR(sigContext->sc_jmpbuf.jmp_context.lr);
+    _LIBUNWIND_TRACE_UNWINDING(
+        "Save LR=%p from sigcontext\n",
+        reinterpret_cast<void *>(sigContext->sc_jmpbuf.jmp_context.lr));
+
     // Restore GPRs from sigcontext.
     for (int i = 0; i < 32; ++i)
       newRegisters.setRegister(i, sigContext->sc_jmpbuf.jmp_context.gpr[i]);
@@ -2380,7 +2388,26 @@ int UnwindCursor<A, R>::stepWithTBTable(pint_t pc, tbtable *TBTable,
     }
   } else {
     // Step up a normal frame.
-    returnAddress = reinterpret_cast<pint_t *>(lastStack)[2];
+
+    bool usedLRFromSigContext;
+    if (!lastStack) {
+      returnAddress = NULL;
+      usedLRFromSigContext = false;
+    } else if (!TBTable->tb.saves_lr && registers.getLR()) {
+      // Use the LR value saved from sigcontext if LR is not saved in the
+      // stack frame.
+      returnAddress = registers.getLR();
+      usedLRFromSigContext = true;
+      _LIBUNWIND_TRACE_UNWINDING("Use saved LR=%p\n",
+                                 reinterpret_cast<void *>(returnAddress));
+    } else {
+      // Otherwise, use the LR value in the stack link area.
+      returnAddress = reinterpret_cast<pint_t *>(lastStack)[2];
+      usedLRFromSigContext = false;
+    }
+
+    // Reset LR in the current context.
+    newRegisters.setLR(NULL);
 
     _LIBUNWIND_TRACE_UNWINDING("Extract info from lastStack=%p, "
                                "returnAddress=%p\n",
@@ -2472,8 +2499,10 @@ int UnwindCursor<A, R>::stepWithTBTable(pint_t pc, tbtable *TBTable,
           *(reinterpret_cast<uint32_t *>(lastStack + sizeof(uintptr_t))));
     }
 
-    // Restore the SP.
-    newRegisters.setSP(lastStack);
+    // Restore the SP and move one frame up except when the LR saved from
+    // sigcontext is used as the return address.
+    if (!usedLRFromSigContext)
+      newRegisters.setSP(lastStack);
 
     // The first instruction after return.
     uint32_t firstInstruction = *(reinterpret_cast<uint32_t *>(returnAddress));
@@ -2516,7 +2545,6 @@ int UnwindCursor<A, R>::stepWithTBTable(pint_t pc, tbtable *TBTable,
   } else {
     isSignalFrame = false;
   }
-
   return UNW_STEP_SUCCESS;
 }
 #endif // defined(_LIBUNWIND_SUPPORT_TBTAB_UNWIND)
