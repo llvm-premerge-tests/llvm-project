@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env zsh
 #===----------------------------------------------------------------------===##
 #
 # Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
@@ -14,11 +14,6 @@
 # See https://buildkite.com/docs/agent/v3/cli-pipeline#pipeline-format.
 #
 
-if ! git diff --name-only HEAD~1 | grep -q -E "^libcxx/|^libcxxabi/|^libunwind/|^runtimes/|^cmake/|^clang/"; then
-  # libcxx/, libcxxabi/, libunwind/, runtimes/, cmake/ or clang/ are not affected
-  exit 0
-fi
-
 reviewID="$(git log --format=%B -n 1 | sed -nE 's/^Review-ID:[[:space:]]*(.+)$/\1/p')"
 if [[ "${reviewID}" != "" ]]; then
   buildMessage="https://llvm.org/${reviewID}"
@@ -32,6 +27,7 @@ EOF
 
 # If libc++ or one of the runtimes directories changed
 if git diff --name-only HEAD~1 | grep -q -E "^libcxx/|^libcxxabi/|^libunwind/|^runtimes/|^cmake/"; then
+  SPECIFIC_PIPELINE_AVAILABLE=1
   cat <<EOF
   - trigger: "libcxx-ci"
     build:
@@ -43,6 +39,7 @@ fi
 
 # If clang changed
 if git diff --name-only HEAD~1 | grep -q -E "^clang/"; then
+  SPECIFIC_PIPELINE_AVAILABLE=1
   cat <<EOF
   - trigger: "clang-ci"
     build:
@@ -50,4 +47,192 @@ if git diff --name-only HEAD~1 | grep -q -E "^clang/"; then
       commit: "${BUILDKITE_COMMIT}"
       branch: "${BUILDKITE_BRANCH}"
 EOF
+fi
+
+#
+# If we're not running a more specific pipeline, generate a legacy monolithic pipeline
+# based on which subdirectories have been modified. We have some heuristics for this
+# to be reasonable.
+#
+# Individual projects should instead define the pre-commit CI tests that suits their
+# needs while letting them run on the infrastructure provided by LLVM.
+#
+function add-dependencies() {
+  projects=${1}
+  for project in $(echo ${projects}); do
+    echo "${project}"
+    case ${project} in
+    bolt)
+      echo "llvm"; echo "lld"
+    ;;
+    clang-tools-extra)
+      echo "clang"; echo "llvm"
+    ;;
+    compiler-rt)
+      echo "clang"
+    ;;
+    flang)
+      echo "llvm"; echo "mlir"; echo "clang"
+    ;;
+    libc)
+      echo "clang"; echo "lldb"
+    ;;
+    lld)
+      echo "llvm"
+    ;;
+    mlir)
+      echo "llvm"
+    ;;
+    polly)
+      echo "llvm"
+    ;;
+    *)
+      # Nothing to do
+    ;;
+    esac
+  done
+}
+
+function exclude-linux() {
+  projects=${1}
+  for project in $(echo ${projects}); do
+    case ${project} in
+    cross-project-tests) # tests failing
+    ;;
+    lldb)                # tests failing
+    ;;
+    openmp)              # https://github.com/google/llvm-premerge-checks/issues/410
+    ;;
+    *)
+      echo "${project}"
+    ;;
+    esac
+  done
+}
+
+function exclude-windows() {
+  projects=${1}
+  for project in $(echo ${projects}); do
+    case ${project} in
+    cross-project-tests) # tests failing
+    ;;
+    compiler-rt)         # tests taking too long
+    ;;
+    openmp)              # TODO: having trouble with the Perl installation
+    ;;
+    libc)                # no Windows support
+    ;;
+    lldb)                # tests failing
+    ;;
+    bolt)                # tests are not supported yet
+    ;;
+    *)
+      echo "${project}"
+    ;;
+    esac
+  done
+}
+
+function keep-modified-projects() {
+  projects=${1}
+  git_diff="$(git diff --name-only HEAD~1)"
+  for project in $(echo ${projects}); do
+    if echo "${git_diff}" | grep -q -E "^${project}/"; then
+      echo "${project}"
+    fi
+  done
+}
+
+function check-targets() {
+  projects=${1}
+  for project in $(echo ${projects}); do
+    case ${project} in
+    clang-tools-extra)
+      echo "check-clang-tools"
+    ;;
+    compiler-rt)
+      echo "check-all"
+    ;;
+    cross-project-tests)
+      echo "check-cross-project"
+    ;;
+    lldb)
+      echo "check-all" # TODO: check-lldb may not include all the LLDB tests?
+    ;;
+    pstl)
+      echo "check-all"
+    ;;
+    *)
+      echo "check-${project}"
+    ;;
+    esac
+  done
+}
+
+function cmakeify-list() {
+  result=$(echo -n ${1} | tr '\n' ';')
+  result="${result#;}" # Strip leading ;
+  result="${result%;}" # Strip trailing ;
+  echo "${result}"
+}
+
+if [[ ! ${SPECIFIC_PIPELINE_AVAILABLE} -eq 1 ]]; then
+  # Figure out which projects need to be built on each platform
+  all_projects=$(echo "bolt clang-tools-extra compiler-rt cross-project-tests flang libc libclc lld lldb llvm llvm-libgcc mlir openmp polly pstl" | tr ' ' '\n')
+  modified_projects="$(keep-modified-projects ${all_projects})"
+
+  linux_projects=$(add-dependencies $(exclude-linux ${modified_projects}) | sort | uniq)
+  linux_check_targets=$(check-targets ${linux_projects} | sort | uniq)
+
+  windows_projects=$(add-dependencies $(exclude-windows ${modified_projects}) | sort | uniq)
+  windows_check_targets=$(check-targets ${windows_projects} | sort | uniq)
+
+  # Generate the appropriate pipeline
+  if [[ "$(cmakeify-list ${linux_projects})" != "" ]]; then
+    cat <<EOF
+  - label: ':linux: x64 Debian'
+    artifact_paths:
+      - '*_result.json'
+      - 'build/monolithic-linux/test-results.xml'
+    agents:
+      queue: 'linux'
+    retry:
+      automatic:
+        - exit_status: -1  # Agent was lost
+          limit: 2
+        - exit_status: 255
+          limit: 2 # Forced agent shutdown
+    timeout_in_minutes: 120
+    env:
+      CC: 'clang'
+      CXX: 'clang++'
+    commands:
+      - './.ci/monolithic-linux.sh "$(cmakeify-list ${linux_projects})" "${linux_check_targets}"'
+EOF
+  fi
+
+  if [[ "$(cmakeify-list ${windows_projects})" != "" ]]; then
+    cat <<EOF
+  - label: ':windows: x64 Windows'
+    artifact_paths:
+      - '*_result.json'
+      - 'build/monolithic-windows/test-results.xml'
+    agents:
+      queue: 'windows'
+    retry:
+      automatic:
+        - exit_status: -1  # Agent was lost
+          limit: 2
+        - exit_status: 255
+          limit: 2 # Forced agent shutdown
+    timeout_in_minutes: 150
+    env:
+      CC: 'cl'
+      CXX: 'cl'
+      LD: 'link'
+    commands:
+      - 'C:\\BuildTools\\Common7\\Tools\\VsDevCmd.bat -arch=amd64 -host_arch=amd64'
+      - 'bash .ci/monolithic-windows.sh "$(cmakeify-list ${windows_projects})" "${windows_check_targets}"'
+EOF
+  fi
 fi
