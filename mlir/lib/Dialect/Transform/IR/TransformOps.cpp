@@ -709,6 +709,7 @@ void transform::ApplyLoopInvariantCodeMotionOp::getEffects(
 DiagnosedSilenceableFailure transform::ApplyRegisteredPassOp::applyToOne(
     transform::TransformRewriter &rewriter, Operation *target,
     ApplyToEachResultList &results, transform::TransformState &state) {
+  llvm::errs() << "RUNNING PASS!! " << getPassName() << "\n";
   // Make sure that this transform is not applied to itself. Modifying the
   // transform IR while it is being interpreted is generally dangerous. Even
   // more so when applying passes because they may perform a wide range of IR

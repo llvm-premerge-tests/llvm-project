@@ -12,6 +12,7 @@ add_mlir_dialect_library(MLIRGPUTransformOps
   MLIRGPUDeviceMapperEnumsGen
   
   LINK_LIBS PUBLIC
+  MLIRDLTIDialect
   MLIRGPUDialect
   MLIRGPUTransforms
   MLIRIR
@@ -24,4 +25,10 @@ add_mlir_dialect_library(MLIRGPUTransformOps
   # ConversionPatterns
   MLIRNVGPUToNVVM
   MLIRGPUToNVVMTransforms
+
+  # Translations (needed to serialize to cubin)
+  MLIRNVVMToLLVMIRTranslation
+  MLIRGPUToLLVMIRTranslation
+  MLIRLLVMIRToLLVMTranslation
+  MLIRLLVMToLLVMIRTranslation
   )  
