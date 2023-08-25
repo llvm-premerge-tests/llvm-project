@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -fsyntax-only -Wno-unused-value -verify -std=c++11 -Wno-c99-designator %s
+// RUN: %clang_cc1 -fsyntax-only -Wno-unused-value -verify -Wno-c++20-extensions -std=c++11 -Wno-c99-designator %s
 // RUN: %clang_cc1 -fsyntax-only -Wno-unused-value -verify -std=c++20 -Wno-c99-designator %s
 // RUN: %clang_cc1 -fsyntax-only -Wno-unused-value -verify -std=c++23 -Wno-c99-designator %s
 
@@ -181,3 +181,11 @@ struct U {
   template <typename T>
   void m_fn1(T x = 0[0); // expected-error{{expected ']'}} expected-note{{to match this '['}}
 } *U;
+
+namespace GH64962 {
+void f() {
+  [] <typename T>(T i) -> int[] // expected-error {{function cannot return array type 'int[]'}}
+                                // extension-warning {{explicit template parameter list for lambdas is a C++20 extension}}
+    { return 3; } (v); // expected-error {{use of undeclared identifier 'v'}}
+}
+}
