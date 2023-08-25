@@ -314,7 +314,26 @@ def testMultitileSizes():
 
 
 @run
-def testPad():
+def testPadOpNoArgs():
+    sequence = transform.SequenceOp(
+        transform.FailurePropagationMode.Propagate, [], pdl.OperationType.get()
+    )
+    with InsertionPoint(sequence.body):
+        structured.PadOp(sequence.bodyTarget)
+        transform.YieldOp()
+    # CHECK-LABEL: TEST: testPadOpNoArgs
+    # CHECK: transform.sequence
+    # CHECK: transform.structured.pad
+    # CHECK-NOT: copy_back_op
+    # CHECK-NOT: pack_paddings
+    # CHECK-NOT: pad_to_multiple_of
+    # CHECK-NOT: padding_dimensions
+    # CHECK-NOT: padding_values
+    # CHECK-NOT: transpose_paddings
+
+
+@run
+def testPadOpArgs():
     sequence = transform.SequenceOp(
         transform.FailurePropagationMode.Propagate, [], pdl.OperationType.get()
     )
@@ -329,7 +348,7 @@ def testPad():
             copy_back_op="linalg.copy",
         )
         transform.YieldOp()
-    # CHECK-LABEL: TEST: testPad
+    # CHECK-LABEL: TEST: testPadOpArgs
     # CHECK: transform.sequence
     # CHECK: transform.structured.pad
     # CHECK-DAG: copy_back_op = "linalg.copy"
