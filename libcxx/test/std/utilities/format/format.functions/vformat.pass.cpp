@@ -50,6 +50,15 @@ auto test_exception =
     };
 
 int main(int, char**) {
+  // reproducer of https://llvm.org/PR65011
+  try {
+    const char fmt[] = {'{', '0'};
+    char buf[4096];
+    [[maybe_unused]] auto ignored =
+        std::vformat_to(buf, std::string_view{fmt, fmt + sizeof(fmt)}, std::make_format_args());
+  } catch (...) {
+  }
+
   format_tests<char, execution_modus::full>(test, test_exception);
 
 #ifndef TEST_HAS_NO_WIDE_CHARACTERS
