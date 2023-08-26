@@ -208,13 +208,14 @@ if (CLANGD_ENABLE_REMOTE)
   include(AddGRPC)
 endif()
 
-if(CLANG_INCLUDE_TESTS)
+if(CLANGD_INCLUDE_TESTS AND CLANG_INCLUDE_TESTS)
   add_subdirectory(test)
   add_subdirectory(unittests)
 endif()
 
 # FIXME(kirillbobyrev): Document this in the LLVM docs once remote index is stable.
 option(CLANGD_ENABLE_REMOTE "Use gRPC library to enable remote index support for Clangd" OFF)
+option(CLANGD_INCLUDE_TESTS "Include Clangd tests" ON)
 set(GRPC_INSTALL_PATH "" CACHE PATH "Path to gRPC library manual installation.")
 
 add_subdirectory(index/remote)
