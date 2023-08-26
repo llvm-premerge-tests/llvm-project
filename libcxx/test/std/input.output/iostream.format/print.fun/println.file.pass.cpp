@@ -78,7 +78,7 @@ static void test_wide_stream() {
   TEST_VALIDATE_EXCEPTION(
       std::system_error,
       [&]([[maybe_unused]] const std::system_error& e) {
-        [[maybe_unused]] std::string_view what{"failed to write formatted output"};
+        [[maybe_unused]] std::string_view what{"failed to write formatted output: Input/output error"};
         TEST_LIBCPP_REQUIRE(
             e.what() == what,
             TEST_WRITE_CONCATENATED("\nExpected exception ", what, "\nActual exception   ", e.what(), '\n'));
@@ -97,7 +97,7 @@ static void test_read_only() {
 #ifdef _AIX
         [[maybe_unused]] std::string_view what{"failed to write formatted output: Broken pipe"};
 #else
-        [[maybe_unused]] std::string_view what{"failed to write formatted output: Operation not permitted"};
+        [[maybe_unused]] std::string_view what{"failed to write formatted output: Bad file descriptor"};
 #endif
         TEST_LIBCPP_REQUIRE(
             e.what() == what,

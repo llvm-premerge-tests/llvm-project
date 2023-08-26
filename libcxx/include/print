@@ -215,11 +215,15 @@ __vprint_nonunicode(FILE* __stream, string_view __fmt, format_args __args, bool 
   if (__write_nl)
     __str.push_back('\n');
 
+  // On POSIX errno is set by fwrite. This is not required by the C standard.
+  errno         = 0;
   size_t __size = fwrite(__str.data(), 1, __str.size(), __stream);
   if (__size < __str.size()) {
+    if (errno)
+      std::__throw_system_error(errno, "failed to write formatted output");
     if (std::feof(__stream))
       std::__throw_system_error(EIO, "EOF while writing the formatted output");
-    std::__throw_system_error(std::ferror(__stream), "failed to write formatted output");
+    std::__throw_system_error(EIO, "failed to write formatted output");
   }
 }
 
