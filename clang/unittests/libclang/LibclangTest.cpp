@@ -1138,6 +1138,33 @@ void Class1::fun() {}
             "class ns1::Class1");
 }
 
+TEST_F(LibclangParseTest, VisitCXXForRangeStmt_InitStmt) {
+  const char testSource[] = R"cpp(
+void fun()
+{
+    char text[] = "test";
+    for (int init = 0; auto x:text) {}
+}
+)cpp";
+  std::string fileName = "main.cpp";
+  WriteFile(fileName, testSource);
+  const char *Args[] = {"-xc++", "-std=c++20"};
+  ClangTU = clang_parseTranslationUnit(Index, fileName.c_str(), Args,
+                                       std::size(Args), nullptr, 0, TUFlags);
+
+  bool found = false;
+  ;
+  Traverse([&](CXCursor cursor, CXCursor parent) -> CXChildVisitResult {
+    if (cursor.kind == CXCursor_VarDecl &&
+        fromCXString(clang_getCursorSpelling(cursor)) == "init") {
+      found = true;
+      return CXChildVisit_Break;
+    }
+    return CXChildVisit_Recurse;
+  });
+  ASSERT_TRUE(found);
+}
+
 TEST_F(LibclangParseTest, BinaryOperator) {
   std::string Main = "main.cpp";
   WriteFile(Main, "int foo() { return 5 + 9; }");

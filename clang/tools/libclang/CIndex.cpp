@@ -2860,6 +2860,9 @@ void EnqueueVisitor::VisitCXXForRangeStmt(const CXXForRangeStmt *S) {
   AddStmt(S->getBody());
   AddStmt(S->getRangeInit());
   AddDecl(S->getLoopVariable());
+  if (auto *init = S->getInit()) {
+    AddStmt(init);
+  }
 }
 
 void EnqueueVisitor::VisitDeclRefExpr(const DeclRefExpr *DR) {
