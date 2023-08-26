@@ -202,3 +202,42 @@ func.func @dynamic_dims_are_maybe_equal_2(%t: tensor<?x?xf32>) {
   "test.are_equal"(%dim0, %dim1) : (index, index) -> ()
   return
 }
+
+// -----
+
+func.func @collapse_shape_1(%t: tensor<1x?x?xf32>) {
+  %c0 = arith.constant 0 : index
+  %c1 = arith.constant 1 : index
+  %dim1 = tensor.dim %t, %c1 : tensor<1x?x?xf32>
+  %out = tensor.collapse_shape %t [[0, 1], [2]] : tensor<1x?x?xf32> into tensor<?x?xf32>
+  %dim0 = tensor.dim %out, %c0 : tensor<?x?xf32>
+  // expected-remark @below {{equal}}
+  "test.are_equal"(%dim0, %dim1) : (index, index) -> ()
+  return
+}
+
+// -----
+
+func.func @collapse_shape_2(%t: tensor<?x?x?xf32>) {
+  %c1 = arith.constant 1 : index
+  %c2 = arith.constant 2 : index
+  %dim1 = tensor.dim %t, %c2 : tensor<?x?x?xf32>
+  %out = tensor.collapse_shape %t [[0, 1], [2]] : tensor<?x?x?xf32> into tensor<?x?xf32>
+  %dim0 = tensor.dim %out, %c1 : tensor<?x?xf32>
+  // expected-remark @below {{equal}}
+  "test.are_equal"(%dim0, %dim1) : (index, index) -> ()
+  return
+}
+
+// -----
+
+func.func @collapse_shape_3(%t: tensor<?x?x?xf32>) {
+  %c0 = arith.constant 0 : index
+  %c1 = arith.constant 1 : index
+  %dim1 = tensor.dim %t, %c1 : tensor<?x?x?xf32>
+  %out = tensor.collapse_shape %t [[0, 1], [2]] : tensor<?x?x?xf32> into tensor<?x?xf32>
+  %dim0 = tensor.dim %out, %c0 : tensor<?x?xf32>
+  // expected-error @below {{could not determine equality}}
+  "test.are_equal"(%dim0, %dim1) : (index, index) -> ()
+  return
+}

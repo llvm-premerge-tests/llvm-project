@@ -108,6 +108,34 @@ struct RankOpInterface
   }
 };
 
+struct CollapseShapeOpInterface
+    : public ValueBoundsOpInterface::ExternalModel<CollapseShapeOpInterface,
+                                                   CollapseShapeOp> {
+  void populateBoundsForShapedValueDim(Operation *op, Value value, int64_t dim,
+                                       ValueBoundsConstraintSet &cstr) const {
+    auto collapseShapeOp = cast<CollapseShapeOp>(op);
+    assert(value == collapseShapeOp.getResult() && "invalid value");
+
+    auto tensorType = dyn_cast<RankedTensorType>(collapseShapeOp.getSrcType());
+    if (!tensorType)
+      return;
+
+    ArrayRef<int64_t> shape = tensorType.getShape();
+    ReassociationIndices dimReassoc =
+        collapseShapeOp.getReassociationIndices()[dim];
+    AffineExpr expr = getAffineConstantExpr(1, op->getContext());
+    for (int64_t index : dimReassoc) {
+      if (shape[index] == ShapedType::kDynamic) {
+        expr = expr * cstr.getExpr(collapseShapeOp.getSrc(), index);
+      } else {
+        expr = expr * cstr.getExpr(shape[index]);
+      }
+    }
+
+    cstr.bound(value)[dim] == expr;
+  }
+};
+
 } // namespace
 } // namespace tensor
 } // namespace mlir
@@ -126,5 +154,7 @@ void mlir::tensor::registerValueBoundsOpInterfaceExternalModels(
         DstValueBoundsOpInterfaceExternalModel<tensor::InsertSliceOp>>(*ctx);
     tensor::PadOp::attachInterface<tensor::PadOpInterface>(*ctx);
     tensor::RankOp::attachInterface<tensor::RankOpInterface>(*ctx);
+    tensor::CollapseShapeOp::attachInterface<tensor::CollapseShapeOpInterface>(
+        *ctx);
   });
 }
