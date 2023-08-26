@@ -110,6 +110,11 @@ struct _LIBCXXABI_HIDDEN __dynamic_cast_info
     bool found_any_static_type;
     // Set whenever a search can be stopped
     bool search_done;
+
+    // Data that modifies the search mechanism.
+
+    // There is no object (seen when we throw a null pointer to object).
+    bool have_object;
 };
 
 // Has no base class
@@ -122,8 +127,7 @@ public:
                                                        const void *, int) const;
   _LIBCXXABI_HIDDEN void process_static_type_below_dst(__dynamic_cast_info *,
                                                        const void *, int) const;
-  _LIBCXXABI_HIDDEN void process_found_base_class(__dynamic_cast_info *, void *,
-                                                  int) const;
+  _LIBCXXABI_HIDDEN void process_found_base_class(__dynamic_cast_info*, void*, const void*, int) const;
   _LIBCXXABI_HIDDEN virtual void search_above_dst(__dynamic_cast_info *,
                                                   const void *, const void *,
                                                   int, bool) const;
@@ -131,8 +135,7 @@ public:
   search_below_dst(__dynamic_cast_info *, const void *, int, bool) const;
   _LIBCXXABI_HIDDEN virtual bool can_catch(const __shim_type_info *,
                                            void *&) const;
-  _LIBCXXABI_HIDDEN virtual void
-  has_unambiguous_public_base(__dynamic_cast_info *, void *, int) const;
+  _LIBCXXABI_HIDDEN virtual void has_unambiguous_public_base(__dynamic_cast_info*, void*, const void*, int) const;
 };
 
 // Has one non-virtual public base class at offset zero
@@ -147,8 +150,7 @@ public:
                                                   int, bool) const;
   _LIBCXXABI_HIDDEN virtual void
   search_below_dst(__dynamic_cast_info *, const void *, int, bool) const;
-  _LIBCXXABI_HIDDEN virtual void
-  has_unambiguous_public_base(__dynamic_cast_info *, void *, int) const;
+  _LIBCXXABI_HIDDEN virtual void has_unambiguous_public_base(__dynamic_cast_info*, void*, const void*, int) const;
 };
 
 struct _LIBCXXABI_HIDDEN __base_class_type_info
@@ -166,7 +168,7 @@ public:
 
     void search_above_dst(__dynamic_cast_info*, const void*, const void*, int, bool) const;
     void search_below_dst(__dynamic_cast_info*, const void*, int, bool) const;
-    void has_unambiguous_public_base(__dynamic_cast_info*, void*, int) const;
+    void has_unambiguous_public_base(__dynamic_cast_info*, void*, const void*, int) const;
 };
 
 // Has one or more base classes
@@ -190,8 +192,7 @@ public:
                                                   int, bool) const;
   _LIBCXXABI_HIDDEN virtual void
   search_below_dst(__dynamic_cast_info *, const void *, int, bool) const;
-  _LIBCXXABI_HIDDEN virtual void
-  has_unambiguous_public_base(__dynamic_cast_info *, void *, int) const;
+  _LIBCXXABI_HIDDEN virtual void has_unambiguous_public_base(__dynamic_cast_info*, void*, const void*, int) const;
 };
 
 class _LIBCXXABI_TYPE_VIS __pbase_type_info : public __shim_type_info {
