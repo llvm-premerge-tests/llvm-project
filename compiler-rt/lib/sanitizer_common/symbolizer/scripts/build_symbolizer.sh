@@ -183,7 +183,8 @@ $CC $FLAGS -fno-lto -c opt.bc -o symbolizer.o
 
 echo "Checking undefined symbols..."
 nm -f posix -g symbolizer.o | cut -f 1,2 -d \  | LC_COLLATE=C sort -u > undefined.new
-(diff -u $SCRIPT_DIR/global_symbols.txt undefined.new | grep -E "^\+[^+]") && \
+# Ignore __isoc23_ symbols from glibc 2.38 to support both pre-2.38 and 2.38+.
+(diff -u $SCRIPT_DIR/global_symbols.txt undefined.new | sed -n '/__isoc23_/!p' | grep -E "^\+[^+]") && \
   (echo "Failed: unexpected symbols"; exit 1)
 
 arch() {
