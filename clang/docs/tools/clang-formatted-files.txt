@@ -400,7 +400,6 @@ clang/lib/Driver/ToolChains/AMDGPUOpenMP.h
 clang/lib/Driver/ToolChains/Ananas.h
 clang/lib/Driver/ToolChains/AVR.cpp
 clang/lib/Driver/ToolChains/AVR.h
-clang/lib/Driver/ToolChains/CloudABI.cpp
 clang/lib/Driver/ToolChains/CommonArgs.h
 clang/lib/Driver/ToolChains/CrossWindows.h
 clang/lib/Driver/ToolChains/DragonFly.h

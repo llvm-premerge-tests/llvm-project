@@ -185,7 +185,6 @@ public:
     UnknownOS,
 
     Ananas,
-    CloudABI,
     Darwin,
     DragonFly,
     FreeBSD,
