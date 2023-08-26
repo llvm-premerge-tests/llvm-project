@@ -7067,10 +7067,14 @@ bool CodeGenPrepare::optimizeSelectInst(SelectInst *SI) {
 
   // Sink expensive instructions into the conditional blocks to avoid executing
   // them speculatively.
-  for (Instruction *I : TrueInstrs)
+  for (Instruction *I : TrueInstrs) {
+    assert(TrueBranch != nullptr && "TrueBranch must be initialized");
     I->moveBefore(TrueBranch);
-  for (Instruction *I : FalseInstrs)
+  }
+  for (Instruction *I : FalseInstrs) {
+    assert(FalseBranch != nullptr && "FalseBranch must be initialized");
     I->moveBefore(FalseBranch);
+  }
 
   // If we did not create a new block for one of the 'true' or 'false' paths
   // of the condition, it means that side of the branch goes to the end block

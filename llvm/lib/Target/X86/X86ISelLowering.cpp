@@ -5963,6 +5963,8 @@ static bool getFauxShuffleMask(SDValue N, const APInt &DemandedElts,
     if (DAG.ComputeNumSignBits(Src, DemandedSrcElts) != NumBitsPerSrcElt)
       return false;
 
+    // Call DAG->ComputeNumSignBits(Src, DemandedSrcElts, 0U) may return 0
+    assert(NumBitsPerSrcElt != 0 && "Modulo by zero");
     assert((NumBitsPerElt % NumBitsPerSrcElt) == 0 && "Unexpected extension");
     unsigned Scale = NumBitsPerElt / NumBitsPerSrcElt;
     for (unsigned I = 0; I != NumElts; ++I)
