@@ -5235,6 +5235,60 @@ bool ValueDecl::isInitCapture() const {
   return false;
 }
 
+bool ValueDecl::isFlexibleArrayMemberLike(
+    ASTContext &Ctx,
+    LangOptions::StrictFlexArraysLevelKind StrictFlexArraysLevel,
+    bool IgnoreTemplateOrMacroSubstitution) const {
+  // For compatibility with existing code, we treat arrays of length 0 or
+  // 1 as flexible array members.
+  std::optional<bool> Res = Ctx.isCompatibleFlexibleArrayMemberLike(getType());
+  if (Res.has_value())
+    return *Res;
+
+  if (const auto *OID = dyn_cast<ObjCIvarDecl>(this))
+    return OID->getNextIvar() == nullptr;
+
+  const auto *FD = dyn_cast<FieldDecl>(this);
+  if (!FD)
+    return false;
+
+  if (const auto *CAT = Ctx.getAsConstantArrayType(getType())) {
+    // GCC treats an array memeber of a union as an FAM if the size is one or
+    // zero.
+    llvm::APInt Size = CAT->getSize();
+    if (FD->getParent()->isUnion() && (Size.isZero() || Size.isOne()))
+      return true;
+  }
+
+  // Don't consider sizes resulting from macro expansions or template argument
+  // substitution to form C89 tail-padded arrays.
+  if (IgnoreTemplateOrMacroSubstitution) {
+    TypeSourceInfo *TInfo = FD->getTypeSourceInfo();
+    while (TInfo) {
+      TypeLoc TL = TInfo->getTypeLoc();
+
+      // Look through typedefs.
+      if (TypedefTypeLoc TTL = TL.getAsAdjusted<TypedefTypeLoc>()) {
+        const TypedefNameDecl *TDL = TTL.getTypedefNameDecl();
+        TInfo = TDL->getTypeSourceInfo();
+        continue;
+      }
+
+      if (auto CTL = TL.getAs<ConstantArrayTypeLoc>()) {
+        const Expr *SizeExpr = CTL.getSizeExpr();
+        if (!SizeExpr || SizeExpr->getExprLoc().isMacroID())
+          return false;
+      }
+
+      break;
+    }
+  }
+
+  RecordDecl::field_iterator FI(
+      DeclContext::decl_iterator(const_cast<FieldDecl *>(FD)));
+  return ++FI == FD->getParent()->field_end();
+}
+
 void ImplicitParamDecl::anchor() {}
 
 ImplicitParamDecl *ImplicitParamDecl::Create(ASTContext &C, DeclContext *DC,

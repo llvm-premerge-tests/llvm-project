@@ -2485,6 +2485,10 @@ public:
 
   bool isNearlyEmpty(const CXXRecordDecl *RD) const;
 
+  /// For compatibility with existing code, we treat arrays of length 0 or
+  /// 1 as flexible array members.
+  std::optional<bool> isCompatibleFlexibleArrayMemberLike(QualType Ty) const;
+
   VTableContextBase *getVTableContext();
 
   /// If \p T is null pointer, assume the target in ASTContext.

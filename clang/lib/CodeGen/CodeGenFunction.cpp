@@ -2554,7 +2554,7 @@ void CodeGenFunction::InsertHelper(llvm::Instruction *I,
                                    llvm::BasicBlock *BB,
                                    llvm::BasicBlock::iterator InsertPt) const {
   LoopStack.InsertHelper(I);
-  if (IsSanitizerScope)
+  if (IsSanitizerScope != 0)
     I->setNoSanitizeMetadata();
 }
 

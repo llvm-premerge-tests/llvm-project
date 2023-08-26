@@ -12016,6 +12016,35 @@ bool ASTContext::isNearlyEmpty(const CXXRecordDecl *RD) const {
   return ABI->isNearlyEmpty(RD);
 }
 
+/// For compatibility with existing code, we treat arrays of length 0 or 1 as
+/// flexible array members.
+std::optional<bool>
+ASTContext::isCompatibleFlexibleArrayMemberLike(QualType Ty) const {
+  if (const auto *CAT = getAsConstantArrayType(Ty)) {
+    using FAMKind = LangOptions::StrictFlexArraysLevelKind;
+
+    llvm::APInt Size = CAT->getSize();
+    FAMKind StrictFlexArraysLevel = getLangOpts().getStrictFlexArraysLevel();
+
+    if (StrictFlexArraysLevel == FAMKind::IncompleteOnly)
+      return false;
+
+    // GCC extension, only allowed to represent a FAM.
+    if (Size == 0)
+      return true;
+
+    if (StrictFlexArraysLevel == FAMKind::ZeroOrIncomplete && Size.uge(1))
+      return false;
+
+    if (StrictFlexArraysLevel == FAMKind::OneZeroOrIncomplete && Size.uge(2))
+      return false;
+  } else if (!getAsIncompleteArrayType(Ty)) {
+    return false;
+  }
+
+  return {};
+}
+
 VTableContextBase *ASTContext::getVTableContext() {
   if (!VTContext.get()) {
     auto ABI = Target->getCXXABI();
