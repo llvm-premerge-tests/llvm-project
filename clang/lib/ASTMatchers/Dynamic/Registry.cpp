@@ -151,6 +151,7 @@ RegistryMaps::RegistryMaps() {
   REGISTER_MATCHER(binaryOperator);
   REGISTER_MATCHER(binaryOperation);
   REGISTER_MATCHER(bindingDecl);
+  REGISTER_MATCHER(bitIntType);
   REGISTER_MATCHER(blockDecl);
   REGISTER_MATCHER(blockExpr);
   REGISTER_MATCHER(blockPointerType);
@@ -176,6 +177,7 @@ RegistryMaps::RegistryMaps() {
   REGISTER_MATCHER(conditionalOperator);
   REGISTER_MATCHER(constantArrayType);
   REGISTER_MATCHER(constantExpr);
+  REGISTER_MATCHER(constantMatrixType);
   REGISTER_MATCHER(containsDeclaration);
   REGISTER_MATCHER(continueStmt);
   REGISTER_MATCHER(convertVectorExpr);
@@ -226,9 +228,13 @@ RegistryMaps::RegistryMaps() {
   REGISTER_MATCHER(decltypeType);
   REGISTER_MATCHER(deducedTemplateSpecializationType);
   REGISTER_MATCHER(defaultStmt);
+  REGISTER_MATCHER(dependentAddressSpaceType);
+  REGISTER_MATCHER(dependentBitIntType);
   REGISTER_MATCHER(dependentCoawaitExpr);
   REGISTER_MATCHER(dependentSizedArrayType);
   REGISTER_MATCHER(dependentSizedExtVectorType);
+  REGISTER_MATCHER(dependentSizedMatrixType);
+  REGISTER_MATCHER(dependentVectorType);
   REGISTER_MATCHER(designatedInitExpr);
   REGISTER_MATCHER(designatorCountIs);
   REGISTER_MATCHER(doStmt);
@@ -371,6 +377,7 @@ RegistryMaps::RegistryMaps() {
   REGISTER_MATCHER(hasThreadStorageDuration);
   REGISTER_MATCHER(hasTrailingReturn);
   REGISTER_MATCHER(hasTrueExpression);
+  REGISTER_MATCHER(hasTypeForDecl);
   REGISTER_MATCHER(hasTypeLoc);
   REGISTER_MATCHER(hasUnaryOperand);
   REGISTER_MATCHER(hasUnarySelector);
@@ -517,6 +524,8 @@ RegistryMaps::RegistryMaps() {
   REGISTER_MATCHER(objcStringLiteral);
   REGISTER_MATCHER(objcThrowStmt);
   REGISTER_MATCHER(objcTryStmt);
+  REGISTER_MATCHER(objcTypeParamDecl);
+  REGISTER_MATCHER(objcTypeParamType);
   REGISTER_MATCHER(ofClass);
   REGISTER_MATCHER(ofKind);
   REGISTER_MATCHER(ompDefaultClause);
@@ -530,6 +539,7 @@ RegistryMaps::RegistryMaps() {
   REGISTER_MATCHER(parenListExpr);
   REGISTER_MATCHER(parenType);
   REGISTER_MATCHER(parmVarDecl);
+  REGISTER_MATCHER(pipeType);
   REGISTER_MATCHER(pointee);
   REGISTER_MATCHER(pointerType);
   REGISTER_MATCHER(pointerTypeLoc);
@@ -599,6 +609,7 @@ RegistryMaps::RegistryMaps() {
   REGISTER_MATCHER(valueDecl);
   REGISTER_MATCHER(varDecl);
   REGISTER_MATCHER(variableArrayType);
+  REGISTER_MATCHER(vectorType);
   REGISTER_MATCHER(voidType);
   REGISTER_MATCHER(whileStmt);
   REGISTER_MATCHER(withInitializer);

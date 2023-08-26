@@ -285,6 +285,33 @@ testing::AssertionResult notMatchesWithOpenMP51(const Twine &Code,
 }
 
 template <typename T>
+testing::AssertionResult matchesOpenCL(const Twine &Code, const T &AMatcher) {
+  return matchesConditionally(Code, AMatcher, true,
+                              {"-x", "cl", "-cl-no-stdinc", "-cl-std=CL2.0"},
+                              FileContentMappings(), "input.cl");
+}
+
+template <typename T>
+testing::AssertionResult notMatchesOpenCL(const Twine &Code,
+                                          const T &AMatcher) {
+  return matchesConditionally(Code, AMatcher, false,
+                              {"-x", "cl", "-cl-no-stdinc", "-cl-std=CL2.0"},
+                              FileContentMappings(), "input.cl");
+}
+
+template <typename T>
+testing::AssertionResult matchesWithMatrixEnabled(const Twine &Code,
+                                                  const T &AMatcher) {
+  return matchesConditionally(Code, AMatcher, true, {"-fenable-matrix"});
+}
+
+template <typename T>
+testing::AssertionResult notMatchesWithMatrixEnabled(const Twine &Code,
+                                                     const T &AMatcher) {
+  return matchesConditionally(Code, AMatcher, false, {"-fenable-matrix"});
+}
+
+template <typename T>
 testing::AssertionResult matchAndVerifyResultConditionally(
     const Twine &Code, const T &AMatcher,
     std::unique_ptr<BoundNodesCallback> FindResultVerifier, bool ExpectResult) {
