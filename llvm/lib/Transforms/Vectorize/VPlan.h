@@ -274,10 +274,6 @@ struct VPTransformState {
            I->second[Part];
   }
 
-  bool hasAnyVectorValue(VPValue *Def) const {
-    return Data.PerPartOutput.contains(Def);
-  }
-
   bool hasScalarValue(VPValue *Def, VPIteration Instance) {
     auto I = Data.PerPartScalars.find(Def);
     if (I == Data.PerPartScalars.end())
@@ -2680,6 +2676,8 @@ public:
   /// \return The block corresponding to the original preheader.
   VPBasicBlock *getPreheader() { return Preheader; }
   const VPBasicBlock *getPreheader() const { return Preheader; }
+
+  ArrayRef<VPValue *> getLiveIns() const { return VPLiveInsToFree; }
 
 private:
   /// Add to the given dominator tree the header block and every new basic block
