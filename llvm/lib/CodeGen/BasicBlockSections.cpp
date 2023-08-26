@@ -176,19 +176,19 @@ bool getBBClusterInfoForFunction(
     DenseMap<unsigned, BBClusterInfo> &V) {
 
   // Find the assoicated cluster information.
-  std::pair<bool, SmallVector<BBClusterInfo, 4>> P =
-      BBSectionsProfileReader->getBBClusterInfoForFunction(MF.getName());
+  std::pair<bool, PropellerProfile> P =
+      BBSectionsProfileReader->getPropellerProfileForFunction(MF.getName());
   if (!P.first)
     return false;
 
-  if (P.second.empty()) {
+  if (P.second.FunctionClusterInfo.empty()) {
     // This indicates that sections are desired for all basic blocks of this
     // function. We clear the BBClusterInfo vector to denote this.
     V.clear();
     return true;
   }
 
-  for (const BBClusterInfo &BBCI : P.second)
+  for (const BBClusterInfo &BBCI : P.second.FunctionClusterInfo)
     V[BBCI.BBID] = BBCI;
   return true;
 }

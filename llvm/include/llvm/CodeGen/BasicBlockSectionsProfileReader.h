@@ -40,7 +40,13 @@ struct BBClusterInfo {
   unsigned PositionInCluster;
 };
 
-using ProgramBBClusterInfoMapTy = StringMap<SmallVector<BBClusterInfo>>;
+struct PropellerProfile {
+  SmallVector<BBClusterInfo> FunctionClusterInfo;
+  DenseMap<unsigned, unsigned> NodeFrequency;
+  DenseMap<unsigned, DenseMap<unsigned, unsigned>> EdgeFrequency;
+};
+
+using ProgramBBClusterInfoMapTy = StringMap<PropellerProfile>;
 
 class BasicBlockSectionsProfileReader : public ImmutablePass {
 public:
@@ -71,8 +77,8 @@ public:
   // function. If the first element is true and the second element is empty, it
   // means unique basic block sections are desired for all basic blocks of the
   // function.
-  std::pair<bool, SmallVector<BBClusterInfo>>
-  getBBClusterInfoForFunction(StringRef FuncName) const;
+  std::pair<bool, PropellerProfile>
+  getPropellerProfileForFunction(StringRef FuncName) const;
 
   // Initializes the FunctionNameToDIFilename map for the current module and
   // then reads the profile for matching functions.

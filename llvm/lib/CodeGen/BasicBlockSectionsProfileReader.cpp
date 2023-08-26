@@ -34,16 +34,15 @@ INITIALIZE_PASS(BasicBlockSectionsProfileReader, "bbsections-profile-reader",
                 false)
 
 bool BasicBlockSectionsProfileReader::isFunctionHot(StringRef FuncName) const {
-  return getBBClusterInfoForFunction(FuncName).first;
+  return getPropellerProfileForFunction(FuncName).first;
 }
 
-std::pair<bool, SmallVector<BBClusterInfo>>
-BasicBlockSectionsProfileReader::getBBClusterInfoForFunction(
+std::pair<bool, PropellerProfile>
+BasicBlockSectionsProfileReader::getPropellerProfileForFunction(
     StringRef FuncName) const {
   auto R = ProgramBBClusterInfo.find(getAliasName(FuncName));
-  return R != ProgramBBClusterInfo.end()
-             ? std::pair(true, R->second)
-             : std::pair(false, SmallVector<BBClusterInfo>{});
+  return R != ProgramBBClusterInfo.end() ? std::pair(true, R->second)
+                                         : std::pair(false, PropellerProfile());
 }
 
 // Basic Block Sections can be enabled for a subset of machine basic blocks.
@@ -65,7 +64,7 @@ BasicBlockSectionsProfileReader::getBBClusterInfoForFunction(
 // !!4
 Error BasicBlockSectionsProfileReader::ReadProfile() {
   assert(MBuf);
-  line_iterator LineIt(*MBuf, /*SkipBlanks=*/true, /*CommentMarker=*/'#');
+  line_iterator LineIt(*MBuf, /*SkipBlanks=*/true);
 
   auto invalidProfileError = [&](auto Message) {
     return make_error<StringError>(
@@ -87,6 +86,27 @@ Error BasicBlockSectionsProfileReader::ReadProfile() {
 
   for (; !LineIt.is_at_eof(); ++LineIt) {
     StringRef S(*LineIt);
+    if (S[0] == '#') {
+      if (!S.consume_front("#cfg-prof "))
+        continue;
+      SmallVector<StringRef, 4> BlockProfile;
+      S.split(BlockProfile, ' ');
+      auto R = BlockProfile[0].split(/*Separator=*/':');
+      unsigned long long BBID, Freq;
+      if (getAsUnsignedInteger(R.first, 10, BBID) ||
+          getAsUnsignedInteger(R.second, 10, Freq))
+        return invalidProfileError("unable to read frequency profile");
+      FI->second.NodeFrequency[BBID] = Freq;
+      for (size_t I = 1; I < BlockProfile.size(); ++I) {
+        auto R = BlockProfile[I].split(/*Separator=*/':');
+        unsigned long long SinkBBID, EdgeFreq;
+        if (getAsUnsignedInteger(R.first, 10, SinkBBID) ||
+            getAsUnsignedInteger(R.second, 10, EdgeFreq))
+          return invalidProfileError("unable to read edge frequency profile");
+        FI->second.EdgeFrequency[BBID][SinkBBID] = EdgeFreq;
+      }
+      continue;
+    }
     if (S[0] == '@')
       continue;
     // Check for the leading "!"
@@ -113,7 +133,7 @@ Error BasicBlockSectionsProfileReader::ReadProfile() {
         if (BBID == 0 && CurrentPosition)
           return invalidProfileError("Entry BB (0) does not begin a cluster.");
 
-        FI->second.emplace_back(
+        FI->second.FunctionClusterInfo.emplace_back(
             BBClusterInfo{((unsigned)BBID), CurrentCluster, CurrentPosition++});
       }
       CurrentCluster++;
