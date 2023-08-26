@@ -224,6 +224,7 @@ BENIGN_LANGOPT(AccessControl     , 1, 1, "C++ access control")
 LANGOPT(CharIsSigned      , 1, 1, "signed char")
 LANGOPT(WCharSize         , 4, 0, "width of wchar_t")
 LANGOPT(WCharIsSigned        , 1, 0, "signed or unsigned wchar_t")
+LANGOPT(IntBitfieldsAreUnsigned     , 1, 0, "int is unsigned for bitfield")
 ENUM_LANGOPT(MSPointerToMemberRepresentationMethod, PragmaMSPointersToMembersKind, 2, PPTMK_BestCase, "member-pointer representation method")
 ENUM_LANGOPT(DefaultCallingConv, DefaultCallingConvention, 3, DCC_None, "default calling convention")
 

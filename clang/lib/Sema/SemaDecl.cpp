@@ -18109,6 +18109,56 @@ FieldDecl *Sema::HandleField(Scope *S, RecordDecl *Record,
 
   TypeSourceInfo *TInfo = GetTypeForDeclarator(D, S);
   QualType T = TInfo->getType();
+
+  if (!getLangOpts().CPlusPlus && getLangOpts().IntBitfieldsAreUnsigned &&
+      BitWidth &&
+      (D.getDeclSpec().getTypeSpecType() == DeclSpec::TST_typename ||
+       D.getDeclSpec().getTypeSpecSign() == TypeSpecifierSign::Unspecified)) {
+    QualType ResultType = T;
+    bool Skip = false;
+
+    if (D.getDeclSpec().getTypeSpecType() == DeclSpec::TST_typename) {
+      // The below code will not work since QualType does not have the info of
+      // explicit signdess
+
+      // const TypedefType *Typedef = nullptr;
+      // while ((Typedef = ResultType->getAs<TypedefType>())) {
+      //   ResultType = Typedef->desugar();
+      // }
+
+      // Possible other path is to find the inner most typedef and its type
+      // const TypedefType *Typedef = ResultType->getAs<TypedefType>();
+      // const TypedefType *NextTypedef = nullptr;
+      // while((NextTypedef = ResultType->getAs<TypedefType>())) {
+      //   Typedef = NextTypedef;
+      //   ResultType = Typedef->desugar();
+      // }
+
+      // TODO: Somehow get the explicit signdness info, maybe with the usage of
+      // the typedef's name (Typedef->getDecl()->getNameAsString()), look it up
+      // somehow the DeclSpec for its declaration and if it is explicitly
+      // signed then make Skip = true
+      Skip = true; // skip for now
+    }
+
+    if (!Skip) {
+
+      // Change to unsigned variant
+      if (ResultType == Context.CharTy)
+        ResultType = Context.UnsignedCharTy;
+      else if (ResultType == Context.ShortTy)
+        ResultType = Context.UnsignedShortTy;
+      else if (ResultType == Context.IntTy)
+        ResultType = Context.UnsignedIntTy;
+      else if (ResultType == Context.LongTy)
+        ResultType = Context.UnsignedLongTy;
+      else if (ResultType == Context.LongLongTy)
+        ResultType = Context.UnsignedLongLongTy;
+
+      T = ResultType;
+    }
+  }
+
   if (getLangOpts().CPlusPlus) {
     CheckExtraCXXDefaultArguments(D);
 

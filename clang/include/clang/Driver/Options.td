@@ -3679,7 +3679,9 @@ def ftrigraphs : Flag<["-"], "ftrigraphs">, Group<f_Group>,
 def fno_trigraphs : Flag<["-"], "fno-trigraphs">, Group<f_Group>,
   HelpText<"Do not process trigraph sequences">,
   Visibility<[ClangOption, CC1Option]>;
-def funsigned_bitfields : Flag<["-"], "funsigned-bitfields">, Group<f_Group>;
+defm unsigned_bitfields : BoolFOption<"unsigned-bitfields",
+  LangOpts<"IntBitfieldsAreUnsigned">, DefaultFalse,
+  PosFlag<SetTrue, [CC1Option], "int is signed">, NegFlag<SetFalse>>;
 def funsigned_char : Flag<["-"], "funsigned-char">, Group<f_Group>;
 def fno_unsigned_char : Flag<["-"], "fno-unsigned-char">;
 def funwind_tables : Flag<["-"], "funwind-tables">, Group<f_Group>;
