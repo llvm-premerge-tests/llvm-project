@@ -42,6 +42,7 @@
 // is_equal() with use_strcmp=false so the string names are not compared.
 
 #include <cstdint>
+#include <cassert>
 #include <string.h>
 
 #ifdef _LIBCXXABI_FORGIVING_DYNAMIC_CAST
@@ -233,9 +234,11 @@ __class_type_info::can_catch(const __shim_type_info* thrown_type,
     if (thrown_class_type == 0)
         return false;
     // bullet 2
-    __dynamic_cast_info info = {thrown_class_type, 0, this, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,};
+    assert (adjustedPtr && "catching a class without an object?");
+    __dynamic_cast_info info = {thrown_class_type, 0, this,
+                                -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, true};
     info.number_of_dst_type = 1;
-    thrown_class_type->has_unambiguous_public_base(&info, adjustedPtr, public_path);
+    thrown_class_type->has_unambiguous_public_base(&info, adjustedPtr, nullptr, public_path);
     if (info.path_dst_ptr_to_static_ptr == public_path)
     {
         adjustedPtr = const_cast<void*>(info.dst_ptr_leading_to_static_ptr);
@@ -248,19 +251,39 @@ __class_type_info::can_catch(const __shim_type_info* thrown_type,
 #pragma clang diagnostic pop
 #endif
 
+// When we have an object to inspect - we just pass the pointer to the sub-
+// object that matched the static_type we just checked.  If that is different
+// from any previously recorded pointer to that object type, then we have
+// an ambiguous case.
+
+// When we have no object to inspect, we need to account for virtual bases
+// explicitly.
+// virtualBase is the pointer to the name of the innermost virtual base
+// type, or nullptr if there is no virtual base on the path so far.
+// adjustedPtr points to the subobject we just found.
+// If virtualBase != any previously recorded (including the case of nullptr
+// representing an already-found static sub-object) then we have an ambiguous
+// case.  Assuming that the virtualBase values agree; if then we have a
+// different offset (adjustedPtr) from any previously recorded, this indicates
+// an ambiguous case within the virtual base.
+
 void
 __class_type_info::process_found_base_class(__dynamic_cast_info* info,
                                                void* adjustedPtr,
+                                               const void* virtualBase,
                                                int path_below) const
 {
-    if (info->dst_ptr_leading_to_static_ptr == 0)
+    if (info->number_to_static_ptr == 0)
     {
         // First time here
         info->dst_ptr_leading_to_static_ptr = adjustedPtr;
         info->path_dst_ptr_to_static_ptr = path_below;
+        // re-purpose this pointer.
+        info->dst_ptr_not_leading_to_static_ptr = virtualBase;
         info->number_to_static_ptr = 1;
     }
-    else if (info->dst_ptr_leading_to_static_ptr == adjustedPtr)
+    else if (info->dst_ptr_not_leading_to_static_ptr == virtualBase &&
+             info->dst_ptr_leading_to_static_ptr == adjustedPtr)
     {
         // We've been here before.  Update path to "most public"
         if (info->path_dst_ptr_to_static_ptr == not_public_path)
@@ -279,62 +302,83 @@ __class_type_info::process_found_base_class(__dynamic_cast_info* info,
 void
 __class_type_info::has_unambiguous_public_base(__dynamic_cast_info* info,
                                                void* adjustedPtr,
+                                               const void* virtualBase,
                                                int path_below) const
 {
     if (is_equal(this, info->static_type, false))
-        process_found_base_class(info, adjustedPtr, path_below);
+        process_found_base_class(info, adjustedPtr, virtualBase, path_below);
 }
 
 void
 __si_class_type_info::has_unambiguous_public_base(__dynamic_cast_info* info,
                                                   void* adjustedPtr,
+                                                  const void* virtualBase,
                                                   int path_below) const
 {
     if (is_equal(this, info->static_type, false))
-        process_found_base_class(info, adjustedPtr, path_below);
+        process_found_base_class(info, adjustedPtr, virtualBase, path_below);
     else
-        __base_type->has_unambiguous_public_base(info, adjustedPtr, path_below);
+        __base_type->has_unambiguous_public_base(info, adjustedPtr, virtualBase, path_below);
 }
 
 void
 __base_class_type_info::has_unambiguous_public_base(__dynamic_cast_info* info,
                                                     void* adjustedPtr,
+                                                    const void* virtualBase,
                                                     int path_below) const
 {
+    bool is_virtual = __offset_flags & __virtual_mask;
     ptrdiff_t offset_to_base = 0;
-    if (adjustedPtr != nullptr)
+    if (info->have_object)
     {
+        /* We have an object to inspect, we can look through its vtables to
+           find the layout.  */
         offset_to_base = __offset_flags >> __offset_shift;
-        if (__offset_flags & __virtual_mask)
+        if (is_virtual)
         {
             const char* vtable = *static_cast<const char*const*>(adjustedPtr);
             offset_to_base = update_offset_to_base(vtable, offset_to_base);
         }
+    } else if (! is_virtual) {
+        /* We have no object - so we cannot use it for determining layout when
+           we have a virtual base (since we cannot indirect through the vtable
+           to find the actual object offset).  However, for non-virtual bases,
+           we can pretend to have an object based at '0' */
+        offset_to_base = __offset_flags >> __offset_shift;
+    } else {
+      // no object to inspect, and the next base is virtual.
+      // we want to update virtualBase to the new innermost virtual base.
+      // using the pointer to the typeinfo name as a key.
+      virtualBase = static_cast<const void*>(__base_type->name ());
+      // .. and reset the pointer.
+      adjustedPtr = nullptr;
     }
     __base_type->has_unambiguous_public_base(
             info,
             static_cast<char*>(adjustedPtr) + offset_to_base,
+            virtualBase,
             (__offset_flags & __public_mask) ? path_below : not_public_path);
 }
 
 void
 __vmi_class_type_info::has_unambiguous_public_base(__dynamic_cast_info* info,
                                                    void* adjustedPtr,
+                                                   const void* virtualBase,
                                                    int path_below) const
 {
     if (is_equal(this, info->static_type, false))
-        process_found_base_class(info, adjustedPtr, path_below);
+        process_found_base_class(info, adjustedPtr, virtualBase, path_below);
     else
     {
         typedef const __base_class_type_info* Iter;
         const Iter e = __base_info + __base_count;
         Iter p = __base_info;
-        p->has_unambiguous_public_base(info, adjustedPtr, path_below);
+        p->has_unambiguous_public_base(info, adjustedPtr, virtualBase, path_below);
         if (++p < e)
         {
             do
             {
-                p->has_unambiguous_public_base(info, adjustedPtr, path_below);
+                p->has_unambiguous_public_base(info, adjustedPtr, virtualBase, path_below);
                 if (info->search_done)
                     break;
             } while (++p < e);
@@ -431,13 +475,22 @@ __pointer_type_info::can_catch(const __shim_type_info* thrown_type,
         dynamic_cast<const __class_type_info*>(thrown_pointer_type->__pointee);
     if (thrown_class_type == 0)
         return false;
-    __dynamic_cast_info info = {thrown_class_type, 0, catch_class_type, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,};
+    bool have_object = adjustedPtr != nullptr;
+    __dynamic_cast_info info = {thrown_class_type, 0, catch_class_type, -1,
+                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			        have_object };
     info.number_of_dst_type = 1;
-    thrown_class_type->has_unambiguous_public_base(&info, adjustedPtr, public_path);
+    thrown_class_type->has_unambiguous_public_base(&info, adjustedPtr, nullptr, public_path);
     if (info.path_dst_ptr_to_static_ptr == public_path)
     {
-        if (adjustedPtr != NULL)
+        // In the case of a thrown null pointer, we have no object but we might
+        // well have computed the offset to where a public sub-object would be.
+        // However, we do not want to return that offset to the user; we still
+        // want them to catch a null ptr.
+        if (have_object)
             adjustedPtr = const_cast<void*>(info.dst_ptr_leading_to_static_ptr);
+        else
+            adjustedPtr = nullptr;
         return true;
     }
     return false;
