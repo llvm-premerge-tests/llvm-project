@@ -36,6 +36,7 @@ def main(builtin_params={}):
         valgrindArgs=opts.valgrindArgs,
         noExecute=opts.noExecute,
         debug=opts.debug,
+        pdb=opts.pdb,
         isWindows=is_windows,
         order=opts.order,
         params=params,
@@ -244,10 +245,26 @@ def mark_excluded(discovered_tests, selected_tests):
 
 def run_tests(tests, lit_config, opts, discovered_tests):
     workers = min(len(tests), opts.workers)
+    timeout = opts.timeout
+    if lit_config.pdb:
+        if workers != 1:
+            lit_config.warning(
+                "Ignoring requested parallelism because debugging with pdb was "
+                "requested"
+            )
+        # workers = 1 still creates a subprocess, which prevents pdb from
+        # successfully debugging tests.
+        workers = 0
+        if timeout:
+            lit_config.warning(
+                "Ignoring timeout because debugging with pdb was requested"
+            )
+            timeout = None
+
     display = lit.display.create_display(opts, tests, discovered_tests, workers)
 
     run = lit.run.Run(
-        tests, lit_config, workers, display.update, opts.max_failures, opts.timeout
+        tests, lit_config, workers, display.update, opts.max_failures, timeout
     )
 
     display.print_header()

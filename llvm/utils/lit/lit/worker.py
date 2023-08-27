@@ -61,7 +61,7 @@ def _get_parallelism_semaphore(test):
     return _parallelism_semaphores.get(pg, NopSemaphore())
 
 
-# Do not inline! Directly used by LitTestCase.py
+# Do not inline! Directly used by LitTestCase.py and run.py
 def _execute(test, lit_config):
     start = time.time()
     result = _execute_test_handle_errors(test, lit_config)
@@ -75,7 +75,12 @@ def _execute_test_handle_errors(test, lit_config):
     try:
         result = test.config.test_format.execute(test, lit_config)
         return _adapt_result(result)
-    except:
+    except BaseException as e:
+        # lit_config.pdb disables multiprocessing and thus graceful handling of
+        # Ctrl-C.  Let KeyboardInterrupt exceptions propagate from here so the
+        # user can easily terminate lit.
+        if lit_config.pdb and isinstance(e, KeyboardInterrupt):
+            raise
         if lit_config.debug:
             raise
         output = "Exception during script execution:\n"

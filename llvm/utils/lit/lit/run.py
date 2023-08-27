@@ -27,7 +27,7 @@ class Run(object):
         self.progress_callback = progress_callback
         self.max_failures = max_failures
         self.timeout = timeout
-        assert workers > 0
+        assert workers >= 0
 
     def execute(self):
         """
@@ -41,6 +41,9 @@ class Run(object):
         If timeout is non-None, it should be a time in seconds after which to
         stop executing tests.
 
+        If workers is 0, tests will be executed sequentially in the same
+        process, and timeout must be None.
+
         Returns the elapsed testing time.
 
         Upon completion, each test in the run will have its result
@@ -48,6 +51,9 @@ class Run(object):
         be marked SKIPPED.
         """
         self.failures = 0
+
+        assert self.workers > 0 or not self.timeout, \
+               "expected at least one worker to be able to apply timeout"
 
         # Larger timeouts (one year, positive infinity) don't work on Windows.
         one_week = 7 * 24 * 60 * 60  # days * hours * minutes * seconds
@@ -63,6 +69,13 @@ class Run(object):
                     test.setResult(skipped)
 
     def _execute(self, deadline):
+        if self.workers == 0:
+            for test in self.tests:
+                result = lit.worker._execute(test, self.lit_config)
+                test.setResult(result)
+                self.progress_callback(test)
+            return
+
         self._increase_process_limit()
 
         semaphores = {

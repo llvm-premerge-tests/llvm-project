@@ -293,6 +293,11 @@ def parse_args():
         help="Show all features used in the test suite (in XFAIL, UNSUPPORTED and REQUIRES) and exit",
         action="store_true",
     )
+    debug_group.add_argument(
+        "--pdb",
+        help="Enable debugging lit tests with python's standard debugger, pdb",
+        action="store_true",
+    )
 
     # LIT is special: environment variables override command line arguments.
     env_args = shlex.split(os.environ.get("LIT_OPTS", ""))

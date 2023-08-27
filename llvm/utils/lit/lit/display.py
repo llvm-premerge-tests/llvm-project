@@ -10,7 +10,7 @@ def create_display(opts, tests, total_tests, workers):
     header = "-- Testing: %d%s tests, %d workers --" % (num_tests, of_total, workers)
 
     progress_bar = None
-    if opts.succinct and opts.useProgressBar:
+    if opts.succinct and opts.useProgressBar and not opts.pdb:
         import lit.ProgressBar
 
         try:

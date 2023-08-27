@@ -1019,7 +1019,6 @@ def _executeShCmd(cmd, shenv, results, timeoutHelper):
 
     return exitCode
 
-
 def formatOutput(title, data, limit=None):
     if not data.strip():
         return ""
@@ -1478,6 +1477,21 @@ class ExpandableScriptDirective(object):
             return f"at line {self.start_line_number}"
         return f"from line {self.start_line_number} to {self.end_line_number}"
 
+    def asPythonDirective(self):
+        """
+        Return a PythonDirective equivalent to this directive, or just return
+        this directive if it's already a PythonDirective.
+        """
+        assert False, "expected method to be called on derived class"
+
+    def continuePythonDirective(self, pythonDir):
+        """
+        Append lines to pythonDir that are equivalent to this directive.  Each
+        implementation of this function should probably call
+        pythonDir.doNotRequireIndentation() as its first step.
+        """
+        assert False, "expected method to be called on derived class"
+
 
 class CommandDirective(ExpandableScriptDirective):
     """
@@ -1503,6 +1517,33 @@ class CommandDirective(ExpandableScriptDirective):
         # Trailing whitespace is stripped immediately when each line is added,
         # so '\' is never hidden here.
         return self.command[-1] == "\\"
+
+    def _makePythonLitRun(self):
+        match = re.match(kPdbgRegex, self.command)
+        cmd = match.group(2) if match else self.command
+        return f"lit.run({repr(cmd)})"
+
+    def _addBlankLinesToPythonDirective(self, pythonDir):
+        for i in range(self.start_line_number + 1, self.end_line_number + 1):
+            res = pythonDir.add_continuation(i, pythonDir.keyword, "")
+            assert res, "expected success adding blank line as PYTHON " \
+                        "continuation"
+
+    def asPythonDirective(self):
+        pythonDir = PythonDirective(self.start_line_number,
+                                    self.start_line_number,
+                                    PythonDirective.getDefaultKeyword(),
+                                    self._makePythonLitRun())
+        self._addBlankLinesToPythonDirective(pythonDir)
+        return pythonDir
+
+    def continuePythonDirective(self, pythonDir):
+        pythonDir.doNotRequireIndentation()
+        res = pythonDir.add_continuation(self.start_line_number,
+                                         pythonDir.keyword,
+                                         self._makePythonLitRun())
+        assert res, "expected success adding RUN line as PYTHON continuation"
+        self._addBlankLinesToPythonDirective(pythonDir)
 
 
 class SubstDirective(ExpandableScriptDirective):
@@ -1583,49 +1624,80 @@ class SubstDirective(ExpandableScriptDirective):
                 f"alphanumeric characters, hyphens, underscores, and colons"
             )
 
-    def adjust_substitutions(self, substitutions):
+    def _makePythonLitCall(self):
+        name = repr(self.name)
+        value = repr(self.value)
+        func = "define" if self.new_subst else "redefine"
+        return f"lit.{func}({name}, {value})"
+
+    def _addBlankLinesToPythonDirective(self, pythonDir):
+        for i in range(self.start_line_number + 1, self.end_line_number + 1):
+            res = pythonDir.add_continuation(i, pythonDir.keyword, "")
+            assert res, "expected success adding blank line as PYTHON " \
+                        "continuation"
+
+    def asPythonDirective(self):
+        pythonDir = PythonDirective(self.start_line_number,
+                                    self.start_line_number,
+                                    PythonDirective.getDefaultKeyword(),
+                                    self._makePythonLitCall())
+        self._addBlankLinesToPythonDirective(pythonDir)
+        return pythonDir
+
+    def continuePythonDirective(self, pythonDir):
+        pythonDir.doNotRequireIndentation()
+        res = pythonDir.add_continuation(self.start_line_number,
+                                         pythonDir.keyword,
+                                         self._makePythonLitCall())
+        assert res, "expected success adding DEFINE/REDEFINE line as PYTHON " \
+                    "continuation"
+        self._addBlankLinesToPythonDirective(pythonDir)
+
+    @staticmethod
+    def applySubstitution(substitutions, what, newSubst, name, value):
+        value_repl = value.replace("\\", "\\\\")
+        existing = [i for i, subst in enumerate(substitutions) if name in subst[0]]
+        existing_res = "".join(
+            "\nExisting pattern: " + substitutions[i][0] for i in existing
+        )
+        if newSubst:
+            if existing:
+                raise ValueError(
+                    f"Substitution whose pattern contains '{name}' is already "
+                    f"defined before {what}"
+                    f"{existing_res}"
+                )
+            substitutions.insert(0, (name, value_repl))
+            return
+        if len(existing) > 1:
+            raise ValueError(
+                f"Multiple substitutions whose patterns contain '{name}' are "
+                f"defined before {what}"
+                f"{existing_res}"
+            )
+        if not existing:
+            raise ValueError(
+                f"No substitution for '{name}' is defined before {what}"
+            )
+        if substitutions[existing[0]][0] != name:
+            raise ValueError(
+                f"Existing substitution whose pattern contains '{name}' does "
+                f"not have the pattern specified by {what}\n"
+                f"Expected pattern: {name}"
+                f"{existing_res}"
+            )
+        substitutions[existing[0]] = (name, value_repl)
+
+    def apply(self, substitutions):
         """
         Modify the specified substitution list as specified by this directive.
         """
         assert (
             not self.needs_continuation()
         ), "expected directive continuations to be parsed before applying"
-        value_repl = self.value.replace("\\", "\\\\")
-        existing = [i for i, subst in enumerate(substitutions) if self.name in subst[0]]
-        existing_res = "".join(
-            "\nExisting pattern: " + substitutions[i][0] for i in existing
-        )
-        if self.new_subst:
-            if existing:
-                raise ValueError(
-                    f"Substitution whose pattern contains '{self.name}' is "
-                    f"already defined before '{self.keyword}' directive "
-                    f"{self.get_location()}"
-                    f"{existing_res}"
-                )
-            substitutions.insert(0, (self.name, value_repl))
-            return
-        if len(existing) > 1:
-            raise ValueError(
-                f"Multiple substitutions whose patterns contain '{self.name}' "
-                f"are defined before '{self.keyword}' directive "
-                f"{self.get_location()}"
-                f"{existing_res}"
-            )
-        if not existing:
-            raise ValueError(
-                f"No substitution for '{self.name}' is defined before "
-                f"'{self.keyword}' directive {self.get_location()}"
-            )
-        if substitutions[existing[0]][0] != self.name:
-            raise ValueError(
-                f"Existing substitution whose pattern contains '{self.name}' "
-                f"does not have the pattern specified by '{self.keyword}' "
-                f"directive {self.get_location()}\n"
-                f"Expected pattern: {self.name}"
-                f"{existing_res}"
-            )
-        substitutions[existing[0]] = (self.name, value_repl)
+        what = f"'{self.keyword}' directive {self.get_location()}"
+        self.applySubstitution(substitutions, what, self.new_subst, self.name,
+                               self.value)
 
 
 class PythonDirective(ExpandableScriptDirective):
@@ -1638,6 +1710,10 @@ class PythonDirective(ExpandableScriptDirective):
     body: The uncompiled code accumulated so far from the directive and its
         continuation lines.
     """
+
+    @staticmethod
+    def getDefaultKeyword():
+        return "PYTHON:"
 
     def __init__(self, start_line_number, end_line_number, keyword, line):
         super().__init__(start_line_number, end_line_number, keyword)
@@ -1676,8 +1752,31 @@ class PythonDirective(ExpandableScriptDirective):
         # compiled separately.
         return False
 
+    def doNotRequireIndentation(self):
+        """
+        Do not require indentation on future continuation lines.  This is useful
+        when merging PYTHON blocks such that, in each, the indentation from the
+        first line was already verified as present and was already stripped from
+        subsequent lines.  Normal python indentation is still required by the
+        python interprerter.
+        """
+        self.indent = ""
+
+    def asPythonDirective(self):
+        return self
+
+    def continuePythonDirective(self, pythonDir):
+        pythonDir.doNotRequireIndentation()
+        for i, line in enumerate(self.body.splitlines()):
+            lineNumber = i + 1
+            if lineNumber < self.start_line_number:
+                assert line == "", f"expected blank line before start line"
+                continue
+            res = pythonDir.add_continuation(lineNumber, self.keyword, line)
+            assert res, "expected success merging PYTHON directives"
+
     @staticmethod
-    def executePython(what, filename, pythonCode, python_dict, log):
+    def executePython(what, filename, pythonCode, python_dict, log, usePdb):
         """
         Execute python code passed as an argument.
         """
@@ -1690,15 +1789,27 @@ class PythonDirective(ExpandableScriptDirective):
             tb = e.__traceback__.tb_next
             traceText = "".join(traceback.format_exception(None, e, tb))
             raise ScriptFatal(f"error compiling {what}:\n{traceText}")
-        log(f"# executed {what}\n")
-        outIO = StringIO()
-        errIO = StringIO()
+        if usePdb:
+            print(f"# started executing {what}")
+        else:
+            log(f"# executed {what}\n")
+            outIO = StringIO()
+            errIO = StringIO()
         traceText = ""
         try:
-            with contextlib.redirect_stdout(outIO), contextlib.redirect_stderr(
-                errIO
-            ):
-                exec(c, python_dict)
+            if usePdb:
+                import pdb, time
+                pdb.run(c, python_dict)
+                # If the user typed "quit" (as opposed to "continue") at the pdb
+                # prompt, Ctrl-C can now successfully terminate lit.  However,
+                # give the user a little time to hit Ctrl-C before the above
+                # pdb.run is reached again and pdb starts intercepting Ctrl-C
+                # again.
+                time.sleep(1)
+            else:
+                with contextlib.redirect_stdout(outIO), \
+                     contextlib.redirect_stderr(errIO):
+                    exec(c, python_dict)
         except ScriptFail:
             raise
         except Exception as e:
@@ -1706,14 +1817,24 @@ class PythonDirective(ExpandableScriptDirective):
             # user with lit internals is just a distraction.
             tb = e.__traceback__.tb_next
             traceText = "".join(traceback.format_exception(None, e, tb))
+            import bdb
+            if isinstance(e, bdb.BdbQuit):
+                traceText += "\nNote: It looks like you are trying to use a " \
+                             "python debugger, like pdb.\n" \
+                             "Try passing --pdb to lit, perhaps via the " \
+                             "LIT_OPTS environment variable.\n"
             raise ScriptFail(1, None)
         finally:
-            outText = outIO.getvalue()
-            errText = errIO.getvalue() + traceText
-            log(formatOutput(f"stdout from {what}", outText))
-            log(formatOutput(f"stderr from {what}", errText))
+            if usePdb:
+                print(traceText, end="")
+                print(f"# finished executing {what}")
+            else:
+                outText = outIO.getvalue()
+                errText = errIO.getvalue() + traceText
+                log(formatOutput(f"stdout from {what}", outText))
+                log(formatOutput(f"stderr from {what}", errText))
 
-    def execute(self, filename, python_dict, log):
+    def execute(self, filename, python_dict, log, usePdb):
         """
         Execute the python code in this directive.
         """
@@ -1723,6 +1844,7 @@ class PythonDirective(ExpandableScriptDirective):
             self.body,
             python_dict,
             log,
+            usePdb
         )
 
 
@@ -1875,7 +1997,7 @@ def applySubstitutions(script, substitutions, conditions={}, recursion_limit=Non
     output = []
     for directive in script:
         if isinstance(directive, SubstDirective):
-            directive.adjust_substitutions(substitutions)
+            directive.apply(substitutions)
         else:
             if isinstance(directive, CommandDirective):
                 line = directive.command
@@ -2291,6 +2413,7 @@ def _runShTest(
     useExternalSh,
     script,
     tmpBase,
+    substitutions=[],
     substitutionApplier=lambda x: x,
 ):
     # scriptPart has the same constraints as script for _runShTest except
@@ -2323,9 +2446,6 @@ def _runShTest(
         # directives.  Symbols only required for lit iternals should be declared
         # outside it.
 
-        # TODO: In the future, extend the 'lit' API to be able to *write*
-        # substitutions?
-
         @staticmethod
         def has(feature):
             """
@@ -2341,6 +2461,31 @@ def _runShTest(
             and return the result.
             """
             return substitutionApplier([text])[0]
+
+        @staticmethod
+        def define(name, value):
+            """
+            Define new substitution as if it appeared in a 'DEFINE:' directive.
+            """
+            try:
+                what = "lit.define call"
+                SubstDirective.applySubstitution(substitutions, what, True,
+                                                 name, value)
+            except ValueError as e:
+                raise ScriptFatal(str(e)) from None
+
+        @staticmethod
+        def redefine(name, value):
+            """
+            Redefine existing substitution as if it appeared in a 'REDEFINE:'
+            directive.
+            """
+            try:
+                what = "lit.redefine call"
+                SubstDirective.applySubstitution(substitutions, what, False,
+                                                 name, value)
+            except ValueError as e:
+                raise ScriptFatal(str(e)) from None
 
         @staticmethod
         def run(cmd):
@@ -2391,7 +2536,8 @@ def _runShTest(
                 with open(prologue) as f:
                     what = f"config.prologue='{prologue}'"
                     PythonDirective.executePython(
-                        what, prologue, f.read(), python_dict, addStdout
+                        what, prologue, f.read(), python_dict, addStdout,
+                        litConfig.pdb
                     )
             # Execute the script.
             scriptRemaining = script
@@ -2401,7 +2547,8 @@ def _runShTest(
                     if not isinstance(pythonDir, PythonDirective):
                         break
                     pythonDir.execute(
-                        test.getSourcePath(), python_dict, addStdout
+                        test.getSourcePath(), python_dict, addStdout,
+                        litConfig.pdb
                     )
                 else:
                     scriptRemaining = []
@@ -2438,7 +2585,11 @@ def _runShTest(
     execdir = os.path.dirname(test.getExecPath())
     attempts = test.allowed_retries + 1
     for i in range(attempts):
+        if litConfig.pdb:
+            print(f"{'*' * 20} STARTED DEBUGGING '{test.getFullName()}' {'*' * 20}")
         res = runOnce(execdir)
+        if litConfig.pdb:
+            print(f"{'*' * 20} FINISHED DEBUGGING '{test.getFullName()}' {'*' * 20}")
         out, err, exitCode, timeoutInfo, status = res
         if status != Test.FAIL:
             break
@@ -2496,11 +2647,31 @@ def executeShTest(
             recursion_limit=test.config.recursiveExpansionLimit,
         )
 
+    # If --pdb, convert RUN, DEFINE, and REDEFINE directives to lit object
+    # calls in PYTHON directives so they can be tracked by pdb.  We try to put
+    # them all in the same PYTHON block so they're within the same pdb.run
+    # call.
+    if litConfig.pdb:
+        oldScript = script
+        script = []
+        for cmd in oldScript:
+            if isinstance(cmd, str):
+                # We don't attempt to support debugging of preamble commands.
+                # They have no source file location.
+                script.append(cmd)
+            else:
+                assert isinstance(cmd, ExpandableScriptDirective)
+                if not script or not isinstance(script[-1], PythonDirective):
+                    script.append(cmd.asPythonDirective())
+                else:
+                    cmd.continuePythonDirective(script[-1])
+
     return _runShTest(
         test,
         litConfig,
         useExternalSh,
         script,
         tmpBase,
+        substitutions=substitutions,
         substitutionApplier=substitutionApplier,
     )

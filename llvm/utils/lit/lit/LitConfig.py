@@ -37,6 +37,7 @@ class LitConfig(object):
         maxIndividualTestTime=0,
         parallelism_groups={},
         per_test_coverage=False,
+        pdb=False,
     ):
         # The name of the test runner.
         self.progname = progname
@@ -48,6 +49,7 @@ class LitConfig(object):
         self.valgrindUserArgs = list(valgrindArgs)
         self.noExecute = noExecute
         self.debug = debug
+        self.pdb = pdb
         self.isWindows = bool(isWindows)
         self.order = order
         self.params = dict(params)
