@@ -308,9 +308,20 @@ Floating Point Support in Clang
 
 AST Matchers
 ------------
+- Add ``bitIntType``.
+- Add ``constantMatrixType``.
 - Add ``convertVectorExpr``.
+- Add ``dependentAddressSpaceType``.
+- Add ``dependentBitIntType``.
 - Add ``dependentSizedExtVectorType``.
+- Add ``dependentSizedMatrixType``.
+- Add ``dependentVectorType``.
 - Add ``macroQualifiedType``.
+- Add ``hasTypeForDecl``.
+- Add ``objcTypeParamDecl``.
+- Add ``objcTypeParamType``.
+- Add ``pipeType``.
+- Add ``vectorType``.
 
 clang-format
 ------------

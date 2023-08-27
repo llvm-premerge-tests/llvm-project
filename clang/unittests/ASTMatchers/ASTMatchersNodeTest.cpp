@@ -1549,6 +1549,89 @@ TEST_P(ASTMatchersTest, QualType) {
   EXPECT_TRUE(matches("struct S {};", qualType().bind("loc")));
 }
 
+TEST_P(ASTMatchersTest, BitIntType) {
+  StringRef code = "_BitInt(10) i;";
+  EXPECT_TRUE(matches(code, varDecl(hasType(bitIntType()))));
+  EXPECT_TRUE(notMatches(code, varDecl(hasType(builtinType()))));
+}
+
+TEST_P(ASTMatchersTest, ConstantMatrixType) {
+  StringRef Code = "typedef int __attribute__((matrix_type(5, 5))) X;";
+
+  EXPECT_TRUE(matchesWithMatrixEnabled(
+      Code, typedefDecl(hasType(constantMatrixType()))));
+  EXPECT_TRUE(
+      notMatchesWithMatrixEnabled(Code, typedefDecl(hasType(vectorType()))));
+}
+
+TEST_P(ASTMatchersTest, DependentAddressSpaceType) {
+  if (!GetParam().isCXX())
+    return;
+
+  StringRef Code = "template<typename T, int AddrSpace>"
+                   "class vector {"
+                   "  typedef T __attribute__((address_space(AddrSpace))) X;"
+                   "};";
+  EXPECT_TRUE(matches(Code, typedefDecl(hasType(dependentAddressSpaceType()))));
+
+  EXPECT_TRUE(notMatches("int __attribute__((address_space(0))) X;",
+                         typedefDecl(hasType(dependentAddressSpaceType()))));
+}
+
+TEST_P(ASTMatchersTest, DependentBitIntType) {
+  if (!GetParam().isCXX11OrLater())
+    return;
+
+  EXPECT_TRUE(matches("template<int Width> using X = _BitInt(Width);",
+                      typeAliasDecl(hasType(dependentBitIntType()))));
+
+  EXPECT_TRUE(notMatches("typedef _BitInt(10) Int10;",
+                         typedefDecl(hasType(dependentBitIntType()))));
+}
+
+TEST_P(ASTMatchersTest, DependentVectorType) {
+  if (!GetParam().isCXX())
+    return;
+
+  StringRef DepCode = "template<typename T, int Size>"
+                      "class vector {"
+                      "  typedef T __attribute__((vector_size(Size))) X;"
+                      "};";
+  EXPECT_TRUE(matches(DepCode, dependentVectorType()));
+
+  StringRef NonDepCode = "typedef int __attribute__((vector_size(16))) X;";
+  EXPECT_TRUE(notMatches(NonDepCode, dependentVectorType()));
+}
+
+TEST_P(ASTMatchersTest, VectorType) {
+  if (!GetParam().isCXX())
+    return;
+
+  StringRef NonDepCode = "typedef int __attribute__((vector_size(16))) X;";
+  EXPECT_TRUE(matches(NonDepCode, vectorType()));
+
+  StringRef DepCode = "template<typename T, int Size>"
+                      "class vector {"
+                      "  typedef T __attribute__((vector_size(Size))) X;"
+                      "};";
+  EXPECT_TRUE(notMatches(DepCode, vectorType()));
+}
+
+TEST_P(ASTMatchersTest, DependentSizedMatrixType) {
+  if (!GetParam().isCXX())
+    return;
+
+  StringRef DepCode = "template<typename T, int Rows, int Cols>"
+                      "class matrix {"
+                      "  typedef T __attribute__((matrix_type(Rows, Cols))) X;"
+                      "};";
+  EXPECT_TRUE(matchesWithMatrixEnabled(DepCode, dependentSizedMatrixType()));
+
+  StringRef NonDepCode = "typedef int __attribute__((matrix_type(3, 3))) Y;";
+  EXPECT_TRUE(
+      notMatchesWithMatrixEnabled(NonDepCode, dependentSizedMatrixType()));
+}
+
 TEST_P(ASTMatchersTest, ConstantArrayType) {
   EXPECT_TRUE(matches("int a[2];", constantArrayType()));
   EXPECT_TRUE(notMatches("void f() { int a[] = { 2, 3 }; int b[a[0]]; }",
@@ -2516,6 +2599,28 @@ TEST(ASTMatchersTestObjC, ObjCExceptionStmts) {
   EXPECT_TRUE(matchesObjC(ObjCString, objcThrowStmt()));
   EXPECT_TRUE(matchesObjC(ObjCString, objcCatchStmt()));
   EXPECT_TRUE(matchesObjC(ObjCString, objcFinallyStmt()));
+}
+
+TEST(ASTMatchersTestObjC, ObjCTypeParamDecl) {
+  StringRef ObjCString = "@interface C <X: id>"
+                         "@end";
+  EXPECT_TRUE(matchesObjC(ObjCString, objcTypeParamDecl()));
+  EXPECT_TRUE(notMatchesObjC(ObjCString, parmVarDecl()));
+}
+
+TEST(ASTMatchersTestObjC, ObjCTypeParamType) {
+  StringRef ObjCString = "@interface C <X: id>"
+                         "@end";
+  EXPECT_TRUE(matchesObjC(
+      ObjCString, objcTypeParamDecl(hasTypeForDecl(objcTypeParamType()))));
+  EXPECT_TRUE(notMatchesObjC(ObjCString,
+                             objcTypeParamDecl(hasTypeForDecl(builtinType()))));
+}
+
+TEST(ASTMatchersTestOpenCL, PipeType) {
+  StringRef code = "typedef pipe int X;";
+  EXPECT_TRUE(matchesOpenCL(code, typedefDecl(hasType(pipeType()))));
+  EXPECT_TRUE(notMatchesOpenCL(code, typedefDecl(hasType(isInteger()))));
 }
 
 TEST(ASTMatchersTest, DecompositionDecl) {

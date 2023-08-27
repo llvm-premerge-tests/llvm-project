@@ -504,6 +504,7 @@ public:
   bool TraverseNestedNameSpecifierLoc(NestedNameSpecifierLoc NNS);
   bool TraverseConstructorInitializer(CXXCtorInitializer *CtorInit);
   bool TraverseTemplateArgumentLoc(TemplateArgumentLoc TAL);
+  bool TraverseObjCTypeParamDecl(ObjCTypeParamDecl *TPD);
   bool TraverseAttr(Attr *AttrNode);
 
   bool dataTraverseNode(Stmt *S, DataRecursionQueue *Queue) {
@@ -1519,6 +1520,11 @@ bool MatchASTVisitor::TraverseConstructorInitializer(
 bool MatchASTVisitor::TraverseTemplateArgumentLoc(TemplateArgumentLoc Loc) {
   match(Loc);
   return RecursiveASTVisitor<MatchASTVisitor>::TraverseTemplateArgumentLoc(Loc);
+}
+
+bool MatchASTVisitor::TraverseObjCTypeParamDecl(ObjCTypeParamDecl *TPD) {
+  match(*TPD);
+  return RecursiveASTVisitor<MatchASTVisitor>::TraverseObjCTypeParamDecl(TPD);
 }
 
 bool MatchASTVisitor::TraverseAttr(Attr *AttrNode) {
