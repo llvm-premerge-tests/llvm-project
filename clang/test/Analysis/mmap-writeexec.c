@@ -42,3 +42,17 @@ void f3(void)
   int m = mprotect(p, 1024, PROT_WRITE | PROT_EXEC); // expected-warning{{Both PROT_WRITE and PROT_EXEC flags are set. This can lead to exploitable memory regions, which could be overwritten with malicious code}}
   (void)m;
 }
+
+// gh62285: no crash on non concrete arg 'prot'
+typedef struct malloc_mmap_2
+{
+  int prot;
+} malloc_mmap_st_2;
+
+int gh62285(int cmd, void *arg2)
+{
+  malloc_mmap_st_2* args2 = arg2;
+  void *buf = ((void*)0);
+  buf = mmap((void*)0, 1, args2->prot, 1, 1, 1);
+  return 0;
+}
