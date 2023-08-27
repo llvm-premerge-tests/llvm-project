@@ -1,0 +1,4 @@
+# PYTHON: assert lit.has('enabledFeature')
+# PYTHON: assert not lit.has('disabledFeature')
+
+# CHECK:  Passed: 1
