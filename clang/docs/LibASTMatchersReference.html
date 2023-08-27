@@ -996,6 +996,17 @@ Example matches FooDelegate
 </pre></td></tr>
 
 
+<tr><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1Decl.html">Decl</a>&gt;</td><td class="name" onclick="toggle('objcTypeParamDecl0')"><a name="objcTypeParamDecl0Anchor">objcTypeParamDecl</a></td><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1ObjCTypeParamDecl.html">ObjCTypeParamDecl</a>&gt;...</td></tr>
+<tr><td colspan="4" class="doc" id="objcTypeParamDecl0"><pre>Matches the declaration of an Objective-C type parameter.
+
+Given
+  @interface C &lt;X: id&gt;
+  @end
+objcTypeParamDecl()
+  matches the type-parameter declaration "X".
+</pre></td></tr>
+
+
 <tr><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1Decl.html">Decl</a>&gt;</td><td class="name" onclick="toggle('parmVarDecl0')"><a name="parmVarDecl0Anchor">parmVarDecl</a></td><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1ParmVarDecl.html">ParmVarDecl</a>&gt;...</td></tr>
 <tr><td colspan="4" class="doc" id="parmVarDecl0"><pre>Matches parameter variable declarations.
 
@@ -2439,6 +2450,16 @@ autoType()
 </pre></td></tr>
 
 
+<tr><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1Type.html">Type</a>&gt;</td><td class="name" onclick="toggle('bitIntType0')"><a name="bitIntType0Anchor">bitIntType</a></td><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1BitIntType.html">BitIntType</a>&gt;...</td></tr>
+<tr><td colspan="4" class="doc" id="bitIntType0"><pre>Matches a fixed int type of a specified bit width.
+
+Given:
+  _BitInt(10) i;
+bitIntType()
+  matches "_BitInt(10) i".
+</pre></td></tr>
+
+
 <tr><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1Type.html">Type</a>&gt;</td><td class="name" onclick="toggle('blockPointerType0')"><a name="blockPointerType0Anchor">blockPointerType</a></td><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1BlockPointerType.html">BlockPointerType</a>&gt;...</td></tr>
 <tr><td colspan="4" class="doc" id="blockPointerType0"><pre>Matches block pointer types, i.e. types syntactically represented as
 "void (^)(int)".
@@ -2485,6 +2506,16 @@ constantArrayType()
 </pre></td></tr>
 
 
+<tr><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1Type.html">Type</a>&gt;</td><td class="name" onclick="toggle('constantMatrixType0')"><a name="constantMatrixType0Anchor">constantMatrixType</a></td><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1ConstantMatrixType.html">ConstantMatrixType</a>&gt;...</td></tr>
+<tr><td colspan="4" class="doc" id="constantMatrixType0"><pre>Matches matrix types of constant size.
+
+Given:
+  typedef int __attribute__((matrix_type(5, 5))) X;
+constantMatrixType()
+  matches the type of the typedef declaration "X".
+</pre></td></tr>
+
+
 <tr><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1Type.html">Type</a>&gt;</td><td class="name" onclick="toggle('decayedType0')"><a name="decayedType0Anchor">decayedType</a></td><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1DecayedType.html">DecayedType</a>&gt;...</td></tr>
 <tr><td colspan="4" class="doc" id="decayedType0"><pre>Matches decayed type
 Example matches i[] in declaration of f.
@@ -2523,6 +2554,30 @@ of the variable c.
 </pre></td></tr>
 
 
+<tr><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1Type.html">Type</a>&gt;</td><td class="name" onclick="toggle('dependentAddressSpaceType0')"><a name="dependentAddressSpaceType0Anchor">dependentAddressSpaceType</a></td><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1DependentAddressSpaceType.html">DependentAddressSpaceType</a>&gt;...</td></tr>
+<tr><td colspan="4" class="doc" id="dependentAddressSpaceType0"><pre>Matches an extended address space qualifier where the
+input address space value is dependent.
+
+Given
+  template&lt;typename T, int AddrSpace&gt;
+  class AddressSpace {
+    typedef T __attribute__((address_space(AddrSpace))) X;
+  };
+dependentAddressSpaceType()
+  matches the type of the typedef declaration "X".
+</pre></td></tr>
+
+
+<tr><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1Type.html">Type</a>&gt;</td><td class="name" onclick="toggle('dependentBitIntType0')"><a name="dependentBitIntType0Anchor">dependentBitIntType</a></td><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1DependentBitIntType.html">DependentBitIntType</a>&gt;...</td></tr>
+<tr><td colspan="4" class="doc" id="dependentBitIntType0"><pre>Matches a fixed int type where the bit width is dependent.
+
+Given
+  template<int Width> using X = _BitInt(Width);
+dependentBitIntType()
+  matches the type of the type alias declaration "X".
+</pre></td></tr>
+
+
 <tr><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1Type.html">Type</a>&gt;</td><td class="name" onclick="toggle('dependentSizedArrayType0')"><a name="dependentSizedArrayType0Anchor">dependentSizedArrayType</a></td><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1DependentSizedArrayType.html">DependentSizedArrayType</a>&gt;...</td></tr>
 <tr><td colspan="4" class="doc" id="dependentSizedArrayType0"><pre>Matches C++ arrays whose size is a value-dependent expression.
 
@@ -2546,6 +2601,35 @@ Given
   };
 dependentSizedExtVectorType()
   matches "T __attribute__((ext_vector_type(Size)))"
+</pre></td></tr>
+
+
+<tr><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1Type.html">Type</a>&gt;</td><td class="name" onclick="toggle('dependentSizedMatrixType0')"><a name="dependentSizedMatrixType0Anchor">dependentSizedMatrixType</a></td><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1DependentSizedMatrixType.html">DependentSizedMatrixType</a>&gt;...</td></tr>
+<tr><td colspan="4" class="doc" id="dependentSizedMatrixType0"><pre>Matches a matrix type where the type and the number of rows
+and columns is dependent.
+
+Given
+  template&lt;typename T, int Rows, int Cols&gt;
+  class matrix {
+    typedef T __attribute__((matrix_type(Rows, Cols))) X;
+  };
+  typedef int __attribute__((matrix_type(3, 3))) Y;
+dependentSizedMatrixType()
+  matches the type of the typedef declaration "X" but not "Y".
+</pre></td></tr>
+
+
+<tr><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1Type.html">Type</a>&gt;</td><td class="name" onclick="toggle('dependentVectorType0')"><a name="dependentVectorType0Anchor">dependentVectorType</a></td><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1DependentVectorType.html">DependentVectorType</a>&gt;...</td></tr>
+<tr><td colspan="4" class="doc" id="dependentVectorType0"><pre>Matches vector types where either the type or size is dependent.
+
+Given
+  template&lt;typename T, int Size&gt;
+  class vector {
+    typedef T __attribute__((vector_size(Size))) X;
+  };
+  typedef int __attribute__((vector_size(12))) Y;
+dependentVectorType()
+  matches the type of the typedef declaration "X" but not "Y".
 </pre></td></tr>
 
 
@@ -2680,8 +2764,19 @@ Given
   @interface Foo
   @end
   Foo *f;
-pointerType()
+objcObjectPointerType()
   matches "Foo *f", but does not match "int *a".
+</pre></td></tr>
+
+
+<tr><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1Type.html">Type</a>&gt;</td><td class="name" onclick="toggle('objcTypeParamType0')"><a name="objcTypeParamType0Anchor">objcTypeParamType</a></td><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1ObjCTypeParamType.html">ObjCTypeParamType</a>&gt;...</td></tr>
+<tr><td colspan="4" class="doc" id="objcTypeParamType0"><pre>Matches Objective-C type parameter types.
+
+Given
+  @interface C &lt;X: id&gt;
+  @end
+objcTypeParamType()
+  matches the type of type-parameter "X".
 </pre></td></tr>
 
 
@@ -2694,6 +2789,17 @@ Given
 
 varDecl(hasType(pointsTo(parenType()))) matches ptr_to_array but not
 array_of_ptrs.
+</pre></td></tr>
+
+
+<tr><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1Type.html">Type</a>&gt;</td><td class="name" onclick="toggle('pipeType0')"><a name="pipeType0Anchor">pipeType</a></td><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1PipeType.html">PipeType</a>&gt;...</td></tr>
+<tr><td colspan="4" class="doc" id="pipeType0"><pre>Matches OpenCL pipe types.
+
+Given
+  typedef pipe int X;
+  typedef int Y;
+pipeType()
+  matches the type of the typedef declaration "X" but not "Y".
 </pre></td></tr>
 
 
@@ -2864,6 +2970,16 @@ Given
   }
 variableArrayType()
   matches "int c[a[0]]"
+</pre></td></tr>
+
+
+<tr><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1Type.html">Type</a>&gt;</td><td class="name" onclick="toggle('vectorType0')"><a name="vectorType0Anchor">vectorType</a></td><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1VectorType.html">VectorType</a>&gt;...</td></tr>
+<tr><td colspan="4" class="doc" id="vectorType0"><pre>Matches vector types.
+
+Given
+  typedef int __attribute__((vector_size(12))) X;
+vectorType()
+  matches the type of the typedef declaration "X".
 </pre></td></tr>
 
 <!--END_DECL_MATCHERS -->
@@ -9915,6 +10031,11 @@ Usable as: Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1Addr
 <tr><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1TypeLoc.html">TypeLoc</a>&gt;</td><td class="name" onclick="toggle('loc0')"><a name="loc0Anchor">loc</a></td><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1QualType.html">QualType</a>&gt; InnerMatcher</td></tr>
 <tr><td colspan="4" class="doc" id="loc0"><pre>Matches TypeLocs for which the given inner
 QualType-matcher matches.
+</pre></td></tr>
+
+
+<tr><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1TypeDecl.html">TypeDecl</a>&gt;</td><td class="name" onclick="toggle('hasTypeForDecl0')"><a name="hasTypeForDecl0Anchor">hasTypeForDecl</a></td><td>Matcher&lt;<a href="https://clang.llvm.org/doxygen/classclang_1_1QualType.html">QualType</a>&gt; InnerMatcher</td></tr>
+<tr><td colspan="4" class="doc" id="hasTypeForDecl0"><pre>Matches the type object that represents this TypeDecl.
 </pre></td></tr>
 
 

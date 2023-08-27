@@ -839,6 +839,8 @@ const internal::VariadicDynCastAllOfMatcher<Decl, BlockDecl>
 const internal::VariadicDynCastAllOfMatcher<Decl, ObjCIvarDecl> objcIvarDecl;
 const internal::VariadicDynCastAllOfMatcher<Decl, ObjCPropertyDecl>
     objcPropertyDecl;
+const internal::VariadicDynCastAllOfMatcher<Decl, ObjCTypeParamDecl>
+    objcTypeParamDecl;
 const internal::VariadicDynCastAllOfMatcher<Stmt, ObjCAtThrowStmt>
     objcThrowStmt;
 const internal::VariadicDynCastAllOfMatcher<Stmt, ObjCAtTryStmt> objcTryStmt;
@@ -1049,6 +1051,15 @@ const AstTypeMatcher<DeducedTemplateSpecializationType>
     deducedTemplateSpecializationType;
 const AstTypeMatcher<DependentSizedArrayType> dependentSizedArrayType;
 const AstTypeMatcher<DependentSizedExtVectorType> dependentSizedExtVectorType;
+const AstTypeMatcher<BitIntType> bitIntType;
+const AstTypeMatcher<DependentBitIntType> dependentBitIntType;
+const AstTypeMatcher<DependentAddressSpaceType> dependentAddressSpaceType;
+const AstTypeMatcher<ConstantMatrixType> constantMatrixType;
+const AstTypeMatcher<DependentSizedMatrixType> dependentSizedMatrixType;
+const AstTypeMatcher<DependentVectorType> dependentVectorType;
+const AstTypeMatcher<VectorType> vectorType;
+const AstTypeMatcher<PipeType> pipeType;
+const AstTypeMatcher<ObjCTypeParamType> objcTypeParamType;
 const AstTypeMatcher<IncompleteArrayType> incompleteArrayType;
 const AstTypeMatcher<VariableArrayType> variableArrayType;
 const AstTypeMatcher<AtomicType> atomicType;
