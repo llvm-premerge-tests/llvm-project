@@ -602,18 +602,26 @@ INTERCEPTOR(char*, strncpy, char *to, const char *from, uptr size) {
   return REAL(strncpy)(to, from, size);
 }
 
-INTERCEPTOR(long, strtol, const char *nptr, char **endptr, int base) {
-  void *ctx;
-  ASAN_INTERCEPTOR_ENTER(ctx, strtol);
-  ENSURE_ASAN_INITED();
-  if (!flags()->replace_str) {
-    return REAL(strtol)(nptr, endptr, base);
-  }
-  char *real_endptr;
-  long result = REAL(strtol)(nptr, &real_endptr, base);
-  StrtolFixAndCheck(ctx, nptr, endptr, real_endptr, base);
-  return result;
-}
+#  define INTERCEPTOR_STRTO_BASE(ret_type, func)                             \
+    INTERCEPTOR(ret_type, func, const char *nptr, char **endptr, int base) { \
+      void *ctx;                                                             \
+      ASAN_INTERCEPTOR_ENTER(ctx, func);                                     \
+      ENSURE_ASAN_INITED();                                                  \
+      if (!flags()->replace_str)                                             \
+        return REAL(func)(nptr, endptr, base);                               \
+      char *real_endptr;                                                     \
+      ret_type res = REAL(func)(nptr, &real_endptr, base);                   \
+      StrtolFixAndCheck(ctx, nptr, endptr, real_endptr, base);               \
+      return res;                                                            \
+    }
+
+INTERCEPTOR_STRTO_BASE(long, strtol)
+INTERCEPTOR_STRTO_BASE(long long, strtoll)
+
+#  if SANITIZER_GLIBC
+INTERCEPTOR_STRTO_BASE(long, __isoc23_strtol)
+INTERCEPTOR_STRTO_BASE(long long, __isoc23_strtoll)
+#  endif
 
 INTERCEPTOR(int, atoi, const char *nptr) {
   void *ctx;
@@ -650,19 +658,6 @@ INTERCEPTOR(long, atol, const char *nptr) {
   long result = REAL(strtol)(nptr, &real_endptr, 10);
   FixRealStrtolEndptr(nptr, &real_endptr);
   ASAN_READ_STRING(ctx, nptr, (real_endptr - nptr) + 1);
-  return result;
-}
-
-INTERCEPTOR(long long, strtoll, const char *nptr, char **endptr, int base) {
-  void *ctx;
-  ASAN_INTERCEPTOR_ENTER(ctx, strtoll);
-  ENSURE_ASAN_INITED();
-  if (!flags()->replace_str) {
-    return REAL(strtoll)(nptr, endptr, base);
-  }
-  char *real_endptr;
-  long long result = REAL(strtoll)(nptr, &real_endptr, base);
-  StrtolFixAndCheck(ctx, nptr, endptr, real_endptr, base);
   return result;
 }
 
@@ -766,6 +761,10 @@ void InitializeAsanInterceptors() {
   ASAN_INTERCEPT_FUNC(atoll);
   ASAN_INTERCEPT_FUNC(strtol);
   ASAN_INTERCEPT_FUNC(strtoll);
+#  if SANITIZER_GLIBC
+  ASAN_INTERCEPT_FUNC(__isoc23_strtol);
+  ASAN_INTERCEPT_FUNC(__isoc23_strtoll);
+#  endif
 
   // Intecept jump-related functions.
   ASAN_INTERCEPT_FUNC(longjmp);
