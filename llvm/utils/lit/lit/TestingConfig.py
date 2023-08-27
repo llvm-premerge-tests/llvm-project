@@ -192,6 +192,7 @@ class TestingConfig(object):
         self.limit_to_features = set(limit_to_features)
         self.parallelism_group = parallelism_group
         self._recursiveExpansionLimit = None
+        self.prologue = None
 
     @property
     def recursiveExpansionLimit(self):

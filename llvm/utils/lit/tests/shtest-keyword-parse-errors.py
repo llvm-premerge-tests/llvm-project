@@ -6,7 +6,7 @@
 # CHECK: Testing: 3 tests
 
 # CHECK-LABEL: UNRESOLVED: shtest-keyword-parse-errors :: empty.txt
-# CHECK:       {{^}}Test has no 'RUN:' line{{$}}
+# CHECK:       {{^}}Test has no 'RUN:' line or 'PYTHON:' line{{$}}
 
 # CHECK-LABEL: UNRESOLVED: shtest-keyword-parse-errors :: multiple-allow-retries.txt
 # CHECK:       {{^}}Test has more than one ALLOW_RETRIES lines{{$}}

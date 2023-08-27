@@ -1,0 +1,12 @@
+# Check the case where the entire test file executes python but no shell
+# commands.  This should be fine.
+
+# PYTHON: pass
+
+#       CHECK:Command Output (stdout):
+#  CHECK-NEXT:--
+#  CHECK-NEXT:# executed '{{PYTHON}}:' directive at line [[# @LINE - 4]]
+# CHECK-EMPTY:
+#  CHECK-NEXT:--
+
+# CHECK:  Passed: 1

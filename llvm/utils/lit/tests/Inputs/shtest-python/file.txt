@@ -1,0 +1,5 @@
+# Check that __file__ is defined in PYTHON lines.
+
+# PYTHON: print(f"test file <{__file__}>")
+
+# CHECK:# | test file <[[TEST_FILE]]>

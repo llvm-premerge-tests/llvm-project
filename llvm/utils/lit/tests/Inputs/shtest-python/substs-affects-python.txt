@@ -1,0 +1,25 @@
+# Check that the effect of DEFINE/REDEFINE directives can be seen by later
+# PYTHON directives' lit.expand or lit.run.
+
+# PYTHON: def run():
+# PYTHON:     lit.run('echo %{greeting} from lit.run')
+# PYTHON:     greeting = lit.expand('%{greeting}')
+# PYTHON:     print(f"{greeting} from lit.expand")
+
+# DEFINE: %{greeting} = hello
+# PYTHON: run()
+
+# REDEFINE: %{greeting} = goodbye
+# PYTHON: run()
+
+# CHECK-NOT:{{^(hello|goodbye)}}
+#     CHECK:# | # | hello from lit.run
+# CHECK-NOT:{{^(hello|goodbye)}}
+#     CHECK:# | hello from lit.expand
+# CHECK-NOT:{{^(hello|goodbye)}}
+#     CHECK:# | # | goodbye from lit.run
+# CHECK-NOT:{{^(hello|goodbye)}}
+#     CHECK:# | goodbye from lit.expand
+# CHECK-NOT:{{^(hello|goodbye)}}
+
+# CHECK:  Passed: 1
