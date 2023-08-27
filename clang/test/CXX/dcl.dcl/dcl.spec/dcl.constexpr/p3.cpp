@@ -66,7 +66,7 @@ struct T : SS, NonLiteral {
   // constexpr since they can't be const.
   constexpr T &operator=(const T &) = default; // beforecxx14-error {{an explicitly-defaulted copy assignment operator may not have 'const', 'constexpr' or 'volatile' qualifiers}} \
                                                // beforecxx14-warning {{C++14}} \
-                                               // aftercxx14-error{{defaulted definition of copy assignment operator is not constexpr}}
+                                               // aftercxx14-error{{copy assignment operator cannot be 'constexpr' in a class or struct with virtual base classes}}
 };
 
 constexpr int T::OutOfLineVirtual() const { return 0; }

@@ -328,10 +328,10 @@ namespace dr1358 { // dr1358: yes
 namespace dr1359 { // dr1359: 3.5
 #if __cplusplus >= 201103L
   union A { constexpr A() = default; };
-  union B { constexpr B() = default; int a; }; // expected-error {{not constexpr}} expected-note 2{{candidate}}
-  union C { constexpr C() = default; int a, b; }; // expected-error {{not constexpr}} expected-note 2{{candidate}}
+  union B { constexpr B() = default; int a; }; // expected-error {{default constructor cannot be 'constexpr' in a class or struct with virtual base classes}} expected-note 2{{candidate}}
+  union C { constexpr C() = default; int a, b; }; // expected-error {{default constructor cannot be 'constexpr' in a class or struct with virtual base classes}} expected-note 2{{candidate}}
   struct X { constexpr X() = default; union {}; }; // expected-error {{does not declare anything}}
-  struct Y { constexpr Y() = default; union { int a; }; }; // expected-error {{not constexpr}} expected-note 2{{candidate}}
+  struct Y { constexpr Y() = default; union { int a; }; }; // expected-error {{default constructor cannot be 'constexpr' in a class or struct with virtual base classes}} expected-note 2{{candidate}}
 
   constexpr A a = A();
   constexpr B b = B(); // expected-error {{no matching}}
