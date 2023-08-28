@@ -26,6 +26,7 @@
 #include "clang/Basic/Diagnostic.h"
 #include "clang/Basic/IdentifierTable.h"
 #include "clang/Basic/LLVM.h"
+#include "clang/Basic/LangOptions.h"
 #include "clang/Basic/Linkage.h"
 #include "clang/Basic/OperatorKinds.h"
 #include "clang/Basic/PartialDiagnostic.h"
@@ -4266,6 +4267,19 @@ public:
   // Whether there are any fields (non-static data members) in this record.
   bool field_empty() const {
     return field_begin() == field_end();
+  }
+
+  FieldDecl *getLastField() {
+    FieldDecl *FD = nullptr;
+    for (FieldDecl *Field : fields())
+      FD = Field;
+    return FD;
+  }
+  const FieldDecl *getLastField() const {
+    const FieldDecl *FD = nullptr;
+    for (const FieldDecl *Field : fields())
+      FD = Field;
+    return FD;
   }
 
   /// Note that the definition of this type is now complete.

@@ -528,8 +528,8 @@ public:
   /// Sanitizers enabled for this function.
   SanitizerSet SanOpts;
 
-  /// True if CodeGen currently emits code implementing sanitizer checks.
-  bool IsSanitizerScope = false;
+  /// Non-zero if CodeGen currently emits code implementing sanitizer checks.
+  unsigned IsSanitizerScope = 0;
 
   /// RAII object to set/unset CodeGenFunction::IsSanitizerScope.
   class SanitizerScope {
@@ -3026,6 +3026,12 @@ public:
   /// this expression is used as an lvalue, for instance in "&Arr[Idx]".
   void EmitBoundsCheck(const Expr *E, const Expr *Base, llvm::Value *Index,
                        QualType IndexType, bool Accessed);
+
+  /// Find the FieldDecl specified in a FAM's "counted_by" attribute. Returns
+  /// \p nullptr if either the attribute or the field doesn't exist.
+  FieldDecl *FindCountedByField(
+      const Expr *Base,
+      LangOptions::StrictFlexArraysLevelKind StrictFlexArraysLevel);
 
   llvm::Value *EmitScalarPrePostIncDec(const UnaryOperator *E, LValue LV,
                                        bool isInc, bool isPre);
