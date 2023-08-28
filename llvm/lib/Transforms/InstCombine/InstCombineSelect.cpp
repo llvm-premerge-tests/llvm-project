@@ -3083,6 +3083,18 @@ Instruction *InstCombinerImpl::foldSelectOfBools(SelectInst &SI) {
     TrueVal = Builder.CreateFreeze(TrueVal);
     return BinaryOperator::CreateAnd(FalseVal, Builder.CreateOr(C, TrueVal));
   }
+  // select (a | ~c), a, b -> or a, (and c, freeze(b))
+  if (match(CondVal, m_c_Or(m_Specific(TrueVal), m_Not(m_Value(C)))) &&
+      CondVal->hasOneUse()) {
+    FalseVal = Builder.CreateFreeze(FalseVal);
+    return BinaryOperator::CreateOr(TrueVal, Builder.CreateAnd(C, FalseVal));
+  }
+  // select (c & ~b), a, b -> or b, (and freeze(a), c)
+  if (match(CondVal, m_c_And(m_Value(C), m_Not(m_Specific(FalseVal)))) &&
+      CondVal->hasOneUse()) {
+    TrueVal = Builder.CreateFreeze(TrueVal);
+    return BinaryOperator::CreateOr(FalseVal, Builder.CreateAnd(C, TrueVal));
+  }
 
   if (match(FalseVal, m_Zero()) || match(TrueVal, m_One())) {
     Use *Y = nullptr;

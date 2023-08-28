@@ -601,3 +601,169 @@ define <2 x i1> @and_or1_op1not_vec(<2 x i1> %a, <2 x i1> %b) {
   %r = select <2 x i1> %cond, <2 x i1> %a, <2 x i1> %b
   ret <2 x i1> %r
 }
+
+define i1 @or_and1(i1 %a, i1 %b, i1 %c) {
+; CHECK-LABEL: @or_and1(
+; CHECK-NEXT:    [[TMP1:%.*]] = freeze i1 [[A:%.*]]
+; CHECK-NEXT:    [[TMP2:%.*]] = and i1 [[TMP1]], [[C:%.*]]
+; CHECK-NEXT:    [[R:%.*]] = or i1 [[TMP2]], [[B:%.*]]
+; CHECK-NEXT:    ret i1 [[R]]
+;
+  %notb = xor i1 %b, true
+  %cond = and i1 %notb, %c
+  %r = select i1 %cond, i1 %a, i1 %b
+  ret i1 %r
+}
+
+define i1 @or_and2(i1 %a, i1 %b, i1 %c) {
+; CHECK-LABEL: @or_and2(
+; CHECK-NEXT:    [[TMP1:%.*]] = freeze i1 [[B:%.*]]
+; CHECK-NEXT:    [[TMP2:%.*]] = and i1 [[TMP1]], [[C:%.*]]
+; CHECK-NEXT:    [[R:%.*]] = or i1 [[TMP2]], [[A:%.*]]
+; CHECK-NEXT:    ret i1 [[R]]
+;
+  %notc = xor i1 %c, true
+  %cond = or i1 %notc, %a
+  %r = select i1 %cond, i1 %a, i1 %b
+  ret i1 %r
+}
+
+define i1 @or_and1_bundef(i1 %a, i1 noundef %b, i1 %c) {
+; CHECK-LABEL: @or_and1_bundef(
+; CHECK-NEXT:    [[TMP1:%.*]] = freeze i1 [[A:%.*]]
+; CHECK-NEXT:    [[TMP2:%.*]] = and i1 [[TMP1]], [[C:%.*]]
+; CHECK-NEXT:    [[R:%.*]] = or i1 [[TMP2]], [[B:%.*]]
+; CHECK-NEXT:    ret i1 [[R]]
+;
+  %notb = xor i1 %b, true
+  %cond = and i1 %notb, %c
+  %r = select i1 %cond, i1 %a, i1 %b
+  ret i1 %r
+}
+
+define i1 @or_and2_aundef(i1 noundef %a, i1 %b, i1 %c) {
+; CHECK-LABEL: @or_and2_aundef(
+; CHECK-NEXT:    [[TMP1:%.*]] = freeze i1 [[B:%.*]]
+; CHECK-NEXT:    [[TMP2:%.*]] = and i1 [[TMP1]], [[C:%.*]]
+; CHECK-NEXT:    [[R:%.*]] = or i1 [[TMP2]], [[A:%.*]]
+; CHECK-NEXT:    ret i1 [[R]]
+;
+  %notc = xor i1 %c, true
+  %cond = or i1 %notc, %a
+  %r = select i1 %cond, i1 %a, i1 %b
+  ret i1 %r
+}
+
+define i1 @no_or_and1_bundef(i1 %a, i1 noundef %b, i1 %c) {
+; CHECK-LABEL: @no_or_and1_bundef(
+; CHECK-NEXT:    [[NOTB:%.*]] = xor i1 [[B:%.*]], true
+; CHECK-NEXT:    [[COND:%.*]] = and i1 [[NOTB]], [[C:%.*]]
+; CHECK-NEXT:    call void @use(i1 [[COND]])
+; CHECK-NEXT:    [[R:%.*]] = select i1 [[COND]], i1 [[A:%.*]], i1 [[B]]
+; CHECK-NEXT:    ret i1 [[R]]
+;
+  %notb = xor i1 %b, true
+  %cond = and i1 %notb, %c
+  call void @use(i1 %cond)
+  %r = select i1 %cond, i1 %a, i1 %b
+  ret i1 %r
+}
+
+define i1 @no_or_and2_aundef(i1 noundef %a, i1 %b, i1 %c) {
+; CHECK-LABEL: @no_or_and2_aundef(
+; CHECK-NEXT:    [[NOTC:%.*]] = xor i1 [[C:%.*]], true
+; CHECK-NEXT:    [[COND:%.*]] = or i1 [[NOTC]], [[A:%.*]]
+; CHECK-NEXT:    call void @use(i1 [[COND]])
+; CHECK-NEXT:    [[R:%.*]] = select i1 [[COND]], i1 [[A]], i1 [[B:%.*]]
+; CHECK-NEXT:    ret i1 [[R]]
+;
+  %notc = xor i1 %c, true
+  %cond = or i1 %notc, %a
+  call void @use(i1 %cond)
+  %r = select i1 %cond, i1 %a, i1 %b
+  ret i1 %r
+}
+
+define i1 @or_and1_op1not(i1 %a, i1 %b) {
+; CHECK-LABEL: @or_and1_op1not(
+; CHECK-NEXT:    [[C:%.*]] = call i1 @gen_i1()
+; CHECK-NEXT:    [[TMP1:%.*]] = freeze i1 [[A:%.*]]
+; CHECK-NEXT:    [[TMP2:%.*]] = and i1 [[C]], [[TMP1]]
+; CHECK-NEXT:    [[R:%.*]] = or i1 [[TMP2]], [[B:%.*]]
+; CHECK-NEXT:    ret i1 [[R]]
+;
+  %c = call i1 @gen_i1()
+  %notb = xor i1 %b, true
+  %cond = and i1 %c, %notb
+  %r = select i1 %cond, i1 %a, i1 %b
+  ret i1 %r
+}
+
+define i1 @or_and2_op1not(i1 %a, i1 %c) {
+; CHECK-LABEL: @or_and2_op1not(
+; CHECK-NEXT:    [[B:%.*]] = call i1 @gen_i1()
+; CHECK-NEXT:    [[TMP1:%.*]] = freeze i1 [[B]]
+; CHECK-NEXT:    [[TMP2:%.*]] = and i1 [[TMP1]], [[C:%.*]]
+; CHECK-NEXT:    [[R:%.*]] = or i1 [[TMP2]], [[A:%.*]]
+; CHECK-NEXT:    ret i1 [[R]]
+;
+  %b = call i1 @gen_i1()
+  %notc = xor i1 %c, true
+  %cond = or i1 %a, %notc
+  %r = select i1 %cond, i1 %a, i1 %b
+  ret i1 %r
+}
+
+define i1 @neg_or_and1(i1 %a, i1 %b, i1 %c, i1 %d) {
+; CHECK-LABEL: @neg_or_and1(
+; CHECK-NEXT:    [[TMP1:%.*]] = freeze i1 [[D:%.*]]
+; CHECK-NEXT:    [[TMP2:%.*]] = and i1 [[TMP1]], [[C:%.*]]
+; CHECK-NEXT:    [[R:%.*]] = or i1 [[TMP2]], [[B:%.*]]
+; CHECK-NEXT:    ret i1 [[R]]
+;
+  %notb = xor i1 %b, true
+  %cond = and i1 %notb, %c
+  %r = select i1 %cond, i1 %d, i1 %b
+  ret i1 %r
+}
+
+define i1 @neg_or_and2(i1 %a, i1 %b, i1 %c, i1 %d) {
+; CHECK-LABEL: @neg_or_and2(
+; CHECK-NEXT:    [[TMP1:%.*]] = freeze i1 [[D:%.*]]
+; CHECK-NEXT:    [[TMP2:%.*]] = and i1 [[TMP1]], [[C:%.*]]
+; CHECK-NEXT:    [[R:%.*]] = or i1 [[TMP2]], [[A:%.*]]
+; CHECK-NEXT:    ret i1 [[R]]
+;
+  %notc = xor i1 %c, true
+  %cond = or i1 %notc, %a
+  %r = select i1 %cond, i1 %a, i1 %d
+  ret i1 %r
+}
+
+define <2 x i1> @or_and1_op1not_vec(<2 x i1> %a, <2 x i1> %b) {
+; CHECK-LABEL: @or_and1_op1not_vec(
+; CHECK-NEXT:    [[C:%.*]] = call <2 x i1> @gen_v2i1()
+; CHECK-NEXT:    [[TMP1:%.*]] = freeze <2 x i1> [[A:%.*]]
+; CHECK-NEXT:    [[TMP2:%.*]] = and <2 x i1> [[C]], [[TMP1]]
+; CHECK-NEXT:    [[R:%.*]] = or <2 x i1> [[TMP2]], [[B:%.*]]
+; CHECK-NEXT:    ret <2 x i1> [[R]]
+;
+  %c = call <2 x i1> @gen_v2i1()
+  %notb = xor <2 x i1> %b, <i1 true, i1 true>
+  %cond = and <2 x i1> %c, %notb
+  %r = select <2 x i1> %cond, <2 x i1> %a, <2 x i1> %b
+  ret <2 x i1> %r
+}
+
+define i1 @pr64558(i1 noundef %a, i1 noundef %b) {
+; CHECK-LABEL: @pr64558(
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[COND_V:%.*]] = or i1 [[B:%.*]], [[A:%.*]]
+; CHECK-NEXT:    ret i1 [[COND_V]]
+;
+entry:
+  %lnot = xor i1 %b, true
+  %and11 = and i1 %lnot, %a
+  %cond.v = select i1 %and11, i1 %a, i1 %b
+  ret i1 %cond.v
+}
