@@ -749,6 +749,18 @@ public:
 /// E.g.: StripTemplateParameters("foo<int>") = "foo".
 std::optional<StringRef> StripTemplateParameters(StringRef Name);
 
+struct ObjCSelectorNames {
+  StringRef Selector;
+  StringRef ClassName;
+  std::optional<StringRef> ClassNameNoCategory = std::nullopt;
+  std::optional<std::string> MethodNameNoCategory = std::nullopt;
+};
+
+/// If `Name` is the AT_name of a DIE which refers to an Objective-C selector,
+/// returns an instance of ObjCNames. The Selector and ClassName fields are
+/// guaranteed to be non-empty in the result.
+std::optional<ObjCSelectorNames> getObjCNamesIfSelector(StringRef Name);
+
 } // end namespace llvm
 
 #endif // LLVM_DEBUGINFO_DWARF_DWARFACCELERATORTABLE_H
