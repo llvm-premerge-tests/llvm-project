@@ -453,6 +453,167 @@ static MCCFIInstruction createDefCFAExpression(const TargetRegisterInfo &TRI,
                                         Comment.str());
 }
 
+namespace {
+// Struct used by orderFrameObjects to help sort the stack objects.
+struct RISCVFrameSortingObject {
+  bool IsValid = false;             // true if we care about this object.
+  unsigned ObjectIndex = 0;         // Index of Object into MFI list.
+  unsigned ObjectSize = 0;          // Size of Object in bytes
+  Align ObjectAlignment = Align(1); // Alignment of Object in bytes.
+  unsigned ObjectNumUses = 0;       // Object static number of uses.
+};
+
+// The comparison function we use for stable_sort to order our local
+// stack symbols. The current algorithm is to use an estimated
+// "density". This takes into consideration the size and number of
+// uses each object has in order to roughly minimize code size.
+// So, for example, an object of size 16B that is referenced 5 times
+// will get higher priority than 4B objects referenced 1 time.
+// The stack symbols with higher piority have shorter offset relative
+// to sp/fp so that stack related instructions about them are more
+// possible to be improved.
+
+struct RISCVFrameSortingComparator {
+  inline bool operator()(const RISCVFrameSortingObject &A,
+                         const RISCVFrameSortingObject &B) const {
+
+    uint64_t DensityAScaled, DensityBScaled;
+    // For consistency in our comparison, all invalid objects are placed
+    // at the end. This also allows us to stop walking when we hit the
+    // first invalid item after it's all sorted.
+    if (!A.IsValid)
+      return false;
+    if (!B.IsValid)
+      return true;
+
+    // The density is calculated by doing :
+    //     (double)DensityA = A.ObjectNumUses / A.ObjectSize
+    //     (double)DensityB = B.ObjectNumUses / B.ObjectSize
+    // Since this approach may cause inconsistencies in
+    // the floating point <, >, == comparisons, depending on the floating
+    // point model with which the compiler was built, we're going
+    // to scale both sides by multiplying with
+    // A.ObjectSize * B.ObjectSize. This ends up factoring away
+    // the division and, with it, the need for any floating point
+    // arithmetic.
+    DensityAScaled = static_cast<uint64_t>(A.ObjectNumUses) *
+                     static_cast<uint64_t>(B.ObjectSize);
+    DensityBScaled = static_cast<uint64_t>(B.ObjectNumUses) *
+                     static_cast<uint64_t>(A.ObjectSize);
+
+    // If the two densities are equal, prioritize highest alignment
+    // objects. This allows for similar alignment objects
+    // to be packed together (given the same density).
+    // There's room for improvement here, also, since we can pack
+    // similar alignment (different density) objects next to each
+    // other to save padding. This will also require further
+    // complexity/iterations, and the overall gain isn't worth it,
+    // in general. Something to keep in mind, though.
+    if (DensityAScaled == DensityBScaled)
+      return A.ObjectAlignment < B.ObjectAlignment;
+
+    return DensityAScaled < DensityBScaled;
+  }
+};
+} // namespace
+
+// Return true if MI is a load or store for which there exist a compressed
+// version.
+static bool isCompressibleLdOrSt(const MachineInstr &MI) {
+  const RISCVSubtarget &STI = MI.getMF()->getSubtarget<RISCVSubtarget>();
+  const unsigned Opcode = MI.getOpcode();
+  if ((STI.hasStdExtCOrZca() || STI.hasStdExtZce()) &&
+      (Opcode == RISCV::LW || Opcode == RISCV::SW))
+    return true;
+  if ((STI.hasStdExtCOrZca() || STI.hasStdExtZce()) &&
+      (Opcode == RISCV::LD || Opcode == RISCV::SD))
+    return true;
+  // C.FLW/C.FSW/C.FLWSP/C.SWSP is only supported by RV32FC
+  if ((STI.hasStdExtC() || STI.hasStdExtZcf() || (STI.hasStdExtZce())) &&
+      (STI.getFLen() == 32) && (Opcode == RISCV::FLW || Opcode == RISCV::FSW))
+    return true;
+  // C.FLD/C.FSD/C.FLDSP/C.FSDSP is only supported by RV32DC and RV64DC
+  if ((STI.hasStdExtC() || STI.hasStdExtZcd()) && STI.getFLen() <= 64 &&
+      (Opcode == RISCV::FLD || Opcode == RISCV::FSD))
+    return true;
+  return false;
+}
+
+void RISCVFrameLowering::orderFrameObjects(
+    const MachineFunction &MF, SmallVectorImpl<int> &ObjectsToAllocate) const {
+  const MachineFrameInfo &MFI = MF.getFrameInfo();
+  const RISCVRegisterInfo *RI = STI.getRegisterInfo();
+  // It's only used to reduce codesize.
+  if (!MF.getFunction().hasMinSize())
+    return;
+  // Don't waste time if there's nothing to do.
+  if (ObjectsToAllocate.empty())
+    return;
+  // Create an array of all MFI objects. We won't need all of these
+  // objects, but we're going to create a full array of them to make
+  // it easier to index into when we're counting "uses" down below.
+  // We want to be able to easily/cheaply access an object by simply
+  // indexing into it, instead of having to search for it every time.
+  std::vector<RISCVFrameSortingObject> SortingObjects(MFI.getObjectIndexEnd());
+
+  // Walk the objects we care about and mark them as such in our working
+  // struct.
+  // The stack address of dynamic objects is not affected by object order.
+  // so it doesn't need to handle it specially.
+  for (auto &Obj : ObjectsToAllocate) {
+    SortingObjects[Obj].IsValid = true;
+    SortingObjects[Obj].ObjectIndex = Obj;
+    SortingObjects[Obj].ObjectAlignment = MFI.getObjectAlign(Obj);
+    SortingObjects[Obj].ObjectSize = MFI.getObjectSize(Obj);
+  }
+
+  // Count the number of uses for each object.
+  for (auto &MBB : MF) {
+    for (auto &MI : MBB) {
+      if (MI.isDebugInstr())
+        continue;
+      for (const MachineOperand &MO : MI.operands()) {
+        // Check to see if it's a local stack symbol.
+        if (!MO.isFI())
+          continue;
+        int Index = MO.getIndex();
+        // Check to see if it falls within our range, and is tagged
+        // to require ordering.
+        if (Index >= 0 && Index < MFI.getObjectIndexEnd() &&
+            SortingObjects[Index].IsValid) {
+          if (isCompressibleLdOrSt(MI))
+            // ld/st is more possible to be compressed so increase its
+            // weight and 2 is estimate.
+            SortingObjects[Index].ObjectNumUses += 2;
+          else
+            SortingObjects[Index].ObjectNumUses++;
+        }
+      }
+    }
+  }
+
+  // Sort the objects using RISCVFrameSortingComparator(see its comment for
+  // info).
+  llvm::stable_sort(SortingObjects, RISCVFrameSortingComparator());
+
+  // Now modify the original list to represent the final order that
+  // we want. The order will depend on whether we're going to access them
+  // from the stack pointer or the frame pointer. For SP, the list should
+  // end up with the END containing objects that we want with smaller offsets.
+  // For FP, it should be flipped.
+  int i = 0;
+  for (auto &Obj : SortingObjects) {
+    // All invalid items are sorted at the end, so it's safe to stop.
+    if (!Obj.IsValid)
+      break;
+    ObjectsToAllocate[i++] = Obj.ObjectIndex;
+  }
+
+  // Flip it if we're accessing off of the FP.
+  if (!RI->hasStackRealignment(MF) && hasFP(MF))
+    std::reverse(ObjectsToAllocate.begin(), ObjectsToAllocate.end());
+}
+
 void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
                                       MachineBasicBlock &MBB) const {
   MachineFrameInfo &MFI = MF.getFrameInfo();
@@ -1277,7 +1438,8 @@ MachineBasicBlock::iterator RISCVFrameLowering::eliminateCallFramePseudoInstr(
 
 // We would like to split the SP adjustment to reduce prologue/epilogue
 // as following instructions. In this way, the offset of the callee saved
-// register could fit in a single store.
+// register could fit in a single store. Supposed that the first sp adjust
+// amount is 2032,
 //   add     sp,sp,-2032
 //   sw      ra,2028(sp)
 //   sw      s0,2024(sp)
@@ -1314,6 +1476,7 @@ RISCVFrameLowering::getFirstSPAdjustAmount(const MachineFunction &MF) const {
     // offset that stack compression instructions accept when target supports
     // compression instructions.
     if (STI.hasStdExtCOrZca()) {
+      // The compression extensions may support the following instructions,
       // riscv32: c.lwsp rd, offset[7:2] => 2^(6 + 2)
       //          c.swsp rs2, offset[7:2] => 2^(6 + 2)
       //          c.flwsp rd, offset[7:2] => 2^(6 + 2)
@@ -1329,10 +1492,25 @@ RISCVFrameLowering::getFirstSPAdjustAmount(const MachineFunction &MF) const {
       // StackSize meets the condition (StackSize <= 2048 + RVCompressLen),
       // case1: Amount is 2048 - StackAlign: use addi + addi to adjust sp.
       // case2: Amount is RVCompressLen: use addi + addi to adjust sp.
-      if (StackSize <= 2047 + RVCompressLen ||
-          (StackSize > 2048 * 2 - StackAlign &&
-           StackSize <= 2047 * 2 + RVCompressLen) ||
-          StackSize > 2048 * 3 - StackAlign)
+      auto CanCompress = [&](uint64_t CompressLen) -> bool {
+        if (StackSize <= 2047 + CompressLen ||
+            (StackSize > 2048 * 2 - StackAlign &&
+             StackSize <= 2047 * 2 + CompressLen) ||
+            StackSize > 2048 * 3 - StackAlign)
+          return true;
+
+        return false;
+      };
+      // In the epilogue, addi sp, sp, 496 is used to recover the sp and it
+      // can be compressed(C.ADDI16SP, offset can be [-512, 496]), but
+      // addi sp, sp, 512 can not be compressed. so try to use 496 first.
+      // RVCompressLen - StackAlign = 512 - 16 = 496, it satisfies the
+      // requirement of RV64's stack alignment and is enough for the max
+      // callee size.
+      if (STI.is64Bit() && CanCompress(496))
+        return 496;
+
+      if (CanCompress(RVCompressLen))
         return RVCompressLen;
     }
     return 2048 - StackAlign;
