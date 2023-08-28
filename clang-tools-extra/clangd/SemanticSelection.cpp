@@ -175,7 +175,32 @@ llvm::Expected<std::vector<FoldingRange>> getFoldingRanges(ParsedAST &AST) {
   return collectFoldingRanges(SyntaxTree, TM);
 }
 
-// FIXME( usaxena95): Collect PP conditional regions, includes and other code
+namespace {
+struct IncludeCollector {
+  explicit IncludeCollector(const pseudo::DirectiveTree &T) { walk(T); }
+
+  void walk(const pseudo::DirectiveTree &T) {
+    for (const auto &C : T.Chunks)
+      std::visit(*this, C);
+  }
+
+  void operator()(const pseudo::DirectiveTree::Code &) {}
+
+  void operator()(const pseudo::DirectiveTree::Directive &D) {
+    if (D.Kind == tok::pp_include)
+      Results.push_back(D);
+  }
+
+  void operator()(const pseudo::DirectiveTree::Conditional &C) {
+    if (C.Taken)
+      walk(C.Branches[*C.Taken].second);
+  }
+
+  std::vector<pseudo::DirectiveTree::Directive> Results;
+};
+} // namespace
+
+// FIXME( usaxena95): Collect PP conditional regions and other code
 // regions (e.g. public/private/protected sections of classes, control flow
 // statement bodies).
 // Related issue: https://github.com/clangd/clangd/issues/310
@@ -266,6 +291,20 @@ getFoldingRanges(const std::string &Code, bool LineFoldingOnly) {
         End.character -= 2;
     }
     AddFoldingRange(Start, End, FoldingRange::COMMENT_KIND);
+  }
+  // Multi-line `#include`
+  auto Includes = IncludeCollector{DirectiveStructure}.Results;
+  for (auto It = Includes.begin(); It != Includes.end();) {
+    Position Start = StartPosition(OrigStream.tokens(It->Tokens).front());
+    Position End = EndPosition(OrigStream.tokens(It->Tokens).back());
+    It++;
+    while (It != Includes.end() &&
+           StartPosition(OrigStream.tokens(It->Tokens).front()).line ==
+               End.line + 1) {
+      End = EndPosition(OrigStream.tokens(It->Tokens).back());
+      It++;
+    }
+    AddFoldingRange(Start, End, FoldingRange::IMPORT_KIND);
   }
   return Result;
 }

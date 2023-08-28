@@ -453,6 +453,31 @@ TEST(FoldingRanges, PseudoParserLineFoldingsOnly) {
         << Test;
   }
 }
+
+TEST(FoldingRanges, Includes) {
+  const char *Test = R"cpp(
+    [[#include <cmath>
+    #include <cstdio>
+    #include <iostream>]]
+
+    #include <vector>
+
+    [[#include "external/Logger.h"
+    #include "external/Vector.h"
+    #include "project/DataStructures/Trie.h"]]
+
+    [[#include "project/File.h"
+    #include <map>
+    #include <set>]]
+
+    #include "math.h"
+  )cpp";
+  auto T = Annotations{Test};
+  EXPECT_THAT(gatherFoldingRanges(
+                  llvm::cantFail(getFoldingRanges(T.code().str(), false))),
+              UnorderedElementsAreArray(T.ranges()))
+      << Test;
+}
 } // namespace
 } // namespace clangd
 } // namespace clang
