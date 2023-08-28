@@ -13,6 +13,7 @@
 
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/CommonFolders.h"
+#include "mlir/Dialect/UB/IR/UBOps.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinAttributeInterfaces.h"
 #include "mlir/IR/BuiltinAttributes.h"
@@ -2182,6 +2183,13 @@ OpFoldResult arith::SelectOp::fold(FoldAdaptor adaptor) {
   Value trueVal = getTrueValue();
   Value falseVal = getFalseValue();
   if (trueVal == falseVal)
+    return trueVal;
+
+  // If either operand is fully poisoned, return the other.
+  if (isa_and_nonnull<ub::PoisonAttr>(adaptor.getTrueValue()))
+    return falseVal;
+
+  if (isa_and_nonnull<ub::PoisonAttr>(adaptor.getFalseValue()))
     return trueVal;
 
   Value condition = getCondition();
