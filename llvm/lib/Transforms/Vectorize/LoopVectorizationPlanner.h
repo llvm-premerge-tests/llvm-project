@@ -122,6 +122,15 @@ public:
     return I;
   }
 
+  VPValue *createICmp(CmpInst::Predicate Pred, VPValue *A, VPValue *B,
+                      DebugLoc DL = {}, const Twine &Name = "") {
+    VPInstruction *Instr =
+        new VPInstruction(Instruction::ICmp, Pred, A, B, DL, Name);
+    if (BB)
+      BB->insert(Instr, InsertPt);
+    return Instr;
+  }
+
   /// Create an N-ary operation with \p Opcode, \p Operands and set \p Inst as
   /// its underlying Instruction.
   VPValue *createNaryOp(unsigned Opcode, ArrayRef<VPValue *> Operands,
