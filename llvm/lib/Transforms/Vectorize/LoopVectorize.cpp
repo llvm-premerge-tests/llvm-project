@@ -4754,7 +4754,8 @@ LoopVectorizationCostModel::getMaxLegalScalableVF(unsigned MaxSafeElements) {
     reportVectorizationInfo(
         "Scalable vectorization not supported for the reduction "
         "operations found in this loop.",
-        "ScalableVFUnfeasible", ORE, TheLoop);
+        "ScalableVFUnfeasible",
+        ORE, TheLoop);
     return ElementCount::getScalable(0);
   }
 
@@ -7342,16 +7343,23 @@ void LoopVectorizationCostModel::collectInLoopReductions() {
 // `buildVPlans(VF, VF)`. We cannot do it because VPLAN at the moment
 // doesn't have a cost model that can choose which plan to execute if
 // more than one is generated.
-static unsigned determineVPlanVF(const unsigned WidestVectorRegBits,
-                                 LoopVectorizationCostModel &CM) {
+static ElementCount determineVPlanVF(const TargetTransformInfo &TTI,
+                                     LoopVectorizationCostModel &CM) {
   unsigned WidestType;
   std::tie(std::ignore, WidestType) = CM.getSmallestAndWidestTypes();
-  return WidestVectorRegBits / WidestType;
+
+  TargetTransformInfo::RegisterKind RegKind =
+      TTI.enableScalableVectorization()
+          ? TargetTransformInfo::RGK_ScalableVector
+          : TargetTransformInfo::RGK_FixedWidthVector;
+
+  TypeSize RegSize = TTI.getRegisterBitWidth(RegKind);
+  unsigned N = RegSize.getKnownMinValue() / WidestType;
+  return ElementCount::get(N, RegSize.isScalable());
 }
 
 VectorizationFactor
 LoopVectorizationPlanner::planInVPlanNativePath(ElementCount UserVF) {
-  assert(!UserVF.isScalable() && "scalable vectors not yet supported");
   ElementCount VF = UserVF;
   // Outer loop handling: They may require CFG and instruction level
   // transformations before even evaluating whether vectorization is profitable.
@@ -7361,10 +7369,7 @@ LoopVectorizationPlanner::planInVPlanNativePath(ElementCount UserVF) {
     // If the user doesn't provide a vectorization factor, determine a
     // reasonable one.
     if (UserVF.isZero()) {
-      VF = ElementCount::getFixed(determineVPlanVF(
-          TTI.getRegisterBitWidth(TargetTransformInfo::RGK_FixedWidthVector)
-              .getFixedValue(),
-          CM));
+      VF = determineVPlanVF(TTI, CM);
       LLVM_DEBUG(dbgs() << "LV: VPlan computed VF " << VF << ".\n");
 
       // Make sure we have a VF > 1 for stress testing.
@@ -7373,6 +7378,16 @@ LoopVectorizationPlanner::planInVPlanNativePath(ElementCount UserVF) {
                           << "overriding computed VF.\n");
         VF = ElementCount::getFixed(4);
       }
+    } else if (UserVF.isScalable() && !TTI.supportsScalableVectors() &&
+               !ForceTargetSupportsScalableVectors) {
+      LLVM_DEBUG(dbgs() << "LV: Not vectorizing. Scalable VF requested, but "
+                        << "not supported by the target.\n");
+      reportVectorizationFailure(
+          "Scalable vectorization requested but not supported by the target",
+          "the scalable user-specified vectorization width for outer-loop "
+          "vectorization cannot be used because the target does not support "
+          "scalable vectors.", "ScalableVFUnfeasible", ORE, OrigLoop);
+      return VectorizationFactor::Disabled();
     }
     assert(EnableVPlanNativePath && "VPlan-native path is not enabled.");
     assert(isPowerOf2_32(VF.getKnownMinValue()) &&
