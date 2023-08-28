@@ -21,9 +21,7 @@ define amdgpu_kernel void @divergent_cfg(ptr addrspace(1) %out, float %in) #0 {
 ; GFX90A-NEXT:    [[SUCCESS:%.*]] = extractvalue { i32, i1 } [[TMP3]], 1
 ; GFX90A-NEXT:    [[NEWLOADED:%.*]] = extractvalue { i32, i1 } [[TMP3]], 0
 ; GFX90A-NEXT:    [[TMP4]] = bitcast i32 [[NEWLOADED]] to float
-; GFX90A-NEXT:    br i1 [[SUCCESS]], label [[ATOMICRMW_END:%.*]], label [[ATOMICRMW_START]]
-; GFX90A:       atomicrmw.end:
-; GFX90A-NEXT:    br label [[ENDIF:%.*]]
+; GFX90A-NEXT:    br i1 [[SUCCESS]], label [[ENDIF:%.*]], label [[ATOMICRMW_START]]
 ; GFX90A:       else:
 ; GFX90A-NEXT:    [[TMP5:%.*]] = load float, ptr addrspace(1) [[OUT]], align 4
 ; GFX90A-NEXT:    br label [[ATOMICRMW_START2:%.*]]
@@ -36,11 +34,9 @@ define amdgpu_kernel void @divergent_cfg(ptr addrspace(1) %out, float %in) #0 {
 ; GFX90A-NEXT:    [[SUCCESS5:%.*]] = extractvalue { i32, i1 } [[TMP8]], 1
 ; GFX90A-NEXT:    [[NEWLOADED6:%.*]] = extractvalue { i32, i1 } [[TMP8]], 0
 ; GFX90A-NEXT:    [[TMP9]] = bitcast i32 [[NEWLOADED6]] to float
-; GFX90A-NEXT:    br i1 [[SUCCESS5]], label [[ATOMICRMW_END1:%.*]], label [[ATOMICRMW_START2]]
-; GFX90A:       atomicrmw.end1:
-; GFX90A-NEXT:    br label [[ENDIF]]
+; GFX90A-NEXT:    br i1 [[SUCCESS5]], label [[ENDIF]], label [[ATOMICRMW_START2]]
 ; GFX90A:       endif:
-; GFX90A-NEXT:    [[COMBINE:%.*]] = phi float [ [[TMP4]], [[ATOMICRMW_END]] ], [ [[TMP9]], [[ATOMICRMW_END1]] ]
+; GFX90A-NEXT:    [[COMBINE:%.*]] = phi float [ [[TMP4]], [[ATOMICRMW_START]] ], [ [[TMP9]], [[ATOMICRMW_START2]] ]
 ; GFX90A-NEXT:    store float [[COMBINE]], ptr addrspace(1) [[OUT]], align 4
 ; GFX90A-NEXT:    ret void
 ;

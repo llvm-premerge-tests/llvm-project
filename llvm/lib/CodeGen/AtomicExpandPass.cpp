@@ -19,6 +19,7 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Analysis/InstSimplifyFolder.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
+#include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/CodeGen/AtomicExpandUtils.h"
 #include "llvm/CodeGen/RuntimeLibcalls.h"
 #include "llvm/CodeGen/TargetLowering.h"
@@ -48,6 +49,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
+#include "llvm/Transforms/Utils/Local.h"
 #include "llvm/Transforms/Utils/LowerAtomic.h"
 #include <cassert>
 #include <cstdint>
@@ -63,6 +65,16 @@ class AtomicExpand : public FunctionPass {
   const TargetLowering *TLI = nullptr;
   const DataLayout *DL = nullptr;
 
+  // Atomic-expand pass creates new basic blocks at several places.
+  // The new control flow introduced by this pass can be simplified
+  // by running SimplifyCFG on such basic blocks when the pass finishes.
+  // CmpXchgLoopBlocks holds such basic blocks that
+  // needs simplification and atomic-expand runs SimplifyCFG on these
+  // blocks. For now, this simplification is carried out on CmpXchg Loop
+  // blocks only. Based on other use-cases, blocks that can benefit
+  // from this simplification can be added to this list.
+  SmallVector<BasicBlock *> CmpXchgLoopBlocks;
+
 public:
   static char ID; // Pass identification, replacement for typeid
 
@@ -71,6 +83,10 @@ public:
   }
 
   bool runOnFunction(Function &F) override;
+
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<TargetTransformInfoWrapperPass>();
+  }
 
 private:
   bool bracketInstWithFences(Instruction *I, AtomicOrdering Order);
@@ -104,7 +120,8 @@ private:
       IRBuilderBase &Builder, Type *ResultType, Value *Addr, Align AddrAlign,
       AtomicOrdering MemOpOrder, SyncScope::ID SSID,
       function_ref<Value *(IRBuilderBase &, Value *)> PerformOp,
-      CreateCmpXchgInstFun CreateCmpXchg);
+      CreateCmpXchgInstFun CreateCmpXchg,
+      SmallVector<BasicBlock *> &CmpXchgLoopBlocks);
   bool tryExpandAtomicCmpXchg(AtomicCmpXchgInst *CI);
 
   bool expandAtomicCmpXchg(AtomicCmpXchgInst *CI);
@@ -123,7 +140,8 @@ private:
 
   friend bool
   llvm::expandAtomicRMWToCmpXchg(AtomicRMWInst *AI,
-                                 CreateCmpXchgInstFun CreateCmpXchg);
+                                 CreateCmpXchgInstFun CreateCmpXchg,
+                                 SmallVector<BasicBlock *> &CmpXchgLoopBlocks);
 };
 
 // IRBuilder to be used for replacement atomic instructions.
@@ -142,9 +160,11 @@ char AtomicExpand::ID = 0;
 
 char &llvm::AtomicExpandID = AtomicExpand::ID;
 
-INITIALIZE_PASS(AtomicExpand, DEBUG_TYPE, "Expand Atomic instructions", false,
-                false)
-
+INITIALIZE_PASS_BEGIN(AtomicExpand, DEBUG_TYPE, "Expand Atomic instructions",
+                      false, false)
+INITIALIZE_PASS_DEPENDENCY(TargetTransformInfoWrapperPass)
+INITIALIZE_PASS_END(AtomicExpand, DEBUG_TYPE, "Expand Atomic instructions",
+                    false, false)
 FunctionPass *llvm::createAtomicExpandPass() { return new AtomicExpand(); }
 
 // Helper functions to retrieve the size of atomic instructions.
@@ -190,6 +210,7 @@ bool AtomicExpand::runOnFunction(Function &F) {
     return false;
   TLI = Subtarget->getTargetLowering();
   DL = &F.getParent()->getDataLayout();
+  CmpXchgLoopBlocks.clear();
 
   SmallVector<Instruction *, 1> AtomicInsts;
 
@@ -337,6 +358,12 @@ bool AtomicExpand::runOnFunction(Function &F) {
     } else if (CASI)
       MadeChange |= tryExpandAtomicCmpXchg(CASI);
   }
+
+  // Run CFG Simplification on CAS loop blocks.
+  auto TTI = &getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
+  for (BasicBlock *BB : CmpXchgLoopBlocks)
+    simplifyCFG(BB, *TTI);
+
   return MadeChange;
 }
 
@@ -602,7 +629,7 @@ bool AtomicExpand::tryExpandAtomicRMW(AtomicRMWInst *AI) {
                << AI->getOperationName(AI->getOperation()) << " operation at "
                << MemScope << " memory scope";
       });
-      expandAtomicRMWToCmpXchg(AI, createCmpXchgInstFun);
+      expandAtomicRMWToCmpXchg(AI, createCmpXchgInstFun, CmpXchgLoopBlocks);
     }
     return true;
   }
@@ -873,7 +900,8 @@ void AtomicExpand::expandPartwordAtomicRMW(
   if (ExpansionKind == TargetLoweringBase::AtomicExpansionKind::CmpXChg) {
     OldResult = insertRMWCmpXchgLoop(Builder, PMV.WordType, PMV.AlignedAddr,
                                      PMV.AlignedAddrAlignment, MemOpOrder, SSID,
-                                     PerformPartwordOp, createCmpXchgInstFun);
+                                     PerformPartwordOp, createCmpXchgInstFun,
+                                     CmpXchgLoopBlocks);
   } else {
     assert(ExpansionKind == TargetLoweringBase::AtomicExpansionKind::LLSC);
     OldResult = insertRMWLLSCLoop(Builder, PMV.WordType, PMV.AlignedAddr,
@@ -1479,7 +1507,8 @@ Value *AtomicExpand::insertRMWCmpXchgLoop(
     IRBuilderBase &Builder, Type *ResultTy, Value *Addr, Align AddrAlign,
     AtomicOrdering MemOpOrder, SyncScope::ID SSID,
     function_ref<Value *(IRBuilderBase &, Value *)> PerformOp,
-    CreateCmpXchgInstFun CreateCmpXchg) {
+    CreateCmpXchgInstFun CreateCmpXchg,
+    SmallVector<BasicBlock *> &CmpXchgLoopBlocks) {
   LLVMContext &Ctx = Builder.getContext();
   BasicBlock *BB = Builder.GetInsertBlock();
   Function *F = BB->getParent();
@@ -1501,8 +1530,9 @@ Value *AtomicExpand::insertRMWCmpXchgLoop(
   //     [...]
   BasicBlock *ExitBB =
       BB->splitBasicBlock(Builder.GetInsertPoint(), "atomicrmw.end");
+  CmpXchgLoopBlocks.push_back(ExitBB);
   BasicBlock *LoopBB = BasicBlock::Create(Ctx, "atomicrmw.start", F, ExitBB);
-
+  CmpXchgLoopBlocks.push_back(LoopBB);
   // The split call above "helpfully" added a branch at the end of BB (to the
   // wrong place), but we want a load. It's easiest to just remove
   // the branch entirely.
@@ -1559,8 +1589,9 @@ bool AtomicExpand::tryExpandAtomicCmpXchg(AtomicCmpXchgInst *CI) {
 }
 
 // Note: This function is exposed externally by AtomicExpandUtils.h
-bool llvm::expandAtomicRMWToCmpXchg(AtomicRMWInst *AI,
-                                    CreateCmpXchgInstFun CreateCmpXchg) {
+bool llvm::expandAtomicRMWToCmpXchg(
+    AtomicRMWInst *AI, CreateCmpXchgInstFun CreateCmpXchg,
+    SmallVector<BasicBlock *> &CmpXchgLoopBlocks) {
   ReplacementIRBuilder Builder(AI, AI->getModule()->getDataLayout());
   Builder.setIsFPConstrained(
       AI->getFunction()->hasFnAttribute(Attribute::StrictFP));
@@ -1574,7 +1605,7 @@ bool llvm::expandAtomicRMWToCmpXchg(AtomicRMWInst *AI,
         return buildAtomicRMWValue(AI->getOperation(), Builder, Loaded,
                                    AI->getValOperand());
       },
-      CreateCmpXchg);
+      CreateCmpXchg, CmpXchgLoopBlocks);
 
   AI->replaceAllUsesWith(Loaded);
   AI->eraseFromParent();
@@ -1722,9 +1753,10 @@ void AtomicExpand::expandAtomicRMWToLibcall(AtomicRMWInst *I) {
   // CAS libcall, via a CAS loop, instead.
   if (!Success) {
     expandAtomicRMWToCmpXchg(
-        I, [this](IRBuilderBase &Builder, Value *Addr, Value *Loaded,
-                  Value *NewVal, Align Alignment, AtomicOrdering MemOpOrder,
-                  SyncScope::ID SSID, Value *&Success, Value *&NewLoaded) {
+        I,
+        [this](IRBuilderBase &Builder, Value *Addr, Value *Loaded,
+               Value *NewVal, Align Alignment, AtomicOrdering MemOpOrder,
+               SyncScope::ID SSID, Value *&Success, Value *&NewLoaded) {
           // Create the CAS instruction normally...
           AtomicCmpXchgInst *Pair = Builder.CreateAtomicCmpXchg(
               Addr, Loaded, NewVal, Alignment, MemOpOrder,
@@ -1734,7 +1766,8 @@ void AtomicExpand::expandAtomicRMWToLibcall(AtomicRMWInst *I) {
 
           // ...and then expand the CAS into a libcall.
           expandAtomicCASToLibcall(Pair);
-        });
+        },
+        CmpXchgLoopBlocks);
   }
 }
 
