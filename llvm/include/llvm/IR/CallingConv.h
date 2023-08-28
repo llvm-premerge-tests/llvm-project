@@ -245,6 +245,9 @@ namespace CallingConv {
     /// placement. Preserves active lane values for input VGPRs.
     AMDGPU_CS_ChainPreserve = 105,
 
+    /// Used by GraalVM. Two additional registers are reserved.
+    GRAAL = 106,
+
     /// The highest possible ID. Must be some 2^k - 1.
     MaxID = 1023
   };
