@@ -178,6 +178,15 @@ MlirType mlirF64TypeGet(MlirContext ctx) {
   return wrap(FloatType::getF64(unwrap(ctx)));
 }
 
+MlirTypeID mlirFloat128TypeGetTypeID() { return wrap(Float128Type::getTypeID()); }
+
+bool mlirTypeIsAF128(MlirType type) { return unwrap(type).isF128(); }
+
+MlirType mlirF128TypeGet(MlirContext ctx) {
+  return wrap(FloatType::getF128(unwrap(ctx)));
+}
+
+
 //===----------------------------------------------------------------------===//
 // None type.
 //===----------------------------------------------------------------------===//
