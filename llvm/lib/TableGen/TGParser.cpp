@@ -581,9 +581,11 @@ bool TGParser::resolveArguments(Record *Rec, ArrayRef<ArgumentInit *> ArgValues,
       ArgName = Arg->getName();
 
     // We can only specify the template argument once.
-    if (!is_contained(UnsolvedArgNames, ArgName))
+    if (!is_contained(UnsolvedArgNames, ArgName)) {
+      assert(ArgName != nullptr && "ArgName must be initialized");
       return Error(Loc, "We can only specify the template argument '" +
                             ArgName->getAsUnquotedString() + "' once");
+    }
 
     ArgValueHandler(ArgName, ArgValue);
     llvm::erase_value(UnsolvedArgNames, ArgName);
