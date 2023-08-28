@@ -2567,3 +2567,18 @@ func.func @foldOrXor6(%arg0: index) -> index {
   %2 = arith.ori %arg0, %1 : index
   return %2 : index
 }
+
+// CHECK-LABEL: @selectOfPoison
+// CHECK-SAME: %[[ARG:[[:alnum:]]+]]: i32
+// CHECK: %[[UB:.*]] = ub.poison : i32
+// CHECK: return %[[ARG]], %[[ARG]], %[[UB]]
+func.func @selectOfPoison(%cond : i1, %arg: i32) -> (i32, i32, i32) {
+  %poison = ub.poison : i32
+  %select1 = arith.select %cond, %poison, %arg : i32
+  %select2 = arith.select %cond, %arg, %poison : i32
+
+  // Check that constant folding is applied prior to poison handling.
+  %true = arith.constant true
+  %select3 = arith.select %true, %poison, %arg : i32
+  return %select1, %select2, %select3 : i32, i32, i32
+}
