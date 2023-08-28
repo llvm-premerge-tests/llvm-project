@@ -6,10 +6,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-// This test ensures that we can disable the debug mode on a per-TU basis regardless of how the library was built.
+// This test ensures that we can disable the safe mode on a per-TU basis regardless of how the library was built.
 
-// REQUIRES: libcpp-hardening-mode=unchecked || libcpp-hardening-mode=debug
-// ADDITIONAL_COMPILE_FLAGS: -Wno-macro-redefined -D_LIBCPP_ENABLE_DEBUG_MODE=0
+// REQUIRES: libcpp-hardening-mode=unchecked || libcpp-hardening-mode=safe
+// ADDITIONAL_COMPILE_FLAGS: -Wno-macro-redefined -D_LIBCPP_ENABLE_SAFE_MODE=0
 
 #include <cassert>
 
