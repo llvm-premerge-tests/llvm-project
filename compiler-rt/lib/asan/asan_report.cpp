@@ -132,6 +132,7 @@ class ScopedInErrorReport {
     asanThreadRegistry().Lock();
     Printf(
         "=================================================================\n");
+    ++asan_report_count;
   }
 
   ~ScopedInErrorReport() {

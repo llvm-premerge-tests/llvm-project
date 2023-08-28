@@ -2,7 +2,7 @@
 //
 // RUN: %clangxx_asan -fsanitize-recover=address -pthread %s -o %t
 //
-// RUN: %env_asan_opts=halt_on_error=false:suppress_equal_pcs=false %run %t 1 10 >%t.log 2>&1
+// RUN: %env_asan_opts=halt_on_error=false:suppress_equal_pcs=false:exitcode=0 %run %t 1 10 >%t.log 2>&1
 // RUN: grep 'ERROR: AddressSanitizer: use-after-poison' %t.log | count 10
 // RUN: FileCheck %s <%t.log
 //

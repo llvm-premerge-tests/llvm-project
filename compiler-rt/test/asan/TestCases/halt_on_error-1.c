@@ -4,7 +4,7 @@
 //
 // RUN: env not %run %t 2>&1 | FileCheck %s
 // RUN: %env_asan_opts=halt_on_error=true not %run %t 2>&1 | FileCheck %s
-// RUN: %env_asan_opts=halt_on_error=false %run %t 2>&1 | FileCheck %s --check-prefix CHECK-RECOVER
+// RUN: %env_asan_opts=halt_on_error=false not %run %t 2>&1 | FileCheck %s --check-prefix CHECK-RECOVER
 
 #include <string.h>
 

@@ -74,6 +74,7 @@ static void CheckUnwind() {
 int asan_inited;
 bool asan_init_is_running;
 bool replace_intrin_cached;
+int asan_report_count = 0;
 
 #if !ASAN_FIXED_MAPPING
 uptr kHighMemEnd, kMidMemBeg, kMidMemEnd;
@@ -305,14 +306,23 @@ static NOINLINE void force_interface_symbols() {
 }
 
 static void asan_atexit() {
-  Printf("AddressSanitizer exit stats:\n");
-  __asan_print_accumulated_stats();
-  // Print AsanMappingProfile.
-  for (uptr i = 0; i < kAsanMappingProfileSize; i++) {
-    if (AsanMappingProfile[i] == 0) continue;
-    Printf("asan_mapping.h:%zd -- %zd\n", i, AsanMappingProfile[i]);
+  if (flags()->print_stats && (flags()->atexit || asan_report_count > 0)) {
+    Printf("AddressSanitizer exit stats:\n");
+    __asan_print_accumulated_stats();
+    // Print AsanMappingProfile.
+    for (uptr i = 0; i < kAsanMappingProfileSize; i++) {
+      if (AsanMappingProfile[i] == 0)
+        continue;
+      Printf("asan_mapping.h:%zd -- %zd\n", i, AsanMappingProfile[i]);
+    }
+  }
+  if (asan_report_count > 0) {
+    if (common_flags()->exitcode)
+      internal__exit(common_flags()->exitcode);
   }
 }
+
+static void InstallAtExitHandler() { Atexit(asan_atexit); }
 
 static void InitializeHighMemEnd() {
 #if !ASAN_FIXED_MAPPING
@@ -463,8 +473,7 @@ static void AsanInitInternal() {
   asan_inited = 1;
   asan_init_is_running = false;
 
-  if (flags()->atexit)
-    Atexit(asan_atexit);
+  InstallAtExitHandler();
 
   InitializeCoverage(common_flags()->coverage, common_flags()->coverage_dir);
 

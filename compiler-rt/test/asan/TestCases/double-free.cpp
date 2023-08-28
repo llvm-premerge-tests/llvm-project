@@ -6,7 +6,7 @@
 // RUN: %env_asan_opts=malloc_context_size=0:fast_unwind_on_malloc=1 not %run %t 2>&1 | FileCheck %s
 
 // RUN: %clangxx_asan -O0 -fsanitize-recover=address %s -o %t 2>&1
-// RUN: %env_asan_opts=halt_on_error=false %run %t 2>&1 | FileCheck %s --check-prefix CHECK-RECOVER
+// RUN: %env_asan_opts=halt_on_error=false not %run %t 2>&1 | FileCheck %s --check-prefix CHECK-RECOVER
 // REQUIRES: stable-runtime
 
 #include <stdlib.h>
