@@ -5220,9 +5220,10 @@ bool LoopVectorizationPlanner::isMoreProfitable(
     return (CostA * B.Width.getFixedValue()) <= (CostB * EstimatedWidthA);
 
   // To avoid the need for FP division:
-  //      (CostA / A.Width) < (CostB / B.Width)
-  // <=>  (CostA * B.Width) < (CostB * A.Width)
-  return (CostA * EstimatedWidthB) < (CostB * EstimatedWidthA);
+  //      (CostA / A.Width) <= (CostB / B.Width)
+  // <=>  (CostA * B.Width) <= (CostB * A.Width)
+  // Choose the wider VF where they have same cost.
+  return (CostA * EstimatedWidthB) <= (CostB * EstimatedWidthA);
 }
 
 static void emitInvalidCostRemarks(SmallVector<InstructionVFPair> InvalidCosts,
