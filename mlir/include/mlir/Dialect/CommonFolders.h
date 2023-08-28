@@ -15,6 +15,7 @@
 #ifndef MLIR_DIALECT_COMMONFOLDERS_H
 #define MLIR_DIALECT_COMMONFOLDERS_H
 
+#include "mlir/Dialect/UB/IR/UBOps.h" // PoisonAttr
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "llvm/ADT/ArrayRef.h"
@@ -33,6 +34,12 @@ Attribute constFoldBinaryOpConditional(ArrayRef<Attribute> operands,
                                        Type resultType,
                                        const CalculationT &calculate) {
   assert(operands.size() == 2 && "binary op takes two operands");
+  if (isa_and_nonnull<ub::PoisonAttr>(operands[0]))
+    return operands[0];
+
+  if (isa_and_nonnull<ub::PoisonAttr>(operands[1]))
+    return operands[1];
+
   if (!resultType || !operands[0] || !operands[1])
     return {};
 
@@ -102,6 +109,12 @@ template <class AttrElementT,
 Attribute constFoldBinaryOpConditional(ArrayRef<Attribute> operands,
                                        const CalculationT &calculate) {
   assert(operands.size() == 2 && "binary op takes two operands");
+  if (isa_and_nonnull<ub::PoisonAttr>(operands[0]))
+    return operands[0];
+
+  if (isa_and_nonnull<ub::PoisonAttr>(operands[1]))
+    return operands[1];
+
   auto getResultType = [](Attribute attr) -> Type {
     if (auto typed = dyn_cast_or_null<TypedAttr>(attr))
       return typed.getType();
@@ -157,6 +170,9 @@ Attribute constFoldUnaryOpConditional(ArrayRef<Attribute> operands,
   assert(operands.size() == 1 && "unary op takes one operands");
   if (!operands[0])
     return {};
+
+  if (isa<ub::PoisonAttr>(operands[0]))
+    return operands[0];
 
   if (isa<AttrElementT>(operands[0])) {
     auto op = cast<AttrElementT>(operands[0]);

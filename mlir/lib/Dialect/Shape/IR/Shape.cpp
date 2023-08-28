@@ -147,6 +147,9 @@ void ShapeDialect::initialize() {
 Operation *ShapeDialect::materializeConstant(OpBuilder &builder,
                                              Attribute value, Type type,
                                              Location loc) {
+  if (isa<ub::PoisonAttr>(value))
+    return builder.create<ub::PoisonOp>(loc, type, cast<ub::PoisonAttr>(value));
+
   if (llvm::isa<ShapeType>(type) || isExtentTensorType(type))
     return builder.create<ConstShapeOp>(
         loc, type, llvm::cast<DenseIntElementsAttr>(value));
@@ -156,6 +159,7 @@ Operation *ShapeDialect::materializeConstant(OpBuilder &builder,
   if (llvm::isa<WitnessType>(type))
     return builder.create<ConstWitnessOp>(loc, type,
                                           llvm::cast<BoolAttr>(value));
+
   return arith::ConstantOp::materialize(builder, value, type, loc);
 }
 

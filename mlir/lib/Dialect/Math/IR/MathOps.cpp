@@ -522,5 +522,8 @@ OpFoldResult math::TruncOp::fold(FoldAdaptor adaptor) {
 Operation *math::MathDialect::materializeConstant(OpBuilder &builder,
                                                   Attribute value, Type type,
                                                   Location loc) {
+  if (isa<ub::PoisonAttr>(value))
+    return builder.create<ub::PoisonOp>(loc, type, cast<ub::PoisonAttr>(value));
+
   return arith::ConstantOp::materialize(builder, value, type, loc);
 }
