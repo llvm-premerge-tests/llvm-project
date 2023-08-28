@@ -28,6 +28,7 @@
 #include "lldb/Utility/Status.h"
 #include "lldb/Utility/StreamString.h"
 #include "lldb/Utility/UriParser.h"
+#include "llvm/ADT/StringSet.h"
 #include "llvm/Support/FormatAdapters.h"
 
 #include "Plugins/Process/Utility/GDBRemoteSignals.h"
@@ -41,6 +42,10 @@ using namespace lldb_private::platform_gdb_server;
 LLDB_PLUGIN_DEFINE_ADV(PlatformRemoteGDBServer, PlatformGDB)
 
 static bool g_initialized = false;
+// UnixSignals does not store the signal names or descriptions itself.
+// It holds onto StringRefs. Becaue we may get signal information dynamically
+// from the remote, these strings need persistent storage client-side.
+static llvm::StringSet<> g_signal_string_storage;
 
 void PlatformRemoteGDBServer::Initialize() {
   Platform::Initialize();
@@ -749,8 +754,15 @@ const UnixSignalsSP &PlatformRemoteGDBServer::GetRemoteUnixSignals() {
         if (object_sp && object_sp->IsValid())
           description = std::string(object_sp->GetStringValue());
 
-        remote_signals_sp->AddSignal(signo, name.str().c_str(), suppress, stop,
-                                     notify, description.c_str());
+        const llvm::StringRef name_backed =
+            g_signal_string_storage.insert(name).first->getKeyData();
+        llvm::StringRef description_backed;
+        if (!description.empty())
+          description_backed =
+              g_signal_string_storage.insert(description).first->getKeyData();
+
+        remote_signals_sp->AddSignal(signo, name_backed, suppress, stop, notify,
+                                     description_backed);
         return true;
       });
 
