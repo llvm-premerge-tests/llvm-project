@@ -107,7 +107,7 @@ struct PSVInfo {
   uint32_t Version;
 
   dxbc::PSV::v2::RuntimeInfo Info;
-  uint32_t ResourceStride;
+  uint32_t ResourceStride{0};
   SmallVector<ResourceBindInfo> Resources;
   SmallVector<SignatureElement> SigInputElements;
   SmallVector<SignatureElement> SigOutputElements;
