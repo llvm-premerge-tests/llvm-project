@@ -955,3 +955,16 @@ func.func @subview_rank_reduction(%arg0: memref<1x384x384xf32>, %idx: index)
   // CHECK: return %[[cast]]
   return %0 : memref<?x?xf32, strided<[384, 1], offset: ?>>
 }
+
+// -----
+
+func.func @keep_preserved_unit_dimensions(%arg0: tensor<?x?x?xf32>, %arg1: index) -> index {
+  %0 = bufferization.to_memref %arg0 : memref<?x?x?xf32, strided<[?, ?, ?], offset: ?>>
+  %c1 = arith.constant 1 : index
+  %subview = memref.subview %0[0, 0, 0] [1, %arg1, 1] [1, 1, 1] : memref<?x?x?xf32, strided<[?, ?, ?], offset: ?>> to memref<1x?xf32, strided<[?, ?], offset: ?>>
+  %dim = memref.dim %subview, %c1 : memref<1x?xf32, strided<[?, ?], offset: ?>>
+  return %dim : index
+}
+// CHECK-LABEL: func @keep_preserved_unit_dimensions
+//  CHECK-SAME:     %[[ARG1:[a-zA-Z0-9]+]]: index
+//       CHECK:   return %[[ARG1]]
