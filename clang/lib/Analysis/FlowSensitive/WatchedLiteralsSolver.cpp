@@ -12,8 +12,8 @@
 //===----------------------------------------------------------------------===//
 
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
-#include <iterator>
 #include <queue>
 #include <vector>
 
@@ -61,6 +61,10 @@ static constexpr Literal NullLit = 0;
 
 /// Returns the positive literal `V`.
 static constexpr Literal posLit(Variable V) { return 2 * V; }
+
+static constexpr bool isPosLit(Literal L) { return 0 == (L & 1); }
+
+static constexpr bool isNegLit(Literal L) { return 1 == (L & 1); }
 
 /// Returns the negative literal `!V`.
 static constexpr Literal negLit(Variable V) { return 2 * V + 1; }
@@ -125,9 +129,14 @@ struct CNFFormula {
   /// formula.
   llvm::DenseMap<Variable, Atom> Atomics;
 
+  /// Indicates that we already know the formula is unsatisfiable.
+  /// During construction, we catch simple cases of conflicting unit-clauses.
+  bool KnownContradictory;
+
   explicit CNFFormula(Variable LargestVar,
                       llvm::DenseMap<Variable, Atom> Atomics)
-      : LargestVar(LargestVar), Atomics(std::move(Atomics)) {
+      : LargestVar(LargestVar), Atomics(std::move(Atomics)),
+        KnownContradictory(false) {
     Clauses.push_back(0);
     ClauseStarts.push_back(0);
     NextWatched.push_back(0);
@@ -135,33 +144,24 @@ struct CNFFormula {
     WatchedHead.resize(NumLiterals + 1, 0);
   }
 
-  /// Adds the `L1 v L2 v L3` clause to the formula. If `L2` or `L3` are
-  /// `NullLit` they are respectively omitted from the clause.
-  ///
+  /// Adds the `L1 v ... v Ln` clause to the formula.
   /// Requirements:
   ///
-  ///  `L1` must not be `NullLit`.
+  ///  `Li` must not be `NullLit`.
   ///
   ///  All literals in the input that are not `NullLit` must be distinct.
-  void addClause(Literal L1, Literal L2 = NullLit, Literal L3 = NullLit) {
-    // The literals are guaranteed to be distinct from properties of Formula
-    // and the construction in `buildCNF`.
-    assert(L1 != NullLit && L1 != L2 && L1 != L3 &&
-           (L2 != L3 || L2 == NullLit));
+  void addClause(ArrayRef<Literal> lits) {
+    assert(!lits.empty());
+    assert(llvm::all_of(lits, [](Literal L) { return L != NullLit; }));
 
     const ClauseID C = ClauseStarts.size();
     const size_t S = Clauses.size();
     ClauseStarts.push_back(S);
-
-    Clauses.push_back(L1);
-    if (L2 != NullLit)
-      Clauses.push_back(L2);
-    if (L3 != NullLit)
-      Clauses.push_back(L3);
+    Clauses.insert(Clauses.end(), lits.begin(), lits.end());
 
     // Designate the first literal as the "watched" literal of the clause.
-    NextWatched.push_back(WatchedHead[L1]);
-    WatchedHead[L1] = C;
+    NextWatched.push_back(WatchedHead[lits.front()]);
+    WatchedHead[lits.front()] = C;
   }
 
   /// Returns the number of literals in clause `C`.
@@ -174,6 +174,94 @@ struct CNFFormula {
   llvm::ArrayRef<Literal> clauseLiterals(ClauseID C) const {
     return llvm::ArrayRef<Literal>(&Clauses[ClauseStarts[C]], clauseSize(C));
   }
+};
+
+/// Applies simplifications while building up a BooleanFormula.
+/// We keep track of unit clauses, which tell us variables that must be
+/// true/false in any model that satisfies the overall formula.
+/// Such variables can be dropped from subsequently-added clauses, which
+/// may in turn yield more unit clauses or even a contradiction.
+/// The complexity of this preprocessing is O(log(K)) where K is the number
+/// of unit clauses. Assuming K << N, it is negligible. This method
+/// won't catch all contradictory formulas and need to leave general
+/// SAT solving to the solver algorithm.
+struct CNFFormulaBuilder {
+  // Formula should outlive CNFFormulaBuilder.
+  explicit CNFFormulaBuilder(CNFFormula &CNF)
+      : Formula(CNF) {}
+
+  /// Adds the `L1 v L2 v L3` clause to the formula. If `L2` or `L3` are
+  /// `NullLit` they are respectively omitted from the clause. Applies
+  /// simplifications, based on single-literal clauses.
+  ///
+  /// Requirements:
+  ///
+  ///  `L1` must not be `NullLit`.
+  ///
+  ///  All literals in the input that are not `NullLit` must be distinct.
+  void addClause(Literal L1, Literal L2 = NullLit, Literal L3 = NullLit) {
+    // The literals are guaranteed to be distinct from properties of BoolValue
+    // and the construction in `buildBooleanFormula`.
+    assert(L1 != NullLit && L1 != L2 && L1 != L3 &&
+           (L2 != L3 || L2 == NullLit));
+
+    llvm::SmallVector<Literal, 3> Literals;
+    Literals.push_back(L1);
+    if (L2 != NullLit)
+      Literals.push_back(L2);
+    if (L3 != NullLit)
+      Literals.push_back(L3);
+
+    addClauseLiterals(Literals);
+  }
+
+  void addClauseLiterals(ArrayRef<Literal> Literals) {
+    // Contains literals of the simplified clause.
+    llvm::SmallVector<Literal> Simplified;
+    for (auto literal : Literals) {
+      auto v = var(literal);
+      if (trueVars.contains(v)) { // X must be true
+        if (isPosLit(literal))
+          return; // Omit clause `(... v X v ...)`, it is `true`.
+        else
+          continue; // Omit `!X` from `(... v !X v ...)`.
+      }
+      if (falseVars.contains(v)) { // X must be false
+        if (isNegLit(literal))
+          return; // Omit clause `(... v !X v ...)`, it is `true`.
+        else
+          continue; // Omit `X` from `(... v X v ...)`.
+      }
+      Simplified.push_back(literal);
+    }
+    if (Simplified.empty()) {
+      // Simplification made the clause empty, which is equivalent to `false`.
+      // We already know that this formula is unsatisfiable.
+      Formula.KnownContradictory = true;
+      // We can add any of the input literals to get an unsatisfiable formula.
+      Formula.addClause(Literals[0]);
+      return;
+    }
+    if (Simplified.size() == 1) {
+      // We have new unit clause.
+      const Literal lit = Simplified.front();
+      const Variable v = var(lit);
+      if (isPosLit(lit))
+        trueVars.insert(v);
+      else
+        falseVars.insert(v);
+    }
+    Formula.addClause(Simplified);
+  }
+
+  /// Returns true if we observed a contradiction while adding clauses.
+  /// In this case then the formula is already known to be unsatisfiable.
+  bool IsKnownContradictory() { return Formula.KnownContradictory; }
+
+private:
+  CNFFormula &Formula;
+  llvm::DenseSet<Variable> trueVars;
+  llvm::DenseSet<Variable> falseVars;
 };
 
 /// Converts the conjunction of `Vals` into a formula in conjunctive normal
@@ -218,11 +306,12 @@ CNFFormula buildCNF(const llvm::ArrayRef<const Formula *> &Vals) {
 
   CNFFormula CNF(NextVar - 1, std::move(Atomics));
   std::vector<bool> ProcessedSubVals(NextVar, false);
+  CNFFormulaBuilder builder(CNF);
 
-  // Add a conjunct for each variable that represents a top-level formula in
-  // `Vals`.
+  // Add a conjunct for each variable that represents a top-level conjunction
+  // value in `Vals`.
   for (const Formula *Val : Vals)
-    CNF.addClause(posLit(GetVar(Val)));
+    builder.addClause(posLit(GetVar(Val)));
 
   // Add conjuncts that represent the mapping between newly-created variables
   // and their corresponding sub-formulas.
@@ -249,15 +338,15 @@ CNFFormula buildCNF(const llvm::ArrayRef<const Formula *> &Vals) {
         // `X <=> (A ^ A)` is equivalent to `(!X v A) ^ (X v !A)` which is
         // already in conjunctive normal form. Below we add each of the
         // conjuncts of the latter expression to the result.
-        CNF.addClause(negLit(Var), posLit(LHS));
-        CNF.addClause(posLit(Var), negLit(LHS));
+        builder.addClause(negLit(Var), posLit(LHS));
+        builder.addClause(posLit(Var), negLit(LHS));
       } else {
-        // `X <=> (A ^ B)` is equivalent to `(!X v A) ^ (!X v B) ^ (X v !A v !B)`
-        // which is already in conjunctive normal form. Below we add each of the
-        // conjuncts of the latter expression to the result.
-        CNF.addClause(negLit(Var), posLit(LHS));
-        CNF.addClause(negLit(Var), posLit(RHS));
-        CNF.addClause(posLit(Var), negLit(LHS), negLit(RHS));
+        // `X <=> (A ^ B)` is equivalent to `(!X v A) ^ (!X v B) ^ (X v !A v
+        // !B)` which is already in conjunctive normal form. Below we add each
+        // of the conjuncts of the latter expression to the result.
+        builder.addClause(negLit(Var), posLit(LHS));
+        builder.addClause(negLit(Var), posLit(RHS));
+        builder.addClause(posLit(Var), negLit(LHS), negLit(RHS));
       }
       break;
     }
@@ -269,15 +358,15 @@ CNFFormula buildCNF(const llvm::ArrayRef<const Formula *> &Vals) {
         // `X <=> (A v A)` is equivalent to `(!X v A) ^ (X v !A)` which is
         // already in conjunctive normal form. Below we add each of the
         // conjuncts of the latter expression to the result.
-        CNF.addClause(negLit(Var), posLit(LHS));
-        CNF.addClause(posLit(Var), negLit(LHS));
+        builder.addClause(negLit(Var), posLit(LHS));
+        builder.addClause(posLit(Var), negLit(LHS));
       } else {
         // `X <=> (A v B)` is equivalent to `(!X v A v B) ^ (X v !A) ^ (X v
         // !B)` which is already in conjunctive normal form. Below we add each
         // of the conjuncts of the latter expression to the result.
-        CNF.addClause(negLit(Var), posLit(LHS), posLit(RHS));
-        CNF.addClause(posLit(Var), negLit(LHS));
-        CNF.addClause(posLit(Var), negLit(RHS));
+        builder.addClause(negLit(Var), posLit(LHS), posLit(RHS));
+        builder.addClause(posLit(Var), negLit(LHS));
+        builder.addClause(posLit(Var), negLit(RHS));
       }
       break;
     }
@@ -287,8 +376,8 @@ CNFFormula buildCNF(const llvm::ArrayRef<const Formula *> &Vals) {
       // `X <=> !Y` is equivalent to `(!X v !Y) ^ (X v Y)` which is
       // already in conjunctive normal form. Below we add each of the
       // conjuncts of the latter expression to the result.
-      CNF.addClause(negLit(Var), negLit(Operand));
-      CNF.addClause(posLit(Var), posLit(Operand));
+      builder.addClause(negLit(Var), negLit(Operand));
+      builder.addClause(posLit(Var), posLit(Operand));
       break;
     }
     case Formula::Implies: {
@@ -299,9 +388,9 @@ CNFFormula buildCNF(const llvm::ArrayRef<const Formula *> &Vals) {
       // `(X v A) ^ (X v !B) ^ (!X v !A v B)` which is already in
       // conjunctive normal form. Below we add each of the conjuncts of
       // the latter expression to the result.
-      CNF.addClause(posLit(Var), posLit(LHS));
-      CNF.addClause(posLit(Var), negLit(RHS));
-      CNF.addClause(negLit(Var), negLit(LHS), posLit(RHS));
+      builder.addClause(posLit(Var), posLit(LHS));
+      builder.addClause(posLit(Var), negLit(RHS));
+      builder.addClause(negLit(Var), negLit(LHS), posLit(RHS));
       break;
     }
     case Formula::Equal: {
@@ -312,7 +401,7 @@ CNFFormula buildCNF(const llvm::ArrayRef<const Formula *> &Vals) {
         // `X <=> (A <=> A)` is equvalent to `X` which is already in
         // conjunctive normal form. Below we add each of the conjuncts of the
         // latter expression to the result.
-        CNF.addClause(posLit(Var));
+        builder.addClause(posLit(Var));
 
         // No need to visit the sub-values of `Val`.
         continue;
@@ -321,18 +410,42 @@ CNFFormula buildCNF(const llvm::ArrayRef<const Formula *> &Vals) {
       // `(X v A v B) ^ (X v !A v !B) ^ (!X v A v !B) ^ (!X v !A v B)` which
       // is already in conjunctive normal form. Below we add each of the
       // conjuncts of the latter expression to the result.
-      CNF.addClause(posLit(Var), posLit(LHS), posLit(RHS));
-      CNF.addClause(posLit(Var), negLit(LHS), negLit(RHS));
-      CNF.addClause(negLit(Var), posLit(LHS), negLit(RHS));
-      CNF.addClause(negLit(Var), negLit(LHS), posLit(RHS));
+      builder.addClause(posLit(Var), posLit(LHS), posLit(RHS));
+      builder.addClause(posLit(Var), negLit(LHS), negLit(RHS));
+      builder.addClause(negLit(Var), posLit(LHS), negLit(RHS));
+      builder.addClause(negLit(Var), negLit(LHS), posLit(RHS));
       break;
     }
+    }
+    if (builder.IsKnownContradictory()) {
+      return CNF;
     }
     for (const Formula *Child : Val->operands())
       UnprocessedSubVals.push(Child);
   }
 
-  return CNF;
+  // Unit clauses that were added later were not
+  // considered for the simplification of earlier clauses. Do a final
+  // pass to find more opportunities for simplification.
+  CNFFormula FinalCNF(NextVar - 1, std::move(CNF.Atomics));
+  CNFFormulaBuilder FinalBuilder(FinalCNF);
+
+  // Collect unit clauses.
+  for (ClauseID C = 1; C < CNF.ClauseStarts.size(); ++C) {
+    if (CNF.clauseSize(C) == 1) {
+      FinalBuilder.addClause(CNF.clauseLiterals(C)[0]);
+    }
+  }
+
+  // Add all clauses that were added previously, preserving the order.
+  for (ClauseID C = 1; C < CNF.ClauseStarts.size(); ++C) {
+    FinalBuilder.addClauseLiterals(CNF.clauseLiterals(C));
+    if (FinalBuilder.IsKnownContradictory()) {
+      break;
+    }
+  }
+
+  return FinalCNF;
 }
 
 class WatchedLiteralsSolverImpl {
@@ -414,6 +527,11 @@ public:
   // Returns the `Result` and the number of iterations "remaining" from
   // `MaxIterations` (that is, `MaxIterations` - iterations in this call).
   std::pair<Solver::Result, std::int64_t> solve(std::int64_t MaxIterations) && {
+    if (CNF.KnownContradictory) {
+      // Short-cut the solving process. We already found out at CNF
+      // construction time that the formula is unsatisfiable.
+      return std::make_pair(Solver::Result::Unsatisfiable(), MaxIterations);
+    }
     size_t I = 0;
     while (I < ActiveVars.size()) {
       if (MaxIterations == 0)
@@ -503,7 +621,8 @@ public:
         ++I;
       }
     }
-    return std::make_pair(Solver::Result::Satisfiable(buildSolution()), MaxIterations);
+    return std::make_pair(Solver::Result::Satisfiable(buildSolution()),
+                          MaxIterations);
   }
 
 private:
@@ -672,8 +791,7 @@ Solver::Result
 WatchedLiteralsSolver::solve(llvm::ArrayRef<const Formula *> Vals) {
   if (Vals.empty())
     return Solver::Result::Satisfiable({{}});
-  auto [Res, Iterations] =
-      WatchedLiteralsSolverImpl(Vals).solve(MaxIterations);
+  auto [Res, Iterations] = WatchedLiteralsSolverImpl(Vals).solve(MaxIterations);
   MaxIterations = Iterations;
   return Res;
 }
