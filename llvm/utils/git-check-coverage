@@ -1,0 +1,445 @@
+#!/usr/bin/env python3
+#
+# ===- git-check-coverage - CheckCoverage Git Integration ---------*- python -*--===#
+#
+# Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+# See https://llvm.org/LICENSE.txt for license information.
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+#
+# ===------------------------------------------------------------------------===#
+
+r"""
+code-coverage git integration
+============================
+
+This file provides a code-coverage integration for git. Put it somewhere in your
+path and ensure that it is executable. Code coverage information will be
+provided for the last commit/HEAD by runing `git code-coverage`.
+
+Requires Python 2.7 or Python 3
+"""
+
+import os
+import subprocess
+import re
+import sys
+
+
+def create_patch_from_last_commit(output_path):
+    """Create a patch file from the last commit in the Git repository."""
+    try:
+        # Get the hash of the last commit using `git rev-parse` command
+        git_hash_cmd = ["git", "rev-parse", "HEAD"]
+        commit_hash = subprocess.check_output(git_hash_cmd).strip().decode("utf-8")
+
+        # Create the patch from the last commit using `git show` command
+        patch_cmd = ["git", "show", commit_hash]
+        patch_output = subprocess.check_output(patch_cmd).decode("utf-8")
+
+        # Write the patch to the output file
+        with open(output_path, "w") as patch_file:
+            patch_file.write(patch_output)
+
+        print("Patch file '{}' created successfully.".format(output_path))
+        print()
+
+    except subprocess.CalledProcessError as e:
+        print("Error while creating the patch from the last commit:", e)
+
+
+def extract_source_files_from_patch(patch_path):
+    """ "read the patch file and extract the names of .cpp and .h files that have been modified or added in the patch"""
+    patch_path = "patch.diff"  # Path to the patch file (output)
+    try:
+        source_files = []
+        with open(patch_path, "r") as patch_file:
+            patch_diff = patch_file.read()
+
+            # Use regular expression to find .cpp files in the patch
+            source_file_matches = re.findall(r"\+{3} b/(\S+\.(?:cpp|h))", patch_diff)
+
+            source_files.extend(source_file_matches)
+
+            for source_file in source_files:
+                print("Source files in the patch:")
+                print(source_file)
+            print()
+        return source_files
+
+    except Exception as ex:
+        print("Error while extracting .cpp files from patch:", ex)
+        return []
+
+
+def extract_modified_lines_from_patch(patch_path):
+    """ "Extract the modified source lines from the patch."""
+    patch_path = "patch.diff"  # Path to the patch file (output)
+    source_lines = {}  # Dictionary for added lines in source code files
+    testcase_lines = {}  # Dictionary for added lines in test case files
+    current_file = None  # Stores the current file being processed
+
+    # Read the content of the patch file
+    with open(patch_path, "r") as patch_file:
+        patch_diff = patch_file.read()
+
+    # Iterate through each line in the patch diff
+    for line in patch_diff.split("\n"):
+        # Check for the line indicating a file change
+        if line.startswith("+++ "):
+            current_file = line[
+                6:
+            ].strip()  # Extract the filename, leaving first six characters
+            # Categorize the current file into source or test case category
+            if current_file.endswith(".cpp") or current_file.endswith(".h"):
+                source_lines[current_file] = []
+            elif current_file.endswith(".ll"):
+                testcase_lines[current_file] = []
+        # Check if the line is an added line
+        elif (
+            current_file
+            and line.startswith("+")
+            and not line.startswith("+++")
+            and not line.startswith("++++")
+        ):
+            # Append the added line content to the appropriate category
+            if current_file.endswith(".cpp") or current_file.endswith(".h"):
+                source_lines[current_file].append(line[1:])
+            elif current_file.endswith(".ll"):
+                testcase_lines[current_file].append(line[1:])
+
+    # Return the categorized dictionaries
+    return source_lines, testcase_lines
+
+
+def build_llvm(build_dir, llvm_source_dir):
+    """ "Configure and build LLVM in the specified build directory."""
+    try:
+        # Change to the build directory
+        os.chdir(build_dir)
+
+        # Run the cmake command to configure LLVM build
+        cmake_command = [
+            "cmake",
+            "-G",
+            "Ninja",
+            llvm_source_dir,
+            "-DCMAKE_C_COMPILER=/usr/bin/clang",
+            "-DCMAKE_CXX_COMPILER=/usr/bin/clang++",
+            "-DCMAKE_BUILD_TYPE=Release",
+            "-DLLVM_ENABLE_ASSERTIONS=ON",
+            "-DLLVM_USE_LINKER=lld",
+            "-DLLVM_BUILD_INSTRUMENTED_COVERAGE=ON",
+            "-DLLVM_INDIVIDUAL_TEST_COVERAGE=ON",
+        ]
+
+        subprocess.check_call(cmake_command)
+
+        # Run the ninja build command
+        subprocess.check_call(["ninja"])
+
+        print("LLVM build completed successfully.")
+
+    except subprocess.CalledProcessError as e:
+        print("Error during LLVM build:", e)
+
+
+def run_single_test_with_coverage(llvm_lit_path, test_path):
+    """ "Run a single test case using llvm-lit with coverage."""
+    try:
+        lit_cmd = [llvm_lit_path, "--per-test-coverage", "../" + test_path]
+        subprocess.check_call(lit_cmd)
+
+        print("Test case executed:", test_path)
+
+    except subprocess.CalledProcessError as e:
+        print("Error while running test:", e)
+    except Exception as ex:
+        print("Error:", ex)
+
+
+def run_modified_added_tests(llvm_lit_path, build_dir):
+    """ "Read the patch file, identify modified and added test cases, and then execute each of these test cases"""
+    patch_path = "patch.diff"  # Path to the patch file (output)
+
+    try:
+        # Get the list of modified and added test cases from the patch
+        with open(patch_path, "r") as patch_file:
+            patch_diff = patch_file.read()
+
+        modified_tests = []
+        added_tests = []
+
+        # Use regular expressions to find modified and added test cases with ".ll" extension
+        for match in re.finditer(r"^\+\+\+ [ab]/(.*\.ll)$", patch_diff, re.MULTILINE):
+            test_file = match.group(1)
+            if "test" in test_file:
+                if match.group(0).startswith("+++"):
+                    added_tests.append(test_file)
+                else:
+                    modified_tests.append(test_file)
+
+        if not modified_tests and not added_tests:
+            print("No modified or added tests found in the patch.")
+            return
+
+        # Run each modified test case
+        print("Running modified test cases:")
+        for test_file in modified_tests:
+            run_single_test_with_coverage(llvm_lit_path, test_file)
+        print()
+
+        # Run each newly added test case
+        print("Running added test cases:")
+        for test_file in added_tests:
+            run_single_test_with_coverage(llvm_lit_path, test_file)
+        print()
+
+    except subprocess.CalledProcessError as e:
+        print("Error while running modified and added tests:", e)
+    except Exception as ex:
+        print("Error:", ex)
+
+
+def convert_profraw_to_profdata_patch(cpp_files):
+    """ "Convert profraw coverage data files to profdata format, generate human-readable
+    coverage information, and extract coverage data for specific files."""
+    # Create a list to store the paths of the generated coverage data files
+    coverage_files = []
+    try:
+        # Change to the build directory
+        for root, dirs, files in os.walk("."):
+            for file in files:
+                if os.path.basename(file) == "default.profraw":
+                    continue
+                if file.endswith(".profraw"):
+                    profraw_file = os.path.join(root, file)
+                    profdata_output = os.path.splitext(profraw_file)[0] + ".profdata"
+
+                    print("Profraw File:", profraw_file)
+                    print("Profdata File:", profdata_output)
+
+                    # Get the current working directory
+                    current_directory = os.getcwd()
+                    print("Current Working Directory:", current_directory)
+
+                    # Construct the llvm-profdata command
+                    llvm_profdata_cmd = [
+                        "./bin/llvm-profdata",
+                        "merge",
+                        "-o",
+                        profdata_output,
+                        profraw_file,
+                    ]
+
+                    # Run llvm-profdata to convert profraw to profdata
+                    subprocess.check_call(llvm_profdata_cmd)
+
+                    print("Converted {} to {}".format(profraw_file, profdata_output))
+
+                    # Construct the llvm-cov show command
+                    llvm_cov_cmd = [
+                        "bin/llvm-cov",
+                        "show",
+                        "-instr-profile",
+                        profdata_output,
+                        "bin/opt",
+                    ]
+                    llvm_cov_output = os.path.splitext(profdata_output)[0] + ".txt"
+
+                    # Redirect the output of llvm-cov show to a text file
+                    with open(llvm_cov_output, "w") as output_file:
+                        subprocess.check_call(llvm_cov_cmd, stdout=output_file)
+
+                    print(
+                        "Generated human-readable info for {} in {}".format(
+                            profdata_output, llvm_cov_output
+                        )
+                    )
+
+                    # Process coverage data for specific files
+                    parent_directory = os.path.abspath(
+                        os.path.join(os.getcwd(), "..")
+                    )  # Get the parent directory of the current working directory
+
+                    for file, cpp_file in zip(files, cpp_files):
+                        output1_file = os.path.join(parent_directory, f"{cpp_file}")
+                        escaped_cpp_file = output1_file.replace(
+                            "/", r"\/"
+                        )  # Manually escape slashes
+                        output_file = (
+                            os.path.splitext(llvm_cov_output)[0]
+                            + f"_{cpp_file.replace('/', '_')}.txt"
+                        )
+
+                        awk_command = f"awk '/^{escaped_cpp_file}/ {{ print; getline; while ($0 != \"\") {{ print; getline }} }}' {llvm_cov_output} > {output_file}"
+
+                        # Run the constructed awk command
+                        subprocess.run(awk_command, shell=True, check=True)
+
+                        print("Processed file saved as:", output_file)
+                        print()
+                        coverage_files.append(output_file)
+
+        print("Conversion of profraw files to human-readable form is completed.")
+        print("List of coverage files:", coverage_files)
+        print()
+
+        return coverage_files
+
+    except subprocess.CalledProcessError as e:
+        print("Error during profraw to profdata conversion:", e)
+
+
+def report_covered_and_uncovered_lines(llvm_cov_patch, source_lines):
+    """ "Report Covered and uncovered source code lines"""
+    # Define characters that indicate lines to skip
+    skip_characters = set(["}", "{"])
+
+    try:
+        # Keep track of uncovered lines not tested by any of the added test case
+        uncovered_lines_not_tested = set()
+
+        # Print source lines for each file
+        print("Source Lines:")
+        for file, lines in source_lines.items():
+            print(f"File: {file}")
+            for line_number, line in enumerate(lines, start=1):
+                cleaned_source_line = line.lstrip("- ")  # Remove leading '-'
+                print(f"{line_number}: {cleaned_source_line}")
+
+        print("=" * 40)
+        print()
+
+        # Iterate through coverage files
+        for coverage_file in llvm_cov_patch:
+            # Do not process coverage file default.profraw
+            if coverage_file.startswith("./default"):
+                continue
+
+            # Print coverage file name
+            print(f"Coverage File: {coverage_file}")
+
+            # Print covered lines
+            print("Covered Lines:")
+            with open(coverage_file, "r") as cov_file:
+                for line in cov_file:
+                    parts = line.strip().split("|")
+                    if len(parts) >= 3:
+                        line_number_str = parts[0].strip()
+                        execution_count = parts[1].strip()
+                        code_line = "|".join(parts[2:]).strip()
+
+                        if line_number_str.isdigit():
+                            line_number = int(line_number_str)
+                            # Check if the line execution count indicates coverage
+                            if (
+                                not execution_count.isdigit()
+                                or int(execution_count) > 0
+                            ):
+                                # Iterate through source lines and compare
+                                for file, lines in source_lines.items():
+                                    for source_line in lines:
+                                        cleaned_source_line = source_line.lstrip(
+                                            "- "
+                                        )  # Remove leading '-'
+                                        # Check if the source line is not empty, not a comment, and not a skipped character
+                                        if (
+                                            cleaned_source_line
+                                            and not cleaned_source_line.startswith("//")
+                                            and not cleaned_source_line
+                                            in skip_characters
+                                        ):
+                                            if code_line == cleaned_source_line:
+                                                print(
+                                                    f"Code Line: {line_number}:",
+                                                    code_line,
+                                                )
+                                                break  # Once found, exit the inner loop
+            print("=" * 40)
+
+            # Print uncovered lines
+            print("Uncovered Lines:")
+            with open(coverage_file, "r") as cov_file:
+                for line in cov_file:
+                    parts = line.strip().split("|")
+                    if len(parts) >= 3:
+                        line_number_str = parts[0].strip()
+                        execution_count = parts[1].strip()
+                        code_line = "|".join(parts[2:]).strip()
+
+                        if line_number_str.isdigit():
+                            line_number = int(line_number_str)
+                            # Check if the line execution count indicates lack of coverage
+                            if (
+                                not execution_count.isdigit()
+                                or int(execution_count) == 0
+                            ):
+                                # Iterate through source lines and compare
+                                for file, lines in source_lines.items():
+                                    for source_line in lines:
+                                        cleaned_source_line = source_line.lstrip(
+                                            "- "
+                                        )  # Remove leading '-'
+                                        # Check if the source line is not empty, not a comment, and not a skipped character
+                                        if (
+                                            cleaned_source_line
+                                            and not cleaned_source_line.startswith("//")
+                                            and not cleaned_source_line
+                                            in skip_characters
+                                        ):
+                                            if code_line == cleaned_source_line:
+                                                print(
+                                                    f"Code Line: {line_number}:",
+                                                    code_line,
+                                                )
+                                                # uncovered_lines_not_tested.add(code_line)
+                                                uncovered_lines_not_tested.add(
+                                                    (line_number, code_line)
+                                                )
+                                                break  # Once found, exit the inner loop
+            print("=" * 40)
+            print()
+
+        if uncovered_lines_not_tested:
+            print("Uncovered lines not tested by any test case:")
+            print("=" * 40)
+            for line_number, line in uncovered_lines_not_tested:
+                print(f"Line {line_number}: {line}")
+            sys.exit(1)
+
+    except Exception as ex:
+        print("Error while reporting covered and uncovered lines:", ex)
+
+
+def main():
+    build_dir = "build"  # Path to LLVM build directory
+
+    if not os.path.exists(build_dir):
+        os.makedirs(build_dir)
+
+    patch_path = "build/patch.diff"  # Path to the patch file (output)
+
+    create_patch_from_last_commit(patch_path)
+
+    llvm_source_dir = "../llvm"  # Path to LLVM source directory
+    build_llvm(build_dir, llvm_source_dir)
+
+    llvm_lit_path = "bin/llvm-lit"  # Path to llvm-lit executable
+    run_modified_added_tests(llvm_lit_path, build_dir)
+
+    source_lines, testcase_lines = extract_modified_lines_from_patch(patch_path)
+
+    source_files = extract_source_files_from_patch(patch_path)
+
+    llvm_cov_patch = convert_profraw_to_profdata_patch(source_files)
+
+    print("Coverage Files List:")
+    for coverage_file in llvm_cov_patch:
+        print(coverage_file)
+    print()
+
+    report_covered_and_uncovered_lines(llvm_cov_patch, source_lines)
+
+
+if __name__ == "__main__":
+    main()
