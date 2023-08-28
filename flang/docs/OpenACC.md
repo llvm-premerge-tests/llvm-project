@@ -17,3 +17,5 @@
 * The end directive for combined construct can omit the `loop` keyword.
 * An `!$acc routine` with no parallelism clause is treated as if the `seq`
   clause was present.
+* The restriction on `!$acc data` required clauses is emitted as a portability
+  warning instead of an error as other compiler accepts it.
