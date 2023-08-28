@@ -8,7 +8,7 @@
 
 // REQUIRES: has-unix-headers
 // UNSUPPORTED: c++03
-// UNSUPPORTED: !libcpp-hardening-mode=debug
+// UNSUPPORTED: !libcpp-hardening-mode=safe && !libcpp-hardening-mode=debug
 // XFAIL: availability-verbose_abort-missing
 // ADDITIONAL_COMPILE_FLAGS: -fno-exceptions
 

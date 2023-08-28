@@ -6,17 +6,17 @@
 //
 //===----------------------------------------------------------------------===//
 
-// This test ensures that we can enable the hardened mode on a per-TU basis regardless of how the library was built.
+// This test ensures that we can enable the safe mode on a per-TU basis regardless of how the library was built.
 
 // Other hardening modes would additionally trigger the error that they are mutually exclusive.
-// REQUIRES: libcpp-hardening-mode=unchecked || libcpp-hardening-mode=hardened
+// REQUIRES: libcpp-hardening-mode=unchecked || libcpp-hardening-mode=safe
 // `check_assertion.h` is only available starting from C++11.
 // UNSUPPORTED: c++03
 // `check_assertion.h` requires Unix headers.
 // REQUIRES: has-unix-headers
 // The ability to set a custom abort message is required to compare the assertion message.
 // XFAIL: availability-verbose_abort-missing
-// ADDITIONAL_COMPILE_FLAGS: -Wno-macro-redefined -D_LIBCPP_ENABLE_HARDENED_MODE=1
+// ADDITIONAL_COMPILE_FLAGS: -Wno-macro-redefined -D_LIBCPP_ENABLE_SAFE_MODE=1
 
 #include <cassert>
 #include "check_assertion.h"

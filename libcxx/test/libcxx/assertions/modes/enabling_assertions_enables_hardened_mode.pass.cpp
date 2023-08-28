@@ -7,14 +7,14 @@
 //===----------------------------------------------------------------------===//
 
 // TODO(hardening): remove in LLVM 18.
-// This test ensures that enabling assertions now enables the hardened mode.
+// This test ensures that enabling assertions now enables the safe mode.
 
+// Other hardening modes would additionally trigger the error that they are mutually exclusive.
+// REQUIRES: libcpp-hardening-mode=unchecked || libcpp-hardening-mode=safe
 // `check_assertion.h` is only available starting from C++11 and requires Unix headers.
 // UNSUPPORTED: c++03, !has-unix-headers
 // The ability to set a custom abort message is required to compare the assertion message.
 // XFAIL: availability-verbose_abort-missing
-// Debug mode is mutually exclusive with hardened mode.
-// UNSUPPORTED: libcpp-hardening-mode=debug
 // Ignore the warning about `_LIBCPP_ENABLE_ASSERTIONS` being deprecated.
 // ADDITIONAL_COMPILE_FLAGS: -Wno-error -D_LIBCPP_ENABLE_ASSERTIONS=1
 
@@ -22,7 +22,7 @@
 #include "check_assertion.h"
 
 int main(int, char**) {
-  static_assert(_LIBCPP_ENABLE_HARDENED_MODE == 1, "Hardened mode should be implicitly enabled");
+  static_assert(_LIBCPP_ENABLE_SAFE_MODE == 1, "Safe mode should be implicitly enabled");
 
   _LIBCPP_ASSERT_VALID_ELEMENT_ACCESS(true, "Should not fire");
   TEST_LIBCPP_ASSERT_FAILURE([] {
