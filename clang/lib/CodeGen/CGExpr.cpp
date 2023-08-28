@@ -3690,6 +3690,34 @@ static QualType getFixedSizeElementType(const ASTContext &ctx,
   return eltType;
 }
 
+// Returns true if D is marked with __attribute__((btf_decl_tag("ctx")))
+static bool hasCtxBTFDeclTagAttr(const RecordDecl *D) {
+  if (auto *Attr = D->getAttr<BTFDeclTagAttr>())
+    return Attr->getBTFDeclTag().equals("ctx");
+  return false;
+}
+
+static bool pointeeHasCtxBTFDeclTagAttr(const Expr *E) {
+  if (auto *PtrType = dyn_cast<PointerType>(E->getType()))
+    if (auto *BaseDecl = PtrType->getPointeeType()->getAsRecordDecl())
+      return hasCtxBTFDeclTagAttr(BaseDecl);
+
+  return false;
+}
+
+// Wraps Addr with a call to llvm.context.marker.bpf intrinsic.
+// This is used for target specific rewrites, for details see
+// llvm/lib/Target/BPF/BPFContextMarker.cpp
+static Address wrapWithBPFContextMarker(CodeGenFunction &CGF, Address &Addr) {
+  if (!CGF.getTarget().getTriple().isBPF())
+    return Addr;
+
+  llvm::Function *Fn =
+      CGF.CGM.getIntrinsic(llvm::Intrinsic::context_marker_bpf);
+  llvm::CallInst *Call = CGF.Builder.CreateCall(Fn, {Addr.getPointer()});
+  return Address(Call, Addr.getElementType(), Addr.getAlignment());
+}
+
 /// Given an array base, check whether its member access belongs to a record
 /// with preserve_access_index attribute or not.
 static bool IsPreserveAIArrayBase(CodeGenFunction &CGF, const Expr *ArrayBase) {
@@ -3750,6 +3778,9 @@ static Address emitArraySubscriptGEP(CodeGenFunction &CGF, Address addr,
   CharUnits eltSize = CGF.getContext().getTypeSizeInChars(eltType);
   CharUnits eltAlign =
     getArrayElementAlign(addr.getAlignment(), indices.back(), eltSize);
+
+  if (Base && pointeeHasCtxBTFDeclTagAttr(Base))
+    addr = wrapWithBPFContextMarker(CGF, addr);
 
   llvm::Value *eltPtr;
   auto LastIndex = dyn_cast<llvm::ConstantInt>(indices.back());
@@ -4358,6 +4389,8 @@ LValue CodeGenFunction::EmitLValueForField(LValue base,
     Address Addr = base.getAddress(*this);
     unsigned Idx = RL.getLLVMFieldNo(field);
     const RecordDecl *rec = field->getParent();
+    if (hasCtxBTFDeclTagAttr(rec))
+      Addr = wrapWithBPFContextMarker(*this, Addr);
     if (!UseVolatile) {
       if (!IsInPreservedAIRegion &&
           (!getDebugInfo() || !rec->hasAttr<BPFPreserveAccessIndexAttr>())) {
@@ -4430,6 +4463,8 @@ LValue CodeGenFunction::EmitLValueForField(LValue base,
   }
 
   Address addr = base.getAddress(*this);
+  if (hasCtxBTFDeclTagAttr(rec))
+    addr = wrapWithBPFContextMarker(*this, addr);
   if (auto *ClassDef = dyn_cast<CXXRecordDecl>(rec)) {
     if (CGM.getCodeGenOpts().StrictVTablePointers &&
         ClassDef->isDynamicClass()) {

@@ -19,6 +19,7 @@ add_llvm_target(BPFCodeGen
   BPFAdjustOpt.cpp
   BPFAsmPrinter.cpp
   BPFCheckAndAdjustIR.cpp
+  BPFContextMarker.cpp
   BPFFrameLowering.cpp
   BPFInstrInfo.cpp
   BPFIRPeephole.cpp
