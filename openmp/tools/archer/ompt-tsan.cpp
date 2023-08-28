@@ -192,6 +192,8 @@ static int (*RunningOnValgrind)(void);
 /// Required OMPT inquiry functions.
 static ompt_get_parallel_info_t ompt_get_parallel_info;
 static ompt_get_thread_data_t ompt_get_thread_data;
+typedef int (*ompt_get_task_memory_t)(void **addr, size_t *size, int blocknum);
+static ompt_get_task_memory_t ompt_get_task_memory;
 
 typedef char ompt_tsan_clockid;
 
@@ -201,11 +203,11 @@ static uint64_t my_next_id() {
   return ret;
 }
 
+namespace {
 static int pagesize{0};
 
 // Data structure to provide a threadsafe pool of reusable objects.
 // DataPool<Type of objects>
-namespace {
 template <typename T> struct DataPool final {
   static __thread DataPool<T> *ThreadDataPool;
   std::mutex DPMutex{};
@@ -471,7 +473,7 @@ struct TaskData final : DataPoolEntry<TaskData> {
   /// Whether this task is an included task.
   int TaskType{0};
 
-  /// count execution phase
+  /// Count execution phase
   int execution{0};
 
   /// Count how often this structure has been put into child tasks + 1.
@@ -479,6 +481,10 @@ struct TaskData final : DataPoolEntry<TaskData> {
 
   /// Reference to the parent that created this task.
   TaskData *Parent{nullptr};
+
+  /// Store private data from start to end
+  size_t PrivateDataSize{0};
+  void *PrivateDataAddr{nullptr};
 
   /// Reference to the team of this task.
   ParallelData *Team{nullptr};
@@ -567,6 +573,8 @@ struct TaskData final : DataPoolEntry<TaskData> {
       free(Dependencies);
     Dependencies = nullptr;
     DependencyCount = 0;
+    PrivateDataSize = 0;
+    PrivateDataAddr = nullptr;
 #ifdef DEBUG
     freed = 0;
 #endif
@@ -960,6 +968,8 @@ static void switchTasks(TaskData *FromTask, TaskData *ToTask) {
 static void endTask(TaskData *FromTask) {
   if (!FromTask)
     return;
+  if (FromTask->PrivateDataSize > 0)
+    TsanNewMemory(FromTask->PrivateDataAddr, FromTask->PrivateDataSize);
 }
 
 static void startTask(TaskData *ToTask) {
@@ -968,6 +978,20 @@ static void startTask(TaskData *ToTask) {
   // Handle dependencies on first execution of the task
   if (ToTask->execution == 0) {
     ToTask->execution++;
+    if (ompt_get_task_memory) {
+      void *addr;
+      size_t size;
+      int ret_task_memory = 0, block = 0;
+      do {
+        size = 0;
+        ret_task_memory = ompt_get_task_memory(&addr, &size, block++);
+        if (size > 0) {
+          TsanNewMemory(addr, size);
+          ToTask->PrivateDataAddr = addr;
+          ToTask->PrivateDataSize = size;
+        }
+      } while (ret_task_memory);
+    }
     acquireDependencies(ToTask);
   }
   // 1. Task will begin execution after it has been created.
@@ -1162,6 +1186,7 @@ static int ompt_tsan_initialize(ompt_function_lookup_t lookup, int device_num,
   ompt_get_parallel_info =
       (ompt_get_parallel_info_t)lookup("ompt_get_parallel_info");
   ompt_get_thread_data = (ompt_get_thread_data_t)lookup("ompt_get_thread_data");
+  ompt_get_task_memory = (ompt_get_task_memory_t)lookup("ompt_get_task_memory");
 
   if (ompt_get_parallel_info == NULL) {
     fprintf(stderr, "Could not get inquiry function 'ompt_get_parallel_info', "
