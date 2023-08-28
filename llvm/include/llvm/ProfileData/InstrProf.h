@@ -532,6 +532,11 @@ public:
 
   /// Dump the symbols in this table.
   void dumpNames(raw_ostream &OS) const;
+
+  /// True if symbol table is empty.
+  bool isEmpty() {
+    return Data.empty() && NameTab.empty();
+  }
 };
 
 Error InstrProfSymtab::create(StringRef D, uint64_t BaseAddr) {

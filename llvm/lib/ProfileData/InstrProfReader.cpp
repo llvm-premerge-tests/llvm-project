@@ -574,8 +574,8 @@ Error RawInstrProfReader<IntPtrT>::readHeader(
   if (Correlator) {
     // These sizes in the raw file are zero because we constructed them in the
     // Correlator.
-    assert(DataSize == 0 && NamesSize == 0);
-    assert(CountersDelta == 0 && NamesDelta == 0);
+    assert(DataSize == 0 && (!isIRLevelProfile() || NamesSize == 0));
+    assert(CountersDelta == 0 && (!isIRLevelProfile() || NamesDelta == 0));
     Data = Correlator->getDataPointer();
     DataEnd = Data + Correlator->getDataSize();
     NamesStart = Correlator->getNamesPointer();
