@@ -1,0 +1,23 @@
+name: LLVM Code Coverage
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  code-coverage:
+    name: Generate Code Coverage Report
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout LLVM Repository
+        uses: actions/checkout@v2
+        with:
+          ref: main
+
+      - name: Run the patch-based code coverage tool
+        run: |
+          cp llvm/utils/git-check-coverage .
+          git check-coverage
+
