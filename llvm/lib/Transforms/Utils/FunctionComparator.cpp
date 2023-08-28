@@ -23,6 +23,7 @@
 #include "llvm/IR/Constant.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DataLayout.h"
+#include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/GlobalValue.h"
@@ -795,6 +796,28 @@ int FunctionComparator::cmpInlineAsm(const InlineAsm *L,
 /// that we will detect mismatches on next use.
 /// See comments in declaration for more details.
 int FunctionComparator::cmpValues(const Value *L, const Value *R) const {
+  // Distinct metadata is different and shouldn't be merged unless it's
+  // just debug info
+  auto *MDL = dyn_cast<MetadataAsValue>(L);
+  auto *MDR = dyn_cast<MetadataAsValue>(R);
+  if (MDL && MDR) {
+    const MDNode *MDNodeL = dyn_cast<MDNode>(MDL->getMetadata());
+    const MDNode *MDNodeR = dyn_cast<MDNode>(MDR->getMetadata());
+    if (MDNodeL && MDNodeR) {
+      if (MDNodeL->isDistinct() && MDNodeR->isDistinct()) {
+        if (isa<DINode>(MDNodeL) && isa<DINode>(MDNodeR))
+          return 0;
+        return -1;
+      }
+      if (MDNodeL->isDistinct()) {
+        return 1;
+      }
+      if (MDNodeR->isDistinct()) {
+        return -1;
+      }
+    }
+  }
+
   // Catch self-reference case.
   if (L == FnL) {
     if (R == FnR)
