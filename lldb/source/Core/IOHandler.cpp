@@ -508,6 +508,16 @@ uint32_t IOHandlerEditline::GetCurrentLineIndex() const {
   return m_curr_line_idx;
 }
 
+StringList IOHandlerEditline::GetCurrentLines() const {
+#if LLDB_ENABLE_LIBEDIT
+  if (m_editline_up)
+    return m_editline_up->GetInputAsStringList();
+#endif
+  if (m_current_lines_ptr)
+    return *m_current_lines_ptr;
+  return StringList();
+}
+
 bool IOHandlerEditline::GetLines(StringList &lines, bool &interrupted) {
   m_current_lines_ptr = &lines;
 
