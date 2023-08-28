@@ -311,3 +311,108 @@ subroutine common_2()
      end do
   !$omp end parallel do
 end subroutine
+
+
+module test
+
+!CHECK: fir.global @_QMtestEx : !fir.box<!fir.heap<i32>> {
+!CHECK: %[[val_0:.*]] = fir.zero_bits !fir.heap<i32>
+!CHECK: %[[val_1:.*]] = fir.embox %[[val_0]] : (!fir.heap<i32>) -> !fir.box<!fir.heap<i32>>
+!CHECK: fir.has_value %[[val_1]] : !fir.box<!fir.heap<i32>>
+!CHECK: }
+!CHECK: fir.global @_QMtestEy : i32 {
+!CHECK: %[[val_0]] = fir.zero_bits i32
+!CHECK: fir.has_value %[[val_0]] : i32
+!CHECK: }
+  integer, allocatable :: x
+  integer :: y
+  !$omp threadprivate (x)
+
+contains
+
+!CHECK: func.func @_QMtestPcommon_allocatable() {
+!CHECK: %[[val_0:.*]] = fir.address_of(@_QMtestEx) : !fir.ref<!fir.box<!fir.heap<i32>>>
+!CHECK: %[[val_1:.*]] = omp.threadprivate %[[val_0]] : !fir.ref<!fir.box<!fir.heap<i32>>> -> !fir.ref<!fir.box<!fir.heap<i32>>>
+!CHECK: %[[val_2:.*]] = fir.address_of(@_QMtestEy) : !fir.ref<i32>
+!CHECK: omp.parallel {
+!CHECK: %[[val_3:.*]] = omp.threadprivate %[[val_0]] : !fir.ref<!fir.box<!fir.heap<i32>>> -> !fir.ref<!fir.box<!fir.heap<i32>>>
+!CHECK: %[[val_4:.*]] = fir.load %[[val_1]] : !fir.ref<!fir.box<!fir.heap<i32>>>
+!CHECK: fir.store %[[val_4]] to %[[val_3]] : !fir.ref<!fir.box<!fir.heap<i32>>>
+!CHECK: omp.barrier
+!CHECK: omp.sections {
+!CHECK: omp.section {
+!CHECK: %[[val_5:.*]] = fir.load %[[val_3]] : !fir.ref<!fir.box<!fir.heap<i32>>>
+!CHECK: %[[val_6:.*]] = fir.box_addr %[[val_5]] : (!fir.box<!fir.heap<i32>>) -> !fir.heap<i32>
+!CHECK: %[[val_7:.*]] = fir.load %[[val_6]] : !fir.heap<i32>
+!CHECK: %[[val_c8:.*]] = arith.constant 8 : i32
+!CHECK: %[[val_8:.*]] = arith.addi %[[val_7]], %[[val_c8]] : i32
+!CHECK: fir.store %[[val_8]] to %[[val_2]] : !fir.ref<i32>
+!CHECK: omp.terminator
+!CHECK: }
+!CHECK: omp.terminator
+!CHECK: }
+!CHECK: omp.terminator
+!CHECK: }
+!CHECK: return
+!CHECK: }
+
+subroutine common_allocatable()
+
+  !$omp parallel sections copyin(x)
+    !$omp section
+       y = x + 8
+  !$omp end parallel sections
+end subroutine
+end
+
+module test_2
+
+!CHECK: fir.global @_QMtest_2Ex : !fir.box<!fir.ptr<i32>> {
+!CHECK: %[[val_0:.*]] = fir.zero_bits !fir.ptr<i32>
+!CHECK: %[[val_1:.*]] = fir.embox %[[val_0]] : (!fir.ptr<i32>) -> !fir.box<!fir.ptr<i32>>
+!CHECK: fir.has_value %[[val_1]] : !fir.box<!fir.ptr<i32>>
+!CHECK: }
+!CHECK: fir.global @_QMtest_2Ey : i32 {
+!CHECK: %[[val_0]] = fir.zero_bits i32
+!CHECK: fir.has_value %[[val_0]] : i32
+!CHECK: }
+  integer, pointer :: x
+  integer :: y
+  !$omp threadprivate (x)
+
+contains
+
+!CHECK: func.func @_QMtest_2Pcommon_pointer() {
+!CHECK: %[[val_0:.*]] = fir.address_of(@_QMtest_2Ex) : !fir.ref<!fir.box<!fir.ptr<i32>>>
+!CHECK: %[[val_1:.*]] = omp.threadprivate %[[val_0]] : !fir.ref<!fir.box<!fir.ptr<i32>>> -> !fir.ref<!fir.box<!fir.ptr<i32>>>
+!CHECK: %[[val_2:.*]] = fir.address_of(@_QMtest_2Ey) : !fir.ref<i32>
+!CHECK: omp.parallel {
+!CHECK: %[[val_3:.*]] = omp.threadprivate %[[val_0]] : !fir.ref<!fir.box<!fir.ptr<i32>>> -> !fir.ref<!fir.box<!fir.ptr<i32>>>
+!CHECK: %[[val_4:.*]] = fir.load %[[val_1]] : !fir.ref<!fir.box<!fir.ptr<i32>>>
+!CHECK: fir.store %[[val_4]] to %[[val_3]] : !fir.ref<!fir.box<!fir.ptr<i32>>>
+!CHECK: omp.barrier
+!CHECK: omp.sections {
+!CHECK: omp.section {
+!CHECK: %[[val_5:.*]] = fir.load %[[val_3]] : !fir.ref<!fir.box<!fir.ptr<i32>>>
+!CHECK: %[[val_6:.*]] = fir.box_addr %[[val_5]] : (!fir.box<!fir.ptr<i32>>) -> !fir.ptr<i32>
+!CHECK: %[[val_7:.*]] = fir.load %[[val_6]] : !fir.ptr<i32>
+!CHECK: %[[val_c8:.*]] = arith.constant 8 : i32
+!CHECK: %[[val_8:.*]] = arith.addi %[[val_7]], %[[val_c8]] : i32
+!CHECK: fir.store %[[val_8]] to %[[val_2]] : !fir.ref<i32>
+!CHECK: omp.terminator
+!CHECK: }
+!CHECK: omp.terminator
+!CHECK: }
+!CHECK: omp.terminator
+!CHECK: }
+!CHECK: return
+!CHECK: }
+
+subroutine common_pointer()
+
+  !$omp parallel sections copyin(x)
+    !$omp section
+       y = x + 8
+  !$omp end parallel sections
+end subroutine
+end

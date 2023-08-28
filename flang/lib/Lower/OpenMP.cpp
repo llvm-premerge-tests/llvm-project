@@ -1553,9 +1553,6 @@ bool ClauseProcessor::processCopyin() const {
               checkAndCopyHostAssociateVar(&*mem, &insPt);
             break;
           }
-          if (Fortran::semantics::IsAllocatableOrPointer(sym->GetUltimate()))
-            TODO(converter.getCurrentLocation(),
-                 "pointer or allocatable variables in Copyin clause");
           assert(sym->has<Fortran::semantics::HostAssocDetails>() &&
                  "No host-association found");
           checkAndCopyHostAssociateVar(sym);
