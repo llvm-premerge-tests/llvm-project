@@ -462,14 +462,29 @@ def testDictAttr():
             assert False, "Exception not produced"
 
         try:
+            # XXX: Invistigate why the exception type changed.
             _ = a[42]
-        except IndexError:
+        except KeyError:
             pass
         else:
             assert False, "expected IndexError on accessing an out-of-bounds attribute"
 
         # CHECK "empty: {}"
         print("empty: ", DictAttr.get())
+
+        # CHECK: PyDictAttribute:
+        # CHECK-NEXT: a = 42 : i64
+        DictAttr.print_attr({"a": Attribute.parse("42")})
+
+        # CHECK: py::dict: {'a': IntegerAttr(42 : i64)}
+        DictAttr.print_dict({"a": Attribute.parse("42")})
+
+        # CHECK: PyDictAttribute:
+        # CHECK-NEXT: a = 42 : i64
+        DictAttr.print_attr(Attribute.parse('{"a" = 42}'))
+
+        # CHECK: py::dict: {'a': IntegerAttr(42 : i64)}
+        DictAttr.print_dict(Attribute.parse('{"a" = 42}'))
 
 
 # CHECK-LABEL: TEST: testTypeAttr

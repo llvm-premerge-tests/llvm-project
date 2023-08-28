@@ -1004,6 +1004,21 @@ public:
     c.def("__contains__", &PyDictAttribute::dunderContains);
     c.def("__len__", &PyDictAttribute::dunderLen);
     c.def_static(
+        "print_dict", [](py::dict dict) { py::print("py::dict:", dict); },
+        py::arg("value"), "Prints the given dict for testing");
+    c.def_static(
+        "print_attr",
+        [](PyDictAttribute attr) {
+          py::print("PyDictAttribute:");
+          for (intptr_t i = 0; i < attr.dunderLen(); ++i) {
+            MlirNamedAttribute namedAttr =
+                mlirDictionaryAttrGetElement(attr, i);
+            StringRef key = unwrap(mlirIdentifierStr(namedAttr.name));
+            py::print(" ", key.str(), "=", namedAttr.attribute);
+          }
+        },
+        py::arg("value"), "Prints the given dict for testing");
+    c.def_static(
         "get",
         [](py::dict attributes, DefaultingPyMlirContext context) {
           SmallVector<MlirNamedAttribute> mlirNamedAttributes;
@@ -1230,6 +1245,79 @@ py::object symbolRefOrFlatSymbolRefAttributeCaster(PyAttribute &pyAttribute) {
 }
 
 } // namespace
+
+namespace pybind11 {
+namespace detail {
+// XXX: According to the documentation of pybind11, this cast must be "declared
+//      [...] consistently in every compilation unit of the Python extension
+//      module. Otherwise, undefined behavior can ensue." However, for this to
+//      work, we have to make the definition or at least a forward declaration
+//      of PyDictAttribute available publically, which requires a major code
+//      reorganization and which I'll only do once I see that these casters make
+//      sense and will be adopted.
+template <>
+struct type_caster<PyDictAttribute> {
+private:
+  std::unique_ptr<PyDictAttribute> value;
+
+public:
+  // The macro `PYBIND11_TYPE_CASTER` only works for default-constructible
+  // types, which exludes PyDictAttribute, so we copy in most of its defition
+  // but use an `std::unique_ptr`-based `value` instead.
+
+  static constexpr auto name = const_name("DictAttr");
+  operator PyDictAttribute *() { return &*value; }
+  operator PyDictAttribute &() { return *value; }
+  operator PyDictAttribute &&() && { return std::move(*value.release()); }
+  template <typename T_>
+  using cast_op_type = ::pybind11::detail::movable_cast_op_type<T_>;
+
+  /**
+   * Conversion part 1 (Python->C++): convert a PyObject into a PyDictAttribute
+   * instance or return false upon failure. The second argument indicates
+   * whether implicit conversions should be applied.
+   */
+  // XXX: Revisit and test handling failure cases.
+  bool load(handle src, bool) {
+    auto attributes = py::cast<py::dict>(src);
+    SmallVector<MlirNamedAttribute> mlirNamedAttributes;
+    mlirNamedAttributes.reserve(attributes.size());
+    for (auto &it : attributes) {
+      auto &mlirAttr = it.second.cast<PyAttribute &>();
+      auto name = it.first.cast<std::string>();
+      mlirNamedAttributes.push_back(mlirNamedAttributeGet(
+          mlirIdentifierGet(mlirAttributeGetContext(mlirAttr),
+                            toMlirStringRef(name)),
+          mlirAttr));
+    }
+    DefaultingPyMlirContext context = DefaultingPyMlirContext::resolve();
+    MlirAttribute attr = mlirDictionaryAttrGet(
+        context->get(), mlirNamedAttributes.size(), mlirNamedAttributes.data());
+    value = std::make_unique<PyDictAttribute>(context->getRef(), attr);
+    return true;
+  }
+
+  /**
+   * Conversion part 2 (C++ -> Python): convert an inty instance into
+   * a Python object. The second and third arguments are used to
+   * indicate the return value policy and parent object (for
+   * ``return_value_policy::reference_internal``) and are generally
+   * ignored by implicit casters.
+   */
+  static handle cast(PyDictAttribute src, return_value_policy /* policy */,
+                     handle /* parent */) {
+    // XXX: Make sure that ownership of src is handled correctly.
+    py::dict dict;
+    for (intptr_t i = 0; i < src.dunderLen(); ++i) {
+      MlirNamedAttribute namedAttr = mlirDictionaryAttrGetElement(src, i);
+      StringRef key = unwrap(mlirIdentifierStr(namedAttr.name));
+      dict[key.str().data()] = namedAttr.attribute;
+    }
+    return dict.release();
+  }
+};
+} // namespace detail
+} // namespace pybind11
 
 void mlir::python::populateIRAttributes(py::module &m) {
   PyAffineMapAttribute::bind(m);
