@@ -42,15 +42,10 @@ struct PoisonOpLowering : public ConvertOpToLLVMPattern<ub::PoisonOp> {
 LogicalResult
 PoisonOpLowering::matchAndRewrite(ub::PoisonOp op, OpAdaptor adaptor,
                                   ConversionPatternRewriter &rewriter) const {
-  Type origType = op.getType();
-  if (!origType.isIntOrIndexOrFloat())
-    return rewriter.notifyMatchFailure(
-        op, [&](Diagnostic &diag) { diag << "unsupported type " << origType; });
-
-  Type resType = getTypeConverter()->convertType(origType);
+  Type resType = getTypeConverter()->convertType(op.getType());
   if (!resType)
     return rewriter.notifyMatchFailure(op, [&](Diagnostic &diag) {
-      diag << "failed to convert result type " << origType;
+      diag << "failed to convert result type " << op.getType();
     });
 
   rewriter.replaceOpWithNewOp<LLVM::PoisonOp>(op, resType);
