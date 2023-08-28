@@ -211,6 +211,8 @@ void INTERFACE_ATTRIBUTE AnnotateFlushState(char *f, int l) {
 
 void INTERFACE_ATTRIBUTE AnnotateNewMemory(char *f, int l, uptr mem,
                                            uptr size) {
+  SCOPED_ANNOTATION(AnnotateNewMemory);
+  OnUserAlloc(thr, pc, mem, size, false);
 }
 
 void INTERFACE_ATTRIBUTE AnnotateNoOp(char *f, int l, uptr mem) {
