@@ -111,6 +111,12 @@ Improvements and New Features
   enabled on a per translation unit basis using the ``-D_LIBCPP_ENABLE_HARDENED_MODE=1`` macro. See
   ``libcxx/docs/Hardening.rst`` for more details.
 
+- The safe mode is now a part of hardening modes. Vendors can configure whether the safe mode is enabled by default
+  with the ``LIBCXX_HARDENING_MODE`` variable at CMake configuration time. Users can control whether the safe mode
+  is enabled on a per translation unit basis using the ``-D_LIBCPP_ENABLE_SAFE_MODE=1`` macro. The
+  ``_LIBCPP_ENABLE_ASSERTIONS`` macro that was previously used to enable the safe mode is now deprecated. See
+  ``libcxx/docs/Hardening.rst`` for more details.
+
 - The library now provides a debug mode which is a superset of the hardened mode, additionally enabling more expensive
   checks that are not suitable to be used in production. This replaces the legacy debug mode that was removed in this
   release. Unlike the legacy debug mode, this doesn't affect the ABI and doesn't require locking. Vendors can configure
