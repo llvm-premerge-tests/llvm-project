@@ -165,6 +165,16 @@ New checks
   Detects C++ code where a reference variable is used to extend the lifetime
   of a temporary object that has just been constructed.
 
+- New :doc:`modernize-use-std-format
+  <clang-tidy/checks/modernize/use-std-format>` check.
+
+  Converts calls to ``absl::StrFormat``, or other functions via
+  configuration options, to C++20's ``std::format``, or another function
+  via a configuration option, modifying the format string appropriately and
+  removing now-unnecessary calls to ``std::string::c_str()`` and
+  ``std::string::data()``.
+
+
 New check aliases
 ^^^^^^^^^^^^^^^^^
 
