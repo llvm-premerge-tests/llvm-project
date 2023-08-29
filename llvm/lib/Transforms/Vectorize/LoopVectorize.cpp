@@ -5724,8 +5724,11 @@ void LoopVectorizationCostModel::collectElementTypesForWidening() {
       }
 
       // Examine the stored values.
-      if (auto *ST = dyn_cast<StoreInst>(&I))
+      if (auto *ST = dyn_cast<StoreInst>(&I)) {
         T = ST->getValueOperand()->getType();
+         if (auto *CastTrunc = dyn_cast<TruncInst>(ST->getOperand(0)))
+          T = CastTrunc->getSrcTy();
+      }
 
       assert(T->isSized() &&
              "Expected the load/store/recurrence type to be sized");
