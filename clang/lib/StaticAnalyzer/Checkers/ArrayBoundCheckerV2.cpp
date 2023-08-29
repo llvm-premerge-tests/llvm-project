@@ -193,6 +193,11 @@ void ArrayBoundCheckerV2::checkLocation(SVal location, bool isLoad,
       reportOOB(checkerContext, state_precedesLowerBound, OOB_Precedes);
       return;
     }
+    if (state_precedesLowerBound && state_withinLowerBound &&
+        isTainted(state, location)) {
+      reportTaintOOB(checkerContext, state_precedesLowerBound, location);
+      return;
+    }
 
     if (state_withinLowerBound)
       state = state_withinLowerBound;
@@ -204,17 +209,16 @@ void ArrayBoundCheckerV2::checkLocation(SVal location, bool isLoad,
     auto [state_withinUpperBound, state_exceedsUpperBound] =
         compareValueToThreshold(state, ByteOffset, *KnownSize, svalBuilder);
 
-    if (state_exceedsUpperBound) {
-      if (!state_withinUpperBound) {
-        // We know that the index definitely exceeds the upper bound.
-        reportOOB(checkerContext, state_exceedsUpperBound, OOB_Excedes);
-        return;
-      }
-      if (isTainted(state, ByteOffset)) {
-        // Both cases are possible, but the index is tainted, so report.
-        reportTaintOOB(checkerContext, state_exceedsUpperBound, ByteOffset);
-        return;
-      }
+    if (state_exceedsUpperBound && !state_withinUpperBound) {
+      // We know that the index definitely exceeds the upper bound.
+      reportOOB(checkerContext, state_exceedsUpperBound, OOB_Excedes);
+      return;
+    }
+
+    if (state_withinUpperBound && state_exceedsUpperBound &&
+        isTainted(state, location)) {
+      reportTaintOOB(checkerContext, state_exceedsUpperBound, location);
+      return;
     }
 
     if (state_withinUpperBound)
