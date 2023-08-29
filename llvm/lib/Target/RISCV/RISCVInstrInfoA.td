@@ -311,6 +311,28 @@ multiclass PseudoCmpXchgPat<string Op, Pseudo CmpXchgInst,
             (CmpXchgInst GPR:$addr, GPR:$cmp, GPR:$new, 7)>;
 }
 
+let Predicates = [HasStdExtZacas] in {
+class PseudoAMOCAS<RegisterClass RC = GPR>
+    : Pseudo<(outs RC:$res),
+             (ins GPR:$addr, RC:$cmpval, RC:$newval, ixlenimm:$ordering), []> {
+  let Constraints = "@earlyclobber $res, $res = $cmpval";
+  let mayLoad = 1;
+  let mayStore = 1;
+  let hasSideEffects = 0;
+}
+def PseudoAMOCAS_W: PseudoAMOCAS;
+defm : PseudoCmpXchgPat<"atomic_cmp_swap_32", PseudoAMOCAS_W>;
+
+let Predicates = [HasStdExtZacas, IsRV32] in {
+  def PseudoAMOCAS_D_32: PseudoAMOCAS<GPRPI64>;
+}
+let Predicates = [HasStdExtZacas, IsRV64] in {
+  def PseudoAMOCAS_D_64: PseudoAMOCAS;
+  defm : PseudoCmpXchgPat<"atomic_cmp_swap_64", PseudoAMOCAS_D_64>;
+  def PseudoAMOCAS_Q: PseudoAMOCAS<GPRPI128>;
+}
+}
+
 def PseudoCmpXchg32 : PseudoCmpXchg;
 defm : PseudoCmpXchgPat<"atomic_cmp_swap_32", PseudoCmpXchg32>;
 
