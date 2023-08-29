@@ -59,6 +59,7 @@ __all__ = [
     "FloatTF32Type",
     "F32Type",
     "F64Type",
+    "F128Type",
     "FlatSymbolRefAttr",
     "FloatAttr",
     "FunctionType",
@@ -653,6 +654,14 @@ class F64Type(Type):
     def isinstance(arg: Any) -> bool: ...
 
 # TODO: Auto-generated. Audit and fix.
+class F128Type(Type):
+    def __init__(self, cast_from_type: Type) -> None: ...
+    @staticmethod
+    def get(*args, **kwargs) -> F128Type: ...
+    @staticmethod
+    def isinstance(arg: Any) -> bool: ...
+
+# TODO: Auto-generated. Audit and fix.
 class FlatSymbolRefAttr(Attribute):
     def __init__(self, cast_from_attr: Attribute) -> None: ...
     @staticmethod
@@ -673,6 +682,8 @@ class FloatAttr(Attribute):
     def get_f32(*args, **kwargs) -> FloatAttr: ...
     @staticmethod
     def get_f64(*args, **kwargs) -> FloatAttr: ...
+    @staticmethod
+    def get_f128(*args, **kwargs) -> FloatAttr: ...
     @staticmethod
     def isinstance(arg: Any) -> bool: ...
     @property
