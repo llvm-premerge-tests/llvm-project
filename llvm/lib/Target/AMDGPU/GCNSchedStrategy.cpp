@@ -839,6 +839,7 @@ bool GCNSchedStage::initGCNRegion() {
 
   S.HasHighPressure = false;
   S.KnownExcessRP = isRegionWithExcessRP();
+  S.clearMetric();
 
   if (DAG.RegionsWithIGLPInstrs[RegionIdx] &&
       StageID != GCNSchedStageID::UnclusteredHighRPReschedule) {
@@ -970,9 +971,10 @@ void GCNSchedStage::checkScheduling() {
     DAG.RegionsWithExcessRP[RegionIdx] = true;
   }
 
-  // Revert if this region's schedule would cause a drop in occupancy or
-  // spilling.
-  if (shouldRevertScheduling(WavesAfter)) {
+  bool IsWorse = S.computeScheduleMetric(RegionIdx, WavesAfter, WavesBefore);
+  if (IsWorse &&
+      !(DAG.RegionsWithExcessRP[RegionIdx] &&
+        S.getCurrentStage() == GCNSchedStageID::UnclusteredHighRPReschedule)) {
     revertScheduling();
   } else {
     DAG.Pressure[RegionIdx] = PressureAfter;
@@ -996,103 +998,6 @@ GCNSchedStage::computeSUnitReadyCycle(const SUnit &SU, unsigned CurrCycle,
   }
   ReadyCycles[SU.NodeNum] = ReadyCycle;
   return ReadyCycle;
-}
-
-#ifndef NDEBUG
-struct EarlierIssuingCycle {
-  bool operator()(std::pair<MachineInstr *, unsigned> A,
-                  std::pair<MachineInstr *, unsigned> B) const {
-    return A.second < B.second;
-  }
-};
-
-static void printScheduleModel(std::set<std::pair<MachineInstr *, unsigned>,
-                                        EarlierIssuingCycle> &ReadyCycles) {
-  if (ReadyCycles.empty())
-    return;
-  unsigned BBNum = ReadyCycles.begin()->first->getParent()->getNumber();
-  dbgs() << "\n################## Schedule time ReadyCycles for MBB : " << BBNum
-         << " ##################\n# Cycle #\t\t\tInstruction          "
-            "             "
-            "                            \n";
-  unsigned IPrev = 1;
-  for (auto &I : ReadyCycles) {
-    if (I.second > IPrev + 1)
-      dbgs() << "****************************** BUBBLE OF " << I.second - IPrev
-             << " CYCLES DETECTED ******************************\n\n";
-    dbgs() << "[ " << I.second << " ]  :  " << *I.first << "\n";
-    IPrev = I.second;
-  }
-}
-#endif
-
-ScheduleMetrics
-GCNSchedStage::getScheduleMetrics(const std::vector<SUnit> &InputSchedule) {
-#ifndef NDEBUG
-  std::set<std::pair<MachineInstr *, unsigned>, EarlierIssuingCycle>
-      ReadyCyclesSorted;
-#endif
-  const TargetSchedModel &SM = ST.getInstrInfo()->getSchedModel();
-  unsigned SumBubbles = 0;
-  DenseMap<unsigned, unsigned> ReadyCycles;
-  unsigned CurrCycle = 0;
-  for (auto &SU : InputSchedule) {
-    unsigned ReadyCycle =
-        computeSUnitReadyCycle(SU, CurrCycle, ReadyCycles, SM);
-    SumBubbles += ReadyCycle - CurrCycle;
-#ifndef NDEBUG
-    ReadyCyclesSorted.insert(std::make_pair(SU.getInstr(), ReadyCycle));
-#endif
-    CurrCycle = ++ReadyCycle;
-  }
-#ifndef NDEBUG
-  LLVM_DEBUG(
-      printScheduleModel(ReadyCyclesSorted);
-      dbgs() << "\n\t"
-             << "Metric: "
-             << (SumBubbles
-                     ? (SumBubbles * ScheduleMetrics::ScaleFactor) / CurrCycle
-                     : 1)
-             << "\n\n");
-#endif
-
-  return ScheduleMetrics(CurrCycle, SumBubbles);
-}
-
-ScheduleMetrics
-GCNSchedStage::getScheduleMetrics(const GCNScheduleDAGMILive &DAG) {
-#ifndef NDEBUG
-  std::set<std::pair<MachineInstr *, unsigned>, EarlierIssuingCycle>
-      ReadyCyclesSorted;
-#endif
-  const TargetSchedModel &SM = ST.getInstrInfo()->getSchedModel();
-  unsigned SumBubbles = 0;
-  DenseMap<unsigned, unsigned> ReadyCycles;
-  unsigned CurrCycle = 0;
-  for (auto &MI : DAG) {
-    SUnit *SU = DAG.getSUnit(&MI);
-    if (!SU)
-      continue;
-    unsigned ReadyCycle =
-        computeSUnitReadyCycle(*SU, CurrCycle, ReadyCycles, SM);
-    SumBubbles += ReadyCycle - CurrCycle;
-#ifndef NDEBUG
-    ReadyCyclesSorted.insert(std::make_pair(SU->getInstr(), ReadyCycle));
-#endif
-    CurrCycle = ++ReadyCycle;
-  }
-#ifndef NDEBUG
-  LLVM_DEBUG(
-      printScheduleModel(ReadyCyclesSorted);
-      dbgs() << "\n\t"
-             << "Metric: "
-             << (SumBubbles
-                     ? (SumBubbles * ScheduleMetrics::ScaleFactor) / CurrCycle
-                     : 1)
-             << "\n\n");
-#endif
-
-  return ScheduleMetrics(CurrCycle, SumBubbles);
 }
 
 bool GCNSchedStage::shouldRevertScheduling(unsigned WavesAfter) {
@@ -1125,32 +1030,7 @@ bool UnclusteredHighRPStage::shouldRevertScheduling(unsigned WavesAfter) {
     return true;
   }
 
-  // Do not attempt to relax schedule even more if we are already spilling.
-  if (isRegionWithExcessRP())
-    return false;
-
-  LLVM_DEBUG(
-      dbgs()
-      << "\n\t      *** In shouldRevertScheduling ***\n"
-      << "      *********** BEFORE UnclusteredHighRPStage ***********\n");
-  ScheduleMetrics MBefore =
-      getScheduleMetrics(DAG.SUnits);
-  LLVM_DEBUG(
-      dbgs()
-      << "\n      *********** AFTER UnclusteredHighRPStage ***********\n");
-  ScheduleMetrics MAfter = getScheduleMetrics(DAG);
-  unsigned OldMetric = MBefore.getMetric();
-  unsigned NewMetric = MAfter.getMetric();
-  unsigned WavesBefore =
-      std::min(S.getTargetOccupancy(), PressureBefore.getOccupancy(ST));
-  unsigned Profit =
-      ((WavesAfter * ScheduleMetrics::ScaleFactor) / WavesBefore *
-       ((OldMetric + ScheduleMetricBias) * ScheduleMetrics::ScaleFactor) /
-       NewMetric) /
-      ScheduleMetrics::ScaleFactor;
-  LLVM_DEBUG(dbgs() << "\tMetric before " << MBefore << "\tMetric after "
-                    << MAfter << "Profit: " << Profit << "\n");
-  return Profit < ScheduleMetrics::ScaleFactor;
+  return false;
 }
 
 bool ClusteredLowOccStage::shouldRevertScheduling(unsigned WavesAfter) {
@@ -1569,4 +1449,53 @@ void GCNPostScheduleDAGMILive::finalizeSchedule() {
     SavedMutations.swap(Mutations);
 
   ScheduleDAGMI::finalizeSchedule();
+}
+
+unsigned GCNBalancedSchedStrategy::computeSUnitReadyCycle(const SUnit &SU) {
+  unsigned ReadyCycle = CurrCycle;
+  for (auto &D : SU.Preds) {
+    if (D.isAssignedRegDep()) {
+      MachineInstr *DefMI = D.getSUnit()->getInstr();
+      unsigned Latency = SM->computeInstrLatency(DefMI);
+      unsigned DefReady = ReadyCycles[DAG->getSUnit(DefMI)->NodeNum];
+      ReadyCycle = std::max(ReadyCycle, DefReady + Latency);
+    }
+  }
+  ReadyCycles[SU.NodeNum] = ReadyCycle;
+  return ReadyCycle;
+}
+
+bool llvm::GCNBalancedSchedStrategy::computeScheduleMetric(
+    unsigned RegionIdx, unsigned WavesAfter, unsigned WavesBefore) {
+  bool Result = false;
+  unsigned PrevMetric = 0;
+  if (Metrics.count(RegionIdx)) {
+    PrevMetric = Metrics[RegionIdx].back();
+  }
+  for (auto &MI : *DAG) {
+    SUnit *SU = DAG->getSUnit(&MI);
+    if (!SU)
+      continue;
+    unsigned ReadyCycle = computeSUnitReadyCycle(*SU);
+    StallTotal += ReadyCycle - CurrCycle;
+#ifndef NDEBUG
+    PrintableSchedule.insert(std::make_pair(SU->getInstr(), ReadyCycle));
+#endif
+    CurrCycle = ++ReadyCycle;
+  }
+  unsigned Metric = StallTotal ? StallTotal * ScaleFactor / CurrCycle : 1;
+#ifndef NDEBUG
+  LLVM_DEBUG(printSchedule());
+#endif
+  if (PrevMetric) {
+    unsigned Profit =
+        ((WavesAfter * ScaleFactor) / WavesBefore *
+         ((PrevMetric + ScheduleMetricBias) * ScaleFactor) / Metric) /
+        ScaleFactor;
+    Result = Profit < ScaleFactor;
+  }
+  if (!Result)
+    Metrics[RegionIdx].push_back(Metric);
+  clearMetric();
+  return Result;
 }
