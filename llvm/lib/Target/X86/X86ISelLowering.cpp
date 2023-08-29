@@ -2253,6 +2253,7 @@ X86TargetLowering::X86TargetLowering(const X86TargetMachine &TM,
       setOperationAction(ISD::BUILD_VECTOR, VT, Custom);
       setOperationAction(ISD::VECTOR_SHUFFLE, VT, Custom);
     }
+    setOperationAction(ISD::FP_ROUND, MVT::v8bf16, Custom);
     addLegalFPImmediate(APFloat::getZero(APFloat::BFloat()));
   }
 
@@ -2264,6 +2265,7 @@ X86TargetLowering::X86TargetLowering(const X86TargetMachine &TM,
     setOperationAction(ISD::FMUL, MVT::v32bf16, Expand);
     setOperationAction(ISD::FDIV, MVT::v32bf16, Expand);
     setOperationAction(ISD::BUILD_VECTOR, MVT::v32bf16, Custom);
+    setOperationAction(ISD::FP_ROUND, MVT::v16bf16, Custom);
     setOperationAction(ISD::VECTOR_SHUFFLE, MVT::v32bf16, Custom);
   }
 
@@ -21276,6 +21278,12 @@ SDValue X86TargetLowering::LowerFP_ROUND(SDValue Op, SelectionDAG &DAG) const {
       Res = DAG.getMergeValues({Res, Chain}, DL);
 
     return Res;
+  }
+
+  if (VT.getScalarType() == MVT::bf16) {
+    if (SVT.getScalarType() == MVT::f32 && isTypeLegal(VT))
+      return Op;
+    return SDValue();
   }
 
   if (VT.getScalarType() == MVT::f16 && !Subtarget.hasFP16()) {
