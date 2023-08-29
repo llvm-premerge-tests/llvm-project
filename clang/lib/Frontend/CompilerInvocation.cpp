@@ -4049,9 +4049,19 @@ bool CompilerInvocation::ParseLangArgs(LangOptions &Opts, ArgList &Args,
 
   // Validate options for HLSL
   if (Opts.HLSL) {
-    bool SupportedTarget = T.getArch() == llvm::Triple::dxil &&
-                           T.getOS() == llvm::Triple::ShaderModel;
-    if (!SupportedTarget)
+    if (T.isDXIL()) {
+      if (T.getOSName().empty()) {
+        Diags.Report(diag::err_drv_dxil_missing_shader_model) << T.str();
+      } else if (!T.isShaderModelOS() || T.getOSVersion() == VersionTuple(0)) {
+        Diags.Report(diag::err_drv_dxil_unsupported_shader_model)
+            << T.getOSName() << T.str();
+      } else if (T.getEnvironmentName().empty()) {
+        Diags.Report(diag::err_drv_dxil_missing_shader_stage) << T.str();
+      } else if (!T.isShaderStageEnvironment()) {
+        Diags.Report(diag::err_drv_dxil_unsupported_shader_stage)
+            << T.getEnvironmentName() << T.str();
+      }
+    } else
       Diags.Report(diag::err_drv_hlsl_unsupported_target) << T.str();
   }
 
