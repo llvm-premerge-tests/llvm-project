@@ -981,6 +981,19 @@ static void LoadLibCxxFormatters(lldb::TypeCategoryImplSP cpp_category_sp) {
                   "std::unordered_map iterator synthetic children",
                   "^std::__[[:alnum:]]+::__hash_map_(const_)?iterator<.+>$",
                   stl_synth_flags, true);
+  // Chrono duration typedefs
+  cpp_category_sp->AddTypeSummary(
+      "^std::__[[:alnum:]]+::chrono::"
+      "(((nano)|(micro)|(milli)|())seconds)|"
+      "(minutes)|"
+      "(hours)|"
+      "(days)|"
+      "(weeks)|"
+      "(months)|"
+      "(years)",
+      eFormatterMatchRegex,
+      TypeSummaryImplSP(new StringSummaryFormat(
+          eTypeOptionHideChildren | eTypeOptionHideValue, "${var.__rep_}")));
 }
 
 static void LoadLibStdcppFormatters(lldb::TypeCategoryImplSP cpp_category_sp) {
