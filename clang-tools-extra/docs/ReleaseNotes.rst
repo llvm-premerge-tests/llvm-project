@@ -153,6 +153,15 @@ New checks
 
   Replace ``enable_if`` with C++20 requires clauses.
 
+- New :doc:`modernize-use-std-format
+  <clang-tidy/checks/modernize/use-std-format>` check.
+
+  Converts calls to ``absl::StrFormat``, or other functions via
+  configuration options, to C++20's ``std::format``, or another function
+  via a configuration option, modifying the format string appropriately and
+  removing now-unnecessary calls to ``std::string::c_str()`` and
+  ``std::string::data()``.
+
 - New :doc:`performance-enum-size
   <clang-tidy/checks/performance/enum-size>` check.
 
