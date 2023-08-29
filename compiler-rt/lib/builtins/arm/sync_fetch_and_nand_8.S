@@ -13,7 +13,7 @@
 
 #include "sync-ops.h"
 
-#if __ARM_ARCH_PROFILE != 'M'
+#if __ARM_FEATURE_LDREX & 0x8
 #define nand_8(rD_LO, rD_HI, rN_LO, rN_HI, rM_LO, rM_HI) \
     bic rD_LO, rN_LO, rM_LO ; \
     bic rD_HI, rN_HI, rM_HI

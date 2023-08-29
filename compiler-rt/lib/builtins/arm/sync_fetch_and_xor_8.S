@@ -13,7 +13,7 @@
 
 #include "sync-ops.h"
 
-#if __ARM_ARCH_PROFILE != 'M'
+#if __ARM_FEATURE_LDREX & 0x8
 #define xor_8(rD_LO, rD_HI, rN_LO, rN_HI, rM_LO, rM_HI) \
     eor rD_LO, rN_LO, rM_LO ; \
     eor rD_HI, rN_HI, rM_HI
