@@ -30,7 +30,9 @@ using namespace ento;
 using namespace taint;
 
 namespace {
-class ArrayBoundCheckerV2 : public Checker<check::Location, check::Bind> {
+class ArrayBoundCheckerV2
+    : public Checker<check::Bind, check::PostStmt<ArraySubscriptExpr>,
+                     check::PostStmt<UnaryOperator>> {
   mutable std::unique_ptr<BugType> BT;
   mutable std::unique_ptr<BugType> TaintBT;
 
@@ -46,9 +48,9 @@ class ArrayBoundCheckerV2 : public Checker<check::Location, check::Bind> {
   void impl(SVal Loc, bool isLoad, const Stmt *S, CheckerContext &C) const;
 
 public:
-  void checkLocation(SVal l, bool isLoad, const Stmt *S,
-                     CheckerContext &C) const;
   void checkBind(SVal Loc, SVal, const Stmt *S, CheckerContext &) const;
+  void checkPostStmt(const ArraySubscriptExpr *E, CheckerContext &C) const;
+  void checkPostStmt(const UnaryOperator *E, CheckerContext &C) const;
 };
 
 // FIXME: Eventually replace RegionRawOffset with this class.
@@ -140,13 +142,6 @@ compareValueToThreshold(ProgramStateRef State, NonLoc Value, NonLoc Threshold,
     return State->assume(*BelowThreshold);
 
   return {nullptr, nullptr};
-}
-
-void ArrayBoundCheckerV2::checkLocation(SVal location, bool isLoad,
-                                        const Stmt* LoadS,
-                                        CheckerContext &checkerContext) const {
-  if (isLoad)
-    impl(location, isLoad, LoadS, checkerContext);
 }
 
 void ArrayBoundCheckerV2::checkBind(SVal Loc, SVal, const Stmt *S,
@@ -373,6 +368,21 @@ RegionRawOffsetV2::computeOffset(ProgramStateRef State, SValBuilder &SVB,
     return std::nullopt;
   }
   return std::nullopt;
+}
+
+void ArrayBoundCheckerV2::checkPostStmt(const ArraySubscriptExpr *E,
+                                        CheckerContext &C) const {
+  // TODO: Specialize the diagnostic message.
+  // It might not be a "load" operation.
+  impl(C.getSVal(E), /*isLoad=*/true, E, C);
+}
+void ArrayBoundCheckerV2::checkPostStmt(const UnaryOperator *E,
+                                        CheckerContext &C) const {
+  if (E->getOpcode() != UO_Deref)
+    return;
+  // TODO: Specialize the diagnostic message.
+  // It might not be a "load" operation.
+  impl(C.getSVal(E), /*isLoad=*/true, E, C);
 }
 
 void ento::registerArrayBoundCheckerV2(CheckerManager &mgr) {

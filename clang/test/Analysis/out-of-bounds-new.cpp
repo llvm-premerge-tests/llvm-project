@@ -176,3 +176,63 @@ void test_trivial_copy_move_is_checked_by_the_checker() {
       break;
   }
 }
+
+void test_memberwise_copy() {
+  ManyInts dst[1];
+  ManyInts src[2] = {5};
+
+  dst[0] = src[0]; // ok
+  dst[0].a = src[0].a; // ok
+
+  // Positive indexing:
+  switch (rng()) {
+    default: break;
+    case 0: {
+      auto &z = dst[1]; // expected-warning {{Out of bound memory access (access exceeds upper limit of memory block)}}
+      break;
+    }
+    case 1: {
+      dst[1].a = src[1].a; // expected-warning {{Out of bound memory access (access exceeds upper limit of memory block)}}
+      break;
+    }
+    case 2: {
+      auto &z = *(dst + 1); // expected-warning {{Out of bound memory access (access exceeds upper limit of memory block)}}
+      break;
+    }
+    case 3: {
+      auto &z = *dst;
+      auto &zz = 1[&z]; // expected-warning {{Out of bound memory access (access exceeds upper limit of memory block)}}
+      break;
+    }
+    case 4: {
+      dst[1] = src[1]; // expected-warning {{Out of bound memory access (access exceeds upper limit of memory block)}}
+      break;
+    }
+  }
+
+  // Negative indexing:
+  switch (rng()) {
+    default: break;
+    case 0: {
+      auto &z = dst[-1]; // expected-warning {{Out of bound memory access (accessed memory precedes memory block)}}
+      break;
+    }
+    case 1: {
+      dst[-1].a = src[1].a; // expected-warning {{Out of bound memory access (accessed memory precedes memory block)}}
+      break;
+    }
+    case 2: {
+      auto &z = *(dst - 1); // expected-warning {{Out of bound memory access (accessed memory precedes memory block)}}
+      break;
+    }
+    case 3: {
+      auto &z = *dst;
+      auto &zz = (-1)[&z]; // expected-warning {{Out of bound memory access (accessed memory precedes memory block)}}
+      break;
+    }
+    case 4: {
+      dst[-1] = src[1]; // expected-warning {{Out of bound memory access (accessed memory precedes memory block)}}
+      break;
+    }
+  }
+}
