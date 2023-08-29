@@ -66,12 +66,11 @@
 #include <stdio.h>
 #include <string.h>
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
   for (int I = 0; I < 10; I++) {
     if (I != 9)
       continue;
-    if (argc > 1 &&
-        strncmp(argv[1], "--help", strlen("--help")) == 0) {
+    if (argc > 1 && strncmp(argv[1], "--help", strlen("--help")) == 0) {
       puts("Help message\n");
     } else {
       puts("Hello, World!\n");
