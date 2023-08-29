@@ -98,4 +98,107 @@ TEST(CodeCompletionTest, CompFunDeclsNoError) {
   EXPECT_EQ((bool)Err, false);
 }
 
+TEST(CodeCompletionTest, TypedDirected) {
+  auto Interp = createInterpreter();
+  if (auto R = Interp->ParseAndExecute("int application = 12;")) {
+    consumeError(std::move(R));
+    return;
+  }
+  if (auto R = Interp->ParseAndExecute("char apple = '2';")) {
+    consumeError(std::move(R));
+    return;
+  }
+  if (auto R = Interp->ParseAndExecute("void add(int &SomeInt){}")) {
+    consumeError(std::move(R));
+    return;
+  }
+  {
+    auto Err = llvm::Error::success();
+    auto comps = runComp(*Interp, std::string("add("), Err);
+    EXPECT_EQ((size_t)1, comps.size());
+  }
+
+  if (auto R = Interp->ParseAndExecute("int banana = 42;")) {
+    consumeError(std::move(R));
+    return;
+  }
+
+  {
+    auto Err = llvm::Error::success();
+    auto comps = runComp(*Interp, std::string("add("), Err);
+    EXPECT_EQ((size_t)2, comps.size());
+    EXPECT_EQ(comps[0], "application");
+    EXPECT_EQ(comps[1], "banana");
+  }
+
+  {
+    auto Err = llvm::Error::success();
+    auto comps = runComp(*Interp, std::string("add(b"), Err);
+    EXPECT_EQ((size_t)1, comps.size());
+    EXPECT_EQ(comps[0], "anana");
+  }
+}
+
+TEST(CodeCompletionTest, SanityClasses) {
+  auto Interp = createInterpreter();
+  if (auto R = Interp->ParseAndExecute("struct Apple{};")) {
+    consumeError(std::move(R));
+    return;
+  }
+  if (auto R = Interp->ParseAndExecute("void takeApple(Apple &a1){}")) {
+    consumeError(std::move(R));
+    return;
+  }
+  if (auto R = Interp->ParseAndExecute("Apple a1;")) {
+    consumeError(std::move(R));
+    return;
+  }
+  if (auto R = Interp->ParseAndExecute("void takeAppleCopy(Apple a1){}")) {
+    consumeError(std::move(R));
+    return;
+  }
+
+  {
+    auto Err = llvm::Error::success();
+    auto comps = runComp(*Interp, "takeApple(", Err);
+    EXPECT_EQ((size_t)1, comps.size());
+    EXPECT_EQ(comps[0], std::string("a1"));
+  }
+  {
+    auto Err = llvm::Error::success();
+    auto comps = runComp(*Interp, std::string("takeAppleCopy("), Err);
+    EXPECT_EQ((size_t)1, comps.size());
+    EXPECT_EQ(comps[0], std::string("a1"));
+  }
+}
+
+TEST(CodeCompletionTest, SubClassing) {
+  auto Interp = createInterpreter();
+  if (auto R = Interp->ParseAndExecute("struct Fruit {};")) {
+    consumeError(std::move(R));
+    return;
+  }
+  if (auto R = Interp->ParseAndExecute("struct Apple : Fruit{};")) {
+    consumeError(std::move(R));
+    return;
+  }
+  if (auto R = Interp->ParseAndExecute("void takeFruit(Fruit &f){}")) {
+    consumeError(std::move(R));
+    return;
+  }
+  if (auto R = Interp->ParseAndExecute("Apple a1;")) {
+    consumeError(std::move(R));
+    return;
+  }
+  if (auto R = Interp->ParseAndExecute("Fruit f1;")) {
+    consumeError(std::move(R));
+    return;
+  }
+  auto Err = llvm::Error::success();
+  auto comps = runComp(*Interp, std::string("takeFruit("), Err);
+  EXPECT_EQ((size_t)2, comps.size());
+  EXPECT_EQ(comps[0], std::string("a1"));
+  EXPECT_EQ(comps[1], std::string("f1"));
+}
+
 } // anonymous namespace

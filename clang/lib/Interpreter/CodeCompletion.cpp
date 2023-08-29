@@ -37,12 +37,23 @@ clang::CodeCompleteOptions getClangCompleteOpts() {
   return Opts;
 }
 
+class CodeCompletionSubContext {
+public:
+  virtual ~CodeCompletionSubContext(){};
+  virtual void
+  HandleCodeCompleteResults(class Sema &S, CodeCompletionResult *InResults,
+                            unsigned NumResults,
+                            std::vector<std::string> &Results) = 0;
+};
+
 class ReplCompletionConsumer : public CodeCompleteConsumer {
 public:
-  ReplCompletionConsumer(std::vector<std::string> &Results)
+  ReplCompletionConsumer(std::vector<std::string> &Results,
+                         std::unique_ptr<CodeCompletionSubContext> SubCtxt)
       : CodeCompleteConsumer(getClangCompleteOpts()),
         CCAllocator(std::make_shared<GlobalCodeCompletionAllocator>()),
-        CCTUInfo(CCAllocator), Results(Results){};
+        CCTUInfo(CCAllocator), Results(Results), SubCtxt(std::move(SubCtxt)) {
+ }
 
   void ProcessCodeCompleteResults(class Sema &S, CodeCompletionContext Context,
                                   CodeCompletionResult *InResults,
@@ -56,26 +67,13 @@ private:
   std::shared_ptr<GlobalCodeCompletionAllocator> CCAllocator;
   CodeCompletionTUInfo CCTUInfo;
   std::vector<std::string> &Results;
+  std::unique_ptr<CodeCompletionSubContext> SubCtxt;
 };
 
 void ReplCompletionConsumer::ProcessCodeCompleteResults(
     class Sema &S, CodeCompletionContext Context,
     CodeCompletionResult *InResults, unsigned NumResults) {
-  for (unsigned I = 0; I < NumResults; ++I) {
-    auto &Result = InResults[I];
-    switch (Result.Kind) {
-    case CodeCompletionResult::RK_Declaration:
-      if (auto *ID = Result.Declaration->getIdentifier()) {
-        Results.push_back(ID->getName().str());
-      }
-      break;
-    case CodeCompletionResult::RK_Keyword:
-      Results.push_back(Result.Keyword);
-      break;
-    default:
-      break;
-    }
-  }
+  SubCtxt->HandleCodeCompleteResults(S, InResults, NumResults, Results);
 }
 
 class IncrementalSyntaxOnlyAction : public SyntaxOnlyAction {
@@ -177,11 +175,166 @@ void ExternalSource::completeVisibleDeclsMap(
   }
 }
 
+
+class CCSubContextRegular : public CodeCompletionSubContext {
+  StringRef prefix;
+
+public:
+  CCSubContextRegular(StringRef prefix) : prefix(prefix){};
+  virtual ~CCSubContextRegular(){};
+  void HandleCodeCompleteResults(
+      class Sema &S, CodeCompletionResult *InResults, unsigned NumResults,
+      std::vector<std::string> &Results) override;
+};
+
+class CCSubContextCallSite : public CodeCompletionSubContext {
+  StringRef calleeName;
+  StringRef Prefix;
+  std::optional<const FunctionDecl *> lookUp(CodeCompletionResult *InResults,
+                                             unsigned NumResults);
+
+public:
+  CCSubContextCallSite(StringRef calleeName, StringRef Prefix)
+      : calleeName(calleeName), Prefix(Prefix) {}
+  virtual ~CCSubContextCallSite(){};
+  void HandleCodeCompleteResults(
+      class Sema &S, CodeCompletionResult *InResults, unsigned NumResults,
+      std::vector<std::string> &Results) override;
+};
+
+void CCSubContextRegular::HandleCodeCompleteResults(
+    class Sema &S, CodeCompletionResult *InResults, unsigned NumResults,
+    std::vector<std::string> &Results) {
+  for (unsigned I = 0; I < NumResults; ++I) {
+    auto &Result = InResults[I];
+    switch (Result.Kind) {
+    case CodeCompletionResult::RK_Declaration:
+      if (auto *ID = Result.Declaration->getIdentifier()) {
+        Results.push_back(ID->getName().str());
+      }
+      break;
+    case CodeCompletionResult::RK_Keyword:
+      Results.push_back(Result.Keyword);
+      break;
+    default:
+      break;
+    }
+  }
+}
+
+std::optional<const FunctionDecl *>
+CCSubContextCallSite::lookUp(CodeCompletionResult *InResults,
+                             unsigned NumResults) {
+  for (unsigned I = 0; I < NumResults; I++) {
+    auto &Result = InResults[I];
+    switch (Result.Kind) {
+    case CodeCompletionResult::RK_Declaration:
+      if (Result.Hidden) {
+        continue;
+      }
+      if (const auto *Function = Result.Declaration->getAsFunction()) {
+        if (Function->isDestroyingOperatorDelete() ||
+            Function->isOverloadedOperator()) {
+          continue;
+        }
+
+        auto Name = Function->getDeclName();
+        switch (Name.getNameKind()) {
+        case DeclarationName::CXXConstructorName:
+        case DeclarationName::CXXDestructorName:
+          continue;
+        default:
+          if (Function->getName() == calleeName) {
+            return Function;
+          }
+          continue;
+        }
+      }
+      break;
+    default:
+      break;
+    }
+  }
+  return std::nullopt;
+}
+
+void CCSubContextCallSite::HandleCodeCompleteResults(
+    class Sema &S, CodeCompletionResult *InResults, unsigned NumResults,
+    std::vector<std::string> &Results) {
+  auto Function = lookUp(InResults, NumResults);
+  if (!Function)
+    return;
+  for (unsigned I = 0; I < NumResults; I++) {
+    auto &Result = InResults[I];
+    switch (Result.Kind) {
+    case CodeCompletionResult::RK_Declaration:
+      if (Result.Hidden) {
+        continue;
+      }
+      if (!Result.Declaration->getIdentifier()) {
+        continue;
+      }
+      if (auto *DD = dyn_cast<ValueDecl>(Result.Declaration)) {
+        if (!DD->getName().startswith(Prefix))
+          continue;
+
+        auto ArgumentType = DD->getType();
+        auto RequiredType = (*Function)->getParamDecl(0)->getType();
+        if (RequiredType->isReferenceType()) {
+          QualType RT = RequiredType->castAs<ReferenceType>()->getPointeeType();
+          Sema::ReferenceConversions RefConv;
+          Sema::ReferenceCompareResult RefRelationship =
+            S.CompareReferenceRelationship(SourceLocation(), RT, ArgumentType,
+                                             &RefConv);
+          if (RefRelationship == Sema::Ref_Compatible) {
+            Results.push_back(DD->getName().str());
+          } else if (RefRelationship == Sema::Ref_Related) {
+            Results.push_back(DD->getName().str());
+          }
+        } else if (S.Context.hasSameType(ArgumentType, RequiredType)) {
+          Results.push_back(DD->getName().str());
+        }
+      }
+      break;
+    default:
+      break;
+    }
+  }
+}
+
+
+static std::pair<StringRef, std::unique_ptr<CodeCompletionSubContext>>
+getCodeCompletionSubContext(llvm::StringRef CurInput, size_t Pos) {
+  size_t LeftParenPos = CurInput.rfind("(");
+  if (LeftParenPos == llvm::StringRef::npos) {
+    size_t space_pos = CurInput.rfind(" ");
+    llvm::StringRef Prefix;
+    if (space_pos == llvm::StringRef::npos) {
+      Prefix = CurInput;
+    } else {
+      Prefix = CurInput.substr(space_pos + 1);
+    }
+    return {Prefix, std::move(std::make_unique<CCSubContextRegular>(Prefix))};
+  }
+  auto subs = CurInput.substr(0, LeftParenPos);
+  size_t start_pos = subs.rfind(" ");
+  if (start_pos == llvm::StringRef::npos) {
+    start_pos = 0;
+  }
+  auto Prefix = CurInput.substr(LeftParenPos + 1, Pos);
+  return {Prefix,
+          std::make_unique<CCSubContextCallSite>(
+              subs.substr(start_pos, LeftParenPos - start_pos), Prefix)};
+}
+
+
 void codeComplete(CompilerInstance *InterpCI, llvm::StringRef Content,
                   unsigned Line, unsigned Col, const CompilerInstance *ParentCI,
                   std::vector<std::string> &CCResults) {
   auto DiagOpts = DiagnosticOptions();
-  auto consumer = ReplCompletionConsumer(CCResults);
+  auto Pos = Col - 1;
+  auto [s, SubCtxt] = getCodeCompletionSubContext(Content, Pos);
+  auto consumer = ReplCompletionConsumer(CCResults, std::move(SubCtxt));
 
   auto diag = InterpCI->getDiagnosticsPtr();
   std::unique_ptr<ASTUnit> AU(ASTUnit::LoadFromCompilerInvocationAction(
