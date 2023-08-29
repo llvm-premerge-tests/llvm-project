@@ -53,7 +53,6 @@ def main(builtin_params={}):
 
     if opts.show_suites or opts.show_tests:
         print_discovered(discovered_tests, opts.show_suites, opts.show_tests)
-        sys.exit(0)
 
     if opts.show_used_features:
         features = set(

@@ -285,7 +285,7 @@ def parse_args():
         action="store_true",
     )
     debug_group.add_argument(
-        "--show-tests", help="Show all discovered tests and exit", action="store_true"
+        "--show-tests", help="Show all discovered tests", action="store_true"
     )
     debug_group.add_argument(
         "--show-used-features",
