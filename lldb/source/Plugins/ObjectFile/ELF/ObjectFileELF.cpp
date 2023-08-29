@@ -935,6 +935,16 @@ lldb_private::Address ObjectFileELF::GetEntryPointAddress() {
 }
 
 Address ObjectFileELF::GetBaseAddress() {
+  if (GetType() == ObjectFile::eTypeObjectFile) {
+    for (SectionHeaderCollIter I = std::next(m_section_headers.begin());
+	 I != m_section_headers.end(); ++I) {
+      const ELFSectionHeaderInfo &header = *I;
+      if (header.sh_flags & SHF_ALLOC)
+	return Address(GetSectionList()->FindSectionByID(SectionIndex(I)), 0);
+    }
+    return LLDB_INVALID_ADDRESS;
+  }
+
   for (const auto &EnumPHdr : llvm::enumerate(ProgramHeaders())) {
     const ELFProgramHeader &H = EnumPHdr.value();
     if (H.p_type != PT_LOAD)
@@ -1763,7 +1773,10 @@ class VMAddressProvider {
   VMRange GetVMRange(const ELFSectionHeader &H) {
     addr_t Address = H.sh_addr;
     addr_t Size = H.sh_flags & SHF_ALLOC ? H.sh_size : 0;
-    if (ObjectType == ObjectFile::Type::eTypeObjectFile && Segments.empty() && (H.sh_flags & SHF_ALLOC)) {
+
+    // When this is a debug file for relocatable file, the address is all zero
+    if ((ObjectType == ObjectFile::Type::eTypeObjectFile ||
+	 (ObjectType == ObjectFile::Type::eTypeDebugInfo && H.sh_addr == 0)) && Segments.empty() && (H.sh_flags & SHF_ALLOC)) {
       NextVMAddress =
           llvm::alignTo(NextVMAddress, std::max<addr_t>(H.sh_addralign, 1));
       Address = NextVMAddress;
