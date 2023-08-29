@@ -12,8 +12,10 @@
 #include <__config>
 #include <__exception/operations.h>
 #include <__memory/addressof.h>
+#include <__typeinfo/typeinfo.h>
 #include <cstddef>
 #include <cstdlib>
+#include <type_traits>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header
@@ -25,6 +27,20 @@ namespace std { // purposefully not using versioning namespace
 
 class _LIBCPP_EXPORTED_FROM_ABI exception_ptr {
   void* __ptr_;
+
+#  if defined(LIBCXX_BUILDING_LIBCXXABI)
+  template <class _Ep>
+  static inline void __dest_thunk(void* __x) {
+    static_cast<_Ep*>(__x)->~_Ep();
+  }
+
+  static void* __init_native_exception(size_t, std::type_info*, void (*)(void*)) _NOEXCEPT;
+  static void __free_native_exception(void*) _NOEXCEPT;
+  static exception_ptr __from_native_exception_pointer(void* __e) _NOEXCEPT;
+
+  template <class _Ep>
+  friend _LIBCPP_HIDE_FROM_ABI exception_ptr make_exception_ptr(_Ep) _NOEXCEPT;
+#  endif
 
 public:
   _LIBCPP_HIDE_FROM_ABI exception_ptr() _NOEXCEPT : __ptr_() {}
@@ -51,11 +67,24 @@ public:
 template <class _Ep>
 _LIBCPP_HIDE_FROM_ABI exception_ptr make_exception_ptr(_Ep __e) _NOEXCEPT {
 #  ifndef _LIBCPP_HAS_NO_EXCEPTIONS
+#    if defined(LIBCXX_BUILDING_LIBCXXABI)
+  using _Ep2 = typename decay<_Ep>::type;
+  void* __ex = exception_ptr::__init_native_exception(
+      sizeof(_Ep), const_cast<std::type_info*>(&typeid(_Ep)), exception_ptr::__dest_thunk<_Ep2>);
+  try {
+    ::new (__ex) _Ep2(__e);
+    return exception_ptr::__from_native_exception_pointer(__ex);
+  } catch (...) {
+    exception_ptr::__free_native_exception(__ex);
+    return current_exception();
+  }
+#    else
   try {
     throw __e;
   } catch (...) {
     return current_exception();
   }
+#    endif
 #  else
   ((void)__e);
   std::abort();
