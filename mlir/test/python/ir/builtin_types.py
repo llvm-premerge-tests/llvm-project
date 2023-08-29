@@ -218,6 +218,8 @@ def testFloatType():
         print("float:", F32Type.get())
         # CHECK: float: f64
         print("float:", F64Type.get())
+        # CHECK: float: f128
+        print("flaot:", F128Type.get())
 
 
 # CHECK-LABEL: TEST: testNoneType
@@ -537,6 +539,7 @@ def testTypeIDs():
             (F16Type, F16Type.get()),
             (F32Type, F32Type.get()),
             (F64Type, F64Type.get()),
+            (F128Type, F128Type.get()),
             (NoneType, NoneType.get()),
             (ComplexType, ComplexType.get(f32)),
             (VectorType, VectorType.get([2, 3], f32)),
@@ -560,6 +563,7 @@ def testTypeIDs():
         # CHECK: F16Type(f16)
         # CHECK: F32Type(f32)
         # CHECK: F64Type(f64)
+        # CHECK: F128Type(f128)
         # CHECK: NoneType(none)
         # CHECK: ComplexType(complex<f32>)
         # CHECK: VectorType(vector<2x3xf32>)
@@ -628,6 +632,9 @@ def testConcreteTypesRoundTrip():
         # CHECK: F64Type
         # CHECK: F64Type(f64)
         print_downcasted(F64Type.get())
+        # CHECK: F128Type
+        # CHECK: F128Type(f128)
+        print_downcasted(F128Type.get())
         # CHECK: Float8E4M3B11FNUZType
         # CHECK: Float8E4M3B11FNUZType(f8E4M3B11FNUZ)
         print_downcasted(Float8E4M3B11FNUZType.get())
