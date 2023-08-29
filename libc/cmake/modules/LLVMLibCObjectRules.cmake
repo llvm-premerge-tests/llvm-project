@@ -178,6 +178,7 @@ function(_build_gpu_objects fq_target_name internal_target_name)
         ${ADD_GPU_OBJ_HDRS}
       )
 
+      add_namespace_compile_option(${gpu_target_name})
       target_compile_options(${gpu_target_name} PRIVATE ${compile_options})
       target_include_directories(${gpu_target_name} PRIVATE ${include_dirs})
       target_compile_definitions(${gpu_target_name} PRIVATE LIBC_COPT_PUBLIC_PACKAGING)
@@ -245,6 +246,7 @@ function(_build_gpu_objects fq_target_name internal_target_name)
     OBJECT
     ${CMAKE_CURRENT_BINARY_DIR}/stubs/${stub_filename}
   )
+  add_namespace_compile_option(${fq_target_name})
   target_compile_options(${fq_target_name} BEFORE PRIVATE
                          ${common_compile_options} -nostdlib)
   foreach(packaged_gpu_binary ${packaged_gpu_binaries})
@@ -265,6 +267,7 @@ function(_build_gpu_objects fq_target_name internal_target_name)
       ${ADD_GPU_OBJ_SRCS}
       ${ADD_GPU_OBJ_HDRS}
     )
+    add_namespace_compile_option(${internal_target_name})
     target_compile_options(${internal_target_name} BEFORE PRIVATE
                            ${common_compile_options} --target=${LIBC_GPU_TARGET_TRIPLE})
     if(LIBC_GPU_TARGET_ARCHITECTURE_IS_AMDGPU)
@@ -364,6 +367,7 @@ function(create_object_library fq_target_name)
         ${LIBC_INCLUDE_DIR}
     )
     target_compile_options(${fq_target_name} PRIVATE ${compile_options})
+    add_namespace_compile_option(${fq_target_name})
   endif()
 
   if(SHOW_INTERMEDIATE_OBJECTS)
@@ -644,6 +648,7 @@ function(create_entrypoint_object fq_target_name)
       ${ADD_ENTRYPOINT_OBJ_SRCS}
       ${ADD_ENTRYPOINT_OBJ_HDRS}
     )
+    add_namespace_compile_option(${internal_target_name})
     target_compile_options(${internal_target_name} BEFORE PRIVATE ${common_compile_options})
     target_include_directories(${internal_target_name} PRIVATE ${include_dirs})
     add_dependencies(${internal_target_name} ${full_deps_list})
@@ -657,6 +662,7 @@ function(create_entrypoint_object fq_target_name)
       ${ADD_ENTRYPOINT_OBJ_SRCS}
       ${ADD_ENTRYPOINT_OBJ_HDRS}
     )
+    add_namespace_compile_option(${fq_target_name})
     target_compile_options(${fq_target_name} BEFORE PRIVATE ${common_compile_options} -DLIBC_COPT_PUBLIC_PACKAGING)
     target_include_directories(${fq_target_name} PRIVATE ${include_dirs})
     add_dependencies(${fq_target_name} ${full_deps_list})
@@ -902,4 +908,5 @@ function(add_redirector_object target_name)
     ${target_name}
     BEFORE PRIVATE -fPIC ${LIBC_COMPILE_OPTIONS_DEFAULT}
   )
+  add_namespace_compile_option(${target_name})
 endfunction(add_redirector_object)

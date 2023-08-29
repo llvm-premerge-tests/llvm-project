@@ -27,9 +27,11 @@ function(add_unittest_framework_library name)
       ${TEST_LIB_HDRS}
     )
     target_include_directories(${lib} PUBLIC ${LIBC_SOURCE_DIR})
+    add_namespace_compile_option(${lib})
     target_compile_options(${lib} PRIVATE -fno-exceptions -fno-rtti)
   endforeach()
   target_include_directories(${name}.hermetic PRIVATE ${LIBC_BUILD_DIR}/include)
+  add_namespace_compile_option(${name}.hermetic)
   target_compile_options(${name}.hermetic
       PRIVATE ${LIBC_HERMETIC_TEST_COMPILE_OPTIONS} -ffreestanding -nostdinc++)
 

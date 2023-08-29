@@ -154,6 +154,7 @@ function(create_libc_unittest fq_target_name)
       ${LIBC_SOURCE_DIR}
       ${LIBC_INCLUDE_DIR}
   )
+  add_namespace_compile_option(${fq_build_target_name})
   target_compile_options(
     ${fq_build_target_name}
     PRIVATE -fpie ${LIBC_COMPILE_OPTIONS_DEFAULT}
@@ -407,6 +408,7 @@ function(add_libc_fuzzer target_name)
   )
   add_dependencies(libc-fuzzer ${fq_target_name})
 
+  add_namespace_compile_option(${fq_target_name})
   target_compile_options(${fq_target_name}
     PRIVATE
     ${LIBC_FUZZER_COMPILE_OPTIONS})
@@ -522,6 +524,7 @@ function(add_integration_test test_name)
       ${LIBC_SOURCE_DIR}
       ${LIBC_INCLUDE_DIR}
   )
+  add_namespace_compile_option(${fq_build_target_name})
   target_compile_options(${fq_build_target_name}
       PRIVATE -fpie -ffreestanding -fno-exceptions -fno-rtti ${INTEGRATION_TEST_COMPILE_OPTIONS})
   # The GPU build requires overriding the default CMake triple and architecture.
@@ -665,6 +668,7 @@ function(add_libc_hermetic_test test_name)
       PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   set_target_properties(${fq_target_name}.__libc__
       PROPERTIES ARCHIVE_OUTPUT_NAME ${fq_target_name}.libc)
+  add_namespace_compile_option(${fq_target_name}.__libc__)
 
   set(fq_build_target_name ${fq_target_name}.__build__)
   add_executable(
@@ -686,6 +690,7 @@ function(add_libc_hermetic_test test_name)
       ${LIBC_SOURCE_DIR}
       ${LIBC_INCLUDE_DIR}
   )
+  add_namespace_compile_option(${fq_build_target_name})
   target_compile_options(${fq_build_target_name}
       PRIVATE ${LIBC_HERMETIC_TEST_COMPILE_OPTIONS} ${HERMETIC_TEST_COMPILE_OPTIONS})
 

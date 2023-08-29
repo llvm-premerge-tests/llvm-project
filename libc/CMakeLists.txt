@@ -48,6 +48,21 @@ option(LIBC_CMAKE_VERBOSE_LOGGING
 # Path libc/scripts directory.
 set(LIBC_BUILD_SCRIPTS_DIR "${LIBC_SOURCE_DIR}/utils/build_scripts")
 
+# Defining a global namespace for enclose all libc functions.
+set(LIBC_CMAKE_NAMESPACE "" CACHE STRING "The namespace to use to enclose internal implementations. Must start with '__llvm_libc'." FORCE)
+
+if(LIBC_CMAKE_NAMESPACE)
+  set(LLVM_LIBC_NAMESPACE "${LIBC_CMAKE_NAMESPACE}")
+else()
+  set(LLVM_LIBC_NAMESPACE "__llvm_libc_${LLVM_VERSION_MAJOR}_${LLVM_VERSION_MINOR}_${LLVM_VERSION_PATCH}_${LLVM_VERSION_SUFFIX}")
+endif()
+
+if(NOT LLVM_LIBC_NAMESPACE MATCHES "^__llvm_libc")
+  message(FATAL_ERROR "Invalid LLVM_LIBC_NAMESPACE. Must start with '__llvm_libc' was '${LLVM_LIBC_NAMESPACE}'")
+endif()
+
+message(STATUS "Setting LLVM_LIBC_NAMESPACE namespace to '${LLVM_LIBC_NAMESPACE}'")
+
 # Flags to pass down to the compiler while building the libc functions.
 set(LIBC_COMPILE_OPTIONS_DEFAULT "" CACHE STRING "Architecture to tell clang to optimize for (e.g. -march=... or -mcpu=...)")
 

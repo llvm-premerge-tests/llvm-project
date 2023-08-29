@@ -1,0 +1,11 @@
+function(add_namespace_compile_option target_name)
+    if(NOT LLVM_LIBC_NAMESPACE)
+        message(FATAL_ERROR "LLVM_LIBC_NAMESPACE is not defined.")
+    endif()
+
+    if(LLVM_COMPILER_IS_GCC_COMPATIBLE)
+        target_compile_options(${target_name} PRIVATE "-DLIBC_NAMESPACE=${LLVM_LIBC_NAMESPACE}")
+    elseif(MSVC)
+        target_compile_options(${target_name} PRIVATE "/DLIBC_NAMESPACE=${LLVM_LIBC_NAMESPACE}")
+    endif()
+endfunction()
