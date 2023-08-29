@@ -61,7 +61,8 @@
 // -------------------
 // prototype: return (arg, arg, ...)
 //
-// 2,3,4: array of default vectors
+// 2,3,4: array of vectors
+// .: indicator for multi-vector modifier that will follow(eg.:2.x)
 // v: void
 // x: vector of signed integers
 // u: vector of unsigned integers
@@ -91,6 +92,7 @@
 // l: int64_t
 // m: uint32_t
 // n: uint64_t
+// y: bool
 
 // t: svint32_t
 // z: svuint32_t
@@ -98,10 +100,10 @@
 // O: svfloat16_t
 // M: svfloat32_t
 // N: svfloat64_t
+// $: svbfloat16_t
 
 // J: Prefetch type (sv_prfop)
-
-// %: pointer to void
+// p: pointer to element type
 
 // A: pointer to int8_t
 // B: pointer to int16_t
@@ -125,7 +127,11 @@
 // Y: const pointer to uint32_t
 // Z: const pointer to uint64_t
 
+// Prototype modifiers added for SME
+// %: pointer to void  (upstream)
+//
 // Prototype modifiers added for SVE2p1
+// {: 128b vector
 // }: svcount_t
 
 class MergeType<int val, string suffix=""> {
@@ -147,15 +153,15 @@ def EltTyInt8    : EltType<1>;
 def EltTyInt16   : EltType<2>;
 def EltTyInt32   : EltType<3>;
 def EltTyInt64   : EltType<4>;
-def EltTyInt128  : EltType<5>;
-def EltTyFloat16 : EltType<6>;
-def EltTyFloat32 : EltType<7>;
-def EltTyFloat64 : EltType<8>;
-def EltTyBool8   : EltType<9>;
-def EltTyBool16  : EltType<10>;
-def EltTyBool32  : EltType<11>;
-def EltTyBool64  : EltType<12>;
-def EltTyBFloat16 : EltType<13>;
+def EltTyFloat16 : EltType<5>;
+def EltTyFloat32 : EltType<6>;
+def EltTyFloat64 : EltType<7>;
+def EltTyBool8   : EltType<8>;
+def EltTyBool16  : EltType<9>;
+def EltTyBool32  : EltType<10>;
+def EltTyBool64  : EltType<11>;
+def EltTyBFloat16 : EltType<12>;
+def EltTyInt128  : EltType<13>;  // FIXME: is this necessary?
 
 class MemEltType<int val> {
   int Value = val;
@@ -165,6 +171,7 @@ def MemEltTyInt8      : MemEltType<1>;
 def MemEltTyInt16     : MemEltType<2>;
 def MemEltTyInt32     : MemEltType<3>;
 def MemEltTyInt64     : MemEltType<4>;
+def MemEltTyInt128    : MemEltType<5>;
 
 class FlagType<int val> {
   int Value = val;
@@ -222,6 +229,10 @@ def IsSharedZA                : FlagType<0x8000000000>;
 def IsPreservesZA             : FlagType<0x10000000000>;
 def IsReadZA                  : FlagType<0x20000000000>;
 def IsWriteZA                 : FlagType<0x40000000000>;
+def IsZASliceBaseOffsetIntr   : FlagType<0x80000000000>;
+def IsTileBaseOffsetIntr      : FlagType<0x100000000000>;
+def IsStreamingOrSVE2p1       : FlagType<0x200000000000>; // Use for intrinsics that are common between sme/sme2 and sve2p1.
+def IsReductionQV             : FlagType<0x400000000000>;
 
 // These must be kept in sync with the flags in include/clang/Basic/TargetBuiltins.h
 class ImmCheckType<int val> {
@@ -246,36 +257,19 @@ def ImmCheck0_3                 : ImmCheckType<15>; // 0..3
 def ImmCheck0_0                 : ImmCheckType<16>; // 0..0
 def ImmCheck0_15                : ImmCheckType<17>; // 0..15
 def ImmCheck0_255               : ImmCheckType<18>; // 0..255
+def ImmCheck0_2_Mul2            : ImmCheckType<19>; // 0, 2
+def ImmCheck0_6_Mul2            : ImmCheckType<20>; // 0, 2, 4, 6
+def ImmCheck0_14_Mul2           : ImmCheckType<21>; // 0, 2, .., 14
+def ImmCheck0_4_Mul4            : ImmCheckType<22>; // 0, 4
+def ImmCheck0_12_Mul4           : ImmCheckType<23>; // 0, 4, 8, 12
+def ImmCheck2_4_Mul2            : ImmCheckType<24>; // 2, 4
+def ImmCheck0_56_Mul8           : ImmCheckType<25>; // 0, 8, .., 56
+def ImmCheck1_1                 : ImmCheckType<26>; // 1..1
+def ImmCheck1_3                 : ImmCheckType<27>; // 1..3
+def ImmCheck1_7                 : ImmCheckType<28>; // 1..7
 
 class ImmCheck<int arg, ImmCheckType kind, int eltSizeArg = -1> {
   int Arg = arg;
   int EltSizeArg = eltSizeArg;
   ImmCheckType Kind = kind;
-}
-
-class Inst<string n, string p, string t, MergeType mt, string i,
-           list<FlagType> ft, list<ImmCheck> ch, MemEltType met> {
-  string Name = n;
-  string Prototype = p;
-  string Types = t;
-  string TargetGuard = "sve";
-  int Merge = mt.Value;
-  string MergeSuffix = mt.Suffix;
-  string LLVMIntrinsic = i;
-  list<FlagType> Flags = ft;
-  list<ImmCheck> ImmChecks = ch;
-  int MemEltType = met.Value;
-}
-
-// SInst: Instruction with signed/unsigned suffix (e.g., "s8", "u8")
-class SInst<string n, string p, string t, MergeType mt, string i = "",
-            list<FlagType> ft = [], list<ImmCheck> ch = []>
-    : Inst<n, p, t, mt, i, ft, ch, MemEltTyDefault> {
-}
-
-// MInst: Instructions which access memory
-class MInst<string n, string p, string t, list<FlagType> f,
-            MemEltType met = MemEltTyDefault, string i = "",
-            list<ImmCheck> ch = []>
-    : Inst<n, p, t, MergeNone, i, f, ch, met> {
 }

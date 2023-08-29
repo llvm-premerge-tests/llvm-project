@@ -165,6 +165,11 @@ static cl::opt<bool>
                            cl::desc("Enable SVE intrinsic opts"),
                            cl::init(true));
 
+cl::opt<bool>
+    EnableSMEPeepholeOpt("enable-aarch64-sme-peephole-opt", cl::init(true),
+                         cl::Hidden,
+                         cl::desc("Perform SME peephole optimization"));
+
 static cl::opt<bool> EnableFalkorHWPFFix("aarch64-enable-falkor-hwpf-fix",
                                          cl::init(true), cl::Hidden);
 
@@ -218,6 +223,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeAArch64Target() {
   initializeAArch64ExpandPseudoPass(*PR);
   initializeAArch64LoadStoreOptPass(*PR);
   initializeAArch64MIPeepholeOptPass(*PR);
+  initializeSMEPeepholeOptPass(*PR);
   initializeAArch64SIMDInstrOptPass(*PR);
   initializeAArch64O0PreLegalizerCombinerPass(*PR);
   initializeAArch64PreLegalizerCombinerPass(*PR);
@@ -714,6 +720,9 @@ bool AArch64PassConfig::addGlobalInstructionSelect() {
 }
 
 void AArch64PassConfig::addMachineSSAOptimization() {
+  if (TM->getOptLevel() != CodeGenOpt::None && EnableSMEPeepholeOpt)
+    addPass(createSMEPeepholeOptPass());
+
   // Run default MachineSSAOptimization first.
   TargetPassConfig::addMachineSSAOptimization();
 

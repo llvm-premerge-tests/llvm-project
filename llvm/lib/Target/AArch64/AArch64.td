@@ -109,6 +109,9 @@ def FeatureFullFP16 : SubtargetFeature<"fullfp16", "HasFullFP16", "true",
 def FeatureFP16FML : SubtargetFeature<"fp16fml", "HasFP16FML", "true",
   "Enable FP16 FML instructions (FEAT_FHM)", [FeatureFullFP16]>;
 
+def FeatureBF16 : SubtargetFeature<"bf16", "HasBF16",
+    "true", "Enable BFloat16 Extension (FEAT_BF16)" >;
+
 def FeatureSPE : SubtargetFeature<"spe", "HasSPE", "true",
   "Enable Statistical Profiling extension (FEAT_SPE)">;
 
@@ -169,7 +172,7 @@ def FeatureSVE2BitPerm : SubtargetFeature<"sve2-bitperm", "HasSVE2BitPerm", "tru
   "Enable bit permutation SVE2 instructions (FEAT_SVE_BitPerm)", [FeatureSVE2]>;
 
 def FeatureSVE2p1: SubtargetFeature<"sve2p1", "HasSVE2p1", "true",
-  "Enable Scalable Vector Extension 2.1 instructions", [FeatureSVE2]>;
+  "Enable Scalable Vector Extension 2.1 instructions", [FeatureSVE2, FeatureBF16]>;
 
 def FeatureB16B16 : SubtargetFeature<"b16b16", "HasB16B16", "true",
   "Enable SVE2.1 or SME2.1 non-widening BFloat16 to BFloat16 instructions (FEAT_B16B16)", []>;
@@ -437,9 +440,6 @@ def FeatureTaggedGlobals : SubtargetFeature<"tagged-globals",
     "AllowTaggedGlobals",
     "true", "Use an instruction sequence for taking the address of a global "
     "that allows a memory tag in the upper address bits">;
-
-def FeatureBF16 : SubtargetFeature<"bf16", "HasBF16",
-    "true", "Enable BFloat16 Extension (FEAT_BF16)" >;
 
 def FeatureMatMulInt8 : SubtargetFeature<"i8mm", "HasMatMulInt8",
     "true", "Enable Matrix Multiply Int8 Extension (FEAT_I8MM)">;

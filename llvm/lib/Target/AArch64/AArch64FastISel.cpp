@@ -5186,9 +5186,12 @@ bool AArch64FastISel::fastSelectInstruction(const Instruction *I) {
 FastISel *AArch64::createFastISel(FunctionLoweringInfo &FuncInfo,
                                         const TargetLibraryInfo *LibInfo) {
 
+  const AArch64Subtarget *Subtarget =
+      &FuncInfo.MF->getSubtarget<AArch64Subtarget>();
   SMEAttrs CallerAttrs(*FuncInfo.Fn);
-  if (CallerAttrs.hasZAState() ||
-      (!CallerAttrs.hasStreamingInterface() && CallerAttrs.hasStreamingBody()))
+  if (CallerAttrs.hasZAState() || CallerAttrs.hasZTState() ||
+      CallerAttrs.hasStreamingInterfaceOrBody() ||
+      CallerAttrs.hasStreamingCompatibleInterface())
     return nullptr;
   return new AArch64FastISel(FuncInfo, LibInfo);
 }

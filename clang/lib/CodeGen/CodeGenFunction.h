@@ -4285,8 +4285,13 @@ public:
   llvm::Value *EmitSVEStructStore(const SVETypeFlags &TypeFlags,
                                   SmallVectorImpl<llvm::Value *> &Ops,
                                   unsigned IntID);
-  llvm::Value *EmitAArch64SVEBuiltinExpr(unsigned BuiltinID, const CallExpr *E);
 
+  void GetAArch64SMEProcessedOperands(unsigned BuiltinID, const CallExpr *E,
+                                      SmallVectorImpl<llvm::Value *> &Ops,
+                                      SVETypeFlags TypeFlags);
+  llvm::Value *FormMultiVectorResult(llvm::Value *Call);
+
+  llvm::Value *EmitAArch64SVEBuiltinExpr(unsigned BuiltinID, const CallExpr *E);
   llvm::Value *EmitSMELd1St1(SVETypeFlags TypeFlags,
                              llvm::SmallVectorImpl<llvm::Value *> &Ops,
                              unsigned IntID);

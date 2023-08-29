@@ -1515,17 +1515,12 @@ bool AArch64ExpandPseudo::expandMI(MachineBasicBlock &MBB,
        NextMBBI = MBB.end(); // The NextMBBI iterator is invalidated.
      return true;
    }
-   case AArch64::OBSCURE_COPY: {
-     if (MI.getOperand(0).getReg() != MI.getOperand(1).getReg()) {
-       BuildMI(MBB, MBBI, MI.getDebugLoc(), TII->get(AArch64::ORRXrs))
-           .add(MI.getOperand(0))
-           .addReg(AArch64::XZR)
-           .add(MI.getOperand(1))
-           .addImm(0);
-     }
+   case AArch64::COALESCER_BARRIER_FPR16:
+   case AArch64::COALESCER_BARRIER_FPR32:
+   case AArch64::COALESCER_BARRIER_FPR64:
+   case AArch64::COALESCER_BARRIER_FPR128:
      MI.eraseFromParent();
      return true;
-   }
    case AArch64::LD1B_2Z_IMM_PSEUDO:
      return expandMultiVecPseudo(
          MBB, MBBI, AArch64::ZPR2RegClass, AArch64::ZPR2StridedRegClass,
@@ -1654,6 +1649,38 @@ bool AArch64ExpandPseudo::expandMI(MachineBasicBlock &MBB,
      return expandMultiVecPseudo(
          MBB, MBBI, AArch64::ZPR4RegClass, AArch64::ZPR4StridedRegClass,
          AArch64::LDNT1D_4Z, AArch64::LDNT1D_4Z_STRIDED);
+   case AArch64::LUTI2_2ZTZI_B_PSEUDO:
+     return expandMultiVecPseudo(
+         MBB, MBBI, AArch64::ZPR2RegClass, AArch64::ZPR2StridedRegClass,
+         AArch64::LUTI2_2ZTZI_B, AArch64::LUTI2_S_2ZTZI_B);
+   case AArch64::LUTI2_2ZTZI_H_PSEUDO:
+     return expandMultiVecPseudo(
+         MBB, MBBI, AArch64::ZPR2RegClass, AArch64::ZPR2StridedRegClass,
+         AArch64::LUTI2_2ZTZI_H, AArch64::LUTI2_S_2ZTZI_H);
+   case AArch64::LUTI2_4ZTZI_B_PSEUDO:
+     return expandMultiVecPseudo(
+         MBB, MBBI, AArch64::ZPR4RegClass, AArch64::ZPR4StridedRegClass,
+         AArch64::LUTI2_4ZTZI_B, AArch64::LUTI2_S_4ZTZI_B);
+   case AArch64::LUTI2_4ZTZI_H_PSEUDO:
+     return expandMultiVecPseudo(
+         MBB, MBBI, AArch64::ZPR4RegClass, AArch64::ZPR4StridedRegClass,
+         AArch64::LUTI2_4ZTZI_H, AArch64::LUTI2_S_4ZTZI_H);
+   case AArch64::LUTI4_2ZTZI_B_PSEUDO:
+     return expandMultiVecPseudo(
+         MBB, MBBI, AArch64::ZPR2RegClass, AArch64::ZPR2StridedRegClass,
+         AArch64::LUTI4_2ZTZI_B, AArch64::LUTI4_S_2ZTZI_B);
+   case AArch64::LUTI4_2ZTZI_H_PSEUDO:
+     return expandMultiVecPseudo(
+         MBB, MBBI, AArch64::ZPR2RegClass, AArch64::ZPR2StridedRegClass,
+         AArch64::LUTI4_2ZTZI_H, AArch64::LUTI4_S_2ZTZI_H);
+   case AArch64::LUTI4_4ZTZI_H_PSEUDO:
+     return expandMultiVecPseudo(
+         MBB, MBBI, AArch64::ZPR4RegClass, AArch64::ZPR4StridedRegClass,
+         AArch64::LUTI4_4ZTZI_H, AArch64::LUTI4_S_4ZTZI_H);
+   case AArch64::LUTI4_4ZTZI_S_PSEUDO:
+     return expandMultiVecPseudo(
+         MBB, MBBI, AArch64::ZPR4RegClass, AArch64::ZPR4StridedRegClass,
+         AArch64::LUTI4_4ZTZI_S, AArch64::LUTI4_S_4ZTZI_S);
   }
   return false;
 }

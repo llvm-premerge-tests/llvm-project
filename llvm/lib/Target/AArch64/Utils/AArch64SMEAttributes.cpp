@@ -28,12 +28,16 @@ void SMEAttrs::set(unsigned M, bool Enable) {
 
 SMEAttrs::SMEAttrs(const CallBase &CB) {
   *this = SMEAttrs(CB.getAttributes());
-  if (auto *F = CB.getCalledFunction())
-    set(SMEAttrs(*F).Bitmask);
+  if (auto *F = CB.getCalledFunction()) {
+    SMEAttrs A(*F);
+    set(A.Bitmask);
+    NoReturn |= A.NoReturn;
+  }
 }
 
 SMEAttrs::SMEAttrs(const AttributeList &Attrs) {
   Bitmask = 0;
+  NoReturn = false;
   if (Attrs.hasFnAttr("aarch64_pstate_sm_enabled"))
     Bitmask |= SM_Enabled;
   if (Attrs.hasFnAttr("aarch64_pstate_sm_compatible"))
@@ -46,6 +50,8 @@ SMEAttrs::SMEAttrs(const AttributeList &Attrs) {
     Bitmask |= ZA_New;
   if (Attrs.hasFnAttr("aarch64_pstate_za_preserved"))
     Bitmask |= ZA_Preserved;
+  if (Attrs.hasFnAttr(Attribute::NoReturn))
+    NoReturn = true;
 }
 
 std::optional<bool>

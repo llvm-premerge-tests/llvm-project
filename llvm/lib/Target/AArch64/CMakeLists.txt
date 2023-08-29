@@ -74,6 +74,7 @@ add_llvm_target(AArch64CodeGen
   AArch64PBQPRegAlloc.cpp
   AArch64RegisterInfo.cpp
   AArch64SLSHardening.cpp
+  SMEPeepholeOpt.cpp
   AArch64SelectionDAGInfo.cpp
   AArch64SpeculationHardening.cpp
   AArch64StackTagging.cpp

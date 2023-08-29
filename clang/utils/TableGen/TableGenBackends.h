@@ -102,6 +102,15 @@ void EmitSveBuiltins(llvm::RecordKeeper &Records, llvm::raw_ostream &OS);
 void EmitSveBuiltinCG(llvm::RecordKeeper &Records, llvm::raw_ostream &OS);
 void EmitSveTypeFlags(llvm::RecordKeeper &Records, llvm::raw_ostream &OS);
 void EmitSveRangeChecks(llvm::RecordKeeper &Records, llvm::raw_ostream &OS);
+void EmitSveStreamingAttrs(llvm::RecordKeeper &Records, llvm::raw_ostream &OS);
+
+void EmitSmeHeader(llvm::RecordKeeper &Records, llvm::raw_ostream &OS);
+void EmitSmeBuiltins(llvm::RecordKeeper &Records, llvm::raw_ostream &OS);
+void EmitSmeBuiltinCG(llvm::RecordKeeper &Records, llvm::raw_ostream &OS);
+void EmitSmeTypeFlags(llvm::RecordKeeper &Records, llvm::raw_ostream &OS);
+void EmitSmeRangeChecks(llvm::RecordKeeper &Records, llvm::raw_ostream &OS);
+void EmitSmeStreamingAttrs(llvm::RecordKeeper &Records, llvm::raw_ostream &OS);
+void EmitSmeBuiltinZAState(llvm::RecordKeeper &Records, llvm::raw_ostream &OS);
 
 void EmitSmeHeader(llvm::RecordKeeper &Records, llvm::raw_ostream &OS);
 void EmitSmeBuiltins(llvm::RecordKeeper &Records, llvm::raw_ostream &OS);

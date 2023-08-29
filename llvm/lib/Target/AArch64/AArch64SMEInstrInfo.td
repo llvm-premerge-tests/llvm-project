@@ -22,8 +22,15 @@ def AArch64_restore_za : SDNode<"AArch64ISD::RESTORE_ZA", SDTypeProfile<0, 3,
                              [SDTCisInt<0>, SDTCisPtrTy<1>]>,
                              [SDNPHasChain, SDNPSideEffect, SDNPVariadic,
                               SDNPOptInGlue]>;
+def AArch64_restore_zt : SDNode<"AArch64ISD::RESTORE_ZT", SDTypeProfile<0, 2,
+                                [SDTCisInt<0>, SDTCisPtrTy<1>]>,
+                                [SDNPHasChain, SDNPSideEffect, SDNPMayLoad]>;
+def AArch64_save_zt : SDNode<"AArch64ISD::SAVE_ZT", SDTypeProfile<0, 2,
+                             [SDTCisInt<0>, SDTCisPtrTy<1>]>,
+                             [SDNPHasChain, SDNPSideEffect, SDNPMayStore]>;
 
-def AArch64ObscureCopy : SDNode<"AArch64ISD::OBSCURE_COPY", SDTypeProfile<1, 1, []>, []>;
+def AArch64CoalescerBarrier
+    : SDNode<"AArch64ISD::COALESCER_BARRIER", SDTypeProfile<1, 1, []>, []>;
 
 //===----------------------------------------------------------------------===//
 // Instruction naming conventions.
@@ -186,9 +193,25 @@ def : Pat<(int_aarch64_sme_set_tpidr2 i64:$val),
 def : Pat<(i64 (int_aarch64_sme_get_tpidr2)),
           (MRS 0xde85)>;
 
-def OBSCURE_COPY : Pseudo<(outs GPR64:$dst), (ins GPR64:$idx), []>, Sched<[]> { }
-def : Pat<(i64 (AArch64ObscureCopy (i64 GPR64:$idx))),
-          (OBSCURE_COPY GPR64:$idx)>;
+multiclass CoalescerBarrierPseudo<RegisterClass rc, list<ValueType> vts> {
+  def NAME : Pseudo<(outs rc:$dst), (ins rc:$idx), []>, Sched<[]> {
+    let Constraints = "$dst = $idx";
+  }
+  foreach vt = vts in {
+    def : Pat<(vt (AArch64CoalescerBarrier (vt rc:$idx))),
+              (!cast<Instruction>(NAME) rc:$idx)>;
+  }
+}
+
+multiclass CoalescerBarriers {
+  defm _FPR16  : CoalescerBarrierPseudo<FPR16, [f16]>;
+  defm _FPR32  : CoalescerBarrierPseudo<FPR32, [f32]>;
+  defm _FPR64  : CoalescerBarrierPseudo<FPR64, [f64, v8i8, v4i16, v2i32, v1i64, v4f16, v2f32, v1f64, v4bf16]>;
+  defm _FPR128 : CoalescerBarrierPseudo<FPR128, [f128, v16i8, v8i16, v4i32, v2i64, v8f16, v4f32, v2f64, v8bf16]>;
+}
+
+defm COALESCER_BARRIER : CoalescerBarriers;
+
 } // End let Predicates = [HasSME]
 
 // Pseudo to match to smstart/smstop. This expands:
@@ -545,19 +568,19 @@ defm SMOPS_MPPZZ_HtoS : sme2_int_mopx_tile<"smops", 0b001, int_aarch64_sme_smops
 defm UMOPA_MPPZZ_HtoS : sme2_int_mopx_tile<"umopa", 0b100, int_aarch64_sme_umopa_za32>;
 defm UMOPS_MPPZZ_HtoS : sme2_int_mopx_tile<"umops", 0b101, int_aarch64_sme_umops_za32>;
 
-def ZERO_T : sme2_zero_zt<"zero", 0b0001>;
+defm ZERO_T : sme2_zero_zt<"zero", 0b0001>;
 
-def LDR_TX : sme2_spill_fill_vector<"ldr", 0b01111100>;
-def STR_TX : sme2_spill_fill_vector<"str", 0b11111100>;
+defm LDR_TX : sme2_spill_fill_vector<"ldr", 0b01111100, AArch64_restore_zt>;
+defm STR_TX : sme2_spill_fill_vector<"str", 0b11111100, AArch64_save_zt>;
 
 def MOVT_XTI : sme2_movt_zt_to_scalar<"movt", 0b0011111>;
 def MOVT_TIX : sme2_movt_scalar_to_zt<"movt", 0b0011111>;
 
-defm LUTI2_ZTZI  : sme2_luti2_vector_index<"luti2">;
+defm LUTI2_ZTZI  : sme2_luti2_vector_index<"luti2", int_aarch64_sme_luti2_lane_zt>;
 defm LUTI2_2ZTZI : sme2_luti2_vector_vg2_index<"luti2">;
 defm LUTI2_4ZTZI : sme2_luti2_vector_vg4_index<"luti2">;
 
-defm LUTI4_ZTZI  : sme2_luti4_vector_index<"luti4">;
+defm LUTI4_ZTZI  : sme2_luti4_vector_index<"luti4", int_aarch64_sme_luti4_lane_zt>;
 defm LUTI4_2ZTZI : sme2_luti4_vector_vg2_index<"luti4">;
 defm LUTI4_4ZTZI : sme2_luti4_vector_vg4_index<"luti4">;
 

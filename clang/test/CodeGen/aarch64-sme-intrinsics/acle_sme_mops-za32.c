@@ -5,7 +5,7 @@
 // RUN: %clang_cc1 -DSME_OVERLOADED_FORMS -triple aarch64-none-linux-gnu -target-feature +sme -target-feature +sve -target-feature +bf16 -S -O1 -Werror -emit-llvm -o - -x c++ %s | FileCheck %s -check-prefixes=CHECK,CHECK-CXX
 // RUN: %clang_cc1 -triple aarch64-none-linux-gnu -target-feature +sme -target-feature +sve -target-feature +bf16 -S -O1 -Werror -o /dev/null %s
 
-#include <arm_sme_draft_spec_subject_to_change.h>
+#include <arm_sme.h>
 
 #ifdef SME_OVERLOADED_FORMS
 #define SME_ACLE_FUNC(A1,A2_UNUSED,A3) A1##A3
@@ -13,6 +13,7 @@
 #define SME_ACLE_FUNC(A1,A2,A3) A1##A2##A3
 #endif
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svmops_za32_s8(
 // CHECK-CXX-LABEL: @_Z19test_svmops_za32_s8u10__SVBool_tu10__SVBool_tu10__SVInt8_tu10__SVInt8_t(
 // CHECK-NEXT:  entry:
@@ -23,6 +24,7 @@ void test_svmops_za32_s8(svbool_t pn, svbool_t pm, svint8_t zn, svint8_t zm) {
   SME_ACLE_FUNC(svmops_za32, _s8, _m)(0, pn, pm, zn, zm);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svmops_za32_u8(
 // CHECK-CXX-LABEL: @_Z19test_svmops_za32_u8u10__SVBool_tu10__SVBool_tu11__SVUint8_tu11__SVUint8_t(
 // CHECK-NEXT:  entry:
@@ -33,6 +35,7 @@ void test_svmops_za32_u8(svbool_t pn, svbool_t pm, svuint8_t zn, svuint8_t zm) {
   SME_ACLE_FUNC(svmops_za32, _u8, _m)(0, pn, pm, zn, zm);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svmops_za32_bf16(
 // CHECK-CXX-LABEL: @_Z21test_svmops_za32_bf16u10__SVBool_tu10__SVBool_tu14__SVBFloat16_tu14__SVBFloat16_t(
 // CHECK-NEXT:  entry:
@@ -45,6 +48,7 @@ void test_svmops_za32_bf16(svbool_t pn, svbool_t pm, svbfloat16_t zn, svbfloat16
   SME_ACLE_FUNC(svmops_za32, _bf16, _m)(0, pn, pm, zn, zm);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svmops_za32_f16(
 // CHECK-CXX-LABEL: @_Z20test_svmops_za32_f16u10__SVBool_tu10__SVBool_tu13__SVFloat16_tu13__SVFloat16_t(
 // CHECK-NEXT:  entry:
@@ -57,6 +61,7 @@ void test_svmops_za32_f16(svbool_t pn, svbool_t pm, svfloat16_t zn, svfloat16_t 
   SME_ACLE_FUNC(svmops_za32, _f16, _m)(1, pn, pm, zn, zm);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svmops_za32_f32(
 // CHECK-CXX-LABEL: @_Z20test_svmops_za32_f32u10__SVBool_tu10__SVBool_tu13__SVFloat32_tu13__SVFloat32_t(
 // CHECK-NEXT:  entry:
@@ -69,6 +74,7 @@ void test_svmops_za32_f32(svbool_t pn, svbool_t pm, svfloat32_t zn, svfloat32_t 
   SME_ACLE_FUNC(svmops_za32, _f32, _m)(1, pn, pm, zn, zm);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svsumops_za32_s8(
 // CHECK-CXX-LABEL: @_Z21test_svsumops_za32_s8u10__SVBool_tu10__SVBool_tu10__SVInt8_tu11__SVUint8_t(
 // CHECK-NEXT:  entry:
@@ -79,6 +85,7 @@ void test_svsumops_za32_s8(svbool_t pn, svbool_t pm, svint8_t zn, svuint8_t zm) 
  SME_ACLE_FUNC(svsumops_za32, _s8, _m)(0, pn, pm, zn, zm);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svusmops_za32_u8(
 // CHECK-CXX-LABEL: @_Z21test_svusmops_za32_u8u10__SVBool_tu10__SVBool_tu11__SVUint8_tu10__SVInt8_t(
 // CHECK-NEXT:  entry:

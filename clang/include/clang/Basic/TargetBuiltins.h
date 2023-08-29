@@ -62,7 +62,7 @@ namespace clang {
 #include "clang/Basic/BuiltinsSME.def"
     FirstTSBuiltin,
   };
-  }
+  } // namespace SME
 
   /// AArch64 builtins
   namespace AArch64 {
@@ -309,6 +309,13 @@ namespace clang {
     bool isTupleSet() const { return Flags & IsTupleSet; }
     bool isReadZA() const { return Flags & IsReadZA; }
     bool isWriteZA() const { return Flags & IsWriteZA; }
+    bool isZASliceBaseOffsetIntr() const {
+      return Flags & IsZASliceBaseOffsetIntr;
+    }
+    bool isTileBaseOffsetIntr() const {
+      return Flags & IsTileBaseOffsetIntr;
+    }
+    bool isReductionQV() const { return Flags & IsReductionQV; }
 
     uint64_t getBits() const { return Flags; }
     bool isFlagSet(uint64_t Flag) const { return Flags & Flag; }

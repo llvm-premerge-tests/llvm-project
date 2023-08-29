@@ -229,6 +229,10 @@
 // RUN: %clang -target aarch64-none-linux-gnu -march=armv9-a+sve2-bitperm -x c -E -dM %s -o - | FileCheck --check-prefix=CHECK-SVE2BITPERM %s
 // CHECK-SVE2BITPERM: __ARM_FEATURE_SVE2_BITPERM 1
 
+// RUN: %clang -target aarch64-none-linux-gnu -march=armv8-a+sme -x c -E -dM %s -o - | FileCheck --check-prefix=CHECK-SME-BF16 %s
+// CHECK-SME-BF16: __ARM_FEATURE_SME 1
+// CHECK-SME-BF16: __ARM_FEATURE_UNALIGNED 1
+
 // RUN: %clang -target aarch64-none-linux-gnu -march=armv8.2a+dotprod -x c -E -dM %s -o - | FileCheck --check-prefix=CHECK-DOTPROD %s
 // RUN: %clang -target aarch64-none-linux-gnu -march=armv8.4a -x c -E -dM %s -o - | FileCheck --check-prefix=CHECK-DOTPROD %s
 // CHECK-DOTPROD: __ARM_FEATURE_DOTPROD 1

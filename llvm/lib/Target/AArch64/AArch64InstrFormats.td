@@ -786,8 +786,11 @@ def tvecshiftR64 : Operand<i32>, TImmLeaf<i32, [{
 
 def Imm0_0Operand : AsmImmRange<0, 0>;
 def Imm0_1Operand : AsmImmRange<0, 1>;
+def Imm1_1Operand : AsmImmRange<1, 1>;
 def Imm0_3Operand : AsmImmRange<0, 3>;
+def Imm1_3Operand : AsmImmRange<1, 3>;
 def Imm0_7Operand : AsmImmRange<0, 7>;
+def Imm1_7Operand : AsmImmRange<1, 7>;
 def Imm0_15Operand : AsmImmRange<0, 15>;
 def Imm0_31Operand : AsmImmRange<0, 31>;
 def Imm0_63Operand : AsmImmRange<0, 63>;
@@ -1003,11 +1006,25 @@ def timm0_1 : Operand<i64>, TImmLeaf<i64, [{
   let ParserMatchClass = Imm0_1Operand;
 }
 
+// timm32_0_0 predicate - True if the 32-bit immediate is in the range [0,0]
+def timm32_0_0 : Operand<i32>, TImmLeaf<i32, [{
+  return ((uint32_t)Imm) == 0;
+}]> {
+  let ParserMatchClass = Imm0_0Operand;
+}
+
 // timm32_0_1 predicate - True if the 32-bit immediate is in the range [0,1]
 def timm32_0_1 : Operand<i32>, TImmLeaf<i32, [{
   return ((uint32_t)Imm) < 2;
 }]> {
   let ParserMatchClass = Imm0_1Operand;
+}
+
+// timm32_1_1 - True if the 32-bit immediate is in the range [1,1]
+def timm32_1_1 : Operand<i32>, TImmLeaf<i32, [{
+    return ((uint32_t)Imm) == 1;
+}]> {
+  let ParserMatchClass = Imm1_1Operand;
 }
 
 // imm0_15 predicate - True if the immediate is in the range [0,15]
@@ -1038,11 +1055,25 @@ def timm32_0_3 : Operand<i32>, TImmLeaf<i32, [{
   let ParserMatchClass = Imm0_3Operand;
 }
 
+// timm32_1_3 predicate - True if the 32-bit immediate is in the range [1,3]
+def timm32_1_3 : Operand<i32>, TImmLeaf<i32, [{
+  return ((uint32_t)Imm) > 0 && ((uint32_t)Imm) < 4;
+}]> {
+  let ParserMatchClass = Imm1_3Operand;
+}
+
 // timm32_0_7 predicate - True if the 32-bit immediate is in the range [0,7]
 def timm32_0_7 : Operand<i32>, TImmLeaf<i32, [{
   return ((uint32_t)Imm) < 8;
 }]> {
   let ParserMatchClass = Imm0_7Operand;
+}
+
+// timm32_1_7 predicate - True if the 32-bit immediate is in the range [1,7]
+def timm32_1_7 : Operand<i32>, TImmLeaf<i32, [{
+  return ((uint32_t)Imm) > 0 && ((uint32_t)Imm) < 8;
+}]> {
+  let ParserMatchClass = Imm1_7Operand;
 }
 
 // imm32_0_15 predicate - True if the 32-bit immediate is in the range [0,15]
@@ -1398,6 +1429,8 @@ let OperandNamespace = "AArch64" in {
   let OperandType = "OPERAND_IMPLICIT_IMM_0" in {
     defm VectorIndex0 : VectorIndex<i64, VectorIndex0Operand,
                                 [{ return ((uint64_t)Imm) == 0; }]>;
+    defm VectorIndex032b : VectorIndex<i32, VectorIndex0Operand,
+                                [{ return ((uint32_t)Imm) == 0; }]>;
   }
 }
 defm VectorIndex1 : VectorIndex<i64, VectorIndex1Operand,
@@ -1479,11 +1512,11 @@ def sme_elm_idx0_15 : Operand<i32>, TImmLeaf<i32, [{
 
 // SME2 vector select offset operands
 
-// uimm3s8 predicate
+// tuimm3s8_32 predicate
 // True if the immediate is a multiple of 8 in the range [0,56].
 def UImm3s8Operand : UImmScaledMemoryIndexed<3, 8>;
 
-def uimm3s8 : Operand<i64>, ImmLeaf<i64,
+def tuimm3s8_32 : Operand<i32>, TImmLeaf<i32,
 [{ return Imm >= 0 && Imm <= 56 && ((Imm % 8) == 0); }], UImmS8XForm> {
   let PrintMethod = "printVectorIndex<8>";
   let ParserMatchClass = UImm3s8Operand;
@@ -12194,3 +12227,4 @@ def : TokenAlias<".H", ".h">;
 def : TokenAlias<".S", ".s">;
 def : TokenAlias<".D", ".d">;
 def : TokenAlias<".Q", ".q">;
+def : TokenAlias<".2B", ".2b">;

@@ -377,7 +377,7 @@ define <vscale x 2 x i1> @whilelt_x2_nxv2i1(i64 %m, i64 %n) nounwind {
 }
 
 
-; Test that we get good code quality when using while in combination with other intrinsics
+; Test that we get good code quality for code generated from ACLE builtins
 
 define <vscale x 32 x i1> @codegen_whilege_b16_x2(i64 noundef %op1, i64 noundef %op2) nounwind {
 ; CHECK-LABEL: codegen_whilege_b16_x2:

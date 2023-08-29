@@ -90,9 +90,12 @@ define { <vscale x 2 x i64>, <vscale x 2 x i64> } @za_read_horiz_vg2_d(i32 %slic
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    mov w12, w0
 ; CHECK-NEXT:    mov { z0.d, z1.d }, za0h.d[w12, 0:1]
+; CHECK-NEXT:    mov { z0.d, z1.d }, za7h.d[w12, 0:1]
 ; CHECK-NEXT:    ret
   %res = call { <vscale x 2 x i64>, <vscale x 2 x i64> } @llvm.aarch64.sme.read.hor.vg2.nxv2i64(i32 0, i32 %slice)
-  ret { <vscale x 2 x i64>, <vscale x 2 x i64> } %res
+  %slice.0 = add i32 %slice, 0
+  %res2 = call { <vscale x 2 x i64>, <vscale x 2 x i64> } @llvm.aarch64.sme.read.hor.vg2.nxv2i64(i32 7, i32 %slice.0)
+  ret { <vscale x 2 x i64>, <vscale x 2 x i64> } %res2
 }
 
 define { <vscale x 2 x double>, <vscale x 2 x double> } @za_read_horiz_vg2_f64(i32 %slice) {
@@ -100,9 +103,12 @@ define { <vscale x 2 x double>, <vscale x 2 x double> } @za_read_horiz_vg2_f64(i
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    mov w12, w0
 ; CHECK-NEXT:    mov { z0.d, z1.d }, za0h.d[w12, 0:1]
+; CHECK-NEXT:    mov { z0.d, z1.d }, za7h.d[w12, 0:1]
 ; CHECK-NEXT:    ret
   %res = call { <vscale x 2 x double>, <vscale x 2 x double> } @llvm.aarch64.sme.read.hor.vg2.nxv2f64(i32 0, i32 %slice)
-  ret { <vscale x 2 x double>, <vscale x 2 x double> } %res
+  %slice.0 = add i32 %slice, 0
+  %res2 = call { <vscale x 2 x double>, <vscale x 2 x double> } @llvm.aarch64.sme.read.hor.vg2.nxv2f64(i32 7, i32 %slice.0)
+  ret { <vscale x 2 x double>, <vscale x 2 x double> } %res2
 }
 
 ; Vertical
@@ -190,9 +196,12 @@ define { <vscale x 2 x i64>, <vscale x 2 x i64> } @za_read_vert_vg2_d(i32 %slice
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    mov w12, w0
 ; CHECK-NEXT:    mov { z0.d, z1.d }, za0v.d[w12, 0:1]
+; CHECK-NEXT:    mov { z0.d, z1.d }, za7v.d[w12, 0:1]
 ; CHECK-NEXT:    ret
   %res = call { <vscale x 2 x i64>, <vscale x 2 x i64> } @llvm.aarch64.sme.read.ver.vg2.nxv2i64(i32 0, i32 %slice)
-  ret { <vscale x 2 x i64>, <vscale x 2 x i64> } %res
+  %slice.0 = add i32 %slice, 0
+  %res2 = call { <vscale x 2 x i64>, <vscale x 2 x i64> } @llvm.aarch64.sme.read.ver.vg2.nxv2i64(i32 7, i32 %slice.0)
+  ret { <vscale x 2 x i64>, <vscale x 2 x i64> } %res2
 }
 
 define { <vscale x 2 x double>, <vscale x 2 x double> } @za_read_vert_vg2_f64(i32 %slice) {
@@ -200,9 +209,12 @@ define { <vscale x 2 x double>, <vscale x 2 x double> } @za_read_vert_vg2_f64(i3
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    mov w12, w0
 ; CHECK-NEXT:    mov { z0.d, z1.d }, za0v.d[w12, 0:1]
+; CHECK-NEXT:    mov { z0.d, z1.d }, za7v.d[w12, 0:1]
 ; CHECK-NEXT:    ret
   %res = call { <vscale x 2 x double>, <vscale x 2 x double> } @llvm.aarch64.sme.read.ver.vg2.nxv2f64(i32 0, i32 %slice)
-  ret { <vscale x 2 x double>, <vscale x 2 x double> } %res
+  %slice.0 = add i32 %slice, 0
+  %res2 = call { <vscale x 2 x double>, <vscale x 2 x double> } @llvm.aarch64.sme.read.ver.vg2.nxv2f64(i32 7, i32 %slice.0)
+  ret { <vscale x 2 x double>, <vscale x 2 x double> } %res2
 }
 
 ;
@@ -268,9 +280,12 @@ define { <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    mov w12, w0
 ; CHECK-NEXT:    mov { z0.s - z3.s }, za0h.s[w12, 0:3]
+; CHECK-NEXT:    mov { z0.s - z3.s }, za3h.s[w12, 0:3]
 ; CHECK-NEXT:    ret
   %res = call { <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32> } @llvm.aarch64.sme.read.hor.vg4.nxv4i32(i32 0, i32 %slice)
-  ret { <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32> } %res
+  %slice.0 = add i32 %slice, 0
+  %res2 = call { <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32> } @llvm.aarch64.sme.read.hor.vg4.nxv4i32(i32 3, i32 %slice.0)
+  ret { <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32> } %res2
 }
 
 define { <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float> } @za_read_horiz_vg4_f32(i32 %slice) {
@@ -278,9 +293,12 @@ define { <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float>, <vsca
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    mov w12, w0
 ; CHECK-NEXT:    mov { z0.s - z3.s }, za0h.s[w12, 0:3]
+; CHECK-NEXT:    mov { z0.s - z3.s }, za3h.s[w12, 0:3]
 ; CHECK-NEXT:    ret
   %res = call { <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float> } @llvm.aarch64.sme.read.hor.vg4.nxv4f32(i32 0, i32 %slice)
-  ret { <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float> } %res
+  %slice.0 = add i32 %slice, 0
+  %res2 = call { <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float> } @llvm.aarch64.sme.read.hor.vg4.nxv4f32(i32 3, i32 %slice.0)
+  ret { <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float> } %res2
 }
 
 define { <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64> } @za_read_horiz_vg4_d(i32 %slice) {
@@ -288,9 +306,12 @@ define { <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    mov w12, w0
 ; CHECK-NEXT:    mov { z0.d - z3.d }, za0h.d[w12, 0:3]
+; CHECK-NEXT:    mov { z0.d - z3.d }, za7h.d[w12, 0:3]
 ; CHECK-NEXT:    ret
   %res = call { <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64> } @llvm.aarch64.sme.read.hor.vg4.nxv2i64(i32 0, i32 %slice)
-  ret { <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64> } %res
+  %slice.0 = add i32 %slice, 0
+  %res2 = call { <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64> } @llvm.aarch64.sme.read.hor.vg4.nxv2i64(i32 7, i32 %slice.0)
+  ret { <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64> } %res2
 }
 
 define { <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double> } @za_read_horiz_vg4_f64(i32 %slice) {
@@ -298,9 +319,12 @@ define { <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double>, <v
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    mov w12, w0
 ; CHECK-NEXT:    mov { z0.d - z3.d }, za0h.d[w12, 0:3]
+; CHECK-NEXT:    mov { z0.d - z3.d }, za7h.d[w12, 0:3]
 ; CHECK-NEXT:    ret
   %res = call { <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double> } @llvm.aarch64.sme.read.hor.vg4.nxv2f64(i32 0, i32 %slice)
-  ret { <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double> } %res
+  %slice.0 = add i32 %slice, 0
+  %res2 = call { <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double> } @llvm.aarch64.sme.read.hor.vg4.nxv2f64(i32 7, i32 %slice.0)
+  ret { <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double> } %res2
 }
 
 ; Vertical
@@ -362,9 +386,12 @@ define { <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    mov w12, w0
 ; CHECK-NEXT:    mov { z0.s - z3.s }, za0v.s[w12, 0:3]
+; CHECK-NEXT:    mov { z0.s - z3.s }, za3v.s[w12, 0:3]
 ; CHECK-NEXT:    ret
   %res = call { <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32> } @llvm.aarch64.sme.read.ver.vg4.nxv4i32(i32 0, i32 %slice)
-  ret { <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32> } %res
+  %slice.0 = add i32 %slice, 0
+  %res2 = call { <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32> } @llvm.aarch64.sme.read.ver.vg4.nxv4i32(i32 3, i32 %slice.0)
+  ret { <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32> } %res2
 }
 
 define { <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float> } @za_read_vert_vg4_f32(i32 %slice) {
@@ -372,9 +399,12 @@ define { <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float>, <vsca
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    mov w12, w0
 ; CHECK-NEXT:    mov { z0.s - z3.s }, za0v.s[w12, 0:3]
+; CHECK-NEXT:    mov { z0.s - z3.s }, za3v.s[w12, 0:3]
 ; CHECK-NEXT:    ret
   %res = call { <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float> } @llvm.aarch64.sme.read.ver.vg4.nxv4f32(i32 0, i32 %slice)
-  ret { <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float> } %res
+  %slice.0 = add i32 %slice, 0
+  %res2 = call { <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float> } @llvm.aarch64.sme.read.ver.vg4.nxv4f32(i32 3, i32 %slice.0)
+  ret { <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float> } %res2
 }
 
 define { <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64> } @za_read_vert_vg4_d(i32 %slice) {
@@ -382,9 +412,12 @@ define { <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    mov w12, w0
 ; CHECK-NEXT:    mov { z0.d - z3.d }, za0v.d[w12, 0:3]
+; CHECK-NEXT:    mov { z0.d - z3.d }, za7v.d[w12, 0:3]
 ; CHECK-NEXT:    ret
   %res = call { <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64> } @llvm.aarch64.sme.read.ver.vg4.nxv2i64(i32 0, i32 %slice)
-  ret { <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64> } %res
+  %slice.0 = add i32 %slice, 0
+  %res2 = call { <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64> } @llvm.aarch64.sme.read.ver.vg4.nxv2i64(i32 7, i32 %slice.0)
+  ret { <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64>, <vscale x 2 x i64> } %res2
 }
 
 define { <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double> } @za_read_vert_vg4_f64(i32 %slice) {
@@ -392,9 +425,12 @@ define { <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double>, <v
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    mov w12, w0
 ; CHECK-NEXT:    mov { z0.d - z3.d }, za0v.d[w12, 0:3]
+; CHECK-NEXT:    mov { z0.d - z3.d }, za7v.d[w12, 0:3]
 ; CHECK-NEXT:    ret
   %res = call { <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double> } @llvm.aarch64.sme.read.ver.vg4.nxv2f64(i32 0, i32 %slice)
-  ret { <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double> } %res
+  %slice.0 = add i32 %slice, 0
+  %res2 = call { <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double> } @llvm.aarch64.sme.read.ver.vg4.nxv2f64(i32 7, i32 %slice.0)
+  ret { <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double> } %res2
 }
 
 ; Move Multi-Vector From ZA (Read) x2

@@ -1009,11 +1009,13 @@ public:
   }
 
   /// Create a call to the vector.extract intrinsic.
-  CallInst *CreateExtractVector(Type *DstType, Value *SrcVec, Value *Idx,
-                                const Twine &Name = "") {
+  Value *CreateExtractVector(Type *DstType, Value *SrcVec, Value *Idx,
+                             const Twine &Name = "") {
+    if (cast<ConstantInt>(Idx)->isZero() && DstType == SrcVec->getType())
+      return SrcVec;
     return CreateIntrinsic(Intrinsic::vector_extract,
-                           {DstType, SrcVec->getType()}, {SrcVec, Idx}, nullptr,
-                           Name);
+                           {DstType, SrcVec->getType()}, {SrcVec, Idx},
+                           nullptr, Name);
   }
 
   /// Create a call to the vector.insert intrinsic.

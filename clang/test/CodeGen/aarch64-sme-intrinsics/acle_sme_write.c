@@ -5,7 +5,7 @@
 // RUN: %clang_cc1 -DSME_OVERLOADED_FORMS -triple aarch64-none-linux-gnu -target-feature +sme -target-feature +sve -S -O1 -Werror -emit-llvm -o - -x c++ %s | FileCheck %s -check-prefixes=CHECK,CHECK-CXX
 // RUN: %clang_cc1 -triple aarch64-none-linux-gnu -target-feature +sme -target-feature +sve -S -O1 -Werror -o /dev/null %s
 
-#include <arm_sme_draft_spec_subject_to_change.h>
+#include <arm_sme.h>
 
 #ifdef SME_OVERLOADED_FORMS
 #define SME_ACLE_FUNC(A1,A2_UNUSED,A3) A1##A3
@@ -13,6 +13,7 @@
 #define SME_ACLE_FUNC(A1,A2,A3) A1##A2##A3
 #endif
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za8_s8(
 // CHECK-CXX-LABEL: @_Z23test_svwrite_hor_za8_s8ju10__SVBool_tu10__SVInt8_t(
 // CHECK-NEXT:  entry:
@@ -23,6 +24,7 @@ void test_svwrite_hor_za8_s8(uint32_t slice_base, svbool_t pg, svint8_t zn) {
   SME_ACLE_FUNC(svwrite_hor_za8, _s8, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za8_s8_1(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_hor_za8_s8_1ju10__SVBool_tu10__SVInt8_t(
 // CHECK-NEXT:  entry:
@@ -34,6 +36,7 @@ void test_svwrite_hor_za8_s8_1(uint32_t slice_base, svbool_t pg, svint8_t zn) {
   SME_ACLE_FUNC(svwrite_hor_za8, _s8, _m)(0, slice_base, 15, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za16_s16(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_hor_za16_s16ju10__SVBool_tu11__SVInt16_t(
 // CHECK-NEXT:  entry:
@@ -45,6 +48,7 @@ void test_svwrite_hor_za16_s16(uint32_t slice_base, svbool_t pg, svint16_t zn) {
   SME_ACLE_FUNC(svwrite_hor_za16, _s16, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za16_s16_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_hor_za16_s16_1ju10__SVBool_tu11__SVInt16_t(
 // CHECK-NEXT:  entry:
@@ -57,6 +61,7 @@ void test_svwrite_hor_za16_s16_1(uint32_t slice_base, svbool_t pg, svint16_t zn)
   SME_ACLE_FUNC(svwrite_hor_za16, _s16, _m)(1, slice_base, 7, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za32_s32(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_hor_za32_s32ju10__SVBool_tu11__SVInt32_t(
 // CHECK-NEXT:  entry:
@@ -68,6 +73,7 @@ void test_svwrite_hor_za32_s32(uint32_t slice_base, svbool_t pg, svint32_t zn) {
   SME_ACLE_FUNC(svwrite_hor_za32, _s32, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za32_s32_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_hor_za32_s32_1ju10__SVBool_tu11__SVInt32_t(
 // CHECK-NEXT:  entry:
@@ -80,6 +86,7 @@ void test_svwrite_hor_za32_s32_1(uint32_t slice_base, svbool_t pg, svint32_t zn)
   SME_ACLE_FUNC(svwrite_hor_za32, _s32, _m)(3, slice_base, 3, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za64_s64(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_hor_za64_s64ju10__SVBool_tu11__SVInt64_t(
 // CHECK-NEXT:  entry:
@@ -91,6 +98,7 @@ void test_svwrite_hor_za64_s64(uint32_t slice_base, svbool_t pg, svint64_t zn) {
   SME_ACLE_FUNC(svwrite_hor_za64, _s64, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za64_s64_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_hor_za64_s64_1ju10__SVBool_tu11__SVInt64_t(
 // CHECK-NEXT:  entry:
@@ -103,6 +111,7 @@ void test_svwrite_hor_za64_s64_1(uint32_t slice_base, svbool_t pg, svint64_t zn)
   SME_ACLE_FUNC(svwrite_hor_za64, _s64, _m)(7, slice_base, 1, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za8_u8(
 // CHECK-CXX-LABEL: @_Z23test_svwrite_hor_za8_u8ju10__SVBool_tu11__SVUint8_t(
 // CHECK-NEXT:  entry:
@@ -113,6 +122,7 @@ void test_svwrite_hor_za8_u8(uint32_t slice_base, svbool_t pg, svuint8_t zn) {
   SME_ACLE_FUNC(svwrite_hor_za8, _u8, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za8_u8_1(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_hor_za8_u8_1ju10__SVBool_tu11__SVUint8_t(
 // CHECK-NEXT:  entry:
@@ -124,6 +134,7 @@ void test_svwrite_hor_za8_u8_1(uint32_t slice_base, svbool_t pg, svuint8_t zn) {
   SME_ACLE_FUNC(svwrite_hor_za8, _u8, _m)(0, slice_base, 15, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za16_u16(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_hor_za16_u16ju10__SVBool_tu12__SVUint16_t(
 // CHECK-NEXT:  entry:
@@ -135,6 +146,7 @@ void test_svwrite_hor_za16_u16(uint32_t slice_base, svbool_t pg, svuint16_t zn) 
   SME_ACLE_FUNC(svwrite_hor_za16, _u16, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za16_u16_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_hor_za16_u16_1ju10__SVBool_tu12__SVUint16_t(
 // CHECK-NEXT:  entry:
@@ -147,6 +159,7 @@ void test_svwrite_hor_za16_u16_1(uint32_t slice_base, svbool_t pg, svuint16_t zn
   SME_ACLE_FUNC(svwrite_hor_za16, _u16, _m)(1, slice_base, 7, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za32_u32(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_hor_za32_u32ju10__SVBool_tu12__SVUint32_t(
 // CHECK-NEXT:  entry:
@@ -158,6 +171,7 @@ void test_svwrite_hor_za32_u32(uint32_t slice_base, svbool_t pg, svuint32_t zn) 
   SME_ACLE_FUNC(svwrite_hor_za32, _u32, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za32_u32_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_hor_za32_u32_1ju10__SVBool_tu12__SVUint32_t(
 // CHECK-NEXT:  entry:
@@ -170,6 +184,7 @@ void test_svwrite_hor_za32_u32_1(uint32_t slice_base, svbool_t pg, svuint32_t zn
   SME_ACLE_FUNC(svwrite_hor_za32, _u32, _m)(3, slice_base, 3, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za64_u64(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_hor_za64_u64ju10__SVBool_tu12__SVUint64_t(
 // CHECK-NEXT:  entry:
@@ -181,6 +196,7 @@ void test_svwrite_hor_za64_u64(uint32_t slice_base, svbool_t pg, svuint64_t zn) 
   SME_ACLE_FUNC(svwrite_hor_za64, _u64, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za64_u64_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_hor_za64_u64_1ju10__SVBool_tu12__SVUint64_t(
 // CHECK-NEXT:  entry:
@@ -193,6 +209,7 @@ void test_svwrite_hor_za64_u64_1(uint32_t slice_base, svbool_t pg, svuint64_t zn
   SME_ACLE_FUNC(svwrite_hor_za64, _u64, _m)(7, slice_base, 1, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za16_f16(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_hor_za16_f16ju10__SVBool_tu13__SVFloat16_t(
 // CHECK-NEXT:  entry:
@@ -204,6 +221,7 @@ void test_svwrite_hor_za16_f16(uint32_t slice_base, svbool_t pg, svfloat16_t zn)
   SME_ACLE_FUNC(svwrite_hor_za16, _f16, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za16_f16_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_hor_za16_f16_1ju10__SVBool_tu13__SVFloat16_t(
 // CHECK-NEXT:  entry:
@@ -216,6 +234,7 @@ void test_svwrite_hor_za16_f16_1(uint32_t slice_base, svbool_t pg, svfloat16_t z
   SME_ACLE_FUNC(svwrite_hor_za16, _f16, _m)(1, slice_base, 7, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za16_bf16(
 // CHECK-CXX-LABEL: @_Z26test_svwrite_hor_za16_bf16ju10__SVBool_tu14__SVBFloat16_t(
 // CHECK-NEXT:  entry:
@@ -227,6 +246,7 @@ void test_svwrite_hor_za16_bf16(uint32_t slice_base, svbool_t pg, svbfloat16_t z
   SME_ACLE_FUNC(svwrite_hor_za16, _bf16, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za16_bf16_1(
 // CHECK-CXX-LABEL: @_Z28test_svwrite_hor_za16_bf16_1ju10__SVBool_tu14__SVBFloat16_t(
 // CHECK-NEXT:  entry:
@@ -239,6 +259,7 @@ void test_svwrite_hor_za16_bf16_1(uint32_t slice_base, svbool_t pg, svbfloat16_t
   SME_ACLE_FUNC(svwrite_hor_za16, _bf16, _m)(1, slice_base, 7, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za32_f32(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_hor_za32_f32ju10__SVBool_tu13__SVFloat32_t(
 // CHECK-NEXT:  entry:
@@ -250,6 +271,7 @@ void test_svwrite_hor_za32_f32(uint32_t slice_base, svbool_t pg, svfloat32_t zn)
   SME_ACLE_FUNC(svwrite_hor_za32, _f32, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za32_f32_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_hor_za32_f32_1ju10__SVBool_tu13__SVFloat32_t(
 // CHECK-NEXT:  entry:
@@ -262,6 +284,7 @@ void test_svwrite_hor_za32_f32_1(uint32_t slice_base, svbool_t pg, svfloat32_t z
   SME_ACLE_FUNC(svwrite_hor_za32, _f32, _m)(3, slice_base, 3, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za64_f64(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_hor_za64_f64ju10__SVBool_tu13__SVFloat64_t(
 // CHECK-NEXT:  entry:
@@ -273,6 +296,7 @@ void test_svwrite_hor_za64_f64(uint32_t slice_base, svbool_t pg, svfloat64_t zn)
   SME_ACLE_FUNC(svwrite_hor_za64, _f64, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za64_f64_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_hor_za64_f64_1ju10__SVBool_tu13__SVFloat64_t(
 // CHECK-NEXT:  entry:
@@ -285,6 +309,7 @@ void test_svwrite_hor_za64_f64_1(uint32_t slice_base, svbool_t pg, svfloat64_t z
   SME_ACLE_FUNC(svwrite_hor_za64, _f64, _m)(7, slice_base, 1, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_s8(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_hor_za128_s8ju10__SVBool_tu10__SVInt8_t(
 // CHECK-NEXT:  entry:
@@ -295,6 +320,7 @@ void test_svwrite_hor_za128_s8(uint32_t slice_base, svbool_t pg, svint8_t zn) {
   SME_ACLE_FUNC(svwrite_hor_za128, _s8, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_s8_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_hor_za128_s8_1ju10__SVBool_tu10__SVInt8_t(
 // CHECK-NEXT:  entry:
@@ -305,6 +331,7 @@ void test_svwrite_hor_za128_s8_1(uint32_t slice_base, svbool_t pg, svint8_t zn) 
   SME_ACLE_FUNC(svwrite_hor_za128, _s8, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_s16(
 // CHECK-CXX-LABEL: @_Z26test_svwrite_hor_za128_s16ju10__SVBool_tu11__SVInt16_t(
 // CHECK-NEXT:  entry:
@@ -316,6 +343,7 @@ void test_svwrite_hor_za128_s16(uint32_t slice_base, svbool_t pg, svint16_t zn) 
   SME_ACLE_FUNC(svwrite_hor_za128, _s16, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_s16_1(
 // CHECK-CXX-LABEL: @_Z28test_svwrite_hor_za128_s16_1ju10__SVBool_tu11__SVInt16_t(
 // CHECK-NEXT:  entry:
@@ -327,6 +355,7 @@ void test_svwrite_hor_za128_s16_1(uint32_t slice_base, svbool_t pg, svint16_t zn
   SME_ACLE_FUNC(svwrite_hor_za128, _s16, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_s32(
 // CHECK-CXX-LABEL: @_Z26test_svwrite_hor_za128_s32ju10__SVBool_tu11__SVInt32_t(
 // CHECK-NEXT:  entry:
@@ -338,6 +367,7 @@ void test_svwrite_hor_za128_s32(uint32_t slice_base, svbool_t pg, svint32_t zn) 
   SME_ACLE_FUNC(svwrite_hor_za128, _s32, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_s32_1(
 // CHECK-CXX-LABEL: @_Z28test_svwrite_hor_za128_s32_1ju10__SVBool_tu11__SVInt32_t(
 // CHECK-NEXT:  entry:
@@ -349,6 +379,7 @@ void test_svwrite_hor_za128_s32_1(uint32_t slice_base, svbool_t pg, svint32_t zn
   SME_ACLE_FUNC(svwrite_hor_za128, _s32, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_s64(
 // CHECK-CXX-LABEL: @_Z26test_svwrite_hor_za128_s64ju10__SVBool_tu11__SVInt64_t(
 // CHECK-NEXT:  entry:
@@ -360,6 +391,7 @@ void test_svwrite_hor_za128_s64(uint32_t slice_base, svbool_t pg, svint64_t zn) 
   SME_ACLE_FUNC(svwrite_hor_za128, _s64, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_s64_1(
 // CHECK-CXX-LABEL: @_Z28test_svwrite_hor_za128_s64_1ju10__SVBool_tu11__SVInt64_t(
 // CHECK-NEXT:  entry:
@@ -371,6 +403,7 @@ void test_svwrite_hor_za128_s64_1(uint32_t slice_base, svbool_t pg, svint64_t zn
   SME_ACLE_FUNC(svwrite_hor_za128, _s64, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_u8(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_hor_za128_u8ju10__SVBool_tu11__SVUint8_t(
 // CHECK-NEXT:  entry:
@@ -381,6 +414,7 @@ void test_svwrite_hor_za128_u8(uint32_t slice_base, svbool_t pg, svuint8_t zn) {
   SME_ACLE_FUNC(svwrite_hor_za128, _u8, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_u8_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_hor_za128_u8_1ju10__SVBool_tu11__SVUint8_t(
 // CHECK-NEXT:  entry:
@@ -391,6 +425,7 @@ void test_svwrite_hor_za128_u8_1(uint32_t slice_base, svbool_t pg, svuint8_t zn)
   SME_ACLE_FUNC(svwrite_hor_za128, _u8, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_u16(
 // CHECK-CXX-LABEL: @_Z26test_svwrite_hor_za128_u16ju10__SVBool_tu12__SVUint16_t(
 // CHECK-NEXT:  entry:
@@ -402,6 +437,7 @@ void test_svwrite_hor_za128_u16(uint32_t slice_base, svbool_t pg, svuint16_t zn)
   SME_ACLE_FUNC(svwrite_hor_za128, _u16, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_u16_1(
 // CHECK-CXX-LABEL: @_Z28test_svwrite_hor_za128_u16_1ju10__SVBool_tu12__SVUint16_t(
 // CHECK-NEXT:  entry:
@@ -413,6 +449,7 @@ void test_svwrite_hor_za128_u16_1(uint32_t slice_base, svbool_t pg, svuint16_t z
   SME_ACLE_FUNC(svwrite_hor_za128, _u16, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_u32(
 // CHECK-CXX-LABEL: @_Z26test_svwrite_hor_za128_u32ju10__SVBool_tu12__SVUint32_t(
 // CHECK-NEXT:  entry:
@@ -424,6 +461,7 @@ void test_svwrite_hor_za128_u32(uint32_t slice_base, svbool_t pg, svuint32_t zn)
   SME_ACLE_FUNC(svwrite_hor_za128, _u32, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_u32_1(
 // CHECK-CXX-LABEL: @_Z28test_svwrite_hor_za128_u32_1ju10__SVBool_tu12__SVUint32_t(
 // CHECK-NEXT:  entry:
@@ -435,6 +473,7 @@ void test_svwrite_hor_za128_u32_1(uint32_t slice_base, svbool_t pg, svuint32_t z
   SME_ACLE_FUNC(svwrite_hor_za128, _u32, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_u64(
 // CHECK-CXX-LABEL: @_Z26test_svwrite_hor_za128_u64ju10__SVBool_tu12__SVUint64_t(
 // CHECK-NEXT:  entry:
@@ -446,6 +485,7 @@ void test_svwrite_hor_za128_u64(uint32_t slice_base, svbool_t pg, svuint64_t zn)
   SME_ACLE_FUNC(svwrite_hor_za128, _u64, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_u64_1(
 // CHECK-CXX-LABEL: @_Z28test_svwrite_hor_za128_u64_1ju10__SVBool_tu12__SVUint64_t(
 // CHECK-NEXT:  entry:
@@ -457,6 +497,7 @@ void test_svwrite_hor_za128_u64_1(uint32_t slice_base, svbool_t pg, svuint64_t z
   SME_ACLE_FUNC(svwrite_hor_za128, _u64, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_f16(
 // CHECK-CXX-LABEL: @_Z26test_svwrite_hor_za128_f16ju10__SVBool_tu13__SVFloat16_t(
 // CHECK-NEXT:  entry:
@@ -468,6 +509,7 @@ void test_svwrite_hor_za128_f16(uint32_t slice_base, svbool_t pg, svfloat16_t zn
   SME_ACLE_FUNC(svwrite_hor_za128, _f16, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_f16_1(
 // CHECK-CXX-LABEL: @_Z28test_svwrite_hor_za128_f16_1ju10__SVBool_tu13__SVFloat16_t(
 // CHECK-NEXT:  entry:
@@ -479,6 +521,7 @@ void test_svwrite_hor_za128_f16_1(uint32_t slice_base, svbool_t pg, svfloat16_t 
   SME_ACLE_FUNC(svwrite_hor_za128, _f16, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_bf16(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_hor_za128_bf16ju10__SVBool_tu14__SVBFloat16_t(
 // CHECK-NEXT:  entry:
@@ -490,6 +533,7 @@ void test_svwrite_hor_za128_bf16(uint32_t slice_base, svbool_t pg, svbfloat16_t 
   SME_ACLE_FUNC(svwrite_hor_za128, _bf16, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_bf16_1(
 // CHECK-CXX-LABEL: @_Z29test_svwrite_hor_za128_bf16_1ju10__SVBool_tu14__SVBFloat16_t(
 // CHECK-NEXT:  entry:
@@ -501,6 +545,7 @@ void test_svwrite_hor_za128_bf16_1(uint32_t slice_base, svbool_t pg, svbfloat16_
   SME_ACLE_FUNC(svwrite_hor_za128, _bf16, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_f32(
 // CHECK-CXX-LABEL: @_Z26test_svwrite_hor_za128_f32ju10__SVBool_tu13__SVFloat32_t(
 // CHECK-NEXT:  entry:
@@ -512,6 +557,7 @@ void test_svwrite_hor_za128_f32(uint32_t slice_base, svbool_t pg, svfloat32_t zn
   SME_ACLE_FUNC(svwrite_hor_za128, _f32, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_f32_1(
 // CHECK-CXX-LABEL: @_Z28test_svwrite_hor_za128_f32_1ju10__SVBool_tu13__SVFloat32_t(
 // CHECK-NEXT:  entry:
@@ -523,6 +569,7 @@ void test_svwrite_hor_za128_f32_1(uint32_t slice_base, svbool_t pg, svfloat32_t 
   SME_ACLE_FUNC(svwrite_hor_za128, _f32, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_f64(
 // CHECK-CXX-LABEL: @_Z26test_svwrite_hor_za128_f64ju10__SVBool_tu13__SVFloat64_t(
 // CHECK-NEXT:  entry:
@@ -534,6 +581,7 @@ void test_svwrite_hor_za128_f64(uint32_t slice_base, svbool_t pg, svfloat64_t zn
   SME_ACLE_FUNC(svwrite_hor_za128, _f64, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_hor_za128_f64_1(
 // CHECK-CXX-LABEL: @_Z28test_svwrite_hor_za128_f64_1ju10__SVBool_tu13__SVFloat64_t(
 // CHECK-NEXT:  entry:
@@ -545,6 +593,7 @@ void test_svwrite_hor_za128_f64_1(uint32_t slice_base, svbool_t pg, svfloat64_t 
   SME_ACLE_FUNC(svwrite_hor_za128, _f64, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za8_s8(
 // CHECK-CXX-LABEL: @_Z23test_svwrite_ver_za8_s8ju10__SVBool_tu10__SVInt8_t(
 // CHECK-NEXT:  entry:
@@ -555,6 +604,7 @@ void test_svwrite_ver_za8_s8(uint32_t slice_base, svbool_t pg, svint8_t zn) {
   SME_ACLE_FUNC(svwrite_ver_za8, _s8, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za8_s8_1(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_ver_za8_s8_1ju10__SVBool_tu10__SVInt8_t(
 // CHECK-NEXT:  entry:
@@ -566,6 +616,7 @@ void test_svwrite_ver_za8_s8_1(uint32_t slice_base, svbool_t pg, svint8_t zn) {
   SME_ACLE_FUNC(svwrite_ver_za8, _s8, _m)(0, slice_base, 15, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za16_s16(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_ver_za16_s16ju10__SVBool_tu11__SVInt16_t(
 // CHECK-NEXT:  entry:
@@ -577,6 +628,7 @@ void test_svwrite_ver_za16_s16(uint32_t slice_base, svbool_t pg, svint16_t zn) {
   SME_ACLE_FUNC(svwrite_ver_za16, _s16, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za16_s16_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_ver_za16_s16_1ju10__SVBool_tu11__SVInt16_t(
 // CHECK-NEXT:  entry:
@@ -589,6 +641,7 @@ void test_svwrite_ver_za16_s16_1(uint32_t slice_base, svbool_t pg, svint16_t zn)
   SME_ACLE_FUNC(svwrite_ver_za16, _s16, _m)(1, slice_base, 7, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za32_s32(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_ver_za32_s32ju10__SVBool_tu11__SVInt32_t(
 // CHECK-NEXT:  entry:
@@ -600,6 +653,7 @@ void test_svwrite_ver_za32_s32(uint32_t slice_base, svbool_t pg, svint32_t zn) {
   SME_ACLE_FUNC(svwrite_ver_za32, _s32, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za32_s32_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_ver_za32_s32_1ju10__SVBool_tu11__SVInt32_t(
 // CHECK-NEXT:  entry:
@@ -612,6 +666,7 @@ void test_svwrite_ver_za32_s32_1(uint32_t slice_base, svbool_t pg, svint32_t zn)
   SME_ACLE_FUNC(svwrite_ver_za32, _s32, _m)(3, slice_base, 3, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za64_s64(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_ver_za64_s64ju10__SVBool_tu11__SVInt64_t(
 // CHECK-NEXT:  entry:
@@ -623,6 +678,7 @@ void test_svwrite_ver_za64_s64(uint32_t slice_base, svbool_t pg, svint64_t zn) {
   SME_ACLE_FUNC(svwrite_ver_za64, _s64, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za64_s64_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_ver_za64_s64_1ju10__SVBool_tu11__SVInt64_t(
 // CHECK-NEXT:  entry:
@@ -635,6 +691,7 @@ void test_svwrite_ver_za64_s64_1(uint32_t slice_base, svbool_t pg, svint64_t zn)
   SME_ACLE_FUNC(svwrite_ver_za64, _s64, _m)(7, slice_base, 1, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za8_u8(
 // CHECK-CXX-LABEL: @_Z23test_svwrite_ver_za8_u8ju10__SVBool_tu11__SVUint8_t(
 // CHECK-NEXT:  entry:
@@ -645,6 +702,7 @@ void test_svwrite_ver_za8_u8(uint32_t slice_base, svbool_t pg, svuint8_t zn) {
   SME_ACLE_FUNC(svwrite_ver_za8, _u8, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za8_u8_1(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_ver_za8_u8_1ju10__SVBool_tu11__SVUint8_t(
 // CHECK-NEXT:  entry:
@@ -656,6 +714,7 @@ void test_svwrite_ver_za8_u8_1(uint32_t slice_base, svbool_t pg, svuint8_t zn) {
   SME_ACLE_FUNC(svwrite_ver_za8, _u8, _m)(0, slice_base, 15, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za16_u16(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_ver_za16_u16ju10__SVBool_tu12__SVUint16_t(
 // CHECK-NEXT:  entry:
@@ -667,6 +726,7 @@ void test_svwrite_ver_za16_u16(uint32_t slice_base, svbool_t pg, svuint16_t zn) 
   SME_ACLE_FUNC(svwrite_ver_za16, _u16, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za16_u16_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_ver_za16_u16_1ju10__SVBool_tu12__SVUint16_t(
 // CHECK-NEXT:  entry:
@@ -679,6 +739,7 @@ void test_svwrite_ver_za16_u16_1(uint32_t slice_base, svbool_t pg, svuint16_t zn
   SME_ACLE_FUNC(svwrite_ver_za16, _u16, _m)(1, slice_base, 7, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za32_u32(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_ver_za32_u32ju10__SVBool_tu12__SVUint32_t(
 // CHECK-NEXT:  entry:
@@ -690,6 +751,7 @@ void test_svwrite_ver_za32_u32(uint32_t slice_base, svbool_t pg, svuint32_t zn) 
   SME_ACLE_FUNC(svwrite_ver_za32, _u32, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za32_u32_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_ver_za32_u32_1ju10__SVBool_tu12__SVUint32_t(
 // CHECK-NEXT:  entry:
@@ -702,6 +764,7 @@ void test_svwrite_ver_za32_u32_1(uint32_t slice_base, svbool_t pg, svuint32_t zn
   SME_ACLE_FUNC(svwrite_ver_za32, _u32, _m)(3, slice_base, 3, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za64_u64(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_ver_za64_u64ju10__SVBool_tu12__SVUint64_t(
 // CHECK-NEXT:  entry:
@@ -713,6 +776,7 @@ void test_svwrite_ver_za64_u64(uint32_t slice_base, svbool_t pg, svuint64_t zn) 
   SME_ACLE_FUNC(svwrite_ver_za64, _u64, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za64_u64_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_ver_za64_u64_1ju10__SVBool_tu12__SVUint64_t(
 // CHECK-NEXT:  entry:
@@ -725,6 +789,7 @@ void test_svwrite_ver_za64_u64_1(uint32_t slice_base, svbool_t pg, svuint64_t zn
   SME_ACLE_FUNC(svwrite_ver_za64, _u64, _m)(7, slice_base, 1, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za16_f16(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_ver_za16_f16ju10__SVBool_tu13__SVFloat16_t(
 // CHECK-NEXT:  entry:
@@ -736,6 +801,7 @@ void test_svwrite_ver_za16_f16(uint32_t slice_base, svbool_t pg, svfloat16_t zn)
   SME_ACLE_FUNC(svwrite_ver_za16, _f16, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za16_f16_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_ver_za16_f16_1ju10__SVBool_tu13__SVFloat16_t(
 // CHECK-NEXT:  entry:
@@ -748,6 +814,7 @@ void test_svwrite_ver_za16_f16_1(uint32_t slice_base, svbool_t pg, svfloat16_t z
   SME_ACLE_FUNC(svwrite_ver_za16, _f16, _m)(1, slice_base, 7, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za16_bf16(
 // CHECK-CXX-LABEL: @_Z26test_svwrite_ver_za16_bf16ju10__SVBool_tu14__SVBFloat16_t(
 // CHECK-NEXT:  entry:
@@ -759,6 +826,7 @@ void test_svwrite_ver_za16_bf16(uint32_t slice_base, svbool_t pg, svbfloat16_t z
   SME_ACLE_FUNC(svwrite_ver_za16, _bf16, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za16_bf16_1(
 // CHECK-CXX-LABEL: @_Z28test_svwrite_ver_za16_bf16_1ju10__SVBool_tu14__SVBFloat16_t(
 // CHECK-NEXT:  entry:
@@ -771,6 +839,7 @@ void test_svwrite_ver_za16_bf16_1(uint32_t slice_base, svbool_t pg, svbfloat16_t
   SME_ACLE_FUNC(svwrite_ver_za16, _bf16, _m)(1, slice_base, 7, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za32_f32(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_ver_za32_f32ju10__SVBool_tu13__SVFloat32_t(
 // CHECK-NEXT:  entry:
@@ -782,6 +851,7 @@ void test_svwrite_ver_za32_f32(uint32_t slice_base, svbool_t pg, svfloat32_t zn)
   SME_ACLE_FUNC(svwrite_ver_za32, _f32, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za32_f32_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_ver_za32_f32_1ju10__SVBool_tu13__SVFloat32_t(
 // CHECK-NEXT:  entry:
@@ -794,6 +864,7 @@ void test_svwrite_ver_za32_f32_1(uint32_t slice_base, svbool_t pg, svfloat32_t z
   SME_ACLE_FUNC(svwrite_ver_za32, _f32, _m)(3, slice_base, 3, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za64_f64(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_ver_za64_f64ju10__SVBool_tu13__SVFloat64_t(
 // CHECK-NEXT:  entry:
@@ -805,6 +876,7 @@ void test_svwrite_ver_za64_f64(uint32_t slice_base, svbool_t pg, svfloat64_t zn)
   SME_ACLE_FUNC(svwrite_ver_za64, _f64, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za64_f64_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_ver_za64_f64_1ju10__SVBool_tu13__SVFloat64_t(
 // CHECK-NEXT:  entry:
@@ -817,6 +889,7 @@ void test_svwrite_ver_za64_f64_1(uint32_t slice_base, svbool_t pg, svfloat64_t z
   SME_ACLE_FUNC(svwrite_ver_za64, _f64, _m)(7, slice_base, 1, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_s8(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_ver_za128_s8ju10__SVBool_tu10__SVInt8_t(
 // CHECK-NEXT:  entry:
@@ -827,6 +900,7 @@ void test_svwrite_ver_za128_s8(uint32_t slice_base, svbool_t pg, svint8_t zn) {
   SME_ACLE_FUNC(svwrite_ver_za128, _s8, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_s8_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_ver_za128_s8_1ju10__SVBool_tu10__SVInt8_t(
 // CHECK-NEXT:  entry:
@@ -837,6 +911,7 @@ void test_svwrite_ver_za128_s8_1(uint32_t slice_base, svbool_t pg, svint8_t zn) 
   SME_ACLE_FUNC(svwrite_ver_za128, _s8, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_s16(
 // CHECK-CXX-LABEL: @_Z26test_svwrite_ver_za128_s16ju10__SVBool_tu11__SVInt16_t(
 // CHECK-NEXT:  entry:
@@ -848,6 +923,7 @@ void test_svwrite_ver_za128_s16(uint32_t slice_base, svbool_t pg, svint16_t zn) 
   SME_ACLE_FUNC(svwrite_ver_za128, _s16, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_s16_1(
 // CHECK-CXX-LABEL: @_Z28test_svwrite_ver_za128_s16_1ju10__SVBool_tu11__SVInt16_t(
 // CHECK-NEXT:  entry:
@@ -859,6 +935,7 @@ void test_svwrite_ver_za128_s16_1(uint32_t slice_base, svbool_t pg, svint16_t zn
   SME_ACLE_FUNC(svwrite_ver_za128, _s16, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_s32(
 // CHECK-CXX-LABEL: @_Z26test_svwrite_ver_za128_s32ju10__SVBool_tu11__SVInt32_t(
 // CHECK-NEXT:  entry:
@@ -870,6 +947,7 @@ void test_svwrite_ver_za128_s32(uint32_t slice_base, svbool_t pg, svint32_t zn) 
   SME_ACLE_FUNC(svwrite_ver_za128, _s32, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_s32_1(
 // CHECK-CXX-LABEL: @_Z28test_svwrite_ver_za128_s32_1ju10__SVBool_tu11__SVInt32_t(
 // CHECK-NEXT:  entry:
@@ -881,6 +959,7 @@ void test_svwrite_ver_za128_s32_1(uint32_t slice_base, svbool_t pg, svint32_t zn
   SME_ACLE_FUNC(svwrite_ver_za128, _s32, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_s64(
 // CHECK-CXX-LABEL: @_Z26test_svwrite_ver_za128_s64ju10__SVBool_tu11__SVInt64_t(
 // CHECK-NEXT:  entry:
@@ -892,6 +971,7 @@ void test_svwrite_ver_za128_s64(uint32_t slice_base, svbool_t pg, svint64_t zn) 
   SME_ACLE_FUNC(svwrite_ver_za128, _s64, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_s64_1(
 // CHECK-CXX-LABEL: @_Z28test_svwrite_ver_za128_s64_1ju10__SVBool_tu11__SVInt64_t(
 // CHECK-NEXT:  entry:
@@ -903,6 +983,7 @@ void test_svwrite_ver_za128_s64_1(uint32_t slice_base, svbool_t pg, svint64_t zn
   SME_ACLE_FUNC(svwrite_ver_za128, _s64, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_u8(
 // CHECK-CXX-LABEL: @_Z25test_svwrite_ver_za128_u8ju10__SVBool_tu11__SVUint8_t(
 // CHECK-NEXT:  entry:
@@ -913,6 +994,7 @@ void test_svwrite_ver_za128_u8(uint32_t slice_base, svbool_t pg, svuint8_t zn) {
   SME_ACLE_FUNC(svwrite_ver_za128, _u8, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_u8_1(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_ver_za128_u8_1ju10__SVBool_tu11__SVUint8_t(
 // CHECK-NEXT:  entry:
@@ -923,6 +1005,7 @@ void test_svwrite_ver_za128_u8_1(uint32_t slice_base, svbool_t pg, svuint8_t zn)
   SME_ACLE_FUNC(svwrite_ver_za128, _u8, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_u16(
 // CHECK-CXX-LABEL: @_Z26test_svwrite_ver_za128_u16ju10__SVBool_tu12__SVUint16_t(
 // CHECK-NEXT:  entry:
@@ -934,6 +1017,7 @@ void test_svwrite_ver_za128_u16(uint32_t slice_base, svbool_t pg, svuint16_t zn)
   SME_ACLE_FUNC(svwrite_ver_za128, _u16, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_u16_1(
 // CHECK-CXX-LABEL: @_Z28test_svwrite_ver_za128_u16_1ju10__SVBool_tu12__SVUint16_t(
 // CHECK-NEXT:  entry:
@@ -945,6 +1029,7 @@ void test_svwrite_ver_za128_u16_1(uint32_t slice_base, svbool_t pg, svuint16_t z
   SME_ACLE_FUNC(svwrite_ver_za128, _u16, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_u32(
 // CHECK-CXX-LABEL: @_Z26test_svwrite_ver_za128_u32ju10__SVBool_tu12__SVUint32_t(
 // CHECK-NEXT:  entry:
@@ -956,6 +1041,7 @@ void test_svwrite_ver_za128_u32(uint32_t slice_base, svbool_t pg, svuint32_t zn)
   SME_ACLE_FUNC(svwrite_ver_za128, _u32, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_u32_1(
 // CHECK-CXX-LABEL: @_Z28test_svwrite_ver_za128_u32_1ju10__SVBool_tu12__SVUint32_t(
 // CHECK-NEXT:  entry:
@@ -967,6 +1053,7 @@ void test_svwrite_ver_za128_u32_1(uint32_t slice_base, svbool_t pg, svuint32_t z
   SME_ACLE_FUNC(svwrite_ver_za128, _u32, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_u64(
 // CHECK-CXX-LABEL: @_Z26test_svwrite_ver_za128_u64ju10__SVBool_tu12__SVUint64_t(
 // CHECK-NEXT:  entry:
@@ -978,6 +1065,7 @@ void test_svwrite_ver_za128_u64(uint32_t slice_base, svbool_t pg, svuint64_t zn)
   SME_ACLE_FUNC(svwrite_ver_za128, _u64, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_u64_1(
 // CHECK-CXX-LABEL: @_Z28test_svwrite_ver_za128_u64_1ju10__SVBool_tu12__SVUint64_t(
 // CHECK-NEXT:  entry:
@@ -989,6 +1077,7 @@ void test_svwrite_ver_za128_u64_1(uint32_t slice_base, svbool_t pg, svuint64_t z
   SME_ACLE_FUNC(svwrite_ver_za128, _u64, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_f16(
 // CHECK-CXX-LABEL: @_Z26test_svwrite_ver_za128_f16ju10__SVBool_tu13__SVFloat16_t(
 // CHECK-NEXT:  entry:
@@ -1000,6 +1089,7 @@ void test_svwrite_ver_za128_f16(uint32_t slice_base, svbool_t pg, svfloat16_t zn
   SME_ACLE_FUNC(svwrite_ver_za128, _f16, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_f16_1(
 // CHECK-CXX-LABEL: @_Z28test_svwrite_ver_za128_f16_1ju10__SVBool_tu13__SVFloat16_t(
 // CHECK-NEXT:  entry:
@@ -1011,6 +1101,7 @@ void test_svwrite_ver_za128_f16_1(uint32_t slice_base, svbool_t pg, svfloat16_t 
   SME_ACLE_FUNC(svwrite_ver_za128, _f16, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_bf16(
 // CHECK-CXX-LABEL: @_Z27test_svwrite_ver_za128_bf16ju10__SVBool_tu14__SVBFloat16_t(
 // CHECK-NEXT:  entry:
@@ -1022,6 +1113,7 @@ void test_svwrite_ver_za128_bf16(uint32_t slice_base, svbool_t pg, svbfloat16_t 
   SME_ACLE_FUNC(svwrite_ver_za128, _bf16, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_bf16_1(
 // CHECK-CXX-LABEL: @_Z29test_svwrite_ver_za128_bf16_1ju10__SVBool_tu14__SVBFloat16_t(
 // CHECK-NEXT:  entry:
@@ -1033,6 +1125,7 @@ void test_svwrite_ver_za128_bf16_1(uint32_t slice_base, svbool_t pg, svbfloat16_
   SME_ACLE_FUNC(svwrite_ver_za128, _bf16, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_f32(
 // CHECK-CXX-LABEL: @_Z26test_svwrite_ver_za128_f32ju10__SVBool_tu13__SVFloat32_t(
 // CHECK-NEXT:  entry:
@@ -1044,6 +1137,7 @@ void test_svwrite_ver_za128_f32(uint32_t slice_base, svbool_t pg, svfloat32_t zn
   SME_ACLE_FUNC(svwrite_ver_za128, _f32, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_f32_1(
 // CHECK-CXX-LABEL: @_Z28test_svwrite_ver_za128_f32_1ju10__SVBool_tu13__SVFloat32_t(
 // CHECK-NEXT:  entry:
@@ -1055,6 +1149,7 @@ void test_svwrite_ver_za128_f32_1(uint32_t slice_base, svbool_t pg, svfloat32_t 
   SME_ACLE_FUNC(svwrite_ver_za128, _f32, _m)(15, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_f64(
 // CHECK-CXX-LABEL: @_Z26test_svwrite_ver_za128_f64ju10__SVBool_tu13__SVFloat64_t(
 // CHECK-NEXT:  entry:
@@ -1066,6 +1161,7 @@ void test_svwrite_ver_za128_f64(uint32_t slice_base, svbool_t pg, svfloat64_t zn
   SME_ACLE_FUNC(svwrite_ver_za128, _f64, _m)(0, slice_base, 0, pg, zn);
 }
 
+__attribute__((arm_streaming, arm_shared_za))
 // CHECK-C-LABEL: @test_svwrite_ver_za128_f64_1(
 // CHECK-CXX-LABEL: @_Z28test_svwrite_ver_za128_f64_1ju10__SVBool_tu13__SVFloat64_t(
 // CHECK-NEXT:  entry:

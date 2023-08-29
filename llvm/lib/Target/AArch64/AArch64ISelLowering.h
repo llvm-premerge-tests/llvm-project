@@ -58,16 +58,13 @@ enum NodeType : unsigned {
 
   CALL_BTI, // Function call followed by a BTI instruction.
 
-  // Essentially like a normal COPY that works on GPRs, but cannot be
-  // rematerialised by passes like the simple register coalescer. It's
-  // required for SME when lowering calls because we cannot allow frame
-  // index calculations using addvl to slip in between the smstart/smstop
-  // and the bl instruction. The scalable vector length may change across
-  // the smstart/smstop boundary.
-  OBSCURE_COPY,
+  COALESCER_BARRIER,
+
   SMSTART,
   SMSTOP,
   RESTORE_ZA,
+  RESTORE_ZT,
+  SAVE_ZT,
 
   // Produces the full sequence of instructions for getting the thread pointer
   // offset of a variable into X0, using the TLSDesc model.
@@ -374,6 +371,7 @@ enum NodeType : unsigned {
   GLD1_UXTW_SCALED_MERGE_ZERO,
   GLD1_SXTW_SCALED_MERGE_ZERO,
   GLD1_IMM_MERGE_ZERO,
+  GLD1Q_MERGE_ZERO,
 
   // Signed gather loads
   GLD1S_MERGE_ZERO,
@@ -418,6 +416,7 @@ enum NodeType : unsigned {
   SST1_UXTW_SCALED_PRED,
   SST1_SXTW_SCALED_PRED,
   SST1_IMM_PRED,
+  SST1Q_PRED,
 
   // Non-temporal scatter store
   SSTNT1_PRED,
@@ -603,10 +602,21 @@ public:
   MachineBasicBlock *EmitTileLoad(unsigned Opc, unsigned BaseReg,
                                   MachineInstr &MI,
                                   MachineBasicBlock *BB) const;
-  MachineBasicBlock *EmitFill(MachineInstr &MI, MachineBasicBlock *BB) const;
+  MachineBasicBlock *EmitMopa(unsigned Opc, unsigned BaseReg, MachineInstr &MI,
+                              MachineBasicBlock *BB) const;
+  MachineBasicBlock *EmitZASpillFill(MachineInstr &MI, MachineBasicBlock *BB,
+                                     bool IsSpill) const;
+  MachineBasicBlock *EmitZTInstr(MachineInstr &MI, MachineBasicBlock *BB,
+                                 unsigned Opcode, bool IsZTDest) const;
   MachineBasicBlock *EmitZAInstr(unsigned Opc, unsigned BaseReg,
                                  MachineInstr &MI, MachineBasicBlock *BB,
                                  bool HasTile) const;
+  MachineBasicBlock *EmitAddVectorToTile(unsigned Opc, unsigned BaseReg,
+                                         MachineInstr &MI,
+                                         MachineBasicBlock *BB) const;
+  MachineBasicBlock *EmitInsertVectorToTile(unsigned Opc, unsigned BaseReg,
+                                            MachineInstr &MI,
+                                            MachineBasicBlock *BB) const;
   MachineBasicBlock *EmitZero(MachineInstr &MI, MachineBasicBlock *BB) const;
 
   MachineBasicBlock *
@@ -968,7 +978,7 @@ private:
                           const SmallVectorImpl<CCValAssign> &RVLocs,
                           const SDLoc &DL, SelectionDAG &DAG,
                           SmallVectorImpl<SDValue> &InVals, bool isThisReturn,
-                          SDValue ThisVal) const;
+                          SDValue ThisVal, bool RequiresSMChange) const;
 
   SDValue LowerLOAD(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSTORE(SDValue Op, SelectionDAG &DAG) const;

@@ -403,6 +403,18 @@ void AArch64TargetInfo::getTargetDefines(const LangOptions &Opts,
   if (HasSVE2 && HasSVE2AES)
     Builder.defineMacro("__ARM_FEATURE_SVE2_AES", "1");
 
+  if (HasSME)
+    Builder.defineMacro("__ARM_FEATURE_SME", "1");
+
+  if (HasSMEI16I64)
+    Builder.defineMacro("__ARM_FEATURE_SME_I16I64", "1");
+
+  if (HasSMEF64F64)
+    Builder.defineMacro("__ARM_FEATURE_SME_F64F64", "1");
+
+  if (HasSME2)
+    Builder.defineMacro("__ARM_FEATURE_SME2", "1");
+
   if (HasSVE2 && HasSVE2BitPerm)
     Builder.defineMacro("__ARM_FEATURE_SVE2_BITPERM", "1");
 
@@ -477,9 +489,8 @@ void AArch64TargetInfo::getTargetDefines(const LangOptions &Opts,
     Builder.defineMacro("__ARM_FEATURE_BF16_SCALAR_ARITHMETIC", "1");
   }
 
-  if ((FPU & SveMode) && HasBFloat16) {
+  if ((FPU & SveMode) && HasBFloat16)
     Builder.defineMacro("__ARM_FEATURE_SVE_BF16", "1");
-  }
 
   if ((FPU & SveMode) && HasMatmulFP64)
     Builder.defineMacro("__ARM_FEATURE_SVE_MATMUL_FP64", "1");
@@ -575,7 +586,7 @@ void AArch64TargetInfo::getTargetDefines(const LangOptions &Opts,
 }
 
 ArrayRef<Builtin::Info> AArch64TargetInfo::getTargetBuiltins() const {
-  return llvm::ArrayRef(BuiltinInfo, clang::AArch64::LastTSBuiltin -
+  return llvm::makeArrayRef(BuiltinInfo, clang::AArch64::LastTSBuiltin -
                                          Builtin::FirstTSBuiltin);
 }
 
@@ -659,11 +670,13 @@ bool AArch64TargetInfo::hasFeature(StringRef Feature) const {
       .Case("f32mm", FPU & SveMode && HasMatmulFP32)
       .Case("f64mm", FPU & SveMode && HasMatmulFP64)
       .Case("sve2", FPU & SveMode && HasSVE2)
+      .Case("sve2p1", HasSVE2p1)
       .Case("sve2-pmull128", FPU & SveMode && HasSVE2AES)
       .Case("sve2-bitperm", FPU & SveMode && HasSVE2BitPerm)
       .Case("sve2-sha3", FPU & SveMode && HasSVE2SHA3)
       .Case("sve2-sm4", FPU & SveMode && HasSVE2SM4)
       .Case("sme", HasSME)
+      .Case("sme2", HasSME2)
       .Case("sme-f64f64", HasSMEF64F64)
       .Case("sme-i16i64", HasSMEI16I64)
       .Cases("memtag", "memtag2", HasMTE)
@@ -738,6 +751,13 @@ bool AArch64TargetInfo::handleTargetFeatures(std::vector<std::string> &Features,
       HasFullFP16 = true;
       HasSVE2 = true;
     }
+    if (Feature == "+sve2p1") {
+      FPU |= NeonMode;
+      FPU |= SveMode;
+      HasFullFP16 = true;
+      HasSVE2 = true;
+      HasSVE2p1 = true;
+    }
     if (Feature == "+sve2-aes") {
       FPU |= NeonMode;
       FPU |= SveMode;
@@ -779,19 +799,29 @@ bool AArch64TargetInfo::handleTargetFeatures(std::vector<std::string> &Features,
       HasMatmulFP64 = true;
     }
     if (Feature == "+sme") {
+      FPU |= SveMode;
       HasSME = true;
       HasBFloat16 = true;
       HasFullFP16 = true;
     }
     if (Feature == "+sme-f64f64") {
+      FPU |= SveMode;
       HasSME = true;
       HasSMEF64F64 = true;
       HasBFloat16 = true;
       HasFullFP16 = true;
     }
     if (Feature == "+sme-i16i64") {
+      FPU |= SveMode;
       HasSME = true;
       HasSMEI16I64 = true;
+      HasBFloat16 = true;
+      HasFullFP16 = true;
+    }
+    if (Feature == "+sme2") {
+      FPU |= SveMode;
+      HasSME = true;
+      HasSME2 = true;
       HasBFloat16 = true;
       HasFullFP16 = true;
     }
@@ -1172,7 +1202,7 @@ const char *const AArch64TargetInfo::GCCRegNames[] = {
 };
 
 ArrayRef<const char *> AArch64TargetInfo::getGCCRegNames() const {
-  return llvm::ArrayRef(GCCRegNames);
+  return llvm::makeArrayRef(GCCRegNames);
 }
 
 const TargetInfo::GCCRegAlias AArch64TargetInfo::GCCRegAliases[] = {
@@ -1215,7 +1245,7 @@ const TargetInfo::GCCRegAlias AArch64TargetInfo::GCCRegAliases[] = {
 };
 
 ArrayRef<TargetInfo::GCCRegAlias> AArch64TargetInfo::getGCCRegAliases() const {
-  return llvm::ArrayRef(GCCRegAliases);
+  return llvm::makeArrayRef(GCCRegAliases);
 }
 
 // Returns the length of cc constraint.

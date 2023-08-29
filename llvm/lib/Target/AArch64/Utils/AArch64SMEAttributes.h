@@ -24,6 +24,8 @@ class AttributeList;
 /// a call).
 class SMEAttrs {
   unsigned Bitmask;
+  bool HasSME2;
+  bool NoReturn;
 
 public:
   // Enum with bitmasks for each individual SME feature.
@@ -38,12 +40,22 @@ public:
     All = ZA_Preserved - 1
   };
 
-  SMEAttrs(unsigned Mask = Normal) : Bitmask(0) { set(Mask); }
-  SMEAttrs(const Function &F) : SMEAttrs(F.getAttributes()) {}
+  SMEAttrs(unsigned Mask = Normal, bool SME2 = false)
+      : Bitmask(0), HasSME2(false), NoReturn(false) {
+    set(Mask);
+    HasSME2 = SME2;
+    NoReturn = false;
+  }
+  SMEAttrs(const Function &F, bool SME2 = false) : SMEAttrs(F.getAttributes()) {
+    HasSME2 = SME2;
+    NoReturn = F.doesNotReturn();
+  }
   SMEAttrs(const CallBase &CB);
   SMEAttrs(const AttributeList &L);
 
   void set(unsigned M, bool Enable = true);
+
+  bool hasNoReturn() const { return NoReturn; }
 
   // Interfaces to query PSTATE.SM
   bool hasStreamingBody() const { return Bitmask & SM_Body; }
@@ -72,6 +84,15 @@ public:
   requiresSMChange(const SMEAttrs &Callee,
                    bool BodyOverridesInterface = false) const;
 
+  /// \return true if a call from Caller -> Callee requires ZT0 state to be
+  /// preserved.
+  /// ZT0 must be preserved if the caller has ZT state (SME2 is enabled and
+  /// the caller has ZA state) and the callee does not preserve ZT (SME2 is
+  /// enabled and the callee does not preserve ZA).
+  bool requiresPreservingZT(const SMEAttrs &Callee) const {
+    return HasSME2 && hasZTState() && !Callee.preservesZA();
+  }
+
   // Interfaces to query PSTATE.ZA
   bool hasNewZAInterface() const { return Bitmask & ZA_New; }
   bool hasSharedZAInterface() const { return Bitmask & ZA_Shared; }
@@ -82,8 +103,10 @@ public:
   }
   bool requiresLazySave(const SMEAttrs &Callee) const {
     return hasZAState() && Callee.hasPrivateZAInterface() &&
-           !Callee.preservesZA();
+           !Callee.preservesZA() && !Callee.hasNoReturn();
   }
+
+  bool hasZTState() const { return hasZAState(); }
 };
 
 } // namespace llvm

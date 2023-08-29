@@ -1250,6 +1250,10 @@ class ZPRVectorListMul<int ElementWidth, int NumRegs> : ZPRVectorList<ElementWid
 
 let EncoderMethod = "EncodeRegAsMultipleOf<2>",
     DecoderMethod = "DecodeZPR2Mul2RegisterClass" in {
+  def ZZ_mul_r : RegisterOperand<ZPR2Mul2, "printTypedVectorList<0,0>"> {
+    let ParserMatchClass = ZPRVectorListMul<0, 2>;
+  }
+
   def ZZ_b_mul_r : RegisterOperand<ZPR2Mul2, "printTypedVectorList<0,'b'>"> {
     let ParserMatchClass = ZPRVectorListMul<8, 2>;
   }
@@ -1331,16 +1335,16 @@ def ZStridedQuadsHi : RegisterTuples<[zsub0, zsub1, zsub2, zsub3], [
   (trunc (rotl ZPR, 24), 4), (trunc (rotl ZPR, 28), 4)
 ]>;
 
-def ZPR2Strided : RegisterClass<"AArch64", [untyped], 256,
+def ZPR2Strided : RegisterClass<"AArch64", [untyped], 128,
                                 (add ZStridedPairsLo, ZStridedPairsHi)>  {
   let Size = 256;
 }
-def ZPR4Strided : RegisterClass<"AArch64", [untyped], 512,
+def ZPR4Strided : RegisterClass<"AArch64", [untyped], 128,
                                 (add ZStridedQuadsLo, ZStridedQuadsHi)>  {
   let Size = 512;
 }
 
-def ZPR2StridedOrContiguous : RegisterClass<"AArch64", [untyped], 256,
+def ZPR2StridedOrContiguous : RegisterClass<"AArch64", [untyped], 128,
                                 (add ZStridedPairsLo, ZStridedPairsHi,
                                 (decimate ZSeqPairs, 2))> {
   let Size = 256;
@@ -1387,7 +1391,7 @@ let EncoderMethod = "EncodeZPR2StridedRegisterClass",
       : RegisterOperand<ZPR2StridedOrContiguous, "printTypedVectorList<0,'d'>">;
 }
 
-def ZPR4StridedOrContiguous : RegisterClass<"AArch64", [untyped], 512,
+def ZPR4StridedOrContiguous : RegisterClass<"AArch64", [untyped], 128,
                                 (add ZStridedQuadsLo, ZStridedQuadsHi,
                                 (decimate ZSeqQuads, 4))>  {
   let Size = 512;

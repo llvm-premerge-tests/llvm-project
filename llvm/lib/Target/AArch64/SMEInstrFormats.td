@@ -10,11 +10,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-def imm_to_tile8   : ComplexPattern<i32, 1, "ImmToTile<AArch64::ZAB0>", []>;
-def imm_to_tile16  : ComplexPattern<i32, 1, "ImmToTile<AArch64::ZAH0>", []>;
-def imm_to_tile32  : ComplexPattern<i32, 1, "ImmToTile<AArch64::ZAS0>", []>;
-def imm_to_tile64  : ComplexPattern<i32, 1, "ImmToTile<AArch64::ZAD0>", []>;
-def imm_to_tile128 : ComplexPattern<i32, 1, "ImmToTile<AArch64::ZAQ0>", []>;
+def imm_to_tile8   : ComplexPattern<i32, 1, "ImmToTile<AArch64::ZAB0, 0>", []>;
+def imm_to_tile16  : ComplexPattern<i32, 1, "ImmToTile<AArch64::ZAH0, 1>", []>;
+def imm_to_tile32  : ComplexPattern<i32, 1, "ImmToTile<AArch64::ZAS0, 3>", []>;
+def imm_to_tile64  : ComplexPattern<i32, 1, "ImmToTile<AArch64::ZAD0, 7>", []>;
+def imm_to_tile128 : ComplexPattern<i32, 1, "ImmToTile<AArch64::ZAQ0, 15>", []>;
+
+def imm_to_zt : ComplexPattern<i32, 1, "ImmToTile<AArch64::ZT0,  0>",  []>;
 
 def tileslice8   : ComplexPattern<i32 , 2, "SelectSMETileSlice<15, 1>", []>;
 def tileslice16  : ComplexPattern<i32 , 2, "SelectSMETileSlice<7,  1>", []>;
@@ -793,6 +795,15 @@ multiclass sme_spill<string opcodestr> {
   def : InstAlias<opcodestr # "\t$ZAt[$Rv, $imm4], [$Rn]",
                   (!cast<Instruction>(NAME) MatrixOp:$ZAt,
                    MatrixIndexGPR32Op12_15:$Rv, sme_elm_idx0_15:$imm4, GPR64sp:$Rn, 0), 1>;
+  def NAME # _PSEUDO
+      : Pseudo<(outs),
+               (ins MatrixIndexGPR32Op12_15:$idx, imm0_15:$imm4,
+                    GPR64sp:$base), []>,
+        Sched<[]> {
+    // Translated to actual instruction in AArch64ISelLowering.cpp
+    let usesCustomInserter = 1;
+    let mayStore = 1;
+  }
   // base
   def : Pat<(int_aarch64_sme_str MatrixIndexGPR32Op12_15:$idx, GPR64sp:$base),
             (!cast<Instruction>(NAME) ZA, $idx, 0, $base, 0)>;
@@ -1254,8 +1265,9 @@ multiclass sve2_int_perm_revd<string asm, SDPatternOperator op> {
   def : SVE_1_Op_Passthru_Pat<nxv2i64, op, nxv2i1,  nxv2i64, !cast<Instruction>(NAME)>;
 }
 
+// FIXME: Why is there a tied operand here? There is no predication.
 class sve2_clamp<string asm, bits<2> sz, bit U, ZPRRegOp zpr_ty>
-    : I<(outs zpr_ty:$Zd), (ins zpr_ty:$Zn, zpr_ty:$Zm, zpr_ty:$_Zd),
+    : I<(outs zpr_ty:$Zd), (ins zpr_ty:$_Zd, zpr_ty:$Zn, zpr_ty:$Zm),
         asm, "\t$Zd, $Zn, $Zm", "", []>,
       Sched<[]> {
   bits<5> Zm;
@@ -2962,6 +2974,18 @@ class sme2_zero_zt<string mnemonic, bits<4> opc>
   let Inst{3-0}  = opc;
 }
 
+multiclass sme2_zero_zt<string mnemonic, bits<4> opc> {
+  def NAME : sme2_zero_zt<mnemonic, opc>;
+
+  def NAME # _PSEUDO
+        : Pseudo<(outs), (ins ZTR:$ZT), []>, Sched<[]> {
+    // Translated to actual instruction in AArch64ISelLowering.cpp
+    let usesCustomInserter = 1;
+  }
+  def : Pat<(int_aarch64_sme_zero_zt (imm_to_zt untyped:$zt)),
+          (!cast<Instruction>(NAME # _PSEUDO) $zt)>;
+}
+
 //===----------------------------------------------------------------------===//
 // SME2 lookup table load/store
 class sme2_spill_fill_vector<string mnemonic, bits<8> opc>
@@ -2981,10 +3005,23 @@ class sme2_spill_fill_vector<string mnemonic, bits<8> opc>
   let mayStore    = opc{7};
 }
 
+multiclass sme2_spill_fill_vector<string mnemonic, bits<8> opc, SDPatternOperator op> {
+  def NAME : sme2_spill_fill_vector<mnemonic, opc>;
+
+  def NAME # _PSEUDO
+      : Pseudo<(outs), (ins MatrixOp:$ZTt, GPR64sp:$base), []>, Sched<[]> {
+    // Translated to actual instruction in AArch64ISelLowering.cpp
+    let usesCustomInserter = 1;
+  }
+
+  def : Pat<(op (imm_to_zt untyped:$tile), GPR64sp:$base),
+            (!cast<Instruction>(NAME # _PSEUDO) $tile, $base)>;
+}
+
 //===----------------------------------------------------------------------===///
 // SME2 move to/from lookup table
 class sme2_movt_zt_to_scalar<string mnemonic, bits<7> opc>
-    : I<(outs GPR64:$Rt), (ins ZTR:$ZTt, uimm3s8:$imm3),
+    : I<(outs GPR64:$Rt), (ins ZTR:$ZTt, tuimm3s8_32:$imm3),
          mnemonic, "\t$Rt, $ZTt$imm3",
          "", []>, Sched<[]> {
   bits<3> imm3;
@@ -2996,7 +3033,7 @@ class sme2_movt_zt_to_scalar<string mnemonic, bits<7> opc>
 }
 
 class sme2_movt_scalar_to_zt<string mnemonic, bits<7> opc>
-    : I<(outs ZTR:$ZTt), (ins uimm3s8:$imm3, GPR64:$Rt),
+    : I<(outs ZTR:$ZTt), (ins tuimm3s8_32:$imm3, GPR64:$Rt),
          mnemonic, "\t$ZTt$imm3, $Rt",
          "", []>, Sched<[]> {
   bits<3> imm3;
@@ -3027,28 +3064,46 @@ class sme2_luti_vector_index<bits<2> sz, bits<7> opc, RegisterOperand vector_ty,
 
 class sme2_luti2_vector_index<bits<2> sz, RegisterOperand vector_ty,
                               string mnemonic>
-    : sme2_luti_vector_index<sz, {1,?,?,?,?,0,0}, vector_ty, VectorIndexB, mnemonic> {
+    : sme2_luti_vector_index<sz, {1,?,?,?,?,0,0}, vector_ty, VectorIndexB32b_timm, mnemonic> {
   bits<4> i;
   let Inst{17-14} = i;
 }
 
-multiclass sme2_luti2_vector_index<string mnemonic> {
+multiclass sme2_luti2_vector_index<string mnemonic, SDPatternOperator intrinsic> {
   def _B : sme2_luti2_vector_index<0b00, ZPR8, mnemonic>;
   def _H : sme2_luti2_vector_index<0b01, ZPR16, mnemonic>;
   def _S : sme2_luti2_vector_index<0b10, ZPR32, mnemonic>;
+
+  def : Pat<(nxv16i8 (intrinsic (imm_to_zt untyped:$zt), nxv16i8:$zn, (i32 VectorIndexB32b_timm:$imm))),
+             (!cast<Instruction>(NAME # _B) $zt, nxv16i8:$zn, (i32 VectorIndexB32b_timm:$imm))>;
+
+  def : Pat<(nxv8i16 (intrinsic (imm_to_zt untyped:$zt), nxv8i16:$zn, (i32 VectorIndexB32b_timm:$imm))),
+             (!cast<Instruction>(NAME # _H) $zt, nxv8i16:$zn, (i32 VectorIndexB32b_timm:$imm))>;
+
+  def : Pat<(nxv4i32 (intrinsic (imm_to_zt untyped:$zt), nxv4i32:$zn, (i32 VectorIndexB32b_timm:$imm))),
+             (!cast<Instruction>(NAME # _S) $zt, nxv4i32:$zn, (i32 VectorIndexB32b_timm:$imm))>;
 }
 
 class sme2_luti4_vector_index<bits<2> sz, RegisterOperand vector_ty,
                               string mnemonic>
-    : sme2_luti_vector_index<sz, {0,1,?,?,?,0,0}, vector_ty, VectorIndexH, mnemonic> {
+    : sme2_luti_vector_index<sz, {0,1,?,?,?,0,0}, vector_ty, VectorIndexH32b_timm, mnemonic> {
   bits<3> i;
   let Inst{16-14} = i;
 }
 
-multiclass sme2_luti4_vector_index<string mnemonic> {
+multiclass sme2_luti4_vector_index<string mnemonic, SDPatternOperator intrinsic> {
   def _B : sme2_luti4_vector_index<0b00, ZPR8, mnemonic>;
   def _H : sme2_luti4_vector_index<0b01, ZPR16, mnemonic>;
   def _S : sme2_luti4_vector_index<0b10, ZPR32, mnemonic>;
+
+  def : Pat<(nxv16i8 (intrinsic (imm_to_zt untyped:$zt), nxv16i8:$zn, (i32 VectorIndexH32b_timm:$imm))),
+             (!cast<Instruction>(NAME # _B) $zt, nxv16i8:$zn, (i32 VectorIndexH32b_timm:$imm))>;
+
+  def : Pat<(nxv8i16 (intrinsic (imm_to_zt untyped:$zt), nxv8i16:$zn, (i32 VectorIndexH32b_timm:$imm))),
+             (!cast<Instruction>(NAME # _H) $zt, nxv8i16:$zn, (i32 VectorIndexH32b_timm:$imm))>;
+
+  def : Pat<(nxv4i32 (intrinsic (imm_to_zt untyped:$zt), nxv4i32:$zn, (i32 VectorIndexH32b_timm:$imm))),
+             (!cast<Instruction>(NAME # _S) $zt, nxv4i32:$zn, (i32 VectorIndexH32b_timm:$imm))>;
 }
 
 // SME2 lookup table expand two contiguous registers
@@ -3081,6 +3136,9 @@ multiclass sme2_luti2_vector_vg2_index<string mnemonic> {
   def _B : sme2_luti2_vector_vg2_index<0b00, ZZ_b_mul_r, mnemonic>;
   def _H : sme2_luti2_vector_vg2_index<0b01, ZZ_h_mul_r, mnemonic>;
   def _S : sme2_luti2_vector_vg2_index<0b10, ZZ_s_mul_r, mnemonic>;
+
+  def _B_PSEUDO : Pseudo<(outs ZZ_b_strided_and_contiguous:$Zd), (ins ZTR:$ZTt, ZPRAny:$Zn, VectorIndexH:$i), []>;
+  def _H_PSEUDO : Pseudo<(outs ZZ_h_strided_and_contiguous:$Zd), (ins ZTR:$ZTt, ZPRAny:$Zn, VectorIndexH:$i), []>;
 }
 
 class sme2_luti4_vector_vg2_index<bits<2> sz, RegisterOperand vector_ty,
@@ -3094,6 +3152,9 @@ multiclass sme2_luti4_vector_vg2_index<string mnemonic> {
   def _B : sme2_luti4_vector_vg2_index<0b00, ZZ_b_mul_r, mnemonic>;
   def _H : sme2_luti4_vector_vg2_index<0b01, ZZ_h_mul_r, mnemonic>;
   def _S : sme2_luti4_vector_vg2_index<0b10, ZZ_s_mul_r, mnemonic>;
+
+  def _B_PSEUDO : Pseudo<(outs ZZ_b_strided_and_contiguous:$Zd), (ins ZTR:$ZTt, ZPRAny:$Zn, VectorIndexH:$i), []>;
+  def _H_PSEUDO : Pseudo<(outs ZZ_h_strided_and_contiguous:$Zd), (ins ZTR:$ZTt, ZPRAny:$Zn, VectorIndexH:$i), []>;
 }
 
 // SME2 lookup table expand four contiguous registers
@@ -3126,6 +3187,9 @@ multiclass sme2_luti2_vector_vg4_index<string mnemonic> {
   def _B : sme2_luti2_vector_vg4_index<0b00, ZZZZ_b_mul_r, mnemonic>;
   def _H : sme2_luti2_vector_vg4_index<0b01, ZZZZ_h_mul_r, mnemonic>;
   def _S : sme2_luti2_vector_vg4_index<0b10, ZZZZ_s_mul_r, mnemonic>;
+
+  def _B_PSEUDO : Pseudo<(outs ZZZZ_b_strided_and_contiguous:$Zd), (ins ZTR:$ZTt, ZPRAny:$Zn, VectorIndexS:$i), []>;
+  def _H_PSEUDO : Pseudo<(outs ZZZZ_h_strided_and_contiguous:$Zd), (ins ZTR:$ZTt, ZPRAny:$Zn, VectorIndexS:$i), []>;
 }
 
 class sme2_luti4_vector_vg4_index<bits<2> sz, RegisterOperand vector_ty,
@@ -3138,6 +3202,9 @@ class sme2_luti4_vector_vg4_index<bits<2> sz, RegisterOperand vector_ty,
 multiclass sme2_luti4_vector_vg4_index<string mnemonic> {
   def _H : sme2_luti4_vector_vg4_index<0b01, ZZZZ_h_mul_r, mnemonic>;
   def _S : sme2_luti4_vector_vg4_index<0b10, ZZZZ_s_mul_r, mnemonic>;
+
+  def _H_PSEUDO : Pseudo<(outs ZZZZ_h_strided_and_contiguous:$Zd), (ins ZTR:$ZTt, ZPRAny:$Zn, VectorIndexS:$i), []>;
+  def _S_PSEUDO : Pseudo<(outs ZZZZ_s_strided_and_contiguous:$Zd), (ins ZTR:$ZTt, ZPRAny:$Zn, VectorIndexS:$i), []>;
 }
 
 //===----------------------------------------------------------------------===//
@@ -4660,4 +4727,5 @@ class sme2p1_luti4_vector_vg4_index<bits<2> sz, RegisterOperand vector_ty,
 
 multiclass sme2p1_luti4_vector_vg4_index<string mnemonic> {
   def _H: sme2p1_luti4_vector_vg4_index<0b01, ZZZZ_h_strided, VectorIndexD, mnemonic>;
+  def _S: sme2p1_luti4_vector_vg4_index<0b10, ZZZZ_s_strided, VectorIndexD, mnemonic>;
 }

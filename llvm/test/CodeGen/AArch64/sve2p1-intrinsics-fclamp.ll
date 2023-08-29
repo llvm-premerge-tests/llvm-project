@@ -3,8 +3,8 @@
 
 target triple = "aarch64-linux-gnu"
 
-define <vscale x 8 x half> @test_fclamp_f16(<vscale x 8 x half> %a, <vscale x 8 x half> %b, <vscale x 8 x half> %c) #0 {
-; CHECK-LABEL: test_fclamp_f16:
+define <vscale x 8 x half> @test_fclamp_i16(<vscale x 8 x half> %a, <vscale x 8 x half> %b, <vscale x 8 x half> %c) #0 {
+; CHECK-LABEL: test_fclamp_i16:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    fclamp z0.h, z1.h, z2.h
 ; CHECK-NEXT:    ret
@@ -12,8 +12,8 @@ define <vscale x 8 x half> @test_fclamp_f16(<vscale x 8 x half> %a, <vscale x 8 
   ret <vscale x 8 x half> %res
 }
 
-define <vscale x 4 x float> @test_fclamp_f32(<vscale x 4 x float> %a, <vscale x 4 x float> %b, <vscale x 4 x float> %c) #0 {
-; CHECK-LABEL: test_fclamp_f32:
+define <vscale x 4 x float> @test_fclamp_i32(<vscale x 4 x float> %a, <vscale x 4 x float> %b, <vscale x 4 x float> %c) #0 {
+; CHECK-LABEL: test_fclamp_i32:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    fclamp z0.s, z1.s, z2.s
 ; CHECK-NEXT:    ret
@@ -21,8 +21,8 @@ define <vscale x 4 x float> @test_fclamp_f32(<vscale x 4 x float> %a, <vscale x 
   ret <vscale x 4 x float> %res
 }
 
-define <vscale x 2 x double> @test_fclamp_f64(<vscale x 2 x double> %a, <vscale x 2 x double> %b, <vscale x 2 x double> %c) #0 {
-; CHECK-LABEL: test_fclamp_f64:
+define <vscale x 2 x double> @test_fclamp_i64(<vscale x 2 x double> %a, <vscale x 2 x double> %b, <vscale x 2 x double> %c) #0 {
+; CHECK-LABEL: test_fclamp_i64:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    fclamp z0.d, z1.d, z2.d
 ; CHECK-NEXT:    ret
@@ -30,8 +30,8 @@ define <vscale x 2 x double> @test_fclamp_f64(<vscale x 2 x double> %a, <vscale 
   ret <vscale x 2 x double> %res
 }
 
-define { <vscale x 8 x half>, <vscale x 8 x half> } @test_fclamp_single_x2_f16(<vscale x 8 x half> %a, <vscale x 8 x half> %b, <vscale x 8 x half> %c, <vscale x 8 x half> %d) #1 {
-; CHECK-LABEL: test_fclamp_single_x2_f16:
+define { <vscale x 8 x half>, <vscale x 8 x half> } @test_fclamp_single_x2_i16(<vscale x 8 x half> %a, <vscale x 8 x half> %b, <vscale x 8 x half> %c, <vscale x 8 x half> %d) #1 {
+; CHECK-LABEL: test_fclamp_single_x2_i16:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    // kill: def $z1 killed $z1 killed $z0_z1 def $z0_z1
 ; CHECK-NEXT:    // kill: def $z0 killed $z0 killed $z0_z1 def $z0_z1
@@ -41,8 +41,8 @@ define { <vscale x 8 x half>, <vscale x 8 x half> } @test_fclamp_single_x2_f16(<
   ret { <vscale x 8 x half>, <vscale x 8 x half> } %res
 }
 
-define { <vscale x 4 x float>, <vscale x 4 x float> } @test_fclamp_single_x2_f32(<vscale x 4 x float> %a, <vscale x 4 x float> %b, <vscale x 4 x float> %c, <vscale x 4 x float> %d) #1 {
-; CHECK-LABEL: test_fclamp_single_x2_f32:
+define { <vscale x 4 x float>, <vscale x 4 x float> } @test_fclamp_single_x2_i32(<vscale x 4 x float> %a, <vscale x 4 x float> %b, <vscale x 4 x float> %c, <vscale x 4 x float> %d) #1 {
+; CHECK-LABEL: test_fclamp_single_x2_i32:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    // kill: def $z1 killed $z1 killed $z0_z1 def $z0_z1
 ; CHECK-NEXT:    // kill: def $z0 killed $z0 killed $z0_z1 def $z0_z1
@@ -52,8 +52,8 @@ define { <vscale x 4 x float>, <vscale x 4 x float> } @test_fclamp_single_x2_f32
   ret { <vscale x 4 x float>, <vscale x 4 x float> } %res
 }
 
-define { <vscale x 2 x double>, <vscale x 2 x double> } @test_fclamp_single_x2_f64(<vscale x 2 x double> %a, <vscale x 2 x double> %b, <vscale x 2 x double> %c, <vscale x 2 x double> %d) #1 {
-; CHECK-LABEL: test_fclamp_single_x2_f64:
+define { <vscale x 2 x double>, <vscale x 2 x double> } @test_fclamp_single_x2_i64(<vscale x 2 x double> %a, <vscale x 2 x double> %b, <vscale x 2 x double> %c, <vscale x 2 x double> %d) #1 {
+; CHECK-LABEL: test_fclamp_single_x2_i64:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    // kill: def $z1 killed $z1 killed $z0_z1 def $z0_z1
 ; CHECK-NEXT:    // kill: def $z0 killed $z0 killed $z0_z1 def $z0_z1
@@ -64,8 +64,8 @@ define { <vscale x 2 x double>, <vscale x 2 x double> } @test_fclamp_single_x2_f
 }
 
 
-define { <vscale x 8 x half>, <vscale x 8 x half>, <vscale x 8 x half>, <vscale x 8 x half> } @test_fclamp_single_x4_f16(<vscale x 8 x half> %a, <vscale x 8 x half> %b, <vscale x 8 x half> %c, <vscale x 8 x half> %d, <vscale x 8 x half> %e, <vscale x 8 x half> %f) #1 {
-; CHECK-LABEL: test_fclamp_single_x4_f16:
+define { <vscale x 8 x half>, <vscale x 8 x half>, <vscale x 8 x half>, <vscale x 8 x half> } @test_fclamp_single_x4_i16(<vscale x 8 x half> %a, <vscale x 8 x half> %b, <vscale x 8 x half> %c, <vscale x 8 x half> %d, <vscale x 8 x half> %e, <vscale x 8 x half> %f) #1 {
+; CHECK-LABEL: test_fclamp_single_x4_i16:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    // kill: def $z3 killed $z3 killed $z0_z1_z2_z3 def $z0_z1_z2_z3
 ; CHECK-NEXT:    // kill: def $z2 killed $z2 killed $z0_z1_z2_z3 def $z0_z1_z2_z3
@@ -77,8 +77,8 @@ define { <vscale x 8 x half>, <vscale x 8 x half>, <vscale x 8 x half>, <vscale 
   ret { <vscale x 8 x half>, <vscale x 8 x half>, <vscale x 8 x half>, <vscale x 8 x half> } %res
 }
 
-define { <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float> } @test_fclamp_single_x4_f32(<vscale x 4 x float> %a, <vscale x 4 x float> %b, <vscale x 4 x float> %c, <vscale x 4 x float> %d, <vscale x 4 x float> %e, <vscale x 4 x float> %f) #1 {
-; CHECK-LABEL: test_fclamp_single_x4_f32:
+define { <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float> } @test_fclamp_single_x4_i32(<vscale x 4 x float> %a, <vscale x 4 x float> %b, <vscale x 4 x float> %c, <vscale x 4 x float> %d, <vscale x 4 x float> %e, <vscale x 4 x float> %f) #1 {
+; CHECK-LABEL: test_fclamp_single_x4_i32:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    // kill: def $z3 killed $z3 killed $z0_z1_z2_z3 def $z0_z1_z2_z3
 ; CHECK-NEXT:    // kill: def $z2 killed $z2 killed $z0_z1_z2_z3 def $z0_z1_z2_z3
@@ -90,8 +90,8 @@ define { <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float>, <vsca
   ret { <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float>, <vscale x 4 x float> } %res
 }
 
-define { <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double> } @test_fclamp_single_x4_f64(<vscale x 2 x double> %a, <vscale x 2 x double> %b, <vscale x 2 x double> %c, <vscale x 2 x double> %d, <vscale x 2 x double> %e, <vscale x 2 x double> %f) #1 {
-; CHECK-LABEL: test_fclamp_single_x4_f64:
+define { <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double>, <vscale x 2 x double> } @test_fclamp_single_x4_i64(<vscale x 2 x double> %a, <vscale x 2 x double> %b, <vscale x 2 x double> %c, <vscale x 2 x double> %d, <vscale x 2 x double> %e, <vscale x 2 x double> %f) #1 {
+; CHECK-LABEL: test_fclamp_single_x4_i64:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    // kill: def $z3 killed $z3 killed $z0_z1_z2_z3 def $z0_z1_z2_z3
 ; CHECK-NEXT:    // kill: def $z2 killed $z2 killed $z0_z1_z2_z3 def $z0_z1_z2_z3

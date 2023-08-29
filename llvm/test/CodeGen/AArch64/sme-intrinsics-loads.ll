@@ -329,6 +329,33 @@ exit:
   ret void
 }
 
+; Test that we can store to the stack as well
+; (this requires adding these opcodes to AArch64InstrInfo::getMemOpInfo)
+define void @test_memopinfo_sme_ldr() nounwind {
+; CHECK-LABEL: test_memopinfo_sme_ldr:
+; CHECK:       // %bb.0: // %entry
+; CHECK-NEXT:    str x29, [sp, #-16]! // 8-byte Folded Spill
+; CHECK-NEXT:    addvl sp, sp, #-16
+; CHECK-NEXT:    mov w12, wzr
+; CHECK-NEXT:    mov x8, sp
+; CHECK-NEXT:    addvl x9, x8, #15
+; CHECK-NEXT:    ldr za[w12, 0], [x8]
+; CHECK-NEXT:    addvl x8, x8, #16
+; CHECK-NEXT:    ldr za[w12, 0], [x9]
+; CHECK-NEXT:    ldr za[w12, 0], [x8]
+; CHECK-NEXT:    addvl sp, sp, #16
+; CHECK-NEXT:    ldr x29, [sp], #16 // 8-byte Folded Reload
+; CHECK-NEXT:    ret
+entry:
+  %ptr = alloca <vscale x 16 x i8>, i64 16, align 16
+  %ptr15 = getelementptr <vscale x 16 x i8>, ptr %ptr, i64 15
+  %ptr16 = getelementptr <vscale x 16 x i8>, ptr %ptr, i64 16
+  call void @llvm.aarch64.sme.ldr(i32 0, ptr %ptr)
+  call void @llvm.aarch64.sme.ldr(i32 0, ptr %ptr15)
+  call void @llvm.aarch64.sme.ldr(i32 0, ptr %ptr16)
+  ret void
+}
+
 
 declare void @llvm.aarch64.sme.ld1b.horiz(<vscale x 16 x i1>, ptr, i32, i32)
 declare void @llvm.aarch64.sme.ld1h.horiz(<vscale x 8 x i1>, ptr, i32, i32)

@@ -415,7 +415,7 @@ class TargetArch<list<string> arches> : TargetSpec {
   let Arches = arches;
 }
 def TargetARM : TargetArch<["arm", "thumb", "armeb", "thumbeb"]>;
-def TargetAArch64 : TargetArch<["aarch64"]>;
+def TargetAArch64 : TargetArch<["aarch64", "aarch64_be"]>;
 def TargetAnyArm : TargetArch<!listconcat(TargetARM.Arches, TargetAArch64.Arches)>;
 def TargetAVR : TargetArch<["avr"]>;
 def TargetBPF : TargetArch<["bpfel", "bpfeb"]>;
@@ -2434,37 +2434,43 @@ def AArch64SVEPcs: DeclOrTypeAttr {
 }
 
 def ArmStreaming : TypeAttr, TargetSpecificAttr<TargetAArch64> {
-  let Spellings = [RegularKeyword<"__arm_streaming">];
+  let Spellings = [RegularKeyword<"__arm_streaming">,
+                   GNU<"arm_streaming">];
   let Subjects = SubjectList<[HasFunctionProto], ErrorDiag>;
   let Documentation = [ArmSmeStreamingDocs];
 }
 
 def ArmStreamingCompatible : TypeAttr, TargetSpecificAttr<TargetAArch64> {
-  let Spellings = [RegularKeyword<"__arm_streaming_compatible">];
+  let Spellings = [RegularKeyword<"__arm_streaming_compatible">,
+                   GNU<"arm_streaming_compatible">];
   let Subjects = SubjectList<[HasFunctionProto], ErrorDiag>;
   let Documentation = [ArmSmeStreamingCompatibleDocs];
 }
 
 def ArmSharedZA : TypeAttr, TargetSpecificAttr<TargetAArch64> {
-  let Spellings = [RegularKeyword<"__arm_shared_za">];
+  let Spellings = [RegularKeyword<"__arm_shared_za">,
+                   GNU<"arm_shared_za">];
   let Subjects = SubjectList<[HasFunctionProto], ErrorDiag>;
   let Documentation = [ArmSmeSharedZADocs];
 }
 
 def ArmPreservesZA : TypeAttr, TargetSpecificAttr<TargetAArch64> {
-  let Spellings = [RegularKeyword<"__arm_preserves_za">];
+  let Spellings = [RegularKeyword<"__arm_preserves_za">,
+                   GNU<"arm_preserves_za">];
   let Subjects = SubjectList<[HasFunctionProto], ErrorDiag>;
   let Documentation = [ArmSmePreservesZADocs];
 }
 
 def ArmLocallyStreaming : InheritableAttr, TargetSpecificAttr<TargetAArch64> {
-  let Spellings = [RegularKeyword<"__arm_locally_streaming">];
+  let Spellings = [RegularKeyword<"__arm_locally_streaming">,
+                   GNU<"arm_locally_streaming">];
   let Subjects = SubjectList<[Function], ErrorDiag>;
   let Documentation = [ArmSmeLocallyStreamingDocs];
 }
 
 def ArmNewZA : InheritableAttr, TargetSpecificAttr<TargetAArch64> {
-  let Spellings = [RegularKeyword<"__arm_new_za">];
+  let Spellings = [RegularKeyword<"__arm_new_za">,
+                   GNU<"arm_new_za">];
   let Subjects = SubjectList<[Function], ErrorDiag>;
   let Documentation = [ArmSmeNewZADocs];
 }

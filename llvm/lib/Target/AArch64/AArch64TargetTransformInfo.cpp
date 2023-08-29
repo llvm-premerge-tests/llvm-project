@@ -9,6 +9,7 @@
 #include "AArch64TargetTransformInfo.h"
 #include "AArch64ExpandImm.h"
 #include "AArch64PerfectShuffle.h"
+#include "Utils/AArch64BaseInfo.h"
 #include "MCTargetDesc/AArch64AddressingModes.h"
 #include "llvm/Analysis/IVDescriptors.h"
 #include "llvm/Analysis/LoopInfo.h"
@@ -192,7 +193,7 @@ static cl::opt<bool> EnableScalableAutovecInStreamingMode(
 
 bool AArch64TTIImpl::areInlineCompatible(const Function *Caller,
                                          const Function *Callee) const {
-  SMEAttrs CallerAttrs(*Caller);
+  SMEAttrs CallerAttrs(*Caller, ST->hasSME2());
   SMEAttrs CalleeAttrs(*Callee);
   if (CallerAttrs.requiresSMChange(CalleeAttrs,
                                    /*BodyOverridesInterface=*/true) ||

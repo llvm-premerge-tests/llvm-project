@@ -43,6 +43,8 @@ enum ClassKind {
   ClassG,     // Overloaded name without type suffix
 };
 
+enum class ACLEKind { SVE, SME };
+
 using TypeSpec = std::string;
 
 namespace {
@@ -73,12 +75,12 @@ class SVEType {
 public:
   SVEType() : SVEType(TypeSpec(), 'v') {}
 
-  SVEType(TypeSpec TS, char CharMod)
+  SVEType(TypeSpec TS, char CharMod, unsigned NumVectors = 1)
       : TS(TS), Float(false), Signed(true), Immediate(false), Void(false),
         Constant(false), Pointer(false), BFloat(false), DefaultType(false),
         IsScalable(true), Predicate(false), PredicatePattern(false),
         PrefetchOp(false), Svcount(false), Bitwidth(128), ElementBitwidth(~0U),
-        NumVectors(1) {
+        NumVectors(NumVectors) {
     if (!TS.empty())
       applyTypespec();
     applyModifier(CharMod);
@@ -91,6 +93,7 @@ public:
   bool isScalar() const { return NumVectors == 0; }
   bool isVector() const { return NumVectors > 0; }
   bool isScalableVector() const { return isVector() && IsScalable; }
+  bool isFixedLengthVector() const { return isVector() && !IsScalable; }
   bool isChar() const { return ElementBitwidth == 8; }
   bool isVoid() const { return Void & !Pointer; }
   bool isDefault() const { return DefaultType; }
@@ -194,7 +197,9 @@ public:
   SVEType getReturnType() const { return Types[0]; }
   ArrayRef<SVEType> getTypes() const { return Types; }
   SVEType getParamType(unsigned I) const { return Types[I + 1]; }
-  unsigned getNumParams() const { return Proto.size() - 1; }
+  unsigned getNumParams() const {
+    return Proto.size() - (2 * std::count(Proto.begin(), Proto.end(), '.')) - 1;
+  }
 
   uint64_t getFlags() const { return Flags; }
   bool isFlagSet(uint64_t Flag) const { return Flags & Flag;}
@@ -228,15 +233,23 @@ public:
 
   /// Return the parameter index of the splat operand.
   unsigned getSplatIdx() const {
-    // These prototype modifiers are described in arm_sve.td.
-    auto Idx = Proto.find_first_of("ajfrKLR@");
-    assert(Idx != std::string::npos && Idx > 0 &&
-           "Prototype has no splat operand");
-    return Idx - 1;
+    unsigned I = 1, Param = 0;
+    for (; I < Proto.size(); ++I, ++Param) {
+      if (Proto[I] == 'a' || Proto[I] == 'j' || Proto[I] == 'f' ||
+          Proto[I] == 'r' || Proto[I] == 'K' || Proto[I] == 'L' ||
+          Proto[I] == 'R' || Proto[I] == '@')
+        break;
+
+      // Multivector modifier can be skipped
+      if (Proto[I] == '.')
+        I += 2;
+    }
+    assert(I != Proto.size() && "Prototype has no splat operand");
+    return Param;
   }
 
   /// Emits the intrinsic declaration to the ostream.
-  void emitIntrinsic(raw_ostream &OS, SVEEmitter &Emitter) const;
+  void emitIntrinsic(raw_ostream &OS, ACLEKind Kind) const;
 
 private:
   std::string getMergeSuffix() const { return MergeSuffix; }
@@ -344,14 +357,17 @@ public:
   /// Emit arm_sve.h.
   void createHeader(raw_ostream &o);
 
+  // Emits core intrinsics in both arm_sme.h and arm_sve.h
+  void createCoreHeaderIntrinsics(raw_ostream &o, ACLEKind Kind);
+
   /// Emit all the __builtin prototypes and code needed by Sema.
   void createBuiltins(raw_ostream &o);
 
   /// Emit all the information needed to map builtin -> LLVM IR intrinsic.
-  void createCodeGenMap(raw_ostream &o);
+  void createCodeGenMap(raw_ostream &o, ACLEKind Kind);
 
   /// Emit all the range checks for the immediates.
-  void createRangeChecks(raw_ostream &o);
+  void createRangeChecks(raw_ostream &o, ACLEKind Kind);
 
   /// Create the SVETypeFlags used in CGBuiltins
   void createTypeFlags(raw_ostream &o);
@@ -362,11 +378,20 @@ public:
   /// Emit all the SME __builtin prototypes and code needed by Sema.
   void createSMEBuiltins(raw_ostream &o);
 
+  /// Create the SMETypeFlags used in CGBuiltins
+  void createSmeTypeFlags(raw_ostream &o);
+
   /// Emit all the information needed to map builtin -> LLVM IR intrinsic.
   void createSMECodeGenMap(raw_ostream &o);
 
+  /// Create a table for a builtin's requirement for PSTATE.SM.
+  void createStreamingAttrs(raw_ostream &o, ACLEKind Kind);
+
   /// Emit all the range checks for the immediates.
   void createSMERangeChecks(raw_ostream &o);
+
+  /// Create a table for a builtin's requirement for PSTATE.ZA.
+  void createBuiltinZAState(raw_ostream &OS);
 
   /// Create intrinsic and add it to \p Out
   void createIntrinsic(Record *R,
@@ -439,7 +464,9 @@ std::string SVEType::builtin_str() const {
     return S;
   }
 
-  assert(isScalableVector() && "Unsupported type");
+  if (isFixedLengthVector())
+    return "V" + utostr(getNumElements() * NumVectors) + S;
+
   return "q" + utostr(getNumElements() * NumVectors) + S;
 }
 
@@ -451,11 +478,14 @@ std::string SVEType::str() const {
     return "enum svprfop";
 
   std::string S;
+
   if (Void)
     S += "void";
   else {
     if (isScalableVector() || isSvcount())
       S += "sv";
+    if (isFixedLengthVector())
+      S += "__sve_";
     if (!Signed && !isFloatingPoint())
       S += "u";
 
@@ -472,7 +502,7 @@ std::string SVEType::str() const {
 
     if (!isScalarPredicate() && !isPredicateVector() && !isSvcount())
       S += utostr(ElementBitwidth);
-    if (!isScalableVector() && isVector())
+    if (isFixedLengthVector())
       S += "x" + utostr(getNumElements());
     if (NumVectors > 1)
       S += "x" + utostr(NumVectors);
@@ -540,15 +570,6 @@ void SVEType::applyTypespec() {
 
 void SVEType::applyModifier(char Mod) {
   switch (Mod) {
-  case '2':
-    NumVectors = 2;
-    break;
-  case '3':
-    NumVectors = 3;
-    break;
-  case '4':
-    NumVectors = 4;
-    break;
   case 'v':
     Void = true;
     break;
@@ -590,6 +611,11 @@ void SVEType::applyModifier(char Mod) {
     Svcount = false;
     Bitwidth = 16;
     ElementBitwidth = 1;
+    break;
+  case '{':
+    IsScalable = false;
+    Bitwidth = 128;
+    NumVectors = 1;
     break;
   case 's':
   case 'a':
@@ -756,6 +782,13 @@ void SVEType::applyModifier(char Mod) {
     Float = true;
     ElementBitwidth = 64;
     break;
+  case '$':
+    Predicate = false;
+    Svcount = false;
+    Float = false;
+    BFloat = true;
+    ElementBitwidth = 16;
+    break;
   case 'Q':
     Constant = true;
     Pointer = true;
@@ -859,11 +892,43 @@ void SVEType::applyModifier(char Mod) {
     Float = false;
     BFloat = false;
     break;
+  case 'y':
+    Predicate = true;
+    Svcount = false;
+    NumVectors = 0;
+    Float = false;
+    BFloat = false;
+    break;
+  case '.' :
+    llvm_unreachable(". should never be a type");
+    break;
   default:
     llvm_unreachable("Unhandled character!");
   }
 }
 
+/// Returns the modifier and number of vectors for the given operand \p Op.
+std::pair<char, unsigned> getProtoModifier(StringRef Proto, unsigned Op) {
+  for (unsigned P = 0; !Proto.empty(); ++P) {
+    unsigned NumVectors = 1;
+    unsigned CharsToSkip = 1;
+    char Mod = Proto[0];
+    if (Mod == '2' || Mod == '3' || Mod == '4') {
+      NumVectors = Mod - '0';
+      Mod = 'd';
+      if (Proto.size() > 1 && Proto[1] == '.') {
+        Mod = Proto[2];
+        CharsToSkip = 3;
+      }
+    }
+
+    if (P == Op)
+      return {Mod, NumVectors};
+
+    Proto = Proto.drop_front(CharsToSkip);
+  }
+  llvm_unreachable("Unexpected Op");
+}
 
 //===----------------------------------------------------------------------===//
 // Intrinsic implementation
@@ -879,18 +944,21 @@ Intrinsic::Intrinsic(StringRef Name, StringRef Proto, uint64_t MergeTy,
       MergeSuffix(MergeSuffix.str()), BaseType(BT, 'd'), Flags(Flags),
       ImmChecks(Checks.begin(), Checks.end()) {
   // Types[0] is the return value.
-  for (unsigned I = 0; I < Proto.size(); ++I) {
-    SVEType T(BaseTypeSpec, Proto[I]);
+  for (unsigned I = 0; I < (getNumParams() + 1); ++I) {
+    char Mod;
+    unsigned NumVectors;
+    std::tie(Mod, NumVectors) = getProtoModifier(Proto, I);
+    SVEType T(BaseTypeSpec, Mod, NumVectors);
     Types.push_back(T);
 
     // Add range checks for immediates
     if (I > 0) {
       if (T.isPredicatePattern())
-        ImmChecks.emplace_back(
-            I - 1, Emitter.getEnumValueForImmCheck("ImmCheck0_31"));
+        ImmChecks.emplace_back(I - 1,
+                               Emitter.getEnumValueForImmCheck("ImmCheck0_31"));
       else if (T.isPrefetchOp())
-        ImmChecks.emplace_back(
-            I - 1, Emitter.getEnumValueForImmCheck("ImmCheck0_13"));
+        ImmChecks.emplace_back(I - 1,
+                               Emitter.getEnumValueForImmCheck("ImmCheck0_13"));
     }
   }
 
@@ -987,29 +1055,23 @@ std::string Intrinsic::mangleName(ClassKind LocalCK) const {
          getMergeSuffix();
 }
 
-void Intrinsic::emitIntrinsic(raw_ostream &OS, SVEEmitter &Emitter) const {
+void Intrinsic::emitIntrinsic(raw_ostream &OS, ACLEKind Kind) const {
   bool IsOverloaded = getClassKind() == ClassG && getProto().size() > 1;
 
   std::string FullName = mangleName(ClassS);
   std::string ProtoName = mangleName(getClassKind());
-  std::string SMEAttrs = "";
-
-  if (Flags & Emitter.getEnumValueForFlag("IsStreaming"))
-    SMEAttrs += ", arm_streaming";
-  if (Flags & Emitter.getEnumValueForFlag("IsStreamingCompatible"))
-    SMEAttrs += ", arm_streaming_compatible";
-  if (Flags & Emitter.getEnumValueForFlag("IsSharedZA"))
-    SMEAttrs += ", arm_shared_za";
-  if (Flags & Emitter.getEnumValueForFlag("IsPreservesZA"))
-    SMEAttrs += ", arm_preserves_za";
 
   OS << (IsOverloaded ? "__aio " : "__ai ")
-     << "__attribute__((__clang_arm_builtin_alias("
-     << (SMEAttrs.empty() ? "__builtin_sve_" : "__builtin_sme_")
-     << FullName << ")";
-  if (!SMEAttrs.empty())
-    OS << SMEAttrs;
-  OS << "))\n";
+     << "__attribute__((__clang_arm_builtin_alias(";
+
+  switch (Kind) {
+  case ACLEKind::SME:
+    OS << "__builtin_sme_" << FullName << ")))\n";
+    break;
+  case ACLEKind::SVE:
+    OS << "__builtin_sve_" << FullName << ")))\n";
+    break;
+  }
 
   OS << getTypes()[0].str() << " " << ProtoName << "(";
   for (unsigned I = 0; I < getTypes().size() - 1; ++I) {
@@ -1124,10 +1186,12 @@ void SVEEmitter::createIntrinsic(
       assert(Arg >= 0 && Kind >= 0 && "Arg and Kind must be nonnegative");
 
       unsigned ElementSizeInBits = 0;
+      char Mod;
+      unsigned NumVectors;
+      std::tie(Mod, NumVectors) = getProtoModifier(Proto, EltSizeArg + 1);
       if (EltSizeArg >= 0)
-        ElementSizeInBits =
-            SVEType(TS, Proto[EltSizeArg + /* offset by return arg */ 1])
-                .getElementSizeInBits();
+        ElementSizeInBits = SVEType(TS, Mod, NumVectors).getElementSizeInBits();
+
       ImmChecks.push_back(ImmCheck(Arg, Kind, ElementSizeInBits));
     }
 
@@ -1141,6 +1205,31 @@ void SVEEmitter::createIntrinsic(
           Name, Proto, Merge, MergeSuffix, MemEltType, LLVMName, Flags,
           ImmChecks, TS, ClassG, *this, Guard));
   }
+}
+
+void SVEEmitter::createCoreHeaderIntrinsics(raw_ostream &OS, ACLEKind Kind) {
+  SmallVector<std::unique_ptr<Intrinsic>, 128> Defs;
+  std::vector<Record *> RV = Records.getAllDerivedDefinitions("Inst");
+  for (auto *R : RV)
+    createIntrinsic(R, Defs);
+
+  // Sort intrinsics in header file by following order/priority:
+  // - Architectural guard (i.e. does it require SVE2 or SVE2_AES)
+  // - Class (is ntrinsic overloaded or not)
+  // - Intrinsic name
+  std::stable_sort(Defs.begin(), Defs.end(),
+                   [](const std::unique_ptr<Intrinsic> &A,
+                      const std::unique_ptr<Intrinsic> &B) {
+                     auto ToTuple = [](const std::unique_ptr<Intrinsic> &I) {
+                       return std::make_tuple(I->getGuard(),
+                                              (unsigned)I->getClassKind(),
+                                              I->getName());
+                     };
+                     return ToTuple(A) < ToTuple(B);
+                   });
+
+  for (auto &I : Defs) 
+    I->emitIntrinsic(OS, Kind);
 }
 
 void SVEEmitter::createHeader(raw_ostream &OS) {
@@ -1187,7 +1276,19 @@ void SVEEmitter::createHeader(raw_ostream &OS) {
 
   OS << "typedef __SVBFloat16_t svbfloat16_t;\n";
 
-  OS << "#include <arm_bf16.h>\n";
+  OS << "#include <arm_bf16.h>\n\n";
+  OS << "typedef __attribute__((vector_size (16))) int8_t __sve_int8x16_t;\n";
+  OS << "typedef __attribute__((vector_size (16))) int16_t __sve_int16x8_t;\n";
+  OS << "typedef __attribute__((vector_size (16))) int32_t __sve_int32x4_t;\n";
+  OS << "typedef __attribute__((vector_size (16))) int64_t __sve_int64x2_t;\n";
+  OS << "typedef __attribute__((vector_size (16))) uint8_t __sve_uint8x16_t;\n";
+  OS << "typedef __attribute__((vector_size (16))) uint16_t __sve_uint16x8_t;\n";
+  OS << "typedef __attribute__((vector_size (16))) uint32_t __sve_uint32x4_t;\n";
+  OS << "typedef __attribute__((vector_size (16))) uint64_t __sve_uint64x2_t;\n";
+  OS << "typedef __attribute__((vector_size (16))) float16_t __sve_float16x8_t;\n";
+  OS << "typedef __attribute__((vector_size (16))) float32_t __sve_float32x4_t;\n";
+  OS << "typedef __attribute__((vector_size (16))) float64_t __sve_float64x2_t;\n";
+  OS << "typedef __attribute__((vector_size (16))) bfloat16_t __sve_bfloat16x8;\n";
 
   OS << "typedef __SVFloat32_t svfloat32_t;\n";
   OS << "typedef __SVFloat64_t svfloat64_t;\n";
@@ -1276,6 +1377,17 @@ void SVEEmitter::createHeader(raw_ostream &OS) {
         "__nodebug__))\n\n";
   OS << "#define __aio static __inline__ __attribute__((__always_inline__, "
         "__nodebug__, __overloadable__))\n\n";
+  OS << "#ifdef __ARM_FEATURE_SME\n";
+  OS << "#define __asc __attribute__((arm_streaming_compatible))\n";
+  OS << "#else\n";
+  OS << "#define __asc\n";
+  OS << "#endif\n\n";
+
+  OS << "#if defined(__ARM_FEATURE_SME2)\n";
+  OS << "#define __as __attribute__((arm_streaming))\n";
+  OS << "#else\n";
+  OS << "#define __as\n";
+  OS << "#endif\n\n";
 
   // Add reinterpret functions.
   for (auto ShortForm : { false, true } )
@@ -1284,7 +1396,7 @@ void SVEEmitter::createHeader(raw_ostream &OS) {
         if (ShortForm) {
           OS << "__aio __attribute__((target(\"sve\"))) " << From.Type
              << " svreinterpret_" << From.Suffix;
-          OS << "(" << To.Type << " op) {\n";
+          OS << "(" << To.Type << " op) __arm_streaming_compatible {\n";
           OS << "  return __builtin_sve_reinterpret_" << From.Suffix << "_"
              << To.Suffix << "(op);\n";
           OS << "}\n\n";
@@ -1294,27 +1406,7 @@ void SVEEmitter::createHeader(raw_ostream &OS) {
              << To.Suffix << "(__VA_ARGS__)\n";
       }
 
-  SmallVector<std::unique_ptr<Intrinsic>, 128> Defs;
-  std::vector<Record *> RV = Records.getAllDerivedDefinitions("Inst");
-  for (auto *R : RV)
-    createIntrinsic(R, Defs);
-
-  // Sort intrinsics in header file by following order/priority:
-  // - Architectural guard (i.e. does it require SVE2 or SVE2_AES)
-  // - Class (is intrinsic overloaded or not)
-  // - Intrinsic name
-  std::stable_sort(
-      Defs.begin(), Defs.end(), [](const std::unique_ptr<Intrinsic> &A,
-                                   const std::unique_ptr<Intrinsic> &B) {
-        auto ToTuple = [](const std::unique_ptr<Intrinsic> &I) {
-          return std::make_tuple(I->getGuard(), (unsigned)I->getClassKind(), I->getName());
-        };
-        return ToTuple(A) < ToTuple(B);
-      });
-
-  // Actually emit the intrinsic declarations.
-  for (auto &I : Defs)
-    I->emitIntrinsic(OS, *this);
+  createCoreHeaderIntrinsics(OS, ACLEKind::SVE);
 
   OS << "#define svcvtnt_bf16_x      svcvtnt_bf16_m\n";
   OS << "#define svcvtnt_bf16_f32_x  svcvtnt_bf16_f32_m\n";
@@ -1367,7 +1459,7 @@ void SVEEmitter::createBuiltins(raw_ostream &OS) {
   OS << "#endif\n\n";
 }
 
-void SVEEmitter::createCodeGenMap(raw_ostream &OS) {
+void SVEEmitter::createCodeGenMap(raw_ostream &OS, ACLEKind Kind) {
   std::vector<Record *> RV = Records.getAllDerivedDefinitions("Inst");
   SmallVector<std::unique_ptr<Intrinsic>, 128> Defs;
   for (auto *R : RV)
@@ -1379,7 +1471,15 @@ void SVEEmitter::createCodeGenMap(raw_ostream &OS) {
     return A->getMangledName() < B->getMangledName();
   });
 
-  OS << "#ifdef GET_SVE_LLVM_INTRINSIC_MAP\n";
+  switch (Kind) {
+  case ACLEKind::SME:
+    OS << "#ifdef GET_SME_LLVM_INTRINSIC_MAP\n";
+    break;
+  case ACLEKind::SVE:
+    OS << "#ifdef GET_SVE_LLVM_INTRINSIC_MAP\n";
+    break;
+  }
+
   for (auto &Def : Defs) {
     // Builtins only exist for non-overloaded intrinsics, overloaded
     // declarations only live in the header file.
@@ -1391,16 +1491,24 @@ void SVEEmitter::createCodeGenMap(raw_ostream &OS) {
 
     std::string LLVMName = Def->getMangledLLVMName();
     std::string Builtin = Def->getMangledName();
+    switch (Kind) {
+    case ACLEKind::SME:
+      OS << "SME";
+      break;
+    case ACLEKind::SVE:
+      OS << "SVE";
+      break;
+    }
     if (!LLVMName.empty())
-      OS << "SVEMAP1(" << Builtin << ", " << LLVMName << ", " << FlagString
+      OS << "MAP1(" << Builtin << ", " << LLVMName << ", " << FlagString
          << "),\n";
     else
-      OS << "SVEMAP2(" << Builtin << ", " << FlagString << "),\n";
+      OS << "MAP2(" << Builtin << ", " << FlagString << "),\n";
   }
   OS << "#endif\n\n";
 }
 
-void SVEEmitter::createRangeChecks(raw_ostream &OS) {
+void SVEEmitter::createRangeChecks(raw_ostream &OS, ACLEKind Kind) {
   std::vector<Record *> RV = Records.getAllDerivedDefinitions("Inst");
   SmallVector<std::unique_ptr<Intrinsic>, 128> Defs;
   for (auto *R : RV)
@@ -1412,8 +1520,14 @@ void SVEEmitter::createRangeChecks(raw_ostream &OS) {
     return A->getMangledName() < B->getMangledName();
   });
 
-
-  OS << "#ifdef GET_SVE_IMMEDIATE_CHECK\n";
+  switch (Kind) {
+  case ACLEKind::SME:
+    OS << "#ifdef GET_SME_IMMEDIATE_CHECK\n";
+    break;
+  case ACLEKind::SVE:
+    OS << "#ifdef GET_SVE_IMMEDIATE_CHECK\n";
+    break;
+  }
 
   // Ensure these are only emitted once.
   std::set<std::string> Emitted;
@@ -1423,7 +1537,15 @@ void SVEEmitter::createRangeChecks(raw_ostream &OS) {
         Def->getImmChecks().empty())
       continue;
 
-    OS << "case SVE::BI__builtin_sve_" << Def->getMangledName() << ":\n";
+    switch (Kind) {
+    case ACLEKind::SME:
+      OS << "case SME::BI__builtin_sme_";
+      break;
+    case ACLEKind::SVE:
+      OS << "case SVE::BI__builtin_sve_";
+      break;
+    }
+    OS << Def->getMangledName() << ":\n";
     for (auto &Check : Def->getImmChecks())
       OS << "ImmChecks.push_back(std::make_tuple(" << Check.getArg() << ", "
          << Check.getKind() << ", " << Check.getElementSizeInBits() << "));\n";
@@ -1464,7 +1586,7 @@ void SVEEmitter::createTypeFlags(raw_ostream &OS) {
 }
 
 void SVEEmitter::createSMEHeader(raw_ostream &OS) {
-  OS << "/*===---- arm_sme_draft_spec_subject_to_change.h - ARM SME intrinsics "
+  OS << "/*===---- arm_sme.h - ARM SME intrinsics "
         "------===\n"
         " *\n"
         " *\n"
@@ -1481,45 +1603,49 @@ void SVEEmitter::createSMEHeader(raw_ostream &OS) {
   OS << "#define __ARM_SME_H\n\n";
 
   OS << "#if !defined(__LITTLE_ENDIAN__)\n";
-  OS << "#error \"Big endian is currently not supported for arm_sme_draft_spec_subject_to_change.h\"\n";
+  OS << "#error \"Big endian is currently not supported for arm_sme.h\"\n";
   OS << "#endif\n";
 
-  OS << "#include <arm_sve.h> \n\n";
+  OS << "#include <stdint.h>\n\n";
+  OS << "#include <stddef.h>\n\n";
+  OS << "#ifdef  __cplusplus\n";
+  OS << "extern \"C\" {\n";
+  OS << "#else\n";
+  OS << "#include <stdbool.h>\n";
+  OS << "#endif\n\n";
+
+  OS << "#include \"arm_sve.h\"\n\n";
 
   OS << "/* Function attributes */\n";
   OS << "#define __ai static __inline__ __attribute__((__always_inline__, "
         "__nodebug__))\n\n";
   OS << "#define __aio static __inline__ __attribute__((__always_inline__, "
         "__nodebug__, __overloadable__))\n\n";
+  OS << "#define __as __attribute__((arm_streaming))\n\n";
+  OS << "#define __asc __attribute__((arm_streaming_compatible))\n\n";
+  OS << "#define __asza __attribute__((arm_shared_za))\n\n";
+  OS << "#define __apza __attribute__((arm_preserves_za))\n\n";
 
-  OS << "#ifdef  __cplusplus\n";
-  OS << "extern \"C\" {\n";
-  OS << "#endif\n\n";
+  OS << "__asc void __arm_za_disable(void);\n";
+  OS << "__ai __asc bool __arm_has_sme(void) {\n";
+  OS << "  uint64_t x0, x1;\n";
+  OS << "  __builtin_arm_get_sme_state(&x0, &x1);\n";
+  OS << "  return x0 & (1ULL << 63);\n";
+  OS << "}\n";
 
-  SmallVector<std::unique_ptr<Intrinsic>, 128> Defs;
-  std::vector<Record *> RV = Records.getAllDerivedDefinitions("Inst");
-  for (auto *R : RV)
-    createIntrinsic(R, Defs);
+  OS << "__ai __asc bool __arm_in_streaming_mode(void) {\n";
+  OS << "  uint64_t x0, x1;\n";
+  OS << "  __builtin_arm_get_sme_state(&x0, &x1);\n";
+  OS << "  return x0 & 1;\n";
+  OS << "}\n";
+  OS << "__ai __asc __asza void svundef_za(void) { }\n\n";
 
-  // Sort intrinsics in header file by following order/priority similar to SVE:
-  // - Architectural guard
-  // - Class (is intrinsic overloaded or not)
-  // - Intrinsic name
-  std::stable_sort(Defs.begin(), Defs.end(),
-                   [](const std::unique_ptr<Intrinsic> &A,
-                      const std::unique_ptr<Intrinsic> &B) {
-                     auto ToTuple = [](const std::unique_ptr<Intrinsic> &I) {
-                       return std::make_tuple(I->getGuard(),
-                                              (unsigned)I->getClassKind(),
-                                              I->getName());
-                     };
-                     return ToTuple(A) < ToTuple(B);
-                   });
+  createCoreHeaderIntrinsics(OS, ACLEKind::SME);
 
-  // Actually emit the intrinsic declaration.
-  for (auto &I : Defs) {
-    I->emitIntrinsic(OS, *this);
-  }
+  OS << "__asc __apza void *__arm_sc_memcpy(void *dest, const void *src, size_t n);\n";
+  OS << "__asc __apza void *__arm_sc_memmove(void *dest, const void *src, size_t n);\n";
+  OS << "__asc __apza void *__arm_sc_memset(void *s, int c, size_t n);\n";
+  OS << "__asc __apza void *__arm_sc_memchr(void *s, int c, size_t n);\n\n";
 
   OS << "#ifdef __cplusplus\n";
   OS << "} // extern \"C\"\n";
@@ -1624,6 +1750,107 @@ void SVEEmitter::createSMERangeChecks(raw_ostream &OS) {
   OS << "#endif\n\n";
 }
 
+/// Create the SMETypeFlags used in CGBuiltins
+void SVEEmitter::createSmeTypeFlags(raw_ostream &OS) {
+  OS << "#ifdef LLVM_GET_SME_IMMCHECKTYPES\n";
+  for (auto &KV : ImmCheckTypes)
+    OS << "  " << KV.getKey() << " = " << KV.getValue() << ",\n";
+  OS << "#endif\n\n";
+}
+
+void SVEEmitter::createBuiltinZAState(raw_ostream &OS) {
+  std::vector<Record *> RV = Records.getAllDerivedDefinitions("Inst");
+  SmallVector<std::unique_ptr<Intrinsic>, 128> Defs;
+  for (auto *R : RV)
+    createIntrinsic(R, Defs);
+
+  // The mappings must be sorted based on BuiltinID.
+  llvm::sort(Defs, [](const std::unique_ptr<Intrinsic> &A,
+                      const std::unique_ptr<Intrinsic> &B) {
+    return A->getMangledName() < B->getMangledName();
+  });
+
+  OS << "#ifdef GET_SME_BUILTIN_HAS_ZA_STATE\n";
+
+  // Ensure these are only emitted once.
+  std::set<std::string> Emitted;
+
+  uint64_t IsSharedZAFlag = getEnumValueForFlag("IsSharedZA");
+  for (auto &Def : Defs) {
+    if (Emitted.find(Def->getMangledName()) != Emitted.end())
+      continue;
+
+    OS << "case SME::BI__builtin_sme_" << Def->getMangledName() << ":\n";
+    if (Def->isFlagSet(IsSharedZAFlag))
+      OS << "  return true;\n";
+    else
+      OS << "  return false;\n";
+
+    Emitted.insert(Def->getMangledName());
+  }
+
+  OS << "#endif\n\n";
+}
+
+void SVEEmitter::createStreamingAttrs(raw_ostream &OS, ACLEKind Kind) {
+  std::vector<Record *> RV = Records.getAllDerivedDefinitions("Inst");
+  SmallVector<std::unique_ptr<Intrinsic>, 128> Defs;
+  for (auto *R : RV)
+    createIntrinsic(R, Defs);
+
+  // The mappings must be sorted based on BuiltinID.
+  llvm::sort(Defs, [](const std::unique_ptr<Intrinsic> &A,
+                      const std::unique_ptr<Intrinsic> &B) {
+    return A->getMangledName() < B->getMangledName();
+  });
+
+  switch (Kind) {
+  case ACLEKind::SME:
+    OS << "#ifdef GET_SME_STREAMING_ATTRS\n";
+    break;
+  case ACLEKind::SVE:
+    OS << "#ifdef GET_SVE_STREAMING_ATTRS\n";
+    break;
+  }
+
+  // Ensure these are only emitted once.
+  std::set<std::string> Emitted;
+
+  uint64_t IsStreamingFlag = getEnumValueForFlag("IsStreaming");
+  uint64_t IsStreamingCompatibleFlag =
+      getEnumValueForFlag("IsStreamingCompatible");
+  uint64_t IsStreamingOrSVE2p1 =
+      getEnumValueForFlag("IsStreamingOrSVE2p1");
+  for (auto &Def : Defs) {
+    if (Emitted.find(Def->getMangledName()) != Emitted.end())
+      continue;
+
+    switch (Kind) {
+    case ACLEKind::SME:
+      OS << "case SME::BI__builtin_sme_";
+      break;
+    case ACLEKind::SVE:
+      OS << "case SVE::BI__builtin_sve_";
+      break;
+    }
+    OS << Def->getMangledName() << ":\n";
+
+    if (Def->isFlagSet(IsStreamingFlag))
+      OS << "  BuiltinType = ArmStreaming;\n";
+    else if (Def->isFlagSet(IsStreamingCompatibleFlag))
+      OS << "  BuiltinType = ArmStreamingCompatible;\n";
+    else if (Def->isFlagSet(IsStreamingOrSVE2p1))
+      OS << "  BuiltinType = ArmStreamingOrSVE2p1;\n";
+    else
+      OS << "  BuiltinType = ArmNonStreaming;\n";
+    OS << "  break;\n";
+
+    Emitted.insert(Def->getMangledName());
+  }
+
+  OS << "#endif\n\n";
+}
+
 namespace clang {
 void EmitSveHeader(RecordKeeper &Records, raw_ostream &OS) {
   SVEEmitter(Records).createHeader(OS);
@@ -1634,15 +1861,19 @@ void EmitSveBuiltins(RecordKeeper &Records, raw_ostream &OS) {
 }
 
 void EmitSveBuiltinCG(RecordKeeper &Records, raw_ostream &OS) {
-  SVEEmitter(Records).createCodeGenMap(OS);
+  SVEEmitter(Records).createCodeGenMap(OS, ACLEKind::SVE);
 }
 
 void EmitSveRangeChecks(RecordKeeper &Records, raw_ostream &OS) {
-  SVEEmitter(Records).createRangeChecks(OS);
+  SVEEmitter(Records).createRangeChecks(OS, ACLEKind::SVE);
 }
 
 void EmitSveTypeFlags(RecordKeeper &Records, raw_ostream &OS) {
   SVEEmitter(Records).createTypeFlags(OS);
+}
+
+void EmitSveStreamingAttrs(RecordKeeper &Records, raw_ostream &OS) {
+  SVEEmitter(Records).createStreamingAttrs(OS, ACLEKind::SVE);
 }
 
 void EmitSmeHeader(RecordKeeper &Records, raw_ostream &OS) {
@@ -1650,14 +1881,29 @@ void EmitSmeHeader(RecordKeeper &Records, raw_ostream &OS) {
 }
 
 void EmitSmeBuiltins(RecordKeeper &Records, raw_ostream &OS) {
+  // FIXME: do we want to reuse createBuiltins?
   SVEEmitter(Records).createSMEBuiltins(OS);
 }
 
 void EmitSmeBuiltinCG(RecordKeeper &Records, raw_ostream &OS) {
+  // FIXME: do we want to reuse createCodeGenMap?
   SVEEmitter(Records).createSMECodeGenMap(OS);
 }
 
 void EmitSmeRangeChecks(RecordKeeper &Records, raw_ostream &OS) {
   SVEEmitter(Records).createSMERangeChecks(OS);
 }
+
+void EmitSmeTypeFlags(RecordKeeper &Records, raw_ostream &OS) {
+  SVEEmitter(Records).createSmeTypeFlags(OS);
+}
+
+void EmitSmeStreamingAttrs(RecordKeeper &Records, raw_ostream &OS) {
+  SVEEmitter(Records).createStreamingAttrs(OS, ACLEKind::SME);
+}
+
+void EmitSmeBuiltinZAState(RecordKeeper &Records, raw_ostream &OS) {
+  SVEEmitter(Records).createBuiltinZAState(OS);
+}
+
 } // End namespace clang

@@ -1063,10 +1063,14 @@ void AArch64AsmPrinter::emitJumpTableInfo() {
 }
 
 void AArch64AsmPrinter::emitFunctionEntryLabel() {
+  SMEAttrs Attrs(MF->getFunction());
   if (MF->getFunction().getCallingConv() == CallingConv::AArch64_VectorCall ||
       MF->getFunction().getCallingConv() ==
           CallingConv::AArch64_SVE_VectorCall ||
-      MF->getInfo<AArch64FunctionInfo>()->isSVECC()) {
+      MF->getInfo<AArch64FunctionInfo>()->isSVECC() ||
+      Attrs.hasStreamingInterface() ||
+      Attrs.hasStreamingCompatibleInterface() ||
+      Attrs.hasSharedZAInterface()) {
     auto *TS =
         static_cast<AArch64TargetStreamer *>(OutStreamer->getTargetStreamer());
     TS->emitDirectiveVariantPCS(CurrentFnSym);

@@ -427,6 +427,7 @@ bool AArch64FrameLowering::canUseRedZone(const MachineFunction &MF) const {
 bool AArch64FrameLowering::hasFP(const MachineFunction &MF) const {
   const MachineFrameInfo &MFI = MF.getFrameInfo();
   const TargetRegisterInfo *RegInfo = MF.getSubtarget().getRegisterInfo();
+
   // Win64 EH requires a frame pointer if funclets are present, as the locals
   // are accessed off the frame pointer in both the parent function and the
   // funclets.
@@ -3254,7 +3255,12 @@ bool AArch64FrameLowering::assignCalleeSavedSpillSlots(
 bool AArch64FrameLowering::enableStackSlotScavenging(
     const MachineFunction &MF) const {
   const AArch64FunctionInfo *AFI = MF.getInfo<AArch64FunctionInfo>();
-  return AFI->hasCalleeSaveStackFreeSpace();
+  return AFI->hasCalleeSaveStackFreeSpace() &&
+         // If the function has streaming-mode changes, don't scavenge a
+         // spillslot in the callee-save area, as that might require an
+         // 'addvl' in the streaming-mode-changing call-sequence when the
+         // function doesn't use a FP.
+         !AFI->hasStreamingModeChanges();
 }
 
 /// returns true if there are any SVE callee saves.

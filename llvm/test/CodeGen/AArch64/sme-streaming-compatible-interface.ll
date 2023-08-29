@@ -129,30 +129,37 @@ define <2 x double> @streaming_compatible_with_neon_vectors(<2 x double> %arg) "
 ; CHECK-NEXT:    stp d9, d8, [sp, #48] // 16-byte Folded Spill
 ; CHECK-NEXT:    str x29, [sp, #64] // 8-byte Folded Spill
 ; CHECK-NEXT:    stp x30, x19, [sp, #80] // 16-byte Folded Spill
-; CHECK-NEXT:    addvl sp, sp, #-2
+; CHECK-NEXT:    addvl sp, sp, #-1
+; CHECK-NEXT:    sub sp, sp, #16
+; CHECK-NEXT:    add x8, sp, #16
 ; CHECK-NEXT:    // kill: def $q0 killed $q0 def $z0
-; CHECK-NEXT:    str z0, [sp, #1, mul vl] // 16-byte Folded Spill
+; CHECK-NEXT:    str z0, [x8] // 16-byte Folded Spill
 ; CHECK-NEXT:    bl __arm_sme_state
+; CHECK-NEXT:    add x8, sp, #16
 ; CHECK-NEXT:    and x19, x0, #0x1
+; CHECK-NEXT:    ldr z0, [x8] // 16-byte Folded Reload
+; CHECK-NEXT:    // kill: def $q0 killed $q0 killed $z0
+; CHECK-NEXT:    str q0, [sp] // 16-byte Folded Spill
 ; CHECK-NEXT:    tbz x19, #0, .LBB4_2
 ; CHECK-NEXT:  // %bb.1:
 ; CHECK-NEXT:    smstop sm
 ; CHECK-NEXT:  .LBB4_2:
-; CHECK-NEXT:    ldr z0, [sp, #1, mul vl] // 16-byte Folded Reload
-; CHECK-NEXT:    // kill: def $q0 killed $q0 killed $z0
+; CHECK-NEXT:    ldr q0, [sp] // 16-byte Folded Reload
 ; CHECK-NEXT:    bl normal_callee_vec_arg
-; CHECK-NEXT:    // kill: def $q0 killed $q0 def $z0
-; CHECK-NEXT:    str z0, [sp] // 16-byte Folded Spill
+; CHECK-NEXT:    str q0, [sp] // 16-byte Folded Spill
 ; CHECK-NEXT:    tbz x19, #0, .LBB4_4
 ; CHECK-NEXT:  // %bb.3:
 ; CHECK-NEXT:    smstart sm
 ; CHECK-NEXT:  .LBB4_4:
-; CHECK-NEXT:    ldr z0, [sp, #1, mul vl] // 16-byte Folded Reload
-; CHECK-NEXT:    ldr z1, [sp] // 16-byte Folded Reload
+; CHECK-NEXT:    add x8, sp, #16
+; CHECK-NEXT:    ldr q0, [sp] // 16-byte Folded Reload
+; CHECK-NEXT:    // kill: def $q0 killed $q0 def $z0
 ; CHECK-NEXT:    ptrue p0.d, vl2
+; CHECK-NEXT:    ldr z1, [x8] // 16-byte Folded Reload
 ; CHECK-NEXT:    fadd z0.d, p0/m, z0.d, z1.d
 ; CHECK-NEXT:    // kill: def $q0 killed $q0 killed $z0
-; CHECK-NEXT:    addvl sp, sp, #2
+; CHECK-NEXT:    addvl sp, sp, #1
+; CHECK-NEXT:    add sp, sp, #16
 ; CHECK-NEXT:    ldp x30, x19, [sp, #80] // 16-byte Folded Reload
 ; CHECK-NEXT:    ldp d9, d8, [sp, #48] // 16-byte Folded Reload
 ; CHECK-NEXT:    ldp d11, d10, [sp, #32] // 16-byte Folded Reload
