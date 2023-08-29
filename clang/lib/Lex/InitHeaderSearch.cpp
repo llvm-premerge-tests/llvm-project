@@ -13,7 +13,6 @@
 #include "clang/Basic/DiagnosticFrontend.h"
 #include "clang/Basic/FileManager.h"
 #include "clang/Basic/LangOptions.h"
-#include "clang/Config/config.h" // C_INCLUDE_DIRS
 #include "clang/Lex/HeaderMap.h"
 #include "clang/Lex/HeaderSearch.h"
 #include "clang/Lex/HeaderSearchOptions.h"
@@ -259,16 +258,6 @@ void InitHeaderSearch::AddDefaultCIncludePaths(const llvm::Triple &triple,
   // we aren't using them.
   if (!HSOpts.UseStandardSystemIncludes)
     return;
-
-  // Add dirs specified via 'configure --with-c-include-dirs'.
-  StringRef CIncludeDirs(C_INCLUDE_DIRS);
-  if (CIncludeDirs != "") {
-    SmallVector<StringRef, 5> dirs;
-    CIncludeDirs.split(dirs, ":");
-    for (StringRef dir : dirs)
-      AddPath(dir, ExternCSystem, false);
-    return;
-  }
 
   switch (os) {
   case llvm::Triple::CloudABI: {
