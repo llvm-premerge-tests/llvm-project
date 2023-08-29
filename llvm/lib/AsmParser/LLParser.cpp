@@ -3816,9 +3816,13 @@ bool LLParser::parseValID(ValID &ID, PerFunctionState *PFS, Type *ExpectedTy) {
   case lltok::kw_inttoptr:
   case lltok::kw_ptrtoint: {
     unsigned Opc = Lex.getUIntVal();
+    bool NonNeg = false;
     Type *DestTy = nullptr;
     Constant *SrcVal;
     Lex.Lex();
+    if (Opc == Instruction::ZExt && EatIfPresent(lltok::kw_nneg))
+      NonNeg = true;
+    
     if (parseToken(lltok::lparen, "expected '(' after constantexpr cast") ||
         parseGlobalTypeAndValue(SrcVal) ||
         parseToken(lltok::kw_to, "expected 'to' in constantexpr cast") ||
@@ -3829,9 +3833,17 @@ bool LLParser::parseValID(ValID &ID, PerFunctionState *PFS, Type *ExpectedTy) {
       return error(ID.Loc, "invalid cast opcode for cast from '" +
                                getTypeString(SrcVal->getType()) + "' to '" +
                                getTypeString(DestTy) + "'");
-    ID.ConstantVal = ConstantExpr::getCast((Instruction::CastOps)Opc,
-                                                 SrcVal, DestTy);
+
     ID.Kind = ValID::t_Constant;
+    if (NonNeg) {
+      ID.ConstantVal =
+          ConstantExpr::getZExt(SrcVal, DestTy,
+                                /* OnlyIfReduced */ false, /* NonNeg */ true);
+
+    } else {
+      ID.ConstantVal =
+          ConstantExpr::getCast((Instruction::CastOps)Opc, SrcVal, DestTy);
+    }
     return false;
   }
   case lltok::kw_extractvalue:
@@ -6423,8 +6435,15 @@ int LLParser::parseInstruction(Instruction *&Inst, BasicBlock *BB,
   }
 
   // Casts.
+  case lltok::kw_zext: {
+    bool NonNeg = EatIfPresent(lltok::kw_nneg);
+    bool Res = parseCast(Inst, PFS, KeywordVal, NonNeg);
+    if (Res != 0) {
+      return Res;
+    }
+    return 0;
+  }
   case lltok::kw_trunc:
-  case lltok::kw_zext:
   case lltok::kw_sext:
   case lltok::kw_fptrunc:
   case lltok::kw_fpext:
@@ -7202,7 +7221,7 @@ bool LLParser::parseCompare(Instruction *&Inst, PerFunctionState &PFS,
 /// parseCast
 ///   ::= CastOpc TypeAndValue 'to' Type
 bool LLParser::parseCast(Instruction *&Inst, PerFunctionState &PFS,
-                         unsigned Opc) {
+                         unsigned Opc, bool NonNeg/*=false*/) {
   LocTy Loc;
   Value *Op;
   Type *DestTy = nullptr;
@@ -7218,6 +7237,7 @@ bool LLParser::parseCast(Instruction *&Inst, PerFunctionState &PFS,
                           getTypeString(DestTy) + "'");
   }
   Inst = CastInst::Create((Instruction::CastOps)Opc, Op, DestTy);
+  if(NonNeg) Inst->setNonNeg(true);
   return false;
 }
 

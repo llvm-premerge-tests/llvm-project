@@ -331,6 +331,36 @@ public:
   }
 };
 
+/// An utility class for the zext instructions that were
+/// created by a conversion from sext instructions.
+class NonNegOperator : public Operator {
+public:
+  enum { NonNeg = (1 << 0) };
+
+private:
+  friend class Instruction;
+  friend class ConstantExpr;
+
+  void setNonNeg(bool B) {
+    SubclassOptionalData = (SubclassOptionalData & ~NonNeg) | (B * NonNeg);
+  }
+
+public:
+  ///
+  bool hasNonNeg() const { return (SubclassOptionalData & NonNeg) != 0; }
+
+  static bool classof(const Instruction *I) {
+    return I->getOpcode() == Instruction::ZExt;
+  }
+  static bool classof(const ConstantExpr *CE) {
+    return CE->getOpcode() == Instruction::ZExt;
+  }
+  static bool classof(const Value *V) {
+    return (isa<Instruction>(V) && classof(cast<Instruction>(V))) ||
+           (isa<ConstantExpr>(V) && classof(cast<ConstantExpr>(V)));
+  }
+};
+
 /// A helper template for defining operators for individual opcodes.
 template<typename SuperClass, unsigned Opc>
 class ConcreteOperator : public SuperClass {
@@ -367,7 +397,8 @@ class LShrOperator
   : public ConcreteOperator<PossiblyExactOperator, Instruction::LShr> {
 };
 
-class ZExtOperator : public ConcreteOperator<Operator, Instruction::ZExt> {};
+class ZExtOperator : public ConcreteOperator<NonNegOperator, Instruction::ZExt> {
+};
 
 class GEPOperator
   : public ConcreteOperator<Operator, Instruction::GetElementPtr> {

@@ -1574,6 +1574,9 @@ Expected<Value *> BitcodeReader::materializeValue(unsigned StartValID,
     if (Instruction::isCast(BC->Opcode)) {
       I = CastInst::Create((Instruction::CastOps)BC->Opcode, Ops[0],
                            BC->getType(), "constexpr", InsertBB);
+      if (isa<NonNegOperator>(I) && (BC->Flags & NonNegOperator::NonNeg))
+        I->setNonNeg(true);
+
     } else if (Instruction::isUnaryOp(BC->Opcode)) {
       I = UnaryOperator::Create((Instruction::UnaryOps)BC->Opcode, Ops[0],
                                 "constexpr", InsertBB);
@@ -3204,18 +3207,22 @@ Error BitcodeReader::parseConstants() {
       }
       break;
     }
-    case bitc::CST_CODE_CE_CAST: {  // CE_CAST: [opcode, opty, opval]
+    case bitc::CST_CODE_CE_CAST: { // CE_CAST: [opcode, opty, opval]
       if (Record.size() < 3)
         return error("Invalid cast constexpr record");
       int Opc = getDecodedCastOpcode(Record[0]);
       if (Opc < 0) {
         V = UndefValue::get(CurTy);  // Unknown cast.
       } else {
+        uint8_t Flags = 0;
+        if (Record.size() >= 4 &&  (Record[3] & (1 << bitc::NNO_NON_NEG))) 
+          Flags |= NonNegOperator::NonNeg;
         unsigned OpTyID = Record[1];
         Type *OpTy = getTypeByID(OpTyID);
         if (!OpTy)
           return error("Invalid cast constexpr record");
-        V = BitcodeConstant::create(Alloc, CurTy, Opc, (unsigned)Record[2]);
+        V = BitcodeConstant::create(Alloc, CurTy, {(uint8_t)Opc, Flags},
+                                    (unsigned)Record[2]);
       }
       break;
     }
@@ -4874,17 +4881,17 @@ Error BitcodeReader::parseFunctionBody(Function *F) {
       }
       break;
     }
-    case bitc::FUNC_CODE_INST_CAST: {    // CAST: [opval, opty, destty, castopc]
+    case bitc::FUNC_CODE_INST_CAST: { // CAST: [opval, opty, destty, castopc]
       unsigned OpNum = 0;
       Value *Op;
       unsigned OpTypeID;
       if (getValueTypePair(Record, OpNum, NextValueNo, Op, OpTypeID, CurBB) ||
-          OpNum+2 != Record.size())
+          OpNum + 1 > Record.size())
         return error("Invalid record");
 
-      ResTypeID = Record[OpNum];
+      ResTypeID = Record[OpNum++];
       Type *ResTy = getTypeByID(ResTypeID);
-      int Opc = getDecodedCastOpcode(Record[OpNum + 1]);
+      int Opc = getDecodedCastOpcode(Record[OpNum++]);
       if (Opc == -1 || !ResTy)
         return error("Invalid record");
       Instruction *Temp = nullptr;
@@ -4900,6 +4907,9 @@ Error BitcodeReader::parseFunctionBody(Function *F) {
           return error("Invalid cast");
         I = CastInst::Create(CastOp, Op, ResTy);
       }
+      if (OpNum < Record.size() && (isa<NonNegOperator>(I)) && 
+         (Record[OpNum] & (1 << bitc::NNO_NON_NEG)))  
+            cast<CastInst>(I)->setNonNeg(true); 
       InstructionList.push_back(I);
       break;
     }
@@ -6381,7 +6391,7 @@ Error BitcodeReader::parseFunctionBody(Function *F) {
       if (Error Err = propagateAttributeTypes(cast<CallBase>(I), ArgTyIDs)) {
         I->deleteValue();
         return Err;
-      }
+      } // TODO is nneg flag possible on args?
       if (FMF.any()) {
         if (!isa<FPMathOperator>(I))
           return error("Fast-math-flags specified for call without "

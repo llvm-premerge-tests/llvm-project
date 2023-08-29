@@ -172,12 +172,20 @@ void Instruction::setIsExact(bool b) {
   cast<PossiblyExactOperator>(this)->setIsExact(b);
 }
 
+void Instruction::setNonNeg(bool b) {
+  cast<NonNegOperator>(this)->setNonNeg(b);
+}
+
 bool Instruction::hasNoUnsignedWrap() const {
   return cast<OverflowingBinaryOperator>(this)->hasNoUnsignedWrap();
 }
 
 bool Instruction::hasNoSignedWrap() const {
   return cast<OverflowingBinaryOperator>(this)->hasNoSignedWrap();
+}
+
+bool Instruction::hasNonNeg() const {
+  return cast<NonNegOperator>(this)->hasNonNeg();
 }
 
 bool Instruction::hasPoisonGeneratingFlags() const {
@@ -203,6 +211,10 @@ void Instruction::dropPoisonGeneratingFlags() {
 
   case Instruction::GetElementPtr:
     cast<GetElementPtrInst>(this)->setIsInBounds(false);
+    break;
+
+  case Instruction::ZExt:
+    cast<NonNegOperator>(this)->setNonNeg(false);
     break;
   }
   if (isa<FPMathOperator>(this)) {
@@ -379,6 +391,10 @@ void Instruction::copyIRFlags(const Value *V, bool IncludeWrapFlags) {
   if (auto *SrcGEP = dyn_cast<GetElementPtrInst>(V))
     if (auto *DestGEP = dyn_cast<GetElementPtrInst>(this))
       DestGEP->setIsInBounds(SrcGEP->isInBounds() || DestGEP->isInBounds());
+  
+  if (auto *NNO = dyn_cast<NonNegOperator>(V))
+    if(isa<NonNegOperator>(this))
+      setNonNeg(NNO->hasNonNeg());
 }
 
 void Instruction::andIRFlags(const Value *V) {
@@ -404,6 +420,10 @@ void Instruction::andIRFlags(const Value *V) {
   if (auto *SrcGEP = dyn_cast<GetElementPtrInst>(V))
     if (auto *DestGEP = dyn_cast<GetElementPtrInst>(this))
       DestGEP->setIsInBounds(SrcGEP->isInBounds() && DestGEP->isInBounds());
+  
+  if (auto *NNO = dyn_cast<NonNegOperator>(V))
+    if(isa<NonNegOperator>(this))
+      setNonNeg(hasNonNeg() && NNO->hasNonNeg()); 
 }
 
 const char *Instruction::getOpcodeName(unsigned OpCode) {
