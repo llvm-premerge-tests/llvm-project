@@ -949,6 +949,32 @@ Check for proper usage of ``vfork``.
    while(1);
  }
 
+unix.APIPortabilityMinor (C)
+""""""""""""""""""""""""""""
+Checks for minor portability issues in calls to various UNIX/Posix
+functions.
+
+These are the checks included:
+ -  Null pointer being passed to the pointer conversion specifier (%p) of the
+    printf family of functions. Passing null pointers to such functions is
+    implementation defined, thus non-portable. For instance, on Windows zeros
+    are printed, whilst on Linux '(nil)' is printed. The following functions are
+    considered: printf, fprintf, sprintf, snprintf.
+
+    .. code-block:: c
+
+     void test(void *p) {
+       if (p == NULL) {
+         printf("WARNING: null pointer passed");
+       }
+
+       printf("%p", p); // warn
+
+       if (p != NULL) {
+         printf("%p", p); // no warning
+       }
+     }
+
 .. _unix-cstring-BadSizeArg:
 
 unix.cstring.BadSizeArg (C)

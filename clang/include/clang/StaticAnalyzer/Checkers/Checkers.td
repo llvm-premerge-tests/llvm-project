@@ -582,6 +582,10 @@ def StdCLibraryFunctionsChecker : Checker<"StdCLibraryFunctions">,
   WeakDependencies<[CallAndMessageChecker, NonNullParamChecker, StreamChecker]>,
   Documentation<HasDocumentation>;
 
+def UnixAPIPortabilityMinorChecker : Checker<"APIPortabilityMinor">,
+  HelpText<"Checks for minor portability issues in calls to various UNIX/Posix functions">,
+  Documentation<HasDocumentation>;
+
 } // end "alpha.unix"
 
 //===----------------------------------------------------------------------===//

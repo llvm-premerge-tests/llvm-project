@@ -125,6 +125,7 @@ add_clang_library(clangStaticAnalyzerCheckers
   UninitializedObject/UninitializedObjectChecker.cpp
   UninitializedObject/UninitializedPointee.cpp
   UnixAPIChecker.cpp
+  UnixAPIPortabilityMinorChecker.cpp
   UnreachableCodeChecker.cpp
   VforkChecker.cpp
   VLASizeChecker.cpp
