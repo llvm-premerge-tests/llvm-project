@@ -7,11 +7,9 @@
  *===-----------------------------------------------------------------------===
  */
 
-#if !defined(_NULLPTR_T) || __has_feature(modules)
-/* Always define nullptr_t when modules are available. */
-#if !__has_feature(modules)
+#ifndef _NULLPTR_T
 #define _NULLPTR_T
-#endif
+
 #ifdef __cplusplus
 #if defined(_MSC_EXTENSIONS) && defined(_NATIVE_NULLPTR_SUPPORTED)
 namespace std {
@@ -22,4 +20,5 @@ using ::std::nullptr_t;
 #else
 typedef typeof(nullptr) nullptr_t;
 #endif
+
 #endif
