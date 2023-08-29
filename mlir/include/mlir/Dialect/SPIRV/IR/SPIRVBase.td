@@ -53,6 +53,10 @@ def SPIRV_Dialect : Dialect {
   let hasRegionArgAttrVerify = 1;
   let hasRegionResultAttrVerify = 1;
 
+  let dependentDialects = [
+    "::mlir::ub::UBDialect"
+  ];
+
   let extraClassDeclaration = [{
     void registerAttributes();
     void registerTypes();

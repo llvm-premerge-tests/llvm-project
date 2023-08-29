@@ -36,7 +36,11 @@ def ShapeDialect : Dialect {
   }];
 
   let cppNamespace = "::mlir::shape";
-  let dependentDialects = ["arith::ArithDialect", "tensor::TensorDialect"];
+  let dependentDialects = [
+    "::mlir::arith::ArithDialect",
+    "::mlir::tensor::TensorDialect",
+    "::mlir::ub::UBDialect"
+  ];
 
   let useDefaultTypePrinterParser = 1;
   let hasConstantMaterializer = 1;
