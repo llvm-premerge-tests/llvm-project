@@ -60,6 +60,10 @@ def _f32Attr(x, context):
 def _f64Attr(x, context):
     return FloatAttr.get_f64(x, context=context)
 
+@register_attribute_builder("F128Attr")
+def _f128Attr(x, context):
+    return FloatAttr.get_f128(x, context=context)
+
 
 @register_attribute_builder("StrAttr")
 def _stringAttr(x, context):

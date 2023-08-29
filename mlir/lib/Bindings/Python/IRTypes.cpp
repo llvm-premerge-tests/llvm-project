@@ -307,6 +307,26 @@ public:
   }
 };
 
+/// Floating Point Type subclass - F128Type.
+class PyF128Type : public PyConcreteType<PyF128Type> {
+public:
+  static constexpr IsAFunctionTy isaFunction = mlirTypeIsAF128;
+  static constexpr GetTypeIDFunctionTy getTypeIdFunction =
+      mlirFloat128TypeGetTypeID;
+  static constexpr const char *pyClassName = "F128Type";
+  using PyConcreteType::PyConcreteType;
+
+  static void bindDerived(ClassTy &c) {
+    c.def_static(
+        "get",
+        [](DefaultingPyMlirContext context) {
+          MlirType t = mlirF128TypeGet(context->get());
+          return PyF128Type(context->getRef(), t);
+        },
+        py::arg("context") = py::none(), "Create a f128 type.");
+  }
+};
+
 /// None Type subclass - NoneType.
 class PyNoneType : public PyConcreteType<PyNoneType> {
 public:
@@ -781,6 +801,7 @@ void mlir::python::populateIRTypes(py::module &m) {
   PyTF32Type::bind(m);
   PyF32Type::bind(m);
   PyF64Type::bind(m);
+  PyF128Type::bind(m);
   PyNoneType::bind(m);
   PyComplexType::bind(m);
   PyShapedType::bind(m);

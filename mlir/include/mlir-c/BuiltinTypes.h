@@ -173,6 +173,16 @@ MLIR_CAPI_EXPORTED bool mlirTypeIsATF32(MlirType type);
 /// context.
 MLIR_CAPI_EXPORTED MlirType mlirTF32TypeGet(MlirContext ctx);
 
+/// Returns the typeID of a Float128 type.
+MLIR_CAPI_EXPORTED MlirTypeID mlirFloat128TypeGetTypeID(void);
+
+/// Checks whether the given type is an f128 type.
+MLIR_CAPI_EXPORTED bool mlirTypeIsAF128(MlirType type);
+
+/// Creates a TF128 type in the given context. The type is owned by the
+/// context.
+MLIR_CAPI_EXPORTED MlirType mlirF128TypeGet(MlirContext ctx);
+
 //===----------------------------------------------------------------------===//
 // None type.
 //===----------------------------------------------------------------------===//
