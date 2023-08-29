@@ -451,8 +451,23 @@ static bool shouldInline(ResolvedCall &resolvedCall) {
 
   // Don't allow inlining if the target is an ancestor of the call. This
   // prevents inlining recursively.
-  if (resolvedCall.targetNode->getCallableRegion()->isAncestor(
-          resolvedCall.call->getParentRegion()))
+  Region *targetRegion = resolvedCall.targetNode->getCallableRegion();
+  if (targetRegion->isAncestor(resolvedCall.call->getParentRegion()))
+    return false;
+
+  // Don't allow inlining if the source has multiple blocks (unstructured
+  // control flow) but we cannot be sure that the target supports that.
+  bool sourceHasMultipleBlocks = llvm::hasNItemsOrMore(*targetRegion, /*N=*/2);
+  // If both parent ops have the same type, it is safe to inline. Otherwise,
+  // decide based on whether the op has the SingleBlock trait or not.
+  // Note: This check does currently not account for SizedRegion/MaxSizedRegion.
+  auto targetSupportsMultipleBlocks = [&]() {
+    return targetRegion->getParentOp()->getName() ==
+               resolvedCall.call->getParentOp()->getName() ||
+           !resolvedCall.call->getParentOp()
+                ->mightHaveTrait<OpTrait::SingleBlock>();
+  };
+  if (sourceHasMultipleBlocks && !targetSupportsMultipleBlocks())
     return false;
 
   // Otherwise, inline.
