@@ -468,6 +468,7 @@ libcxx/include/__tuple/tuple_indices.h
 libcxx/include/__tuple/tuple_like_ext.h
 libcxx/include/__tuple/tuple_size.h
 libcxx/include/__tuple/tuple_types.h
+libcxx/include/__typeinfo/typeinfo.h
 libcxx/include/typeindex
 libcxx/include/typeinfo
 libcxx/include/uchar.h
