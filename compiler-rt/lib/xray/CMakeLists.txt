@@ -83,6 +83,16 @@ set(hexagon_SOURCES
   xray_trampoline_hexagon.S
   )
 
+set(riscv32_SOURCES
+  xray_riscv.cpp
+  xray_trampoline_riscv32.S
+  )
+
+set(riscv64_SOURCES
+  xray_riscv.cpp
+  xray_trampoline_riscv64.S
+  )
+
 set(XRAY_SOURCE_ARCHS
   arm
   armhf
@@ -141,6 +151,8 @@ set(XRAY_ALL_SOURCE_FILES
   ${mips64_SOURCES}
   ${mips64el_SOURCES}
   ${powerpc64le_SOURCES}
+  ${riscv32_SOURCES}
+  ${riscv64_SOURCES}
   ${XRAY_IMPL_HEADERS}
   )
 list(REMOVE_DUPLICATES XRAY_ALL_SOURCE_FILES)

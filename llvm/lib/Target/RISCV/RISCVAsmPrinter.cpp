@@ -16,6 +16,7 @@
 #include "MCTargetDesc/RISCVMCExpr.h"
 #include "MCTargetDesc/RISCVTargetStreamer.h"
 #include "RISCV.h"
+#include "RISCVSubtarget.h"
 #include "RISCVMachineFunctionInfo.h"
 #include "RISCVTargetMachine.h"
 #include "TargetInfo/RISCVTargetInfo.h"
@@ -84,6 +85,11 @@ public:
   // Wrapper needed for tblgenned pseudo lowering.
   bool lowerOperand(const MachineOperand &MO, MCOperand &MCOp) const;
 
+  // XRay Support
+  void LowerPATCHABLE_FUNCTION_ENTER(const MachineInstr *MI);
+  void LowerPATCHABLE_FUNCTION_EXIT(const MachineInstr *MI);
+  void LowerPATCHABLE_TAIL_CALL(const MachineInstr *MI);
+
   void emitStartOfAsmFile(Module &M) override;
   void emitEndOfAsmFile(Module &M) override;
 
@@ -93,6 +99,8 @@ public:
 
 private:
   void emitAttributes();
+  // XRay Support
+  void emitSled(const MachineInstr *MI, SledKind Kind);
 
   void emitNTLHint(const MachineInstr *MI);
 
@@ -167,6 +175,27 @@ void RISCVAsmPrinter::emitInstruction(const MachineInstr *MI) {
   case RISCV::PseudoRVVInitUndefM4:
   case RISCV::PseudoRVVInitUndefM8:
     return;
+  case TargetOpcode::PATCHABLE_FUNCTION_ENTER: {
+    // This switch case section is only for handling XRay sleds.
+    //
+    // patchable-function-entry is handled in lowerToMCInst
+    // Therefore, we break out of the switch statement if we encounter it here.
+    const Function &F = MI->getParent()->getParent()->getFunction();
+    if (F.hasFnAttribute("patchable-function-entry")) {
+      break;
+    }
+
+    LowerPATCHABLE_FUNCTION_ENTER(MI);
+    return;
+  }
+  case TargetOpcode::PATCHABLE_FUNCTION_EXIT: {
+    LowerPATCHABLE_FUNCTION_EXIT(MI);
+    return;
+  }
+  case TargetOpcode::PATCHABLE_TAIL_CALL: {
+    LowerPATCHABLE_TAIL_CALL(MI);
+    return;
+  }
   }
 
   MCInst OutInst;
@@ -289,9 +318,66 @@ bool RISCVAsmPrinter::runOnMachineFunction(MachineFunction &MF) {
   SetupMachineFunction(MF);
   emitFunctionBody();
 
+  // Emit the XRay table
+  emitXRayTable();
+
   if (!isSameAttribute())
     RTS.emitDirectiveOptionPop();
   return false;
+}
+
+void RISCVAsmPrinter::LowerPATCHABLE_FUNCTION_ENTER(const MachineInstr *MI) {
+  emitSled(MI, SledKind::FUNCTION_ENTER);
+}
+
+void RISCVAsmPrinter::LowerPATCHABLE_FUNCTION_EXIT(const MachineInstr *MI) {
+  emitSled(MI, SledKind::FUNCTION_EXIT);
+}
+
+void RISCVAsmPrinter::LowerPATCHABLE_TAIL_CALL(const MachineInstr *MI) {
+  emitSled(MI, SledKind::TAIL_CALL);
+}
+
+void RISCVAsmPrinter::emitSled(const MachineInstr *MI, SledKind Kind) {
+  // The following variable holds the count of the number of NOPs to be patched
+  // in for XRay instrumentation during compilation. RISCV64 needs 18 NOPs,
+  // RISCV32 needs 14 NOPs.
+  const uint8_t NoopsInSledCount =
+      MI->getParent()->getParent()->getSubtarget<RISCVSubtarget>().is64Bit()
+          ? 18
+          : 14;
+
+  // We want to emit the jump instruction and the nops constituting the sled.
+  // The format is as follows:
+  // .Lxray_sled_N
+  //   ALIGN
+  //   J .tmpN (60 or 76 byte jump, depending on ISA)
+  //   14 or 18 NOP instructions
+  // .tmpN
+
+  OutStreamer->emitCodeAlignment(Align(4), &getSubtargetInfo());
+  auto CurSled = OutContext.createTempSymbol("xray_sled_", true);
+  OutStreamer->emitLabel(CurSled);
+  auto Target = OutContext.createTempSymbol();
+
+  const MCExpr *TargetExpr = MCSymbolRefExpr::create(
+      Target, MCSymbolRefExpr::VariantKind::VK_None, OutContext);
+
+  // Emit "J bytes" instruction, which jumps over the nop sled to the actual
+  // start of function.
+  EmitToStreamer(
+      *OutStreamer,
+      MCInstBuilder(RISCV::JAL).addReg(RISCV::X0).addExpr(TargetExpr));
+
+  // Emit NOP instructions
+  for (int8_t I = 0; I < NoopsInSledCount; ++I)
+    EmitToStreamer(*OutStreamer, MCInstBuilder(RISCV::ADDI)
+                                     .addReg(RISCV::X0)
+                                     .addReg(RISCV::X0)
+                                     .addImm(0));
+
+  OutStreamer->emitLabel(Target);
+  recordSled(CurSled, *MI, Kind, 2);
 }
 
 void RISCVAsmPrinter::emitStartOfAsmFile(Module &M) {
