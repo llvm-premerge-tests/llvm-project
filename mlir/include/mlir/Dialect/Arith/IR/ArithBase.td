@@ -22,6 +22,10 @@ def Arith_Dialect : Dialect {
     dialect also accept vectors and tensors of integers or floats.
   }];
 
+  let dependentDialects = [
+    "::mlir::ub::UBDialect"
+  ];
+
   let hasConstantMaterializer = 1;
   let useDefaultAttributePrinterParser = 1;
 }

@@ -18,6 +18,7 @@
 #include "mlir/Dialect/CommonFolders.h"
 #include "mlir/Dialect/SPIRV/IR/SPIRVDialect.h"
 #include "mlir/Dialect/SPIRV/IR/SPIRVTypes.h"
+#include "mlir/Dialect/UB/IR/UBOps.h"
 #include "mlir/IR/Matchers.h"
 #include "mlir/IR/PatternMatch.h"
 #include "llvm/ADT/STLExtras.h"
@@ -243,7 +244,7 @@ OpFoldResult spirv::IAddOp::fold(FoldAdaptor adaptor) {
   // The resulting value will equal the low-order N bits of the correct result
   // R, where N is the component width and R is computed with enough precision
   // to avoid overflow and underflow.
-  return constFoldBinaryOp<IntegerAttr>(
+  return constFoldBinaryOpPoison<IntegerAttr>(
       adaptor.getOperands(),
       [](APInt a, const APInt &b) { return std::move(a) + b; });
 }
@@ -265,7 +266,7 @@ OpFoldResult spirv::IMulOp::fold(FoldAdaptor adaptor) {
   // The resulting value will equal the low-order N bits of the correct result
   // R, where N is the component width and R is computed with enough precision
   // to avoid overflow and underflow.
-  return constFoldBinaryOp<IntegerAttr>(
+  return constFoldBinaryOpPoison<IntegerAttr>(
       adaptor.getOperands(),
       [](const APInt &a, const APInt &b) { return a * b; });
 }
@@ -284,7 +285,7 @@ OpFoldResult spirv::ISubOp::fold(FoldAdaptor adaptor) {
   // The resulting value will equal the low-order N bits of the correct result
   // R, where N is the component width and R is computed with enough precision
   // to avoid overflow and underflow.
-  return constFoldBinaryOp<IntegerAttr>(
+  return constFoldBinaryOpPoison<IntegerAttr>(
       adaptor.getOperands(),
       [](APInt a, const APInt &b) { return std::move(a) - b; });
 }

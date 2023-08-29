@@ -31,7 +31,8 @@ def Math_Dialect : Dialect {
   }];
   let hasConstantMaterializer = 1;
   let dependentDialects = [
-    "::mlir::arith::ArithDialect"
+    "::mlir::arith::ArithDialect",
+    "::mlir::ub::UBDialect"
   ];
 }
 #endif // MATH_BASE

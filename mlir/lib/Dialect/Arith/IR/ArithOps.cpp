@@ -271,7 +271,7 @@ OpFoldResult arith::AddIOp::fold(FoldAdaptor adaptor) {
     if (getLhs() == sub.getRhs())
       return sub.getLhs();
 
-  return constFoldBinaryOp<IntegerAttr>(
+  return constFoldBinaryOpPoison<IntegerAttr>(
       adaptor.getOperands(),
       [](APInt a, const APInt &b) { return std::move(a) + b; });
 }
@@ -317,10 +317,10 @@ arith::AddUIExtendedOp::fold(FoldAdaptor adaptor,
   // Let the `constFoldBinaryOp` utility attempt to fold the sum of both
   // operands. If that succeeds, calculate the overflow bit based on the sum
   // and the first (constant) operand, `lhs`.
-  if (Attribute sumAttr = constFoldBinaryOp<IntegerAttr>(
+  if (Attribute sumAttr = constFoldBinaryOpPoison<IntegerAttr>(
           adaptor.getOperands(),
           [](APInt a, const APInt &b) { return std::move(a) + b; })) {
-    Attribute overflowAttr = constFoldBinaryOp<IntegerAttr>(
+    Attribute overflowAttr = constFoldBinaryOpPoison<IntegerAttr>(
         ArrayRef({sumAttr, adaptor.getLhs()}),
         getI1SameShape(llvm::cast<TypedAttr>(sumAttr).getType()),
         calculateUnsignedOverflow);
@@ -361,7 +361,7 @@ OpFoldResult arith::SubIOp::fold(FoldAdaptor adaptor) {
       return add.getRhs();
   }
 
-  return constFoldBinaryOp<IntegerAttr>(
+  return constFoldBinaryOpPoison<IntegerAttr>(
       adaptor.getOperands(),
       [](APInt a, const APInt &b) { return std::move(a) - b; });
 }
@@ -387,7 +387,7 @@ OpFoldResult arith::MulIOp::fold(FoldAdaptor adaptor) {
   // TODO: Handle the overflow case.
 
   // default folder
-  return constFoldBinaryOp<IntegerAttr>(
+  return constFoldBinaryOpPoison<IntegerAttr>(
       adaptor.getOperands(),
       [](const APInt &a, const APInt &b) { return a * b; });
 }
@@ -420,11 +420,11 @@ arith::MulSIExtendedOp::fold(FoldAdaptor adaptor,
   }
 
   // mulsi_extended(cst_a, cst_b) -> cst_low, cst_high
-  if (Attribute lowAttr = constFoldBinaryOp<IntegerAttr>(
+  if (Attribute lowAttr = constFoldBinaryOpPoison<IntegerAttr>(
           adaptor.getOperands(),
           [](const APInt &a, const APInt &b) { return a * b; })) {
     // Invoke the constant fold helper again to calculate the 'high' result.
-    Attribute highAttr = constFoldBinaryOp<IntegerAttr>(
+    Attribute highAttr = constFoldBinaryOpPoison<IntegerAttr>(
         adaptor.getOperands(), [](const APInt &a, const APInt &b) {
           unsigned bitWidth = a.getBitWidth();
           APInt fullProduct = a.sext(bitWidth * 2) * b.sext(bitWidth * 2);
@@ -477,11 +477,11 @@ arith::MulUIExtendedOp::fold(FoldAdaptor adaptor,
   }
 
   // mului_extended(cst_a, cst_b) -> cst_low, cst_high
-  if (Attribute lowAttr = constFoldBinaryOp<IntegerAttr>(
+  if (Attribute lowAttr = constFoldBinaryOpPoison<IntegerAttr>(
           adaptor.getOperands(),
           [](const APInt &a, const APInt &b) { return a * b; })) {
     // Invoke the constant fold helper again to calculate the 'high' result.
-    Attribute highAttr = constFoldBinaryOp<IntegerAttr>(
+    Attribute highAttr = constFoldBinaryOpPoison<IntegerAttr>(
         adaptor.getOperands(), [](const APInt &a, const APInt &b) {
           unsigned bitWidth = a.getBitWidth();
           APInt fullProduct = a.zext(bitWidth * 2) * b.zext(bitWidth * 2);
@@ -513,14 +513,14 @@ OpFoldResult arith::DivUIOp::fold(FoldAdaptor adaptor) {
 
   // Don't fold if it would require a division by zero.
   bool div0 = false;
-  auto result = constFoldBinaryOp<IntegerAttr>(adaptor.getOperands(),
-                                               [&](APInt a, const APInt &b) {
-                                                 if (div0 || !b) {
-                                                   div0 = true;
-                                                   return a;
-                                                 }
-                                                 return a.udiv(b);
-                                               });
+  auto result = constFoldBinaryOpPoison<IntegerAttr>(
+      adaptor.getOperands(), [&](APInt a, const APInt &b) {
+        if (div0 || !b) {
+          div0 = true;
+          return a;
+        }
+        return a.udiv(b);
+      });
 
   return div0 ? Attribute() : result;
 }
@@ -542,7 +542,7 @@ OpFoldResult arith::DivSIOp::fold(FoldAdaptor adaptor) {
 
   // Don't fold if it would overflow or if it requires a division by zero.
   bool overflowOrDiv0 = false;
-  auto result = constFoldBinaryOp<IntegerAttr>(
+  auto result = constFoldBinaryOpPoison<IntegerAttr>(
       adaptor.getOperands(), [&](APInt a, const APInt &b) {
         if (overflowOrDiv0 || !b) {
           overflowOrDiv0 = true;
@@ -588,7 +588,7 @@ OpFoldResult arith::CeilDivUIOp::fold(FoldAdaptor adaptor) {
     return getLhs();
 
   bool overflowOrDiv0 = false;
-  auto result = constFoldBinaryOp<IntegerAttr>(
+  auto result = constFoldBinaryOpPoison<IntegerAttr>(
       adaptor.getOperands(), [&](APInt a, const APInt &b) {
         if (overflowOrDiv0 || !b) {
           overflowOrDiv0 = true;
@@ -621,7 +621,7 @@ OpFoldResult arith::CeilDivSIOp::fold(FoldAdaptor adaptor) {
 
   // Don't fold if it would overflow or if it requires a division by zero.
   bool overflowOrDiv0 = false;
-  auto result = constFoldBinaryOp<IntegerAttr>(
+  auto result = constFoldBinaryOpPoison<IntegerAttr>(
       adaptor.getOperands(), [&](APInt a, const APInt &b) {
         if (overflowOrDiv0 || !b) {
           overflowOrDiv0 = true;
@@ -682,7 +682,7 @@ OpFoldResult arith::FloorDivSIOp::fold(FoldAdaptor adaptor) {
 
   // Don't fold if it would overflow or if it requires a division by zero.
   bool overflowOrDiv0 = false;
-  auto result = constFoldBinaryOp<IntegerAttr>(
+  auto result = constFoldBinaryOpPoison<IntegerAttr>(
       adaptor.getOperands(), [&](APInt a, const APInt &b) {
         if (overflowOrDiv0 || !b) {
           overflowOrDiv0 = true;
@@ -731,14 +731,14 @@ OpFoldResult arith::RemUIOp::fold(FoldAdaptor adaptor) {
 
   // Don't fold if it would require a division by zero.
   bool div0 = false;
-  auto result = constFoldBinaryOp<IntegerAttr>(adaptor.getOperands(),
-                                               [&](APInt a, const APInt &b) {
-                                                 if (div0 || b.isZero()) {
-                                                   div0 = true;
-                                                   return a;
-                                                 }
-                                                 return a.urem(b);
-                                               });
+  auto result = constFoldBinaryOpPoison<IntegerAttr>(
+      adaptor.getOperands(), [&](APInt a, const APInt &b) {
+        if (div0 || b.isZero()) {
+          div0 = true;
+          return a;
+        }
+        return a.urem(b);
+      });
 
   return div0 ? Attribute() : result;
 }
@@ -754,14 +754,14 @@ OpFoldResult arith::RemSIOp::fold(FoldAdaptor adaptor) {
 
   // Don't fold if it would require a division by zero.
   bool div0 = false;
-  auto result = constFoldBinaryOp<IntegerAttr>(adaptor.getOperands(),
-                                               [&](APInt a, const APInt &b) {
-                                                 if (div0 || b.isZero()) {
-                                                   div0 = true;
-                                                   return a;
-                                                 }
-                                                 return a.srem(b);
-                                               });
+  auto result = constFoldBinaryOpPoison<IntegerAttr>(
+      adaptor.getOperands(), [&](APInt a, const APInt &b) {
+        if (div0 || b.isZero()) {
+          div0 = true;
+          return a;
+        }
+        return a.srem(b);
+      });
 
   return div0 ? Attribute() : result;
 }
@@ -810,7 +810,7 @@ OpFoldResult arith::AndIOp::fold(FoldAdaptor adaptor) {
   if (Value result = foldAndIofAndI(*this))
     return result;
 
-  return constFoldBinaryOp<IntegerAttr>(
+  return constFoldBinaryOpPoison<IntegerAttr>(
       adaptor.getOperands(),
       [](APInt a, const APInt &b) { return std::move(a) & b; });
 }
@@ -840,7 +840,7 @@ OpFoldResult arith::OrIOp::fold(FoldAdaptor adaptor) {
       intValue.isAllOnes())
     return getLhs().getDefiningOp<XOrIOp>().getRhs();
 
-  return constFoldBinaryOp<IntegerAttr>(
+  return constFoldBinaryOpPoison<IntegerAttr>(
       adaptor.getOperands(),
       [](APInt a, const APInt &b) { return std::move(a) | b; });
 }
@@ -873,7 +873,7 @@ OpFoldResult arith::XOrIOp::fold(FoldAdaptor adaptor) {
       return prev.getRhs();
   }
 
-  return constFoldBinaryOp<IntegerAttr>(
+  return constFoldBinaryOpPoison<IntegerAttr>(
       adaptor.getOperands(),
       [](APInt a, const APInt &b) { return std::move(a) ^ b; });
 }
@@ -891,8 +891,8 @@ OpFoldResult arith::NegFOp::fold(FoldAdaptor adaptor) {
   /// negf(negf(x)) -> x
   if (auto op = this->getOperand().getDefiningOp<arith::NegFOp>())
     return op.getOperand();
-  return constFoldUnaryOp<FloatAttr>(adaptor.getOperands(),
-                                     [](const APFloat &a) { return -a; });
+  return constFoldUnaryOpPoison<FloatAttr>(adaptor.getOperands(),
+                                           [](const APFloat &a) { return -a; });
 }
 
 //===----------------------------------------------------------------------===//
@@ -904,7 +904,7 @@ OpFoldResult arith::AddFOp::fold(FoldAdaptor adaptor) {
   if (matchPattern(getRhs(), m_NegZeroFloat()))
     return getLhs();
 
-  return constFoldBinaryOp<FloatAttr>(
+  return constFoldBinaryOpPoison<FloatAttr>(
       adaptor.getOperands(),
       [](const APFloat &a, const APFloat &b) { return a + b; });
 }
@@ -918,7 +918,7 @@ OpFoldResult arith::SubFOp::fold(FoldAdaptor adaptor) {
   if (matchPattern(getRhs(), m_PosZeroFloat()))
     return getLhs();
 
-  return constFoldBinaryOp<FloatAttr>(
+  return constFoldBinaryOpPoison<FloatAttr>(
       adaptor.getOperands(),
       [](const APFloat &a, const APFloat &b) { return a - b; });
 }
@@ -936,7 +936,7 @@ OpFoldResult arith::MaxFOp::fold(FoldAdaptor adaptor) {
   if (matchPattern(getRhs(), m_NegInfFloat()))
     return getLhs();
 
-  return constFoldBinaryOp<FloatAttr>(
+  return constFoldBinaryOpPoison<FloatAttr>(
       adaptor.getOperands(),
       [](const APFloat &a, const APFloat &b) { return llvm::maximum(a, b); });
 }
@@ -961,10 +961,10 @@ OpFoldResult MaxSIOp::fold(FoldAdaptor adaptor) {
       intValue.isMinSignedValue())
     return getLhs();
 
-  return constFoldBinaryOp<IntegerAttr>(adaptor.getOperands(),
-                                        [](const APInt &a, const APInt &b) {
-                                          return llvm::APIntOps::smax(a, b);
-                                        });
+  return constFoldBinaryOpPoison<IntegerAttr>(
+      adaptor.getOperands(), [](const APInt &a, const APInt &b) {
+        return llvm::APIntOps::smax(a, b);
+      });
 }
 
 //===----------------------------------------------------------------------===//
@@ -985,10 +985,10 @@ OpFoldResult MaxUIOp::fold(FoldAdaptor adaptor) {
   if (matchPattern(getRhs(), m_ConstantInt(&intValue)) && intValue.isMinValue())
     return getLhs();
 
-  return constFoldBinaryOp<IntegerAttr>(adaptor.getOperands(),
-                                        [](const APInt &a, const APInt &b) {
-                                          return llvm::APIntOps::umax(a, b);
-                                        });
+  return constFoldBinaryOpPoison<IntegerAttr>(
+      adaptor.getOperands(), [](const APInt &a, const APInt &b) {
+        return llvm::APIntOps::umax(a, b);
+      });
 }
 
 //===----------------------------------------------------------------------===//
@@ -1004,7 +1004,7 @@ OpFoldResult arith::MinFOp::fold(FoldAdaptor adaptor) {
   if (matchPattern(getRhs(), m_PosInfFloat()))
     return getLhs();
 
-  return constFoldBinaryOp<FloatAttr>(
+  return constFoldBinaryOpPoison<FloatAttr>(
       adaptor.getOperands(),
       [](const APFloat &a, const APFloat &b) { return llvm::minimum(a, b); });
 }
@@ -1029,10 +1029,10 @@ OpFoldResult MinSIOp::fold(FoldAdaptor adaptor) {
       intValue.isMaxSignedValue())
     return getLhs();
 
-  return constFoldBinaryOp<IntegerAttr>(adaptor.getOperands(),
-                                        [](const APInt &a, const APInt &b) {
-                                          return llvm::APIntOps::smin(a, b);
-                                        });
+  return constFoldBinaryOpPoison<IntegerAttr>(
+      adaptor.getOperands(), [](const APInt &a, const APInt &b) {
+        return llvm::APIntOps::smin(a, b);
+      });
 }
 
 //===----------------------------------------------------------------------===//
@@ -1053,10 +1053,10 @@ OpFoldResult MinUIOp::fold(FoldAdaptor adaptor) {
   if (matchPattern(getRhs(), m_ConstantInt(&intValue)) && intValue.isMaxValue())
     return getLhs();
 
-  return constFoldBinaryOp<IntegerAttr>(adaptor.getOperands(),
-                                        [](const APInt &a, const APInt &b) {
-                                          return llvm::APIntOps::umin(a, b);
-                                        });
+  return constFoldBinaryOpPoison<IntegerAttr>(
+      adaptor.getOperands(), [](const APInt &a, const APInt &b) {
+        return llvm::APIntOps::umin(a, b);
+      });
 }
 
 //===----------------------------------------------------------------------===//
@@ -1068,7 +1068,7 @@ OpFoldResult arith::MulFOp::fold(FoldAdaptor adaptor) {
   if (matchPattern(getRhs(), m_OneFloat()))
     return getLhs();
 
-  return constFoldBinaryOp<FloatAttr>(
+  return constFoldBinaryOpPoison<FloatAttr>(
       adaptor.getOperands(),
       [](const APFloat &a, const APFloat &b) { return a * b; });
 }
@@ -1087,7 +1087,7 @@ OpFoldResult arith::DivFOp::fold(FoldAdaptor adaptor) {
   if (matchPattern(getRhs(), m_OneFloat()))
     return getLhs();
 
-  return constFoldBinaryOp<FloatAttr>(
+  return constFoldBinaryOpPoison<FloatAttr>(
       adaptor.getOperands(),
       [](const APFloat &a, const APFloat &b) { return a / b; });
 }
@@ -1102,12 +1102,12 @@ void arith::DivFOp::getCanonicalizationPatterns(RewritePatternSet &patterns,
 //===----------------------------------------------------------------------===//
 
 OpFoldResult arith::RemFOp::fold(FoldAdaptor adaptor) {
-  return constFoldBinaryOp<FloatAttr>(adaptor.getOperands(),
-                                      [](const APFloat &a, const APFloat &b) {
-                                        APFloat result(a);
-                                        (void)result.remainder(b);
-                                        return result;
-                                      });
+  return constFoldBinaryOpPoison<FloatAttr>(
+      adaptor.getOperands(), [](const APFloat &a, const APFloat &b) {
+        APFloat result(a);
+        (void)result.remainder(b);
+        return result;
+      });
 }
 
 //===----------------------------------------------------------------------===//
@@ -1224,7 +1224,7 @@ OpFoldResult arith::ExtUIOp::fold(FoldAdaptor adaptor) {
 
   Type resType = getElementTypeOrSelf(getType());
   unsigned bitWidth = llvm::cast<IntegerType>(resType).getWidth();
-  return constFoldCastOp<IntegerAttr, IntegerAttr>(
+  return constFoldCastOpPoison<IntegerAttr, IntegerAttr>(
       adaptor.getOperands(), getType(),
       [bitWidth](const APInt &a, bool &castStatus) {
         return a.zext(bitWidth);
@@ -1251,7 +1251,7 @@ OpFoldResult arith::ExtSIOp::fold(FoldAdaptor adaptor) {
 
   Type resType = getElementTypeOrSelf(getType());
   unsigned bitWidth = llvm::cast<IntegerType>(resType).getWidth();
-  return constFoldCastOp<IntegerAttr, IntegerAttr>(
+  return constFoldCastOpPoison<IntegerAttr, IntegerAttr>(
       adaptor.getOperands(), getType(),
       [bitWidth](const APInt &a, bool &castStatus) {
         return a.sext(bitWidth);
@@ -1321,7 +1321,7 @@ OpFoldResult arith::TruncIOp::fold(FoldAdaptor adaptor) {
 
   Type resType = getElementTypeOrSelf(getType());
   unsigned bitWidth = llvm::cast<IntegerType>(resType).getWidth();
-  return constFoldCastOp<IntegerAttr, IntegerAttr>(
+  return constFoldCastOpPoison<IntegerAttr, IntegerAttr>(
       adaptor.getOperands(), getType(),
       [bitWidth](const APInt &a, bool &castStatus) {
         return a.trunc(bitWidth);
@@ -1417,7 +1417,7 @@ bool arith::UIToFPOp::areCastCompatible(TypeRange inputs, TypeRange outputs) {
 
 OpFoldResult arith::UIToFPOp::fold(FoldAdaptor adaptor) {
   Type resEleType = getElementTypeOrSelf(getType());
-  return constFoldCastOp<IntegerAttr, FloatAttr>(
+  return constFoldCastOpPoison<IntegerAttr, FloatAttr>(
       adaptor.getOperands(), getType(),
       [&resEleType](const APInt &a, bool &castStatus) {
         FloatType floatTy = llvm::cast<FloatType>(resEleType);
@@ -1439,7 +1439,7 @@ bool arith::SIToFPOp::areCastCompatible(TypeRange inputs, TypeRange outputs) {
 
 OpFoldResult arith::SIToFPOp::fold(FoldAdaptor adaptor) {
   Type resEleType = getElementTypeOrSelf(getType());
-  return constFoldCastOp<IntegerAttr, FloatAttr>(
+  return constFoldCastOpPoison<IntegerAttr, FloatAttr>(
       adaptor.getOperands(), getType(),
       [&resEleType](const APInt &a, bool &castStatus) {
         FloatType floatTy = llvm::cast<FloatType>(resEleType);
@@ -1461,7 +1461,7 @@ bool arith::FPToUIOp::areCastCompatible(TypeRange inputs, TypeRange outputs) {
 OpFoldResult arith::FPToUIOp::fold(FoldAdaptor adaptor) {
   Type resType = getElementTypeOrSelf(getType());
   unsigned bitWidth = llvm::cast<IntegerType>(resType).getWidth();
-  return constFoldCastOp<FloatAttr, IntegerAttr>(
+  return constFoldCastOpPoison<FloatAttr, IntegerAttr>(
       adaptor.getOperands(), getType(),
       [&bitWidth](const APFloat &a, bool &castStatus) {
         bool ignored;
@@ -1483,7 +1483,7 @@ bool arith::FPToSIOp::areCastCompatible(TypeRange inputs, TypeRange outputs) {
 OpFoldResult arith::FPToSIOp::fold(FoldAdaptor adaptor) {
   Type resType = getElementTypeOrSelf(getType());
   unsigned bitWidth = llvm::cast<IntegerType>(resType).getWidth();
-  return constFoldCastOp<FloatAttr, IntegerAttr>(
+  return constFoldCastOpPoison<FloatAttr, IntegerAttr>(
       adaptor.getOperands(), getType(),
       [&bitWidth](const APFloat &a, bool &castStatus) {
         bool ignored;
@@ -1522,7 +1522,7 @@ OpFoldResult arith::IndexCastOp::fold(FoldAdaptor adaptor) {
   if (auto intTy = dyn_cast<IntegerType>(getElementTypeOrSelf(getType())))
     resultBitwidth = intTy.getWidth();
 
-  return constFoldCastOp<IntegerAttr, IntegerAttr>(
+  return constFoldCastOpPoison<IntegerAttr, IntegerAttr>(
       adaptor.getOperands(), getType(),
       [resultBitwidth](const APInt &a, bool & /*castStatus*/) {
         return a.sextOrTrunc(resultBitwidth);
@@ -1549,7 +1549,7 @@ OpFoldResult arith::IndexCastUIOp::fold(FoldAdaptor adaptor) {
   if (auto intTy = dyn_cast<IntegerType>(getElementTypeOrSelf(getType())))
     resultBitwidth = intTy.getWidth();
 
-  return constFoldCastOp<IntegerAttr, IntegerAttr>(
+  return constFoldCastOpPoison<IntegerAttr, IntegerAttr>(
       adaptor.getOperands(), getType(),
       [resultBitwidth](const APInt &a, bool & /*castStatus*/) {
         return a.zextOrTrunc(resultBitwidth);
@@ -1731,7 +1731,7 @@ OpFoldResult arith::CmpIOp::fold(FoldAdaptor adaptor) {
   // We are moving constants to the right side; So if lhs is constant rhs is
   // guaranteed to be a constant.
   if (auto lhs = llvm::dyn_cast_if_present<TypedAttr>(adaptor.getLhs())) {
-    return constFoldBinaryOp<IntegerAttr>(
+    return constFoldBinaryOpPoison<IntegerAttr>(
         adaptor.getOperands(), getI1SameShape(lhs.getType()),
         [pred = getPredicate()](const APInt &lhs, const APInt &rhs) {
           return APInt(1,
@@ -2317,7 +2317,7 @@ OpFoldResult arith::ShLIOp::fold(FoldAdaptor adaptor) {
     return getLhs();
   // Don't fold if shifting more than the bit width.
   bool bounded = false;
-  auto result = constFoldBinaryOp<IntegerAttr>(
+  auto result = constFoldBinaryOpPoison<IntegerAttr>(
       adaptor.getOperands(), [&](const APInt &a, const APInt &b) {
         bounded = b.ule(b.getBitWidth());
         return a.shl(b);
@@ -2335,7 +2335,7 @@ OpFoldResult arith::ShRUIOp::fold(FoldAdaptor adaptor) {
     return getLhs();
   // Don't fold if shifting more than the bit width.
   bool bounded = false;
-  auto result = constFoldBinaryOp<IntegerAttr>(
+  auto result = constFoldBinaryOpPoison<IntegerAttr>(
       adaptor.getOperands(), [&](const APInt &a, const APInt &b) {
         bounded = b.ule(b.getBitWidth());
         return a.lshr(b);
@@ -2353,7 +2353,7 @@ OpFoldResult arith::ShRSIOp::fold(FoldAdaptor adaptor) {
     return getLhs();
   // Don't fold if shifting more than the bit width.
   bool bounded = false;
-  auto result = constFoldBinaryOp<IntegerAttr>(
+  auto result = constFoldBinaryOpPoison<IntegerAttr>(
       adaptor.getOperands(), [&](const APInt &a, const APInt &b) {
         bounded = b.ule(b.getBitWidth());
         return a.ashr(b);
