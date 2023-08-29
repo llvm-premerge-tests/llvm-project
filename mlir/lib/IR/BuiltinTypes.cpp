@@ -265,6 +265,21 @@ VectorType VectorType::cloneWith(std::optional<ArrayRef<int64_t>> shape,
                          getScalableDims());
 }
 
+VectorType VectorType::dropFrontDims(size_t n) const {
+  assert(size_t(getRank()) >= n && "Dropping more dims than exist");
+  return sliceDims(n, size_t(getRank()) - n);
+}
+
+VectorType VectorType::dropBackDims(size_t n) const {
+  assert(size_t(getRank()) >= n && "Dropping more dims than exist");
+  return sliceDims(0, size_t(getRank()) - n);
+}
+
+VectorType VectorType::sliceDims(size_t n, size_t m) const {
+  return VectorType::get(getShape().slice(n, m), getElementType(),
+                         getScalableDims().slice(n, m));
+}
+
 //===----------------------------------------------------------------------===//
 // TensorType
 //===----------------------------------------------------------------------===//
