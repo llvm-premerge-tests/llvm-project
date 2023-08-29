@@ -1090,6 +1090,58 @@ bool PPCMIPeephole::simplifyCode() {
           ++NumRotatesCollapsed;
         break;
       }
+      case PPC::ANDI_rec:
+      case PPC::ANDI8_rec: {
+        // We can eliminate RLDICL or RLDICR if it's used to clear the
+        // high-order or low-order n bits and all bits cleared will be ANDed
+        // with 0 by ANDI_rec.
+        Register TrueReg =
+            TRI->lookThruCopyLike(MI.getOperand(1).getReg(), MRI);
+        if (!TrueReg.isVirtual())
+          break;
+
+        if (!MRI->hasOneNonDBGUse(TrueReg))
+          break;
+
+        MachineInstr *SrcMI = MRI->getVRegDef(TrueReg);
+        if (!SrcMI)
+          break;
+
+        unsigned SrcOpCode = SrcMI->getOpcode();
+        if (SrcOpCode != PPC::RLDICL && SrcOpCode != PPC::RLDICR)
+          break;
+
+        uint64_t SHSrc = SrcMI->getOperand(2).getImm();
+        if (SHSrc != 0)
+          break;
+
+        uint64_t AndImm = MI.getOperand(2).getImm();
+        uint64_t MaskSrc, MaskMI;
+        if (SrcOpCode == PPC::RLDICL) {
+          // RLDICL can be used to clear the high-order n bits by setting SH=0
+          // and MB=n.
+          MaskSrc = SrcMI->getOperand(3).getImm();
+          MaskMI = llvm::countl_zero<uint64_t>(AndImm);
+        } else {
+          // RLDICR can be used to clear the low-order n bits by setting SH=0
+          // and ME=63-n.
+          MaskSrc = 63 - SrcMI->getOperand(3).getImm();
+          MaskMI = llvm::countr_zero<uint64_t>(AndImm);
+        }
+        if (MaskSrc > MaskMI)
+          break;
+
+        LLVM_DEBUG(dbgs() << "Combining pair: ");
+        LLVM_DEBUG(SrcMI->dump());
+        LLVM_DEBUG(MI.dump());
+        MI.getOperand(1).setReg(SrcMI->getOperand(1).getReg());
+        LLVM_DEBUG(dbgs() << "To: ");
+        LLVM_DEBUG(MI.dump());
+
+        SrcMI->eraseFromParent();
+        Simplified = true;
+        break;
+      }
       // We will replace TD/TW/TDI/TWI with an unconditional trap if it will
       // always trap, we will delete the node if it will never trap.
       case PPC::TDI:
