@@ -935,6 +935,9 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
           continue;
         setOperationAction({ISD::FP_ROUND, ISD::FP_EXTEND}, VT, Custom);
         setOperationAction({ISD::VP_FP_ROUND, ISD::VP_FP_EXTEND}, VT, Custom);
+        setOperationAction({ISD::VP_MERGE, ISD::VP_SELECT, ISD::SELECT}, VT,
+                           Custom);
+        setOperationAction(ISD::SELECT_CC, VT, Expand);
         setOperationAction({ISD::SINT_TO_FP, ISD::UINT_TO_FP,
                             ISD::VP_SINT_TO_FP, ISD::VP_UINT_TO_FP},
                            VT, Custom);
@@ -1142,6 +1145,9 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
             !Subtarget.hasVInstructionsF16()) {
           setOperationAction({ISD::FP_ROUND, ISD::FP_EXTEND}, VT, Custom);
           setOperationAction({ISD::VP_FP_ROUND, ISD::VP_FP_EXTEND}, VT, Custom);
+          setOperationAction(
+              {ISD::VP_MERGE, ISD::VP_SELECT, ISD::VSELECT, ISD::SELECT}, VT,
+              Custom);
           setOperationAction({ISD::SINT_TO_FP, ISD::UINT_TO_FP,
                               ISD::VP_SINT_TO_FP, ISD::VP_UINT_TO_FP},
                              VT, Custom);
@@ -13897,6 +13903,25 @@ SDValue RISCVTargetLowering::PerformDAGCombine(SDNode *N,
     // Only perform this combine on legal MVT types.
     if (!isTypeLegal(VT))
       break;
+    // Early lower splat_vector (fp16 0) to vmv.v.i when we have only have
+    // Zvfhmin to avoid failed promotion.
+    if (isNullFPConstant(N->getOperand(0)) && VT.isVector() &&
+        VT.getScalarType() == MVT::f16 &&
+        (Subtarget.hasVInstructionsF16Minimal() &&
+         !Subtarget.hasVInstructionsF16())) {
+      MVT VecTy = N->getSimpleValueType(0);
+      MVT ContainerTy = VecTy;
+      if (VecTy.isFixedLengthVector())
+        ContainerTy = getContainerForFixedLengthVector(ContainerTy);
+      auto [Mask, VL] =
+          getDefaultVLOps(VecTy, ContainerTy, SDLoc(N), DAG, Subtarget);
+      SDValue VFMV =
+          DAG.getNode(RISCVISD::VFMV_V_F_VL, SDLoc(N), ContainerTy,
+                      DAG.getUNDEF(ContainerTy), N->getOperand(0), VL);
+      if (!VecTy.isFixedLengthVector())
+        return VFMV;
+      return convertFromScalableVector(VecTy, VFMV, DAG, Subtarget);
+    }
     if (auto Gather = matchSplatAsGather(N->getOperand(0), VT.getSimpleVT(), N,
                                          DAG, Subtarget))
       return Gather;
