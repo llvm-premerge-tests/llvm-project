@@ -13,7 +13,6 @@
 #include "Arch/PPC.h"
 #include "Arch/RISCV.h"
 #include "CommonArgs.h"
-#include "clang/Config/config.h"
 #include "clang/Driver/Distro.h"
 #include "clang/Driver/Driver.h"
 #include "clang/Driver/Options.h"
@@ -633,19 +632,6 @@ void Linux::AddClangSystemIncludeArgs(const ArgList &DriverArgs,
   addSystemInclude(DriverArgs, CC1Args, concat(SysRoot, "/usr/local/include"));
   // TOOL_INCLUDE_DIR
   AddMultilibIncludeArgs(DriverArgs, CC1Args);
-
-  // Check for configure-time C include directories.
-  StringRef CIncludeDirs(C_INCLUDE_DIRS);
-  if (CIncludeDirs != "") {
-    SmallVector<StringRef, 5> dirs;
-    CIncludeDirs.split(dirs, ":");
-    for (StringRef dir : dirs) {
-      StringRef Prefix =
-          llvm::sys::path::is_absolute(dir) ? "" : StringRef(SysRoot);
-      addExternCSystemInclude(DriverArgs, CC1Args, Prefix + dir);
-    }
-    return;
-  }
 
   // On systems using multiarch and Android, add /usr/include/$triple before
   // /usr/include.

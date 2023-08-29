@@ -152,22 +152,7 @@ void Hurd::AddClangSystemIncludeArgs(const ArgList &DriverArgs,
   if (DriverArgs.hasArg(options::OPT_nostdlibinc))
     return;
 
-  // Check for configure-time C include directories.
-  StringRef CIncludeDirs(C_INCLUDE_DIRS);
-  if (CIncludeDirs != "") {
-    SmallVector<StringRef, 5> Dirs;
-    CIncludeDirs.split(Dirs, ":");
-    for (StringRef Dir : Dirs) {
-      StringRef Prefix =
-          llvm::sys::path::is_absolute(Dir) ? "" : StringRef(SysRoot);
-      addExternCSystemInclude(DriverArgs, CC1Args, Prefix + Dir);
-    }
-    return;
-  }
-
-  // Lacking those, try to detect the correct set of system includes for the
-  // target triple.
-
+  // Try to detect the correct set of system includes for the target triple.
   AddMultilibIncludeArgs(DriverArgs, CC1Args);
 
   // On systems using multiarch, add /usr/include/$triple before

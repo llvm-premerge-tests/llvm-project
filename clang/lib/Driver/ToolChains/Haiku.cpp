@@ -8,7 +8,6 @@
 
 #include "Haiku.h"
 #include "CommonArgs.h"
-#include "clang/Config/config.h"
 #include "llvm/Support/Path.h"
 
 using namespace clang::driver;
@@ -38,19 +37,6 @@ void Haiku::AddClangSystemIncludeArgs(const llvm::opt::ArgList &DriverArgs,
 
   if (DriverArgs.hasArg(options::OPT_nostdlibinc))
     return;
-
-  // Add dirs specified via 'configure --with-c-include-dirs'.
-  StringRef CIncludeDirs(C_INCLUDE_DIRS);
-  if (!CIncludeDirs.empty()) {
-    SmallVector<StringRef, 5> dirs;
-    CIncludeDirs.split(dirs, ":");
-    for (StringRef dir : dirs) {
-      StringRef Prefix =
-        llvm::sys::path::is_absolute(dir) ? StringRef(D.SysRoot) : "";
-      addExternCSystemInclude(DriverArgs, CC1Args, Prefix + dir);
-    }
-    return;
-  }
 
   addSystemInclude(DriverArgs, CC1Args, D.SysRoot + "/boot/system/non-packaged/develop/headers");
   addSystemInclude(DriverArgs, CC1Args, D.SysRoot + "/boot/system/develop/headers/os");
