@@ -693,10 +693,21 @@ mingw-dll-i686)
 ;;
 aix)
     clean
+
+    VERSION=$(oslevel -s | awk -F'-' '{printf "%.1f.%d.%d\n", $1/1000, $2, $3}')
+    if [ "$OBJECT_MODE" -eq 32 ]; then
+        PARAMS="target_triple=powerpc-ibm-aix${VERSION}"
+    else
+        PARAMS="target_triple=powerpc64-ibm-aix${VERSION}"
+    fi
+
     generate-cmake -C "${MONOREPO_ROOT}/libcxx/cmake/caches/AIX.cmake" \
                    -DLIBCXX_TEST_CONFIG="ibm-libc++-shared.cfg.in" \
                    -DLIBCXXABI_TEST_CONFIG="ibm-libc++abi-shared.cfg.in" \
-                   -DLIBUNWIND_TEST_CONFIG="ibm-libunwind-shared.cfg.in"
+                   -DLIBUNWIND_TEST_CONFIG="ibm-libunwind-shared.cfg.in" \
+                   -DLIBCXX_TEST_PARAMS="${PARAMS}" \
+                   -DLIBCXXABI_TEST_PARAMS="${PARAMS}" \
+                   -DLIBUNWIND_TEST_PARAMS="${PARAMS}"
     check-abi-list
     check-runtimes
 ;;
