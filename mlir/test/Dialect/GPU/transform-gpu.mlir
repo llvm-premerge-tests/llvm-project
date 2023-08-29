@@ -663,3 +663,149 @@ transform.sequence failures(propagate) {
   transform.gpu.map_nested_forall_to_threads %gpu_launch block_dims = [4, 8, 4] 
     : (!transform.any_op) -> !transform.any_op
 }
+
+// -----
+
+transform.sequence failures(propagate) {
+^bb1(%op: !transform.any_op):
+  %gpu_launch = transform.gpu.map_forall_to_blocks %op generate_gpu_launch grid_dims = [1, 1, 1]
+    : (!transform.any_op) -> !transform.any_op
+}
+
+// -----
+
+#map = affine_map<(d0, d1, d2) -> (d0, d2)>
+#map1 = affine_map<(d0, d1, d2) -> (d2, d1)>
+#map2 = affine_map<(d0, d1, d2) -> (d0, d1)>
+
+func.func public @main(%arg0: tensor<1x3xi32>, %arg1: tensor<3x1xi32>) -> tensor<1x1xi32> attributes {transform.target_tag = "root-tag"} {
+  %0 = tensor.empty() : tensor<1x1xi32>
+  %c0_i32 = arith.constant 0 : i32
+  %1 = linalg.fill ins(%c0_i32 : i32) outs(%0 : tensor<1x1xi32>) -> tensor<1x1xi32>
+  %2 = linalg.generic {indexing_maps = [#map, #map1, #map2], iterator_types = ["parallel", "parallel", "reduction"]} ins(%arg0, %arg1 : tensor<1x3xi32>, tensor<3x1xi32>) outs(%1 : tensor<1x1xi32>) {
+  ^bb0(%in: i32, %in_0: i32, %out: i32):
+    %3 = arith.muli %in, %in_0 : i32
+    %4 = arith.addi %out, %3 : i32
+    linalg.yield %4 : i32
+  } -> tensor<1x1xi32>
+  return %2 : tensor<1x1xi32>
+}
+
+transform.sequence  failures(propagate) {
+^bb0(%arg1: !transform.any_op):
+  %arg0 = transform.structured.match ops{["func.func"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+  %0 = transform.structured.match ops{["linalg.fill"]} in %arg0 : (!transform.any_op) -> !transform.any_op
+  %1 = transform.structured.match ops{["linalg.generic"]} in %arg0 : (!transform.any_op) -> !transform.any_op
+  %forall_op, %tiled_op = transform.structured.tile_to_forall_op %1   num_threads [] tile_sizes [50, 16](mapping = [#gpu.thread<x>, #gpu.thread<y>]) : (!transform.any_op) -> (!transform.any_op, !transform.any_op)
+  apply_patterns to %arg0 {
+    transform.apply_patterns.linalg.tiling_canonicalization
+    transform.apply_patterns.scf.for_loop_canonicalization
+    transform.apply_patterns.canonicalization
+  } : !transform.any_op
+  apply_cse to %arg0 : !transform.any_op
+  %fused_op, %new_containing_op = transform.structured.fuse_into_containing_op %0 into %forall_op : (!transform.any_op, !transform.any_op) -> (!transform.any_op, !transform.any_op)
+  apply_patterns to %arg0 {
+    transform.apply_patterns.linalg.tiling_canonicalization
+    transform.apply_patterns.scf.for_loop_canonicalization
+    transform.apply_patterns.canonicalization
+  } : !transform.any_op
+  apply_cse to %arg0 : !transform.any_op
+  %tiled_linalg_op, %loops = transform.structured.tile %tiled_op[0, 0, 32] : (!transform.any_op) -> (!transform.any_op, !transform.any_op)
+  apply_patterns to %arg0 {
+    transform.apply_patterns.linalg.tiling_canonicalization
+    transform.apply_patterns.scf.for_loop_canonicalization
+    transform.apply_patterns.canonicalization
+  } : !transform.any_op
+  apply_cse to %arg0 : !transform.any_op
+  apply_patterns to %arg0 {
+    transform.apply_patterns.linalg.tiling_canonicalization
+    transform.apply_patterns.scf.for_loop_canonicalization
+    transform.apply_patterns.canonicalization
+  } : !transform.any_op
+  apply_cse to %arg0 : !transform.any_op
+  %2 = transform.structured.match ops{["tensor.empty"]} in %arg0 : (!transform.any_op) -> !transform.op<"tensor.empty">
+  %3 = transform.bufferization.empty_tensor_to_alloc_tensor %2 : (!transform.op<"tensor.empty">) -> !transform.op<"bufferization.alloc_tensor">
+  %4 = transform.bufferization.one_shot_bufferize %arg0 : (!transform.any_op) -> !transform.any_op
+  apply_patterns to %4 {
+    transform.apply_patterns.linalg.tiling_canonicalization
+    transform.apply_patterns.scf.for_loop_canonicalization
+    transform.apply_patterns.canonicalization
+  } : !transform.any_op
+  apply_cse to %4 : !transform.any_op
+  %5 = transform.gpu.map_forall_to_blocks %4 generate_gpu_launch grid_dims = [50, 16, 1] : (!transform.any_op) -> !transform.any_op
+  apply_patterns to %5 {
+    transform.apply_patterns.linalg.tiling_canonicalization
+    transform.apply_patterns.scf.for_loop_canonicalization
+    transform.apply_patterns.canonicalization
+  } : !transform.any_op
+  apply_cse to %5 : !transform.any_op
+}
+
+// -----
+
+#map = affine_map<(d0, d1, d2) -> (d0, d2)>
+#map1 = affine_map<(d0, d1, d2) -> (d2, d1)>
+#map2 = affine_map<(d0, d1, d2) -> (d0, d1)>
+
+func.func public @main(%arg0: tensor<1x3xi32>, %arg1: tensor<3x1xi32>) -> tensor<1x1xi32> attributes {transform.target_tag = "root-tag"} {
+  %0 = tensor.empty() : tensor<1x1xi32>
+  %c0_i32 = arith.constant 0 : i32
+  %1 = linalg.fill ins(%c0_i32 : i32) outs(%0 : tensor<1x1xi32>) -> tensor<1x1xi32>
+  %2 = linalg.generic {indexing_maps = [#map, #map1, #map2], iterator_types = ["parallel", "parallel", "reduction"]} ins(%arg0, %arg1 : tensor<1x3xi32>, tensor<3x1xi32>) outs(%1 : tensor<1x1xi32>) {
+  ^bb0(%in: i32, %in_0: i32, %out: i32):
+    %3 = arith.muli %in, %in_0 : i32
+    %4 = arith.addi %out, %3 : i32
+    linalg.yield %4 : i32
+  } -> tensor<1x1xi32>
+  return %2 : tensor<1x1xi32>
+}
+
+transform.sequence  failures(propagate) {
+^bb0(%arg1: !transform.any_op):
+  %arg0 = transform.structured.match ops{["func.func"]} in %arg1 : (!transform.any_op) -> !transform.any_op
+  %0 = transform.structured.match ops{["linalg.fill"]} in %arg0 : (!transform.any_op) -> !transform.any_op
+  %1 = transform.structured.match ops{["linalg.generic"]} in %arg0 : (!transform.any_op) -> !transform.any_op
+  %forall_op, %tiled_op = transform.structured.tile_to_forall_op %1   num_threads [] tile_sizes [50, 16](mapping = [#gpu.thread<x>, #gpu.thread<y>]) : (!transform.any_op) -> (!transform.any_op, !transform.any_op)
+  apply_patterns to %arg0 {
+    transform.apply_patterns.linalg.tiling_canonicalization
+    transform.apply_patterns.scf.for_loop_canonicalization
+    transform.apply_patterns.canonicalization
+  } : !transform.any_op
+  apply_cse to %arg0 : !transform.any_op
+  %fused_op, %new_containing_op = transform.structured.fuse_into_containing_op %0 into %forall_op : (!transform.any_op, !transform.any_op) -> (!transform.any_op, !transform.any_op)
+  apply_patterns to %arg0 {
+    transform.apply_patterns.linalg.tiling_canonicalization
+    transform.apply_patterns.scf.for_loop_canonicalization
+    transform.apply_patterns.canonicalization
+  } : !transform.any_op
+  apply_cse to %arg0 : !transform.any_op
+  %tiled_linalg_op, %loops = transform.structured.tile %tiled_op[0, 0, 32] : (!transform.any_op) -> (!transform.any_op, !transform.any_op)
+  apply_patterns to %arg0 {
+    transform.apply_patterns.linalg.tiling_canonicalization
+    transform.apply_patterns.scf.for_loop_canonicalization
+    transform.apply_patterns.canonicalization
+  } : !transform.any_op
+  apply_cse to %arg0 : !transform.any_op
+  apply_patterns to %arg0 {
+    transform.apply_patterns.linalg.tiling_canonicalization
+    transform.apply_patterns.scf.for_loop_canonicalization
+    transform.apply_patterns.canonicalization
+  } : !transform.any_op
+  apply_cse to %arg0 : !transform.any_op
+  %2 = transform.structured.match ops{["tensor.empty"]} in %arg0 : (!transform.any_op) -> !transform.op<"tensor.empty">
+  %3 = transform.bufferization.empty_tensor_to_alloc_tensor %2 : (!transform.op<"tensor.empty">) -> !transform.op<"bufferization.alloc_tensor">
+  %4 = transform.bufferization.one_shot_bufferize %arg0 : (!transform.any_op) -> !transform.any_op
+  apply_patterns to %4 {
+    transform.apply_patterns.linalg.tiling_canonicalization
+    transform.apply_patterns.scf.for_loop_canonicalization
+    transform.apply_patterns.canonicalization
+  } : !transform.any_op
+  apply_cse to %4 : !transform.any_op
+  %5 = transform.gpu.map_forall_to_blocks %4 generate_gpu_launch grid_dims = [50, 16] : (!transform.any_op) -> !transform.any_op // XXX: only two dimensions
+  apply_patterns to %5 {
+    transform.apply_patterns.linalg.tiling_canonicalization
+    transform.apply_patterns.scf.for_loop_canonicalization
+    transform.apply_patterns.canonicalization
+  } : !transform.any_op
+  apply_cse to %5 : !transform.any_op
+}
