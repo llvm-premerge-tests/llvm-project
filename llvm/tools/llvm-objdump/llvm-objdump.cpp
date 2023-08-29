@@ -1911,6 +1911,8 @@ disassembleObject(ObjectFile &Obj, const ObjectFile &DbgObj,
                                BBAddrMapLabels);
       }
 
+      std::optional<MCInst> PrevInst;
+      uint64_t PrevIndex;
       while (Index < End) {
         // ARM and AArch64 ELF binaries can interleave data and text in the
         // same section. We rely on the markers introduced to understand what
@@ -2024,6 +2026,9 @@ disassembleObject(ObjectFile &Obj, const ObjectFile &DbgObj,
             uint64_t Target;
             bool PrintTarget = DT->InstrAnalysis->evaluateBranch(
                 Inst, SectionAddr + Index, Size, Target);
+            if (!PrintTarget && PrevInst)
+              PrintTarget = DT->InstrAnalysis->evaluateBranch(
+                  *PrevInst, Inst, SectionAddr + PrevIndex, Target);
             if (!PrintTarget)
               if (std::optional<uint64_t> MaybeTarget =
                       DT->InstrAnalysis->evaluateMemoryOperandAddress(
@@ -2128,6 +2133,9 @@ disassembleObject(ObjectFile &Obj, const ObjectFile &DbgObj,
                 *TargetOS << "\n";
             }
           }
+
+          PrevInst = Inst;
+          PrevIndex = Index;
         }
 
         assert(DT->Context->getAsmInfo());

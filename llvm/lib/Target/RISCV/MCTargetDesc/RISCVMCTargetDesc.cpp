@@ -143,6 +143,18 @@ public:
     return false;
   }
 
+  bool evaluateBranch(const MCInst &Inst1, const MCInst &Inst2, uint64_t Addr,
+                      uint64_t &Target) const override {
+    if (Inst1.getOpcode() != RISCV::AUIPC || Inst2.getOpcode() != RISCV::JALR)
+      return false;
+    if (Inst1.getOperand(0).getReg() != Inst2.getOperand(1).getReg())
+      return false;
+
+    Target = Addr + (Inst1.getOperand(1).getImm() << 12) +
+             Inst2.getOperand(2).getImm();
+    return true;
+  }
+
   bool isTerminator(const MCInst &Inst) const override {
     if (MCInstrAnalysis::isTerminator(Inst))
       return true;

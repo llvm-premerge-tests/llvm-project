@@ -166,6 +166,13 @@ public:
   evaluateBranch(const MCInst &Inst, uint64_t Addr, uint64_t Size,
                  uint64_t &Target) const;
 
+  /// Given two consecutive instructions try to get the address the branch
+  /// targets. Return true on success, and the address in Target.
+  /// This overload is useful for targets like RISC-V where some branches take
+  /// up two instructions (e.g. auipc+jalr).
+  virtual bool evaluateBranch(const MCInst &Inst1, const MCInst &Inst2,
+                              uint64_t Addr, uint64_t &Target) const;
+
   /// Given an instruction tries to get the address of a memory operand. Returns
   /// the address on success.
   virtual std::optional<uint64_t>
