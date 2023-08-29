@@ -118,7 +118,8 @@ def AffineApplyOp : Affine_Op<"apply", [Pure]> {
 }
 
 def AffineForOp : Affine_Op<"for",
-    [AutomaticAllocationScope, ImplicitAffineTerminator, ConditionallySpeculatable,
+    [AutomaticAllocationScope, SingleBlock, ImplicitAffineTerminator,
+    ConditionallySpeculatable,
      RecursiveMemoryEffects, DeclareOpInterfaceMethods<LoopLikeOpInterface,
      ["getSingleInductionVar", "getSingleLowerBound", "getSingleStep",
       "getSingleUpperBound"]>,
@@ -365,7 +366,8 @@ def AffineForOp : Affine_Op<"for",
 }
 
 def AffineIfOp : Affine_Op<"if",
-                           [ImplicitAffineTerminator, RecursivelySpeculatable,
+                           [SingleBlock, ImplicitAffineTerminator,
+                            RecursivelySpeculatable,
                             RecursiveMemoryEffects, NoRegionArguments,
                             DeclareOpInterfaceMethods<RegionBranchOpInterface>
                            ]> {
@@ -634,7 +636,8 @@ def AffineMaxOp : AffineMinMaxOpBase<"max", [Pure]> {
 }
 
 def AffineParallelOp : Affine_Op<"parallel",
-    [AutomaticAllocationScope, ImplicitAffineTerminator, RecursivelySpeculatable,
+    [AutomaticAllocationScope, SingleBlock, ImplicitAffineTerminator,
+     RecursivelySpeculatable,
      RecursiveMemoryEffects, DeclareOpInterfaceMethods<LoopLikeOpInterface>,
      MemRefsNormalizable]> {
   let summary = "multi-index parallel band operation";

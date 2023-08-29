@@ -20,7 +20,7 @@ class TEST_Op<string mnemonic, list<Trait> traits = []> :
     Op<Test_Dialect, mnemonic, traits>;
 
 def WrappingRegionOp : TEST_Op<"wrapping_region",
-    [SingleBlockImplicitTerminator<"TestReturnOp">]> {
+    [SingleBlock, SingleBlockImplicitTerminator<"TestReturnOp">]> {
   let summary =  "wrapping region operation";
   let description = [{
     Test op wrapping another op in a region, to test calling
@@ -33,7 +33,7 @@ def WrappingRegionOp : TEST_Op<"wrapping_region",
 }
 
 def PrettyPrintedRegionOp : TEST_Op<"pretty_printed_region",
-    [SingleBlockImplicitTerminator<"TestReturnOp">]> {
+    [SingleBlock, SingleBlockImplicitTerminator<"TestReturnOp">]> {
   let summary =  "pretty_printed_region operation";
   let description = [{
     Test-op can be printed either in a "pretty" or "non-pretty" way based on
@@ -232,7 +232,7 @@ def FormatVariadicRegionBOp : FormatVariadicRegionBase<"b", [{
 }]>;
 class FormatRegionImplicitTerminatorBase<string suffix, string fmt>
     : TEST_Op<"format_implicit_terminator_region_" # suffix # "_op",
-              [SingleBlockImplicitTerminator<"TestReturnOp">]> {
+              [SingleBlock, SingleBlockImplicitTerminator<"TestReturnOp">]> {
   let regions = (region AnyRegion:$region);
   let assemblyFormat = fmt;
 }

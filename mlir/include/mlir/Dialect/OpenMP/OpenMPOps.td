@@ -1462,8 +1462,8 @@ def AtomicWriteOp : OpenMP_Op<"atomic.write"> {
 }
 
 def AtomicUpdateOp : OpenMP_Op<"atomic.update",
-                               [SingleBlockImplicitTerminator<"YieldOp">,
-                                RecursiveMemoryEffects]> {
+    [SingleBlock, SingleBlockImplicitTerminator<"YieldOp">,
+     RecursiveMemoryEffects]> {
 
   let summary = "performs an atomic update";
 

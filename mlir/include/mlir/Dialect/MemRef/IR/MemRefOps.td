@@ -359,7 +359,7 @@ def MemRef_AllocaOp : AllocLikeOp<"alloca", AutomaticAllocationScopeResource,[
 def MemRef_AllocaScopeOp : MemRef_Op<"alloca_scope",
       [AutomaticAllocationScope,
        DeclareOpInterfaceMethods<RegionBranchOpInterface>,
-       SingleBlockImplicitTerminator<"AllocaScopeReturnOp">,
+       SingleBlock, SingleBlockImplicitTerminator<"AllocaScopeReturnOp">,
        RecursiveMemoryEffects,
        NoRegionArguments]> {
   let summary = "explicitly delimited scope for stack allocation";
@@ -989,7 +989,7 @@ def MemRef_ExtractStridedMetadataOp : MemRef_Op<"extract_strided_metadata", [
 //===----------------------------------------------------------------------===//
 
 def GenericAtomicRMWOp : MemRef_Op<"generic_atomic_rmw", [
-      SingleBlockImplicitTerminator<"AtomicYieldOp">,
+      SingleBlock, SingleBlockImplicitTerminator<"AtomicYieldOp">,
       TypesMatchWith<"result type matches element type of memref",
                      "memref", "result",
                      "::llvm::cast<MemRefType>($_self).getElementType()">

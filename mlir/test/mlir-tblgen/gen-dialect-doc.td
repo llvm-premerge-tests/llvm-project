@@ -21,8 +21,8 @@ def OpGroupA : OpDocGroup {
 }
 
 let opDocGroup = OpGroupA in {
-def ADOp : Op<Test_Dialect, "d", [NoMemoryEffect, SingleBlockImplicitTerminator<"YieldOp">]>;
-def AAOp : Op<Test_Dialect, "a", [NoMemoryEffect, SingleBlockImplicitTerminator<"YieldOp">]>;
+def ADOp : Op<Test_Dialect, "d", [NoMemoryEffect, SingleBlock, SingleBlockImplicitTerminator<"YieldOp">]>;
+def AAOp : Op<Test_Dialect, "a", [NoMemoryEffect, SingleBlock, SingleBlockImplicitTerminator<"YieldOp">]>;
 }
 
 def OpGroupB : OpDocGroup {
@@ -31,11 +31,11 @@ def OpGroupB : OpDocGroup {
 }
 
 let opDocGroup = OpGroupB in {
-def ACOp : Op<Test_Dialect, "c", [NoMemoryEffect, SingleBlockImplicitTerminator<"YieldOp">]>;
-def ABOp : Op<Test_Dialect, "b", [NoMemoryEffect, SingleBlockImplicitTerminator<"YieldOp">]>;
+def ACOp : Op<Test_Dialect, "c", [NoMemoryEffect, SingleBlock, SingleBlockImplicitTerminator<"YieldOp">]>;
+def ABOp : Op<Test_Dialect, "b", [NoMemoryEffect, SingleBlock, SingleBlockImplicitTerminator<"YieldOp">]>;
 }
 
-def AEOp : Op<Test_Dialect, "e", [NoMemoryEffect, SingleBlockImplicitTerminator<"YieldOp">]>;
+def AEOp : Op<Test_Dialect, "e", [NoMemoryEffect, SingleBlock, SingleBlockImplicitTerminator<"YieldOp">]>;
 
 def TestAttr : DialectAttr<Test_Dialect, CPred<"true">> {
   let summary = "attribute summary";
@@ -81,7 +81,7 @@ def TestTypeDefParams : TypeDef<Test_Dialect, "TestTypeDefParams"> {
 // CHECK: Other group
 // CHECK: test.b
 // CHECK: test.c
-// CHECK: Traits: SingleBlockImplicitTerminator<YieldOp>
+// CHECK: Traits: SingleBlock, SingleBlockImplicitTerminator<YieldOp>
 // CHECK: Interfaces: NoMemoryEffect (MemoryEffectOpInterface)
 // CHECK: Effects: MemoryEffects::Effect{}
 

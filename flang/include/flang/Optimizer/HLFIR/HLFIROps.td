@@ -1184,7 +1184,7 @@ def hlfir_RegionAssignOp : hlfir_Op<"region_assign", [hlfir_OrderedAssignmentTre
 
 def hlfir_YieldOp : hlfir_Op<"yield", [Terminator, ParentOneOf<["RegionAssignOp",
     "ElementalAddrOp", "ForallOp", "ForallMaskOp", "WhereOp", "ElseWhereOp"]>,
-    SingleBlockImplicitTerminator<"fir::FirEndOp">, RecursivelySpeculatable,
+    SingleBlock, SingleBlockImplicitTerminator<"fir::FirEndOp">, RecursivelySpeculatable,
         RecursiveMemoryEffects]> {
 
   let summary = "Yield a value or variable inside a forall, where or region assignment";

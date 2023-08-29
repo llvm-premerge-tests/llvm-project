@@ -505,7 +505,7 @@ def Shape_NumElementsOp : Shape_Op<"num_elements",
 }
 
 def Shape_ReduceOp : Shape_Op<"reduce",
-    [SingleBlockImplicitTerminator<"YieldOp">]> {
+    [SingleBlock, SingleBlockImplicitTerminator<"YieldOp">]> {
   let summary = "Returns an expression reduced over a shape or extent tensor";
   let description = [{
     An operation that takes as input a shape or extent tensor, and a number of
@@ -825,7 +825,7 @@ def Shape_AssumingAllOp : Shape_Op<"assuming_all", [Commutative, Pure]> {
 }
 
 def Shape_AssumingOp : Shape_Op<"assuming", [
-    SingleBlockImplicitTerminator<"AssumingYieldOp">,
+    SingleBlock, SingleBlockImplicitTerminator<"AssumingYieldOp">,
     DeclareOpInterfaceMethods<RegionBranchOpInterface>,
     RecursiveMemoryEffects]> {
   let summary = "Execute the region";

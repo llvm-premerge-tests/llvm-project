@@ -27,7 +27,7 @@ include "mlir/IR/OpAsmInterface.td"
 // depending on the specific Linalg op.
 class LinalgStructuredBase_Op<string mnemonic, list<Trait> props>
   : Op<Linalg_Dialect, mnemonic, !listconcat([
-       SingleBlockImplicitTerminator<"YieldOp">,
+       SingleBlock, SingleBlockImplicitTerminator<"YieldOp">,
        DeclareOpInterfaceMethods<MemoryEffectsOpInterface>,
        DestinationStyleOpInterface,
        LinalgStructuredInterface,
@@ -230,7 +230,7 @@ def TensorOrMemref :
 def MapOp : LinalgStructuredBase_Op<"map", [
     DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>,
     DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmBlockArgumentNames"]>,
-    SingleBlockImplicitTerminator<"YieldOp">]> {
+    SingleBlock, SingleBlockImplicitTerminator<"YieldOp">]> {
   let summary = "Elementwise operations";
   let description = [{
     Models elementwise operations on tensors in terms of arithmetic operations
@@ -316,7 +316,7 @@ def ReduceOp : LinalgStructuredBase_Op<"reduce", [
     DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>,
     DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmBlockArgumentNames"]>,
     SameVariadicOperandSize,
-    SingleBlockImplicitTerminator<"YieldOp">]> {
+    SingleBlock, SingleBlockImplicitTerminator<"YieldOp">]> {
   let summary = "Reduce operator";
   let description = [{
     Executes `combiner` on the `dimensions` of `inputs` and returns the
@@ -398,7 +398,7 @@ def ReduceOp : LinalgStructuredBase_Op<"reduce", [
 def TransposeOp : LinalgStructuredBase_Op<"transpose", [
     DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>,
     SameVariadicOperandSize,
-    SingleBlockImplicitTerminator<"YieldOp">]> {
+    SingleBlock, SingleBlockImplicitTerminator<"YieldOp">]> {
   let summary = "Transpose operator";
   let description = [{
     Permutes the dimensions of `input` according to the given `permutation`.
@@ -473,7 +473,7 @@ def TransposeOp : LinalgStructuredBase_Op<"transpose", [
 def BroadcastOp : LinalgStructuredBase_Op<"broadcast", [
     DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>,
     SameVariadicOperandSize,
-    SingleBlockImplicitTerminator<"YieldOp">]> {
+    SingleBlock, SingleBlockImplicitTerminator<"YieldOp">]> {
   let summary = "Static broadcast operator";
   let description = [{
     Broadcast the input into the given shape by adding `dimensions`.

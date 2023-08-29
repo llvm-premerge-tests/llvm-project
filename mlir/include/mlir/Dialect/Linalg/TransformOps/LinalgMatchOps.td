@@ -24,6 +24,7 @@ def MatchStructuredOp : Op<Transform_Dialect, "match.structured", [
     MatchOpInterface,
     DeclareOpInterfaceMethods<MemoryEffectsOpInterface>,
     SingleOpMatcher,
+    SingleBlock,
     SingleBlockImplicitTerminator<"::mlir::transform::MatchStructuredYieldOp">]> {
   let summary =
       "Matches a structured (linalg) operation with additional conditions";

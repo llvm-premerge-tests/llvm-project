@@ -1219,7 +1219,7 @@ def SparseTensor_YieldOp : SparseTensor_Op<"yield", [Pure, Terminator]>,
 }
 
 def SparseTensor_ForeachOp : SparseTensor_Op<"foreach",
-    [SingleBlockImplicitTerminator<"YieldOp">]>,
+    [SingleBlock, SingleBlockImplicitTerminator<"YieldOp">]>,
      Arguments<(ins AnyTensor:$tensor,
                     Variadic<AnyType>:$initArgs,
                     OptionalAttr<AffineMapAttr>:$order)>,

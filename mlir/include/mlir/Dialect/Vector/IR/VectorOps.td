@@ -2322,7 +2322,7 @@ def Vector_CreateMaskOp :
 }
 
 def Vector_MaskOp : Vector_Op<"mask", [
-  SingleBlockImplicitTerminator<"vector::YieldOp">,
+  SingleBlock, SingleBlockImplicitTerminator<"vector::YieldOp">,
   DeclareOpInterfaceMethods<MaskingOpInterface>,
   RecursiveMemoryEffects, NoRegionArguments
 ]> {
@@ -2801,7 +2801,7 @@ def Vector_YieldOp : Vector_Op<"yield", [
 
 def Vector_WarpExecuteOnLane0Op : Vector_Op<"warp_execute_on_lane_0",
       [DeclareOpInterfaceMethods<RegionBranchOpInterface, ["areTypesCompatible"]>,
-       SingleBlockImplicitTerminator<"vector::YieldOp">,
+       SingleBlock, SingleBlockImplicitTerminator<"vector::YieldOp">,
        RecursiveMemoryEffects]> {
   let summary = "Executes operations in the associated region on thread #0 of a"
                 "SPMD program";

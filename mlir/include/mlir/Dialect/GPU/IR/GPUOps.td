@@ -1012,7 +1012,8 @@ def GPU_BarrierOp : GPU_Op<"barrier"> {
 
 def GPU_GPUModuleOp : GPU_Op<"module", [
       DataLayoutOpInterface, HasDefaultDLTIDataLayout, IsolatedFromAbove,
-      SymbolTable, Symbol, SingleBlockImplicitTerminator<"ModuleEndOp">
+      SymbolTable, Symbol, SingleBlock, 
+      SingleBlockImplicitTerminator<"ModuleEndOp">
     ]>, Arguments<(ins OptionalAttr<GPUNonEmptyTargetArrayAttr>:$targets)> {
   let summary = "A top level compilation unit containing code to be run on a GPU.";
   let description = [{

@@ -113,7 +113,7 @@ def SymbolOp : TEST_Op<"symbol", [NoMemoryEffect, Symbol]> {
 }
 
 def SymbolScopeOp : TEST_Op<"symbol_scope",
-    [SymbolTable, SingleBlockImplicitTerminator<"TerminatorOp">]> {
+    [SymbolTable, SingleBlock, SingleBlockImplicitTerminator<"TerminatorOp">]> {
   let summary =  "operation which defines a new symbol table";
   let regions = (region SizedRegion<1>:$region);
 }
@@ -758,7 +758,7 @@ def ChildWithParentOneOf : TEST_Op<"child_with_parent_one_of",
 
 def TerminatorOp : TEST_Op<"finish", [Terminator]>;
 def SingleBlockImplicitTerminatorOp : TEST_Op<"SingleBlockImplicitTerminator",
-    [SingleBlockImplicitTerminator<"TerminatorOp">]> {
+    [SingleBlock, SingleBlockImplicitTerminator<"TerminatorOp">]> {
   let regions = (region SizedRegion<1>:$region);
 }
 
@@ -2041,7 +2041,7 @@ def BufferBasedOp : BufferBasedOpBase<"buffer_based", []>{
 }
 
 def RegionBufferBasedOp : BufferBasedOpBase<"region_buffer_based",
-      [SingleBlockImplicitTerminator<"RegionYieldOp">]> {
+      [SingleBlock, SingleBlockImplicitTerminator<"RegionYieldOp">]> {
   let regions = (region AnyRegion:$region);
   let assemblyFormat = [{
     `in` `(` $input`:` type($input) `)` `out` `(` $output`:` type($output) `)`
@@ -2077,7 +2077,7 @@ def RegionIfOp : TEST_Op<"region_if",
       [DeclareOpInterfaceMethods<RegionBranchOpInterface,
                                  ["getRegionInvocationBounds",
                                   "getEntrySuccessorOperands"]>,
-       SingleBlockImplicitTerminator<"RegionIfYieldOp">,
+       SingleBlock, SingleBlockImplicitTerminator<"RegionIfYieldOp">,
        RecursiveMemoryEffects]> {
   let description =[{
     Represents an abstract if-then-else-join pattern. In this context, the then
@@ -2623,7 +2623,7 @@ def RecursivelySpeculatableOp : TEST_Op<"recursively_speculatable_op", [
 //===---------------------------------------------------------------------===//
 
 def TestCSEOfSingleBlockOp : TEST_Op<"cse_of_single_block_op",
-    [SingleBlockImplicitTerminator<"RegionYieldOp">, Pure]> {
+    [SingleBlock, SingleBlockImplicitTerminator<"RegionYieldOp">, Pure]> {
   let arguments = (ins Variadic<AnyType>:$inputs);
   let results = (outs Variadic<AnyType>:$outputs);
   let regions = (region SizedRegion<1>:$region);

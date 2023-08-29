@@ -942,10 +942,9 @@ public:
 /// block that must terminate with `TerminatorOpType`.
 template <typename TerminatorOpType>
 struct SingleBlockImplicitTerminator {
-  template <typename ConcreteType>
-  class Impl : public SingleBlock<ConcreteType> {
+  template <typename ConcreteType> class Impl {
+
   private:
-    using Base = SingleBlock<ConcreteType>;
     /// Builds a terminator operation without relying on OpBuilder APIs to avoid
     /// cyclic header inclusion.
     static Operation *buildTerminator(OpBuilder &builder, Location loc) {
@@ -959,7 +958,7 @@ struct SingleBlockImplicitTerminator {
     using ImplicitTerminatorOpT = TerminatorOpType;
 
     static LogicalResult verifyRegionTrait(Operation *op) {
-      if (failed(Base::verifyTrait(op)))
+      if (failed(SingleBlock<ConcreteType>::verifyTrait(op)))
         return failure();
       for (unsigned i = 0, e = op->getNumRegions(); i < e; ++i) {
         Region &region = op->getRegion(i);
@@ -1002,7 +1001,6 @@ struct SingleBlockImplicitTerminator {
     //===------------------------------------------------------------------===//
     // Single Region Utilities
     //===------------------------------------------------------------------===//
-    using Base::getBody;
 
     template <typename OpT, typename T = void>
     using enable_if_single_region =
@@ -1011,7 +1009,11 @@ struct SingleBlockImplicitTerminator {
     /// Insert the operation into the back of the body, before the terminator.
     template <typename OpT = ConcreteType>
     enable_if_single_region<OpT> push_back(Operation *op) {
-      insert(Block::iterator(getBody()->getTerminator()), op);
+      static_assert(
+          std::is_base_of<SingleBlock<ConcreteType>, ConcreteType>::value,
+          "SingleBlockImplicitTerminator requires SingleBlock");
+      Block *body = static_cast<SingleBlock<ConcreteType> *>(this)->getBody();
+      insert(Block::iterator(body->getTerminator()), op);
     }
 
     /// Insert the operation at the given insertion point. Note: The operation
@@ -1024,7 +1026,10 @@ struct SingleBlockImplicitTerminator {
     template <typename OpT = ConcreteType>
     enable_if_single_region<OpT> insert(Block::iterator insertPt,
                                         Operation *op) {
-      auto *body = getBody();
+      static_assert(
+          std::is_base_of<SingleBlock<ConcreteType>, ConcreteType>::value,
+          "SingleBlockImplicitTerminator requires SingleBlock");
+      Block *body = static_cast<SingleBlock<ConcreteType> *>(this)->getBody();
       if (insertPt == body->end())
         insertPt = Block::iterator(body->getTerminator());
       body->getOperations().insert(insertPt, op);

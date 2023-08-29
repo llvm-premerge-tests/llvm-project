@@ -669,7 +669,7 @@ def Tensor_GenerateOp : Tensor_Op<"generate", [
     DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>,
     RecursiveMemoryEffects,
     DeclareOpInterfaceMethods<ReifyRankedShapedTypeOpInterface>,
-    SingleBlockImplicitTerminator<"mlir::tensor::YieldOp">]> {
+    SingleBlock, SingleBlockImplicitTerminator<"mlir::tensor::YieldOp">]> {
   let summary = "Creates a dynamically sized tensor from elements";
   let description = [{
     This operation creates a dynamically sized tensor with elements of any type.
@@ -1162,7 +1162,7 @@ def Tensor_PadOp : Tensor_Op<"pad", [
     DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>,
     AttrSizedOperandSegments,
     Pure,
-    SingleBlockImplicitTerminator<"mlir::tensor::YieldOp">]> {
+    SingleBlock, SingleBlockImplicitTerminator<"mlir::tensor::YieldOp">]> {
   let summary = "tensor pad operation";
   let description = [{
     `tensor.pad` is an operation that pads the `source` tensor

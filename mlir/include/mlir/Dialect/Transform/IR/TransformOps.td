@@ -30,6 +30,7 @@ def AlternativesOp : TransformDialectOp<"alternatives",
      DeclareOpInterfaceMethods<TransformOpInterface>,
      DeclareOpInterfaceMethods<MemoryEffectsOpInterface>,
      IsolatedFromAbove, PossibleTopLevelTransformOpTrait,
+     SingleBlock,
      SingleBlockImplicitTerminator<"::mlir::transform::YieldOp">]> {
   let summary = "Attempts sequences of transforms until one succeeds";
   let description = [{
@@ -507,7 +508,7 @@ def ForeachOp : TransformDialectOp<"foreach",
      DeclareOpInterfaceMethods<MemoryEffectsOpInterface>,
      DeclareOpInterfaceMethods<RegionBranchOpInterface, [
          "getSuccessorRegions", "getEntrySuccessorOperands"]>,
-     SingleBlockImplicitTerminator<"::mlir::transform::YieldOp">
+     SingleBlock, SingleBlockImplicitTerminator<"::mlir::transform::YieldOp">
     ]> {
   let summary = "Executes the body for each payload op";
   let description = [{
@@ -1021,7 +1022,7 @@ def SequenceOp : TransformDialectOp<"sequence",
      DeclareOpInterfaceMethods<TransformOpInterface>,
      DeclareOpInterfaceMethods<MemoryEffectsOpInterface>,
      OpAsmOpInterface, PossibleTopLevelTransformOpTrait,
-     SingleBlockImplicitTerminator<"::mlir::transform::YieldOp">,
+     SingleBlock, SingleBlockImplicitTerminator<"::mlir::transform::YieldOp">,
      AttrSizedOperandSegments]> {
   let summary = "Contains a sequence of other transform ops to apply";
   let description = [{

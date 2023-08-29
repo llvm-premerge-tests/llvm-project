@@ -33,7 +33,7 @@ class Async_Op<string mnemonic, list<Trait> traits = []> :
     Op<AsyncDialect, mnemonic, traits>;
 
 def Async_ExecuteOp :
-  Async_Op<"execute", [SingleBlockImplicitTerminator<"YieldOp">,
+  Async_Op<"execute", [SingleBlock, SingleBlockImplicitTerminator<"YieldOp">,
                        DeclareOpInterfaceMethods<RegionBranchOpInterface,
                                                  ["getEntrySuccessorOperands",
                                                   "areTypesCompatible"]>,

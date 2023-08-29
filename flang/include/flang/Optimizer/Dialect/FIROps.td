@@ -2049,8 +2049,8 @@ def FirRegionTerminator : SingleBlockImplicitTerminator<"ResultOp">;
 
 class region_Op<string mnemonic, list<Trait> traits = []> :
     fir_Op<mnemonic,
-    !listconcat(traits, [FirRegionTerminator, RecursivelySpeculatable,
-        RecursiveMemoryEffects])> {
+    !listconcat(traits, [SingleBlock, FirRegionTerminator,
+        RecursivelySpeculatable, RecursiveMemoryEffects])> {
   let hasCustomAssemblyFormat = 1;
   let hasVerifier = 1;
 }
@@ -2810,7 +2810,7 @@ def fir_GlobalLenOp : fir_Op<"global_len", []> {
 def ImplicitFirTerminator : SingleBlockImplicitTerminator<"FirEndOp">;
 
 def fir_DispatchTableOp : fir_Op<"dispatch_table",
-    [IsolatedFromAbove, Symbol, ImplicitFirTerminator]> {
+    [IsolatedFromAbove, Symbol, SingleBlock, ImplicitFirTerminator]> {
   let summary = "Dispatch table definition";
 
   let description = [{

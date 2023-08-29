@@ -1936,7 +1936,7 @@ def Tosa_CustomOp : Tosa_Op<"custom"> {
 //===----------------------------------------------------------------------===//
 def Tosa_IfOp : Tosa_Op<"cond_if",
        [InferShapedTypeOpAdaptor,
-       SingleBlockImplicitTerminator<"YieldOp">,
+       SingleBlock, SingleBlockImplicitTerminator<"YieldOp">,
        RecursiveMemoryEffects]> {
   let summary = "Conditional if operator";
 
@@ -1971,7 +1971,7 @@ def Tosa_IfOp : Tosa_Op<"cond_if",
 def Tosa_WhileOp : Tosa_Op<"while_loop", [
        DeclareOpInterfaceMethods<LoopLikeOpInterface>,
        InferShapedTypeOpAdaptor,
-       SingleBlockImplicitTerminator<"YieldOp">,
+       SingleBlock, SingleBlockImplicitTerminator<"YieldOp">,
        RecursiveMemoryEffects]> {
   let summary = "output = input; While (Cond(output)) {output = Body(output)}";
 

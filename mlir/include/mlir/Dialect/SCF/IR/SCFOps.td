@@ -127,7 +127,7 @@ def ForOp : SCF_Op<"for",
        ConditionallySpeculatable,
        DeclareOpInterfaceMethods<RegionBranchOpInterface,
         ["getEntrySuccessorOperands"]>,
-       SingleBlockImplicitTerminator<"scf::YieldOp">,
+       SingleBlock, SingleBlockImplicitTerminator<"scf::YieldOp">,
        RecursiveMemoryEffects]> {
   let summary = "for operation";
   let description = [{
@@ -360,7 +360,7 @@ def ForallOp : SCF_Op<"forall", [
        DeclareOpInterfaceMethods<LoopLikeOpInterface,
           ["promoteIfSingleIteration"]>,
        RecursiveMemoryEffects,
-       SingleBlockImplicitTerminator<"scf::InParallelOp">,
+       SingleBlock, SingleBlockImplicitTerminator<"scf::InParallelOp">,
        DeclareOpInterfaceMethods<RegionBranchOpInterface>,
      ]> {
   let summary = "evaluate a block multiple times in parallel";
@@ -710,7 +710,8 @@ def InParallelOp : SCF_Op<"forall.in_parallel", [
 def IfOp : SCF_Op<"if", [DeclareOpInterfaceMethods<RegionBranchOpInterface, [
     "getNumRegionInvocations", "getRegionInvocationBounds",
     "getEntrySuccessorRegions"]>,
-    InferTypeOpAdaptor, SingleBlockImplicitTerminator<"scf::YieldOp">,
+    InferTypeOpAdaptor,
+    SingleBlock, SingleBlockImplicitTerminator<"scf::YieldOp">,
     RecursiveMemoryEffects, NoRegionArguments]> {
   let summary = "if-then-else operation";
   let description = [{
@@ -814,7 +815,7 @@ def ParallelOp : SCF_Op<"parallel",
      DeclareOpInterfaceMethods<LoopLikeOpInterface>,
      RecursiveMemoryEffects,
      DeclareOpInterfaceMethods<RegionBranchOpInterface>,
-     SingleBlockImplicitTerminator<"scf::YieldOp">]> {
+     SingleBlock, SingleBlockImplicitTerminator<"scf::YieldOp">]> {
   let summary = "parallel for operation";
   let description = [{
     The "scf.parallel" operation represents a loop nest taking 4 groups of SSA
@@ -1124,7 +1125,7 @@ def WhileOp : SCF_Op<"while",
 //===----------------------------------------------------------------------===//
 
 def IndexSwitchOp : SCF_Op<"index_switch", [RecursiveMemoryEffects,
-    SingleBlockImplicitTerminator<"scf::YieldOp">,
+    SingleBlock, SingleBlockImplicitTerminator<"scf::YieldOp">,
     DeclareOpInterfaceMethods<RegionBranchOpInterface,
                               ["getRegionInvocationBounds",
                                "getEntrySuccessorRegions"]>]> {

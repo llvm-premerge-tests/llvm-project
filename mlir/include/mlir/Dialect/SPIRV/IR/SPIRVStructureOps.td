@@ -674,7 +674,7 @@ def SPIRV_SpecConstantCompositeOp : SPIRV_Op<"SpecConstantComposite", [
 // -----
 
 def SPIRV_SpecConstantOperationOp : SPIRV_Op<"SpecConstantOperation", [
-       Pure, InFunctionScope,
+       Pure, InFunctionScope, SingleBlock,
        SingleBlockImplicitTerminator<"YieldOp">]> {
   let summary = [{
     Declare a new specialization constant that results from doing an operation.
