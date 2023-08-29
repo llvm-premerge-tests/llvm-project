@@ -4,8 +4,11 @@ from mlir.ir import *
 from mlir.dialects import transform
 from mlir.dialects.transform import gpu
 
+from ext_test_helper import print_gen_init_arg_names
+
 
 def run(f):
+    print("\nTEST:", f.__name__)
     with Context(), Location.unknown():
         module = Module.create()
         with InsertionPoint(module.body):
@@ -17,7 +20,6 @@ def run(f):
             with InsertionPoint(sequence.body):
                 f(sequence.bodyTarget)
                 transform.YieldOp()
-        print("\nTEST:", f.__name__)
         print(module)
     return f
 
@@ -77,3 +79,10 @@ def testMapNestedForallToThreadsAttributes(target):
     # CHECK-SAME: block_dims = [4, 2]
     # CHECK-SAME: sync_after_distribute = false
     # CHECK-SAME: warp_size = 64
+
+
+@run
+def testMapNestedForallToThreadsGenArgs(_):
+    print_gen_init_arg_names(gpu.MapNestedForallToThreads)
+    # CHECK-LABEL: TEST: testMapNestedForallToThreadsGenArgs
+    # CHECK: ['self', 'result', 'target', 'block_dims', 'sync_after_distribute', 'warp_size', 'loc', 'ip']
