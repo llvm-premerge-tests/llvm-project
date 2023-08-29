@@ -44,6 +44,7 @@
 #include "clang/Basic/LangOptions.h"
 #include "clang/Basic/SourceLocation.h"
 #include "clang/Basic/SourceManager.h"
+#include "clang/Basic/Stack.h"
 #include "clang/Basic/TokenKinds.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/CompilerInvocation.h"
@@ -388,6 +389,7 @@ ParsedAST::build(llvm::StringRef Filename, const ParseInputs &Inputs,
                  std::unique_ptr<clang::CompilerInvocation> CI,
                  llvm::ArrayRef<Diag> CompilerInvocationDiags,
                  std::shared_ptr<const PreambleData> Preamble) {
+  clang::noteBottomOfStack();
   trace::Span Tracer("BuildAST");
   SPAN_ATTACH(Tracer, "File", Filename);
 

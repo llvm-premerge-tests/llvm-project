@@ -15,6 +15,7 @@
 #include "clang/Basic/FileEntry.h"
 #include "clang/Basic/LangStandard.h"
 #include "clang/Basic/Sarif.h"
+#include "clang/Basic/Stack.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendDiagnostic.h"
@@ -1054,6 +1055,11 @@ bool FrontendAction::BeginSourceFile(CompilerInstance &CI,
 }
 
 llvm::Error FrontendAction::Execute() {
+  // This is a fallback: If the client forgets to invoke this, we mark the
+  // current stack as the bottom. Though not optimal, this could help prevent
+  // stack overflow during deep recursion.
+  clang::noteBottomOfStack();
+
   CompilerInstance &CI = getCompilerInstance();
 
   if (CI.hasFrontendTimer()) {
