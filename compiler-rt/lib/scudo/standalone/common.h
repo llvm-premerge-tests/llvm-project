@@ -122,7 +122,12 @@ inline void yieldProcessor(UNUSED u8 Count) {
 #elif defined(__aarch64__) || defined(__arm__)
   __asm__ __volatile__("" ::: "memory");
   for (u8 I = 0; I < Count; I++)
+#if __ARM_ARCH >= 6 && !defined(__ARM_ARCH_6__)
+    // yield is supported on ARMv6K and newer
     __asm__ __volatile__("yield");
+#else
+    __asm__ __volatile__("nop");
+#endif
 #endif
   __asm__ __volatile__("" ::: "memory");
 }
