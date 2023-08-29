@@ -9,17 +9,19 @@
 //  This file implements semantic analysis for C++ lambda expressions.
 //
 //===----------------------------------------------------------------------===//
-#include "clang/Sema/DeclSpec.h"
+#include "clang/Sema/SemaLambda.h"
 #include "TypeLocBuilder.h"
 #include "clang/AST/ASTLambda.h"
+#include "clang/AST/DeclCXX.h"
 #include "clang/AST/ExprCXX.h"
 #include "clang/Basic/TargetInfo.h"
+#include "clang/Sema/DeclSpec.h"
 #include "clang/Sema/Initialization.h"
 #include "clang/Sema/Lookup.h"
 #include "clang/Sema/Scope.h"
 #include "clang/Sema/ScopeInfo.h"
 #include "clang/Sema/SemaInternal.h"
-#include "clang/Sema/SemaLambda.h"
+#include "clang/Sema/Template.h"
 #include "llvm/ADT/STLExtras.h"
 #include <optional>
 using namespace clang;
@@ -2231,4 +2233,35 @@ ExprResult Sema::BuildBlockForLambdaConversion(SourceLocation CurrentLocation,
   Cleanup.setExprNeedsCleanups(true);
 
   return BuildBlock;
+}
+
+Sema::LambdaScopeForCallOperatorInstantiationRAII::
+    LambdaScopeForCallOperatorInstantiationRAII(
+        Sema &SemasRef, FunctionDecl *FD, MultiLevelTemplateArgumentList MLTAL,
+        LocalInstantiationScope &Scope)
+    : FunctionScope(SemasRef) {
+  if (!isLambdaCallOperator(FD)) {
+    FunctionScope.disable();
+    return;
+  }
+
+  if (FD->isTemplateInstantiation() && FD->getPrimaryTemplate()) {
+    FunctionTemplateDecl *PrimaryTemplate = FD->getPrimaryTemplate();
+    if (const auto *FromMemTempl =
+            PrimaryTemplate->getInstantiatedFromMemberTemplate()) {
+      SemasRef.addInstantiatedCapturesToScope(
+          FD, FromMemTempl->getTemplatedDecl(), Scope, MLTAL);
+    }
+  }
+
+  else if (FD->getTemplatedKind() == FunctionDecl::TK_MemberSpecialization ||
+           FD->getTemplatedKind() == FunctionDecl::TK_DependentNonTemplate) {
+    FunctionDecl *InstantiatedFrom =
+        FD->getTemplatedKind() == FunctionDecl::TK_MemberSpecialization
+            ? FD->getInstantiatedFromMemberFunction()
+            : FD->getInstantiatedFromDecl();
+    SemasRef.addInstantiatedCapturesToScope(FD, InstantiatedFrom, Scope, MLTAL);
+  }
+
+  SemasRef.RebuildLambdaScopeInfo(cast<CXXMethodDecl>(FD));
 }

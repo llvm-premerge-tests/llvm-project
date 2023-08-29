@@ -28,6 +28,7 @@
 #include "clang/AST/StmtCXX.h"
 #include "clang/AST/StmtObjC.h"
 #include "clang/AST/StmtOpenMP.h"
+#include "clang/AST/Type.h"
 #include "clang/Basic/DiagnosticParse.h"
 #include "clang/Basic/OpenMPKinds.h"
 #include "clang/Sema/Designator.h"
@@ -12320,7 +12321,8 @@ TreeTransform<Derived>::TransformCXXNullPtrLiteralExpr(
 template<typename Derived>
 ExprResult
 TreeTransform<Derived>::TransformCXXThisExpr(CXXThisExpr *E) {
-  QualType T = getSema().getCurrentThisType();
+
+  QualType T = getDerived().TransformType(E->getType());
 
   if (!getDerived().AlwaysRebuild() && T == E->getType()) {
     // Mark it referenced in the new context regardless.

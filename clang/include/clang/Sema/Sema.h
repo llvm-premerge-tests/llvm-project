@@ -7345,6 +7345,16 @@ public:
 
   sema::LambdaScopeInfo *RebuildLambdaScopeInfo(CXXMethodDecl *CallOperator);
 
+  class LambdaScopeForCallOperatorInstantiationRAII {
+  public:
+    LambdaScopeForCallOperatorInstantiationRAII(
+        Sema &SemasRef, FunctionDecl *FD, MultiLevelTemplateArgumentList MLTAL,
+        LocalInstantiationScope &Scope);
+
+  private:
+    FunctionScopeRAII FunctionScope;
+  };
+
   /// Check whether the given expression is a valid constraint expression.
   /// A diagnostic is emitted if it is not, false is returned, and
   /// PossibleNonPrimary will be set to true if the failure might be due to a
