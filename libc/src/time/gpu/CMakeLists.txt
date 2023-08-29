@@ -1,0 +1,10 @@
+add_entrypoint_object(
+  clock
+  SRCS
+    clock.cpp
+  HDRS
+    ../clock.h
+  DEPENDS
+    libc.include.time
+    libc.src.__support.GPU.utils
+)
