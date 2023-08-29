@@ -12,8 +12,8 @@ Options
 
 .. option:: LineThreshold
 
-   Flag functions exceeding this number of lines. The default is `-1` (ignore
-   the number of lines).
+   Flag functions exceeding this number of lines. This option is disabled by 
+   default.
 
 .. option:: StatementThreshold
 
@@ -23,23 +23,23 @@ Options
 
 .. option:: BranchThreshold
 
-   Flag functions exceeding this number of control statements. The default is
-   `-1` (ignore the number of branches).
+   Flag functions exceeding this number of control statements. This option is 
+   disabled by default.
 
 .. option:: ParameterThreshold
 
-   Flag functions that exceed a specified number of parameters. The default
-   is `-1` (ignore the number of parameters).
+   Flag functions that exceed a specified number of parameters. This option 
+   is disabled by default.
 
 .. option:: NestingThreshold
 
     Flag compound statements which create next nesting level after
     `NestingThreshold`. This may differ significantly from the expected value
-    for macro-heavy code. The default is `-1` (ignore the nesting level).
+    for macro-heavy code. This option is disabled by default.
 
 .. option:: VariableThreshold
 
    Flag functions exceeding this number of variables declared in the body.
-   The default is `-1` (ignore the number of variables).
    Please note that function parameters and variables declared in lambdas,
-   GNU Statement Expressions, and nested class inline functions are not counted.
+   GNU Statement Expressions, and nested class inline functions are not 
+   counted. This option is disabled by default.
