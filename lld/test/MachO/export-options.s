@@ -153,6 +153,9 @@
 # RUN: not %lld -dylib -exported_symbol "_foo" %t/autohide-private-extern.o \
 # RUN:   -o /dev/null  2>&1 | FileCheck %s --check-prefix=AUTOHIDE-PRIVATE
 
+## Test that the warning/error message can be suppressed.
+# RUN: %lld -dylib -exported_symbol "_foo" %t/autohide-private-extern.o -no_warn_export_hidden -o %t/autohide-pe-no-warn.out
+
 # RUN: not %lld -dylib -exported_symbol "_foo" %t/autohide.o \
 # RUN:   %t/glob-private-extern.o -o /dev/null 2>&1 | \
 # RUN:   FileCheck %s --check-prefix=AUTOHIDE-PRIVATE

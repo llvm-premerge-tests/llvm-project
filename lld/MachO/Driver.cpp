@@ -1,4 +1,5 @@
-//===- Driver.cpp ---------------------------------------------------------===//
+cannot //===- Driver.cpp
+       //---------------------------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -53,7 +54,7 @@
 
 #include <algorithm>
 
-using namespace llvm;
+    using namespace llvm;
 using namespace llvm::MachO;
 using namespace llvm::object;
 using namespace llvm::opt;
@@ -1354,7 +1355,7 @@ static void createAliases() {
   }
 }
 
-static void handleExplicitExports() {
+static void handleExplicitExports(bool noWarnExportHidden) {
   if (config->hasExplicitExports) {
     parallelForEach(symtab->getSymbols(), [](Symbol *sym) {
       if (auto *defined = dyn_cast<Defined>(sym)) {
@@ -1366,7 +1367,7 @@ static void handleExplicitExports() {
               // it is explicitly exported.
               // The former can be exported but the latter cannot.
               defined->privateExtern = false;
-            } else {
+            } else if (!noWarnExportHidden) {
               warn("cannot export hidden symbol " + toString(*defined) +
                    "\n>>> defined in " + toString(defined->getFile()));
             }
@@ -1903,10 +1904,12 @@ bool link(ArrayRef<const char *> argsArr, llvm::raw_ostream &stdoutOS,
     addSynthenticMethnames();
 
     createAliases();
+    const bool noWarnExportHidden =
+        args.hasFlag(OPT_no_warn_export_hidden, false);
     // If we are in "explicit exports" mode, hide everything that isn't
     // explicitly exported. Do this before running LTO so that LTO can better
     // optimize.
-    handleExplicitExports();
+    handleExplicitExports(noWarnExportHidden);
 
     bool didCompileBitcodeFiles = compileBitcodeFiles();
 
@@ -1923,7 +1926,7 @@ bool link(ArrayRef<const char *> argsArr, llvm::raw_ostream &stdoutOS,
     // cross-module references to hidden symbols under ThinLTO. Thus, if we
     // compiled any bitcode files, we must redo the symbol hiding.
     if (didCompileBitcodeFiles)
-      handleExplicitExports();
+      handleExplicitExports(noWarnExportHidden);
     replaceCommonSymbols();
 
     StringRef orderFile = args.getLastArgValue(OPT_order_file);
