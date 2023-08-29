@@ -241,7 +241,9 @@ DwarfLinkerForBinary::loadObject(const DebugMapObject &Obj,
     Res = std::make_unique<OutDWARFFile>(
         Obj.getObjectFilename(),
         DWARFContext::create(
-            *ErrorOrObj, DWARFContext::ProcessDebugRelocations::Process,
+            *ErrorOrObj,
+            /*EnableMultiThreading*/false,
+            DWARFContext::ProcessDebugRelocations::Process,
             nullptr, "",
             [&](Error Err) {
               handleAllErrors(std::move(Err), [&](ErrorInfoBase &Info) {

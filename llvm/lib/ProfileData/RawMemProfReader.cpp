@@ -334,7 +334,8 @@ Error RawMemProfReader::initialize(std::unique_ptr<MemoryBuffer> DataBuffer) {
 
   auto *Object = cast<object::ObjectFile>(Binary.getBinary());
   std::unique_ptr<DIContext> Context = DWARFContext::create(
-      *Object, DWARFContext::ProcessDebugRelocations::Process);
+      *Object, /*EnableMultiThreading*/false,
+      DWARFContext::ProcessDebugRelocations::Process);
 
   auto SOFOr = symbolize::SymbolizableObjectFile::create(
       Object, std::move(Context), /*UntagAddresses=*/false);

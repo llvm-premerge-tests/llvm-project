@@ -186,7 +186,8 @@ void PrinterContext<ELFT>::printEHFrame(const Elf_Shdr *EHFrameShdr) const {
 
   // Construct DWARFDataExtractor to handle relocations ("PC Begin" fields).
   std::unique_ptr<DWARFContext> DICtx = DWARFContext::create(
-      ObjF, DWARFContext::ProcessDebugRelocations::Process, nullptr);
+      ObjF, /*EnableMultiThreading*/ false,
+      DWARFContext::ProcessDebugRelocations::Process, nullptr);
   DWARFDataExtractor DE(DICtx->getDWARFObj(),
                         DICtx->getDWARFObj().getEHFrameSection(),
                         ELFT::TargetEndianness == support::endianness::little,

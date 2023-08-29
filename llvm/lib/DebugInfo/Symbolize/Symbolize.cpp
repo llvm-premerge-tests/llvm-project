@@ -603,7 +603,8 @@ LLVMSymbolizer::getOrCreateModuleInfo(const std::string &ModuleName) {
   }
   if (!Context)
     Context = DWARFContext::create(
-        *Objects.second, DWARFContext::ProcessDebugRelocations::Process,
+        *Objects.second, /*EnableMultiThreading*/false,
+        DWARFContext::ProcessDebugRelocations::Process,
         nullptr, Opts.DWPName);
   auto ModuleOrErr =
       createModuleInfo(Objects.first, std::move(Context), ModuleName);

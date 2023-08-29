@@ -339,7 +339,8 @@ Error linkDebugInfoImpl(object::ObjectFile &File, const Options &Options,
 
   // Add object files to the DWARFLinker.
   std::unique_ptr<DWARFContext> Context = DWARFContext::create(
-      File, DWARFContext::ProcessDebugRelocations::Process, nullptr, "",
+      File, /*EnableMultiThreading*/false,
+      DWARFContext::ProcessDebugRelocations::Process, nullptr, "",
       [&](Error Err) {
         handleAllErrors(std::move(Err), [&](ErrorInfoBase &Info) {
           ReportErr(Info.message(), "", nullptr);

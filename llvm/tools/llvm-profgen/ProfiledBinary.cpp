@@ -802,7 +802,8 @@ void ProfiledBinary::loadSymbolsFromDWARFUnit(DWARFUnit &CompilationUnit) {
 
 void ProfiledBinary::loadSymbolsFromDWARF(ObjectFile &Obj) {
   auto DebugContext = llvm::DWARFContext::create(
-      Obj, DWARFContext::ProcessDebugRelocations::Process, nullptr, DWPPath);
+      Obj, /*EnableMultiThreading*/false,
+      DWARFContext::ProcessDebugRelocations::Process, nullptr, DWPPath);
   if (!DebugContext)
     exitWithError("Error creating the debug info context", Path);
 

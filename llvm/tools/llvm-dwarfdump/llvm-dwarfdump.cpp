@@ -724,7 +724,8 @@ static bool handleBuffer(StringRef Filename, MemoryBufferRef Buffer,
   if (auto *Obj = dyn_cast<ObjectFile>(BinOrErr->get())) {
     if (filterArch(*Obj)) {
       std::unique_ptr<DWARFContext> DICtx = DWARFContext::create(
-          *Obj, DWARFContext::ProcessDebugRelocations::Process, nullptr, "",
+          *Obj, /*EnableMultiThreading*/false,
+          DWARFContext::ProcessDebugRelocations::Process, nullptr, "",
           RecoverableErrorHandler);
       DICtx->setParseCUTUIndexManually(ManuallyGenerateUnitIndex);
       if (!HandleObj(*Obj, *DICtx, Filename, OS))
@@ -738,7 +739,8 @@ static bool handleBuffer(StringRef Filename, MemoryBufferRef Buffer,
         auto &Obj = **MachOOrErr;
         if (filterArch(Obj)) {
           std::unique_ptr<DWARFContext> DICtx = DWARFContext::create(
-              Obj, DWARFContext::ProcessDebugRelocations::Process, nullptr, "",
+              Obj, /*EnableMultiThreading*/false,
+              DWARFContext::ProcessDebugRelocations::Process, nullptr, "",
               RecoverableErrorHandler);
           if (!HandleObj(Obj, *DICtx, ObjName, OS))
             Result = false;

@@ -337,7 +337,7 @@ static llvm::Error handleObjectFile(ObjectFile &Obj,
   }
 
   // Make sure there is DWARF to convert first.
-  std::unique_ptr<DWARFContext> DICtx = DWARFContext::create(Obj);
+  std::unique_ptr<DWARFContext> DICtx = DWARFContext::create(Obj, /*EnableMultiThreading*/true);
   if (!DICtx)
     return createStringError(std::errc::invalid_argument,
                              "unable to create DWARF context");
