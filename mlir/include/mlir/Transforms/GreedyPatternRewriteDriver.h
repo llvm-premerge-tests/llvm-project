@@ -47,6 +47,11 @@ public:
   /// Note: Only applicable when simplifying entire regions.
   bool enableRegionSimplification = true;
 
+  /// Allow pattern rewrites for operations that are not isolated from above.
+  ///
+  /// Note: This is by default off.
+  bool enableRewritesForNonIsolatedFromAboveOps = false;
+
   /// This specifies the maximum number of times the rewriter will iterate
   /// between applying patterns and simplifying regions. Use `kNoLimit` to
   /// disable this iteration limit.

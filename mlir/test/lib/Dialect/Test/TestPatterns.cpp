@@ -1704,6 +1704,61 @@ struct TestSelectiveReplacementPatternDriver
 } // namespace
 
 //===----------------------------------------------------------------------===//
+// Test Not isolated from above
+//===----------------------------------------------------------------------===//
+
+namespace {
+struct TestFoldCastOpPattern : public OpRewritePattern<TestCastOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(TestCastOp op,
+                                PatternRewriter &rewriter) const final {
+    if (op.getNumOperands() != 1)
+      return failure();
+    auto definingCastOp = op->getOperand(0).getDefiningOp<TestCastOp>();
+    if (!definingCastOp || definingCastOp->getNumOperands() != 1)
+      return failure();
+    Value source = definingCastOp.getOperand(0);
+    if (source.getType() != op.getResult().getType())
+      return failure();
+    rewriter.replaceOp(op, definingCastOp.getOperand(0));
+    return success();
+  }
+};
+
+struct TestNonIsolatedFromAbovePatternDriver
+    : public PassWrapper<TestNonIsolatedFromAbovePatternDriver,
+                         OperationPass<>> {
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(
+      TestNonIsolatedFromAbovePatternDriver)
+
+  StringRef getArgument() const final {
+    return "test-pattern-non-isolated-from-above";
+  }
+  StringRef getDescription() const final {
+    return "Test pattern application within operation that is not isolated "
+           "from above";
+  }
+  void runOnOperation() override {
+    MLIRContext *context = &getContext();
+    mlir::RewritePatternSet patterns(context);
+    patterns.insert<TestFoldCastOpPattern>(context);
+    SmallVector<OneRegionOp> oneRegionOps;
+    getOperation()->walk(
+        [&](OneRegionOp oneRegionOp) { oneRegionOps.push_back(oneRegionOp); });
+    GreedyRewriteConfig config;
+    config.enableRewritesForNonIsolatedFromAboveOps = true;
+    for (auto oneRegionOp : oneRegionOps) {
+      if (failed(applyPatternsAndFoldGreedily(oneRegionOp, std::move(patterns),
+                                              config))) {
+        return signalPassFailure();
+      }
+    }
+  }
+};
+} // namespace
+
+//===----------------------------------------------------------------------===//
 // PassRegistration
 //===----------------------------------------------------------------------===//
 
@@ -1732,6 +1787,8 @@ void registerPatternsTestPass() {
 
   PassRegistration<TestMergeBlocksPatternDriver>();
   PassRegistration<TestSelectiveReplacementPatternDriver>();
+
+  PassRegistration<TestNonIsolatedFromAbovePatternDriver>();
 }
 } // namespace test
 } // namespace mlir
