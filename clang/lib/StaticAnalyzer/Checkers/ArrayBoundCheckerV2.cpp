@@ -30,8 +30,7 @@ using namespace ento;
 using namespace taint;
 
 namespace {
-class ArrayBoundCheckerV2 :
-    public Checker<check::Location> {
+class ArrayBoundCheckerV2 : public Checker<check::Location, check::Bind> {
   mutable std::unique_ptr<BugType> BT;
   mutable std::unique_ptr<BugType> TaintBT;
 
@@ -44,9 +43,12 @@ class ArrayBoundCheckerV2 :
 
   static bool isFromCtypeMacro(const Stmt *S, ASTContext &AC);
 
+  void impl(SVal Loc, bool isLoad, const Stmt *S, CheckerContext &C) const;
+
 public:
   void checkLocation(SVal l, bool isLoad, const Stmt *S,
                      CheckerContext &C) const;
+  void checkBind(SVal Loc, SVal, const Stmt *S, CheckerContext &) const;
 };
 
 // FIXME: Eventually replace RegionRawOffset with this class.
@@ -143,6 +145,17 @@ compareValueToThreshold(ProgramStateRef State, NonLoc Value, NonLoc Threshold,
 void ArrayBoundCheckerV2::checkLocation(SVal location, bool isLoad,
                                         const Stmt* LoadS,
                                         CheckerContext &checkerContext) const {
+  if (isLoad)
+    impl(location, isLoad, LoadS, checkerContext);
+}
+
+void ArrayBoundCheckerV2::checkBind(SVal Loc, SVal, const Stmt *S,
+                                    CheckerContext &C) const {
+  impl(Loc, /*isLoad=*/false, S, C);
+}
+
+void ArrayBoundCheckerV2::impl(SVal location, bool isLoad, const Stmt *LoadS,
+                               CheckerContext &checkerContext) const {
 
   // NOTE: Instead of using ProgramState::assumeInBound(), we are prototyping
   // some new logic here that reasons directly about memory region extents.

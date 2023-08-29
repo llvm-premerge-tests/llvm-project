@@ -154,3 +154,25 @@ void test_dynamic_size2(unsigned m,unsigned n){
   unsigned *U = nullptr;
   U = new unsigned[m + n + 1];
 }
+
+
+int rng();
+struct ManyInts {
+    int a, b, c, d, e, f, g;
+};
+void test_trivial_copy_move_is_checked_by_the_checker() {
+  ManyInts v;
+  ManyInts *p = &v;
+
+  switch (rng()) {
+    case 0:
+      *p = ManyInts{3,2,1}; // ok
+      break;
+    case -1:
+      *--p = ManyInts{3,2,1}; // expected-warning {{Out of bound memory access (accessed memory precedes memory block)}}
+      break;
+    case 1:
+      *++p = ManyInts{3,2,1}; // expected-warning {{Out of bound memory access (access exceeds upper limit of memory block)}}
+      break;
+  }
+}
