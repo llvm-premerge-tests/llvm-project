@@ -56,6 +56,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
+#include <map>
 #include <optional>
 
 using namespace llvm;
@@ -1417,6 +1418,150 @@ bool MemCpyOptPass::performMemCpyToMemSetOptzn(MemCpyInst *MemCpy,
   return true;
 }
 
+// Comparator and maps for stack move optimization's forward dataflow analysis
+// in each BB.
+struct InstCmp {
+  bool operator()(const Instruction *L, const Instruction *R) const {
+    return L->comesBefore(R);
+  };
+};
+using InstModRefMap =
+    std::map<Instruction *, std::pair<ModRefInfo, ModRefInfo>, InstCmp>;
+using BasicBlockInstModRefMap = DenseMap<BasicBlock *, InstModRefMap>;
+
+// We treat full-sized overwrite for alloca as a Def instruction on stack-move
+// optimization, it ensures later access from same alias cause no conflicts.
+bool IsDef(Instruction *UI, std::optional<TypeSize> AllocaSize,
+           const DataLayout &DL) {
+  if (IntrinsicInst *II = dyn_cast<IntrinsicInst>(UI)) {
+    if (II->isLifetimeStartOrEnd()) {
+      // We treat a call to a lifetime intrinsic that covers the entire
+      // alloca as a definition, since both llvm.lifetime.start and
+      // llvm.lifetime.end intrinsics conceptually fill all the bytes of
+      // the alloca with an undefined value. We also note these
+      // locations of these intrinsic calls so that we can delete them
+      // later if the optimization succeeds.
+      int64_t Size = cast<ConstantInt>(II->getArgOperand(0))->getSExtValue();
+
+      if (Size < 0 || uint64_t(Size) == AllocaSize) {
+        return true;
+      }
+    } else if (MemIntrinsic *MI = dyn_cast<MemIntrinsic>(II)) {
+      if (ConstantInt *CI = dyn_cast<ConstantInt>(MI->getLength())) {
+        if (CI->getZExtValue() == (*AllocaSize).getFixedValue())
+          return true;
+      }
+    }
+  } else if (StoreInst *SI = dyn_cast<StoreInst>(UI)) {
+    // Stores that overwrite all bytes of the alloca are definitions.
+    if (DL.getTypeStoreSize(SI->getValueOperand()->getType()) ==
+        (*AllocaSize).getFixedValue())
+      return true;
+  }
+  return false;
+}
+
+// Helper for stack-move optimization,
+namespace {
+
+// States to represent the previous modifiers on the forward dataflow ModRef
+// analysis.
+enum class ModState : uint8_t {
+  NoMod = 0,
+  SrcMod = 1,
+  DestMod = 2,
+  BothMod = SrcMod | DestMod
+};
+ModState operator|(ModState L, ModState R) {
+  return static_cast<ModState>(static_cast<uint8_t>(L) |
+                               static_cast<uint8_t>(R));
+}
+ModState &operator|=(ModState &L, ModState R) {
+  L = L | R;
+  return L;
+}
+inline bool isSrcMod(const ModState MS) {
+  return static_cast<int>(MS) & static_cast<int>(ModState::SrcMod);
+}
+inline bool isDestMod(const ModState MS) {
+  return static_cast<int>(MS) & static_cast<int>(ModState::DestMod);
+}
+
+} // namespace
+// Represent the ModState change before and after the BB. We should only see
+// possible comobination for pairs of BasicBlcok and ModState on BB's entry.
+using BasicBlockModSet = std::set<std::pair<BasicBlock *, ModState>>;
+
+// Performs dataflow analysis for an alloca at the basic block level as
+// part of the stack-move optimization.
+
+// This checks the consistency; there is no existence for read for write from
+// other alias, assuming src and dest alloca is merged, propagating ModState
+// information forward from alloca. This algorithm has O(Number for src or dest
+// users) complexity.
+bool CheckModRefConflict(BasicBlockInstModRefMap BBInstModRefMap,
+                         AllocaInst *AI, Instruction *Store,
+                         const DataLayout &DL) {
+
+  std::optional<TypeSize> AllocaSize = AI->getAllocationSize(DL);
+  BasicBlock *AllocaBB = AI->getParent();
+  SmallVector<std::pair<BasicBlock *, ModState>, 8> Worklist;
+  BasicBlockModSet BBModSet;
+  Worklist.push_back({AllocaBB, ModState::NoMod});
+
+  while (!Worklist.empty()) {
+    auto &[BB, BeforeMS] = Worklist.back();
+    Worklist.pop_back();
+    ModState AfterMS = BeforeMS;
+
+    // Compute the modref effect for this BB start with BeforeMS.
+    for (auto &[I, MR] : BBInstModRefMap[BB]) {
+      auto &[DestMR, SrcMR] = MR;
+      // Just ignore full-sized lifetime intrinsics because, we would remove
+      // those if we have no conflict except those.
+      if (IntrinsicInst *II = dyn_cast<IntrinsicInst>(I);
+          II && II->isLifetimeStartOrEnd()) {
+        int64_t Size = cast<ConstantInt>(II->getArgOperand(0))->getSExtValue();
+        if (Size < 0 || uint64_t(Size) == AllocaSize)
+          continue;
+      }
+
+      // FIXME: lifetime intrinsics is modref by ModRefInfo, but this should be
+      // ModRef
+      if ((isSrcMod(AfterMS) && isRefSet(DestMR)) ||
+          (isDestMod(AfterMS) && isRefSet(SrcMR))) {
+        LLVM_DEBUG(dbgs() << "Stack Move: Detected ModRef conflict,"
+                             "\n  Basic Block: "
+                          << BB->getNameOrAsOperand() << "\n"
+                          << "\n  Instruction: " << I << "\n");
+        return false;
+      }
+
+      // For the Store, we can see the mod state is renewed.TODO: more
+      // generally, full-sizeed  copy between src and dest would be this.
+      if (I == Store) {
+        AfterMS = ModState::NoMod;
+      } else if (IsDef(I, AllocaSize, DL)) { // if the instruction is Def, other one's mod is erased
+        if (isModSet(DestMR))
+          AfterMS = ModState::DestMod;
+        else if (isModSet(SrcMR))
+          AfterMS = ModState::SrcMod;
+      } else if (isModSet(DestMR))
+        AfterMS |= ModState::DestMod;
+      else if (isModSet(SrcMR))
+        AfterMS |= ModState::SrcMod;
+    }
+    BBModSet.insert({BB, BeforeMS});
+
+    for (BasicBlock *Succ : successors(BB)) {
+      if (BBModSet.find({Succ, AfterMS}) != BBModSet.end())
+        continue;
+      Worklist.push_back({Succ, AfterMS});
+    }
+  }
+  return true;
+}
+
 using InsertionPt = PointerUnion<Instruction *, BasicBlock *>;
 /// Find the nearest Instruction or BasicBlock that dominates both I1 and
 /// I2.
@@ -1524,8 +1669,11 @@ bool MemCpyOptPass::performStackMoveOptzn(Instruction *Load, Instruction *Store,
     return false;
   }
 
-  if (!SrcAlloca->isStaticAlloca() || !DestAlloca->isStaticAlloca())
+  if (!SrcAlloca->isStaticAlloca() || !DestAlloca->isStaticAlloca()) {
+    LLVM_DEBUG(
+        dbgs() << "Stack Move: Non static allocas couldn't be handled.\n");
     return false;
+  }
 
   // Check that src and dest are never captured, unescaped allocas. Also
   // find the nearest common dominator and postdominator for all users in
@@ -1564,6 +1712,11 @@ bool MemCpyOptPass::performStackMoveOptzn(Instruction *Load, Instruction *Store,
           continue;
         switch (DetermineUseCaptureKind(U, IsDereferenceableOrNull)) {
         case UseCaptureKind::MAY_CAPTURE:
+          LLVM_DEBUG({
+            dbgs() << "Stack Move: Alloca may be captured:";
+            dbgs() << "\n" << U;
+            dbgs() << "\n";
+          });
           return false;
         case UseCaptureKind::PASSTHROUGH:
           // Instructions cannot have non-instruction users.
@@ -1578,19 +1731,11 @@ bool MemCpyOptPass::performStackMoveOptzn(Instruction *Load, Instruction *Store,
             if (PDom)
               PDom = findNearestCommonPostDominator(PDom, UI, PDT);
           }
-          if (UI->isLifetimeStartOrEnd()) {
-            // We note the locations of these intrinsic calls so that we can
-            // delete them later if the optimization succeeds, this is safe
-            // since both llvm.lifetime.start and llvm.lifetime.end intrinsics
-            // practically fill all the bytes of the alloca with an undefined
-            // value, although conceptually marked as alive/dead.
-            int64_t Size = cast<ConstantInt>(UI->getOperand(0))->getSExtValue();
-            if (Size < 0 || Size == DestSize) {
-              LifetimeMarkers.push_back(UI);
-              continue;
-            }
-          }
-          if (UI->hasMetadata(LLVMContext::MD_noalias))
+
+          if (auto *II = dyn_cast<IntrinsicInst>(UI);
+              II && II->isLifetimeStartOrEnd())
+            LifetimeMarkers.push_back(II);
+          else if (UI->hasMetadata(LLVMContext::MD_noalias))
             NoAliasInstrs.insert(UI);
           if (!ModRefCallback(UI))
             return false;
@@ -1601,74 +1746,35 @@ bool MemCpyOptPass::performStackMoveOptzn(Instruction *Load, Instruction *Store,
     return true;
   };
 
-  // Check that dest has no Mod/Ref, from the alloca to the Store, except full
-  // size lifetime intrinsics. And collect modref inst for the reachability
-  // check.
-  ModRefInfo DestModRef = ModRefInfo::NoModRef;
   MemoryLocation DestLoc(DestAlloca, LocationSize::precise(Size));
-  SmallVector<BasicBlock *, 8> ReachabilityWorklist;
+  BasicBlockInstModRefMap BBInstModRefMap;
+
   auto DestModRefCallback = [&](Instruction *UI) -> bool {
-    // We don't care about the store itself.
-    if (UI == Store)
-      return true;
     ModRefInfo Res = BAA.getModRefInfo(UI, DestLoc);
-    DestModRef |= Res;
-    if (isModOrRefSet(Res)) {
-      // Instructions reachability checks.
-      // FIXME: adding the Instruction version isPotentiallyReachableFromMany on
-      // lib/Analysis/CFG.cpp (currently only for BasicBlocks) might be helpful.
-      if (UI->getParent() == Store->getParent()) {
-        // The same block case is special because it's the only time we're
-        // looking within a single block to see which instruction comes first.
-        // Once we start looking at multiple blocks, the first instruction of
-        // the block is reachable, so we only need to determine reachability
-        // between whole blocks.
-        BasicBlock *BB = UI->getParent();
-
-        // If A comes before B, then B is definitively reachable from A.
-        if (UI->comesBefore(Store))
-          return false;
-
-        // If the user's parent block is entry, no predecessor exists.
-        if (BB->isEntryBlock())
-          return true;
-
-        // Otherwise, continue doing the normal per-BB CFG walk.
-        ReachabilityWorklist.append(succ_begin(BB), succ_end(BB));
-      } else {
-        ReachabilityWorklist.push_back(UI->getParent());
-      }
-    }
+    BBInstModRefMap[UI->getParent()].insert({UI, {Res, ModRefInfo::NoModRef}});
     return true;
   };
 
   if (!CaptureTrackingWithModRef(DestAlloca, DestModRefCallback))
     return false;
-  // Bailout if Dest may have any ModRef before Store.
-  if (!ReachabilityWorklist.empty() &&
-      isPotentiallyReachableFromMany(ReachabilityWorklist, Store->getParent(),
-                                     nullptr, DT, nullptr))
-    return false;
 
-  // Check that, from after the Load to the end of the BB,
-  //   - if the dest has any Mod, src has no Ref, and
-  //   - if the dest has any Ref, src has no Mod except full-sized lifetimes.
   MemoryLocation SrcLoc(SrcAlloca, LocationSize::precise(Size));
 
   auto SrcModRefCallback = [&](Instruction *UI) -> bool {
-    // Any ModRef post-dominated by Load doesn't matter, also Load and Store
-    // themselves can be ignored.
-    if (PDT->dominates(Load, UI) || UI == Load || UI == Store)
-      return true;
     ModRefInfo Res = BAA.getModRefInfo(UI, SrcLoc);
-    if ((isModSet(DestModRef) && isRefSet(Res)) ||
-        (isRefSet(DestModRef) && isModSet(Res)))
-      return false;
+    if (BBInstModRefMap.count(UI->getParent()))
+      BBInstModRefMap[UI->getParent()][UI].second = Res;
+    else
+      BBInstModRefMap[UI->getParent()].insert(
+          {UI, {ModRefInfo::NoModRef, Res}});
 
     return true;
   };
 
   if (!CaptureTrackingWithModRef(SrcAlloca, SrcModRefCallback))
+    return false;
+
+  if (!CheckModRefConflict(BBInstModRefMap, SrcAlloca, Store, DL))
     return false;
 
   // We can do the transformation. First, align the allocas appropriately.
