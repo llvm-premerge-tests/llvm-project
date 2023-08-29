@@ -1952,6 +1952,8 @@ Value *ComplexDeinterleavingGraph::replaceNode(IRBuilderBase &Builder,
       ReplacementNode =
           IRB.CreateIntrinsic(Intrinsic::experimental_vector_interleave2, NewTy,
                               {Node->Real, Node->Imag});
+      if (Builder.GetInsertPoint()->comesBefore(InsertPoint))
+        Builder.SetInsertPoint(InsertPoint);
     } else {
       ReplacementNode =
           Builder.CreateIntrinsic(Intrinsic::experimental_vector_interleave2,
