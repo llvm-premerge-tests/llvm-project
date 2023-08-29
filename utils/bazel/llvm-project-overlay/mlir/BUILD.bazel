@@ -11501,6 +11501,7 @@ cc_library(
         ":AffineDialect",
         ":ArithUtils",
         ":MemRefDialect",
+        ":VectorDialect",
     ],
 )
 
