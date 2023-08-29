@@ -272,7 +272,7 @@ struct X {
 
 union XU1 { int a; constexpr XU1() = default; };
 #ifndef CXX2A
-// expected-error@-2{{not constexpr}}
+// expected-error@-2{{default constructor cannot be 'constexpr' in a class or struct with virtual base classes}} expected-note@-2{{see reference to function 'XU1' in 'XU1' class or struct}}
 #endif
 union XU2 { int a = 1; constexpr XU2() = default; };
 
@@ -282,7 +282,7 @@ struct XU3 {
   };
   constexpr XU3() = default;
 #ifndef CXX2A
-  // expected-error@-2{{not constexpr}}
+  // expected-error@-2{{default constructor cannot be 'constexpr' in a class or struct with virtual base classes}} expected-note@-2{{see reference to function 'XU3' in 'XU3' class or struct}}
 #endif
 };
 struct XU4 {
@@ -333,7 +333,7 @@ namespace CtorLookup {
     constexpr B(B&);
   };
   constexpr B::B(const B&) = default;
-  constexpr B::B(B&) = default; // expected-error {{not constexpr}}
+  constexpr B::B(B&) = default; // expected-error {{copy constructor cannot be 'constexpr' in a class or struct with virtual base classes}} expected-note {{see reference to function 'B' in 'B' class or struct}}
 
   struct C {
     A a;
@@ -342,7 +342,7 @@ namespace CtorLookup {
     constexpr C(C&);
   };
   constexpr C::C(const C&) = default;
-  constexpr C::C(C&) = default; // expected-error {{not constexpr}}
+  constexpr C::C(C&) = default; // expected-error {{copy constructor cannot be 'constexpr' in a class or struct with virtual base classes}} expected-note {{see reference to function 'C' in 'C' class or struct}}
 }
 
 namespace PR14503 {

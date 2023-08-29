@@ -125,7 +125,7 @@ namespace Mutable {
     mutable A a;
   };
   struct C {
-    constexpr C(const C &) = default; // expected-error {{not constexpr}}
+    constexpr C(const C &) = default; // expected-error {{copy constructor cannot be 'constexpr' in a class or struct with virtual base classes}} expected-note {{see reference to function 'C' in 'C' class or struct}}
     A a;
   };
 }

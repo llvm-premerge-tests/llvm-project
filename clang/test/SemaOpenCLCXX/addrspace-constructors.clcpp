@@ -54,5 +54,5 @@ struct Z {
 
 struct W {
   int w;
-  constexpr W() __constant = default; // expected-error {{defaulted definition of default constructor is not constexpr}}
+  constexpr W() __constant = default; // expected-error {{default constructor cannot be 'constexpr' in a class or struct with virtual base classes}} expected-note {{see reference to function 'W' in 'W' class or struct}}
 };
