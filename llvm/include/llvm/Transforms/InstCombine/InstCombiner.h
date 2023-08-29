@@ -236,7 +236,8 @@ public:
   /// uses of V and only keep uses of ~V.
   ///
   /// See also: canFreelyInvertAllUsersOf()
-  static bool isFreeToInvert(Value *V, bool WillInvertAllUses) {
+  static bool isFreeToInvert(Value *V, bool WillInvertAllUses,
+                             unsigned Depth = 0) {
     // ~(~(X)) -> X.
     if (match(V, m_Not(PatternMatch::m_Value())))
       return true;
@@ -245,32 +246,37 @@ public:
     if (match(V, PatternMatch::m_AnyIntegralConstant()))
       return true;
 
+    if (Depth++ >= MaxAnalysisRecursionDepth)
+      return false;
+
+    // The rest of the cases require that we invert all uses so don't bother
+    // doing the analysis if we know we can't use the result.
+    if (!WillInvertAllUses)
+      return false;
+
     // Compares can be inverted if all of their uses are being modified to use
     // the ~V.
     if (isa<CmpInst>(V))
-      return WillInvertAllUses;
+      return true;
 
     // If `V` is of the form `A + Constant` then `-1 - V` can be folded into
     // `(-1 - Constant) - A` if we are willing to invert all of the uses.
     if (match(V, m_Add(PatternMatch::m_Value(), PatternMatch::m_ImmConstant())))
-      return WillInvertAllUses;
+      return true;
 
     // If `V` is of the form `Constant - A` then `-1 - V` can be folded into
     // `A + (-1 - Constant)` if we are willing to invert all of the uses.
     if (match(V, m_Sub(PatternMatch::m_ImmConstant(), PatternMatch::m_Value())))
-      return WillInvertAllUses;
+      return true;
 
-    // Selects with invertible operands are freely invertible
-    if (match(V,
-              m_Select(PatternMatch::m_Value(), m_Not(PatternMatch::m_Value()),
-                       m_Not(PatternMatch::m_Value()))))
-      return WillInvertAllUses;
-
-    // Min/max may be in the form of intrinsics, so handle those identically
-    // to select patterns.
-    if (match(V, m_MaxOrMin(m_Not(PatternMatch::m_Value()),
-                            m_Not(PatternMatch::m_Value()))))
-      return WillInvertAllUses;
+    Value *A, *B;
+    // Selects/min/max with invertible operands are freely invertible
+    if (match(V, m_Select(PatternMatch::m_Value(), PatternMatch::m_Value(A),
+                          PatternMatch::m_Value(B))) ||
+        match(V,
+              m_MaxOrMin(PatternMatch::m_Value(A), PatternMatch::m_Value(B))))
+      return isFreeToInvert(A, A->hasOneUse(), Depth) &&
+             isFreeToInvert(B, B->hasOneUse(), Depth);
 
     return false;
   }
