@@ -57,6 +57,7 @@
 #include "clang/AST/ASTContext.h"
 #include "clang/Basic/Diagnostic.h"
 #include "clang/Basic/LLVM.h"
+#include "clang/Basic/Stack.h"
 #include "clang/Format/Format.h"
 #include "clang/Frontend/CompilerInvocation.h"
 #include "clang/Tooling/CompilationDatabase.h"
@@ -441,6 +442,7 @@ public:
 
 bool check(llvm::StringRef File, const ThreadsafeFS &TFS,
            const ClangdLSPServer::Options &Opts) {
+  clang::noteBottomOfStack();
   std::optional<Range> LineRange;
   if (!CheckFileLines.empty()) {
     uint32_t Begin = 0, End = std::numeric_limits<uint32_t>::max();

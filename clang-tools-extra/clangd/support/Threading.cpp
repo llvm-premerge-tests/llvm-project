@@ -8,6 +8,7 @@
 
 #include "support/Threading.h"
 #include "support/Trace.h"
+#include "clang/Basic/Stack.h"
 #include "llvm/ADT/ScopeExit.h"
 #include "llvm/Support/Threading.h"
 #include "llvm/Support/thread.h"
@@ -98,6 +99,9 @@ void AsyncTaskRunner::runAsync(const llvm::Twine &Name,
   auto Task = [Name = Name.str(), Action = std::move(Action),
                Cleanup = std::move(CleanupTask)]() mutable {
     llvm::set_thread_name(Name);
+    // Mark the bottom of the stack for clang to be aware of the stack usage and
+    // prevent stack overflow.
+    clang::noteBottomOfStack();
     Action();
     // Make sure function stored by ThreadFunc is destroyed before Cleanup runs.
     Action = nullptr;
