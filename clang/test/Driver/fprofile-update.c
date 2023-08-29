@@ -12,3 +12,8 @@
 // RUN: not %clang %s -c -fprofile-update=unknown 2>&1 | FileCheck %s --check-prefix=ERROR
 
 // ERROR: error: unsupported argument 'unknown' to option '-fprofile-update='
+
+// AIX specific tests
+// RUN: %clang -### %s --target=powerpc-unknown-aix -fprofile-generate -fprofile-update=atomic 2>&1 | FileCheck %s --check-prefix=AIX
+// RUN: %clang -### %s --target=powerpc-unknown-aix -fprofile-generate -fprofile-update=prefer-atomic 2>&1 | FileCheck %s --check-prefix=AIX
+// AIX: "-latomic"
