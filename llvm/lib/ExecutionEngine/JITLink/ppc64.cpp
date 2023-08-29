@@ -122,6 +122,8 @@ const char *getEdgeKindName(Edge::Kind K) {
     return "TOCDelta16LODS";
   case CallBranchDelta:
     return "CallBranchDelta";
+  case CallBranchDeltaRelaxable:
+    return "CallBranchDeltaRelaxable";
   case CallBranchDeltaRestoreTOC:
     return "CallBranchDeltaRestoreTOC";
   case RequestCall:
@@ -135,6 +137,43 @@ const char *getEdgeKindName(Edge::Kind K) {
   default:
     return getGenericEdgeKindName(static_cast<Edge::Kind>(K));
   }
+}
+
+Error optimizeGOTAndStubAccesses(LinkGraph &G) {
+  LLVM_DEBUG(dbgs() << "Optimizing GOT entries and stubs:\n");
+
+  for (auto *B : G.blocks()) {
+    for (auto &E : B->edges()) {
+      const Edge::Kind K = E.getKind();
+      if (K == ppc64::CallBranchDeltaRelaxable) {
+        Symbol &StubEntry = E.getTarget();
+        Block &StubEntryBlock = StubEntry.getBlock();
+        Edge &TargetEdge = findEdgeToFinalTargetFromStub(StubEntryBlock);
+        Symbol &Target = TargetEdge.getTarget();
+        orc::ExecutorAddr TargetAddr = Target.getAddress();
+        orc::ExecutorAddr EdgeAddr = B->getFixupAddress(E);
+        int64_t Displacement = TargetAddr - EdgeAddr;
+        if (LLVM_LIKELY(isInt<26>(Displacement))) {
+          E.setKind(CallBranchDelta);
+          E.setTarget(Target);
+          E.setAddend(TargetEdge.getAddend());
+          LLVM_DEBUG({
+            dbgs() << "  Replaced branching to stub with direct branching:\n    ";
+            printEdge(dbgs(), *B, E, getEdgeKindName(E.getKind()));
+            dbgs() << "\n";
+          });
+        } else {
+          E.setKind(CallBranchDelta);
+          LLVM_DEBUG({
+            dbgs() << "  Keep branching to stub:\n    ";
+            printEdge(dbgs(), *B, E, getEdgeKindName(E.getKind()));
+            dbgs() << "\n";
+          });
+        }
+      }
+    }
+  }
+  return Error::success();
 }
 
 } // end namespace llvm::jitlink::ppc64

@@ -52,6 +52,7 @@ enum EdgeKind_ppc64 : Edge::Kind {
   TOCDelta16LO,
   TOCDelta16LODS,
   CallBranchDelta,
+  CallBranchDeltaRelaxable,
   // Need to restore r2 after the bl, suggesting the bl is followed by a nop.
   CallBranchDeltaRestoreTOC,
   // Request calling function with TOC.
@@ -152,6 +153,29 @@ inline Symbol &createAnonymousPointerJumpStub(LinkGraph &G,
   return G.addAnonymousSymbol(B, 0, StubInfo.Content.size(), true, false);
 }
 
+inline Edge &findEdgeToFinalTargetFromStub(Block &StubEntryBlock) {
+  Symbol *GOTTarget = nullptr;
+  for (auto &E : StubEntryBlock.edges()) {
+    if (GOTTarget == nullptr) {
+      GOTTarget = &E.getTarget();
+      continue;
+    }
+    assert(&E.getTarget() == GOTTarget &&
+           "The stub entry is expected pointing to exact one target");
+  }
+  assert(StubEntryBlock.edges_size() > 0 &&
+         "The stub entry is expected to have at least one edge");
+  Symbol &GOTEntry = StubEntryBlock.edges().begin()->getTarget();
+  Block &GOTEntryBlock = GOTEntry.getBlock();
+  assert(GOTEntryBlock.edges_size() == 1 &&
+         "The GOT entry is expected pointing to exact one target");
+  return *GOTEntryBlock.edges().begin();
+}
+
+inline Symbol &findFinalTargetFromStub(Block &StubEntryBlock) {
+  return findEdgeToFinalTargetFromStub(StubEntryBlock).getTarget();
+}
+
 template <support::endianness Endianness>
 class TOCTableManager : public TableManager<TOCTableManager<Endianness>> {
 public:
@@ -210,12 +234,21 @@ public:
         E.setTarget(this->getEntryForTarget(G, E.getTarget()));
         // Addend to the stub is zero.
         E.setAddend(0);
-      } else
+      } else {
         // TODO: There are cases a local function call need a call stub.
         // 1. Caller uses TOC, the callee doesn't, need a r2 save stub.
         // 2. Caller doesn't use TOC, the callee does, need a r12 setup stub.
-        // 3. Branching target is out of range.
-        E.setKind(ppc64::CallBranchDelta);
+        // We always create a stub to perform local branching. If the branch
+        // target is within branching range, we can optimize that in a
+        // PreFixupPass.
+        this->StubKind = LongBranch;
+        E.setTarget(this->getEntryForTarget(G, E.getTarget()));
+        E.setKind(ppc64::CallBranchDeltaRelaxable);
+        Edge &TargetEdge =
+            findEdgeToFinalTargetFromStub(E.getTarget().getBlock());
+        TargetEdge.setAddend(E.getAddend());
+        E.setAddend(0);
+      }
       return true;
     }
     if (K == ppc64::RequestCallNoTOC) {
@@ -482,6 +515,10 @@ inline Error applyFixup(LinkGraph &G, Block &B, const Edge &E,
   }
   return Error::success();
 }
+
+/// Optimize the GOT and Stub relocations if the edge target address is in
+/// range.
+Error optimizeGOTAndStubAccesses(LinkGraph &G);
 
 } // end namespace llvm::jitlink::ppc64
 

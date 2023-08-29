@@ -491,6 +491,9 @@ void link_ELF_ppc64(std::unique_ptr<LinkGraph> G,
 
   Config.PostPrunePasses.push_back(buildTables_ELF_ppc64<Endianness>);
 
+  // Add GOT/Stubs optimizer pass.
+  Config.PreFixupPasses.push_back(ppc64::optimizeGOTAndStubAccesses);
+
   if (auto Err = Ctx->modifyPassConfig(*G, Config))
     return Ctx->notifyFailed(std::move(Err));
 
