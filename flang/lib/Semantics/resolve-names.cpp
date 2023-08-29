@@ -1089,6 +1089,9 @@ private:
     bool sequence{false}; // is a sequence type
     const Symbol *type{nullptr}; // derived type being defined
     bool isStructure{false}; // is a DEC STRUCTURE
+    std::vector<std::tuple<SourceName, Scope *, DerivedTypeSpec *>>
+        delayedInstantiations; // We may have to delay instantiations of derived
+                               // types to avoid cycles.
   } derivedTypeInfo_;
   // In a ProcedureDeclarationStmt or ProcComponentDefStmt, this is
   // the interface name, if any.
@@ -5134,9 +5137,20 @@ void DeclarationVisitor::Post(const parser::DerivedTypeSpec &x) {
       // Direct recursive use of a type in the definition of one of its
       // components: defer instantiation
     } else {
-      auto restorer{
-          GetFoldingContext().messages().SetLocation(currStmtSource().value())};
-      derived.Instantiate(currScope());
+      if (currScope().IsDerivedType() &&
+          GetAttrs().HasAny({Attr::POINTER, Attr::ALLOCATABLE})) {
+        // We risk ourselves to instantiate via a cycle of forward references
+        // an incomplete class. Delay what we wanted to instantiate and
+        // do that at the end of the derived-type-def.
+        // This works because initializers of these data components are
+        // not allowed (ALLOCATABLE) or they are very limited (POINTER).
+        derivedTypeInfo_.delayedInstantiations.emplace_back(
+            currStmtSource().value(), &currScope(), &derived);
+      } else {
+        auto restorer{GetFoldingContext().messages().SetLocation(
+            currStmtSource().value())};
+        derived.Instantiate(currScope());
+      }
     }
     SetDeclTypeSpec(type);
   }
@@ -5224,6 +5238,12 @@ bool DeclarationVisitor::Pre(const parser::DerivedTypeDef &x) {
   }
   Walk(std::get<std::optional<parser::TypeBoundProcedurePart>>(x.t));
   Walk(std::get<parser::Statement<parser::EndTypeStmt>>(x.t));
+  // Instantiate delayed types now that the type has been fully checked.
+  for (auto [source, scope, derivedTypeSpec] :
+      derivedTypeInfo_.delayedInstantiations) {
+    auto restorer{GetFoldingContext().messages().SetLocation(source)};
+    derivedTypeSpec->Instantiate(*scope);
+  }
   derivedTypeInfo_ = {};
   PopScope();
   return false;
