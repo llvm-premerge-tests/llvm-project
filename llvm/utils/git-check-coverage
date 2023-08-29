@@ -23,6 +23,7 @@ import os
 import subprocess
 import re
 import sys
+import argparse
 
 
 def create_patch_from_last_commit(output_path):
@@ -49,7 +50,6 @@ def create_patch_from_last_commit(output_path):
 
 def extract_source_files_from_patch(patch_path):
     """ "read the patch file and extract the names of .cpp and .h files that have been modified or added in the patch"""
-    patch_path = "patch.diff"  # Path to the patch file (output)
     try:
         source_files = []
         with open(patch_path, "r") as patch_file:
@@ -71,9 +71,8 @@ def extract_source_files_from_patch(patch_path):
         return []
 
 
-def extract_modified_lines_from_patch(patch_path):
+def extract_modified_lines_from_patch(patch_path, tests):
     """ "Extract the modified source lines from the patch."""
-    patch_path = "patch.diff"  # Path to the patch file (output)
     source_lines = {}  # Dictionary for added lines in source code files
     testcase_lines = {}  # Dictionary for added lines in test case files
     current_file = None  # Stores the current file being processed
@@ -90,7 +89,7 @@ def extract_modified_lines_from_patch(patch_path):
                 6:
             ].strip()  # Extract the filename, leaving first six characters
             # Categorize the current file into source or test case category
-            if current_file.endswith(".cpp") or current_file.endswith(".h"):
+            if current_file not in tests:
                 source_lines[current_file] = []
             elif current_file.endswith(".ll"):
                 testcase_lines[current_file] = []
@@ -102,7 +101,7 @@ def extract_modified_lines_from_patch(patch_path):
             and not line.startswith("++++")
         ):
             # Append the added line content to the appropriate category
-            if current_file.endswith(".cpp") or current_file.endswith(".h"):
+            if current_file not in tests:
                 source_lines[current_file].append(line[1:])
             elif current_file.endswith(".ll"):
                 testcase_lines[current_file].append(line[1:])
@@ -114,28 +113,22 @@ def extract_modified_lines_from_patch(patch_path):
 def build_llvm(build_dir, llvm_source_dir):
     """ "Configure and build LLVM in the specified build directory."""
     try:
+        cwd = os.getcwd()
         # Change to the build directory
         os.chdir(build_dir)
 
         # Run the cmake command to configure LLVM build
         cmake_command = [
             "cmake",
-            "-G",
-            "Ninja",
-            llvm_source_dir,
-            "-DCMAKE_C_COMPILER=/usr/bin/clang",
-            "-DCMAKE_CXX_COMPILER=/usr/bin/clang++",
-            "-DCMAKE_BUILD_TYPE=Release",
-            "-DLLVM_ENABLE_ASSERTIONS=ON",
-            "-DLLVM_USE_LINKER=lld",
             "-DLLVM_BUILD_INSTRUMENTED_COVERAGE=ON",
             "-DLLVM_INDIVIDUAL_TEST_COVERAGE=ON",
+            "."
         ]
-
         subprocess.check_call(cmake_command)
 
         # Run the ninja build command
         subprocess.check_call(["ninja"])
+        os.chdir(cwd)
 
         print("LLVM build completed successfully.")
 
@@ -146,7 +139,7 @@ def build_llvm(build_dir, llvm_source_dir):
 def run_single_test_with_coverage(llvm_lit_path, test_path):
     """ "Run a single test case using llvm-lit with coverage."""
     try:
-        lit_cmd = [llvm_lit_path, "--per-test-coverage", "../" + test_path]
+        lit_cmd = [llvm_lit_path, "--per-test-coverage", test_path]
         subprocess.check_call(lit_cmd)
 
         print("Test case executed:", test_path)
@@ -157,9 +150,8 @@ def run_single_test_with_coverage(llvm_lit_path, test_path):
         print("Error:", ex)
 
 
-def run_modified_added_tests(llvm_lit_path, build_dir):
+def run_modified_added_tests(llvm_lit_path, build_dir, patch_path, tests):
     """ "Read the patch file, identify modified and added test cases, and then execute each of these test cases"""
-    patch_path = "patch.diff"  # Path to the patch file (output)
 
     try:
         # Get the list of modified and added test cases from the patch
@@ -170,9 +162,9 @@ def run_modified_added_tests(llvm_lit_path, build_dir):
         added_tests = []
 
         # Use regular expressions to find modified and added test cases with ".ll" extension
-        for match in re.finditer(r"^\+\+\+ [ab]/(.*\.ll)$", patch_diff, re.MULTILINE):
+        for match in re.finditer(r"^\+\+\+ [ab]/(.*\.(ll|c|cpp))$", patch_diff, re.MULTILINE):
             test_file = match.group(1)
-            if "test" in test_file:
+            if test_file in tests:
                 if match.group(0).startswith("+++"):
                     added_tests.append(test_file)
                 else:
@@ -200,10 +192,11 @@ def run_modified_added_tests(llvm_lit_path, build_dir):
         print("Error:", ex)
 
 
-def convert_profraw_to_profdata_patch(cpp_files):
+def convert_profraw_to_profdata_patch(cpp_files, build_dir):
     """ "Convert profraw coverage data files to profdata format, generate human-readable
     coverage information, and extract coverage data for specific files."""
     # Create a list to store the paths of the generated coverage data files
+    os.chdir(build_dir)
     coverage_files = []
     try:
         # Change to the build directory
@@ -410,28 +403,58 @@ def report_covered_and_uncovered_lines(llvm_cov_patch, source_lines):
     except Exception as ex:
         print("Error while reporting covered and uncovered lines:", ex)
 
+def parse_suite_info(s):
+    curr_suite = None
+    res = {}
+    for line in s.decode().splitlines():
+        leading_spaces = len(line) - len(line.lstrip(" "))
+        if leading_spaces == 2:
+            curr_suite = line.split()[0]
+        elif curr_suite is not None and leading_spaces == 4 and "Source Root:" in line:
+            assert(curr_suite not in res)
+            res[curr_suite] = line.split()[-1]
+    return res
+
+def find_lit_tests(lit_path, test_paths):
+    suites_cmd = [lit_path, "--show-suites"] + test_paths
+    output = subprocess.check_output(suites_cmd)
+    test_suites = parse_suite_info(output)
+
+    tests_cmd = [lit_path, "--show-tests"] + test_paths
+    output = subprocess.check_output(tests_cmd)
+    lines = [line.decode() for line in output.splitlines()]
+    test_info = [line.split() for line in lines if "::" in line]
+    return [os.path.join(test_suites[suite], test_case) for (suite, sep, test_case) in test_info]
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-b", "--build-dir", dest="build_dir", default="build")
+    parser.add_argument("test_path",  nargs="+")
+    args = parser.parse_args()
+    return (args.build_dir, args.test_path)
 
 def main():
-    build_dir = "build"  # Path to LLVM build directory
+    (build_dir, test_paths) = parse_args()
 
     if not os.path.exists(build_dir):
         os.makedirs(build_dir)
 
-    patch_path = "build/patch.diff"  # Path to the patch file (output)
+    patch_path = os.path.join(build_dir, "patch.diff")  # Path to the patch file (output)
 
     create_patch_from_last_commit(patch_path)
 
     llvm_source_dir = "../llvm"  # Path to LLVM source directory
     build_llvm(build_dir, llvm_source_dir)
 
-    llvm_lit_path = "bin/llvm-lit"  # Path to llvm-lit executable
-    run_modified_added_tests(llvm_lit_path, build_dir)
+    llvm_lit_path = os.path.join(build_dir, "bin/llvm-lit")  # Path to llvm-lit executable
+    tests = frozenset(find_lit_tests(llvm_lit_path, test_paths))
+    run_modified_added_tests(llvm_lit_path, build_dir, patch_path, tests)
 
-    source_lines, testcase_lines = extract_modified_lines_from_patch(patch_path)
+    source_lines, testcase_lines = extract_modified_lines_from_patch(patch_path, tests)
 
     source_files = extract_source_files_from_patch(patch_path)
 
-    llvm_cov_patch = convert_profraw_to_profdata_patch(source_files)
+    llvm_cov_patch = convert_profraw_to_profdata_patch(source_files, build_dir)
 
     print("Coverage Files List:")
     for coverage_file in llvm_cov_patch:
@@ -443,3 +466,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
