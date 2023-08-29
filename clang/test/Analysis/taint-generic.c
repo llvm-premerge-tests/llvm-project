@@ -55,10 +55,19 @@
 // CHECK-INVALID-ARG-SAME:        that expects an argument number for propagation
 // CHECK-INVALID-ARG-SAME:        rules greater or equal to -1
 
+typedef typeof(sizeof(int)) size_t;
 typedef long long rsize_t;
 void clang_analyzer_isTainted_char(char);
 void clang_analyzer_isTainted_charp(char*);
 void clang_analyzer_isTainted_int(int);
+void clang_analyzer_isTainted_int_ptr(const int *);
+size_t clang_analyzer_getExtent(const void *);
+void clang_analyzer_dump_int(int);
+void clang_analyzer_dump_int_ptr(const int *);
+void clang_analyzer_dump_char(char);
+void clang_analyzer_dump_char_ptr(const char*);
+void clang_analyzer_value(char);
+void clang_analyzer_printState();
 
 int scanf(const char *restrict format, ...);
 char *gets(char *str);
@@ -1106,4 +1115,37 @@ void testProctitle2(char *real_argv[]) {
   char *argv[] = {app, "--foobar"};
   setproctitle_init(1, argv, 0);         // expected-warning {{Untrusted data is passed to a user-defined sink}}
   setproctitle_init(1, real_argv, argv); // expected-warning {{Untrusted data is passed to a user-defined sink}}
+}
+
+void testTaintedPtr() {
+  // Read a pointer from a tainted source and dereference it.
+  int *ptr;
+  scanf("%ld", &ptr); // expected-warning {{format specifies type 'long *' but the argument has type 'int **'}}
+  *ptr = 44; // expected-warning {{Out of bound memory access (index is tainted)}}
+}
+
+void testTaintedUnconstrainedIndex() {
+  int n;
+  scanf("%d", &n);
+  Buffer[n] = 1; // expected-warning {{Out of bound memory access (index is tainted)}}
+}
+
+void testTaintedLowerConstrainedIndex() {
+  int n;
+  scanf("%d", &n);
+  if (n >= 0) {
+    // We only constained the lower end, and it's tainted => report.
+    Buffer[n] = 1; // expected-warning {{Out of bound memory access (index is tainted)}}
+  }
+}
+
+void testUnknownExtentWithTaintedIndex(void) {
+  extern void v;
+  int *p = (int *)&v;
+  int n;
+  scanf("%d", &n);
+
+  clang_analyzer_isTainted_int(n); // expected-warning {{YES}}
+  clang_analyzer_dump_int(clang_analyzer_getExtent(p)); // expected-warning {{Unknown}}
+  p[n] = 42; // expected-warning {{Out of bound memory access (index is tainted)}}
 }
