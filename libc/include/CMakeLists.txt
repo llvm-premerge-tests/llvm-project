@@ -340,6 +340,8 @@ add_gen_header(
     .llvm-libc-macros.sys_resource_macros
     .llvm-libc-types.rlim_t
     .llvm-libc-types.struct_rlimit
+    .llvm-libc-types.rlim64_t
+    .llvm-libc-types.struct_rlimit64
 )
 
 add_gen_header(

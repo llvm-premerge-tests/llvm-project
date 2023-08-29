@@ -18,8 +18,19 @@
 namespace __llvm_libc {
 
 LLVM_LIBC_FUNCTION(int, setrlimit, (int res, const struct rlimit *limits)) {
+#if defined(LIBC_TARGET_ARCH_IS_RISCV32) || defined(LIBC_TARGET_ARCH_IS_ARM32)
+  // SYS_prlimit64 takes a rlimit64 struct, which is a struct rlimit with
+  // 64-bit members. In 32-bit systems struct rlimit has 32-bit members, so
+  // we need to fill a rlimit64 struct with the 32-bit values from struct rlimit
+  struct rlimit64 lim;
+#else
+  struct rlimit lim;
+#endif
+  lim.rlim_cur = limits->rlim_cur;
+  lim.rlim_max = limits->rlim_max;
+
   int ret =
-      __llvm_libc::syscall_impl<int>(SYS_prlimit64, 0, res, limits, nullptr);
+      __llvm_libc::syscall_impl<int>(SYS_prlimit64, 0, res, &lim, nullptr);
   if (ret < 0) {
     libc_errno = -ret;
     return -1;

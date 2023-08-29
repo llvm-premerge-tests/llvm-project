@@ -767,12 +767,14 @@ def POSIX : StandardSpec<"POSIX"> {
 
   NamedType RLimTType = NamedType<"rlim_t">;
   NamedType StructRLimitType = NamedType<"struct rlimit">;
+  NamedType RLim64TType = NamedType<"rlim64_t">;
+  NamedType StructRLimit64Type = NamedType<"struct rlimit64">;
   PtrType StructRLimitPtr = PtrType<StructRLimitType>;
   ConstType ConstStructRLimitPtr = ConstType<StructRLimitType>;
   HeaderSpec SysResource = HeaderSpec<
     "sys/resource.h",
     [], // Macros
-    [RLimTType, StructRLimitType], // Types
+    [RLimTType, StructRLimitType, RLim64TType, StructRLimit64Type], // Types
     [], // Enumerations
     [
         FunctionSpec<
