@@ -6,12 +6,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-// This test ensures that we can disable the hardened mode on a per-TU basis regardless of how the library was built.
+// This test ensures that we can disable the safe mode on a per-TU basis regardless of how the library was built.
 
 // Other hardening modes would still make the assertions fire (disabling the hardened mode doesn't disable e.g. the
 // debug mode).
-// REQUIRES: libcpp-hardening-mode=unchecked || libcpp-hardening-mode=hardened
-// ADDITIONAL_COMPILE_FLAGS: -Wno-macro-redefined -D_LIBCPP_ENABLE_HARDENED_MODE=0
+// REQUIRES: libcpp-hardening-mode=unchecked || libcpp-hardening-mode=safe
+// ADDITIONAL_COMPILE_FLAGS: -Wno-macro-redefined -D_LIBCPP_ENABLE_SAFE_MODE=0
 
 #include <cassert>
 

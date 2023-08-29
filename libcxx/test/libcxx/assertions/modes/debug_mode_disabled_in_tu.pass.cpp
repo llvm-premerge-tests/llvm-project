@@ -8,14 +8,16 @@
 
 // This test ensures that we can disable the debug mode on a per-TU basis regardless of how the library was built.
 
-// UNSUPPORTED: libcpp-hardening-mode=hardened
+// Other hardening modes would still make the assertions fire (disabling the hardened mode doesn't disable e.g. the
+// debug mode).
+// REQUIRES: libcpp-hardening-mode=unchecked || libcpp-hardening-mode=debug
 // ADDITIONAL_COMPILE_FLAGS: -Wno-macro-redefined -D_LIBCPP_ENABLE_DEBUG_MODE=0
 
 #include <cassert>
 
 int main(int, char**) {
-  _LIBCPP_ASSERT_UNCATEGORIZED(true, "Should not fire");
-  _LIBCPP_ASSERT_UNCATEGORIZED(false, "Also should not fire");
+  _LIBCPP_ASSERT_VALID_ELEMENT_ACCESS(true, "Should not fire");
+  _LIBCPP_ASSERT_VALID_ELEMENT_ACCESS(false, "Also should not fire");
 
   return 0;
 }
