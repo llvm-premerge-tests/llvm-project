@@ -1,5 +1,7 @@
 add_compiler_rt_component(scudo_standalone)
 
+include(CheckAtomic)
+
 include_directories(../.. include)
 
 set(SCUDO_CFLAGS)
@@ -33,7 +35,7 @@ endif()
 append_list_if(COMPILER_RT_HAS_WTHREAD_SAFETY_FLAG -Werror=thread-safety
   SCUDO_CFLAGS)
 
-set(SCUDO_LINK_FLAGS)
+set(SCUDO_LINK_FLAGS ${LLVM_ATOMIC_LIB})
 
 list(APPEND SCUDO_LINK_FLAGS -Wl,-z,defs,-z,now,-z,relro)
 
@@ -184,10 +186,6 @@ endif()
 append_list_if(COMPILER_RT_HAS_LIBPTHREAD -pthread SCUDO_LINK_FLAGS)
 
 append_list_if(FUCHSIA zircon SCUDO_LINK_LIBS)
-
-if(COMPILER_RT_DEFAULT_TARGET_ARCH MATCHES "mips|mips64|mipsel|mips64el")
-  list(APPEND SCUDO_LINK_LIBS atomic)
-endif()
 
 if(COMPILER_RT_HAS_SCUDO_STANDALONE)
   add_compiler_rt_object_libraries(RTScudoStandalone
