@@ -145,4 +145,26 @@ def LinalgDetensorize : InterfacePass<"linalg-detensorize", "FunctionOpInterface
   ];
 }
 
+def LinalgDMAAddressSpace : Pass<"linalg-dma-address-space", "func::FuncOp"> {
+  let summary = "DMA linalg ops inputs/output from one address space to another";
+  let description = [{
+    Insert MemRef DMA start and wait operations before and after linalg generic ops.
+    Each input/output in `srcAddrSpace` will be DMA imported/exported into
+    `destAddrSpace`. This pass allows moving operation to run on faster memory.
+
+    This pass supports linalg::generic operations only. Only input/output from
+    MemRef type with static dimentations are supported.
+  }];
+  let constructor = "mlir::createLinalgDMAAddressSpacePass()";
+  let dependentDialects = [
+    "linalg::LinalgDialect", "memref::MemRefDialect"
+  ];
+  let options = [
+    Option<"srcAddrSpace", "src-addr-space", "unsigned", /*default=*/"0",
+           "Source inputs/output address space to DMA import/export.">,
+    Option<"destAddrSpace", "dest-addr-space", "unsigned", /*default=*/"0",
+           "Destination inputs/output address space to DMA import/export.">
+  ];
+}
+
 #endif // MLIR_DIALECT_LINALG_PASSES

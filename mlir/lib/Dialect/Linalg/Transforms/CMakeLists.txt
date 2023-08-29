@@ -8,6 +8,7 @@ add_mlir_dialect_library(MLIRLinalgTransforms
   DataLayoutPropagation.cpp
   DecomposeLinalgOps.cpp
   Detensorize.cpp
+  DMAAddressSpace.cpp
   DropUnitDims.cpp
   ElementwiseOpFusion.cpp
   ElementwiseToLinalg.cpp
