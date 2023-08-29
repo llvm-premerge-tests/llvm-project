@@ -30,8 +30,7 @@ define i8 @and_not_shl(i8 %x) {
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[OP1_P2]])
 ; CHECK-NEXT:    [[SHIFT:%.*]] = shl nsw i8 -1, [[X]]
 ; CHECK-NEXT:    [[NOT:%.*]] = xor i8 [[SHIFT]], -1
-; CHECK-NEXT:    [[R:%.*]] = and i8 [[NOT]], 32
-; CHECK-NEXT:    ret i8 [[R]]
+; CHECK-NEXT:    ret i8 0
 ;
   %op1_p2 = icmp ule i8 %x, 5
   call void @llvm.assume(i1 %op1_p2)
@@ -48,8 +47,7 @@ define i8 @and_not_shl_1(i8 %x) {
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[OP1_P2]])
 ; CHECK-NEXT:    [[SHIFT:%.*]] = shl nsw i8 -1, [[X]]
 ; CHECK-NEXT:    [[NOT:%.*]] = xor i8 [[SHIFT]], -1
-; CHECK-NEXT:    [[R:%.*]] = and i8 [[NOT]], 48
-; CHECK-NEXT:    ret i8 [[R]]
+; CHECK-NEXT:    ret i8 0
 ;
   %op1_p2 = icmp ule i8 %x, 4
   call void @llvm.assume(i1 %op1_p2)
@@ -94,4 +92,23 @@ define i8 @and_not_shl_overlap(i8 %x) {
   %not = xor i8 %shift, -1
   %r = and i8 %not, 4   ; expect 8
   ret i8 %r
+}
+
+; Negative test: https://alive2.llvm.org/ce/z/ZZrjkj
+define i32 @positiveShift32(i32 noundef %a, i32 noundef %b) {
+; CHECK-LABEL: define i32 @positiveShift32
+; CHECK-SAME: (i32 noundef [[A:%.*]], i32 noundef [[B:%.*]]) {
+; CHECK-NEXT:    [[OP0_P1:%.*]] = icmp slt i32 [[A]], 0
+; CHECK-NEXT:    call void @llvm.assume(i1 [[OP0_P1]])
+; CHECK-NEXT:    [[SHL_MASK:%.*]] = and i32 [[B]], 31
+; CHECK-NEXT:    [[SHL:%.*]] = shl i32 [[A]], [[SHL_MASK]]
+; CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 [[SHL]], 2
+; CHECK-NEXT:    ret i32 [[ADD]]
+;
+  %op0_p1 = icmp slt i32 %a, 0
+  call void @llvm.assume(i1 %op0_p1)
+  %shl.mask = and i32 %b, 31
+  %shl = shl i32 %a, %shl.mask ; the %a is not a single element value
+  %add = add nsw i32 %shl, 2
+  ret i32 %add
 }
