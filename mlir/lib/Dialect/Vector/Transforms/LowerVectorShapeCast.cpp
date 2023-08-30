@@ -54,6 +54,10 @@ public:
                                 PatternRewriter &rewriter) const override {
     auto sourceVectorType = op.getSourceVectorType();
     auto resultVectorType = op.getResultVectorType();
+
+    if (sourceVectorType.isScalable() || resultVectorType.isScalable())
+      return failure();
+
     if (sourceVectorType.getRank() != 2 || resultVectorType.getRank() != 1)
       return failure();
 
@@ -87,6 +91,10 @@ public:
                                 PatternRewriter &rewriter) const override {
     auto sourceVectorType = op.getSourceVectorType();
     auto resultVectorType = op.getResultVectorType();
+
+    if (sourceVectorType.isScalable() || resultVectorType.isScalable())
+      return failure();
+
     if (sourceVectorType.getRank() != 1 || resultVectorType.getRank() != 2)
       return failure();
 
@@ -106,6 +114,20 @@ public:
   }
 };
 
+static void incIdx(llvm::MutableArrayRef<int64_t> idx, VectorType tp,
+                   int dimIdx, int initialStep = 1) {
+  int step = initialStep;
+  for (int d = dimIdx; d >= 0; d--) {
+    idx[d] += step;
+    if (idx[d] >= tp.getDimSize(d)) {
+      idx[d] = 0;
+      step = 1;
+    } else {
+      break;
+    }
+  }
+}
+
 // We typically should not lower general shape cast operations into data
 // movement instructions, since the assumption is that these casts are
 // optimized away during progressive lowering. For completeness, however,
@@ -120,6 +142,9 @@ public:
     Location loc = op.getLoc();
     auto sourceVectorType = op.getSourceVectorType();
     auto resultVectorType = op.getResultVectorType();
+
+    if (sourceVectorType.isScalable() || resultVectorType.isScalable())
+      return failure();
 
     // Special case 2D / 1D lowerings with better implementations.
     // TODO: make is ND / 1D to allow generic ND -> 1D -> MD.
@@ -175,21 +200,111 @@ public:
     rewriter.replaceOp(op, result);
     return success();
   }
+};
 
-private:
-  static void incIdx(SmallVector<int64_t> &idx, VectorType tp, int64_t r) {
-    assert(0 <= r && r < tp.getRank());
-    if (++idx[r] == tp.getDimSize(r)) {
-      idx[r] = 0;
-      incIdx(idx, tp, r - 1);
+// A shape_cast lowering for scalable vectors with a single trailing scalable
+// dimension. This is similar to the general shape_cast lowering but makes use
+// of vector.scalable.insert and vector.scalable.extract to move elements a
+// subvector at a time.
+class ScalableShapeCastOpRewritePattern
+    : public OpRewritePattern<vector::ShapeCastOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(vector::ShapeCastOp op,
+                                PatternRewriter &rewriter) const override {
+
+    Location loc = op.getLoc();
+    auto sourceVectorType = op.getSourceVectorType();
+    auto resultVectorType = op.getResultVectorType();
+    auto srcRank = sourceVectorType.getRank();
+    auto resRank = resultVectorType.getRank();
+
+    // vector.scalable.insert/extract only accept 1D vectors, so only a trailing
+    // scalable dim is supported.
+    if (!isVectorTypeWithtrailingScalableDim(sourceVectorType) ||
+        !isVectorTypeWithtrailingScalableDim(resultVectorType)) {
+      return failure();
     }
+
+    auto sourceMinScalableSize = sourceVectorType.getShape().back();
+    auto resultMinScalableSize = resultVectorType.getShape().back();
+
+    auto extractionSize =
+        std::min(sourceMinScalableSize, resultMinScalableSize);
+
+    int64_t minNumElts = 1;
+    for (auto size : sourceVectorType.getShape())
+      minNumElts *= size;
+
+    SmallVector<int64_t> srcIdx(srcRank);
+    SmallVector<int64_t> resIdx(resRank);
+
+    auto extractionVectorType = VectorType::get(
+        {extractionSize}, sourceVectorType.getElementType(), {true});
+
+    Value result = rewriter.create<arith::ConstantOp>(
+        loc, resultVectorType, rewriter.getZeroAttr(resultVectorType));
+
+    Value currentResultScalableVector;
+    for (int64_t i = 0; i < minNumElts; i += extractionSize) {
+
+      Value extractedSubVector = op.getSource();
+      if (srcRank != 1) {
+        extractedSubVector = rewriter.create<vector::ExtractOp>(
+            loc, op.getSource(), llvm::ArrayRef(srcIdx).drop_back());
+      }
+      if (extractionSize < sourceMinScalableSize) {
+        extractedSubVector = rewriter.create<vector::ScalableExtractOp>(
+            loc, extractionVectorType, extractedSubVector, srcIdx.back());
+      }
+
+      if (!currentResultScalableVector) {
+        if (extractionSize == resultMinScalableSize) {
+          currentResultScalableVector = extractedSubVector;
+        } else if (resRank != 1) {
+          currentResultScalableVector = rewriter.create<vector::ExtractOp>(
+              loc, result, llvm::ArrayRef(resIdx).drop_back());
+        } else {
+          currentResultScalableVector = result;
+        }
+      }
+
+      if (extractionSize < resultMinScalableSize) {
+        currentResultScalableVector = rewriter.create<vector::ScalableInsertOp>(
+            loc, extractedSubVector, currentResultScalableVector,
+            resIdx.back());
+      }
+
+      if (resIdx.back() + extractionSize >= resultMinScalableSize) {
+        // Will wrap to next scalable vector, insert complete 1D slice into
+        // result.
+        result = rewriter.create<vector::InsertOp>(
+            loc, currentResultScalableVector, result,
+            llvm::ArrayRef(resIdx).drop_back());
+        currentResultScalableVector = {};
+      }
+
+      incIdx(srcIdx, sourceVectorType, srcRank - 1, extractionSize);
+      incIdx(resIdx, resultVectorType, resRank - 1, extractionSize);
+    }
+
+    rewriter.replaceOp(op, result);
+    return success();
+  }
+
+  static bool isVectorTypeWithtrailingScalableDim(VectorType type) {
+    return type.getRank() >= 1 && type.getScalableDims().back() &&
+           !llvm::is_contained(type.getScalableDims().drop_back(), true);
   }
 };
+
 } // namespace
 
 void mlir::vector::populateVectorShapeCastLoweringPatterns(
     RewritePatternSet &patterns, PatternBenefit benefit) {
   patterns.add<ShapeCastOp2DDownCastRewritePattern,
-               ShapeCastOp2DUpCastRewritePattern, ShapeCastOpRewritePattern>(
-      patterns.getContext(), benefit);
+               ShapeCastOp2DUpCastRewritePattern, ShapeCastOpRewritePattern,
+               ScalableShapeCastOpRewritePattern>(patterns.getContext(),
+                                                  benefit);
 }
