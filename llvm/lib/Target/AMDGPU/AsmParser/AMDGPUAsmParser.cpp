@@ -4480,11 +4480,13 @@ bool AMDGPUAsmParser::validateCoherencyBits(const MCInst &Inst,
   }
 
   if (isGFX90A() && !isGFX940() && (CPol & CPol::SCC)) {
-    SMLoc S = getImmLoc(AMDGPUOperand::ImmTyCPol, Operands);
-    StringRef CStr(S.getPointer());
-    S = SMLoc::getFromPointer(&CStr.data()[CStr.find("scc")]);
-    Error(S, "scc is not supported on this GPU");
-    return false;
+    if (!(TSFlags & (SIInstrFlags::MUBUF | SIInstrFlags::MTBUF | SIInstrFlags::MIMG | SIInstrFlags::FLAT))) {
+      SMLoc S = getImmLoc(AMDGPUOperand::ImmTyCPol, Operands);
+      StringRef CStr(S.getPointer());
+      S = SMLoc::getFromPointer(&CStr.data()[CStr.find("scc")]);
+      Error(S, "scc modifier is not supported for this instruction on this GPU");
+      return false;
+    }
   }
 
   if (!(TSFlags & (SIInstrFlags::IsAtomicNoRet | SIInstrFlags::IsAtomicRet)))
