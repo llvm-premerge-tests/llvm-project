@@ -74,6 +74,9 @@ public:
     /// The index of this DIE's parent.
     uint32_t ParentIdx;
 
+    /// Name of the file where the described entity is from.
+    std::optional<StringRef> FileName;
+
     /// Is the DIE part of the linked output?
     bool Keep : 1;
 
