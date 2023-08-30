@@ -2823,6 +2823,13 @@ defm declspec : BoolOption<"f", "declspec",
   NegFlag<SetFalse, [], [ClangOption], "Disallow">,
   BothFlags<[], [ClangOption, CC1Option],
           " __declspec as a keyword">>, Group<f_clang_Group>;
+
+def fmodule_build_daemon : Flag<["-"], "fmodule-build-daemon">, Group<f_Group>,
+  Flags<[NoXarchOption]>, 
+  Visibility<[ClangOption, CC1Option]>,
+  HelpText<"Enables module build daemon functionality">,
+  MarshallingInfoFlag<FrontendOpts<"ModuleBuildDaemon">>;
+
 def fmodules_cache_path : Joined<["-"], "fmodules-cache-path=">, Group<i_Group>,
   Flags<[NoXarchOption]>, Visibility<[ClangOption, CC1Option]>,
   MetaVarName<"<directory>">,

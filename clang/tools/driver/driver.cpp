@@ -213,6 +213,9 @@ extern int cc1as_main(ArrayRef<const char *> Argv, const char *Argv0,
 extern int cc1gen_reproducer_main(ArrayRef<const char *> Argv,
                                   const char *Argv0, void *MainAddr,
                                   const llvm::ToolContext &);
+#if LLVM_ON_UNIX
+extern int cc1modbuildd_main(ArrayRef<const char *> Argv);
+#endif
 
 static void insertTargetAndModeArgs(const ParsedClangName &NameParts,
                                     SmallVectorImpl<const char *> &ArgVector,
@@ -369,9 +372,15 @@ static int ExecuteCC1Tool(SmallVectorImpl<const char *> &ArgV,
   if (Tool == "-cc1gen-reproducer")
     return cc1gen_reproducer_main(ArrayRef(ArgV).slice(2), ArgV[0],
                                   GetExecutablePathVP, ToolContext);
-  // Reject unknown tools.
-  llvm::errs() << "error: unknown integrated tool '" << Tool << "'. "
-               << "Valid tools include '-cc1' and '-cc1as'.\n";
+#if LLVM_ON_UNIX
+  if (Tool == "-cc1modbuildd")
+    return cc1modbuildd_main(ArrayRef(ArgV).slice(2));
+#endif
+
+  // Reject unknown tools
+  llvm::errs()
+      << "error: unknown integrated tool '" << Tool << "'. "
+      << "Valid tools include '-cc1', '-cc1as', and '-cc1gen-reproducer'.\n";
   return 1;
 }
 

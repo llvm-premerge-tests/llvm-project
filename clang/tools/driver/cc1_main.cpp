@@ -25,6 +25,7 @@
 #include "clang/Frontend/TextDiagnosticPrinter.h"
 #include "clang/Frontend/Utils.h"
 #include "clang/FrontendTool/Utils.h"
+#include "clang/Tooling/ModuleBuildDaemon/Protocol.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/LinkAllPasses.h"
@@ -205,10 +206,55 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
   TextDiagnosticBuffer *DiagsBuffer = new TextDiagnosticBuffer;
   DiagnosticsEngine Diags(DiagID, &*DiagOpts, DiagsBuffer);
 
+  // Create the actual diagnostics engine.
+
+  Clang->createDiagnostics();
+  if (!Clang->hasDiagnostics())
+    return 1;
+
   // Setup round-trip remarks for the DiagnosticsEngine used in CreateFromArgs.
   if (find(Argv, StringRef("-Rround-trip-cc1-args")) != Argv.end())
     Diags.setSeverity(diag::remark_cc1_round_trip_generated,
                       diag::Severity::Remark, {});
+
+#if LLVM_ON_UNIX
+  std::vector<std::string> UpdatedArgv;
+  std::vector<const char *> CharUpdatedArgv;
+
+  // handle module build daemon functionality if enabled
+  if (find(Argv, StringRef("-fmodule-build-daemon")) != Argv.end()) {
+
+    // Create FileManager
+    if (!Clang->hasFileManager())
+      Clang->createFileManager(createVFSFromCompilerInvocation(
+          Clang->getInvocation(), Clang->getDiagnostics()));
+
+    // Get current working directory for when module build daemon scans TU
+    llvm::ErrorOr<std::string> MaybeCWD = Clang->getFileManager()
+                                              .getVirtualFileSystem()
+                                              .getCurrentWorkingDirectory();
+    if (MaybeCWD.getError()) {
+      llvm::errs() << "Could not get working directory: "
+                   << MaybeCWD.getError().message() << "\n";
+      return 1;
+    }
+
+    Expected<std::vector<std::string>> MaybeUpdatedArgv =
+        cc1modbuildd::updateCC1WithModuleBuildDaemon(Argv, Argv0, *MaybeCWD);
+    if (!MaybeUpdatedArgv)
+      llvm::errs() << toString(std::move(MaybeUpdatedArgv.takeError())) << '\n';
+    UpdatedArgv = std::move(*MaybeUpdatedArgv);
+
+    // Command line in SocketMsg is stored as std::vector<std::string> to
+    // accomadate the dependency scanner
+    CharUpdatedArgv.reserve(UpdatedArgv.size());
+    for (const auto &str : UpdatedArgv) {
+      CharUpdatedArgv.push_back(str.c_str());
+    }
+
+    Argv = llvm::ArrayRef<const char *>(CharUpdatedArgv);
+  }
+#endif
 
   bool Success = CompilerInvocation::CreateFromArgs(Clang->getInvocation(),
                                                     Argv, Diags, Argv0);
@@ -226,11 +272,6 @@ int cc1_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
       Clang->getHeaderSearchOpts().ResourceDir.empty())
     Clang->getHeaderSearchOpts().ResourceDir =
       CompilerInvocation::GetResourcesPath(Argv0, MainAddr);
-
-  // Create the actual diagnostics engine.
-  Clang->createDiagnostics();
-  if (!Clang->hasDiagnostics())
-    return 1;
 
   // Set an error handler, so that any LLVM backend diagnostics go through our
   // error handler.
