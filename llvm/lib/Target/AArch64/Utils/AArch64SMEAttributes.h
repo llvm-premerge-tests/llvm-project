@@ -76,13 +76,13 @@ public:
   bool hasNewZAInterface() const { return Bitmask & ZA_New; }
   bool hasSharedZAInterface() const { return Bitmask & ZA_Shared; }
   bool hasPrivateZAInterface() const { return !hasSharedZAInterface(); }
-  bool preservesZA() const { return Bitmask & ZA_Preserved; }
+  bool hasPreservedZAInterface() const { return Bitmask & ZA_Preserved; }
   bool hasZAState() const {
     return hasNewZAInterface() || hasSharedZAInterface();
   }
   bool requiresLazySave(const SMEAttrs &Callee) const {
     return hasZAState() && Callee.hasPrivateZAInterface() &&
-           !Callee.preservesZA();
+           !Callee.hasPreservedZAInterface();
   }
 };
 

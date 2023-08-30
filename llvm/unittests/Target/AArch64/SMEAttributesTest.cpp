@@ -48,7 +48,7 @@ TEST(SMEAttributes, Constructors) {
 
   ASSERT_TRUE(SA(*parseIR("declare void @foo() \"aarch64_pstate_za_preserved\"")
                       ->getFunction("foo"))
-                  .preservesZA());
+                  .hasPreservedZAInterface());
 
   // Invalid combinations.
   EXPECT_DEBUG_DEATH(SA(SA::SM_Enabled | SA::SM_Compatible),
@@ -83,18 +83,18 @@ TEST(SMEAttributes, Basics) {
   ASSERT_FALSE(SA(SA::ZA_Shared).hasPrivateZAInterface());
   ASSERT_TRUE(SA(SA::ZA_Shared).hasSharedZAInterface());
   ASSERT_TRUE(SA(SA::ZA_Shared).hasZAState());
-  ASSERT_FALSE(SA(SA::ZA_Shared).preservesZA());
-  ASSERT_TRUE(SA(SA::ZA_Shared | SA::ZA_Preserved).preservesZA());
+  ASSERT_FALSE(SA(SA::ZA_Shared).hasPreservedZAInterface());
+  ASSERT_TRUE(SA(SA::ZA_Shared | SA::ZA_Preserved).hasPreservedZAInterface());
 
   ASSERT_TRUE(SA(SA::ZA_New).hasPrivateZAInterface());
   ASSERT_TRUE(SA(SA::ZA_New).hasNewZAInterface());
   ASSERT_TRUE(SA(SA::ZA_New).hasZAState());
-  ASSERT_FALSE(SA(SA::ZA_New).preservesZA());
+  ASSERT_FALSE(SA(SA::ZA_New).hasPreservedZAInterface());
 
   ASSERT_TRUE(SA(SA::Normal).hasPrivateZAInterface());
   ASSERT_FALSE(SA(SA::Normal).hasNewZAInterface());
   ASSERT_FALSE(SA(SA::Normal).hasZAState());
-  ASSERT_FALSE(SA(SA::Normal).preservesZA());
+  ASSERT_FALSE(SA(SA::Normal).hasPreservedZAInterface());
 }
 
 TEST(SMEAttributes, Transitions) {

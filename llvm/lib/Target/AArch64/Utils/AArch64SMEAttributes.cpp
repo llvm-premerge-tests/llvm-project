@@ -22,7 +22,7 @@ void SMEAttrs::set(unsigned M, bool Enable) {
          "SM_Enabled and SM_Compatible are mutually exclusive");
   assert(!(hasNewZAInterface() && hasSharedZAInterface()) &&
          "ZA_New and ZA_Shared are mutually exclusive");
-  assert(!(hasNewZAInterface() && preservesZA()) &&
+  assert(!(hasNewZAInterface() && hasPreservedZAInterface()) &&
          "ZA_New and ZA_Preserved are mutually exclusive");
 }
 

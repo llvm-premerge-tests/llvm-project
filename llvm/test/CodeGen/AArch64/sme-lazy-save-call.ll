@@ -2,6 +2,7 @@
 ; RUN: llc -mtriple=aarch64 -mattr=+sme < %s | FileCheck %s
 
 declare void @private_za_callee()
+declare void @private_za_preserved_callee() #0
 declare float @llvm.cos.f32(float)
 
 ; Test lazy-save mechanism for a single callee.
@@ -164,4 +165,34 @@ define void @test_lazy_save_and_conditional_smstart() nounwind "aarch64_pstate_z
 ; CHECK-NEXT:    ret
   call void @private_za_callee()
   ret void
+}
+
+
+; Test lazy-save mechanism for a single callee with aarch64_pstate_za_preserved.
+define void @foo() nounwind "aarch64_pstate_za_shared" {
+; CHECK-LABEL: foo:
+; CHECK:       // %bb.0:
+; CHECK-NEXT:    stp x29, x30, [sp, #-16]! // 16-byte Folded Spill
+; CHECK-NEXT:    mov x29, sp
+; CHECK-NEXT:    sub sp, sp, #16
+; CHECK-NEXT:    rdsvl x8, #1
+; CHECK-NEXT:    mov x9, sp
+; CHECK-NEXT:    msub x8, x8, x8, x9
+; CHECK-NEXT:    mov sp, x8
+; CHECK-NEXT:    stur x8, [x29, #-16]
+; CHECK-NEXT:    sub x8, x29, #16
+; CHECK-NEXT:    sturh wzr, [x29, #-8]
+; CHECK-NEXT:    msr TPIDR2_EL0, x8
+; CHECK-NEXT:    bl private_za_preserved_callee
+; CHECK-NEXT:    smstart za
+; CHECK-NEXT:    msr TPIDR2_EL0, xzr
+; CHECK-NEXT:    mov sp, x29
+; CHECK-NEXT:    ldp x29, x30, [sp], #16 // 16-byte Folded Reload
+; CHECK-NEXT:    ret
+  call void @private_za_preserved_callee()
+  ret void
+}
+
+attributes #0 = {
+  "aarch64_pstate_za_preserved"
 }

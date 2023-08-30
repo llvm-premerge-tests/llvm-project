@@ -7310,28 +7310,42 @@ AArch64TargetLowering::LowerCall(CallLoweringInfo &CLI,
                getCalleeAttrsFromExternalFunction(CLI.Callee))
     CalleeAttrs = *Attrs;
 
-  bool RequiresLazySave = CallerAttrs.requiresLazySave(CalleeAttrs);
-
-  MachineFrameInfo &MFI = MF.getFrameInfo();
-  if (RequiresLazySave) {
-    // Set up a lazy save mechanism by storing the runtime live slices
-    // (worst-case N*N) to the TPIDR2 stack object.
-    SDValue N = DAG.getNode(AArch64ISD::RDSVL, DL, MVT::i64,
-                            DAG.getConstant(1, DL, MVT::i32));
-    SDValue NN = DAG.getNode(ISD::MUL, DL, MVT::i64, N, N);
+  auto createTPIDR2StackObject = [&](SDValue C, SDValue NumZaSaveSlices) {
     unsigned TPIDR2Obj = FuncInfo->getLazySaveTPIDR2Obj();
-
     MachinePointerInfo MPI = MachinePointerInfo::getStack(MF, TPIDR2Obj);
     SDValue TPIDR2ObjAddr = DAG.getFrameIndex(TPIDR2Obj,
         DAG.getTargetLoweringInfo().getFrameIndexTy(DAG.getDataLayout()));
     SDValue BufferPtrAddr =
         DAG.getNode(ISD::ADD, DL, TPIDR2ObjAddr.getValueType(), TPIDR2ObjAddr,
                     DAG.getConstant(8, DL, TPIDR2ObjAddr.getValueType()));
-    Chain = DAG.getTruncStore(Chain, DL, NN, BufferPtrAddr, MPI, MVT::i16);
-    Chain = DAG.getNode(
-        ISD::INTRINSIC_VOID, DL, MVT::Other, Chain,
+    C = DAG.getTruncStore(Chain, DL, NumZaSaveSlices, BufferPtrAddr, MPI,
+                          MVT::i16);
+    C = DAG.getNode(
+        ISD::INTRINSIC_VOID, DL, MVT::Other, C,
         DAG.getConstant(Intrinsic::aarch64_sme_set_tpidr2, DL, MVT::i32),
         TPIDR2ObjAddr);
+    return C;
+  };
+
+  bool RequiresLazySave = CallerAttrs.requiresLazySave(CalleeAttrs);
+  if (RequiresLazySave) {
+    // Set up a lazy save mechanism by storing the runtime live slices
+    // (worst-case N*N) to the TPIDR2 stack object.
+    SDValue N = DAG.getNode(AArch64ISD::RDSVL, DL, MVT::i64,
+                            DAG.getConstant(1, DL, MVT::i32));
+    SDValue NN = DAG.getNode(ISD::MUL, DL, MVT::i64, N, N);
+    Chain = createTPIDR2StackObject(Chain, NN);
+  }
+
+  bool HasPreservedZAInterface = !RequiresLazySave &&
+                                 CalleeAttrs.hasPreservedZAInterface() &&
+                                 !CalleeAttrs.hasStreamingCompatibleInterface();
+  if (HasPreservedZAInterface) {
+    // Set up a lazy save mechanism by storing 0 to the runtime live slices
+    // Callees with Private ZA interface's num_za_save_slices must be
+    // 0 < num_za_save_slices <= N x 16 to comply with the dormant state on
+    // entry.
+    Chain = createTPIDR2StackObject(Chain, DAG.getConstant(0, DL, MVT::i64));
   }
 
   SDValue PStateSM;
@@ -7434,6 +7448,7 @@ AArch64TargetLowering::LowerCall(CallLoweringInfo &CLI,
 
       Type *Ty = EVT(VA.getValVT()).getTypeForEVT(*DAG.getContext());
       Align Alignment = DAG.getDataLayout().getPrefTypeAlign(Ty);
+      MachineFrameInfo &MFI = MF.getFrameInfo();
       int FI = MFI.CreateStackObject(StoreSize, Alignment, false);
       if (isScalable)
         MFI.setStackID(FI, TargetStackID::ScalableVector);
@@ -7783,6 +7798,17 @@ AArch64TargetLowering::LowerCall(CallLoweringInfo &CLI,
                           Result.getValue(1)});
 
     // Finally reset the TPIDR2_EL0 register to 0.
+    Result = DAG.getNode(
+        ISD::INTRINSIC_VOID, DL, MVT::Other, Result,
+        DAG.getConstant(Intrinsic::aarch64_sme_set_tpidr2, DL, MVT::i32),
+        DAG.getConstant(0, DL, MVT::i64));
+  }
+
+  if (HasPreservedZAInterface) {
+    Result = DAG.getNode(
+        AArch64ISD::SMSTART, DL, MVT::Other, Result,
+        DAG.getTargetConstant((int32_t)(AArch64SVCR::SVCRZA), DL, MVT::i32),
+        DAG.getConstant(0, DL, MVT::i64), DAG.getConstant(1, DL, MVT::i64));
     Result = DAG.getNode(
         ISD::INTRINSIC_VOID, DL, MVT::Other, Result,
         DAG.getConstant(Intrinsic::aarch64_sme_set_tpidr2, DL, MVT::i32),
