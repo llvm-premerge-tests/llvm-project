@@ -37,6 +37,17 @@ enum Style {
 
 } // end namespace HexStyle
 
+namespace HighlightStyle {
+
+enum Style {
+  Immediate,
+  Register,
+  Address,
+  None,
+};
+
+} // namespace HighlightStyle
+
 struct AliasMatchingData;
 
 /// This is an instance of a target assembly language printer that
@@ -54,6 +65,9 @@ protected:
 
   /// True if we are printing marked up assembly.
   bool UseMarkup = false;
+
+  /// True if we are printing colored assembly.
+  bool UseColor = false;
 
   /// True if we prefer aliases (e.g. nop) to raw mnemonics.
   bool PrintAliases = true;
@@ -118,6 +132,12 @@ public:
 
   /// Utility functions to make adding mark ups simpler.
   StringRef markup(StringRef s) const;
+
+  bool getUseColor() const { return UseColor; }
+  void setUseColor(bool Value) { UseColor = Value; }
+
+  /// Utility functions to make color highlighting simpler.
+  void highlight(raw_ostream &OS, HighlightStyle::Style Style) const;
 
   bool getPrintImmHex() const { return PrintImmHex; }
   void setPrintImmHex(bool Value) { PrintImmHex = Value; }

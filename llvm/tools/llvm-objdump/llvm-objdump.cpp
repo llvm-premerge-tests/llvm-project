@@ -896,6 +896,7 @@ DisassemblerTarget::DisassemblerTarget(const Target *TheTarget, ObjectFile &Obj,
   if (!InstPrinter)
     reportError(Obj.getFileName(),
                 "no instruction printer for target " + TripleName);
+  InstPrinter->setUseColor(true);
   InstPrinter->setPrintImmHex(PrintImmHex);
   InstPrinter->setPrintBranchImmAsAddress(true);
   InstPrinter->setSymbolizeOperands(SymbolizeOperands);

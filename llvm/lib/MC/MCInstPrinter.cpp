@@ -178,6 +178,26 @@ StringRef MCInstPrinter::markup(StringRef s) const {
     return "";
 }
 
+void MCInstPrinter::highlight(raw_ostream &OS,
+                              HighlightStyle::Style Style) const {
+  if (!getUseColor())
+    return;
+  switch (Style) {
+  case HighlightStyle::Immediate:
+    OS.changeColor(raw_ostream::RED);
+    break;
+  case HighlightStyle::Register:
+    OS.changeColor(raw_ostream::CYAN);
+    break;
+  case HighlightStyle::Address:
+    OS.changeColor(raw_ostream::YELLOW);
+    break;
+  case HighlightStyle::None:
+    OS.resetColor();
+    break;
+  }
+}
+
 // For asm-style hex (e.g. 0ffh) the first digit always has to be a number.
 static bool needsLeadingZero(uint64_t Value)
 {
