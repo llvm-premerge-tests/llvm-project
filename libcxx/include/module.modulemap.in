@@ -356,6 +356,7 @@ module std [system] {
         private header "__algorithm/ranges_clamp.h"
         export functional.__functional.ranges_operations
       }
+      module ranges_contains                 { private header "__algorithm/ranges_contains.h" }
       module ranges_copy {
         private header "__algorithm/ranges_copy.h"
         export algorithm.__algorithm.in_out_result
