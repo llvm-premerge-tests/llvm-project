@@ -87,8 +87,7 @@ Improvements and New Features
   ``std::ranges::find``  are now forwarding to ``std::memcmp`` for trivially
   equality comparable types, which can lead up to 40x performance improvements.
 
-- ``std::string_view`` now provides iterators that check for out-of-bounds accesses when the safe
-  libc++ mode is enabled.
+- ``std::string_view`` now provides iterators that check for out-of-bounds accesses when hardening is enabled.
 
 - The performance of ``dynamic_cast`` on its hot paths is greatly improved and is as efficient as the
   ``libsupc++`` implementation. Note that the performance improvements are shipped in ``libcxxabi``.
@@ -109,14 +108,21 @@ Improvements and New Features
   a reliable program termination. Vendors can configure whether the hardened mode is enabled by default with the
   ``LIBCXX_HARDENING_MODE`` variable at CMake configuration time. Users can control whether the hardened mode is
   enabled on a per translation unit basis using the ``-D_LIBCPP_ENABLE_HARDENED_MODE=1`` macro. See
-  ``libcxx/docs/Hardening.rst`` for more details.
+  :ref:`the hardening documentation <using-hardening-modes>` for more details.
 
-- The library now provides a debug mode which is a superset of the hardened mode, additionally enabling more expensive
+- The safe mode is now a part of hardening modes. Vendors can configure whether the safe mode is enabled by default
+  with the ``LIBCXX_HARDENING_MODE`` variable at CMake configuration time. Users can control whether the safe mode
+  is enabled on a per translation unit basis using the ``-D_LIBCPP_ENABLE_SAFE_MODE=1`` macro. The
+  ``_LIBCPP_ENABLE_ASSERTIONS`` macro that was previously used to enable the safe mode is now deprecated. See
+  :ref:`the hardening documentation <using-hardening-modes>` for more details.
+
+- The library now provides a debug mode which is a superset of the safe mode, additionally enabling more expensive
   checks that are not suitable to be used in production. This replaces the legacy debug mode that was removed in this
   release. Unlike the legacy debug mode, this doesn't affect the ABI and doesn't require locking. Vendors can configure
   whether the debug mode is enabled by default with the ``LIBCXX_HARDENING_MODE`` variable at CMake configuration time.
   Users can control whether the debug mode is enabled on a per translation unit basis using the
-  ``-D_LIBCPP_ENABLE_DEBUG_MODE=1`` macro. See ``libcxx/docs/Hardening.rst`` for more details.
+  ``-D_LIBCPP_ENABLE_DEBUG_MODE=1`` macro. See :ref:`the hardening documentation <using-hardening-modes>` for more
+  details.
 
 - ASan container annotations have been extended to cover all allocators in ``std::vector``.
 
@@ -128,10 +134,12 @@ Improvements and New Features
 Deprecations and Removals
 -------------------------
 
-- The "safe" mode is replaced by the hardened mode in this release. The ``LIBCXX_ENABLE_ASSERTIONS`` CMake variable is
-  deprecated and setting it will trigger an error; use ``LIBCXX_HARDENING_MODE`` instead. Similarly, the
-  ``_LIBCPP_ENABLE_ASSERTIONS`` macro is deprecated and setting it to ``1`` now enables the hardened mode. See
-  ``libcxx/docs/Hardening.rst`` for more details.
+- The "safe" mode is now controlled via the new generalized support for hardening. The ``LIBCXX_ENABLE_ASSERTIONS``
+  CMake variable that was used to enable the safe mode is now deprecated and setting it will trigger an error; use the
+  ``LIBCXX_HARDENING_MODE`` variable with the value ``safe`` instead. Similarly, the ``_LIBCPP_ENABLE_ASSERTIONS`` macro
+  is deprecated (setting it to ``1`` still enables the safe mode in this release while also issuing a deprecation
+  warning). ``_LIBCPP_ENABLE_ASSERTIONS`` will be removed entirely in the next release and setting it will become an
+  error. See :ref:`the hardening documentation <using-hardening-modes>` for more details.
 
 - The legacy debug mode has been removed in this release. Setting the macro ``_LIBCPP_ENABLE_DEBUG_MODE`` to ``1`` now
   enables the new debug mode which is part of hardening (see the "Improvements and New Features" section above). The
