@@ -32,20 +32,14 @@ static bool isAtLeastVer(uint32_t Target, uint32_t VerToCompareTo) {
   return Target == 0 || Target >= VerToCompareTo;
 }
 
-static unsigned computePointerSize(const Triple &TT) {
-  const auto Arch = TT.getArch();
-  // TODO: unify this with pointers legalization.
-  assert(TT.isSPIRV());
-  return Arch == Triple::spirv32 ? 32 : 64;
-}
-
 SPIRVSubtarget::SPIRVSubtarget(const Triple &TT, const std::string &CPU,
                                const std::string &FS,
                                const SPIRVTargetMachine &TM)
     : SPIRVGenSubtargetInfo(TT, CPU, /*TuneCPU=*/CPU, FS),
-      PointerSize(computePointerSize(TT)), SPIRVVersion(0), OpenCLVersion(0),
-      InstrInfo(), FrameLowering(initSubtargetDependencies(CPU, FS)),
-      TLInfo(TM, *this) {
+      PointerSize(TM.getPointerSizeInBits(/* AS= */ 0)), SPIRVVersion(0),
+      OpenCLVersion(0), InstrInfo(),
+      FrameLowering(initSubtargetDependencies(CPU, FS)), TLInfo(TM, *this),
+      TargetTriple(TT) {
   // The order of initialization is important.
   initAvailableExtensions();
   initAvailableExtInstSets();
@@ -82,6 +76,10 @@ bool SPIRVSubtarget::isAtLeastSPIRVVer(uint32_t VerToCompareTo) const {
 }
 
 bool SPIRVSubtarget::isAtLeastOpenCLVer(uint32_t VerToCompareTo) const {
+  if (!isOpenCLEnv()) {
+    return false;
+  }
+
   return isAtLeastVer(OpenCLVersion, VerToCompareTo);
 }
 
