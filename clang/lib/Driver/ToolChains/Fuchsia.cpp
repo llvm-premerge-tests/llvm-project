@@ -8,7 +8,6 @@
 
 #include "Fuchsia.h"
 #include "CommonArgs.h"
-#include "clang/Config/config.h"
 #include "clang/Driver/Compilation.h"
 #include "clang/Driver/Driver.h"
 #include "clang/Driver/DriverDiagnostic.h"
@@ -391,19 +390,6 @@ void Fuchsia::AddClangSystemIncludeArgs(const ArgList &DriverArgs,
 
   if (DriverArgs.hasArg(options::OPT_nostdlibinc))
     return;
-
-  // Check for configure-time C include directories.
-  StringRef CIncludeDirs(C_INCLUDE_DIRS);
-  if (CIncludeDirs != "") {
-    SmallVector<StringRef, 5> dirs;
-    CIncludeDirs.split(dirs, ":");
-    for (StringRef dir : dirs) {
-      StringRef Prefix =
-          llvm::sys::path::is_absolute(dir) ? "" : StringRef(D.SysRoot);
-      addExternCSystemInclude(DriverArgs, CC1Args, Prefix + dir);
-    }
-    return;
-  }
 
   if (!D.SysRoot.empty()) {
     SmallString<128> P(D.SysRoot);

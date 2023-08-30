@@ -12,7 +12,6 @@
 #include "CommonArgs.h"
 #include "clang/Basic/AlignedAllocation.h"
 #include "clang/Basic/ObjCRuntime.h"
-#include "clang/Config/config.h"
 #include "clang/Driver/Compilation.h"
 #include "clang/Driver/Driver.h"
 #include "clang/Driver/DriverDiagnostic.h"
@@ -2406,22 +2405,10 @@ void DarwinClang::AddClangSystemIncludeArgs(const llvm::opt::ArgList &DriverArgs
   if (NoStdInc || NoStdlibInc)
     return;
 
-  // Check for configure-time C include directories.
-  llvm::StringRef CIncludeDirs(C_INCLUDE_DIRS);
-  if (!CIncludeDirs.empty()) {
-    llvm::SmallVector<llvm::StringRef, 5> dirs;
-    CIncludeDirs.split(dirs, ":");
-    for (llvm::StringRef dir : dirs) {
-      llvm::StringRef Prefix =
-          llvm::sys::path::is_absolute(dir) ? "" : llvm::StringRef(Sysroot);
-      addExternCSystemInclude(DriverArgs, CC1Args, Prefix + dir);
-    }
-  } else {
-    // Otherwise, add <sysroot>/usr/include.
-    SmallString<128> P(Sysroot);
-    llvm::sys::path::append(P, "usr", "include");
-    addExternCSystemInclude(DriverArgs, CC1Args, P.str());
-  }
+  // Add <sysroot>/usr/include.
+  SmallString<128> P(Sysroot);
+  llvm::sys::path::append(P, "usr", "include");
+  addExternCSystemInclude(DriverArgs, CC1Args, P.str());
 }
 
 bool DarwinClang::AddGnuCPlusPlusIncludePaths(const llvm::opt::ArgList &DriverArgs,
