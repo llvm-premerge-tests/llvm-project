@@ -18,4 +18,11 @@ using namespace clang;
 using namespace llvm::opt;
 
 void ve::getVETargetFeatures(const Driver &D, const ArgList &Args,
-                             std::vector<StringRef> &Features) {}
+                             std::vector<StringRef> &Features) {
+  if (auto *A = Args.getLastArg(options::OPT_mvevpu, options::OPT_mno_vevpu)) {
+    if (A->getOption().matches(options::OPT_mvevpu))
+      Features.push_back("+vpu");
+    else
+      Features.push_back("-vpu");
+  }
+}
