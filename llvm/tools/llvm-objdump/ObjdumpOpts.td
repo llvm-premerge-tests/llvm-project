@@ -78,6 +78,10 @@ def disassemble_symbols_EQ : Joined<["--"], "disassemble-symbols=">,
 
 def disassemble_zeroes : Flag<["--"], "disassemble-zeroes">,
   HelpText<"Do not skip blocks of zeroes when disassembling">;
+def no_color : Flag<["--"], "no-color">,
+  HelpText<"Disable color output">;
+def color : Flag<["--"], "color">,
+  HelpText<"Force color output">;
 def : Flag<["-"], "z">, Alias<disassemble_zeroes>,
   HelpText<"Alias for --disassemble-zeroes">;
 
