@@ -145,11 +145,6 @@ def lsxsplati32 : PatFrag<(ops node:$e0),
 def lsxsplati64 : PatFrag<(ops node:$e0),
                           (v2i64 (build_vector node:$e0, node:$e0))>;
 
-def to_valid_timm : SDNodeXForm<timm, [{
-  auto CN = cast<ConstantSDNode>(N);
-  return CurDAG->getTargetConstant(CN->getSExtValue(), SDLoc(N), Subtarget->getGRLenVT());
-}]>;
-
 //===----------------------------------------------------------------------===//
 // Instruction class templates
 //===----------------------------------------------------------------------===//

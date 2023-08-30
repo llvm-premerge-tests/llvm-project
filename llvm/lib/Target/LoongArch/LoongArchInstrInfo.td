@@ -553,6 +553,11 @@ def BstrinsLsb: SDNodeXForm<imm, [{
   return CurDAG->getTargetConstant(MaskIdx, SDLoc(N), N->getValueType(0));
 }]>;
 
+def to_valid_timm : SDNodeXForm<timm, [{
+  auto CN = cast<ConstantSDNode>(N);
+  return CurDAG->getTargetConstant(CN->getSExtValue(), SDLoc(N), Subtarget->getGRLenVT());
+}]>;
+
 //===----------------------------------------------------------------------===//
 // Instruction Formats
 //===----------------------------------------------------------------------===//
