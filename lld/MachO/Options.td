@@ -684,6 +684,10 @@ def no_warn_inits : Flag<["-"], "no_warn_inits">,
     HelpText<"Suppress warnings for static initializers in the output">,
     Flags<[HelpHidden]>,
     Group<grp_rare>;
+def no_warn_export_hidden : Flag<["-"], "no_warn_export_hidden">,
+    HelpText<"Suppress warnings for exporting weakdef-can-be-hidden symbols in the output">,
+    Flags<[HelpHidden]>,
+    Group<grp_rare>;    
 def unaligned_pointers : Separate<["-"], "unaligned_pointers">,
     MetaVarName<"<treatment>">,
     HelpText<"Handle unaligned pointers in __DATA segments according to <treatment>: warning, error, or suppress (default for arm64e is error, otherwise suppress)">,
