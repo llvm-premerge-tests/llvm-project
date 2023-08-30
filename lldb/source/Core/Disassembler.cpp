@@ -56,7 +56,7 @@ using namespace lldb;
 using namespace lldb_private;
 
 DisassemblerSP Disassembler::FindPlugin(const ArchSpec &arch,
-                                        const char *flavor,
+                                        const char *flavor, bool use_colors,
                                         const char *plugin_name) {
   LLDB_SCOPED_TIMERF("Disassembler::FindPlugin (arch = %s, plugin_name = %s)",
                      arch.GetArchitectureName(), plugin_name);
@@ -67,7 +67,7 @@ DisassemblerSP Disassembler::FindPlugin(const ArchSpec &arch,
     create_callback =
         PluginManager::GetDisassemblerCreateCallbackForPluginName(plugin_name);
     if (create_callback) {
-      if (auto disasm_sp = create_callback(arch, flavor))
+      if (auto disasm_sp = create_callback(arch, flavor, use_colors))
         return disasm_sp;
     }
   } else {
@@ -75,7 +75,7 @@ DisassemblerSP Disassembler::FindPlugin(const ArchSpec &arch,
          (create_callback = PluginManager::GetDisassemblerCreateCallbackAtIndex(
               idx)) != nullptr;
          ++idx) {
-      if (auto disasm_sp = create_callback(arch, flavor))
+      if (auto disasm_sp = create_callback(arch, flavor, use_colors))
         return disasm_sp;
     }
   }
@@ -85,6 +85,7 @@ DisassemblerSP Disassembler::FindPlugin(const ArchSpec &arch,
 DisassemblerSP Disassembler::FindPluginForTarget(const Target &target,
                                                  const ArchSpec &arch,
                                                  const char *flavor,
+                                                 bool use_colors,
                                                  const char *plugin_name) {
   if (flavor == nullptr) {
     // FIXME - we don't have the mechanism in place to do per-architecture
@@ -94,7 +95,7 @@ DisassemblerSP Disassembler::FindPluginForTarget(const Target &target,
         arch.GetTriple().getArch() == llvm::Triple::x86_64)
       flavor = target.GetDisassemblyFlavor();
   }
-  return FindPlugin(arch, flavor, plugin_name);
+  return FindPlugin(arch, flavor, use_colors, plugin_name);
 }
 
 static Address ResolveAddress(Target &target, const Address &addr) {
@@ -124,8 +125,8 @@ lldb::DisassemblerSP Disassembler::DisassembleRange(
   if (!range.GetBaseAddress().IsValid())
     return {};
 
-  lldb::DisassemblerSP disasm_sp =
-      Disassembler::FindPluginForTarget(target, arch, flavor, plugin_name);
+  lldb::DisassemblerSP disasm_sp = Disassembler::FindPluginForTarget(
+      target, arch, flavor, target.GetDebugger().GetUseColor(), plugin_name);
 
   if (!disasm_sp)
     return {};
@@ -139,16 +140,15 @@ lldb::DisassemblerSP Disassembler::DisassembleRange(
   return disasm_sp;
 }
 
-lldb::DisassemblerSP
-Disassembler::DisassembleBytes(const ArchSpec &arch, const char *plugin_name,
-                               const char *flavor, const Address &start,
-                               const void *src, size_t src_len,
-                               uint32_t num_instructions, bool data_from_file) {
+lldb::DisassemblerSP Disassembler::DisassembleBytes(
+    const ArchSpec &arch, const char *plugin_name, const char *flavor,
+    bool use_colors, const Address &start, const void *src, size_t src_len,
+    uint32_t num_instructions, bool data_from_file) {
   if (!src)
     return {};
 
   lldb::DisassemblerSP disasm_sp =
-      Disassembler::FindPlugin(arch, flavor, plugin_name);
+      Disassembler::FindPlugin(arch, flavor, use_colors, plugin_name);
 
   if (!disasm_sp)
     return {};
@@ -171,8 +171,9 @@ bool Disassembler::Disassemble(Debugger &debugger, const ArchSpec &arch,
   if (!exe_ctx.GetTargetPtr())
     return false;
 
-  lldb::DisassemblerSP disasm_sp(Disassembler::FindPluginForTarget(
-      exe_ctx.GetTargetRef(), arch, flavor, plugin_name));
+  lldb::DisassemblerSP disasm_sp(
+      Disassembler::FindPluginForTarget(exe_ctx.GetTargetRef(), arch, flavor,
+                                        debugger.GetUseColor(), plugin_name));
   if (!disasm_sp)
     return false;
 

@@ -1997,8 +1997,9 @@ lldb::SBInstructionList SBTarget::ReadInstructions(lldb::SBAddress base_addr,
                                 error, force_live_memory, &load_addr);
       const bool data_from_file = load_addr == LLDB_INVALID_ADDRESS;
       sb_instructions.SetDisassembler(Disassembler::DisassembleBytes(
-          target_sp->GetArchitecture(), nullptr, flavor_string, *addr_ptr,
-          data.GetBytes(), bytes_read, count, data_from_file));
+          target_sp->GetArchitecture(), nullptr, flavor_string,
+          target_sp->GetDebugger().GetUseColor(), *addr_ptr, data.GetBytes(),
+          bytes_read, count, data_from_file));
     }
   }
 
@@ -2031,8 +2032,9 @@ SBTarget::GetInstructionsWithFlavor(lldb::SBAddress base_addr,
     const bool data_from_file = true;
 
     sb_instructions.SetDisassembler(Disassembler::DisassembleBytes(
-        target_sp->GetArchitecture(), nullptr, flavor_string, addr, buf, size,
-        UINT32_MAX, data_from_file));
+        target_sp->GetArchitecture(), nullptr, flavor_string,
+        target_sp->GetDebugger().GetUseColor(), addr, buf, size, UINT32_MAX,
+        data_from_file));
   }
 
   return sb_instructions;

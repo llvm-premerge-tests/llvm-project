@@ -54,7 +54,7 @@ class DisassemblerLLVMC::MCDisasmInstance {
 public:
   static std::unique_ptr<MCDisasmInstance>
   Create(const char *triple, const char *cpu, const char *features_str,
-         unsigned flavor, DisassemblerLLVMC &owner);
+         unsigned flavor, bool use_color, DisassemblerLLVMC &owner);
 
   ~MCDisasmInstance() = default;
 
@@ -1227,7 +1227,7 @@ private:
 std::unique_ptr<DisassemblerLLVMC::MCDisasmInstance>
 DisassemblerLLVMC::MCDisasmInstance::Create(const char *triple, const char *cpu,
                                             const char *features_str,
-                                            unsigned flavor,
+                                            unsigned flavor, bool use_color,
                                             DisassemblerLLVMC &owner) {
   using Instance = std::unique_ptr<DisassemblerLLVMC::MCDisasmInstance>;
 
@@ -1291,6 +1291,7 @@ DisassemblerLLVMC::MCDisasmInstance::Create(const char *triple, const char *cpu,
     return Instance();
 
   instr_printer_up->setPrintBranchImmAsAddress(true);
+  instr_printer_up->setUseColor(use_color);
 
   // Not all targets may have registered createMCInstrAnalysis().
   std::unique_ptr<llvm::MCInstrAnalysis> instr_analysis_up(
@@ -1343,6 +1344,8 @@ void DisassemblerLLVMC::MCDisasmInstance::PrintMCInst(
     std::string &comments_string) {
   llvm::raw_string_ostream inst_stream(inst_string);
   llvm::raw_string_ostream comments_stream(comments_string);
+
+  inst_stream.enable_colors(m_instr_printer_up->getUseColor());
 
   m_instr_printer_up->setCommentStream(comments_stream);
   m_instr_printer_up->printInst(&mc_inst, pc, llvm::StringRef(),
@@ -1415,10 +1418,10 @@ bool DisassemblerLLVMC::MCDisasmInstance::IsAuthenticated(
 }
 
 DisassemblerLLVMC::DisassemblerLLVMC(const ArchSpec &arch,
-                                     const char *flavor_string)
+                                     const char *flavor_string, bool use_colors)
     : Disassembler(arch, flavor_string), m_exe_ctx(nullptr), m_inst(nullptr),
-      m_data_from_file(false), m_adrp_address(LLDB_INVALID_ADDRESS),
-      m_adrp_insn() {
+      m_data_from_file(false), m_use_colors(use_colors),
+      m_adrp_address(LLDB_INVALID_ADDRESS), m_adrp_insn() {
   if (!FlavorValidForArchSpec(arch, m_flavor.c_str())) {
     m_flavor.assign("default");
   }
@@ -1556,7 +1559,7 @@ DisassemblerLLVMC::DisassemblerLLVMC(const ArchSpec &arch,
   // isn't good for some reason, we won't be valid and FindPlugin will fail and
   // we won't get used.
   m_disasm_up = MCDisasmInstance::Create(triple_str, cpu, features_str.c_str(),
-                                         flavor, *this);
+                                         flavor, use_colors, *this);
 
   llvm::Triple::ArchType llvm_arch = triple.getArch();
 
@@ -1566,7 +1569,7 @@ DisassemblerLLVMC::DisassemblerLLVMC(const ArchSpec &arch,
     std::string thumb_triple(thumb_arch.GetTriple().getTriple());
     m_alternate_disasm_up =
         MCDisasmInstance::Create(thumb_triple.c_str(), "", features_str.c_str(),
-                                 flavor, *this);
+                                 flavor, m_use_colors, *this);
     if (!m_alternate_disasm_up)
       m_disasm_up.reset();
 
@@ -1579,7 +1582,7 @@ DisassemblerLLVMC::DisassemblerLLVMC(const ArchSpec &arch,
       features_str += "+micromips,";
 
     m_alternate_disasm_up = MCDisasmInstance::Create(
-        triple_str, cpu, features_str.c_str(), flavor, *this);
+        triple_str, cpu, features_str.c_str(), flavor, m_use_colors, *this);
     if (!m_alternate_disasm_up)
       m_disasm_up.reset();
   }
@@ -1588,9 +1591,11 @@ DisassemblerLLVMC::DisassemblerLLVMC(const ArchSpec &arch,
 DisassemblerLLVMC::~DisassemblerLLVMC() = default;
 
 lldb::DisassemblerSP DisassemblerLLVMC::CreateInstance(const ArchSpec &arch,
-                                                       const char *flavor) {
+                                                       const char *flavor,
+                                                       bool use_colors) {
   if (arch.GetTriple().getArch() != llvm::Triple::UnknownArch) {
-    auto disasm_sp = std::make_shared<DisassemblerLLVMC>(arch, flavor);
+    auto disasm_sp =
+        std::make_shared<DisassemblerLLVMC>(arch, flavor, use_colors);
     if (disasm_sp && disasm_sp->IsValid())
       return disasm_sp;
   }
