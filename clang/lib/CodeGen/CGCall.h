@@ -395,10 +395,17 @@ public:
   bool isExternallyDestructed() const { return IsExternallyDestructed; }
 };
 
-/// Helper to add attributes to \p F according to the CodeGenOptions and
+/// If \p F "target-features" are incompatible with the \p TargetOpts features,
+/// it is correct to drop the function. \return true if \p F is dropped
+bool dropFunctionWithIncompatibleAttributes(llvm::Function &F,
+                                            const TargetOptions &TargetOpts);
+
 /// LangOptions without requiring a CodeGenModule to be constructed.
+/// Adds attributes to \p F according to our \p CodeGenOpts and \p LangOpts, as
+/// though we had emitted it ourselves. We remove any attributes on F that
+/// conflict with the attributes we add here.
 void mergeDefaultFunctionDefinitionAttributes(llvm::Function &F,
-                                              const CodeGenOptions CodeGenOpts,
+                                              const CodeGenOptions &CodeGenOpts,
                                               const LangOptions &LangOpts,
                                               const TargetOptions &TargetOpts,
                                               bool WillInternalize);

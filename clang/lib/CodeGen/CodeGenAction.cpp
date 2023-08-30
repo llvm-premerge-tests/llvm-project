@@ -266,15 +266,20 @@ namespace clang {
     bool LinkInModules(llvm::Module *M) {
       for (auto &LM : LinkModules) {
         assert(LM.Module && "LinkModule does not actually have a module");
-        if (LM.PropagateAttrs)
-          for (Function &F : *LM.Module) {
+        if (LM.PropagateAttrs) {
+          for (Function &F : llvm::make_early_inc_range(*LM.Module)) {
             // Skip intrinsics. Keep consistent with how intrinsics are created
             // in LLVM IR.
             if (F.isIntrinsic())
               continue;
+
+            if (CodeGen::dropFunctionWithIncompatibleAttributes(F, TargetOpts))
+              continue;
+
             CodeGen::mergeDefaultFunctionDefinitionAttributes(
                 F, CodeGenOpts, LangOpts, TargetOpts, LM.Internalize);
           }
+        }
 
         CurLinkModule = LM.Module.get();
 
