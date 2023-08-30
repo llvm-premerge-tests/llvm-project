@@ -34,7 +34,7 @@ using namespace llvm;
 #include "X86GenAsmWriter1.inc"
 
 void X86IntelInstPrinter::printRegName(raw_ostream &OS, MCRegister Reg) const {
-  OS << markup("<reg:") << getRegisterName(Reg) << markup(">");
+  markup(OS, Markup::Register) << getRegisterName(Reg);
 }
 
 void X86IntelInstPrinter::printInst(const MCInst *MI, uint64_t Address,
@@ -361,7 +361,7 @@ void X86IntelInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
   if (Op.isReg()) {
     printRegName(O, Op.getReg());
   } else if (Op.isImm()) {
-    O << markup("<imm:") << formatImm((int64_t)Op.getImm()) << markup(">");
+    markup(O, Markup::Immediate) << formatImm((int64_t)Op.getImm());
   } else {
     assert(Op.isExpr() && "unknown operand kind in printOperand");
     O << "offset ";
@@ -419,7 +419,7 @@ void X86IntelInstPrinter::printMemReference(const MCInst *MI, unsigned Op,
           DispVal = -DispVal;
         }
       }
-      O << markup("<imm:") << formatImm(DispVal) << markup(">");
+      markup(O, Markup::Immediate) << formatImm(DispVal);
     }
   }
 
@@ -453,7 +453,7 @@ void X86IntelInstPrinter::printMemOffset(const MCInst *MI, unsigned Op,
   O << markup("<mem:") << '[';
 
   if (DispSpec.isImm()) {
-    O << markup("<imm:") << formatImm(DispSpec.getImm()) << markup(">");
+    markup(O, Markup::Immediate) << formatImm(DispSpec.getImm());
   } else {
     assert(DispSpec.isExpr() && "non-immediate displacement?");
     DispSpec.getExpr()->print(O, &MAI);
@@ -467,8 +467,7 @@ void X86IntelInstPrinter::printU8Imm(const MCInst *MI, unsigned Op,
   if (MI->getOperand(Op).isExpr())
     return MI->getOperand(Op).getExpr()->print(O, &MAI);
 
-  O << markup("<imm:") << formatImm(MI->getOperand(Op).getImm() & 0xff)
-    << markup(">");
+  markup(O, Markup::Immediate) << formatImm(MI->getOperand(Op).getImm() & 0xff);
 }
 
 void X86IntelInstPrinter::printSTiRegOperand(const MCInst *MI, unsigned OpNo,

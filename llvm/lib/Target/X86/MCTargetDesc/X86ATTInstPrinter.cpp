@@ -36,7 +36,7 @@ using namespace llvm;
 #include "X86GenAsmWriter.inc"
 
 void X86ATTInstPrinter::printRegName(raw_ostream &OS, MCRegister Reg) const {
-  OS << markup("<reg:") << '%' << getRegisterName(Reg) << markup(">");
+  markup(OS, Markup::Register) << '%' << getRegisterName(Reg);
 }
 
 void X86ATTInstPrinter::printInst(const MCInst *MI, uint64_t Address,
@@ -386,7 +386,7 @@ void X86ATTInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
   } else if (Op.isImm()) {
     // Print immediates as signed values.
     int64_t Imm = Op.getImm();
-    O << markup("<imm:") << '$' << formatImm(Imm) << markup(">");
+    markup(O, Markup::Immediate) << '$' << formatImm(Imm);
 
     // TODO: This should be in a helper function in the base class, so it can
     // be used by other printers.
@@ -405,9 +405,9 @@ void X86ATTInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
     }
   } else {
     assert(Op.isExpr() && "unknown operand kind in printOperand");
-    O << markup("<imm:") << '$';
+    WithMarkup M = markup(O, Markup::Immediate);
+    O << '$';
     Op.getExpr()->print(O, &MAI);
-    O << markup(">");
   }
 }
 
@@ -451,8 +451,8 @@ void X86ATTInstPrinter::printMemReference(const MCInst *MI, unsigned Op,
       printOperand(MI, Op + X86::AddrIndexReg, O);
       unsigned ScaleVal = MI->getOperand(Op + X86::AddrScaleAmt).getImm();
       if (ScaleVal != 1) {
-        O << ',' << markup("<imm:") << ScaleVal // never printed in hex.
-          << markup(">");
+        O << ',';
+        markup(O, Markup::Immediate) << ScaleVal; // never printed in hex.
       }
     }
     O << ')';
@@ -510,8 +510,7 @@ void X86ATTInstPrinter::printU8Imm(const MCInst *MI, unsigned Op,
   if (MI->getOperand(Op).isExpr())
     return printOperand(MI, Op, O);
 
-  O << markup("<imm:") << '$' << formatImm(MI->getOperand(Op).getImm() & 0xff)
-    << markup(">");
+  markup(O, Markup::Immediate) << '$' << formatImm(MI->getOperand(Op).getImm() & 0xff);
 }
 
 void X86ATTInstPrinter::printSTiRegOperand(const MCInst *MI, unsigned OpNo,
@@ -520,7 +519,7 @@ void X86ATTInstPrinter::printSTiRegOperand(const MCInst *MI, unsigned OpNo,
   unsigned Reg = Op.getReg();
   // Override the default printing to print st(0) instead st.
   if (Reg == X86::ST0)
-    OS << markup("<reg:") << "%st(0)" << markup(">");
+    markup(OS, Markup::Register) << "%st(0)";
   else
     printRegName(OS, Reg);
 }
