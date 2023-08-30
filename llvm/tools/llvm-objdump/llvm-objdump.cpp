@@ -177,6 +177,8 @@ public:
 
 #define DEBUG_TYPE "objdump"
 
+static bool NoColor;
+static bool ForceColor;
 static uint64_t AdjustVMA;
 static bool AllHeaders;
 static std::string ArchName;
@@ -233,6 +235,9 @@ int objdump::DbgIndent = 52;
 static StringSet<> DisasmSymbolSet;
 StringSet<> objdump::FoundSectionSet;
 static StringRef ToolName;
+
+static bool disableColor(const raw_ostream &OS) { return false; }
+static bool forceColor(const raw_ostream &OS) { return true; }
 
 std::unique_ptr<BuildIDFetcher> BIDFetcher;
 
@@ -1900,6 +1905,9 @@ disassembleObject(ObjectFile &Obj, const ObjectFile &DbgObj,
 
       formatted_raw_ostream FOS(outs());
 
+      if (ForceColor)
+        FOS.enable_colors(true);
+
       std::unordered_map<uint64_t, std::string> AllLabels;
       std::unordered_map<uint64_t, std::vector<std::string>> BBAddrMapLabels;
       if (SymbolizeOperands) {
@@ -3329,6 +3337,18 @@ int llvm_objdump_main(int argc, char **argv, const llvm::ToolContext &) {
     parseOtoolOptions(InputArgs);
   else
     parseObjdumpOptions(InputArgs);
+
+  // We need to parse the color flags first. Parsing other properties might
+  // require us to print a colored error message.
+  NoColor = InputArgs.hasArg(OBJDUMP_no_color);
+  ForceColor = InputArgs.hasArg(OBJDUMP_color);
+  if (NoColor && ForceColor)
+    reportCmdLineError("--color and --no-color are mutually exclusive");
+
+  if (NoColor)
+    WithColor::setAutoDetectFunction(disableColor);
+  else if(ForceColor)
+    WithColor::setAutoDetectFunction(forceColor);
 
   if (StartAddress >= StopAddress)
     reportCmdLineError("start address should be less than stop address");

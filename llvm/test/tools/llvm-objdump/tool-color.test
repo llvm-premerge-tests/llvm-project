@@ -1,0 +1,8 @@
+# RUN: not llvm-objdump --disassemble doesnotexist --color 2>&1 | FileCheck %s --check-prefix=COLOR
+# RUN: not llvm-objdump --disassemble doesnotexist --no-color 2>&1 | FileCheck %s --check-prefix=NOCOLOR
+# RUN: not llvm-objdump --color --no-color 2>&1 | FileCheck %s --check-prefix=CONFLICT
+
+COLOR: [0;1;31merror: [0m'doesnotexist'
+NOCOLOR-NOT [0;1;31m
+NOCOLOR: error: 'doesnotexist'
+CONFLICT: error: --color and --no-color are mutually exclusive
