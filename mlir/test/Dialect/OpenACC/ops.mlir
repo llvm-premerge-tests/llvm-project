@@ -11,21 +11,15 @@ func.func @compute1(%A: memref<10x10xf32>, %B: memref<10x10xf32>, %C: memref<10x
   %async = arith.constant 1 : i64
 
   acc.parallel async(%async: i64) {
-    acc.loop gang vector {
-      scf.for %arg3 = %c0 to %c10 step %c1 {
-        scf.for %arg4 = %c0 to %c10 step %c1 {
-          scf.for %arg5 = %c0 to %c10 step %c1 {
-            %a = memref.load %A[%arg3, %arg5] : memref<10x10xf32>
-            %b = memref.load %B[%arg5, %arg4] : memref<10x10xf32>
-            %cij = memref.load %C[%arg3, %arg4] : memref<10x10xf32>
-            %p = arith.mulf %a, %b : f32
-            %co = arith.addf %cij, %p : f32
-            memref.store %co, %C[%arg3, %arg4] : memref<10x10xf32>
-          }
-        }
-      }
+    acc.loop gang() vector() (%arg3 : index, %arg4 : index, %arg5 : index) = (%c0, %c0, %c0 : index, index, index) to (%c10, %c10, %c10 : index, index, index) step (%c1, %c1, %c1 : index, index, index) {
+      %a = memref.load %A[%arg3, %arg5] : memref<10x10xf32>
+      %b = memref.load %B[%arg5, %arg4] : memref<10x10xf32>
+      %cij = memref.load %C[%arg3, %arg4] : memref<10x10xf32>
+      %p = arith.mulf %a, %b : f32
+      %co = arith.addf %cij, %p : f32
+      memref.store %co, %C[%arg3, %arg4] : memref<10x10xf32>
       acc.yield
-    } attributes { collapse = 3 }
+    } attributes { collapse = 3, inclusiveUpperbound}
     acc.yield
   }
 
@@ -38,21 +32,15 @@ func.func @compute1(%A: memref<10x10xf32>, %B: memref<10x10xf32>, %C: memref<10x
 //  CHECK-NEXT:   %{{.*}} = arith.constant 1 : index
 //  CHECK-NEXT:   [[ASYNC:%.*]] = arith.constant 1 : i64
 //  CHECK-NEXT:   acc.parallel async([[ASYNC]] : i64) {
-//  CHECK-NEXT:     acc.loop gang vector {
-//  CHECK-NEXT:       scf.for %{{.*}} = %{{.*}} to %{{.*}} step %{{.*}} {
-//  CHECK-NEXT:         scf.for %{{.*}} = %{{.*}} to %{{.*}} step %{{.*}} {
-//  CHECK-NEXT:           scf.for %{{.*}} = %{{.*}} to %{{.*}} step %{{.*}} {
-//  CHECK-NEXT:             %{{.*}} = memref.load %{{.*}}[%{{.*}}, %{{.*}}] : memref<10x10xf32>
-//  CHECK-NEXT:             %{{.*}} = memref.load %{{.*}}[%{{.*}}, %{{.*}}] : memref<10x10xf32>
-//  CHECK-NEXT:             %{{.*}} = memref.load %{{.*}}[%{{.*}}, %{{.*}}] : memref<10x10xf32>
-//  CHECK-NEXT:             %{{.*}} = arith.mulf %{{.*}}, %{{.*}} : f32
-//  CHECK-NEXT:             %{{.*}} = arith.addf %{{.*}}, %{{.*}} : f32
-//  CHECK-NEXT:             memref.store %{{.*}}, %{{.*}}[%{{.*}}, %{{.*}}] : memref<10x10xf32>
-//  CHECK-NEXT:           }
-//  CHECK-NEXT:         }
-//  CHECK-NEXT:       }
+//  CHECK-NEXT:     acc.loop gang() vector() (%{{.*}}) = (%{{.*}}) to (%{{.*}}) step (%{{.*}})
+//  CHECK-NEXT:       %{{.*}} = memref.load %{{.*}}[%{{.*}}, %{{.*}}] : memref<10x10xf32>
+//  CHECK-NEXT:       %{{.*}} = memref.load %{{.*}}[%{{.*}}, %{{.*}}] : memref<10x10xf32>
+//  CHECK-NEXT:       %{{.*}} = memref.load %{{.*}}[%{{.*}}, %{{.*}}] : memref<10x10xf32>
+//  CHECK-NEXT:       %{{.*}} = arith.mulf %{{.*}}, %{{.*}} : f32
+//  CHECK-NEXT:       %{{.*}} = arith.addf %{{.*}}, %{{.*}} : f32
+//  CHECK-NEXT:       memref.store %{{.*}}, %{{.*}}[%{{.*}}, %{{.*}}] : memref<10x10xf32>
 //  CHECK-NEXT:       acc.yield
-//  CHECK-NEXT:     } attributes {collapse = 3 : i64}
+//  CHECK-NEXT:     } attributes {collapse = 3 : i64, inclusiveUpperbound}
 //  CHECK-NEXT:     acc.yield
 //  CHECK-NEXT:   }
 //  CHECK-NEXT:   return %{{.*}} : memref<10x10xf32>
@@ -66,17 +54,15 @@ func.func @compute2(%A: memref<10x10xf32>, %B: memref<10x10xf32>, %C: memref<10x
   %c1 = arith.constant 1 : index
 
   acc.parallel {
-    acc.loop {
-      scf.for %arg3 = %c0 to %c10 step %c1 {
-        scf.for %arg4 = %c0 to %c10 step %c1 {
-          scf.for %arg5 = %c0 to %c10 step %c1 {
-            %a = memref.load %A[%arg3, %arg5] : memref<10x10xf32>
-            %b = memref.load %B[%arg5, %arg4] : memref<10x10xf32>
-            %cij = memref.load %C[%arg3, %arg4] : memref<10x10xf32>
-            %p = arith.mulf %a, %b : f32
-            %co = arith.addf %cij, %p : f32
-            memref.store %co, %C[%arg3, %arg4] : memref<10x10xf32>
-          }
+    acc.loop (%arg3 : index) = (%c0 : index) to (%c10 : index) step (%c1 : index) {
+      scf.for %arg4 = %c0 to %c10 step %c1 {
+        scf.for %arg5 = %c0 to %c10 step %c1 {
+          %a = memref.load %A[%arg3, %arg5] : memref<10x10xf32>
+          %b = memref.load %B[%arg5, %arg4] : memref<10x10xf32>
+          %cij = memref.load %C[%arg3, %arg4] : memref<10x10xf32>
+          %p = arith.mulf %a, %b : f32
+          %co = arith.addf %cij, %p : f32
+          memref.store %co, %C[%arg3, %arg4] : memref<10x10xf32>
         }
       }
       acc.yield
@@ -92,8 +78,7 @@ func.func @compute2(%A: memref<10x10xf32>, %B: memref<10x10xf32>, %C: memref<10x
 //  CHECK-NEXT:   %{{.*}} = arith.constant 10 : index
 //  CHECK-NEXT:   %{{.*}} = arith.constant 1 : index
 //  CHECK-NEXT:   acc.parallel {
-//  CHECK-NEXT:     acc.loop {
-//  CHECK-NEXT:       scf.for %{{.*}} = %{{.*}} to %{{.*}} step %{{.*}} {
+//  CHECK-NEXT:     acc.loop  (%{{.*}}) = (%{{.*}}) to (%{{.*}}) step (%{{.*}})
 //  CHECK-NEXT:         scf.for %{{.*}} = %{{.*}} to %{{.*}} step %{{.*}} {
 //  CHECK-NEXT:           scf.for %{{.*}} = %{{.*}} to %{{.*}} step %{{.*}} {
 //  CHECK-NEXT:             %{{.*}} = memref.load %{{.*}}[%{{.*}}, %{{.*}}] : memref<10x10xf32>
@@ -104,7 +89,6 @@ func.func @compute2(%A: memref<10x10xf32>, %B: memref<10x10xf32>, %C: memref<10x
 //  CHECK-NEXT:             memref.store %{{.*}}, %{{.*}}[%{{.*}}, %{{.*}}] : memref<10x10xf32>
 //  CHECK-NEXT:           }
 //  CHECK-NEXT:         }
-//  CHECK-NEXT:       }
 //  CHECK-NEXT:       acc.yield
 //  CHECK-NEXT:     } attributes {seq}
 //  CHECK-NEXT:     acc.yield
@@ -138,30 +122,23 @@ func.func @compute3(%a: memref<10x10xf32>, %b: memref<10x10xf32>, %c: memref<10x
   acc.data dataOperands(%pa, %pb, %pc, %pd: memref<10x10xf32>, memref<10x10xf32>, memref<10xf32>, memref<10xf32>) {
     %private = acc.private varPtr(%c : memref<10xf32>) -> memref<10xf32>
     acc.parallel num_gangs(%numGangs: i64) num_workers(%numWorkers: i64) private(@privatization_memref_10_f32 -> %private : memref<10xf32>) {
-      acc.loop gang {
-        scf.for %x = %lb to %c10 step %st {
-          acc.loop worker {
-            scf.for %y = %lb to %c10 step %st {
-              %axy = memref.load %a[%x, %y] : memref<10x10xf32>
-              %bxy = memref.load %b[%x, %y] : memref<10x10xf32>
-              %tmp = arith.addf %axy, %bxy : f32
-              memref.store %tmp, %c[%y] : memref<10xf32>
-            }
-            acc.yield
-          }
-
-          acc.loop {
-            // for i = 0 to 10 step 1
-            //   d[x] += c[i]
-            scf.for %i = %lb to %c10 step %st {
-              %ci = memref.load %c[%i] : memref<10xf32>
-              %dx = memref.load %d[%x] : memref<10xf32>
-              %z = arith.addf %ci, %dx : f32
-              memref.store %z, %d[%x] : memref<10xf32>
-            }
-            acc.yield
-          } attributes {seq}
+      acc.loop gang() (%x : index) = (%lb : index) to (%c10 : index) step (%st : index) {
+        acc.loop worker() (%y : index) = (%lb : index) to (%c10 : index) step (%st : index) {
+          %axy = memref.load %a[%x, %y] : memref<10x10xf32>
+          %bxy = memref.load %b[%x, %y] : memref<10x10xf32>
+          %tmp = arith.addf %axy, %bxy : f32
+          memref.store %tmp, %c[%y] : memref<10xf32>
+          acc.yield
         }
+        acc.loop (%i : index) = (%lb : index) to (%c10 : index) step (%st : index) {
+          // for i = 0 to 10 step 1
+          //   d[x] += c[i]
+          %ci = memref.load %c[%i] : memref<10xf32>
+          %dx = memref.load %d[%x] : memref<10xf32>
+          %z = arith.addf %ci, %dx : f32
+          memref.store %z, %d[%x] : memref<10xf32>
+          acc.yield
+        } attributes {seq}
         acc.yield
       }
       acc.yield
@@ -181,27 +158,21 @@ func.func @compute3(%a: memref<10x10xf32>, %b: memref<10x10xf32>, %c: memref<10x
 // CHECK:        acc.data dataOperands(%{{.*}}, %{{.*}}, %{{.*}}, %{{.*}} : memref<10x10xf32>, memref<10x10xf32>, memref<10xf32>, memref<10xf32>) {
 // CHECK-NEXT:     %[[P_ARG2:.*]] = acc.private varPtr([[ARG2]] : memref<10xf32>) -> memref<10xf32> 
 // CHECK-NEXT:     acc.parallel num_gangs([[NUMGANG]] : i64) num_workers([[NUMWORKERS]] : i64) private(@privatization_memref_10_f32 -> %[[P_ARG2]] : memref<10xf32>) {
-// CHECK-NEXT:       acc.loop gang {
-// CHECK-NEXT:         scf.for %{{.*}} = [[C0]] to [[C10]] step [[C1]] {
-// CHECK-NEXT:           acc.loop worker {
-// CHECK-NEXT:             scf.for %{{.*}} = [[C0]] to [[C10]] step [[C1]] {
+// CHECK-NEXT:       acc.loop gang() (%{{.*}}) = (%{{.*}}) to (%{{.*}}) step (%{{.*}})
+// CHECK-NEXT:           acc.loop worker() (%{{.*}}) = (%{{.*}}) to (%{{.*}}) step (%{{.*}})
 // CHECK-NEXT:               %{{.*}} = memref.load %{{.*}}[%{{.*}}, %{{.*}}] : memref<10x10xf32>
 // CHECK-NEXT:               %{{.*}} = memref.load %{{.*}}[%{{.*}}, %{{.*}}] : memref<10x10xf32>
 // CHECK-NEXT:               %{{.*}} = arith.addf %{{.*}}, %{{.*}} : f32
 // CHECK-NEXT:               memref.store %{{.*}}, %{{.*}}[%{{.*}}] : memref<10xf32>
-// CHECK-NEXT:             }
 // CHECK-NEXT:             acc.yield
 // CHECK-NEXT:           }
-// CHECK-NEXT:           acc.loop {
-// CHECK-NEXT:             scf.for %{{.*}} = [[C0]] to [[C10]] step [[C1]] {
+// CHECK-NEXT:           acc.loop (%{{.*}}) = (%{{.*}}) to (%{{.*}}) step (%{{.*}})
 // CHECK-NEXT:               %{{.*}} = memref.load %{{.*}}[%{{.*}}] : memref<10xf32>
 // CHECK-NEXT:               %{{.*}} = memref.load %{{.*}}[%{{.*}}] : memref<10xf32>
 // CHECK-NEXT:               %{{.*}} = arith.addf %{{.*}}, %{{.*}} : f32
 // CHECK-NEXT:               memref.store %{{.*}}, %{{.*}}[%{{.*}}] : memref<10xf32>
-// CHECK-NEXT:             }
 // CHECK-NEXT:             acc.yield
 // CHECK-NEXT:           } attributes {seq}
-// CHECK-NEXT:         }
 // CHECK-NEXT:         acc.yield
 // CHECK-NEXT:       }
 // CHECK-NEXT:       acc.yield
@@ -217,68 +188,71 @@ func.func @testloopop() -> () {
   %i64Value = arith.constant 1 : i64
   %i32Value = arith.constant 128 : i32
   %idxValue = arith.constant 8 : index
+  %c0 = arith.constant 0 : index
+  %c10 = arith.constant 10 : index
+  %c1 = arith.constant 1 : index
 
-  acc.loop gang worker vector {
+  acc.loop gang() worker() vector() (%iv : index) = (%c0 : index) to (%c10 : index) step (%c1 : index) {
     "test.openacc_dummy_op"() : () -> ()
     acc.yield
   }
-  acc.loop gang(num=%i64Value: i64) {
+  acc.loop gang(num=%i64Value: i64) (%iv : index) = (%c0 : index) to (%c10 : index) step (%c1 : index) {
     "test.openacc_dummy_op"() : () -> ()
     acc.yield
   }
-  acc.loop gang(static=%i64Value: i64) {
+  acc.loop gang(static=%i64Value: i64) (%iv : index) = (%c0 : index) to (%c10 : index) step (%c1 : index) {
     "test.openacc_dummy_op"() : () -> ()
     acc.yield
   }
-  acc.loop worker(%i64Value: i64) {
+  acc.loop worker(%i64Value: i64) (%iv : index) = (%c0 : index) to (%c10 : index) step (%c1 : index) {
     "test.openacc_dummy_op"() : () -> ()
     acc.yield
   }
-  acc.loop worker(%i32Value: i32) {
+  acc.loop worker(%i32Value: i32) (%iv : index) = (%c0 : index) to (%c10 : index) step (%c1 : index) {
     "test.openacc_dummy_op"() : () -> ()
     acc.yield
   }
-  acc.loop worker(%idxValue: index) {
+  acc.loop worker(%idxValue: index) (%iv : index) = (%c0 : index) to (%c10 : index) step (%c1 : index) {
     "test.openacc_dummy_op"() : () -> ()
     acc.yield
   }
-  acc.loop vector(%i64Value: i64) {
+  acc.loop vector(%i64Value: i64) (%iv : index) = (%c0 : index) to (%c10 : index) step (%c1 : index) {
     "test.openacc_dummy_op"() : () -> ()
     acc.yield
   }
-  acc.loop vector(%i32Value: i32) {
+  acc.loop vector(%i32Value: i32) (%iv : index) = (%c0 : index) to (%c10 : index) step (%c1 : index) {
     "test.openacc_dummy_op"() : () -> ()
     acc.yield
   }
-  acc.loop vector(%idxValue: index) {
+  acc.loop vector(%idxValue: index) (%iv : index) = (%c0 : index) to (%c10 : index) step (%c1 : index) {
     "test.openacc_dummy_op"() : () -> ()
     acc.yield
   }
-  acc.loop gang(num=%i64Value: i64) worker vector {
+  acc.loop gang(num=%i64Value: i64) worker() vector() (%iv : index) = (%c0 : index) to (%c10 : index) step (%c1 : index) {
     "test.openacc_dummy_op"() : () -> ()
     acc.yield
   }
-  acc.loop gang(num=%i64Value: i64, static=%i64Value: i64) worker(%i64Value: i64) vector(%i64Value: i64) {
+  acc.loop gang(num=%i64Value: i64, static=%i64Value: i64) worker(%i64Value: i64) vector(%i64Value: i64) (%iv : index) = (%c0 : index) to (%c10 : index) step (%c1 : index) {
     "test.openacc_dummy_op"() : () -> ()
     acc.yield
   }
-  acc.loop gang(num=%i32Value: i32, static=%idxValue: index) {
+  acc.loop gang(num=%i32Value: i32, static=%idxValue: index) (%iv : index) = (%c0 : index) to (%c10 : index) step (%c1 : index) {
     "test.openacc_dummy_op"() : () -> ()
     acc.yield
   }
-  acc.loop tile(%i64Value, %i64Value : i64, i64) {
+  acc.loop tile(%i64Value, %i64Value : i64, i64) (%iv : index) = (%c0 : index) to (%c10 : index) step (%c1 : index) {
     "test.openacc_dummy_op"() : () -> ()
     acc.yield
   }
-  acc.loop tile(%i32Value, %i32Value : i32, i32) {
+  acc.loop tile(%i32Value, %i32Value : i32, i32) (%iv : index) = (%c0 : index) to (%c10 : index) step (%c1 : index) {
     "test.openacc_dummy_op"() : () -> ()
     acc.yield
   }
-  acc.loop gang(static=%i64Value: i64, num=%i64Value: i64) {
+  acc.loop gang(static=%i64Value: i64, num=%i64Value: i64) (%iv : index) = (%c0 : index) to (%c10 : index) step (%c1 : index) {
     "test.openacc_dummy_op"() : () -> ()
     acc.yield
   }
-  acc.loop gang(dim=%i64Value : i64, static=%i64Value: i64) {
+  acc.loop gang(dim=%i64Value : i64, static=%i64Value: i64) (%iv : index) = (%c0 : index) to (%c10 : index) step (%c1 : index) {
     "test.openacc_dummy_op"() : () -> ()
     acc.yield
   }
@@ -288,86 +262,73 @@ func.func @testloopop() -> () {
 // CHECK:      [[I64VALUE:%.*]] = arith.constant 1 : i64
 // CHECK-NEXT: [[I32VALUE:%.*]] = arith.constant 128 : i32
 // CHECK-NEXT: [[IDXVALUE:%.*]] = arith.constant 8 : index
-// CHECK:      acc.loop gang worker vector {
+// CHECK:      acc.loop gang() worker() vector()
 // CHECK-NEXT:   "test.openacc_dummy_op"() : () -> ()
 // CHECK-NEXT:   acc.yield
-// CHECK-NEXT: }
-// CHECK:      acc.loop gang(num=[[I64VALUE]] : i64) {
+// CHECK:      acc.loop gang(num=[[I64VALUE]] : i64)
 // CHECK-NEXT:   "test.openacc_dummy_op"() : () -> ()
 // CHECK-NEXT:   acc.yield
-// CHECK-NEXT: }
-// CHECK:      acc.loop gang(static=[[I64VALUE]] : i64) {
+// CHECK:      acc.loop gang(static=[[I64VALUE]] : i64)
 // CHECK-NEXT:   "test.openacc_dummy_op"() : () -> ()
 // CHECK-NEXT:   acc.yield
-// CHECK-NEXT: }
-// CHECK:      acc.loop worker([[I64VALUE]] : i64) {
+// CHECK:      acc.loop worker([[I64VALUE]] : i64)
 // CHECK-NEXT:   "test.openacc_dummy_op"() : () -> ()
 // CHECK-NEXT:   acc.yield
-// CHECK-NEXT: }
-// CHECK:      acc.loop worker([[I32VALUE]] : i32) {
+// CHECK:      acc.loop worker([[I32VALUE]] : i32)
 // CHECK-NEXT:   "test.openacc_dummy_op"() : () -> ()
 // CHECK-NEXT:   acc.yield
-// CHECK-NEXT: }
-// CHECK:      acc.loop worker([[IDXVALUE]] : index) {
+// CHECK:      acc.loop worker([[IDXVALUE]] : index)
 // CHECK-NEXT:   "test.openacc_dummy_op"() : () -> ()
 // CHECK-NEXT:   acc.yield
-// CHECK-NEXT: }
-// CHECK:      acc.loop vector([[I64VALUE]] : i64) {
+// CHECK:      acc.loop vector([[I64VALUE]] : i64)
 // CHECK-NEXT:   "test.openacc_dummy_op"() : () -> ()
 // CHECK-NEXT:   acc.yield
-// CHECK-NEXT: }
-// CHECK:      acc.loop vector([[I32VALUE]] : i32) {
+// CHECK:      acc.loop vector([[I32VALUE]] : i32)
 // CHECK-NEXT:   "test.openacc_dummy_op"() : () -> ()
 // CHECK-NEXT:   acc.yield
-// CHECK-NEXT: }
-// CHECK:      acc.loop vector([[IDXVALUE]] : index) {
+// CHECK:      acc.loop vector([[IDXVALUE]] : index)
 // CHECK-NEXT:   "test.openacc_dummy_op"() : () -> ()
 // CHECK-NEXT:   acc.yield
-// CHECK-NEXT: }
-// CHECK:      acc.loop gang(num=[[I64VALUE]] : i64) worker vector {
+// CHECK:      acc.loop gang(num=[[I64VALUE]] : i64) worker() vector()
 // CHECK-NEXT:   "test.openacc_dummy_op"() : () -> ()
 // CHECK-NEXT:   acc.yield
-// CHECK-NEXT: }
-// CHECK:      acc.loop gang(num=[[I64VALUE]] : i64, static=[[I64VALUE]] : i64) worker([[I64VALUE]] : i64) vector([[I64VALUE]] : i64) {
+// CHECK:      acc.loop gang(num=[[I64VALUE]] : i64, static=[[I64VALUE]] : i64) worker([[I64VALUE]] : i64) vector([[I64VALUE]] : i64)
 // CHECK-NEXT:   "test.openacc_dummy_op"() : () -> ()
 // CHECK-NEXT:   acc.yield
-// CHECK-NEXT: }
-// CHECK:      acc.loop gang(num=[[I32VALUE]] : i32, static=[[IDXVALUE]] : index) {
+// CHECK:      acc.loop gang(num=[[I32VALUE]] : i32, static=[[IDXVALUE]] : index)
 // CHECK-NEXT:   "test.openacc_dummy_op"() : () -> ()
 // CHECK-NEXT:   acc.yield
-// CHECK-NEXT: }
-// CHECK:      acc.loop tile([[I64VALUE]], [[I64VALUE]] : i64, i64) {
+// CHECK:      acc.loop tile([[I64VALUE]], [[I64VALUE]] : i64, i64)
 // CHECK-NEXT:   "test.openacc_dummy_op"() : () -> ()
 // CHECK-NEXT:   acc.yield
-// CHECK-NEXT: }
-// CHECK:      acc.loop tile([[I32VALUE]], [[I32VALUE]] : i32, i32) {
+// CHECK:      acc.loop tile([[I32VALUE]], [[I32VALUE]] : i32, i32)
 // CHECK-NEXT:   "test.openacc_dummy_op"() : () -> ()
 // CHECK-NEXT:   acc.yield
-// CHECK-NEXT: }
-// CHECK:      acc.loop gang(num=[[I64VALUE]] : i64, static=[[I64VALUE]] : i64) {
+// CHECK:      acc.loop gang(num=[[I64VALUE]] : i64, static=[[I64VALUE]] : i64)
 // CHECK-NEXT:   "test.openacc_dummy_op"() : () -> ()
 // CHECK-NEXT:   acc.yield
-// CHECK-NEXT: }
-// CHECK:      acc.loop gang(dim=[[I64VALUE]] : i64, static=[[I64VALUE]] : i64) {
+// CHECK:      acc.loop gang(dim=[[I64VALUE]] : i64, static=[[I64VALUE]] : i64)
 // CHECK-NEXT:   "test.openacc_dummy_op"() : () -> ()
 // CHECK-NEXT:   acc.yield
-// CHECK-NEXT: }
 
 // -----
 
 func.func @acc_loop_multiple_block() {
+  %c0 = arith.constant 0 : index
+  %c10 = arith.constant 10 : index
+  %c1 = arith.constant 1 : index
   acc.parallel {
-    acc.loop {
-      %c1 = arith.constant 1 : index
-      cf.br ^bb1(%c1 : index)
+    acc.loop  (%iv : index) = (%c0 : index) to (%c10 : index) step (%c1 : index) {
+      %c1_1 = arith.constant 1 : index
+      cf.br ^bb1(%c1_1 : index)
     ^bb1(%9: index):
-      %c0 = arith.constant 0 : index
-      %12 = arith.cmpi sgt, %9, %c0 : index
+      %c0_1 = arith.constant 0 : index
+      %12 = arith.cmpi sgt, %9, %c0_1 : index
       cf.cond_br %12, ^bb2, ^bb3
     ^bb2:
       %c1_0 = arith.constant 1 : index
-      %c10 = arith.constant 10 : index
-      %22 = arith.subi %c10, %c1_0 : index
+      %c10_1 = arith.constant 10 : index
+      %22 = arith.subi %c10_1, %c1_0 : index
       cf.br ^bb1(%22 : index)
     ^bb3:
       acc.yield
@@ -1503,8 +1464,11 @@ acc.reduction.recipe @reduction_add_i64 : i64 reduction_operator<add> init {
 // CHECK:       }
 
 func.func @acc_reduc_test(%a : i64) -> () {
+  %c0 = arith.constant 0 : index
+  %c10 = arith.constant 10 : index
+  %c1 = arith.constant 1 : index
   acc.parallel reduction(@reduction_add_i64 -> %a : i64) {
-    acc.loop reduction(@reduction_add_i64 -> %a : i64) {
+    acc.loop reduction(@reduction_add_i64 -> %a : i64) (%iv : index) = (%c0 : index) to (%c10 : index) step (%c1 : index) {
       acc.yield
     }
     acc.yield

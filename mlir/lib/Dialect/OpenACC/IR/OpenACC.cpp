@@ -712,6 +712,9 @@ static ParseResult parseGangClause(
 
   // optional gang operands
   if (succeeded(parser.parseOptionalLParen())) {
+    // Allow empty parenthesis.
+    if (succeeded(parser.parseOptionalRParen()))
+      return success();
     while (true) {
       bool newValue = false;
       bool needValue = false;
@@ -758,8 +761,8 @@ static ParseResult parseGangClause(
 void printGangClause(OpAsmPrinter &p, Operation *op, Value gangNum,
                      Type gangNumType, Value gangDim, Type gangDimType,
                      Value gangStatic, Type gangStaticType, UnitAttr hasGang) {
+  p << "(";
   if (gangNum || gangStatic || gangDim) {
-    p << "(";
     if (gangNum) {
       p << LoopOp::getGangNumKeyword() << "=" << gangNum << " : "
         << gangNumType;
@@ -775,8 +778,8 @@ void printGangClause(OpAsmPrinter &p, Operation *op, Value gangNum,
     if (gangStatic)
       p << LoopOp::getGangStaticKeyword() << "=" << gangStatic << " : "
         << gangStaticType;
-    p << ")";
   }
+  p << ")";
 }
 
 static ParseResult
@@ -785,6 +788,9 @@ parseWorkerClause(OpAsmParser &parser,
                   Type &workerNumType, UnitAttr &hasWorker) {
   hasWorker = UnitAttr::get(parser.getBuilder().getContext());
   if (succeeded(parser.parseOptionalLParen())) {
+    // Allow empty parenthesis.
+    if (succeeded(parser.parseOptionalRParen()))
+      return success();
     workerNum = OpAsmParser::UnresolvedOperand{};
     if (parser.parseOperand(*workerNum) ||
         parser.parseColonType(workerNumType) || parser.parseRParen())
@@ -795,8 +801,10 @@ parseWorkerClause(OpAsmParser &parser,
 
 void printWorkerClause(OpAsmPrinter &p, Operation *op, Value workerNum,
                        Type workerNumType, UnitAttr hasWorker) {
+  p << "(";
   if (workerNum)
-    p << "(" << workerNum << " : " << workerNumType << ")";
+    p << workerNum << " : " << workerNumType;
+  p << ")";
 }
 
 static ParseResult
@@ -805,6 +813,9 @@ parseVectorClause(OpAsmParser &parser,
                   Type &vectorLengthType, UnitAttr &hasVector) {
   hasVector = UnitAttr::get(parser.getBuilder().getContext());
   if (succeeded(parser.parseOptionalLParen())) {
+    // Allow empty parenthesis.
+    if (succeeded(parser.parseOptionalRParen()))
+      return success();
     vectorLength = OpAsmParser::UnresolvedOperand{};
     if (parser.parseOperand(*vectorLength) ||
         parser.parseColonType(vectorLengthType) || parser.parseRParen())
@@ -815,8 +826,10 @@ parseVectorClause(OpAsmParser &parser,
 
 void printVectorClause(OpAsmPrinter &p, Operation *op, Value vectorLength,
                        Type vectorLengthType, UnitAttr hasVector) {
+  p << "(";
   if (vectorLength)
-    p << "(" << vectorLength << " : " << vectorLengthType << ")";
+    p << vectorLength << " : " << vectorLengthType;
+  p << ")";
 }
 
 LogicalResult acc::LoopOp::verify() {
@@ -848,6 +861,52 @@ LogicalResult acc::LoopOp::verify() {
     return emitError("expected non-empty body.");
 
   return success();
+}
+
+Region &acc::LoopOp::getLoopBody() { return getRegion(); }
+
+/// loop-control ::= `(` ssa-id-and-type-list `)` `=` `(` ssa-id-and-type-list
+/// `)` `to` `(` ssa-id-and-type-list `)` `step` `(` ssa-id-and-type-list `)`
+ParseResult
+parseLoopControl(OpAsmParser &parser, Region &region,
+                 SmallVectorImpl<OpAsmParser::UnresolvedOperand> &lowerbound,
+                 SmallVectorImpl<Type> &lowerboundType,
+                 SmallVectorImpl<OpAsmParser::UnresolvedOperand> &upperbound,
+                 SmallVectorImpl<Type> &upperboundType,
+                 SmallVectorImpl<OpAsmParser::UnresolvedOperand> &step,
+                 SmallVectorImpl<Type> &stepType) {
+
+  SmallVector<OpAsmParser::Argument> inductionVars;
+  if (parser.parseArgumentList(inductionVars, OpAsmParser::Delimiter::Paren,
+                               /*allowType=*/true) ||
+      parser.parseEqual() || parser.parseLParen() ||
+      parser.parseOperandList(lowerbound, inductionVars.size(),
+                              OpAsmParser::Delimiter::None) ||
+      parser.parseColonTypeList(lowerboundType) || parser.parseRParen() ||
+      parser.parseKeyword("to") || parser.parseLParen() ||
+      parser.parseOperandList(upperbound, inductionVars.size(),
+                              OpAsmParser::Delimiter::None) ||
+      parser.parseColonTypeList(upperboundType) || parser.parseRParen() ||
+      parser.parseKeyword("step") || parser.parseLParen() ||
+      parser.parseOperandList(step, inductionVars.size(),
+                              OpAsmParser::Delimiter::None) ||
+      parser.parseColonTypeList(stepType) || parser.parseRParen())
+    return failure();
+  return parser.parseRegion(region, inductionVars);
+}
+
+void printLoopControl(OpAsmPrinter &p, Operation *op, Region &region,
+                      ValueRange lowerbound, TypeRange lowerboundType,
+                      ValueRange upperbound, TypeRange upperboundType,
+                      ValueRange steps, TypeRange stepType) {
+  ValueRange regionArgs = region.front().getArguments();
+  p << "(";
+  llvm::interleaveComma(regionArgs, p,
+                        [&p](Value v) { p << v << " : " << v.getType(); });
+  p << ") = (" << lowerbound << " : " << lowerboundType << ") to ("
+    << upperbound << " : " << upperboundType << ") "
+    << " step (" << steps << " : " << stepType << ")";
+  p.printRegion(region, /*printEntryBlockArgs=*/false);
 }
 
 //===----------------------------------------------------------------------===//
