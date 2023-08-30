@@ -2,6 +2,7 @@
  * Test for asm-dump functionality.
  *
  * REQUIRES: x86_64-linux,bolt-runtime
+ * UNSUPPORTED: target=aarch64{{.*}}
  *
  * Compile the source
  * RUN: %clang -fPIC %s -o %t.exe -Wl,-q

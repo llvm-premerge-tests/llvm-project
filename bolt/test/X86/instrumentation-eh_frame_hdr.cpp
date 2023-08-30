@@ -2,6 +2,7 @@
 // end address i.e. the section address is smaller then the LOAD end address.
 
 // REQUIRES: system-linux,bolt-runtime
+// UNSUPPORTED: target=aarch64{{.*}}
 
 // RUN: %clangxx %cxxflags -static -Wl,-q %s -o %t.exe -Wl,--entry=_start
 // RUN: llvm-bolt %t.exe -o %t.instr -instrument \

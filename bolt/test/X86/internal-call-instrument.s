@@ -1,6 +1,7 @@
 # This reproduces a bug with instrumentation crashes on internal call
 
 # REQUIRES: x86_64-linux,bolt-runtime
+# UNSUPPORTED: target=aarch64{{.*}}
 
 # RUN: llvm-mc -filetype=obj -triple x86_64-unknown-unknown %s -o %t.o
 # Delete our BB symbols so BOLT doesn't mark them as entry points
