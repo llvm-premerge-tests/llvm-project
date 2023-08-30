@@ -14,6 +14,14 @@
 namespace __llvm_libc {
 namespace cpp {
 
+// Some older gcc distributions don't define these for 32 bit targets.
+#ifndef LLONG_MAX
+constexpr size_t size_bits = sizeof(long long) * 8 - 1;
+constexpr long long LLONG_MAX = ~0LL ^ (1LL << size_bits);
+constexpr long long LLONG_MIN = 1LL << size_bits;
+constexpr unsigned long long ULLONG_MAX = ~0ULL;
+#endif
+
 template <class T> class numeric_limits {
 public:
   static constexpr T max();
