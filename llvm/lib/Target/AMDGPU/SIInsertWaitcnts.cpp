@@ -1847,7 +1847,7 @@ bool SIInsertWaitcnts::runOnMachineFunction(MachineFunction &MF) {
   BlockInfos.clear();
   bool Modified = false;
 
-  if (!MFI->isEntryFunction()) {
+  if (!MFI->isEntryFunction() && !MFI->isChainFunction()) {
     // Wait for any outstanding memory operations that the input registers may
     // depend on. We can't track them and it's better to do the wait after the
     // costly call sequence.
