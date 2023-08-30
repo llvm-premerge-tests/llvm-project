@@ -148,20 +148,23 @@ available GPUs failed, you should also set:
 
 Q: What are the known limitations of OpenMP AMDGPU offload?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LD_LIBRARY_PATH or rpath/runpath are required to find libomp.so and libomptarget.so
+Compiling at O0 is heuristically unlikely to work robustly at present.
 
-There is no libc. That is, malloc and printf do not exist. Libm is implemented in terms
-of the rocm device library, which will be searched for if linking with '-lm'.
+Libc is a work in progress. It is partially based on the LLVM libc project and
+partly on the rocm device library, which will be searched for if linking with '-lm'.
 
 Some versions of the driver for the radeon vii (gfx906) will error unless the
 environment variable 'export HSA_IGNORE_SRAMECC_MISREPORT=1' is set.
 
-It is a recent addition to LLVM and the implementation differs from that which
-has been shipping in ROCm and AOMP for some time. Early adopters will encounter
-bugs.
+There are vendor provided toolchains that share some implementation with this
+version. They should be expected to have different behaviour to this toolchain,
+bugs in one may not reproduce in the other.
 
 Q: What are the LLVM components used in offloading and how are they found?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+May have the symptom "error while loading shared libraries: libomp.so" when
+running a program compiled with -fopenmp.
+
 The libraries used by an executable compiled for target offloading are:
 
 - ``libomp.so`` (or similar), the host openmp runtime
@@ -194,7 +197,7 @@ as ``openmp.cfg`` next to your ``clang`` executable.
   -L '<CFGDIR>/../lib'
   -Wl,-rpath='<CFGDIR>/../lib'
 
-The plugins will try to find their dependencies in plugin-dependent fashion.
+The plugins will try to find their dependencies in plugin-dependent fashion:
 
 The cuda plugin is dynamically linked against libcuda if cmake found it at
 compiler build time. Otherwise it will attempt to dlopen ``libcuda.so``. It does
