@@ -166,6 +166,15 @@ public:
   evaluateBranch(const MCInst &Inst, uint64_t Addr, uint64_t Size,
                  uint64_t &Target) const;
 
+  /// Given a branch instruction try to get the address the branch targets.
+  /// Return true on success, and the address in Target. If the previous
+  /// instruction is known, it may be passed in PrevInst, in which case Addr is
+  /// still the address of Inst. This is useful for targets like RISC-V where
+  /// some branches take up two instructions (e.g. auipc+jalr).
+  virtual bool evaluateBranch(const MCInst &Inst, uint64_t Addr, uint64_t Size,
+                              uint64_t &Target,
+                              const std::optional<MCInst> &PrevInst) const;
+
   /// Given an instruction tries to get the address of a memory operand. Returns
   /// the address on success.
   virtual std::optional<uint64_t>

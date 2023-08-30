@@ -120,6 +120,12 @@ public:
 
   bool evaluateBranch(const MCInst &Inst, uint64_t Addr, uint64_t Size,
                       uint64_t &Target) const override {
+    return evaluateBranch(Inst, Addr, Size, Target, std::nullopt);
+  }
+
+  bool evaluateBranch(const MCInst &Inst, uint64_t Addr, uint64_t Size,
+                      uint64_t &Target,
+                      const std::optional<MCInst> &PrevInst) const override {
     if (isConditionalBranch(Inst)) {
       int64_t Imm;
       if (Size == 2)
@@ -137,6 +143,16 @@ public:
 
     if (Inst.getOpcode() == RISCV::JAL) {
       Target = Addr + Inst.getOperand(1).getImm();
+      return true;
+    }
+
+    // Detect auipc xi, a; jalr b(xi). Note that Addr is the address of Inst
+    // (jalr) so we have to subtract 4 from it.
+    if (PrevInst && PrevInst->getOpcode() == RISCV::AUIPC &&
+        Inst.getOpcode() == RISCV::JALR &&
+        PrevInst->getOperand(0).getReg() == Inst.getOperand(1).getReg()) {
+      Target = Addr - 4 + (PrevInst->getOperand(1).getImm() << 12) +
+               Inst.getOperand(2).getImm();
       return true;
     }
 
