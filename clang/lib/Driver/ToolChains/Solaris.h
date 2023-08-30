@@ -38,6 +38,7 @@ public:
 
   bool hasIntegratedCPP() const override { return false; }
   bool isLinkJob() const override { return true; }
+  std::string getLinkerPath(const llvm::opt::ArgList &Args) const;
 
   void ConstructJob(Compilation &C, const JobAction &JA,
                     const InputInfo &Output, const InputInfoList &Inputs,
@@ -65,10 +66,7 @@ public:
   SanitizerMask getSupportedSanitizers() const override;
   unsigned GetDefaultDwarfVersion() const override { return 2; }
 
-  const char *getDefaultLinker() const override {
-    // clang currently uses Solaris ld-only options.
-    return "/usr/bin/ld";
-  }
+  const char *getDefaultLinker() const override;
 
 protected:
   Tool *buildAssembler() const override;
