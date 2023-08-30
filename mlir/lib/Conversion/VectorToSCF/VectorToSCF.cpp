@@ -316,13 +316,14 @@ static BufferAllocs allocBuffers(OpBuilder &b, OpTy xferOp) {
 /// E.g.: memref<9xvector<5x6xf32>> --> memref<9x5xvector<6xf32>>
 static MemRefType unpackOneDim(MemRefType type) {
   auto vectorType = dyn_cast<VectorType>(type.getElementType());
+  assert(!vectorType.getScalableDims().front() &&
+         "Cannot unpack scalable dim into memref");
   auto memrefShape = type.getShape();
   SmallVector<int64_t, 8> newMemrefShape;
   newMemrefShape.append(memrefShape.begin(), memrefShape.end());
   newMemrefShape.push_back(vectorType.getDimSize(0));
   return MemRefType::get(newMemrefShape,
-                         VectorType::get(vectorType.getShape().drop_front(),
-                                         vectorType.getElementType()));
+                         VectorType::Builder(vectorType).dropDim(0));
 }
 
 /// Given a transfer op, find the memref from which the mask is loaded. This
@@ -1074,8 +1075,14 @@ struct UnrollTransferReadConversion
     auto vec = getResultVector(xferOp, rewriter);
     auto vecType = dyn_cast<VectorType>(vec.getType());
     auto xferVecType = xferOp.getVectorType();
-    auto newXferVecType = VectorType::get(xferVecType.getShape().drop_front(),
-                                          xferVecType.getElementType());
+
+    if (xferVecType.getScalableDims().front()) {
+      // Cannot unroll a scalable dimension at compile time.
+      return failure();
+    }
+
+    VectorType newXferVecType = VectorType::Builder(xferVecType).dropDim(0);
+
     int64_t dimSize = xferVecType.getShape()[0];
 
     // Generate fully unrolled loop of transfer ops.
