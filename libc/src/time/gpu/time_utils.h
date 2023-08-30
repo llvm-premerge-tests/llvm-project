@@ -13,7 +13,7 @@
 
 namespace __llvm_libc {
 
-#if defined(LIBC_TARGET_ARCH_IS_GPU)
+#if defined(LIBC_TARGET_ARCH_IS_AMDGPU)
 // AMDGPU does not have a single set frequency. Different architectures and
 // cards can have vary values. Here we default to a few known values, but for
 // complete support the frequency needs to be read from the kernel driver.
