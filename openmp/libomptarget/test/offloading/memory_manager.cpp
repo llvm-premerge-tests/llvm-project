@@ -1,6 +1,5 @@
-// RUN: %libomptarget-compilexx-run-and-check-generic
+// RUN: %libomptarget-compileoptxx-run-and-check-generic
 
-// UNSUPPORTED: amdgcn-amd-amdhsa
 // UNSUPPORTED: x86_64-pc-linux-gnu
 // UNSUPPORTED: x86_64-pc-linux-gnu-LTO
 
