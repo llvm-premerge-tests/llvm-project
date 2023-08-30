@@ -895,7 +895,9 @@ void HWAddressSanitizer::instrumentMemAccessOutline(Value *Ptr, bool IsWrite,
   const int64_t AccessInfo = getAccessInfo(IsWrite, AccessSizeIndex);
 
   if (InlineFastPath) {
-    // TODO.
+    // TODO: Now we can pass a tag just loaded from the shadow into an
+    // intrinsic.
+    InsertBefore = insertShadowTagCheck(Ptr, InsertBefore).MismatchTerm;
   }
 
   IRBuilder<> IRB(InsertBefore);
