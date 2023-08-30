@@ -666,15 +666,16 @@ public:
   }
 
   /// Return the register class of \p Reg, or null if Reg has not been assigned
-  /// a register class yet.
+  /// a register class yet. Alive registers are guaranteed to have a register
+  /// class.
   ///
   /// \note A null register class can only happen when these two
   /// conditions are met:
   /// 1. Generic virtual registers are created.
   /// 2. The machine function has not completely been through the
-  ///    instruction selection process.
+  ///    instruction selection process or selected using GlobalISel.
   /// None of this condition is possible without GlobalISel for now.
-  /// In other words, if GlobalISel is not used or if the query happens after
+  /// In other words, if GlobalISel is not used and if the query happens after
   /// the select pass, using getRegClass is safe.
   const TargetRegisterClass *getRegClassOrNull(Register Reg) const {
     const RegClassOrRegBank &Val = VRegInfo[Reg].first;
