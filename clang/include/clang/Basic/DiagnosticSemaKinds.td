@@ -8614,13 +8614,18 @@ def warn_atomic_implicit_seq_cst : Warning<
   InGroup<DiagGroup<"atomic-implicit-seq-cst">>, DefaultIgnore;
 
 def err_overflow_builtin_must_be_int : Error<
-  "operand argument to overflow builtin must be an integer (%0 invalid)">;
+  "operand argument to %select{overflow builtin|checked integer operation}0 "
+  "must be an integer type %select{|other than plain 'char', 'bool', bit-precise, "
+  "or an enumeration }1 invalid">;
 def err_overflow_builtin_must_be_ptr_int : Error<
-  "result argument to overflow builtin must be a pointer "
-  "to a non-const integer (%0 invalid)">;
+  "result argument to %select{overflow builtin|checked integer operation}0 "
+  "must be a pointer to a non-const integer type %select{|other than plain 'char', "
+  "'bool', bit-precise, or an enumeration }0(%1 invalid)">;
 def err_overflow_builtin_bit_int_max_size : Error<
   "__builtin_mul_overflow does not support 'signed _BitInt' operands of more "
   "than %0 bits">;
+def err_overflow_builtin_result_type_can_not_be_short : Error<
+  "'short' may not be suitable to hold the result of operating two 'int's ">;
 def err_expected_struct_pointer_argument : Error<
   "expected pointer to struct as %ordinal0 argument to %1, found %2">;
 def err_expected_callable_argument : Error<

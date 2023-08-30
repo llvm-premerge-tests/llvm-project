@@ -12,6 +12,7 @@ set(core_files
   stdarg.h
   stdatomic.h
   stdbool.h
+  stdckdint.h
   stddef.h
   __stddef_max_align_t.h
   stdint.h
