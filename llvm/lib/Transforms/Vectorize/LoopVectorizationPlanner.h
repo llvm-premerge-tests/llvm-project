@@ -45,13 +45,17 @@ class VPBuilder {
   VPBasicBlock *BB = nullptr;
   VPBasicBlock::iterator InsertPt = VPBasicBlock::iterator();
 
+  /// Insert \p VPI in BB at InsertPt if BB is set.
+  VPInstruction *insertInstruction(VPInstruction *VPI) {
+    if (BB)
+      BB->insert(VPI, InsertPt);
+    return VPI;
+  }
+
   VPInstruction *createInstruction(unsigned Opcode,
                                    ArrayRef<VPValue *> Operands, DebugLoc DL,
                                    const Twine &Name = "") {
-    VPInstruction *Instr = new VPInstruction(Opcode, Operands, DL, Name);
-    if (BB)
-      BB->insert(Instr, InsertPt);
-    return Instr;
+    return insertInstruction(new VPInstruction(Opcode, Operands, DL, Name));
   }
 
   VPInstruction *createInstruction(unsigned Opcode,
@@ -150,6 +154,15 @@ public:
                         DebugLoc DL, const Twine &Name = "") {
     return createNaryOp(Instruction::Select, {Cond, TrueVal, FalseVal}, DL,
                         Name);
+  }
+
+  /// Create a new ICmp VPInstruction with predicate \p Pred and operands \p A
+  /// and \p B.
+  /// TODO: add createFCmp when needed.
+  VPValue *createICmp(CmpInst::Predicate Pred, VPValue *A, VPValue *B,
+                      DebugLoc DL = {}, const Twine &Name = "") {
+    return insertInstruction(
+        new VPInstruction(Instruction::ICmp, Pred, A, B, DL, Name));
   }
 
   //===--------------------------------------------------------------------===//

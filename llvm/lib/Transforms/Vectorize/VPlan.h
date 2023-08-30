@@ -814,6 +814,7 @@ public:
 /// Class to record LLVM IR flag for a recipe along with it.
 class VPRecipeWithIRFlags : public VPRecipeBase {
   enum class OperationType : unsigned char {
+    Cmp,
     OverflowingBinOp,
     PossiblyExactOp,
     GEPOp,
@@ -851,11 +852,12 @@ private:
   OperationType OpType;
 
   union {
+    CmpInst::Predicate CmpPredicate;
     WrapFlagsTy WrapFlags;
     ExactFlagsTy ExactFlags;
     GEPFlagsTy GEPFlags;
     FastMathFlagsTy FMFs;
-    unsigned char AllFlags;
+    unsigned AllFlags;
   };
 
 public:
@@ -869,7 +871,10 @@ public:
   template <typename IterT>
   VPRecipeWithIRFlags(const unsigned char SC, IterT Operands, Instruction &I)
       : VPRecipeWithIRFlags(SC, Operands) {
-    if (auto *Op = dyn_cast<OverflowingBinaryOperator>(&I)) {
+    if (auto *Op = dyn_cast<CmpInst>(&I)) {
+      OpType = OperationType::Cmp;
+      CmpPredicate = Op->getPredicate();
+    } else if (auto *Op = dyn_cast<OverflowingBinaryOperator>(&I)) {
       OpType = OperationType::OverflowingBinOp;
       WrapFlags = {Op->hasNoUnsignedWrap(), Op->hasNoSignedWrap()};
     } else if (auto *Op = dyn_cast<PossiblyExactOperator>(&I)) {
@@ -895,6 +900,12 @@ public:
                       FastMathFlags FMFs)
       : VPRecipeBase(SC, Operands), OpType(OperationType::FPMathOp),
         FMFs(FMFs) {}
+
+  template <typename IterT>
+  VPRecipeWithIRFlags(const unsigned char SC, IterT Operands,
+                      CmpInst::Predicate Pred)
+      : VPRecipeBase(SC, Operands), OpType(OperationType::Cmp),
+        CmpPredicate(Pred) {}
 
   static inline bool classof(const VPRecipeBase *R) {
     return R->getVPDefID() == VPRecipeBase::VPInstructionSC ||
@@ -922,6 +933,7 @@ public:
       FMFs.NoNaNs = false;
       FMFs.NoInfs = false;
       break;
+    case OperationType::Cmp:
     case OperationType::Other:
       break;
     }
@@ -949,6 +961,7 @@ public:
       I->setHasAllowContract(FMFs.AllowContract);
       I->setHasApproxFunc(FMFs.ApproxFunc);
       break;
+    case OperationType::Cmp:
     case OperationType::Other:
       break;
     }
@@ -977,6 +990,12 @@ public:
     return WrapFlags.HasNSW;
   }
 
+  CmpInst::Predicate getPredicate() const {
+    assert(OpType == OperationType::Cmp &&
+           "recipe doesn't have a compare predicate");
+    return CmpPredicate;
+  }
+
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
   void printFlags(raw_ostream &O) const;
 #endif
@@ -996,7 +1015,6 @@ public:
         Instruction::OtherOpsEnd + 1, // Combines the incoming and previous
                                       // values of a first-order recurrence.
     Not,
-    ICmpULE,
     SLPLoad,
     SLPStore,
     ActiveLaneMask,
@@ -1049,6 +1067,9 @@ public:
 
   VPInstruction(unsigned Opcode, std::initializer_list<VPValue *> Operands,
                 FastMathFlags FMFs, DebugLoc DL = {}, const Twine &Name = "");
+
+  VPInstruction(unsigned Opcode, CmpInst::Predicate Pred, VPValue *A,
+                VPValue *B, DebugLoc DL = {}, const Twine &Name = "");
 
   VP_CLASSOF_IMPL(VPDef::VPInstructionSC)
 
