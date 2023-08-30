@@ -323,3 +323,32 @@ func.func @iter_arg_memrefs(%in: memref<10xf32>) {
   }
   return
 }
+
+// CHECK-LABEL: @no_toplevel_block_parallelize
+func.func @no_toplevel_block_parallelize(%arg0: i1) {
+  %c0 = arith.constant 0 : index
+  %c1 = arith.constant 1 : index
+  %c2 = arith.constant 2 : index
+  %alloc_0 = memref.alloc() : memref<2x3x6xi1>
+
+  scf.if %arg0 {
+    %alloc_1 = memref.alloc() : memref<2x3x6x9xi1>
+    %dim_0 = memref.dim %alloc_0, %c0 : memref<2x3x6xi1>
+    %dim_1 = memref.dim %alloc_0, %c1 : memref<2x3x6xi1>
+    affine.for %arg2 = 0 to %dim_0 {
+      affine.for %arg3 = 0 to %dim_1 {
+        affine.for %arg4 = 0 to 6 {
+          affine.for %arg5 = 0 to 9 {
+            %load_0 = affine.load %alloc_0[%arg2, %arg3, %arg4] : memref<2x3x6xi1>
+            affine.store %load_0, %alloc_1[%arg2, %arg3, %arg4, %arg5] : memref<2x3x6x9xi1>
+          }
+        }
+      }
+    }
+  }
+  // CHECK: affine.parallel (%{{.*}}) = (0) to (symbol(%{{.*}})) {
+  // CHECK:   affine.parallel (%{{.*}}) = (0) to (symbol(%{{.*}})) {
+  // CHECK:    affine.parallel (%{{.*}}) = (0) to (6) {
+  // CHECK:      affine.parallel (%{{.*}}) = (0) to (9) {
+  return
+}

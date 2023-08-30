@@ -38,10 +38,10 @@ using namespace presburger;
 void FlatAffineValueConstraints::addInductionVarOrTerminalSymbol(Value val) {
   if (containsVar(val))
     return;
-
+  
   // Caller is expected to fully compose map/operands if necessary.
-  assert((isTopLevelValue(val) || isAffineInductionVar(val)) &&
-         "non-terminal symbol / loop IV expected");
+  assert((isValidSymbol(val) || isAffineInductionVar(val)) &&
+         "valid symbol / loop IV expected");
   // Outer loop IVs could be used in forOp's bounds.
   if (auto loop = getForInductionVarOwner(val)) {
     appendDimVar(val);
@@ -58,7 +58,7 @@ void FlatAffineValueConstraints::addInductionVarOrTerminalSymbol(Value val) {
     return;
   }
 
-  // Add top level symbol.
+  // Add valid symbol.
   appendSymbolVar(val);
   // Check if the symbol is a constant.
   if (std::optional<int64_t> constOp = getConstantIntValue(val))

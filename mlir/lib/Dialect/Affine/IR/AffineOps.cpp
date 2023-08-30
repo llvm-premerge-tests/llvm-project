@@ -378,7 +378,7 @@ bool mlir::affine::isValidSymbol(Value value) {
   return false;
 }
 
-/// A value can be used as a symbol for `region` iff it meets one of the
+/// A value can be used as a symbol for `region` if it meets one of the
 /// following conditions:
 /// *) It is a constant.
 /// *) It is the result of an affine apply operation with symbol arguments.
