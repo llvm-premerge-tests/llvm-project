@@ -2586,6 +2586,43 @@ static uint32_t getAndFeatures() {
   return ret;
 }
 
+static void getAarch64PauthInfo() {
+  if (config->emachine != EM_AARCH64)
+    return;
+
+  if (ctx.objectFiles.empty())
+    return;
+
+  config->aarch64PauthAbiTag = ctx.objectFiles.front()->aarch64PauthAbiTag;
+  config->gnuPropAarch64Pauth = ctx.objectFiles.front()->gnuPropAarch64Pauth;
+  for (ELFFileBase *f : ctx.objectFiles) {
+    StringRef f1 = ctx.objectFiles.front()->getName();
+    StringRef f2 = f->getName();
+    auto helper = [f1, f2](const SmallVector<uint8_t, 16> &d1,
+                           const SmallVector<uint8_t, 16> &d2) {
+      if (d1.empty() ^ d2.empty())
+        fatal((d1.empty() ? f1 : f2) +
+              " has no aarch64 pauth compatibility info while " +
+              (d1.empty() ? f2 : f1) +
+              " has one. Either all or no link units must have it.");
+
+      if (!std::equal(d1.begin(), d1.end(), d2.begin(), d2.end()))
+        fatal("Incompatible values of aarch64 pauth compatibility info found"
+              "\n" + f1 + ": 0x" + toHex(ArrayRef(d1.data(), d1.size())) +
+              "\n" + f2 + ": 0x" + toHex(ArrayRef(d2.data(), d2.size())));
+    };
+    helper(config->aarch64PauthAbiTag, f->aarch64PauthAbiTag);
+    helper(config->gnuPropAarch64Pauth, f->gnuPropAarch64Pauth);
+  }
+
+  if (!config->aarch64PauthAbiTag.empty() &&
+      !config->gnuPropAarch64Pauth.empty())
+    fatal("Input files contain both a .note.AARCH64-PAUTH-ABI-tag section and "
+          "a GNU_PROPERTY_AARCH64_FEATURE_PAUTH features in a "
+          ".note.gnu.property section. All the link units must use the same "
+          "way of specifying aarch64 pauth compatibility info.");
+}
+
 static void initSectionsAndLocalSyms(ELFFileBase *file, bool ignoreComdats) {
   switch (file->ekind) {
   case ELF32LEKind:
@@ -2918,6 +2955,8 @@ void LinkerDriver::link(opt::InputArgList &args) {
   // Read .note.gnu.property sections from input object files which
   // contain a hint to tweak linker's and loader's behaviors.
   config->andFeatures = getAndFeatures();
+
+  getAarch64PauthInfo();
 
   // The Target instance handles target-specific stuff, such as applying
   // relocations or writing a PLT section. It also contains target-dependent

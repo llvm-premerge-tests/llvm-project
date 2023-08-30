@@ -5053,6 +5053,24 @@ template <class ELFT> void GNUELFDumper<ELFT>::printAddrsig() {
   }
 }
 
+template <class ELFT>
+static void printAarch64PauthInfo(raw_ostream &OS, ArrayRef<uint8_t> Desc,
+                                  uint32_t DataSize) {
+  if (DataSize < 16) {
+    OS << format("<corrupted size: expected at least 16, got %d>", DataSize);
+    return;
+  }
+
+  uint64_t platform =
+      support::endian::read64<ELFT::TargetEndianness>(Desc.data() + 0);
+  uint64_t version =
+      support::endian::read64<ELFT::TargetEndianness>(Desc.data() + 8);
+  OS << format("platform 0x%x, version 0x%x", platform, version);
+  if (DataSize > 16)
+    OS << ", additional info 0x"
+       << toHex(ArrayRef<uint8_t>(Desc.data() + 16, DataSize - 16));
+}
+
 template <typename ELFT>
 static std::string getGNUProperty(uint32_t Type, uint32_t DataSize,
                                   ArrayRef<uint8_t> Data) {
@@ -5155,6 +5173,11 @@ static std::string getGNUProperty(uint32_t Type, uint32_t DataSize,
     if (PrData)
       OS << format("<unknown flags: 0x%x>", PrData);
     return OS.str();
+  case GNU_PROPERTY_AARCH64_FEATURE_PAUTH: {
+    OS << "aarch64 feature PAUTH: ";
+    printAarch64PauthInfo<ELFT>(OS, Data, DataSize);
+    return OS.str();
+  }
   }
 }
 
@@ -5307,6 +5330,17 @@ static bool printAndroidNote(raw_ostream &OS, uint32_t NoteType,
     return false;
   for (const auto &KV : Props)
     OS << "    " << KV.first << ": " << KV.second << '\n';
+  return true;
+}
+
+template <class ELFT>
+static bool printARMNote(raw_ostream &OS, uint32_t NoteType,
+                         ArrayRef<uint8_t> Desc) {
+  if (NoteType != NT_ARM_TYPE_PAUTH_ABI_TAG)
+    return false;
+
+  OS << "    aarch64 PAUTH ABI tag: ";
+  printAarch64PauthInfo<ELFT>(OS, Desc, Desc.size());
   return true;
 }
 
@@ -5709,6 +5743,10 @@ const NoteType AndroidNoteTypes[] = {
      "NT_ANDROID_TYPE_MEMTAG (Android memory tagging information)"},
 };
 
+const NoteType ARMNoteTypes[] = {
+    {ELF::NT_ARM_TYPE_PAUTH_ABI_TAG, "NT_ARM_TYPE_PAUTH_ABI_TAG"},
+};
+
 const NoteType CoreNoteTypes[] = {
     {ELF::NT_PRSTATUS, "NT_PRSTATUS (prstatus structure)"},
     {ELF::NT_FPREGSET, "NT_FPREGSET (floating point registers)"},
@@ -5825,6 +5863,8 @@ StringRef getNoteTypeName(const typename ELFT::Note &Note, unsigned ELFType) {
     return FindNote(LLVMOMPOFFLOADNoteTypes);
   if (Name == "Android")
     return FindNote(AndroidNoteTypes);
+  if (Name == "ARM")
+    return FindNote(ARMNoteTypes);
 
   if (ELFType == ELF::ET_CORE)
     return FindNote(CoreNoteTypes);
@@ -5979,6 +6019,9 @@ template <class ELFT> void GNUELFDumper<ELFT>::printNotes() {
       }
     } else if (Name == "Android") {
       if (printAndroidNote(OS, Type, Descriptor))
+        return Error::success();
+    } else if (Name == "ARM") {
+      if (printARMNote<ELFT>(OS, Type, Descriptor))
         return Error::success();
     }
     if (!Descriptor.empty()) {

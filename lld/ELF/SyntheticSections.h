@@ -142,6 +142,29 @@ public:
   GnuPropertySection();
   void writeTo(uint8_t *buf) override;
   size_t getSize() const override;
+  void finalizeContents() override;
+  bool isNeeded() const override;
+
+private:
+  class Elf_Prop {
+  public:
+    Elf_Prop(uint32_t type, SmallVector<uint8_t, 4> data);
+    const uint32_t type;
+    const SmallVector<uint8_t, 4> data;
+    const uint32_t sizeWithPadding;
+  };
+
+  SmallVector<Elf_Prop, 1> props;
+};
+
+// .note.AARCH64-PAUTH-ABI-tag section. See
+// https://github.com/ARM-software/abi-aa/blob/main/pauthabielf64/pauthabielf64.rst#elf-marking
+class Aarch64PauthAbiTag final : public SyntheticSection {
+public:
+  Aarch64PauthAbiTag();
+  void writeTo(uint8_t *buf) override;
+  size_t getSize() const override;
+  bool isNeeded() const override;
 };
 
 // .note.gnu.build-id section.
@@ -1352,6 +1375,8 @@ struct InStruct {
   std::unique_ptr<StringTableSection> strTab;
   std::unique_ptr<SymbolTableBaseSection> symTab;
   std::unique_ptr<SymtabShndxSection> symTabShndx;
+  std::unique_ptr<GnuPropertySection> gnuProp;
+  std::unique_ptr<Aarch64PauthAbiTag> aarch64PauthAbiTag;
 
   void reset();
 };
