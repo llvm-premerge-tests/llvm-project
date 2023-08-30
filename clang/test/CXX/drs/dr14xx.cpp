@@ -129,19 +129,19 @@ namespace dr1460 { // dr1460: 3.5
     union A { constexpr A() = default; };
     union B { int n; constexpr B() = default; };
 #if __cplusplus <= 201703L
-    // expected-error@-2 {{not constexpr}}
+    // expected-error@-2 {{default constructor cannot be 'constexpr' in a class with virtual base classes}} expected-note@-2 {{see reference to function 'B' in 'B' class}}
 #endif
     union C { int n = 0; constexpr C() = default; };
     struct D { union {}; constexpr D() = default; }; // expected-error {{does not declare anything}}
     struct E { union { int n; }; constexpr E() = default; };
 #if __cplusplus <= 201703L
-    // expected-error@-2 {{not constexpr}}
+    // expected-error@-2 {{default constructor cannot be 'constexpr' in a class with virtual base classes}} expected-note@-2 {{see reference to function 'E' in 'E' class}}
 #endif
     struct F { union { int n = 0; }; constexpr F() = default; };
 
     struct G { union { int n = 0; }; union { int m; }; constexpr G() = default; };
 #if __cplusplus <= 201703L
-    // expected-error@-2 {{not constexpr}}
+    // expected-error@-2 {{default constructor cannot be 'constexpr' in a class with virtual base classes}} expected-note@-2 {{see reference to function 'G' in 'G' class}}
 #endif
     struct H {
       union {
