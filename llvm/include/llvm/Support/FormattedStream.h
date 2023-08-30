@@ -145,11 +145,6 @@ public:
     return *this;
   }
 
-  raw_ostream &changeColor(enum Colors Color, bool Bold, bool BG) override {
-    TheStream->changeColor(Color, Bold, BG);
-    return *this;
-  }
-
   bool is_displayed() const override {
     return TheStream->is_displayed();
   }
