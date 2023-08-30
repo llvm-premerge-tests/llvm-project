@@ -17988,6 +17988,38 @@ void Sema::ActOnStartCXXMemberDeclarations(Scope *S, Decl *TagD,
          "Broken injected-class-name");
 }
 
+static const FieldDecl *FindFieldWithCountedByAttr(const RecordDecl *RD) {
+  for (const Decl *D : RD->decls()) {
+    if (const auto *FD = dyn_cast<FieldDecl>(D))
+      if (FD->hasAttr<CountedByAttr>())
+        return FD;
+
+    if (const auto *SubRD = dyn_cast<RecordDecl>(D))
+      return FindFieldWithCountedByAttr(SubRD);
+  }
+
+  return nullptr;
+}
+
+/// CheckCountedByAttr - Return an \p IdentifierInfo if the attribute field
+/// doesn't exist in the enclosing structure. Returns \p nullptr if the
+/// attribute field does exist.
+static const IdentifierInfo *CheckCountedByAttr(const RecordDecl *RD,
+                                                const FieldDecl *FD,
+                                                SourceRange &Loc) {
+  const auto *ECA = FD->getAttr<CountedByAttr>();
+
+  auto It = llvm::find_if(RD->fields(), [&](const FieldDecl *Field) {
+    return Field->getName() == ECA->getCountedByField()->getName();
+  });
+  if (It == RD->field_end()) {
+    Loc = ECA->getCountedByFieldLoc();
+    return ECA->getCountedByField();
+  }
+
+  return nullptr;
+}
+
 void Sema::ActOnTagFinishDefinition(Scope *S, Decl *TagD,
                                     SourceRange BraceRange) {
   AdjustDeclIfTemplate(TagD);
@@ -18045,6 +18077,17 @@ void Sema::ActOnTagFinishDefinition(Scope *S, Decl *TagD,
                      [](const FieldDecl *FD) { return FD->isBitField(); }))
       Diag(BraceRange.getBegin(), diag::warn_pragma_align_not_xl_compatible);
   }
+
+  // Check the "counted_by" attribute to ensure that the count field exists in
+  // the struct.
+  if (const auto *RD = dyn_cast<RecordDecl>(Tag))
+    if (const FieldDecl *FD = FindFieldWithCountedByAttr(RD)) {
+      SourceRange SR;
+      if (const IdentifierInfo *Unknown = CheckCountedByAttr(RD, FD, SR))
+        Diag(SR.getBegin(),
+             diag::warn_flexible_array_counted_by_attr_field_not_found)
+            << Unknown << SR;
+    }
 }
 
 void Sema::ActOnObjCContainerFinishDefinition() {
