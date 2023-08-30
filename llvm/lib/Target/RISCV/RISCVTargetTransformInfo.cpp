@@ -1502,9 +1502,6 @@ InstructionCost RISCVTTIImpl::getVectorInstrCost(unsigned Opcode, Type *Val,
   if (LT.second.isScalableVector() && !LT.first.isValid())
     return LT.first;
 
-  if (!isTypeLegal(Val))
-    return BaseT::getVectorInstrCost(Opcode, Val, CostKind, Index, Op0, Op1);
-
   // Mask vector extract/insert is expanded via e8.
   if (Val->getScalarSizeInBits() == 1) {
     VectorType *WideTy =
@@ -1529,6 +1526,30 @@ InstructionCost RISCVTTIImpl::getVectorInstrCost(unsigned Opcode, Type *Val,
     return ExtendCost + InsertCost + TruncCost;
   }
 
+  // Non-immediate extraction/insertion beyond legal LMUL are handled
+  // as a sequence of aliased loads+stores via the stack.
+  // TODO: Move this to BasicTTIImpl.h? This code is already duplicated in X86.
+  if (!isTypeLegal(Val) &&
+      Index == -1U && (Opcode == Instruction::ExtractElement ||
+                       Opcode == Instruction::InsertElement)) {
+    Align VecAlign = DL.getPrefTypeAlign(Val);
+    Type *ScalarType = Val->getScalarType();
+    Align SclAlign = DL.getPrefTypeAlign(ScalarType);
+
+    // Extract - store vector to stack, load scalar.
+    if (Opcode == Instruction::ExtractElement) {
+      return getMemoryOpCost(Instruction::Store, Val, VecAlign, 0, CostKind) +
+             getMemoryOpCost(Instruction::Load, ScalarType, SclAlign, 0,
+                             CostKind);
+    }
+    // Insert - store vector to stack, store scalar, load vector.
+    if (Opcode == Instruction::InsertElement) {
+      return getMemoryOpCost(Instruction::Store, Val, VecAlign, 0, CostKind) +
+             getMemoryOpCost(Instruction::Store, ScalarType, SclAlign, 0,
+                             CostKind) +
+             getMemoryOpCost(Instruction::Load, Val, VecAlign, 0, CostKind);
+    }
+  }
 
   // In RVV, we could use vslidedown + vmv.x.s to extract element from vector
   // and vslideup + vmv.s.x to insert element to vector.
