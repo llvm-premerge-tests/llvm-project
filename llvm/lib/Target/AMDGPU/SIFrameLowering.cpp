@@ -65,7 +65,7 @@ static MCRegister findScratchNonCalleeSaveRegister(MachineRegisterInfo &MRI,
 }
 
 /// Query target location for spilling SGPRs
-/// \p IncludeScratchCopy : Also look for free scratch SGPRs 
+/// \p IncludeScratchCopy : Also look for free scratch SGPRs
 static void getVGPRSpillLaneOrTempRegister(
     MachineFunction &MF, LivePhysRegs &LiveRegs, Register SGPR,
     const TargetRegisterClass &RC = AMDGPU::SReg_32_XM0_XEXECRegClass,
@@ -1086,6 +1086,20 @@ void SIFrameLowering::emitPrologue(MachineFunction &MF,
   // to determine the end of the prologue.
   DebugLoc DL;
 
+  if (FuncInfo->isChainFunction()) {
+    // Functions with the amdgpu_cs_chain[_preserve] CC don't receive a SP, but
+    // are free to set one up if they need it.
+    // FIXME: We shouldn't need to set SP just for the stack objects (we should
+    // use 0 as an immediate offset instead).
+    bool UseSP = requiresStackPointerReference(MF) || MFI.hasStackObjects();
+    if (UseSP) {
+      assert(StackPtrReg != AMDGPU::SP_REG);
+
+      BuildMI(MBB, MBBI, DL, TII->get(AMDGPU::S_MOV_B32), StackPtrReg)
+          .addImm(0);
+    }
+  }
+
   bool HasFP = false;
   bool HasBP = false;
   uint32_t NumBytes = MFI.getStackSize();
@@ -1806,11 +1820,16 @@ bool SIFrameLowering::hasFP(const MachineFunction &MF) const {
 // register. We may need to initialize the stack pointer depending on the frame
 // properties, which logically overlaps many of the cases where an ordinary
 // function would require an FP.
+// Also used for chain functions. While not technically entry functions, chain
+// functions may need to set up a stack pointer in some situations.
 bool SIFrameLowering::requiresStackPointerReference(
     const MachineFunction &MF) const {
+  bool IsChainFunction = MF.getInfo<SIMachineFunctionInfo>()->isChainFunction();
+
   // Callable functions always require a stack pointer reference.
-  assert(MF.getInfo<SIMachineFunctionInfo>()->isEntryFunction() &&
-         "only expected to call this for entry points");
+  assert((MF.getInfo<SIMachineFunctionInfo>()->isEntryFunction() ||
+          IsChainFunction) &&
+         "only expected to call this for entry points and chain functions");
 
   const MachineFrameInfo &MFI = MF.getFrameInfo();
 
