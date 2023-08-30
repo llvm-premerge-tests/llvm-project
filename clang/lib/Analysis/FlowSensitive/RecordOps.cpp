@@ -35,8 +35,8 @@ void clang::dataflow::copyRecord(RecordStorageLocation &Src,
   });
   assert(compatibleTypes);
 
-  for (auto [Field, DstFieldLoc] : Dst.children()) {
-    StorageLocation *SrcFieldLoc = Src.getChild(*Field);
+  for (auto [Field, SrcFieldLoc] : Src.children()) {
+    StorageLocation *DstFieldLoc = Dst.getChild(*Field);
 
     assert(Field->getType()->isReferenceType() ||
            (SrcFieldLoc != nullptr && DstFieldLoc != nullptr));

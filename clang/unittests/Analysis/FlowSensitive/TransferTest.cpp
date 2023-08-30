@@ -16,10 +16,8 @@
 #include "clang/Analysis/FlowSensitive/StorageLocation.h"
 #include "clang/Analysis/FlowSensitive/Value.h"
 #include "clang/Basic/LangStandard.h"
-#include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
-#include "llvm/Support/Casting.h"
 #include "llvm/Testing/Support/Error.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -2253,6 +2251,49 @@ TEST(TransferTest, CopyConstructorArgIsRefReturnedByFunction) {
          ASTContext &ASTCtx) {});
 }
 
+TEST(TransferTest, CopyConstructorWithInheritance) {
+  // This is a crash repro.
+  std::string Code = R"(
+    struct B { int Foo; };
+    struct S : public B {};
+    void target() {
+      S S1 = { 1 };
+      S S2(S1);
+      // [p1]
+      S2.Foo = 2;
+      // [p2]
+    }
+  )";
+  runDataflow(
+      Code,
+      [](const llvm::StringMap<DataflowAnalysisState<NoopLattice>> &Results,
+         ASTContext &ASTCtx) {
+        // FIXME: Add tests to check if `Foo` exists both in S1 and S2 once
+        // initialization with inheritance is fixed.
+      });
+}
+
+TEST(TransferTest, CopyConstructorWithBaseInitAndInheritance) {
+  // This is a crash repro.
+  std::string Code = R"(
+    struct Foo { int Bar; };
+    struct B { Foo F = { 1 }; };
+    struct S : public B {};
+    void target() {
+      S S1 = {};
+      S S2(S1);
+      // [p]
+    }
+  )";
+  runDataflow(
+      Code,
+      [](const llvm::StringMap<DataflowAnalysisState<NoopLattice>> &Results,
+         ASTContext &ASTCtx) {
+        // FIXME: Add tests to check if `Bar` exists both in S1 and S2 once
+        // initialization with inheritance is fixed.
+      });
+}
+
 TEST(TransferTest, MoveConstructor) {
   std::string Code = R"(
     namespace std {
@@ -2326,6 +2367,22 @@ TEST(TransferTest, MoveConstructor) {
             cast<IntegerValue>(getFieldValue(FooLoc1, *BazDecl, Env2));
         EXPECT_EQ(FooBazVal2, BarBazVal1);
       });
+}
+
+TEST(TransferTest, ReturnStructWithInheritance) {
+  // This is a crash repro.
+  std::string Code = R"(
+    struct B { int Foo; };
+    struct S : public B { };
+    S target() {
+      S S1 = { 1 };
+      return S1;
+    }
+  )";
+  runDataflow(
+      Code,
+      [](const llvm::StringMap<DataflowAnalysisState<NoopLattice>> &Results,
+         ASTContext &ASTCtx) {});
 }
 
 TEST(TransferTest, BindTemporary) {
