@@ -5,7 +5,6 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
-
 #include "Clang.h"
 #include "AMDGPU.h"
 #include "Arch/AArch64.h"
@@ -3734,6 +3733,10 @@ static bool RenderModulesOptions(Compilation &C, const Driver &D,
        Std->containsValue("c++26") || Std->containsValue("gnu++26") ||
        Std->containsValue("c++latest") || Std->containsValue("gnu++latest"));
   bool HaveModules = HaveStdCXXModules;
+
+  // -fmodule-build-daemon enables the module build daemon functionality
+  if (Args.hasArg(options::OPT_fmodule_build_daemon))
+    Args.AddLastArg(CmdArgs, options::OPT_fmodule_build_daemon);
 
   // -fmodules enables the use of precompiled modules (off by default).
   // Users can pass -fno-cxx-modules to turn off modules support for
