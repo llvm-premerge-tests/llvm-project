@@ -11204,8 +11204,54 @@ static SDValue combineAddOfBooleanXor(SDNode *N, SelectionDAG &DAG) {
                      N0.getOperand(0));
 }
 
+// vadd (build_vector x), (build_vector c)
+// -> build_vector (add x, c)
+static SDValue transformSplatVectorToScalar(SDNode *N, SelectionDAG &DAG,
+                                            const RISCVSubtarget &Subtarget) {
+  SDValue N0 = N->getOperand(0);
+  SDValue N1 = N->getOperand(1);
+  APInt ShAmt;
+  if (N->getOpcode() == ISD::ADD && N0.getOpcode() == ISD::BUILD_VECTOR &&
+      ISD::isConstantSplatVector(N1.getNode(), ShAmt) && N0.hasOneUse() &&
+      N1.hasOneUse()) {
+    EVT VT0 = N0.getValueType();
+    EVT VT1 = N1.getValueType();
+    unsigned NumElts0 = VT0.getVectorNumElements();
+    unsigned NumElts1 = VT1.getVectorNumElements();
+    SDValue Base;
+    SDLoc DL(N);
+    bool AllSame = true;
+    for (unsigned i = 0; i != NumElts0; ++i) {
+      if (!N0.getOperand(i).isUndef()) {
+        Base = N0.getOperand(i);
+        break;
+      }
+    }
+    for (unsigned i = 0; i != NumElts0; ++i) {
+      if (N0.getOperand(i) != Base) {
+        AllSame = false;
+        break;
+      }
+    }
+    MVT XLenVT = Subtarget.getXLenVT();
+    if (AllSame && NumElts0 == NumElts1 && Base.getValueType() == XLenVT) {
+      SDValue NAdd = DAG.getNode(ISD::ADD, DL, XLenVT, Base, N1.getOperand(0));
+      SmallVector<SDValue, 6> NOps;
+      for (unsigned i = 0; i != NumElts0; ++i) {
+        NOps.push_back(NAdd);
+      }
+      return DAG.getNode(ISD::BUILD_VECTOR, DL, VT0, NOps);
+    }
+  }
+  return SDValue();
+}
+
 static SDValue performADDCombine(SDNode *N, SelectionDAG &DAG,
                                  const RISCVSubtarget &Subtarget) {
+  EVT VT = N->getValueType(0);
+  if (VT.isFixedLengthVector())
+    return transformSplatVectorToScalar(N, DAG, Subtarget);
+
   if (SDValue V = combineAddOfBooleanXor(N, DAG))
     return V;
   if (SDValue V = transformAddImmMulImm(N, DAG, Subtarget))
