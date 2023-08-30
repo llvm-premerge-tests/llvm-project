@@ -176,6 +176,9 @@ protected:
   MCSection *PseudoProbeSection = nullptr;
   MCSection *PseudoProbeDescSection = nullptr;
 
+  /// Section containing dumped branch probabilities
+  MCSection *BranchProbabilitySection = nullptr;
+
   // Section for metadata of llvm statistics.
   MCSection *LLVMStatsSection = nullptr;
 
@@ -361,6 +364,8 @@ public:
   MCSection *getPseudoProbeSection(const MCSection &TextSec) const;
 
   MCSection *getPseudoProbeDescSection(StringRef FuncName) const;
+
+  MCSection *getBranchProbabilitySection(const MCSection &TextSec) const;
 
   MCSection *getLLVMStatsSection() const;
 
