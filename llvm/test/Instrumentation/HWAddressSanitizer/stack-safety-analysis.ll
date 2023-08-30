@@ -23,6 +23,23 @@ entry:
   ret i32 0
 }
 
+; Check a safe alloca to ensure it does not get a tag.
+define i32 @test_cmpxchg(ptr %a) sanitize_hwaddress {
+entry:
+  ; CHECK-LABEL: @test_cmpxchg
+  ; NOSAFETY: call {{.*}}__hwasan_generate_tag
+  ; NOSAFETY: call {{.*}}__hwasan_store
+  ; SAFETY-NOT: call {{.*}}__hwasan_generate_tag
+  ; SAFETY-NOT: call {{.*}}__hwasan_store
+  ; NOSTACK-NOT: call {{.*}}__hwasan_generate_tag
+  ; NOSTACK-NOT: call {{.*}}__hwasan_store
+  %buf.sroa.0 = alloca i8, align 4
+  call void @llvm.lifetime.start.p0(i64 1, ptr nonnull %buf.sroa.0)
+  %0 = cmpxchg ptr %buf.sroa.0, i8 1, i8 2 monotonic monotonic
+  call void @llvm.lifetime.end.p0(i64 1, ptr nonnull %buf.sroa.0)
+  ret i32 0
+}
+
 ; Check a non-safe alloca to ensure it gets a tag.
 define i32 @test_use(ptr %a) sanitize_hwaddress {
 entry:
