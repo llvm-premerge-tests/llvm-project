@@ -265,11 +265,8 @@ private:
 
   bool isCompatibleWithClause(const MachineInstr &MI,
                               std::set<unsigned> &DstRegs) const {
-    unsigned DstMI, SrcMI;
-    for (MachineInstr::const_mop_iterator I = MI.operands_begin(),
-                                          E = MI.operands_end();
-         I != E; ++I) {
-      const MachineOperand &MO = *I;
+    Register DstMI, SrcMI;
+    for (const MachineOperand &MO : MI.operands()) {
       if (!MO.isReg())
         continue;
       if (MO.isDef()) {
@@ -280,8 +277,8 @@ private:
           DstMI = TRI->getMatchingSuperReg(Reg,
               R600RegisterInfo::getSubRegFromChannel(TRI->getHWRegChan(Reg)),
               &R600::R600_Reg128RegClass);
-      }
-      if (MO.isUse()) {
+      } else {
+        assert(MO.isUse());
         Register Reg = MO.getReg();
         if (R600::R600_Reg128RegClass.contains(Reg))
           SrcMI = Reg;
@@ -291,11 +288,13 @@ private:
               &R600::R600_Reg128RegClass);
       }
     }
-    if ((DstRegs.find(SrcMI) == DstRegs.end())) {
-      DstRegs.insert(DstMI);
-      return true;
-    } else
+    assert(SrcMI.isValid() && DstMI.isValid());
+    // If we've already seen this def in the given register set, we can't
+    // use a clause instruction
+    if (DstRegs.find(SrcMI) != DstRegs.end())
       return false;
+    DstRegs.insert(DstMI);
+    return true;
   }
 
   ClauseFile
