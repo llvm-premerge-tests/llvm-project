@@ -198,6 +198,55 @@ TEST_F(WalkUsedTest, MacroRefs) {
           Pair(Code.point("4"), UnorderedElementsAre(MainFile))));
 }
 
+TEST_F(WalkUsedTest, Concepts) {
+  llvm::Annotations ConceptHdr(guard(R"cpp(
+    template<typename T>
+    concept Foo = true;
+  )cpp"));
+  llvm::Annotations Code(R"cpp(
+    #include "concept.h"
+
+    template<typename T>
+    concept $Bar1^Bar = $Foo1^Foo<T> && true;
+
+    template<$Bar2^Bar T> requires $Bar3^Bar<T> && $Foo2^Foo<T>
+    void $1^func1() {}
+
+    template<$Foo3^Foo T>
+    void $2^func2() requires $Bar4^Bar<T> {}
+
+    void $3^func3($Bar5^Bar auto x) {
+      $Foo4^Foo auto $y^y = 1;
+    }
+  )cpp");
+  Inputs.Code = Code.code();
+  Inputs.ExtraFiles["concept.h"] = ConceptHdr.code();
+  Inputs.ExtraArgs.push_back("--std=c++20");
+  TestAST AST(Inputs);
+  auto &SM = AST.sourceManager();
+  const auto *ConceptHdrFile = SM.getFileManager().getFile("concept.h").get();
+  auto MainFile = Header(SM.getFileEntryForID(SM.getMainFileID()));
+
+  EXPECT_THAT(
+      offsetToProviders(AST),
+      UnorderedElementsAre(
+          Pair(Code.point("Foo1"), UnorderedElementsAre(ConceptHdrFile)),
+          Pair(Code.point("Foo2"), UnorderedElementsAre(ConceptHdrFile)),
+          Pair(Code.point("Foo3"), UnorderedElementsAre(ConceptHdrFile)),
+          Pair(Code.point("Bar1"), UnorderedElementsAre(MainFile)),
+          Pair(Code.point("Bar2"), UnorderedElementsAre(MainFile)),
+          Pair(Code.point("Bar3"), UnorderedElementsAre(MainFile)),
+          Pair(Code.point("Bar4"), UnorderedElementsAre(MainFile)),
+          Pair(Code.point("Bar5"), UnorderedElementsAre(MainFile)),
+          // FIXME: Foo4 should be reported.
+          // Pair(Code.point("Foo4"), UnorderedElementsAre(ConceptHdrFile)),
+          Pair(Code.point("1"), UnorderedElementsAre(MainFile)),
+          Pair(Code.point("2"), UnorderedElementsAre(MainFile)),
+          Pair(Code.point("3"), UnorderedElementsAre(MainFile)),
+          Pair(Code.point("y"), UnorderedElementsAre(MainFile))))
+      << Code.code();
+}
+
 class AnalyzeTest : public testing::Test {
 protected:
   TestInputs Inputs;
@@ -299,7 +348,7 @@ TEST(FixIncludes, Basic) {
   Results.Unused.push_back(Inc.atLine(4));
 
   EXPECT_EQ(fixIncludes(Results, "d.cc", Code, format::getLLVMStyle()),
-R"cpp(#include "d.h"
+            R"cpp(#include "d.h"
 #include "a.h"
 #include "aa.h"
 #include "ab.h"
@@ -310,7 +359,7 @@ R"cpp(#include "d.h"
   Results.Missing.push_back("\"d.h\"");
   Code = R"cpp(#include "a.h")cpp";
   EXPECT_EQ(fixIncludes(Results, "d.cc", Code, format::getLLVMStyle()),
-R"cpp(#include "d.h"
+            R"cpp(#include "d.h"
 #include "a.h")cpp");
 }
 
