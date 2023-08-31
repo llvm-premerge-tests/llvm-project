@@ -2050,10 +2050,8 @@ bool AArch64TTIImpl::isWideningInstruction(Type *DstTy, unsigned Opcode,
 //   %y = (zext i8 -> i16)
 //   trunc i16 (lshr (add %x, %y), 1) -> i8
 //
-bool AArch64TTIImpl::isExtPartOfAvgExpr(const Instruction *ExtUser,
-                                        const CastInst *Ext, Type *Dst,
+bool AArch64TTIImpl::isExtPartOfAvgExpr(const Instruction *ExtUser, Type *Dst,
                                         Type *Src) {
-
   // The source should be a legal vector type.
   if (!Src->isVectorTy() || !TLI->isTypeLegal(TLI->getValueType(DL, Src)) ||
       (Src->isScalableTy() && !ST->hasSVE2()))
@@ -2121,7 +2119,7 @@ InstructionCost AArch64TTIImpl::getCastInstrCost(unsigned Opcode, Type *Dst,
 
     // The cast will be free for the s/urhadd instructions
     if ((isa<ZExtInst>(I) || isa<SExtInst>(I)) &&
-        isExtPartOfAvgExpr(SingleUser, cast<CastInst>(I), Dst, Src))
+        isExtPartOfAvgExpr(SingleUser, Dst, Src))
       return 0;
   }
 
