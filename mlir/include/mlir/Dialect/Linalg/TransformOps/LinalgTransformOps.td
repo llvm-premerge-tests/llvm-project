@@ -2178,6 +2178,51 @@ def HoistRedundantVectorTransfersOp :
 }
 
 //===----------------------------------------------------------------------===//
+// HoistUnrolledVectorExtractInsertSlice
+//===----------------------------------------------------------------------===//
+
+def HoistUnrolledVectorExtractInsertSliceOp :
+  Op<Transform_Dialect, "structured.hoist_unrolled_vector_extract_insert_slice",
+    [FunctionalStyleTransformOpTrait, MemoryEffectsOpInterface,
+     TransformEachOpTrait, TransformOpInterface,
+     ReportTrackingListenerFailuresOpTrait]> {
+  let description = [{
+    Hoist unrolled vector.extract_strided_slice/vector.insert_strided_slice on
+    buffers pairs out of immediately enclosing scf::ForOp iteratively, if the
+    following conditions are true:
+      1. A vector.insert_strided_slice op is yielded by scf.yield op.
+      2. The sequence of vector.insert_strided_slice op exactly covers the
+         yielded vector.
+      3. All the users of the scf.for block argument are
+         vector.extract_strided_slice ops.
+      4. Each vector.insert_strided_slice can map to a
+         vector.extract_stirded_slice op.
+
+    #### Return modes:
+
+    The operation always succeeds and returns a handle to the transformed
+    function op.
+  }];
+
+  let arguments = (ins TransformHandleTypeInterface:$target);
+  let results = (outs);
+
+  let assemblyFormat = [{
+    $target
+    attr-dict
+    `:` functional-type(operands, results)
+  }];
+
+  let extraClassDeclaration = [{
+    ::mlir::DiagnosedSilenceableFailure applyToOne(
+        ::mlir::transform::TransformRewriter &rewriter,
+        ::mlir::Operation *target,
+        ::mlir::transform::ApplyToEachResultList &results,
+        ::mlir::transform::TransformState &state);
+  }];
+}
+
+//===----------------------------------------------------------------------===//
 // ConvertConv2DToImg2ColOp
 //===----------------------------------------------------------------------===//
 

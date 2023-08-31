@@ -3278,6 +3278,29 @@ transform::HoistRedundantVectorTransfersOp::applyToOne(
 }
 
 //===----------------------------------------------------------------------===//
+// HoistUnrolledVectorExtractInsertSliceOp
+//===----------------------------------------------------------------------===//
+
+DiagnosedSilenceableFailure
+transform::HoistUnrolledVectorExtractInsertSliceOp::applyToOne(
+    transform::TransformRewriter &rewriter, Operation *target,
+    transform::ApplyToEachResultList &results,
+    transform::TransformState &state) {
+  if (auto forOp = dyn_cast<scf::ForOp>(target)) {
+    linalg::hoistUnrolledVectorExtractInsertSlice(rewriter, forOp);
+    return DiagnosedSilenceableFailure::success();
+  }
+
+  // TODO: walking in some reverse / inside-out order would be more efficient
+  // and would capture more cases.
+  target->walk([&](scf::ForOp forOp) {
+    linalg::hoistUnrolledVectorExtractInsertSlice(rewriter, forOp);
+  });
+
+  return DiagnosedSilenceableFailure::success();
+}
+
+//===----------------------------------------------------------------------===//
 // ConvertConv2DToImg2ColOp.
 //===----------------------------------------------------------------------===//
 

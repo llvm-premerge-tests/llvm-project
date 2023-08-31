@@ -136,6 +136,19 @@ void hoistRedundantVectorTransfers(func::FuncOp func);
 scf::ForOp hoistRedundantSubsetExtractInsert(RewriterBase &rewriter,
                                              scf::ForOp forOp);
 
+/// Hoist unrolled vector.extract_strided_slice/vector.insert_strided_slice on
+/// buffers pairs out of immediately enclosing scf::ForOp iteratively, if the
+/// following conditions are true:
+///   1. A vector.insert_strided_slice op is yielded by scf.yield op.
+///   2. The sequence of vector.insert_strided_slice op exactly covers the
+///      yielded vector.
+///   3. All the users of the scf.for block argument are
+///      vector.extract_strided_slice ops.
+///   4. Each vector.insert_strided_slice can map to a
+///      vector.extract_stirded_slice op.
+scf::ForOp hoistUnrolledVectorExtractInsertSlice(RewriterBase &rewriter,
+                                                 scf::ForOp forOp);
+
 /// Call into `hoistRedundantSubsetInsertExtract` without a RewriterBase.
 // TODO: obsolete and should be retired
 void hoistRedundantVectorTransfersOnTensor(func::FuncOp func);
