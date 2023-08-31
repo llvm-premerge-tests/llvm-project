@@ -134,6 +134,7 @@ END-SCRIPT
 #include <__algorithm/ranges_copy_n.h> // expected-error@*:* {{use of private header from outside its module: '__algorithm/ranges_copy_n.h'}}
 #include <__algorithm/ranges_count.h> // expected-error@*:* {{use of private header from outside its module: '__algorithm/ranges_count.h'}}
 #include <__algorithm/ranges_count_if.h> // expected-error@*:* {{use of private header from outside its module: '__algorithm/ranges_count_if.h'}}
+#include <__algorithm/ranges_ends_with.h> // expected-error@*:* {{use of private header from outside its module: '__algorithm/ranges_ends_with.h'}}
 #include <__algorithm/ranges_equal.h> // expected-error@*:* {{use of private header from outside its module: '__algorithm/ranges_equal.h'}}
 #include <__algorithm/ranges_equal_range.h> // expected-error@*:* {{use of private header from outside its module: '__algorithm/ranges_equal_range.h'}}
 #include <__algorithm/ranges_fill.h> // expected-error@*:* {{use of private header from outside its module: '__algorithm/ranges_fill.h'}}
