@@ -87,3 +87,51 @@ define i32 @splat_vector_split_i64() {
     %4 = trunc i64 %3 to i32
     ret i32 %4
 }
+
+define <vscale x 2 x i64> @demanded_bits_lo(i64 %x) {
+; CHECK-LABEL: demanded_bits_lo:
+; CHECK:       # %bb.0:
+; CHECK-NEXT:    addi sp, sp, -16
+; CHECK-NEXT:    .cfi_def_cfa_offset 16
+; CHECK-NEXT:    sw a1, 4(sp)
+; CHECK-NEXT:    sw a0, 0(sp)
+; CHECK-NEXT:    mv a0, sp
+; CHECK-NEXT:    vsetvli a1, zero, e64, m2, ta, ma
+; CHECK-NEXT:    vlse64.v v8, (a0), zero
+; CHECK-NEXT:    sw zero, 12(sp)
+; CHECK-NEXT:    li a0, -1
+; CHECK-NEXT:    sw a0, 8(sp)
+; CHECK-NEXT:    addi a0, sp, 8
+; CHECK-NEXT:    vlse64.v v10, (a0), zero
+; CHECK-NEXT:    vand.vv v8, v8, v10
+; CHECK-NEXT:    addi sp, sp, 16
+; CHECK-NEXT:    ret
+  %1 = insertelement <vscale x 2 x i64> poison, i64 %x, i32 0
+  %2 = shufflevector <vscale x 2 x i64> %1, <vscale x 2 x i64> poison, <vscale x 2 x i32> zeroinitializer
+  %3 = and <vscale x 2 x i64> %2, shufflevector(<vscale x 2 x i64> insertelement(<vscale x 2 x i64> poison, i64 u0xffffffff, i32 0), <vscale x 2 x i64> poison, <vscale x 2 x i32> zeroinitializer)
+  ret <vscale x 2 x i64> %3
+}
+
+define <vscale x 2 x i64> @demanded_bits_hi(i64 %x) {
+; CHECK-LABEL: demanded_bits_hi:
+; CHECK:       # %bb.0:
+; CHECK-NEXT:    addi sp, sp, -16
+; CHECK-NEXT:    .cfi_def_cfa_offset 16
+; CHECK-NEXT:    sw a1, 4(sp)
+; CHECK-NEXT:    sw a0, 0(sp)
+; CHECK-NEXT:    mv a0, sp
+; CHECK-NEXT:    vsetvli a1, zero, e64, m2, ta, ma
+; CHECK-NEXT:    vlse64.v v8, (a0), zero
+; CHECK-NEXT:    li a0, -1
+; CHECK-NEXT:    sw a0, 12(sp)
+; CHECK-NEXT:    sw zero, 8(sp)
+; CHECK-NEXT:    addi a0, sp, 8
+; CHECK-NEXT:    vlse64.v v10, (a0), zero
+; CHECK-NEXT:    vand.vv v8, v8, v10
+; CHECK-NEXT:    addi sp, sp, 16
+; CHECK-NEXT:    ret
+  %1 = insertelement <vscale x 2 x i64> poison, i64 %x, i32 0
+  %2 = shufflevector <vscale x 2 x i64> %1, <vscale x 2 x i64> poison, <vscale x 2 x i32> zeroinitializer
+  %3 = and <vscale x 2 x i64> %2, shufflevector(<vscale x 2 x i64> insertelement(<vscale x 2 x i64> poison, i64 u0xffffffff00000000, i32 0), <vscale x 2 x i64> poison, <vscale x 2 x i32> zeroinitializer)
+  ret <vscale x 2 x i64> %3
+}
