@@ -119,6 +119,18 @@ Region *bufferization::getNextEnclosingRepetitiveRegion(
   return region;
 }
 
+Region *bufferization::getParallelRegion(Region *region,
+                                         const BufferizationOptions &options) {
+  while (region) {
+    auto bufferizableOp = options.dynCastBufferizableOp(region->getParentOp());
+    if (bufferizableOp &&
+        bufferizableOp.isParallelRegion(region->getRegionNumber()))
+      return region;
+    region = region->getParentRegion();
+  }
+  return nullptr;
+}
+
 Operation *bufferization::getOwnerOfValue(Value value) {
   if (auto opResult = llvm::dyn_cast<OpResult>(value))
     return opResult.getDefiningOp();
