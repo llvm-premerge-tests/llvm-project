@@ -126,6 +126,8 @@ static Value *mergeDistinctValues(QualType Type, Value &Val1,
     // Values to be merged are always associated with the same location in
     // `LocToVal`. The location stored in `RecordVal` should therefore also
     // be the same.
+    // FIXME: This assertion doesn't seem to necessarily hold when a record is
+    // initialized with InitListExpr.
     assert(&RecordVal1->getLoc() == &RecordVal2->getLoc());
 
     // `RecordVal1` and `RecordVal2` may have different properties associated
