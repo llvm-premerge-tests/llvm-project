@@ -14,48 +14,49 @@ define i32 @add_i16_i32(ptr nocapture readonly %x, i32 %n) {
 ; OUTLOOP:       for.body.preheader:
 ; OUTLOOP-NEXT:    [[TMP0:%.*]] = call i32 @llvm.vscale.i32()
 ; OUTLOOP-NEXT:    [[TMP1:%.*]] = mul i32 [[TMP0]], 4
-; OUTLOOP-NEXT:    [[MIN_ITERS_CHECK:%.*]] = icmp ult i32 [[N]], [[TMP1]]
+; OUTLOOP-NEXT:    [[TMP2:%.*]] = call i32 @llvm.umax.i32(i32 8, i32 [[TMP1]])
+; OUTLOOP-NEXT:    [[MIN_ITERS_CHECK:%.*]] = icmp ult i32 [[N]], [[TMP2]]
 ; OUTLOOP-NEXT:    br i1 [[MIN_ITERS_CHECK]], label [[SCALAR_PH:%.*]], label [[VECTOR_PH:%.*]]
 ; OUTLOOP:       vector.ph:
-; OUTLOOP-NEXT:    [[TMP2:%.*]] = call i32 @llvm.vscale.i32()
-; OUTLOOP-NEXT:    [[TMP3:%.*]] = mul i32 [[TMP2]], 4
-; OUTLOOP-NEXT:    [[N_MOD_VF:%.*]] = urem i32 [[N]], [[TMP3]]
+; OUTLOOP-NEXT:    [[TMP3:%.*]] = call i32 @llvm.vscale.i32()
+; OUTLOOP-NEXT:    [[TMP4:%.*]] = mul i32 [[TMP3]], 4
+; OUTLOOP-NEXT:    [[N_MOD_VF:%.*]] = urem i32 [[N]], [[TMP4]]
 ; OUTLOOP-NEXT:    [[N_VEC:%.*]] = sub i32 [[N]], [[N_MOD_VF]]
 ; OUTLOOP-NEXT:    br label [[VECTOR_BODY:%.*]]
 ; OUTLOOP:       vector.body:
 ; OUTLOOP-NEXT:    [[INDEX:%.*]] = phi i32 [ 0, [[VECTOR_PH]] ], [ [[INDEX_NEXT:%.*]], [[VECTOR_BODY]] ]
-; OUTLOOP-NEXT:    [[VEC_PHI:%.*]] = phi <vscale x 4 x i32> [ zeroinitializer, [[VECTOR_PH]] ], [ [[TMP8:%.*]], [[VECTOR_BODY]] ]
-; OUTLOOP-NEXT:    [[TMP4:%.*]] = add i32 [[INDEX]], 0
-; OUTLOOP-NEXT:    [[TMP5:%.*]] = getelementptr inbounds i16, ptr [[X:%.*]], i32 [[TMP4]]
-; OUTLOOP-NEXT:    [[TMP6:%.*]] = getelementptr inbounds i16, ptr [[TMP5]], i32 0
-; OUTLOOP-NEXT:    [[WIDE_LOAD:%.*]] = load <vscale x 4 x i16>, ptr [[TMP6]], align 2
-; OUTLOOP-NEXT:    [[TMP7:%.*]] = sext <vscale x 4 x i16> [[WIDE_LOAD]] to <vscale x 4 x i32>
-; OUTLOOP-NEXT:    [[TMP8]] = add <vscale x 4 x i32> [[VEC_PHI]], [[TMP7]]
-; OUTLOOP-NEXT:    [[TMP9:%.*]] = call i32 @llvm.vscale.i32()
-; OUTLOOP-NEXT:    [[TMP10:%.*]] = mul i32 [[TMP9]], 4
-; OUTLOOP-NEXT:    [[INDEX_NEXT]] = add nuw i32 [[INDEX]], [[TMP10]]
-; OUTLOOP-NEXT:    [[TMP11:%.*]] = icmp eq i32 [[INDEX_NEXT]], [[N_VEC]]
-; OUTLOOP-NEXT:    br i1 [[TMP11]], label [[MIDDLE_BLOCK:%.*]], label [[VECTOR_BODY]], !llvm.loop [[LOOP0:![0-9]+]]
+; OUTLOOP-NEXT:    [[VEC_PHI:%.*]] = phi <vscale x 4 x i32> [ zeroinitializer, [[VECTOR_PH]] ], [ [[TMP9:%.*]], [[VECTOR_BODY]] ]
+; OUTLOOP-NEXT:    [[TMP5:%.*]] = add i32 [[INDEX]], 0
+; OUTLOOP-NEXT:    [[TMP6:%.*]] = getelementptr inbounds i16, ptr [[X:%.*]], i32 [[TMP5]]
+; OUTLOOP-NEXT:    [[TMP7:%.*]] = getelementptr inbounds i16, ptr [[TMP6]], i32 0
+; OUTLOOP-NEXT:    [[WIDE_LOAD:%.*]] = load <vscale x 4 x i16>, ptr [[TMP7]], align 2
+; OUTLOOP-NEXT:    [[TMP8:%.*]] = sext <vscale x 4 x i16> [[WIDE_LOAD]] to <vscale x 4 x i32>
+; OUTLOOP-NEXT:    [[TMP9]] = add <vscale x 4 x i32> [[VEC_PHI]], [[TMP8]]
+; OUTLOOP-NEXT:    [[TMP10:%.*]] = call i32 @llvm.vscale.i32()
+; OUTLOOP-NEXT:    [[TMP11:%.*]] = mul i32 [[TMP10]], 4
+; OUTLOOP-NEXT:    [[INDEX_NEXT]] = add nuw i32 [[INDEX]], [[TMP11]]
+; OUTLOOP-NEXT:    [[TMP12:%.*]] = icmp eq i32 [[INDEX_NEXT]], [[N_VEC]]
+; OUTLOOP-NEXT:    br i1 [[TMP12]], label [[MIDDLE_BLOCK:%.*]], label [[VECTOR_BODY]], !llvm.loop [[LOOP0:![0-9]+]]
 ; OUTLOOP:       middle.block:
-; OUTLOOP-NEXT:    [[TMP12:%.*]] = call i32 @llvm.vector.reduce.add.nxv4i32(<vscale x 4 x i32> [[TMP8]])
+; OUTLOOP-NEXT:    [[TMP13:%.*]] = call i32 @llvm.vector.reduce.add.nxv4i32(<vscale x 4 x i32> [[TMP9]])
 ; OUTLOOP-NEXT:    [[CMP_N:%.*]] = icmp eq i32 [[N]], [[N_VEC]]
 ; OUTLOOP-NEXT:    br i1 [[CMP_N]], label [[FOR_COND_CLEANUP_LOOPEXIT:%.*]], label [[SCALAR_PH]]
 ; OUTLOOP:       scalar.ph:
 ; OUTLOOP-NEXT:    [[BC_RESUME_VAL:%.*]] = phi i32 [ [[N_VEC]], [[MIDDLE_BLOCK]] ], [ 0, [[FOR_BODY_PREHEADER]] ]
-; OUTLOOP-NEXT:    [[BC_MERGE_RDX:%.*]] = phi i32 [ 0, [[FOR_BODY_PREHEADER]] ], [ [[TMP12]], [[MIDDLE_BLOCK]] ]
+; OUTLOOP-NEXT:    [[BC_MERGE_RDX:%.*]] = phi i32 [ 0, [[FOR_BODY_PREHEADER]] ], [ [[TMP13]], [[MIDDLE_BLOCK]] ]
 ; OUTLOOP-NEXT:    br label [[FOR_BODY:%.*]]
 ; OUTLOOP:       for.body:
 ; OUTLOOP-NEXT:    [[I_08:%.*]] = phi i32 [ [[INC:%.*]], [[FOR_BODY]] ], [ [[BC_RESUME_VAL]], [[SCALAR_PH]] ]
 ; OUTLOOP-NEXT:    [[R_07:%.*]] = phi i32 [ [[ADD:%.*]], [[FOR_BODY]] ], [ [[BC_MERGE_RDX]], [[SCALAR_PH]] ]
 ; OUTLOOP-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds i16, ptr [[X]], i32 [[I_08]]
-; OUTLOOP-NEXT:    [[TMP13:%.*]] = load i16, ptr [[ARRAYIDX]], align 2
-; OUTLOOP-NEXT:    [[CONV:%.*]] = sext i16 [[TMP13]] to i32
+; OUTLOOP-NEXT:    [[TMP14:%.*]] = load i16, ptr [[ARRAYIDX]], align 2
+; OUTLOOP-NEXT:    [[CONV:%.*]] = sext i16 [[TMP14]] to i32
 ; OUTLOOP-NEXT:    [[ADD]] = add nsw i32 [[R_07]], [[CONV]]
 ; OUTLOOP-NEXT:    [[INC]] = add nuw nsw i32 [[I_08]], 1
 ; OUTLOOP-NEXT:    [[EXITCOND:%.*]] = icmp eq i32 [[INC]], [[N]]
 ; OUTLOOP-NEXT:    br i1 [[EXITCOND]], label [[FOR_COND_CLEANUP_LOOPEXIT]], label [[FOR_BODY]], !llvm.loop [[LOOP3:![0-9]+]]
 ; OUTLOOP:       for.cond.cleanup.loopexit:
-; OUTLOOP-NEXT:    [[ADD_LCSSA:%.*]] = phi i32 [ [[ADD]], [[FOR_BODY]] ], [ [[TMP12]], [[MIDDLE_BLOCK]] ]
+; OUTLOOP-NEXT:    [[ADD_LCSSA:%.*]] = phi i32 [ [[ADD]], [[FOR_BODY]] ], [ [[TMP13]], [[MIDDLE_BLOCK]] ]
 ; OUTLOOP-NEXT:    br label [[FOR_COND_CLEANUP]]
 ; OUTLOOP:       for.cond.cleanup:
 ; OUTLOOP-NEXT:    [[R_0_LCSSA:%.*]] = phi i32 [ 0, [[ENTRY:%.*]] ], [ [[ADD_LCSSA]], [[FOR_COND_CLEANUP_LOOPEXIT]] ]
