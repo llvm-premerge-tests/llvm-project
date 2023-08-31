@@ -1,8 +1,12 @@
 # RUN: llvm-mc -triple=aarch64 -mattr=+all --mdis %s | FileCheck %s
+# RUN: llvm-mc -triple=aarch64 -mattr=+all --cdis %s | FileCheck %s --check-prefix=COLOR
+
 
 # CHECK:      b.ne	<imm:#20>
+# COLOR:      b.ne	[0;31m#20[0m
 0xa1 0x00 0x00 0x54
 # CHECK-NEXT: asr	<reg:w0>, <reg:w0>, <imm:#0>
+# COLOR-NEXT: asr	[0;36mw0[0m, [0;36mw0[0m, [0;31m#0[0m
 0x00 0x7c 0x00 0x13
 # CHECK-NEXT: subs	<reg:x12>, <reg:x13>, <reg:x14>, asr <imm:#39>
 0xac 0x9d 0x8e 0xeb
