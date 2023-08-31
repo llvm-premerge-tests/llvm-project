@@ -2171,6 +2171,7 @@ public:
   /// See getThisType() for usage restriction.
   QualType getThisObjectType() const;
 
+
   static QualType getThisType(const FunctionProtoType *FPT,
                               const CXXRecordDecl *Decl);
 
