@@ -956,6 +956,14 @@ public:
 
     std::string msg;
     llvm::raw_string_ostream msgStream(msg);
+
+    if (diagInfo.isLocationAvailable()) {
+      // Since sourceMgr isn't available, send file name and absolute path
+      // through msgStream, to use for printing
+      msgStream << diagInfo.getLocationStr() << ";;"
+                << diagInfo.getAbsolutePath() << ";;";
+    }
+
     msgStream << diagInfo.getMsg();
 
     // Emit message.
