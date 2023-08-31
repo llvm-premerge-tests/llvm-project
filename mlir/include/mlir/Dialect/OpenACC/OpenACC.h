@@ -23,6 +23,7 @@
 #include "mlir/Dialect/OpenACC/OpenACCOpsEnums.h.inc"
 #include "mlir/Dialect/OpenACC/OpenACCTypeInterfaces.h.inc"
 #include "mlir/Interfaces/ControlFlowInterfaces.h"
+#include "mlir/Interfaces/LoopLikeInterface.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 
 #define GET_TYPEDEF_CLASSES

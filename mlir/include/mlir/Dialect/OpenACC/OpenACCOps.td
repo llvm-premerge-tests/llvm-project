@@ -14,6 +14,7 @@
 #define OPENACC_OPS
 
 include "mlir/Interfaces/ControlFlowInterfaces.td"
+include "mlir/Interfaces/LoopLikeInterface.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/IR/BuiltinTypes.td"
 include "mlir/IR/EnumAttr.td"
@@ -1111,45 +1112,52 @@ def OpenACC_HostDataOp : OpenACC_Op<"host_data", [AttrSizedOperandSegments]> {
 //===----------------------------------------------------------------------===//
 
 def OpenACC_LoopOp : OpenACC_Op<"loop",
-    [AttrSizedOperandSegments, RecursiveMemoryEffects]> {
+    [AttrSizedOperandSegments, RecursiveMemoryEffects,
+     DeclareOpInterfaceMethods<LoopLikeOpInterface>]> {
   let summary = "loop construct";
 
   let description = [{
-    The "acc.loop" operation represents the OpenACC loop construct.
+    The "acc.loop" operation represents the OpenACC loop construct. The lower
+    and upper bounds specify a half-open range: the range includes the lower
+    bound but does not include the upper bound. If the `inclusive` attribute is
+    set then the upper bound is included.
 
     Example:
 
     ```mlir
-    acc.loop gang vector {
-      scf.for %arg3 = %c0 to %c10 step %c1 {
-        scf.for %arg4 = %c0 to %c10 step %c1 {
-          scf.for %arg5 = %c0 to %c10 step %c1 {
-            // ... body
-          }
-        }
-      }
+    acc.loop gang() vector() (%arg3 : index, %arg4 : index, %arg5 : index) = 
+        (%c0, %c0, %c0 : index, index, index) to 
+        (%c10, %c10, %c10 : index, index, index) step 
+        (%c1, %c1, %c1 : index, index, index) {
+      // Loop body
       acc.yield
     } attributes { collapse = 3 }
     ```
   }];
 
-  let arguments = (ins OptionalAttr<I64Attr>:$collapse,
-                       Optional<IntOrIndex>:$gangNum,
-                       Optional<IntOrIndex>:$gangDim,
-                       Optional<IntOrIndex>:$gangStatic,
-                       Optional<IntOrIndex>:$workerNum,
-                       Optional<IntOrIndex>:$vectorLength,
-                       UnitAttr:$seq,
-                       UnitAttr:$independent,
-                       UnitAttr:$auto_,
-                       UnitAttr:$hasGang,
-                       UnitAttr:$hasWorker,
-                       UnitAttr:$hasVector,
-                       Variadic<IntOrIndex>:$tileOperands,
-                       Variadic<OpenACC_PointerLikeTypeInterface>:$privateOperands,
-                       OptionalAttr<SymbolRefArrayAttr>:$privatizations,
-                       Variadic<AnyType>:$reductionOperands,
-                       OptionalAttr<SymbolRefArrayAttr>:$reductionRecipes);
+  let arguments = (ins
+    Variadic<IntOrIndex>:$lowerbound,
+    Variadic<IntOrIndex>:$upperbound,
+    Variadic<IntOrIndex>:$step,
+    DenseBoolArrayAttr:$inclusiveUpperbound,
+    OptionalAttr<I64Attr>:$collapse,
+    Optional<IntOrIndex>:$gangNum,
+    Optional<IntOrIndex>:$gangDim,
+    Optional<IntOrIndex>:$gangStatic,
+    Optional<IntOrIndex>:$workerNum,
+    Optional<IntOrIndex>:$vectorLength,
+    UnitAttr:$seq,
+    UnitAttr:$independent,
+    UnitAttr:$auto_,
+    UnitAttr:$hasGang,
+    UnitAttr:$hasWorker,
+    UnitAttr:$hasVector,
+    Variadic<IntOrIndex>:$tileOperands,
+    Variadic<OpenACC_PointerLikeTypeInterface>:$privateOperands,
+    OptionalAttr<SymbolRefArrayAttr>:$privatizations,
+    Variadic<AnyType>:$reductionOperands,
+    OptionalAttr<SymbolRefArrayAttr>:$reductionRecipes
+  );
 
   let results = (outs Variadic<AnyType>:$results);
 
@@ -1165,9 +1173,12 @@ def OpenACC_LoopOp : OpenACC_Op<"loop",
   let hasCustomAssemblyFormat = 1;
   let assemblyFormat = [{
     oilist(
-        `gang` `` custom<GangClause>($gangNum, type($gangNum), $gangDim, type($gangDim), $gangStatic, type($gangStatic), $hasGang)
-      | `worker` `` custom<WorkerClause>($workerNum, type($workerNum), $hasWorker)
-      | `vector` `` custom<VectorClause>($vectorLength, type($vectorLength), $hasVector)
+        `gang` `` custom<GangClause>($gangNum, type($gangNum), $gangDim,
+            type($gangDim), $gangStatic, type($gangStatic), $hasGang)
+      | `worker` ``
+          custom<WorkerClause>($workerNum, type($workerNum), $hasWorker)
+      | `vector` ``
+          custom<VectorClause>($vectorLength, type($vectorLength), $hasVector)
       | `private` `(` custom<SymOperandList>(
             $privateOperands, type($privateOperands), $privatizations)
         `)`
@@ -1176,7 +1187,8 @@ def OpenACC_LoopOp : OpenACC_Op<"loop",
             $reductionOperands, type($reductionOperands), $reductionRecipes)
         `)`
     )
-    $region
+    custom<LoopControl>($region, $lowerbound, type($lowerbound), $upperbound,
+        type($upperbound), $step, type($step))
     ( `(` type($results)^ `)` )?
     attr-dict-with-keyword
   }];
