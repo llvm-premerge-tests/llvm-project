@@ -93,17 +93,13 @@ define <vscale x 2 x i64> @demanded_bits_lo(i64 %x) {
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    addi sp, sp, -16
 ; CHECK-NEXT:    .cfi_def_cfa_offset 16
-; CHECK-NEXT:    sw a1, 4(sp)
-; CHECK-NEXT:    sw a0, 0(sp)
-; CHECK-NEXT:    mv a0, sp
-; CHECK-NEXT:    vsetvli a1, zero, e64, m2, ta, ma
-; CHECK-NEXT:    vlse64.v v8, (a0), zero
 ; CHECK-NEXT:    sw zero, 12(sp)
-; CHECK-NEXT:    li a0, -1
-; CHECK-NEXT:    sw a0, 8(sp)
-; CHECK-NEXT:    addi a0, sp, 8
-; CHECK-NEXT:    vlse64.v v10, (a0), zero
-; CHECK-NEXT:    vand.vv v8, v8, v10
+; CHECK-NEXT:    li a1, -1
+; CHECK-NEXT:    sw a1, 8(sp)
+; CHECK-NEXT:    addi a1, sp, 8
+; CHECK-NEXT:    vsetvli a2, zero, e64, m2, ta, ma
+; CHECK-NEXT:    vlse64.v v8, (a1), zero
+; CHECK-NEXT:    vand.vx v8, v8, a0
 ; CHECK-NEXT:    addi sp, sp, 16
 ; CHECK-NEXT:    ret
   %1 = insertelement <vscale x 2 x i64> poison, i64 %x, i32 0
