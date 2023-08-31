@@ -18,6 +18,7 @@
 #include "clang/AST/Type.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/ErrorOr.h"
 #include <cassert>
 
 #define DEBUG_TYPE "dataflow"
@@ -132,6 +133,19 @@ public:
       }
     });
     assert(It != Children.end());
+    return It->second;
+  }
+
+  /// Returns the child storage location for `D` if it exists.
+  ///
+  /// Same as `getChild()`, but returns llvm::Error if the field `D` does not
+  /// exist. Most users should use `getChild()` instead, except for the code
+  /// that performs deep copy of two records of the same class, where a field
+  /// in one record may not exist in another record.
+  llvm::ErrorOr<StorageLocation *> getChildOrError(const ValueDecl &D) const {
+    auto It = Children.find(&D);
+    if (It == Children.end())
+      return std::errc::invalid_argument;
     return It->second;
   }
 
