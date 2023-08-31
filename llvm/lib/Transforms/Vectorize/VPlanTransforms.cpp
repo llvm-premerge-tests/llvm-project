@@ -811,3 +811,32 @@ void VPlanTransforms::optimize(VPlan &Plan, ScalarEvolution &SE) {
   removeRedundantExpandSCEVRecipes(Plan);
   mergeBlocksIntoPredecessors(Plan);
 }
+
+void VPlanTransforms::addVectorPredication(VPlan &Plan) {
+  VPBasicBlock *Entry = Plan.getVectorLoopRegion()->getEntryBasicBlock();
+  auto *VPEVL =
+      new VPInstruction(VPInstruction::ExplicitVectorLength,
+                        {Plan.getCanonicalIV(), &Plan.getVectorTripCount()});
+  VPEVL->insertBefore(*Entry, Entry->getFirstNonPhi());
+  VPBasicBlock *EB = Plan.getVectorLoopRegion()->getExitingBasicBlock();
+  VPRecipeBase *Term = EB->getTerminator();
+  auto EndIter = Term ? Term->getIterator() : EB->end();
+  // Introduce each ingredient into VPlan.
+  for (VPRecipeBase &Ingredient :
+       make_early_inc_range(make_range(EB->begin(), EndIter))) {
+    auto *I = dyn_cast<VPInstruction>(&Ingredient);
+    if (!I)
+      continue;
+    if (I->getOpcode() != VPInstruction::CanonicalIVIncrement)
+      continue;
+    auto *NewInst =
+        new VPInstruction(VPInstruction::ExplicitVectorLengthIVIncrement,
+                          {I->getOperand(0), VPEVL},
+                          {I->hasNoUnsignedWrap(), I->hasNoSignedWrap()},
+                          I->getDebugLoc(), "index.next");
+    NewInst->insertBefore(&Ingredient);
+    VPValue *VPV = Ingredient.getVPSingleValue();
+    VPV->replaceAllUsesWith(NewInst->getVPSingleValue());
+    Ingredient.eraseFromParent();
+  }
+}
