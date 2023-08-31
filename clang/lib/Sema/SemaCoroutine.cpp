@@ -78,7 +78,7 @@ static QualType lookupPromiseType(Sema &S, const FunctionDecl *FD,
       //      ref-qualifier or with the & ref-qualifier
       //  -- "rvalue reference to cv X" for functions declared with the &&
       //      ref-qualifier
-      QualType T = MD->getThisType()->castAs<PointerType>()->getPointeeType();
+      QualType T = MD->getThisObjectType();
       T = FnType->getRefQualifier() == RQ_RValue
               ? S.Context.getRValueReferenceType(T)
               : S.Context.getLValueReferenceType(T, /*SpelledAsLValue*/ true);

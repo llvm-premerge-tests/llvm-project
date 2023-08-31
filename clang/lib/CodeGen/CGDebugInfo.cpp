@@ -1801,7 +1801,7 @@ CGDebugInfo::getOrCreateMethodType(const CXXMethodDecl *Method,
   if (Method->isStatic())
     return cast_or_null<llvm::DISubroutineType>(
         getOrCreateType(QualType(Func, 0), Unit));
-  return getOrCreateInstanceMethodType(Method->getThisType(), Func, Unit);
+  return getOrCreateInstanceMethodType(Method->getThisArgType(), Func, Unit);
 }
 
 llvm::DISubroutineType *CGDebugInfo::getOrCreateInstanceMethodType(
@@ -5115,7 +5115,7 @@ void CGDebugInfo::EmitDeclareOfBlockLiteralArgVariable(const CGBlockInfo &block,
       QualType type;
       if (auto *Method =
               cast_or_null<CXXMethodDecl>(blockDecl->getNonClosureContext()))
-        type = Method->getThisType();
+        type = Method->getThisArgType();
       else if (auto *RDecl = dyn_cast<CXXRecordDecl>(blockDecl->getParent()))
         type = QualType(RDecl->getTypeForDecl(), 0);
       else

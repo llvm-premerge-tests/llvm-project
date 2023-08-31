@@ -760,7 +760,8 @@ Sema::ActOnDependentIdExpression(const CXXScopeSpec &SS,
     NamedDecl *FirstQualifierInScope = nullptr;
 
     return CXXDependentScopeMemberExpr::Create(
-        Context, /*This*/ nullptr, ThisType, /*IsArrow*/ true,
+        Context, /*This*/ nullptr, ThisType,
+        /*IsArrow*/ !Context.getLangOpts().HLSL,
         /*Op*/ SourceLocation(), SS.getWithLocInContext(Context), TemplateKWLoc,
         FirstQualifierInScope, NameInfo, TemplateArgs);
   }

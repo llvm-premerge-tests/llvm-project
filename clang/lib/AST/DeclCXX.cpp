@@ -2492,13 +2492,22 @@ QualType CXXMethodDecl::getThisType(const FunctionProtoType *FPT,
                                     const CXXRecordDecl *Decl) {
   ASTContext &C = Decl->getASTContext();
   QualType ObjectTy = ::getThisObjectType(C, FPT, Decl);
-  return C.getPointerType(ObjectTy);
+  return C.getLangOpts().HLSL ? ObjectTy
+                              : C.getPointerType(ObjectTy);
 }
 
 QualType CXXMethodDecl::getThisObjectType(const FunctionProtoType *FPT,
                                           const CXXRecordDecl *Decl) {
   ASTContext &C = Decl->getASTContext();
   return ::getThisObjectType(C, FPT, Decl);
+}
+
+QualType CXXMethodDecl::getThisArgType(const FunctionProtoType *FPT,
+                                    const CXXRecordDecl *Decl) {
+  ASTContext &C = Decl->getASTContext();
+  QualType ObjectTy = ::getThisObjectType(C, FPT, Decl);
+  return C.getLangOpts().HLSL ? C.getLValueReferenceType(ObjectTy)
+                              : C.getPointerType(ObjectTy);
 }
 
 QualType CXXMethodDecl::getThisType() const {
@@ -2516,6 +2525,13 @@ QualType CXXMethodDecl::getThisObjectType() const {
   // Ditto getThisType.
   assert(isInstance() && "No 'this' for static methods!");
   return CXXMethodDecl::getThisObjectType(
+      getType()->castAs<FunctionProtoType>(), getParent());
+}
+
+QualType CXXMethodDecl::getThisArgType() const {
+  // Ditto getThisType.
+  assert(isInstance() && "No 'this' for static methods!");
+  return CXXMethodDecl::getThisArgType(
       getType()->castAs<FunctionProtoType>(), getParent());
 }
 

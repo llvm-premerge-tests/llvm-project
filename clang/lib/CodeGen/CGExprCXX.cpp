@@ -105,7 +105,7 @@ RValue CodeGenFunction::EmitCXXDestructorCall(
   LangAS SrcAS = ThisTy.getAddressSpace();
   LangAS DstAS = DtorDecl->getMethodQualifiers().getAddressSpace();
   if (SrcAS != DstAS) {
-    QualType DstTy = DtorDecl->getThisType();
+    QualType DstTy = DtorDecl->getThisArgType();
     llvm::Type *NewType = CGM.getTypes().ConvertType(DstTy);
     This = getTargetHooks().performAddrSpaceCast(*this, This, SrcAS, DstAS,
                                                  NewType);

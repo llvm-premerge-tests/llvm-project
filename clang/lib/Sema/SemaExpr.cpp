@@ -3212,7 +3212,7 @@ Sema::PerformObjectMemberConversion(Expr *From,
       return From;
 
     DestType = Method->getThisType();
-    DestRecordType = DestType->getPointeeType();
+    DestRecordType = Method->getThisObjectType();
 
     if (FromType->getAs<PointerType>()) {
       FromRecordType = FromType->getPointeeType();

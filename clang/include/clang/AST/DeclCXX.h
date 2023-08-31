@@ -2171,11 +2171,19 @@ public:
   /// See getThisType() for usage restriction.
   QualType getThisObjectType() const;
 
+  /// Return the type of the implicit this argument \c this.
+  ///
+  /// See getThisType() for usage restriction.
+  QualType getThisArgType() const;
+
   static QualType getThisType(const FunctionProtoType *FPT,
                               const CXXRecordDecl *Decl);
 
   static QualType getThisObjectType(const FunctionProtoType *FPT,
                                     const CXXRecordDecl *Decl);
+
+  static QualType getThisArgType(const FunctionProtoType *FPT,
+                                 const CXXRecordDecl *Decl);
 
   Qualifiers getMethodQualifiers() const {
     return getType()->castAs<FunctionProtoType>()->getMethodQuals();

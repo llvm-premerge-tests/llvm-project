@@ -1213,7 +1213,7 @@ void CodeGenFunction::StartFunction(GlobalDecl GD, QualType RetTy,
     if (CXXABIThisValue) {
       SanitizerSet SkippedChecks;
       SkippedChecks.set(SanitizerKind::ObjectSize, true);
-      QualType ThisTy = MD->getThisType();
+      QualType ThisTy = MD->getThisArgType();
 
       // If this is the call operator of a lambda with no capture-default, it
       // may have a static invoker function, which may call this operator with
@@ -1315,7 +1315,7 @@ QualType CodeGenFunction::BuildFunctionArgList(GlobalDecl GD,
   const CXXMethodDecl *MD = dyn_cast<CXXMethodDecl>(FD);
   if (MD && MD->isInstance()) {
     if (CGM.getCXXABI().HasThisReturn(GD))
-      ResTy = MD->getThisType();
+      ResTy = MD->getThisArgType();
     else if (CGM.getCXXABI().hasMostDerivedReturn(GD))
       ResTy = CGM.getContext().VoidPtrTy;
     CGM.getCXXABI().buildThisParam(*this, Args);

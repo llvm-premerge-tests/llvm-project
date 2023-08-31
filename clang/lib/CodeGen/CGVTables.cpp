@@ -201,7 +201,7 @@ CodeGenFunction::GenerateVarArgsThunk(llvm::Function *Fn,
   // Find the first store of "this", which will be to the alloca associated
   // with "this".
   Address ThisPtr =
-      Address(&*AI, ConvertTypeForMem(MD->getThisType()->getPointeeType()),
+      Address(&*AI, ConvertTypeForMem(MD->getThisObjectType()),
               CGM.getClassPointerAlignment(MD->getParent()));
   llvm::BasicBlock *EntryBB = &Fn->front();
   llvm::BasicBlock::iterator ThisStore =
@@ -246,7 +246,7 @@ void CodeGenFunction::StartThunk(llvm::Function *Fn, GlobalDecl GD,
 
   // Build FunctionArgs.
   const CXXMethodDecl *MD = cast<CXXMethodDecl>(GD.getDecl());
-  QualType ThisType = MD->getThisType();
+  QualType ThisType = MD->getThisArgType();
   QualType ResultType;
   if (IsUnprototyped)
     ResultType = CGM.getContext().VoidTy;
@@ -327,7 +327,7 @@ void CodeGenFunction::EmitCallAndReturnForThunk(llvm::FunctionCallee Callee,
 
   // Start building CallArgs.
   CallArgList CallArgs;
-  QualType ThisType = MD->getThisType();
+  QualType ThisType = MD->getThisArgType();
   CallArgs.add(RValue::get(AdjustedThisPtr), ThisType);
 
   if (isa<CXXDestructorDecl>(MD))

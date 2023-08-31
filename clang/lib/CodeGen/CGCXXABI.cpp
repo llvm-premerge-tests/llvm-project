@@ -122,7 +122,7 @@ void CGCXXABI::buildThisParam(CodeGenFunction &CGF, FunctionArgList &params) {
   // generation. Maybe we can come up with a better way?
   auto *ThisDecl = ImplicitParamDecl::Create(
       CGM.getContext(), nullptr, MD->getLocation(),
-      &CGM.getContext().Idents.get("this"), MD->getThisType(),
+      &CGM.getContext().Idents.get("this"), MD->getThisArgType(),
       ImplicitParamDecl::CXXThis);
   params.push_back(ThisDecl);
   CGF.CXXABIThisDecl = ThisDecl;

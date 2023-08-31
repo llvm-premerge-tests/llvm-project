@@ -771,7 +771,7 @@ void ConsumedStmtVisitor::VisitCXXBindTemporaryExpr(
 void ConsumedStmtVisitor::VisitCXXConstructExpr(const CXXConstructExpr *Call) {
   CXXConstructorDecl *Constructor = Call->getConstructor();
 
-  QualType ThisType = Constructor->getThisType()->getPointeeType();
+  QualType ThisType = Constructor->getThisObjectType();
 
   if (!isConsumableType(ThisType))
     return;
@@ -789,7 +789,7 @@ void ConsumedStmtVisitor::VisitCXXConstructExpr(const CXXConstructExpr *Call) {
   } else if (Constructor->isCopyConstructor()) {
     // Copy state from arg.  If setStateOnRead then set arg to CS_Unknown.
     ConsumedState NS =
-      isSetOnReadPtrType(Constructor->getThisType()) ?
+      isSetOnReadPtrType(Constructor->getThisArgType()) ?
       CS_Unknown : CS_None;
     copyInfo(Call->getArg(0), Call, NS);
   } else {
@@ -1199,7 +1199,7 @@ void ConsumedAnalyzer::determineExpectedReturnState(AnalysisDeclContext &AC,
                                                     const FunctionDecl *D) {
   QualType ReturnType;
   if (const auto *Constructor = dyn_cast<CXXConstructorDecl>(D)) {
-    ReturnType = Constructor->getThisType()->getPointeeType();
+    ReturnType = Constructor->getThisObjectType();
   } else
     ReturnType = D->getCallResultType();
 
