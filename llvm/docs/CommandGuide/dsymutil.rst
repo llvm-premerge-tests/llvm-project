@@ -32,10 +32,18 @@ OPTIONS
  architectures will be linked by default and any architectures that can't be
  properly linked will cause :program:`dsymutil` to return an error.
 
+.. option:: --build-variant-suffix <suffix=buildvariant>
+
+ Specify the build variant suffix used to build the executabe file.
+
 .. option:: --dump-debug-map
 
  Dump the *executable*'s debug-map (the list of the object files containing the
  debug information) in YAML format and exit. No DWARF link will take place.
+
+ .. option:: -D <path>
+
+ Specify a directory that contain dSYM files to search for.
 
 .. option:: --fat64
 
