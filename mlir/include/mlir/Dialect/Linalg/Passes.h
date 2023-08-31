@@ -65,6 +65,9 @@ std::unique_ptr<Pass> createLinalgGeneralizationPass();
 /// work on primitive types, if possible.
 std::unique_ptr<Pass> createLinalgDetensorizePass();
 
+/// Create a pass to update address space of Linalg operations if possible.
+std::unique_ptr<Pass> createLinalgUpdateAddressSpacePass();
+
 //===----------------------------------------------------------------------===//
 // Registration
 //===----------------------------------------------------------------------===//
