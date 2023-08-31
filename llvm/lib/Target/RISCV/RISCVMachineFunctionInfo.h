@@ -128,9 +128,12 @@ public:
   void setCalleeSavedStackSize(unsigned Size) { CalleeSavedStackSize = Size; }
 
   bool isPushable(const MachineFunction &MF) const {
-    return (!useSaveRestoreLibCalls(MF) &&
-            MF.getSubtarget<RISCVSubtarget>().hasStdExtZcmp() &&
-            !MF.getTarget().Options.DisableFramePointerElim(MF));
+    // We cannot use fixed locations for the callee saved spill slots if the
+    // function uses a varargs save area.
+    return !MF.getSubtarget<RISCVSubtarget>().enableSaveRestore() &&
+           MF.getSubtarget<RISCVSubtarget>().hasStdExtZcmp() &&
+           !MF.getTarget().Options.DisableFramePointerElim(MF) &&
+           VarArgsSaveSize == 0;
   }
 
   int getRVPushRlist() const { return RVPushRlist; }
