@@ -1089,6 +1089,23 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST_,
       .clampScalar(0, S32, S64)
       .scalarize(0);
   }
+  
+  if (ST.has16BitInsts()) {
+    getActionDefinitionsBuilder(G_FNEARBYINT)
+      .customFor({S16, S32, S64})
+      .clampScalar(0, S16, S64)
+      .scalarize(0);
+  } else if (ST.getGeneration() >= AMDGPUSubtarget::SEA_ISLANDS) {
+    getActionDefinitionsBuilder(G_FNEARBYINT)
+      .customFor({S32, S64})
+      .clampScalar(0, S32, S64)
+      .scalarize(0);
+  } else {
+    getActionDefinitionsBuilder(G_FNEARBYINT)
+      .customFor({S32, S64})
+      .clampScalar(0, S32, S64)
+      .scalarize(0);
+  }    
 
   getActionDefinitionsBuilder(G_PTR_ADD)
       .unsupportedFor({BufferFatPtr, RsrcPtr})
@@ -1967,6 +1984,8 @@ bool AMDGPULegalizerInfo::legalizeCustom(LegalizerHelper &Helper,
     return legalizeAddrSpaceCast(MI, MRI, B);
   case TargetOpcode::G_FRINT:
     return legalizeFrint(MI, MRI, B);
+  case TargetOpcode::G_FNEARBYINT:
+    return legalizeFnearbyint(MI, MRI, B);
   case TargetOpcode::G_FCEIL:
     return legalizeFceil(MI, MRI, B);
   case TargetOpcode::G_FREM:
@@ -2293,6 +2312,20 @@ bool AMDGPULegalizerInfo::legalizeFrint(
 
   auto Cond = B.buildFCmp(CmpInst::FCMP_OGT, LLT::scalar(1), Fabs, C2);
   B.buildSelect(MI.getOperand(0).getReg(), Cond, Src, Tmp2);
+  MI.eraseFromParent();
+  return true;
+}
+
+bool AMDGPULegalizerInfo::legalizeFnearbyint(MachineInstr &MI, MachineRegisterInfo &MRI,
+  MachineIRBuilder &B) const {
+  // FNEARBYINT and FRINT are the same, except in their handling of FP
+  // exceptions. Those aren't really meaningful for us, and OpenCL only has
+  // rint, so just treat them as equivalent.
+  const unsigned Opcode = TargetOpcode::G_FRINT;
+  B.buildInstr(Opcode)
+    .addDef(MI.getOperand(0).getReg())
+    .addUse(MI.getOperand(1).getReg());
+
   MI.eraseFromParent();
   return true;
 }
