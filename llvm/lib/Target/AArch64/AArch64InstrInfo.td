@@ -6427,6 +6427,9 @@ defm FMAXV   : SIMDFPAcrossLanes<0b01111, 0, "fmaxv", AArch64fmaxv>;
 defm FMINNMV : SIMDFPAcrossLanes<0b01100, 1, "fminnmv", AArch64fminnmv>;
 defm FMINV   : SIMDFPAcrossLanes<0b01111, 1, "fminv", AArch64fminv>;
 
+def : Pat<(v1i64 (scalar_to_vector (i64 (zext (i32 (int_aarch64_neon_uaddlv (v8i8 V64:$Rn))))))),
+          (SUBREG_TO_REG (i64 0), (UADDLVv8i8v V64:$Rn), hsub)>;
+
 multiclass SIMDAcrossLaneLongPairIntrinsic<string Opc, SDPatternOperator addlp> {
   // Patterns for addv(addlp(x)) ==> addlv
   def : Pat<(i32 (vector_extract (v8i16 (insert_subvector undef,

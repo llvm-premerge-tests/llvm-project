@@ -177,3 +177,23 @@ entry:
   %0 = and i32 %vaddlv.i, 65535
   ret i32 %0
 }
+
+declare i64 @llvm.aarch64.neon.urshl.i64(i64, i64)
+
+define <8 x i8> @foo(<8 x i8> noundef %a) {
+; CHECK-LABEL: foo:
+; CHECK:       // %bb.0: // %entry
+; CHECK-NEXT:    uaddlv h0, v0.8b
+; CHECK-NEXT:    urshr d0, d0, #3
+; CHECK-NEXT:    dup v0.8b, v0.b[0]
+; CHECK-NEXT:    ret
+entry:
+  %vaddlv.i = tail call i32 @llvm.aarch64.neon.uaddlv.i32.v8i8(<8 x i8> %a)
+  %0 = and i32 %vaddlv.i, 65535
+  %conv = zext i32 %0 to i64
+  %vrshr_n = tail call i64 @llvm.aarch64.neon.urshl.i64(i64 %conv, i64 -3)
+  %conv1 = trunc i64 %vrshr_n to i8
+  %vecinit.i = insertelement <8 x i8> undef, i8 %conv1, i64 0
+  %vecinit7.i = shufflevector <8 x i8> %vecinit.i, <8 x i8> poison, <8 x i32> zeroinitializer
+  ret <8 x i8> %vecinit7.i
+}
