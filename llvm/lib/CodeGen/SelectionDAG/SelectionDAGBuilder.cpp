@@ -7488,6 +7488,64 @@ void SelectionDAGBuilder::visitIntrinsicCall(const CallInst &I,
     setValue(&I, Trunc);
     return;
   }
+  case Intrinsic::experimental_cttz_elts: {
+    auto DL = getCurSDLoc();
+    SDValue Op = getValue(I.getOperand(0));
+    EVT OpVT = Op.getValueType();
+
+    if (!TLI.shouldExpandCttzElements(OpVT)) {
+      visitTargetIntrinsic(I, Intrinsic);
+      return;
+    }
+
+    if (OpVT.getScalarType() != MVT::i1) {
+      // Compare the input vector elements to zero & use to count trailing zeros
+      SDValue AllZero = DAG.getConstant(0, DL, OpVT);
+      OpVT = EVT::getVectorVT(*DAG.getContext(), MVT::i1,
+                              OpVT.getVectorElementCount());
+      Op = DAG.getSetCC(DL, OpVT, Op, AllZero, ISD::SETNE);
+    }
+
+    // Find the smallest "sensible" element type to use for the expansion.
+    ConstantRange CR(
+        APInt(64, OpVT.getVectorElementCount().getKnownMinValue()));
+    if (OpVT.isScalableVT())
+      CR = CR.umul_sat(getVScaleRange(I.getCaller(), 64));
+
+    unsigned EltWidth = I.getType()->getScalarSizeInBits();
+    EltWidth = std::min(EltWidth, (unsigned)CR.getActiveBits());
+    EltWidth = std::max(llvm::bit_ceil(EltWidth), (unsigned)8);
+
+    MVT NewEltTy = MVT::getIntegerVT(EltWidth);
+
+    // Create the new vector type & get the vector length
+    EVT NewVT = EVT::getVectorVT(*DAG.getContext(), NewEltTy,
+                                 OpVT.getVectorElementCount());
+
+    SDValue VL =
+        DAG.getElementCount(DL, NewEltTy, OpVT.getVectorElementCount());
+
+    SDValue StepVec = DAG.getStepVector(DL, NewVT);
+    SDValue SplatVL = DAG.getSplat(NewVT, DL, VL);
+    SDValue StepVL = DAG.getNode(ISD::SUB, DL, NewVT, SplatVL, StepVec);
+    SDValue Ext = DAG.getNode(ISD::SIGN_EXTEND, DL, NewVT, Op);
+    SDValue And = DAG.getNode(ISD::AND, DL, NewVT, StepVL, Ext);
+    SDValue Max = DAG.getNode(ISD::VECREDUCE_UMAX, DL, NewEltTy, And);
+    SDValue Sub = DAG.getNode(ISD::SUB, DL, NewEltTy, VL, Max);
+
+    // If the result is VL, then the input was all zero. Return UNDEF in this
+    // case if zero-is-poison is set.
+    if (cast<ConstantSDNode>(getValue(I.getOperand(1)))->getZExtValue() != 0) {
+      Sub = DAG.getSelectCC(DL, Sub, VL, DAG.getUNDEF(NewEltTy), Sub,
+                            ISD::SETEQ);
+    }
+
+    EVT RetTy = TLI.getValueType(DAG.getDataLayout(), I.getType());
+    SDValue Ret = DAG.getNode(ISD::ZERO_EXTEND, DL, RetTy, Sub);
+
+    setValue(&I, Ret);
+    return;
+  }
   case Intrinsic::vector_insert: {
     SDValue Vec = getValue(I.getOperand(0));
     SDValue SubVec = getValue(I.getOperand(1));
