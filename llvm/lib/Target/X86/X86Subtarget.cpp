@@ -268,6 +268,17 @@ void X86Subtarget::initSubtargetFeatures(StringRef CPU, StringRef TuneCPU,
   if (!FS.empty())
     FullFS = (Twine(FullFS) + "," + FS).str();
 
+  // Attach EVEX512 feature when we have AVX512 features and EVEX512 is not set.
+  size_t posNoEVEX512 = FS.rfind("-evex512");
+  size_t posEVEX512 = FS.rfind("+evex512");
+  size_t posAVX512 = FS.rfind("+avx512");
+
+  if (posAVX512 != StringRef::npos) {
+    if ((posNoEVEX512 == StringRef::npos && posEVEX512 == StringRef::npos) ||
+        (posNoEVEX512 != StringRef::npos && posAVX512 > posNoEVEX512))
+    FullFS += ",+evex512";
+  }
+
   // Parse features string and set the CPU.
   ParseSubtargetFeatures(CPU, TuneCPU, FullFS);
 

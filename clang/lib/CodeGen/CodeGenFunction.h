@@ -4067,6 +4067,8 @@ public:
 
   void checkTargetFeatures(const CallExpr *E, const FunctionDecl *TargetDecl);
   void checkTargetFeatures(SourceLocation Loc, const FunctionDecl *TargetDecl);
+  void checkTargetVectorWidth(const CallExpr *E, const FunctionDecl *TargetDecl,
+                              unsigned VectorWidth);
 
   llvm::CallInst *EmitRuntimeCall(llvm::FunctionCallee callee,
                                   const Twine &name = "");
