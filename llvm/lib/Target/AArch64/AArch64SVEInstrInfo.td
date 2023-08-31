@@ -1964,6 +1964,11 @@ let Predicates = [HasSVEorSME] in {
   defm CNTW_XPiI : sve_int_count<0b100, "cntw", int_aarch64_sve_cntw>;
   defm CNTD_XPiI : sve_int_count<0b110, "cntd", int_aarch64_sve_cntd>;
   defm CNTP_XPP : sve_int_pcount_pred<0b0000, "cntp", int_aarch64_sve_cntp>;
+
+  def : Pat<(i64 (int_experimental_cttz_elts nxv16i1:$Op1, (i32 0))),
+                 (i64 (!cast<Instruction>(CNTP_XPP_B)
+                        (nxv16i1 (!cast<Instruction>(BRKB_PPzP) (PTRUE_B 31), nxv16i1:$Op1)),
+                        (nxv16i1 (!cast<Instruction>(BRKB_PPzP) (PTRUE_B 31), nxv16i1:$Op1))))>;
 }
 
   defm INCB_XPiI : sve_int_pred_pattern_a<0b000, "incb", add, int_aarch64_sve_cntb>;
