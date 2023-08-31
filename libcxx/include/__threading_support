@@ -14,7 +14,8 @@
 #include <__chrono/convert_to_timespec.h>
 #include <__chrono/duration.h>
 #include <__config>
-#include <__thread/poll_with_backoff.h>
+#include <__fwd/hash.h>
+#include <ctime>
 #include <errno.h>
 
 #ifdef __MVS__
@@ -50,7 +51,7 @@
 #define _LIBCPP_THREAD_ABI_VISIBILITY inline _LIBCPP_INLINE_VISIBILITY
 #endif
 
-typedef ::timespec __libcpp_timespec_t;
+typedef std::timespec __libcpp_timespec_t;
 #endif // !defined(_LIBCPP_HAS_NO_THREADS)
 
 _LIBCPP_BEGIN_NAMESPACE_STD
