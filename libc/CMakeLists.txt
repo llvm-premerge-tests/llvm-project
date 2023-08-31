@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 3.20.0)
 if(NOT DEFINED LLVM_COMMON_CMAKE_UTILS)
   set(LLVM_COMMON_CMAKE_UTILS ${CMAKE_CURRENT_SOURCE_DIR}/../cmake)
 endif()
+
 include(${LLVM_COMMON_CMAKE_UTILS}/Modules/CMakePolicy.cmake
   NO_POLICY_SCOPE)
 
@@ -14,6 +15,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 
 # The top-level source directory.
 set(LIBC_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+
 # The top-level directory in which libc is being built.
 set(LIBC_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -30,8 +32,9 @@ if(LLVM_LIBC_FULL_BUILD OR LIBC_GPU_BUILD OR LIBC_GPU_ARCHITECTURES)
 endif()
 
 option(LIBC_HDRGEN_ONLY "Only build the 'libc-hdrgen' executable" OFF)
-if(("libc" IN_LIST LLVM_ENABLE_RUNTIMES AND NOT LLVM_RUNTIMES_BUILD) OR 
-   LIBC_HDRGEN_ONLY)
+
+if(("libc" IN_LIST LLVM_ENABLE_RUNTIMES AND NOT LLVM_RUNTIMES_BUILD) OR
+  LIBC_HDRGEN_ONLY)
   # When libc is build as part of the runtimes/bootstrap build's CMake run, we
   # only need to build the host tools to build the libc. So, we just do enough
   # to build libc-hdrgen and return.
@@ -44,9 +47,33 @@ if(("libc" IN_LIST LLVM_ENABLE_RUNTIMES AND NOT LLVM_RUNTIMES_BUILD) OR
 endif()
 
 option(LIBC_CMAKE_VERBOSE_LOGGING
-       "Log details warnings and notifications during CMake configuration." OFF)
+  "Log details warnings and notifications during CMake configuration." OFF)
+
 # Path libc/scripts directory.
 set(LIBC_BUILD_SCRIPTS_DIR "${LIBC_SOURCE_DIR}/utils/build_scripts")
+
+# Defining a global namespace to enclose all libc functions.
+set(LIBC_CMAKE_NAMESPACE "" CACHE STRING "The namespace to use to enclose internal implementations. Must start with '__llvm_libc'." FORCE)
+
+if(LIBC_CMAKE_NAMESPACE)
+  set(LLVM_LIBC_NAMESPACE "${LIBC_CMAKE_NAMESPACE}")
+else()
+  set(LLVM_LIBC_NAMESPACE "__llvm_libc_${LLVM_VERSION_MAJOR}_${LLVM_VERSION_MINOR}_${LLVM_VERSION_PATCH}_${LLVM_VERSION_SUFFIX}")
+endif()
+
+if(NOT LLVM_LIBC_NAMESPACE MATCHES "^__llvm_libc")
+  message(FATAL_ERROR "Invalid LLVM_LIBC_NAMESPACE. Must start with '__llvm_libc' was '${LLVM_LIBC_NAMESPACE}'")
+endif()
+
+message(STATUS "Setting LLVM_LIBC_NAMESPACE namespace to '${LLVM_LIBC_NAMESPACE}'")
+
+if(LLVM_COMPILER_IS_GCC_COMPATIBLE)
+  add_definitions("-DLIBC_NAMESPACE=${LLVM_LIBC_NAMESPACE}")
+elseif(MSVC)
+  add_definitions("/DLIBC_NAMESPACE=${LLVM_LIBC_NAMESPACE}")
+else()
+  message(FATAL_ERROR "Unsupported compiler")
+endif()
 
 # Flags to pass down to the compiler while building the libc functions.
 set(LIBC_COMPILE_OPTIONS_DEFAULT "" CACHE STRING "Architecture to tell clang to optimize for (e.g. -march=... or -mcpu=...)")
@@ -63,13 +90,14 @@ execute_process(
   RESULT_VARIABLE COMMAND_RETURN_CODE
   OUTPUT_VARIABLE COMPILER_RESOURCE_DIR
 )
+
 # Retrieve the host compiler's resource dir.
 if(COMMAND_RETURN_CODE EQUAL 0)
   set(COMPILER_RESOURCE_DIR
     "${COMPILER_RESOURCE_DIR}" CACHE PATH "path to compiler resource dir"
   )
   message(STATUS "Set COMPILER_RESOURCE_DIR to "
-                 "${COMPILER_RESOURCE_DIR} using --print-resource-dir")
+    "${COMPILER_RESOURCE_DIR} using --print-resource-dir")
 else()
   set(COMPILER_RESOURCE_DIR OFF)
   message(STATUS "COMPILER_RESOURCE_DIR not set
@@ -108,6 +136,7 @@ else()
     set(LIBC_INCLUDE_DIR ${CMAKE_BINARY_DIR}/include)
     set(LIBC_LIBRARY_DIR ${CMAKE_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX})
   endif()
+
   set(LIBC_INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_INCLUDEDIR})
 endif()
 
@@ -127,17 +156,18 @@ if(LLVM_LIBC_ENABLE_LINTING)
     set(LLVM_LIBC_ENABLE_LINTING OFF)
     message(WARNING "C++ compiler is not clang++, linting with be disabled.")
   else()
-    if (NOT LLVM_LIBC_CLANG_TIDY)
+    if(NOT LLVM_LIBC_CLANG_TIDY)
       find_program(LLVM_LIBC_CLANG_TIDY NAMES clang-tidy)
     endif()
 
     if(LLVM_LIBC_CLANG_TIDY)
       # Check clang-tidy major version.
       execute_process(COMMAND ${LLVM_LIBC_CLANG_TIDY} "--version"
-                      OUTPUT_VARIABLE CLANG_TIDY_OUTPUT)
+        OUTPUT_VARIABLE CLANG_TIDY_OUTPUT)
       string(REGEX MATCH "[0-9]+" CLANG_TIDY_VERSION "${CLANG_TIDY_OUTPUT}")
       string(REGEX MATCH "[0-9]+" CLANG_MAJOR_VERSION
-             "${CMAKE_CXX_COMPILER_VERSION}")
+        "${CMAKE_CXX_COMPILER_VERSION}")
+
       if(NOT CLANG_TIDY_VERSION EQUAL CLANG_MAJOR_VERSION)
         set(LLVM_LIBC_ENABLE_LINTING OFF)
         message(WARNING "
@@ -148,6 +178,7 @@ if(LLVM_LIBC_ENABLE_LINTING)
           The path to the clang-tidy binary can be set manually by passing
           -DLLVM_LIBC_CLANG_TIDY=<path/to/clang-tidy> to CMake.")
       endif()
+
       add_custom_target(libc-lint)
     else()
       message(FATAL_ERROR "
@@ -163,8 +194,9 @@ if(LLVM_LIBC_ENABLE_LINTING)
 endif()
 
 option(LLVM_LIBC_INCLUDE_SCUDO "Include the SCUDO standalone as the allocator for LLVM libc" OFF)
+
 if(LLVM_LIBC_INCLUDE_SCUDO)
-  if (NOT ("compiler-rt" IN_LIST LLVM_ENABLE_PROJECTS OR "compiler-rt" IN_LIST LLVM_ENABLE_RUNTIMES))
+  if(NOT("compiler-rt" IN_LIST LLVM_ENABLE_PROJECTS OR "compiler-rt" IN_LIST LLVM_ENABLE_RUNTIMES))
     message(FATAL_ERROR "SCUDO cannot be included without adding compiler-rt to LLVM_ENABLE_PROJECTS or LLVM_ENABLE_RUNTIMES")
   endif()
 endif()
@@ -182,6 +214,7 @@ elseif(EXISTS "${LIBC_SOURCE_DIR}/config/${LIBC_TARGET_OS}/entrypoints.txt")
 else()
   message(FATAL_ERROR "entrypoints.txt file for the target platform '${LIBC_TARGET_OS}/${LIBC_TARGET_ARCHITECTURE}' not found.")
 endif()
+
 include(${entrypoint_file})
 
 if(EXISTS "${LIBC_SOURCE_DIR}/config/${LIBC_TARGET_OS}/${LIBC_TARGET_ARCHITECTURE}/headers.txt")
@@ -191,20 +224,25 @@ elseif(EXISTS "${LIBC_SOURCE_DIR}/config/${LIBC_TARGET_OS}/headers.txt")
 endif()
 
 set(TARGET_ENTRYPOINT_NAME_LIST "")
+
 foreach(entrypoint IN LISTS TARGET_LLVMLIBC_ENTRYPOINTS)
   string(FIND ${entrypoint} "." last_dot_loc REVERSE)
+
   if(${last_dot_loc} EQUAL -1)
     message(FATAL "Invalid entrypoint target name ${entrypoint}; Expected a '.' "
-                  "(dot) in the name.")
+      "(dot) in the name.")
   endif()
+
   math(EXPR name_loc "${last_dot_loc} + 1")
   string(SUBSTRING ${entrypoint} ${name_loc} -1 entrypoint_name)
   list(APPEND TARGET_ENTRYPOINT_NAME_LIST ${entrypoint_name})
 endforeach()
 
 set(LIBC_INSTALL_DEPENDS)
+
 if(LLVM_LIBC_FULL_BUILD)
   set(LIBC_INSTALL_DEPENDS "install-libc-static-archives;install-libc-headers")
+
   if(NOT LIBC_TARGET_OS_IS_BAREMETAL)
     # For now we will disable libc-startup installation for baremetal. The
     # correct way to do it would be to make a hookable startup for baremetal
@@ -231,6 +269,7 @@ endif()
 # of the other directories.
 # TODO: Add testing support for the libc GPU target.
 add_subdirectory(lib)
+
 if(LLVM_INCLUDE_TESTS)
   add_subdirectory(test)
   add_subdirectory(fuzzing)
@@ -240,10 +279,9 @@ if(LIBC_INCLUDE_BENCHMARKS)
   add_subdirectory(benchmarks)
 endif()
 
-if (LIBC_INCLUDE_DOCS)
+if(LIBC_INCLUDE_DOCS)
   add_subdirectory(docs)
 endif()
-
 
 if(LLVM_LIBC_FULL_BUILD)
   add_llvm_install_targets(
