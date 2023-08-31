@@ -701,15 +701,6 @@ RecordValue &refreshRecordValue(RecordStorageLocation &Loc, Environment &Env);
 /// See also documentation for the overload above.
 RecordValue &refreshRecordValue(const Expr &Expr, Environment &Env);
 
-/// Deprecated synonym for `refreshRecordValue()`.
-inline RecordValue &refreshStructValue(RecordStorageLocation &Loc,
-                                       Environment &Env) {
-  return refreshRecordValue(Loc, Env);
-}
-inline RecordValue &refreshStructValue(const Expr &Expr, Environment &Env) {
-  return refreshRecordValue(Expr, Env);
-}
-
 } // namespace dataflow
 } // namespace clang
 
