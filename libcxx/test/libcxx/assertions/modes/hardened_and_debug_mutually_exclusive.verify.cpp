@@ -10,6 +10,8 @@
 
 // Modules build produces a different error ("Could not build module 'std'").
 // UNSUPPORTED: modules-build
+// If `_LIBCPP_ENABLE_ASSERTIONS` is defined, it would additionally produce a different error.
+// UNSUPPORTED: libcpp-has-assertions
 // ADDITIONAL_COMPILE_FLAGS: -Wno-macro-redefined -D_LIBCPP_ENABLE_HARDENED_MODE=1 -D_LIBCPP_ENABLE_DEBUG_MODE=1
 
 #include <cassert>
