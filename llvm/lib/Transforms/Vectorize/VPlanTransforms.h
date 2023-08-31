@@ -23,6 +23,7 @@ class Instruction;
 class PHINode;
 class ScalarEvolution;
 class Loop;
+class LoopInfo;
 class PredicatedScalarEvolution;
 class TargetLibraryInfo;
 class VPBuilder;
@@ -36,6 +37,14 @@ struct VPlanTransforms {
                             function_ref<const InductionDescriptor *(PHINode *)>
                                 GetIntOrFpInductionDescriptor,
                             ScalarEvolution &SE, const TargetLibraryInfo &TLI);
+
+  /// Replace widening recipes where all users only use the first lane by
+  /// uniform VPReplicateRecipes. Also, check if memory accesses can be
+  /// marked as uniform or consecutive. This transformation is only usefull to
+  /// the VPlan-native path.
+  static void findAndReplaceUniformRecipes(VPlan &Plan, const Loop *TheLoop,
+                                           ScalarEvolution &SE,
+                                           const LoopInfo &LI);
 
   /// Sink users of fixed-order recurrences after the recipe defining their
   /// previous value. Then introduce FirstOrderRecurrenceSplice VPInstructions

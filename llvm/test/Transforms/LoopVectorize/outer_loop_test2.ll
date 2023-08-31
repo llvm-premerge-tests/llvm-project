@@ -22,30 +22,36 @@
 ; CHECK-LABEL: vector.body:
 ; CHECK: %[[Ind:.*]] = phi i64 [ 0, %vector.ph ], [ %[[IndNext:.*]], %[[ForInc:.*]] ]
 ; CHECK: %[[VecInd:.*]] = phi <4 x i64> [ <i64 0, i64 1, i64 2, i64 3>, %vector.ph ], [ %[[VecIndNext:.*]], %[[ForInc]] ]
-; CHECK: %[[AAddr:.*]] = getelementptr inbounds [1024 x i32], ptr @A, i64 0, <4 x i64> %[[VecInd]]
-; CHECK: call void @llvm.masked.scatter.v4i32.v4p0(<4 x i32> %[[CSplat]], <4 x ptr> %[[AAddr]], i32 4, <4 x i1> <i1 true, i1 true, i1 true, i1 true>)
+; CHECK: %[[tmp1:.*]] = add i64 %[[Ind]], 0
+; CHECK: %[[AAddr:.*]] = getelementptr [1024 x i32], ptr @A, i64 0, i64 %[[tmp1]]
+; CHECK: %[[tmp2:.*]] = getelementptr i32, ptr %[[AAddr]], i32 0
+; CHECK: store <4 x i32> %[[CSplat]], ptr %[[tmp2]], align 4
 ; CHECK: br i1 %[[ZeroTripChk]], label %[[InnerForPh:.*]], label %[[OuterInc:.*]]
 
 ; CHECK: [[InnerForPh]]:
-; CHECK: %[[WideAVal:.*]] = call <4 x i32> @llvm.masked.gather.v4i32.v4p0(<4 x ptr> %[[AAddr]], i32 4, <4 x i1> <i1 true, i1 true, i1 true, i1 true>, <4 x i32> poison)
+; CHECK: %[[tmp4:.*]] = getelementptr i32, ptr %[[AAddr]], i32 0
+; CHECK: %[[WideAVal:.*]] = load <4 x i32>, ptr %[[tmp4]], align 4
 ; CHECK: %[[VecIndTr:.*]] = trunc <4 x i64> %[[VecInd]] to <4 x i32>
 ; CHECK: br label %[[InnerForBody:.*]]
 
 ; CHECK: [[InnerForBody]]:
-; CHECK: %[[InnerInd:.*]] = phi <4 x i64> [ zeroinitializer, %[[InnerForPh]] ], [ %[[InnerIndNext:.*]], %[[InnerForBody]] ]
+; CHECK: %[[InnerInd:.*]] = phi i64 [ 0, %[[InnerForPh]] ], [ %[[InnerIndNext:.*]], %[[InnerForBody]] ]
 ; CHECK: %[[AccumPhi:.*]] = phi <4 x i32> [ %[[WideAVal]], %[[InnerForPh]] ], [ %[[AccumPhiNext:.*]], %[[InnerForBody]] ]
-; CHECK: %[[BAddr:.*]] = getelementptr inbounds [1024 x i32], ptr @B, i64 0, <4 x i64> %[[InnerInd]]
-; CHECK: %[[WideBVal:.*]] = call <4 x i32> @llvm.masked.gather.v4i32.v4p0(<4 x ptr> %[[BAddr]], i32 4, <4 x i1> <i1 true, i1 true, i1 true, i1 true>, <4 x i32> poison)
+; CHECK: %[[BAddr:.*]] = getelementptr inbounds [1024 x i32], ptr @B, i64 0, i64 %[[InnerInd]]
+; CHECK: %[[tmp3:.*]] = load i32, ptr %[[BAddr]], align 4
+; CHECK: %[[tmp4:.*]] = insertelement <4 x i32> poison, i32 %[[tmp3]], i64 0
+; CHECK: %[[WideBVal:.*]] = shufflevector <4 x i32> %[[tmp4]], <4 x i32> poison, <4 x i32> zeroinitializer
 ; CHECK: %[[Add1:.*]] = add nsw <4 x i32> %[[WideBVal]], %[[VecIndTr]]
 ; CHECK: %[[AccumPhiNext]] = add nsw <4 x i32> %[[Add1]], %[[AccumPhi]]
-; CHECK: %[[InnerIndNext]] = add nuw nsw <4 x i64> %[[InnerInd]], <i64 1, i64 1, i64 1, i64 1>
-; CHECK: %[[InnerVecCond:.*]] = icmp eq <4 x i64> %[[InnerIndNext]], {{.*}}
-; CHECK: %[[InnerCond:.+]] = extractelement <4 x i1> %[[InnerVecCond]], i32 0
+
+; CHECK: %[[InnerIndNext]] = add nuw nsw i64 %[[InnerInd]], 1
+; CHECK: %[[InnerCond:.*]] = icmp eq i64 %[[InnerIndNext]], {{.*}}
 ; CHECK: br i1 %[[InnerCond]], label %[[InnerCrit:.*]], label %[[InnerForBody]]
 
 ; CHECK: [[InnerCrit]]:
 ; CHECK: %[[StorePhi:.*]] = phi <4 x i32> [ %[[AccumPhiNext]], %[[InnerForBody]] ]
-; CHECK: call void @llvm.masked.scatter.v4i32.v4p0(<4 x i32> %[[StorePhi]], <4 x ptr> %[[AAddr]], i32 4, <4 x i1> <i1 true, i1 true, i1 true, i1 true>)
+; CHECK: %[[tmp5:.*]] = getelementptr i32, ptr %[[AAddr]], i32 0
+; CHECK: store <4 x i32> %[[StorePhi]], ptr %[[tmp5]], align 4
 ; CHECK:  br label %[[ForInc]]
 
 ; CHECK: [[ForInc]]:

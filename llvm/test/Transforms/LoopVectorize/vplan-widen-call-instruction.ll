@@ -7,35 +7,35 @@ declare double @llvm.sqrt.f64(double %0)
 define void @widen_call_instruction(ptr noalias nocapture readonly %a.in, ptr noalias nocapture readonly %b.in, ptr noalias nocapture %c.out) {
 ; CHECK-LABEL: @widen_call_instruction(
 
-; CHECK: vector.body:
-; CHECK-NEXT: %[[FOR1_INDEX:.*]] = phi i64 [ 0, %[[LABEL_PR:.*]] ], [ %{{.*}}, %[[LABEL_FOR1_LATCH:.*]] ]
-; CHECK: %[[VEC_INDEX:.*]] = phi <4 x i64> [ <i64 0, i64 1, i64 2, i64 3>, %[[LABEL_PR]] ], [ %{{.*}}, %[[LABEL_FOR1_LATCH]] ]
-; CHECK-NEXT: %[[A_PTR:.*]] = getelementptr inbounds double, ptr %a.in, <4 x i64> %[[VEC_INDEX]]
-; CHECK-NEXT: %[[MASKED_GATHER1:.*]] = call <4 x double> @llvm.masked.gather.v4f64.v4p0(<4 x ptr> %[[A_PTR]], i32 8, <4 x i1> <i1 true, i1 true, i1 true, i1 true>, <4 x double> poison)
-; CHECK-NEXT: %[[B_PTR:.*]] = getelementptr inbounds double, ptr %b.in, <4 x i64> %[[VEC_INDEX]]
-; CHECK-NEXT: %[[MASKED_GATHER2:.*]] = call <4 x double> @llvm.masked.gather.v4f64.v4p0(<4 x ptr> %[[B_PTR]], i32 8, <4 x i1> <i1 true, i1 true, i1 true, i1 true>, <4 x double> poison)
-; CHECK-NEXT: %[[B_SQRT:.*]] = call <4 x double> @llvm.sqrt.v4f64(<4 x double> %[[MASKED_GATHER2]])
-; CHECK-NEXT: br label %[[FOR2_HEADER:.*]]
 
-; CHECK: [[FOR2_HEADER]]:
-; CHECK-NEXT: %[[FOR2_INDEX:.*]] = phi <4 x i32> [ zeroinitializer, %vector.body ], [ %[[FOR2_INDEX_NEXT:.*]], %[[FOR2_HEADER]] ]
-; CHECK-NEXT: %[[REDUCTION:.*]] = phi <4 x double> [ %[[MASKED_GATHER1]], %vector.body ], [ %[[REDUCTION_NEXT:.*]], %[[FOR2_HEADER]] ]
-; CHECK-NEXT: %[[REDUCTION_NEXT]] = fadd <4 x double> %[[B_SQRT]], %[[REDUCTION]]
-; CHECK-NEXT: %[[FOR2_INDEX_NEXT]] = add nuw nsw <4 x i32> %[[FOR2_INDEX]], <i32 1, i32 1, i32 1, i32 1>
-; CHECK-NEXT: %[[VEC_PTR:.*]] = icmp eq <4 x i32> %[[FOR2_INDEX_NEXT]], <i32 10000, i32 10000, i32 10000, i32 10000>
-; CHECK-NEXT: %[[EXIT_COND:.*]] = extractelement <4 x i1> %[[VEC_PTR]], i32 0
-; CHECK-NEXT: br i1 %[[EXIT_COND]], label %[[FOR1_LATCH:.*]], label %{{.*}}
+; CHECK:       vector.body:
+; CHECK-NEXT:    [[INDEX:%.*]] = phi i64 [ 0, %vector.ph ], [ [[INDEX_NEXT:%.*]], %[[FOR1_LATCH:.*]] ]
+; CHECK-NEXT:    [[TMP0:%.*]] = add i64 [[INDEX]], 0
+; CHECK-NEXT:    [[TMP1:%.*]] = getelementptr inbounds double, ptr %a.in, i64 [[TMP0]]
+; CHECK-NEXT:    [[TMP2:%.*]] = getelementptr inbounds double, ptr [[TMP1]], i32 0
+; CHECK-NEXT:    [[WIDE_LOAD:%.*]] = load <4 x double>, ptr [[TMP2]], align 8
+; CHECK-NEXT:    [[TMP3:%.*]] = getelementptr inbounds double, ptr %b.in, i64 [[TMP0]]
+; CHECK-NEXT:    [[TMP4:%.*]] = getelementptr inbounds double, ptr [[TMP3]], i32 0
+; CHECK-NEXT:    [[WIDE_LOAD1:%.*]] = load <4 x double>, ptr [[TMP4]], align 8
+; CHECK-NEXT:    [[TMP5:%.*]] = call <4 x double> @llvm.sqrt.v4f64(<4 x double> [[WIDE_LOAD1]])
+; CHECK-NEXT:    br label %[[FOR2_HEADER:.*]]
 
-; CHECK: [[FOR1_LATCH]]:
-; CHECK-NEXT: %[[REDUCTION:.*]] = phi <4 x double> [ %[[REDUCTION_NEXT]], %[[FOR2_HEADER]] ]
-; CHECK-NEXT: %[[C_PTR:.*]] = getelementptr inbounds double, ptr %c.out, <4 x i64> %[[VEC_INDEX]]
-; CHECK-NEXT: call void @llvm.masked.scatter.v4f64.v4p0(<4 x double> %[[REDUCTION]], <4 x ptr> %[[C_PTR]], i32 8, <4 x i1> <i1 true, i1 true, i1 true, i1 true>)
-; CHECK-NEXT: %[[VEC_INDEX_NEXT:.*]] = add nuw nsw <4 x i64> %[[VEC_INDEX]], <i64 1, i64 1, i64 1, i64 1>
-; CHECK-NEXT: %[[VEC_PTR:.*]] = icmp eq <4 x i64> %[[VEC_INDEX_NEXT]], <i64 1000, i64 1000, i64 1000, i64 1000>
-; CHECK-NEXT: %[[FOR1_INDEX_NEXT:.*]] = add nuw i64 %[[FOR1_INDEX]], 4
-; CHECK-NEXT: %{{.*}} = add <4 x i64> %[[VEC_INDEX]], <i64 4, i64 4, i64 4, i64 4>
-; CHECK-NEXT: %[[EXIT_COND:.*]] = icmp eq i64 %[[FOR1_INDEX_NEXT]], 1000
-; CHECK-NEXT: br i1 %[[EXIT_COND]], label %{{.*}}, label %vector.body
+; CHECK:       [[FOR2_HEADER]]:
+; CHECK-NEXT:    [[SCALAR_PHI:%.*]] = phi i32 [ 0, %vector.body ], [ [[TMP7:%.*]], %[[FOR2_HEADER]] ]
+; CHECK-NEXT:    [[VEC_PHI:%.*]] = phi <4 x double> [ [[WIDE_LOAD]], %vector.body ], [ [[TMP6:%.*]], %[[FOR2_HEADER]] ]
+; CHECK-NEXT:    [[TMP6]] = fadd <4 x double> [[TMP5]], [[VEC_PHI]]
+; CHECK-NEXT:    [[TMP7]] = add nuw nsw i32 [[SCALAR_PHI]], 1
+; CHECK-NEXT:    [[TMP8:%.*]] = icmp eq i32 [[TMP7]], 10000
+; CHECK-NEXT:    br i1 [[TMP8]], label %[[FOR1_LATCH]], label %[[FOR2_HEADER]]
+
+; CHECK:       [[FOR1_LATCH]]:
+; CHECK-NEXT:    [[VEC_PHI4:%.*]] = phi <4 x double> [ [[TMP6]], %[[FOR2_HEADER]] ]
+; CHECK-NEXT:    [[TMP9:%.*]] = getelementptr inbounds double, ptr %c.out, i64 [[TMP0]]
+; CHECK-NEXT:    [[TMP10:%.*]] = getelementptr inbounds double, ptr [[TMP9]], i32 0
+; CHECK-NEXT:    store <4 x double> [[VEC_PHI4]], ptr [[TMP10]], align 8
+; CHECK-NEXT:    [[INDEX_NEXT]] = add nuw i64 [[INDEX]], 4
+; CHECK-NEXT:    [[TMP11:%.*]] = icmp eq i64 [[INDEX_NEXT]], 1000
+; CHECK-NEXT:    br i1 [[TMP11]], label [[MIDDLE_BLOCK:%.*]], label %vector.body
 
 entry:
   br label %for1.header

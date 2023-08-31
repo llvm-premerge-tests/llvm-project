@@ -61,6 +61,7 @@ bool VPRecipeBase::mayWriteToMemory() const {
   case VPWidenGEPSC:
   case VPWidenIntOrFpInductionSC:
   case VPWidenPHISC:
+  case VPScalarPHISC:
   case VPWidenSC:
   case VPWidenSelectSC: {
     const Instruction *I =
@@ -95,6 +96,7 @@ bool VPRecipeBase::mayReadFromMemory() const {
   case VPWidenGEPSC:
   case VPWidenIntOrFpInductionSC:
   case VPWidenPHISC:
+  case VPScalarPHISC:
   case VPWidenSC:
   case VPWidenSelectSC: {
     const Instruction *I =
@@ -136,6 +138,7 @@ bool VPRecipeBase::mayHaveSideEffects() const {
   case VPWidenGEPSC:
   case VPWidenIntOrFpInductionSC:
   case VPWidenPHISC:
+  case VPScalarPHISC:
   case VPWidenPointerInductionSC:
   case VPWidenSC:
   case VPWidenSelectSC: {
@@ -1643,10 +1646,12 @@ void VPWidenPHIRecipe::execute(VPTransformState &State) {
         StartIdx = I;
     }
   }
-  Value *Op0 = State.get(getOperand(StartIdx), 0);
-  Type *VecTy = Op0->getType();
-  Value *VecPhi = State.Builder.CreatePHI(VecTy, 2, "vec.phi");
-  State.set(this, VecPhi, 0);
+
+  Type *VecTy = State.get(getOperand(StartIdx), 0)->getType();
+  for (unsigned Part = 0, UF = State.UF; Part < UF; ++Part) {
+    Value *VecPhi = State.Builder.CreatePHI(VecTy, 2, "vec.phi");
+    State.set(this, VecPhi, Part);
+  }
 }
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
@@ -1663,6 +1668,46 @@ void VPWidenPHIRecipe::print(raw_ostream &O, const Twine &Indent,
     O << VPlanIngredient(OriginalPhi);
     return;
   }
+
+  printAsOperand(O, SlotTracker);
+  O << " = phi ";
+  printOperands(O, SlotTracker);
+}
+#endif
+
+void VPScalarPHIRecipe::execute(VPTransformState &State) {
+  assert(EnableVPlanNativePath &&
+         "Non-native vplans are not expected to have VPScalarPHIRecipes.");
+
+  // This recipe is used in outer-loop vectorization for the PHIs in
+  // the headers of inner loops. Only unifom loop nests are supported,
+  // control flow is always uniform.
+
+  // Create a phi with no operands - the phi operands will be
+  // set at the end of vector code generation.
+  VPBasicBlock *Parent = getParent();
+  VPRegionBlock *LoopRegion = Parent->getEnclosingLoopRegion();
+  unsigned StartIdx = 0;
+  // For phis in header blocks of loop regions, use the index of the value
+  // coming from the preheader to get the type.
+  if (LoopRegion->getEntryBasicBlock() == Parent) {
+    for (unsigned I = 0; I < getNumOperands(); ++I) {
+      if (getIncomingBlock(I) ==
+          LoopRegion->getSinglePredecessor()->getExitingBasicBlock())
+        StartIdx = I;
+    }
+  }
+
+  Type *Ty = State.get(getOperand(StartIdx), VPIteration(0, 0))->getType();
+  Value *NewPhi = State.Builder.CreatePHI(Ty, 2, "scalar.phi");
+  for (unsigned Part = 0, UF = State.UF; Part < UF; ++Part)
+    State.set(this, NewPhi, VPIteration(Part, 0));
+}
+
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+void VPScalarPHIRecipe::print(raw_ostream &O, const Twine &Indent,
+                              VPSlotTracker &SlotTracker) const {
+  O << Indent << "SCALAR-PHI ";
 
   printAsOperand(O, SlotTracker);
   O << " = phi ";

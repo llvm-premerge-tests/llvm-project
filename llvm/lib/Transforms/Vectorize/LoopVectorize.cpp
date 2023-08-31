@@ -2195,14 +2195,6 @@ static bool isExplicitVecOuterLoop(Loop *OuterLp,
     return false;
   }
 
-  if (Hints.getInterleave() > 1) {
-    // TODO: Interleave support is future work.
-    LLVM_DEBUG(dbgs() << "LV: Not vectorizing: Interleave is not supported for "
-                         "outer loops.\n");
-    Hints.emitRemarkWithHints();
-    return false;
-  }
-
   return true;
 }
 
@@ -4020,16 +4012,30 @@ void InnerLoopVectorizer::fixNonInductionPHIs(VPlan &Plan,
   auto Iter = vp_depth_first_deep(Plan.getEntry());
   for (VPBasicBlock *VPBB : VPBlockUtils::blocksOnly<VPBasicBlock>(Iter)) {
     for (VPRecipeBase &P : VPBB->phis()) {
-      VPWidenPHIRecipe *VPPhi = dyn_cast<VPWidenPHIRecipe>(&P);
-      if (!VPPhi)
-        continue;
-      PHINode *NewPhi = cast<PHINode>(State.get(VPPhi, 0));
-      // Make sure the builder has a valid insert point.
-      Builder.SetInsertPoint(NewPhi);
-      for (unsigned i = 0; i < VPPhi->getNumOperands(); ++i) {
-        VPValue *Inc = VPPhi->getIncomingValue(i);
-        VPBasicBlock *VPBB = VPPhi->getIncomingBlock(i);
-        NewPhi->addIncoming(State.get(Inc, 0), State.CFG.VPBB2IRBB[VPBB]);
+      if (auto *VPPhi = dyn_cast<VPWidenPHIRecipe>(&P)) {
+        for (unsigned Part = 0, UF = State.UF; Part < UF; ++Part) {
+          PHINode *NewPhi = cast<PHINode>(State.get(VPPhi, Part));
+          // Make sure the builder has a valid insert point.
+          Builder.SetInsertPoint(NewPhi);
+          for (unsigned i = 0; i < VPPhi->getNumOperands(); ++i) {
+            VPValue *Inc = VPPhi->getIncomingValue(i);
+            VPBasicBlock *VPBB = VPPhi->getIncomingBlock(i);
+            NewPhi->addIncoming(State.get(Inc, Part),
+                                State.CFG.VPBB2IRBB[VPBB]);
+          }
+        }
+      }
+
+      if (auto *VPPhi = dyn_cast<VPScalarPHIRecipe>(&P)) {
+        PHINode *NewPhi = cast<PHINode>(State.get(VPPhi, VPIteration(0, 0)));
+        // Make sure the builder has a valid insert point.
+        Builder.SetInsertPoint(NewPhi);
+        for (unsigned i = 0; i < VPPhi->getNumOperands(); ++i) {
+          VPValue *Inc = VPPhi->getIncomingValue(i);
+          VPBasicBlock *VPBB = VPPhi->getIncomingBlock(i);
+          NewPhi->addIncoming(State.get(Inc, VPIteration(0, 0)),
+                              State.CFG.VPBB2IRBB[VPBB]);
+        }
       }
     }
   }
@@ -7343,16 +7349,23 @@ void LoopVectorizationCostModel::collectInLoopReductions() {
 // `buildVPlans(VF, VF)`. We cannot do it because VPLAN at the moment
 // doesn't have a cost model that can choose which plan to execute if
 // more than one is generated.
-static unsigned determineVPlanVF(const unsigned WidestVectorRegBits,
-                                 LoopVectorizationCostModel &CM) {
+static ElementCount determineVPlanVF(const TargetTransformInfo &TTI,
+                                     LoopVectorizationCostModel &CM) {
   unsigned WidestType;
   std::tie(std::ignore, WidestType) = CM.getSmallestAndWidestTypes();
-  return WidestVectorRegBits / WidestType;
+
+  TargetTransformInfo::RegisterKind RegKind =
+      TTI.enableScalableVectorization()
+          ? TargetTransformInfo::RGK_ScalableVector
+          : TargetTransformInfo::RGK_FixedWidthVector;
+
+  TypeSize RegSize = TTI.getRegisterBitWidth(RegKind);
+  unsigned N = RegSize.getKnownMinValue() / WidestType;
+  return ElementCount::get(N, RegSize.isScalable());
 }
 
 VectorizationFactor
 LoopVectorizationPlanner::planInVPlanNativePath(ElementCount UserVF) {
-  assert(!UserVF.isScalable() && "scalable vectors not yet supported");
   ElementCount VF = UserVF;
   // Outer loop handling: They may require CFG and instruction level
   // transformations before even evaluating whether vectorization is profitable.
@@ -7362,10 +7375,7 @@ LoopVectorizationPlanner::planInVPlanNativePath(ElementCount UserVF) {
     // If the user doesn't provide a vectorization factor, determine a
     // reasonable one.
     if (UserVF.isZero()) {
-      VF = ElementCount::getFixed(determineVPlanVF(
-          TTI.getRegisterBitWidth(TargetTransformInfo::RGK_FixedWidthVector)
-              .getFixedValue(),
-          CM));
+      VF = determineVPlanVF(TTI, CM);
       LLVM_DEBUG(dbgs() << "LV: VPlan computed VF " << VF << ".\n");
 
       // Make sure we have a VF > 1 for stress testing.
@@ -7374,6 +7384,19 @@ LoopVectorizationPlanner::planInVPlanNativePath(ElementCount UserVF) {
                           << "overriding computed VF.\n");
         VF = ElementCount::getFixed(4);
       }
+    } else if (UserVF.isScalable() && !TTI.supportsScalableVectors() &&
+               !ForceTargetSupportsScalableVectors) {
+
+      ORE->emit([&]() {
+        return OptimizationRemarkAnalysis(DEBUG_TYPE, "VectorizationFactor",
+                                          OrigLoop->getStartLoc(),
+                                          OrigLoop->getHeader())
+               << "User-specified vectorization factor "
+               << ore::NV("UserVectorizationFactor", UserVF)
+               << " cannot be used for outer-loop vectorization because the"
+               << " target does not support scalable vectors.";
+      });
+      return VectorizationFactor::Disabled();
     }
     assert(EnableVPlanNativePath && "VPlan-native path is not enabled.");
     assert(isPowerOf2_32(VF.getKnownMinValue()) &&
@@ -8978,6 +9001,10 @@ VPlanPtr LoopVectorizationPlanner::buildVPlan(VFRange &Range) {
 
   addCanonicalIVRecipes(*Plan, Legal->getWidestInductionType(), DebugLoc(),
                         CM.getTailFoldingStyle());
+  VPlanTransforms::findAndReplaceUniformRecipes(*Plan, OrigLoop, *PSE.getSE(),
+                                                *LI);
+  VPlanTransforms::optimize(*Plan, *PSE.getSE());
+  LLVM_DEBUG(Plan->dump());
   return Plan;
 }
 
@@ -9604,6 +9631,12 @@ static bool processLoopInVPlanNativePath(
 
   CM.collectElementTypesForWidening();
 
+  // The VPlan-native path does not have a cost model, so the only way to get
+  // a unroll factor is to query the loop vectorization hints.
+  unsigned UF = Hints.getInterleave();
+  if (!UF)
+    UF = 1;
+
   // Plan how to best vectorize, return the best VF and its cost.
   const VectorizationFactor VF = LVP.planInVPlanNativePath(UserVF);
 
@@ -9619,10 +9652,10 @@ static bool processLoopInVPlanNativePath(
     GeneratedRTChecks Checks(*PSE.getSE(), DT, LI, TTI,
                              F->getParent()->getDataLayout());
     InnerLoopVectorizer LB(L, PSE, LI, DT, TLI, TTI, AC, ORE, VF.Width,
-                           VF.Width, 1, LVL, &CM, BFI, PSI, Checks);
+                           VF.Width, UF, LVL, &CM, BFI, PSI, Checks);
     LLVM_DEBUG(dbgs() << "Vectorizing outer loop in \""
                       << L->getHeader()->getParent()->getName() << "\"\n");
-    LVP.executePlan(VF.Width, 1, BestPlan, LB, DT, false);
+    LVP.executePlan(VF.Width, UF, BestPlan, LB, DT, false);
   }
 
   reportVectorization(ORE, L, VF, 1);

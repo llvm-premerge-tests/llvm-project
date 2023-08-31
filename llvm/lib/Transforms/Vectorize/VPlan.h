@@ -1111,6 +1111,7 @@ public:
     case VPInstruction::CalculateTripCountMinusVF:
     case VPInstruction::CanonicalIVIncrement:
     case VPInstruction::CanonicalIVIncrementForPart:
+    case VPInstruction::BranchOnCond:
     case VPInstruction::BranchOnCount:
       return true;
     };
@@ -1507,6 +1508,50 @@ public:
 
   /// Returns the \p I th incoming VPValue.
   VPValue *getIncomingValue(unsigned I) { return getOperand(I); }
+};
+
+// A recipe for handling header phis that stay scalar in the vector loop.
+// Only to be used in the VPlan native path, and only in inner loops,
+// never the top-level loop of a VPlan.
+class VPScalarPHIRecipe : public VPHeaderPHIRecipe {
+  /// List of incoming blocks.
+  SmallVector<VPBasicBlock *, 2> IncomingBlocks;
+
+public:
+  /// Create a new VPScalarPHIRecipe for \p Phi with start value \p Start.
+  VPScalarPHIRecipe(PHINode *Phi)
+      : VPHeaderPHIRecipe(VPDef::VPScalarPHISC, Phi) {}
+
+  ~VPScalarPHIRecipe() override = default;
+
+  VP_CLASSOF_IMPL(VPDef::VPScalarPHISC)
+
+  /// Generate the phi nodes.
+  void execute(VPTransformState &State) override;
+
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+  /// Print the recipe.
+  void print(raw_ostream &O, const Twine &Indent,
+             VPSlotTracker &SlotTracker) const override;
+#endif
+
+  /// Adds a pair (\p IncomingV, \p IncomingBlock) to the phi.
+  void addIncoming(VPValue *IncomingV, VPBasicBlock *IncomingBlock) {
+    addOperand(IncomingV);
+    IncomingBlocks.push_back(IncomingBlock);
+  }
+
+  /// Returns the \p I th incoming VPBasicBlock.
+  VPBasicBlock *getIncomingBlock(unsigned I) { return IncomingBlocks[I]; }
+
+  /// Returns the \p I th incoming VPValue.
+  VPValue *getIncomingValue(unsigned I) { return getOperand(I); }
+
+  bool onlyFirstLaneUsed(const VPValue *Op) const override {
+    assert(is_contained(operands(), Op) &&
+           "Op must be an operand of the recipe");
+    return true;
+  }
 };
 
 /// A recipe for handling first-order recurrence phis. The start value is the
@@ -1969,6 +2014,9 @@ public:
 
   // Return whether the loaded-from / stored-to addresses are consecutive.
   bool isConsecutive() const { return Consecutive; }
+
+  // Mark the memory access of this recipe as beeing consecutive.
+  void makeConsecutive() { Consecutive = true; }
 
   // Return whether the consecutive loaded/stored addresses are in reverse
   // order.
@@ -2999,6 +3047,8 @@ inline bool isUniformAfterVectorization(VPValue *VPV) {
     return Rep->isUniform();
   if (auto *GEP = dyn_cast<VPWidenGEPRecipe>(Def))
     return all_of(GEP->operands(), isUniformAfterVectorization);
+  if (isa<VPScalarPHIRecipe>(VPV))
+    return true;
   return false;
 }
 } // end namespace vputils

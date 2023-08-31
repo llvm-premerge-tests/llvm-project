@@ -795,7 +795,7 @@ void VPlan::execute(VPTransformState *State) {
   VPBasicBlock *Header = getVectorLoopRegion()->getEntryBasicBlock();
   for (VPRecipeBase &R : Header->phis()) {
     // Skip phi-like recipes that generate their backedege values themselves.
-    if (isa<VPWidenPHIRecipe>(&R))
+    if (isa<VPWidenPHIRecipe>(&R) || isa<VPScalarPHIRecipe>(&R))
       continue;
 
     if (isa<VPWidenPointerInductionRecipe>(&R) ||

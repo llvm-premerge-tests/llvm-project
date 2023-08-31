@@ -13,14 +13,18 @@
 
 #include "VPlanTransforms.h"
 #include "VPRecipeBuilder.h"
+#include "VPlan.h"
 #include "VPlanCFG.h"
 #include "VPlanDominatorTree.h"
 #include "llvm/ADT/PostOrderIterator.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Analysis/IVDescriptors.h"
 #include "llvm/Analysis/VectorUtils.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/PatternMatch.h"
+
+#define DEBUG_TYPE "loop-vectorize"
 
 using namespace llvm;
 
@@ -93,6 +97,297 @@ void VPlanTransforms::VPInstructionsToVPRecipes(
                "Only recpies with zero or one defined values expected");
       Ingredient.eraseFromParent();
     }
+  }
+}
+
+// Knowing that all recipes in ScalarUse have at least one user that only uses
+// the first lane, find recipes that are widening but that can be replaced to
+// only calculate the scalar value of the first lane.
+static void
+collectScalarizeableRecipes(SetVector<VPRecipeBase *> &ScalarUse,
+                            SetVector<VPRecipeBase *> &Scalarizeable) {
+  // Return true if the value V is only used by recipes that only require
+  // the first lane or by VPWidenPHINodes, and false otherwise.
+  auto CheckUses =
+      [&](VPValue *V,
+          SmallSetVector<VPWidenPHIRecipe *, 2> &NonScalarPHIUses) -> bool {
+    for (VPUser *U : V->users()) {
+      if (U->onlyFirstLaneUsed(V))
+        continue;
+
+      if (auto *R = dyn_cast<VPRecipeBase>(U); R && Scalarizeable.contains(R))
+        continue;
+
+      if (auto *Phi = dyn_cast<VPWidenPHIRecipe>(U)) {
+        NonScalarPHIUses.insert(Phi);
+        continue;
+      }
+
+      return false;
+    }
+    return true;
+  };
+
+  // If the Phi has a single non-scalar user that is a VPWidenPHIRecipe,
+  // return that Phi. Otherwise, return nullptr.
+  auto GetOnlyNonScalarUseOfPhi =
+      [&](VPWidenPHIRecipe *Phi) -> VPWidenRecipe * {
+    VPWidenRecipe *SingleNonScalarUse = nullptr;
+    for (VPUser *U : Phi->users()) {
+      if (U->onlyFirstLaneUsed(Phi) ||
+          (isa<VPRecipeBase>(U) &&
+           Scalarizeable.contains(cast<VPRecipeBase>(U))))
+        continue;
+
+      if (SingleNonScalarUse || !isa<VPWidenRecipe>(U))
+        return nullptr;
+
+      SingleNonScalarUse = cast<VPWidenRecipe>(U);
+    }
+    return SingleNonScalarUse;
+  };
+
+  SmallSetVector<VPWidenPHIRecipe *, 2> NonScalarPHIUses;
+
+  // Start the worklist with all recipes that have at least one scalar use.
+  SetVector<VPRecipeBase *> Worklist(ScalarUse);
+  while (!Worklist.empty()) {
+    VPRecipeBase *R = Worklist.pop_back_val();
+    VPValue *V = R->getVPSingleValue();
+    if (!V || Scalarizeable.contains(R) ||
+        !(isa<VPWidenRecipe>(R) || isa<VPWidenSelectRecipe>(R) ||
+          isa<VPWidenGEPRecipe>(R) || isa<VPWidenCastRecipe>(R) ||
+          isa<VPWidenPHIRecipe>(R)))
+      continue;
+
+    LLVM_DEBUG(dbgs() << "LV: Poped worklist item: "; V->dump());
+
+    // Phi-nodes can create def-use chain cycles, so we look exactly one
+    // instruction ahead to know if its only non-scalar use could be scalarized
+    // if the PHI itself is scalar. This allowes scalarization of inner-loop
+    // induction variables.
+    if (auto *Phi = dyn_cast<VPWidenPHIRecipe>(R)) {
+      VPWidenRecipe *User = GetOnlyNonScalarUseOfPhi(Phi);
+      if (User && is_contained(User->users(), Phi) &&
+          all_of(User->users(), [&](VPUser *U) -> bool {
+            return U == Phi || U->onlyFirstLaneUsed(User) ||
+                   (isa<VPRecipeBase>(U) &&
+                    Scalarizeable.contains(cast<VPRecipeBase>(U)));
+          })) {
+
+        // The PHI can be scalarized!
+        LLVM_DEBUG(dbgs() << "LV: Scalarize: "; V->dump());
+        Scalarizeable.insert(Phi);
+        for (VPValue *Op : R->operands())
+          if (auto *OpR = Op->getDefiningRecipe())
+            Worklist.insert(OpR);
+      }
+    }
+
+    NonScalarPHIUses.clear();
+    if (!CheckUses(V, NonScalarPHIUses))
+      continue;
+
+    // If absolutely all uses are scalar, add the recipe to the set of
+    // scalarizeable recipes and add everything it uses itself to the
+    // worklist (if that is a recipe that is not already in the set).
+    if (NonScalarPHIUses.empty()) {
+      LLVM_DEBUG(dbgs() << "LV: Scalarize: "; V->dump());
+      Scalarizeable.insert(R);
+      for (VPValue *Op : R->operands())
+        if (auto *OpR = Op->getDefiningRecipe())
+          Worklist.insert(OpR);
+      continue;
+    }
+
+    // Make sure all PHI
+    for (VPWidenPHIRecipe *UsingPhi : NonScalarPHIUses) {
+      // Add all users of the PHI to the worklist, except the current recipe.
+      for (VPUser *U : UsingPhi->users())
+        if (auto *UR = dyn_cast<VPRecipeBase>(U); UR && UR != R)
+          Worklist.insert(UR);
+
+      // Now add the PHI itself to the worklist.
+      Worklist.insert(UsingPhi);
+    }
+  }
+}
+
+enum class MemAccessKind { Unknown, Uniform, Consecutive };
+
+// Helper function for the VPlan-native path that returns what kind
+// of memory access the pointer represents: Unknown, Uniform or Consecutive.
+static MemAccessKind
+checkMemoryAccessesForVPlanNativePath(VPValue *Ptr, Type *AccessTy,
+                                      ScalarEvolution &SE, const LoopInfo &LI,
+                                      const Loop *TheLoop) {
+  Value *V = Ptr->getUnderlyingValue();
+  if (!V || !V->getType()->isPointerTy())
+    return MemAccessKind::Unknown;
+
+  const SCEV *PtrScev = SE.getSCEV(V);
+  if (isa<SCEVCouldNotCompute>(PtrScev))
+    return MemAccessKind::Unknown;
+
+  // Peel of recurrences around inner loops of TheLoop.
+  const SCEV *S = PtrScev;
+  while (true) {
+    if (auto *AR = dyn_cast<SCEVAddRecExpr>(S)) {
+      // Stop when a recurrence around TheLoop was found, or when we hit a outer
+      // loop of TheLoop.
+      if (AR->getLoop() == TheLoop || AR->getLoop()->contains(TheLoop))
+        break;
+
+      // The step of a inner loop can be whatever it wants, as long as it
+      // does not depend on the current iteration of TheLoop.
+      const SCEV *Step = AR->getStepRecurrence(SE);
+      if (!SE.isLoopInvariant(Step, TheLoop))
+        return MemAccessKind::Unknown;
+
+      S = AR->getStart();
+      continue;
+    }
+
+    // Add's can be ignored if the value that is added is loop invariant.
+    if (auto *Add = dyn_cast<SCEVAddExpr>(S)) {
+      for (unsigned I = 1, N = Add->getNumOperands(); I < N; ++I)
+        if (!SE.isLoopInvariant(Add->getOperand(I), TheLoop))
+          return MemAccessKind::Unknown;
+
+      S = Add->getOperand(0);
+      continue;
+    }
+
+    break;
+  }
+
+  // If the unpeeled SCEV for the pointer is a recurrence around TheLoop,
+  // this memory access could be consecutive.
+  auto *AR = dyn_cast<SCEVAddRecExpr>(S);
+  if (AR && AR->getLoop() == TheLoop) {
+    const auto *Step = dyn_cast<SCEVConstant>(AR->getStepRecurrence(SE));
+    if (!Step)
+      return MemAccessKind::Unknown;
+
+    // Check if the step if equal to the size of the accessed elements.
+    auto &DL = TheLoop->getHeader()->getModule()->getDataLayout();
+    TypeSize AllocSize = DL.getTypeAllocSize(AccessTy);
+    int64_t Size = AllocSize.getFixedValue();
+    if (Step->getAPInt() != Size)
+      return MemAccessKind::Unknown;
+
+    // The address calculation is not allowed to wrap.
+    if (auto *GEP = dyn_cast<GetElementPtrInst>(V); GEP && GEP->isInBounds())
+      return MemAccessKind::Consecutive;
+
+    // Even if the address calculation is not explicitly marked as not wrapping,
+    // we can assume that it does not if the null pointer is undefined.
+    if (!NullPointerIsDefined(TheLoop->getHeader()->getParent(),
+                              V->getType()->getPointerAddressSpace()))
+      return MemAccessKind::Consecutive;
+
+    return MemAccessKind::Unknown;
+  }
+
+  // If the unpeeled SCEV for the pointer is invariant to the vectorized loop,
+  // the access will be uniform accross all lanes.
+  return SE.isLoopInvariant(S, TheLoop) ? MemAccessKind::Uniform
+                                        : MemAccessKind::Unknown;
+}
+
+void VPlanTransforms::findAndReplaceUniformRecipes(VPlan &Plan,
+                                                   const Loop *TheLoop,
+                                                   ScalarEvolution &SE,
+                                                   const LoopInfo &LI) {
+  ReversePostOrderTraversal<VPBlockDeepTraversalWrapper<VPBlockBase *>> RPOT(
+      Plan.getEntry());
+
+  // Helper function to replace a recipe by another one.
+  auto ReplaceRecipe = [](VPRecipeBase *OldRep, VPRecipeBase *NewRep) {
+    assert(NewRep->getNumDefinedValues() <= 1 &&
+           OldRep->getNumDefinedValues() <= 1 && "unexpected number of values");
+    NewRep->insertBefore(OldRep);
+    if (OldRep->getNumDefinedValues() == 1)
+      OldRep->getVPSingleValue()->replaceAllUsesWith(
+          NewRep->getVPSingleValue());
+    OldRep->eraseFromParent();
+  };
+
+  SetVector<VPRecipeBase *> HasScalarUse;
+
+  // Recipes are visited in reverse order because that minimizes the amount
+  // of work in collectScalarizeableRecipes() in the common cases.
+  for (VPBasicBlock *VPBB :
+       reverse(VPBlockUtils::blocksOnly<VPBasicBlock>(RPOT))) {
+    // The branch-on-cond terminator recipe only uses the first lane value.
+    if (auto *Br = dyn_cast_or_null<VPInstruction>(VPBB->getTerminator())) {
+      if (Br->getOpcode() == VPInstruction::BranchOnCond)
+        if (auto *R = Br->getOperand(0)->getDefiningRecipe())
+          HasScalarUse.insert(R);
+    }
+
+    for (VPRecipeBase &R : make_early_inc_range(reverse(*VPBB))) {
+      if (auto *MemRecipe = dyn_cast<VPWidenMemoryInstructionRecipe>(&R)) {
+        VPValue *Ptr = MemRecipe->getAddr();
+        Type *ETy = getLoadStoreType(&MemRecipe->getIngredient());
+        MemAccessKind MemAccess =
+            checkMemoryAccessesForVPlanNativePath(Ptr, ETy, SE, LI, TheLoop);
+
+        // Replace uniform loads by a replicating load, and check if the
+        // recipes used for the address calculation can be scalarized.
+        if (MemAccess == MemAccessKind::Uniform && !MemRecipe->isStore()) {
+          LLVM_DEBUG(dbgs() << "LV: Uniform memory access: ";
+                     MemRecipe->dump());
+          assert(MemRecipe->getMask() == nullptr);
+          auto *UniformLoad = new VPReplicateRecipe(
+              &MemRecipe->getIngredient(), MemRecipe->operands(), true);
+          ReplaceRecipe(MemRecipe, UniformLoad);
+          if (auto *R = Ptr->getDefiningRecipe())
+            HasScalarUse.insert(R);
+          continue;
+        }
+
+        // Mark consecutive loads or stores as such, and check if the address
+        // calculation recipes can be scalarized.
+        if (MemAccess == MemAccessKind::Consecutive) {
+          LLVM_DEBUG(dbgs() << "LV: Consecutive memory access: ";
+                     MemRecipe->dump());
+          MemRecipe->makeConsecutive();
+          if (auto *R = Ptr->getDefiningRecipe())
+            HasScalarUse.insert(R);
+          continue;
+        }
+
+        LLVM_DEBUG(dbgs() << "LV: Non-consecutive non-uniform memory access: ";
+                   MemRecipe->dump());
+      }
+    }
+  }
+
+  // A set of recipes where only the value of lane zero is needed.
+  SetVector<VPRecipeBase *> ScalarizeableRecipes;
+  collectScalarizeableRecipes(HasScalarUse, ScalarizeableRecipes);
+
+  // Replace all the recipes that compute vectors by ones that
+  // only compute the fist lane.
+  for (VPRecipeBase *R : ScalarizeableRecipes) {
+    Instruction *I = R->getUnderlyingInstr();
+
+    // Handle PHIs:
+    if (auto *WidenPhi = dyn_cast<VPWidenPHIRecipe>(R)) {
+      auto *ScalarPhi = new VPScalarPHIRecipe(cast<PHINode>(I));
+      for (unsigned I = 0, E = WidenPhi->getNumOperands(); I != E; I++)
+        ScalarPhi->addIncoming(WidenPhi->getIncomingValue(I),
+                               WidenPhi->getIncomingBlock(I));
+      ReplaceRecipe(R, ScalarPhi);
+      continue;
+    }
+
+    // All other widening recipes can be replaced by VPReplicateRecipe
+    // instances that are marked as uniform.
+    assert(isa<VPWidenRecipe>(R) || isa<VPWidenGEPRecipe>(R) ||
+           isa<VPWidenSelectRecipe>(R) || isa<VPWidenCastRecipe>(R));
+    ReplaceRecipe(R, new VPReplicateRecipe(I, R->operands(), true));
   }
 }
 

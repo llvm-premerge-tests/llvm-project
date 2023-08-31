@@ -119,7 +119,7 @@ VPBasicBlock *PlainCFGBuilder::getOrCreateVPBB(BasicBlock *BB) {
   // Get or create a region for the loop containing BB.
   Loop *CurrentLoop = LI->getLoopFor(BB);
   VPRegionBlock *ParentR = nullptr;
-  if (CurrentLoop) {
+  if (CurrentLoop && CurrentLoop->getLoopDepth() >= TheLoop->getLoopDepth()) {
     auto Iter = Loop2Region.insert({CurrentLoop, nullptr});
     if (Iter.second)
       Iter.first->second = new VPRegionBlock(
