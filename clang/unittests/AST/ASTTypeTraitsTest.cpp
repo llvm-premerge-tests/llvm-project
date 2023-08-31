@@ -210,7 +210,13 @@ TEST(DynTypedNode, AttrSourceRange) {
                              ast_matchers::attr()));
 }
 
-// FIXME: add tests for ConceptReference once we add an ASTMatcher.
+TEST(DynTypedNode, ConceptReferenceSourceRange) {
+  RangeVerifier<ConceptReference> Verifier;
+  Verifier.expectRange(2, 10, 2, 15);
+  EXPECT_TRUE(Verifier.match("template <class> concept C = true;\n"
+                             "auto X = C<int>;",
+                             conceptReference()));
+}
 
 TEST(DynTypedNode, DeclDump) {
   DumpVerifier Verifier;
@@ -224,6 +230,14 @@ TEST(DynTypedNode, StmtDump) {
   EXPECT_TRUE(Verifier.match("void f() {}", stmt()));
 }
 
+TEST(DynTypedNode, ConceptReferenceDump) {
+  DumpVerifier Verifier;
+  Verifier.expectSubstring("ConceptReference");
+  EXPECT_TRUE(Verifier.match("template <class> concept C = true;\n"
+                             "auto X = C<int>;",
+                             conceptReference()));
+}
+
 TEST(DynTypedNode, DeclPrint) {
   PrintVerifier Verifier;
   Verifier.expectString("void f() {\n}\n");
@@ -234,6 +248,14 @@ TEST(DynTypedNode, StmtPrint) {
   PrintVerifier Verifier;
   Verifier.expectString("{\n}\n");
   EXPECT_TRUE(Verifier.match("void f() {}", stmt()));
+}
+
+TEST(DynTypedNode, ConceptReferencePrint) {
+  PrintVerifier Verifier;
+  Verifier.expectString("C<int>");
+  EXPECT_TRUE(Verifier.match("template <class> concept C = true;\n"
+                             "auto X = C<int>;",
+                             conceptReference()));
 }
 
 TEST(DynTypedNode, QualType) {

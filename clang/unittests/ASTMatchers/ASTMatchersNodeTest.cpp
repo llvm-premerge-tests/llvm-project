@@ -770,6 +770,17 @@ TEST_P(ASTMatchersTest, Match_ConstructorInitializers) {
                       cxxCtorInitializer(forField(hasName("i")))));
 }
 
+TEST_P(ASTMatchersTest, Match_ConceptReference) {
+  if (!GetParam().isCXX20OrLater()) {
+    return;
+  }
+  std::string Concept = "template <class> concept C = true;\n";
+  EXPECT_TRUE(matches(Concept + "auto X = C<int>;", conceptReference()));
+  EXPECT_TRUE(matches(Concept + "C auto X = 0;", conceptReference()));
+  EXPECT_TRUE(matches(Concept + "template <C X> int i;", conceptReference()));
+  EXPECT_TRUE(matches(Concept + "void foo(C auto X) {}", conceptReference()));
+}
+
 TEST_P(ASTMatchersTest, Matcher_ThisExpr) {
   if (!GetParam().isCXX()) {
     return;

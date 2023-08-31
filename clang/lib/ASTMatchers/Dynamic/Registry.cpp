@@ -173,6 +173,7 @@ RegistryMaps::RegistryMaps() {
   REGISTER_MATCHER(compoundStmt);
   REGISTER_MATCHER(coawaitExpr);
   REGISTER_MATCHER(conceptDecl);
+  REGISTER_MATCHER(conceptReference);
   REGISTER_MATCHER(conditionalOperator);
   REGISTER_MATCHER(constantArrayType);
   REGISTER_MATCHER(constantExpr);

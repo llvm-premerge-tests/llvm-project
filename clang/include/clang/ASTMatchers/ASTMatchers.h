@@ -152,6 +152,7 @@ using TemplateArgumentMatcher = internal::Matcher<TemplateArgument>;
 using TemplateArgumentLocMatcher = internal::Matcher<TemplateArgumentLoc>;
 using LambdaCaptureMatcher = internal::Matcher<LambdaCapture>;
 using AttrMatcher = internal::Matcher<Attr>;
+using ConceptReferenceMatcher = internal::Matcher<ConceptReference>;
 /// @}
 
 /// Matches any node.
@@ -610,6 +611,18 @@ extern const internal::VariadicDynCastAllOfMatcher<Decl, TemplateTypeParmDecl>
 extern const internal::VariadicDynCastAllOfMatcher<Decl,
                                                    TemplateTemplateParmDecl>
     templateTemplateParmDecl;
+
+/// Matches concept references.
+///
+/// Given
+/// \code
+///   template <class> concept C = true;
+///   bool X = C<int>;
+/// \endcode
+/// conceptReference()
+///   matches 'C<int>'.
+extern const internal::VariadicAllOfMatcher<ConceptReference> conceptReference;
+
 
 /// Matches public C++ declarations and C++ base specifers that specify public
 /// inheritance.

@@ -26,6 +26,7 @@
 #include <deque>
 #include <memory>
 #include <set>
+#include <variant>
 
 namespace clang {
 namespace ast_matchers {
@@ -136,6 +137,8 @@ public:
       traverse(*TALoc);
     else if (const Attr *A = DynNode.get<Attr>())
       traverse(*A);
+    else if (const ConceptReference *CR = DynNode.get<ConceptReference>())
+      traverse(*CR);
     // FIXME: Add other base types after adding tests.
 
     // It's OK to always overwrite the bound nodes, as if there was
@@ -275,6 +278,12 @@ public:
     ScopedIncrement ScopedDepth(&CurrentDepth);
     return traverse(*A);
   }
+  bool TraverseConceptReference(ConceptReference *CR) {
+    if (CR == nullptr)
+      return true;
+    ScopedIncrement ScopedDepth(&CurrentDepth);
+    return traverse(*CR);
+  }
   bool TraverseLambdaExpr(LambdaExpr *Node) {
     if (!Finder->isTraversalIgnoringImplicitNodes())
       return VisitorBase::TraverseLambdaExpr(Node);
@@ -359,6 +368,10 @@ private:
   }
   bool baseTraverse(const Attr &AttrNode) {
     return VisitorBase::TraverseAttr(const_cast<Attr *>(&AttrNode));
+  }
+  bool baseTraverse(const ConceptReference &CR) {
+    return VisitorBase::TraverseConceptReference(
+        const_cast<ConceptReference *>(&CR));
   }
 
   // Sets 'Matched' to true if 'Matcher' matches 'Node' and:
@@ -505,6 +518,7 @@ public:
   bool TraverseConstructorInitializer(CXXCtorInitializer *CtorInit);
   bool TraverseTemplateArgumentLoc(TemplateArgumentLoc TAL);
   bool TraverseAttr(Attr *AttrNode);
+  bool TraverseConceptReference(ConceptReference *);
 
   bool dataTraverseNode(Stmt *S, DataRecursionQueue *Queue) {
     if (auto *RF = dyn_cast<CXXForRangeStmt>(S)) {
@@ -712,6 +726,8 @@ public:
       match(*N);
     } else if (auto *N = Node.get<Attr>()) {
       match(*N);
+    } else if (auto *N = Node.get<ConceptReference>()) {
+      match(*N);
     }
   }
 
@@ -766,85 +782,14 @@ private:
   bool TraversingASTNodeNotAsIs = false;
   bool TraversingASTChildrenNotSpelledInSource = false;
 
-  class CurMatchData {
-// We don't have enough free low bits in 32bit builds to discriminate 8 pointer
-// types in PointerUnion. so split the union in 2 using a free bit from the
-// callback pointer.
-#define CMD_TYPES_0                                                            \
-  const QualType *, const TypeLoc *, const NestedNameSpecifier *,              \
-      const NestedNameSpecifierLoc *
-#define CMD_TYPES_1                                                            \
-  const CXXCtorInitializer *, const TemplateArgumentLoc *, const Attr *,       \
-      const DynTypedNode *
-
-#define IMPL(Index)                                                            \
-  template <typename NodeType>                                                 \
-  std::enable_if_t<                                                            \
-      llvm::is_one_of<const NodeType *, CMD_TYPES_##Index>::value>             \
-  SetCallbackAndRawNode(const MatchCallback *CB, const NodeType &N) {          \
-    assertEmpty();                                                             \
-    Callback.setPointerAndInt(CB, Index);                                      \
-    Node##Index = &N;                                                          \
-  }                                                                            \
-                                                                               \
-  template <typename T>                                                        \
-  std::enable_if_t<llvm::is_one_of<const T *, CMD_TYPES_##Index>::value,       \
-                   const T *>                                                  \
-  getNode() const {                                                            \
-    assertHoldsState();                                                        \
-    return Callback.getInt() == (Index) ? Node##Index.dyn_cast<const T *>()    \
-                                        : nullptr;                             \
-  }
-
-  public:
-    CurMatchData() : Node0(nullptr) {}
-
-    IMPL(0)
-    IMPL(1)
-
-    const MatchCallback *getCallback() const { return Callback.getPointer(); }
-
-    void SetBoundNodes(const BoundNodes &BN) {
-      assertHoldsState();
-      BNodes = &BN;
-    }
-
-    void clearBoundNodes() {
-      assertHoldsState();
-      BNodes = nullptr;
-    }
-
-    const BoundNodes *getBoundNodes() const {
-      assertHoldsState();
-      return BNodes;
-    }
-
-    void reset() {
-      assertHoldsState();
-      Callback.setPointerAndInt(nullptr, 0);
-      Node0 = nullptr;
-    }
-
-  private:
-    void assertHoldsState() const {
-      assert(Callback.getPointer() != nullptr && !Node0.isNull());
-    }
-
-    void assertEmpty() const {
-      assert(Callback.getPointer() == nullptr && Node0.isNull() &&
-             BNodes == nullptr);
-    }
-
-    llvm::PointerIntPair<const MatchCallback *, 1> Callback;
-    union {
-      llvm::PointerUnion<CMD_TYPES_0> Node0;
-      llvm::PointerUnion<CMD_TYPES_1> Node1;
-    };
+  struct CurMatchData {
+    const MatchCallback *Callback = nullptr;
     const BoundNodes *BNodes = nullptr;
-
-#undef CMD_TYPES_0
-#undef CMD_TYPES_1
-#undef IMPL
+    std::variant<std::monostate, const QualType *, const TypeLoc *,
+                 const NestedNameSpecifier *, const NestedNameSpecifierLoc *,
+                 const CXXCtorInitializer *, const TemplateArgumentLoc *,
+                 const Attr *, const DynTypedNode *, const ConceptReference *>
+        Node;
   } CurMatchState;
 
   struct CurMatchRAII {
@@ -852,10 +797,17 @@ private:
     CurMatchRAII(MatchASTVisitor &MV, const MatchCallback *CB,
                  const NodeType &NT)
         : MV(MV) {
-      MV.CurMatchState.SetCallbackAndRawNode(CB, NT);
+      assert(MV.CurMatchState.Callback == nullptr &&
+             std::holds_alternative<std::monostate>(MV.CurMatchState.Node) &&
+             MV.CurMatchState.BNodes == nullptr);
+      MV.CurMatchState.Callback = CB;
+      MV.CurMatchState.Node = &NT;
     }
 
-    ~CurMatchRAII() { MV.CurMatchState.reset(); }
+    ~CurMatchRAII() {
+      MV.CurMatchState.Callback = nullptr;
+      MV.CurMatchState.Node = std::monostate{};
+    }
 
   private:
     MatchASTVisitor &MV;
@@ -890,30 +842,22 @@ public:
 
     static void dumpNodeFromState(const ASTContext &Ctx,
                                   const CurMatchData &State, raw_ostream &OS) {
-      if (const DynTypedNode *MatchNode = State.getNode<DynTypedNode>()) {
-        dumpNode(Ctx, *MatchNode, OS);
-      } else if (const auto *QT = State.getNode<QualType>()) {
-        dumpNode(Ctx, DynTypedNode::create(*QT), OS);
-      } else if (const auto *TL = State.getNode<TypeLoc>()) {
-        dumpNode(Ctx, DynTypedNode::create(*TL), OS);
-      } else if (const auto *NNS = State.getNode<NestedNameSpecifier>()) {
-        dumpNode(Ctx, DynTypedNode::create(*NNS), OS);
-      } else if (const auto *NNSL = State.getNode<NestedNameSpecifierLoc>()) {
-        dumpNode(Ctx, DynTypedNode::create(*NNSL), OS);
-      } else if (const auto *CtorInit = State.getNode<CXXCtorInitializer>()) {
-        dumpNode(Ctx, DynTypedNode::create(*CtorInit), OS);
-      } else if (const auto *TAL = State.getNode<TemplateArgumentLoc>()) {
-        dumpNode(Ctx, DynTypedNode::create(*TAL), OS);
-      } else if (const auto *At = State.getNode<Attr>()) {
-        dumpNode(Ctx, DynTypedNode::create(*At), OS);
-      }
+      std::visit(llvm::makeVisitor([&](std::monostate) {},
+                                   [&](const DynTypedNode *Node) {
+                                     dumpNode(Ctx, *Node, OS);
+                                   },
+                                   [&](const auto *Node) {
+                                     dumpNode(Ctx, DynTypedNode::create(*Node),
+                                              OS);
+                                   }),
+                 State.Node);
     }
 
   public:
     TraceReporter(const MatchASTVisitor &MV) : MV(MV) {}
     void print(raw_ostream &OS) const override {
       const CurMatchData &State = MV.CurMatchState;
-      const MatchCallback *CB = State.getCallback();
+      const MatchCallback *CB = State.Callback;
       if (!CB) {
         OS << "ASTMatcher: Not currently matching\n";
         return;
@@ -924,7 +868,7 @@ public:
 
       ASTContext &Ctx = MV.getASTContext();
 
-      if (const BoundNodes *Nodes = State.getBoundNodes()) {
+      if (const BoundNodes *Nodes = State.BNodes) {
         OS << "ASTMatcher: Processing '" << CB->getID() << "' against:\n\t";
         dumpNodeFromState(Ctx, State, OS);
         const BoundNodes::IDToNodeMap &Map = Nodes->getMap();
@@ -1102,6 +1046,9 @@ private:
   void matchDispatch(const Attr *Node) {
     matchWithoutFilter(*Node, Matchers->Attr);
   }
+  void matchDispatch(const ConceptReference *Node) {
+    matchWithoutFilter(*Node, Matchers->ConceptReference);
+  }
   void matchDispatch(const void *) { /* Do nothing. */ }
   /// @}
 
@@ -1240,10 +1187,11 @@ private:
     struct CurBoundScope {
       CurBoundScope(MatchASTVisitor::CurMatchData &State, const BoundNodes &BN)
           : State(State) {
-        State.SetBoundNodes(BN);
+        assert(State.BNodes == nullptr);
+        State.BNodes = &BN;
       }
 
-      ~CurBoundScope() { State.clearBoundNodes(); }
+      ~CurBoundScope() { State.BNodes = nullptr; }
 
     private:
       MatchASTVisitor::CurMatchData &State;
@@ -1526,6 +1474,11 @@ bool MatchASTVisitor::TraverseAttr(Attr *AttrNode) {
   return RecursiveASTVisitor<MatchASTVisitor>::TraverseAttr(AttrNode);
 }
 
+bool MatchASTVisitor::TraverseConceptReference(ConceptReference *CR) {
+  match(*CR);
+  return RecursiveASTVisitor::TraverseConceptReference(CR);
+}
+
 class MatchASTConsumer : public ASTConsumer {
 public:
   MatchASTConsumer(MatchFinder *Finder,
@@ -1626,6 +1579,12 @@ void MatchFinder::addMatcher(const AttrMatcher &AttrMatch,
   Matchers.AllCallbacks.insert(Action);
 }
 
+void MatchFinder::addMatcher(const ConceptReferenceMatcher &AttrMatch,
+                             MatchCallback *Action) {
+  Matchers.ConceptReference.emplace_back(AttrMatch, Action);
+  Matchers.AllCallbacks.insert(Action);
+}
+
 bool MatchFinder::addDynamicMatcher(const internal::DynTypedMatcher &NodeMatch,
                                     MatchCallback *Action) {
   if (NodeMatch.canConvertTo<Decl>()) {
@@ -1654,6 +1613,9 @@ bool MatchFinder::addDynamicMatcher(const internal::DynTypedMatcher &NodeMatch,
     return true;
   } else if (NodeMatch.canConvertTo<Attr>()) {
     addMatcher(NodeMatch.convertTo<Attr>(), Action);
+    return true;
+  } else if (NodeMatch.canConvertTo<ConceptReference>()) {
+    addMatcher(NodeMatch.convertTo<ConceptReference>(), Action);
     return true;
   }
   return false;
