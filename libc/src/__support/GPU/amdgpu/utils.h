@@ -125,7 +125,9 @@ LIBC_INLINE uint32_t get_lane_size() { return LANE_SIZE; }
 }
 
 /// Copies the value from the first active thread in the wavefront to the rest.
-[[clang::convergent]] LIBC_INLINE uint32_t broadcast_value(uint32_t x) {
+[[clang::convergent]] LIBC_INLINE uint32_t broadcast_value(uint64_t lane_mask,
+                                                           uint32_t x) {
+  (void)lane_mask;
   return __builtin_amdgcn_readfirstlane(x);
 }
 
