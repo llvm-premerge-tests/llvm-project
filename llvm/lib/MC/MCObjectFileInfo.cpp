@@ -536,6 +536,9 @@ void MCObjectFileInfo::initELFMCObjectFileInfo(const Triple &T, bool Large) {
   PseudoProbeDescSection =
       Ctx->getELFSection(".pseudo_probe_desc", DebugSecType, 0);
 
+  BranchProbabilitySection =
+      Ctx->getELFSection(".branch_probabilities", DebugSecType, 0);
+
   LLVMStatsSection = Ctx->getELFSection(".llvm_stats", ELF::SHT_PROGBITS, 0);
 }
 
@@ -1210,6 +1213,25 @@ MCObjectFileInfo::getPseudoProbeDescSection(StringRef FuncName) const {
     }
   }
   return PseudoProbeDescSection;
+}
+
+MCSection *
+MCObjectFileInfo::getBranchProbabilitySection(const MCSection &TextSec) const {
+  if (Ctx->getObjectFileType() != MCContext::IsELF)
+    return BranchProbabilitySection;
+
+  const auto &ElfSec = static_cast<const MCSectionELF &>(TextSec);
+  unsigned Flags = ELF::SHF_LINK_ORDER;
+  StringRef GroupName;
+  if (const MCSymbol *Group = ElfSec.getGroup()) {
+    GroupName = Group->getName();
+    Flags |= ELF::SHF_GROUP;
+  }
+
+  return Ctx->getELFSection(BranchProbabilitySection->getName(),
+                            ELF::SHT_PROGBITS, Flags, 0, GroupName, true,
+                            ElfSec.getUniqueID(),
+                            cast<MCSymbolELF>(TextSec.getBeginSymbol()));
 }
 
 MCSection *MCObjectFileInfo::getLLVMStatsSection() const {

@@ -327,6 +327,8 @@ public:
                      SmallVectorImpl<MachineOperand> &Cond,
                      bool AllowModify) const override;
 
+  MachineBasicBlock *getBranchDestBlock(const MachineInstr &MI) const override;
+
   int getJumpTableIndex(const MachineInstr &MI) const override;
 
   std::optional<ExtAddrMode>
