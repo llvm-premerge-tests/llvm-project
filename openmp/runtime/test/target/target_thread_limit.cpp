@@ -15,6 +15,8 @@ int main(void) {
   printf("\nmain: thread_limit = %d", omp_get_thread_limit());
   // OMP51: main: thread_limit = {{[0-9]+}}
 
+  omp_set_num_threads(8);
+
 #pragma omp target thread_limit(tl)
   {
     printf("\ntarget: thread_limit = %d", omp_get_thread_limit());
