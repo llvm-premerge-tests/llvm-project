@@ -1,3 +1,15 @@
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${LIBC_TARGET_OS})
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/${LIBC_TARGET_OS})
+
+  add_entrypoint_object(
+    __assert_fail
+      ALIAS
+      DEPENDS
+      libc.src.assert.${LIBC_TARGET_OS}.__assert_fail
+  )
+  return()
+endif()
+
 add_entrypoint_object(
   __assert_fail
   SRCS
