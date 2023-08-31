@@ -453,8 +453,8 @@ bool CommandObjectDisassemble::DoExecute(Args &command,
   const char *plugin_name = m_options.GetPluginName();
   const char *flavor_string = m_options.GetFlavorString();
 
-  DisassemblerSP disassembler =
-      Disassembler::FindPlugin(m_options.arch, flavor_string, plugin_name);
+  DisassemblerSP disassembler = Disassembler::FindPlugin(
+      m_options.arch, flavor_string, GetDebugger().GetUseColor(), plugin_name);
 
   if (!disassembler) {
     if (plugin_name) {

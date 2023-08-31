@@ -8,6 +8,7 @@
 
 #include "Plugins/Architecture/Mips/ArchitectureMips.h"
 #include "lldb/Core/Address.h"
+#include "lldb/Core/Debugger.h"
 #include "lldb/Core/Disassembler.h"
 #include "lldb/Core/Module.h"
 #include "lldb/Core/PluginManager.h"
@@ -149,8 +150,8 @@ Instruction *ArchitectureMips::GetInstructionAtAddress(
   }
 
   // Create Disassembler Instance
-  lldb::DisassemblerSP disasm_sp(
-    Disassembler::FindPlugin(m_arch, nullptr, nullptr));
+  lldb::DisassemblerSP disasm_sp(Disassembler::FindPlugin(
+      m_arch, nullptr, target.GetDebugger().GetUseColor(), nullptr));
 
   InstructionList instruction_list;
   InstructionSP prev_insn;

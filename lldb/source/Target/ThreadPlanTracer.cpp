@@ -96,7 +96,8 @@ ThreadPlanAssemblyTracer::ThreadPlanAssemblyTracer(Thread &thread)
 Disassembler *ThreadPlanAssemblyTracer::GetDisassembler() {
   if (!m_disassembler_sp)
     m_disassembler_sp = Disassembler::FindPlugin(
-        m_process.GetTarget().GetArchitecture(), nullptr, nullptr);
+        m_process.GetTarget().GetArchitecture(), nullptr,
+        m_process.GetTarget().GetDebugger().GetUseColor(), nullptr);
   return m_disassembler_sp.get();
 }
 

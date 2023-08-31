@@ -22,8 +22,8 @@ class InstructionLLVMC;
 
 class DisassemblerLLVMC : public lldb_private::Disassembler {
 public:
-  DisassemblerLLVMC(const lldb_private::ArchSpec &arch,
-                    const char *flavor /* = NULL */);
+  DisassemblerLLVMC(const lldb_private::ArchSpec &arch, const char *flavor,
+                    bool use_color = false);
 
   ~DisassemblerLLVMC() override;
 
@@ -35,7 +35,8 @@ public:
   static llvm::StringRef GetPluginNameStatic() { return "llvm-mc"; }
 
   static lldb::DisassemblerSP CreateInstance(const lldb_private::ArchSpec &arch,
-                                             const char *flavor);
+                                             const char *flavor,
+                                             bool use_color);
 
   size_t DecodeInstructions(const lldb_private::Address &base_addr,
                             const lldb_private::DataExtractor &data,
@@ -72,6 +73,7 @@ protected:
   InstructionLLVMC *m_inst;
   std::mutex m_mutex;
   bool m_data_from_file;
+  bool m_use_color;
   // Save the AArch64 ADRP instruction word and address it was at,
   // in case the next instruction is an ADD to the same register;
   // this is a pc-relative address calculation and we need both

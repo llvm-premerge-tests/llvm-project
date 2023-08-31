@@ -310,16 +310,16 @@ public:
   /// @param[in] ignore_calls
   ///     It true, then fine the first branch instruction that isn't
   ///     a function call (a branch that calls and returns to the next
-  ///     instruction). If false, find the instruction index of any 
+  ///     instruction). If false, find the instruction index of any
   ///     branch in the list.
-  ///     
+  ///
   /// @param[out] found_calls
-  ///     If non-null, this will be set to true if any calls were found in 
+  ///     If non-null, this will be set to true if any calls were found in
   ///     extending the range.
-  ///    
+  ///
   /// @return
   ///     The instruction index of the first branch that is at or past
-  ///     \a start. Returns UINT32_MAX if no matching branches are 
+  ///     \a start. Returns UINT32_MAX if no matching branches are
   ///     found.
   //------------------------------------------------------------------
   uint32_t GetIndexOfNextBranchInstruction(uint32_t start,
@@ -405,13 +405,15 @@ public:
   // flavor string gets set wrong. Instead, if you get a flavor string you
   // don't understand, use the default.  Folks who care to check can use the
   // FlavorValidForArchSpec method on the disassembler they got back.
-  static lldb::DisassemblerSP
-  FindPlugin(const ArchSpec &arch, const char *flavor, const char *plugin_name);
+  static lldb::DisassemblerSP FindPlugin(const ArchSpec &arch,
+                                         const char *flavor, bool use_color,
+                                         const char *plugin_name);
 
   // This version will use the value in the Target settings if flavor is NULL;
   static lldb::DisassemblerSP FindPluginForTarget(const Target &target,
                                                   const ArchSpec &arch,
                                                   const char *flavor,
+                                                  bool use_color,
                                                   const char *plugin_name);
 
   struct Limit {
@@ -428,9 +430,9 @@ public:
 
   static lldb::DisassemblerSP
   DisassembleBytes(const ArchSpec &arch, const char *plugin_name,
-                   const char *flavor, const Address &start, const void *bytes,
-                   size_t length, uint32_t max_num_instructions,
-                   bool data_from_file);
+                   const char *flavor, bool use_color, const Address &start,
+                   const void *bytes, size_t length,
+                   uint32_t max_num_instructions, bool data_from_file);
 
   static bool Disassemble(Debugger &debugger, const ArchSpec &arch,
                           const char *plugin_name, const char *flavor,
