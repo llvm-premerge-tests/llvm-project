@@ -373,14 +373,14 @@ bool GDBRemoteRegisterContext::WriteRegisterBytes(const RegisterInfo *reg_info,
   if (dst == nullptr)
     return false;
 
-  // Code below is specific to AArch64 target in SVE state
+  // Code below is specific to AArch64 target in SVE or SMEstate
   // If vector granule (vg) register is being written then thread's
   // register context reconfiguration is triggered on success.
-  bool do_reconfigure_arm64_sve = false;
+  // We do not allow writes to SVG so it is not mentioned here.
   const ArchSpec &arch = process->GetTarget().GetArchitecture();
-  if (arch.IsValid() && arch.GetTriple().isAArch64())
-    if (strcmp(reg_info->name, "vg") == 0)
-      do_reconfigure_arm64_sve = true;
+  bool do_reconfigure_arm64_sve = arch.IsValid() &&
+                                  arch.GetTriple().isAArch64() &&
+                                  (strcmp(reg_info->name, "vg") == 0);
 
   if (data.CopyByteOrderedData(data_offset,                // src offset
                                reg_info->byte_size,        // src length
@@ -400,10 +400,12 @@ bool GDBRemoteRegisterContext::WriteRegisterBytes(const RegisterInfo *reg_info,
                 {m_reg_data.GetDataStart(), size_t(m_reg_data.GetByteSize())}))
 
         {
-          SetAllRegisterValid(false);
-
-          if (do_reconfigure_arm64_sve)
+          if (do_reconfigure_arm64_sve) {
             AArch64SVEReconfigure();
+            AArch64SMEReconfigure();
+          }
+
+          InvalidateAllRegisters();
 
           return true;
         }
@@ -435,8 +437,11 @@ bool GDBRemoteRegisterContext::WriteRegisterBytes(const RegisterInfo *reg_info,
           // This is an actual register, write it
           success = SetPrimordialRegister(reg_info, gdb_comm);
 
-          if (success && do_reconfigure_arm64_sve)
+          if (success && do_reconfigure_arm64_sve) {
             AArch64SVEReconfigure();
+            AArch64SMEReconfigure();
+            InvalidateAllRegisters();
+          }
         }
 
         // Check if writing this register will invalidate any other register
@@ -760,37 +765,51 @@ uint32_t GDBRemoteRegisterContext::ConvertRegisterKindToRegisterNumber(
   return m_reg_info_sp->ConvertRegisterKindToRegisterNumber(kind, num);
 }
 
-bool GDBRemoteRegisterContext::AArch64SVEReconfigure() {
-  if (!m_reg_info_sp)
-    return false;
-
+void GDBRemoteRegisterContext::AArch64SVEReconfigure() {
+  assert(m_reg_info_sp);
   const RegisterInfo *reg_info = m_reg_info_sp->GetRegisterInfo("vg");
-  if (!reg_info)
-    return false;
+  assert(reg_info);
 
   uint64_t fail_value = LLDB_INVALID_ADDRESS;
   uint32_t vg_reg_num = reg_info->kinds[eRegisterKindLLDB];
   uint64_t vg_reg_value = ReadRegisterAsUnsigned(vg_reg_num, fail_value);
 
   if (vg_reg_value == fail_value || vg_reg_value > 32)
-    return false;
+    return;
 
   reg_info = m_reg_info_sp->GetRegisterInfo("p0");
   // Predicate registers have 1 bit per byte in the vector so their size is
   // VL / 8. VG is in units of 8 bytes already, so if the size of p0 == VG
   // already, we do not have to reconfigure.
   if (!reg_info || vg_reg_value == reg_info->byte_size)
-    return false;
+    return;
 
   m_reg_info_sp->UpdateARM64SVERegistersInfos(vg_reg_value);
   // Make a heap based buffer that is big enough to store all registers
   m_reg_data.SetData(std::make_shared<DataBufferHeap>(
       m_reg_info_sp->GetRegisterDataByteSize(), 0));
   m_reg_data.SetByteOrder(GetByteOrder());
+}
 
-  InvalidateAllRegisters();
+void GDBRemoteRegisterContext::AArch64SMEReconfigure() {
+  assert(m_reg_info_sp);
+  const RegisterInfo *reg_info = m_reg_info_sp->GetRegisterInfo("svg");
+  // Target does not have SME, nothing for us to reconfigure.
+  if (!reg_info)
+    return;
 
-  return true;
+  uint64_t fail_value = LLDB_INVALID_ADDRESS;
+  uint32_t svg_reg_num = reg_info->kinds[eRegisterKindLLDB];
+  uint64_t svg_reg_value = ReadRegisterAsUnsigned(svg_reg_num, fail_value);
+
+  if (svg_reg_value == LLDB_INVALID_ADDRESS || svg_reg_value > 32)
+    return;
+
+  m_reg_info_sp->UpdateARM64SMERegistersInfos(svg_reg_value);
+  // Make a heap based buffer that is big enough to store all registers
+  m_reg_data.SetData(std::make_shared<DataBufferHeap>(
+      m_reg_info_sp->GetRegisterDataByteSize(), 0));
+  m_reg_data.SetByteOrder(GetByteOrder());
 }
 
 void GDBRemoteDynamicRegisterInfo::UpdateARM64SVERegistersInfos(uint64_t vg) {
@@ -813,5 +832,17 @@ void GDBRemoteDynamicRegisterInfo::UpdateARM64SVERegistersInfos(uint64_t vg) {
   }
 
   // Re-calculate register offsets
+  ConfigureOffsets();
+}
+
+void GDBRemoteDynamicRegisterInfo::UpdateARM64SMERegistersInfos(uint64_t svg) {
+  for (auto &reg : m_regs) {
+    if (strcmp(reg.name, "za") == 0) {
+      // ZA is a register with size (svg*8) * (svg*8). A square essentially.
+      reg.byte_size = (svg * 8) * (svg * 8);
+    }
+    reg.byte_offset = LLDB_INVALID_INDEX32;
+  }
+
   ConfigureOffsets();
 }
