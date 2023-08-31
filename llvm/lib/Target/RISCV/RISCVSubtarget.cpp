@@ -66,8 +66,7 @@ RISCVSubtarget::initializeSubtargetDependencies(const Triple &TT, StringRef CPU,
     TuneCPU = CPU;
 
   ParseSubtargetFeatures(CPU, TuneCPU, FS);
-  if (Is64Bit)
-    XLen = 64;
+  assert(Is64Bit == IsRV64 && "unexpected triple/cpu mismatch");
 
   TargetABI = RISCVABI::computeTargetABI(TT, getFeatureBits(), ABIName);
   RISCVFeatures::validate(TT, getFeatureBits());
