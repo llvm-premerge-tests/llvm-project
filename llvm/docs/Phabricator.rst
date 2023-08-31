@@ -42,7 +42,8 @@ You may need to apply a fix to your arcanist repo in order to submit a patch:
 .. code-block:: console
 
   % cd arcanist
-  % git am <path/to/llvm-project>/llvm/utils/phabricator/*.patch
+  % git fetch https://github.com/rashkov/arcanist update_cacerts
+  % git cherry-pick e3659d43d8911e91739f3b0c5935598bceb859aa
 
 You can learn more about how to use arc to interact with
 Phabricator in the `Arcanist User Guide`_.
