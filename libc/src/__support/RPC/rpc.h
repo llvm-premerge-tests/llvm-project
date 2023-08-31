@@ -117,12 +117,12 @@ template <bool Invert, typename Packet> struct Process {
 
   /// Retrieve the inbox state from memory shared between processes.
   LIBC_INLINE uint32_t load_inbox(uint32_t index) {
-    return inbox[index].load(cpp::MemoryOrder::RELAXED);
+    return gpu::broadcast_value(inbox[index].load(cpp::MemoryOrder::RELAXED));
   }
 
   /// Retrieve the outbox state from memory shared between processes.
   LIBC_INLINE uint32_t load_outbox(uint32_t index) {
-    return outbox[index].load(cpp::MemoryOrder::RELAXED);
+    return gpu::broadcast_value(outbox[index].load(cpp::MemoryOrder::RELAXED));
   }
 
   /// Signal to the other process that this one is finished with the buffer.
