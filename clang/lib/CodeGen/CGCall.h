@@ -398,7 +398,7 @@ public:
 /// Helper to add attributes to \p F according to the CodeGenOptions and
 /// LangOptions without requiring a CodeGenModule to be constructed.
 void mergeDefaultFunctionDefinitionAttributes(llvm::Function &F,
-                                              const CodeGenOptions CodeGenOpts,
+                                              const CodeGenOptions &CodeGenOpts,
                                               const LangOptions &LangOpts,
                                               const TargetOptions &TargetOpts,
                                               bool WillInternalize);
