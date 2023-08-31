@@ -135,6 +135,22 @@ public:
     return It->second;
   }
 
+  /// Returns the child storage location for `D`.
+  ///
+  /// Same as `getChild()`, but may return nullptr if the field `D` does not
+  /// exist. Most users should use `getChild()` instead, except for the code
+  /// that performs deep copy of two records of the same class, where a field
+  /// in one record may not exist in another record.
+  ///
+  /// FIXME: Deprecate this method once we find and fix all the mismatching
+  /// cases (or update this comment if we find such cases valid).
+  StorageLocation *tryGetChild(const ValueDecl &D) const {
+    auto It = Children.find(&D);
+    if (It == Children.end())
+      return nullptr;
+    return It->second;
+  }
+
   /// Changes the child storage location for a field `D` of reference type.
   /// All other fields cannot change their storage location and always retain
   /// the storage location passed to the `RecordStorageLocation` constructor.
