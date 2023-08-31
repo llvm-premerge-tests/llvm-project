@@ -1586,6 +1586,15 @@ void RewriteInstance::adjustFunctionBoundaries() {
       if (!Function.isSymbolValidInScope(Symbol, SymbolSize))
         break;
 
+      // Skip basic block labels. This happens on RISC-V with linker relaxation
+      // enabled because every branch needs a relocation and corresponding
+      // symbol. We don't want to add such symbols as entry points.
+      if (cantFail(Symbol.getName())
+              .starts_with(BC->AsmInfo->getPrivateLabelPrefix())) {
+        ++NextSymRefI;
+        continue;
+      }
+
       // This is potentially another entry point into the function.
       uint64_t EntryOffset = NextSymRefI->first - Function.getAddress();
       LLVM_DEBUG(dbgs() << "BOLT-DEBUG: adding entry point to function "
