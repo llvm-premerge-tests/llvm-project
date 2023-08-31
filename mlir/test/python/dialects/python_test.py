@@ -247,7 +247,6 @@ def testOptionalOperandOp():
 
         module = Module.create()
         with InsertionPoint(module.body):
-
             op1 = test.OptionalOperandOp()
             # CHECK: op1.input is None: True
             print(f"op1.input is None: {op1.input is None}")
@@ -487,3 +486,77 @@ def testInferTypeOpInterface():
             two_operands = test.InferResultsVariadicInputsOp(single=zero, doubled=zero)
             # CHECK: f32
             print(two_operands.result.type)
+
+
+@run
+def testTypeCasting():
+    def try_print(x):
+        try:
+            test.print(x)
+        except Exception as ex:
+            print("error:", ex)
+
+    # CHECK: bool: True
+    try_print(True)
+
+    # CHECK: int: 42
+    try_print(42)
+
+    # CHECK: float: 4.25
+    try_print(4.25)
+
+    # CHECK: str: hello
+    try_print("hello")
+
+    # CHECK: error: print(): incompatible function arguments.
+    try_print(object())
+
+    # CHECK: str: <object object at 0x
+    try_print(str(object()))
+
+    class MyBool:
+        def __bool__(self):
+            return False
+
+    # CHECK: bool: False
+    try_print(MyBool())
+
+    class MyInt:
+        def __int__(self):
+            return 1337
+
+    # CHECK: int: 1337
+    try_print(MyInt())
+
+    class MyFloat:
+        def __float__(self):
+            return 1.0
+
+    # CHECK: float: 1.0
+    try_print(MyFloat())
+
+    class MyStr:
+        def __str__(self):
+            return "world"
+
+    # CHECK: error: print(): incompatible function arguments.
+    try_print(MyStr())
+
+    # CHECK: str: world
+    try_print(str(MyStr()))
+
+    with Context():
+        # CHECK: bool: True
+        try_print(Attribute.parse("true"))
+
+        # CHECK: int: 420
+        try_print(Attribute.parse("420 : i32"))
+
+        # CHECK: float: 12.5
+        try_print(Attribute.parse("12.5 : f32"))
+
+        # CHECK: error: print(): incompatible function arguments.
+        try_print(Attribute.parse('"hello world!"'))
+
+        # CHECK: str: hello world!
+        try_print(str(Attribute.parse('"hello world!"')))

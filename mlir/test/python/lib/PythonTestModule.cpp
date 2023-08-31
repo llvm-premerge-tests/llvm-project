@@ -34,6 +34,15 @@ PYBIND11_MODULE(_mlirPythonTest, m) {
       },
       py::arg("context"), py::arg("load") = true);
 
+  m.def(
+      "print", [](bool x) { py::print("bool:", x); }, py::arg("x"));
+  m.def(
+      "print", [](int x) { py::print("int:", x); }, py::arg("x"));
+  m.def(
+      "print", [](double x) { py::print("float:", x); }, py::arg("x"));
+  m.def(
+      "print", [](std::string x) { py::print("str:", x); }, py::arg("x"));
+
   mlir_attribute_subclass(m, "TestAttr",
                           mlirAttributeIsAPythonTestTestAttribute)
       .def_classmethod(
