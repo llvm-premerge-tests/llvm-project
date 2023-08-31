@@ -538,8 +538,10 @@ void Function::dropAllReferences() {
 
   // Drop uses of any optional data (real or placeholder).
   if (getNumOperands()) {
-    User::dropAllReferences();
-    setNumHungOffUseOperands(0);
+    auto *CPN = ConstantPointerNull::get(Type::getInt1PtrTy(getContext(), 0));
+    Op<0>().set(CPN);
+    Op<1>().set(CPN);
+    Op<2>().set(CPN);
     setValueSubclassData(getSubclassDataFromValue() & ~0xe);
   }
 
