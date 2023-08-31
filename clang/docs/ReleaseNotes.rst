@@ -161,7 +161,7 @@ Improvements to Clang's diagnostics
   result in string truncation.
   (`#64871: <https://github.com/llvm/llvm-project/issues/64871>`_).
   Also clang no longer emits false positive warnings about the output length of
-  ``%g`` format specifier.
+  ``%g`` format specifier and about ``%o, %x, %X`` with ``#`` flag.
 - Clang now warns on unused variables declared and initialized in condition
   expressions.
   (`#61681: <https://github.com/llvm/llvm-project/issues/61681>`_)
