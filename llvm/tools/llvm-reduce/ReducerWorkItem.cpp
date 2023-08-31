@@ -238,9 +238,6 @@ static std::unique_ptr<MachineFunction> cloneMF(MachineFunction *SrcMF,
 
     DstMBB->setAlignment(SrcMBB.getAlignment());
 
-    // FIXME: This is not serialized
-    DstMBB->setMaxBytesForAlignment(SrcMBB.getMaxBytesForAlignment());
-
     DstMBB->setIsEHPad(SrcMBB.isEHPad());
     DstMBB->setIsEHScopeEntry(SrcMBB.isEHScopeEntry());
     DstMBB->setIsEHCatchretTarget(SrcMBB.isEHCatchretTarget());

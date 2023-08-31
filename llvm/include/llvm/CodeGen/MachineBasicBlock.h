@@ -571,19 +571,6 @@ public:
   /// Set alignment of the basic block.
   void setAlignment(Align A) { Alignment = A; }
 
-  void setAlignment(Align A, unsigned MaxBytes) {
-    setAlignment(A);
-    setMaxBytesForAlignment(MaxBytes);
-  }
-
-  /// Return the maximum amount of padding allowed for aligning the basic block.
-  unsigned getMaxBytesForAlignment() const { return MaxBytesForAlignment; }
-
-  /// Set the maximum amount of padding allowed for aligning the basic block
-  void setMaxBytesForAlignment(unsigned MaxBytes) {
-    MaxBytesForAlignment = MaxBytes;
-  }
-
   /// Returns true if the block is a landing pad. That is this basic block is
   /// entered via an exception handler.
   bool isEHPad() const { return IsEHPad; }

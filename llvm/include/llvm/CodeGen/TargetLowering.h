@@ -1900,9 +1900,10 @@ public:
   virtual Align getPrefLoopAlignment(MachineLoop *ML = nullptr) const;
 
   /// Return the maximum amount of bytes allowed to be emitted when padding for
-  /// alignment
-  virtual unsigned
-  getMaxPermittedBytesForAlignment(MachineBasicBlock *MBB) const;
+  /// alignment of a MachineBasicBlock.
+  unsigned getMaxPermittedBytesForAlignment() const {
+    return MaxBytesForAlignment;
+  }
 
   /// Should loops be aligned even when the function is marked OptSize (but not
   /// MinSize).

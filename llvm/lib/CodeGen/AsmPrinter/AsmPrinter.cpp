@@ -155,6 +155,12 @@ const char PPGroupDescription[] = "Pseudo Probe Emission";
 
 STATISTIC(EmittedInsts, "Number of machine instrs printed");
 
+static cl::opt<unsigned> MaxBytesForAlignmentOverride(
+    "max-bytes-for-alignment",
+    cl::desc("Forces the maximum bytes allowed to be emitted when padding for "
+             "alignment"),
+    cl::init(0), cl::Hidden);
+
 char AsmPrinter::ID = 0;
 
 namespace {
@@ -3798,8 +3804,14 @@ void AsmPrinter::emitBasicBlockStart(const MachineBasicBlock &MBB) {
 
   // Emit an alignment directive for this block, if needed.
   const Align Alignment = MBB.getAlignment();
-  if (Alignment != Align(1))
-    emitAlignment(Alignment, nullptr, MBB.getMaxBytesForAlignment());
+  if (Alignment != Align(1)) {
+    const TargetLowering *TLI = MF->getSubtarget().getTargetLowering();
+    unsigned MaxBytes = MaxBytesForAlignmentOverride.getNumOccurrences() > 0 ?
+      MaxBytesForAlignmentOverride :
+      TLI->getMaxPermittedBytesForAlignment();
+
+    emitAlignment(Alignment, nullptr, MaxBytes);
+  }
 
   // If the block has its address taken, emit any labels that were used to
   // reference the block.  It is possible that there is more than one label

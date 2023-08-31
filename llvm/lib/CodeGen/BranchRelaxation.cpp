@@ -67,6 +67,9 @@ class BranchRelaxation : public MachineFunctionPass {
     /// block.
     unsigned postOffset(const MachineBasicBlock &MBB) const {
       const unsigned PO = Offset + Size;
+
+      // FIXME: Alignment is ignored if the padding is greater than
+      // getMaxPermittedBytesForAlignment
       const Align Alignment = MBB.getAlignment();
       const Align ParentAlign = MBB.getParent()->getAlignment();
       if (Alignment <= ParentAlign)
