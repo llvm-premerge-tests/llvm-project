@@ -1642,6 +1642,11 @@ enum {
   NT_ANDROID_TYPE_MEMTAG = 4,
 };
 
+// ARM note types
+enum {
+  NT_ARM_TYPE_PAUTH_ABI_TAG = 1,
+};
+
 // Memory tagging values used in NT_ANDROID_TYPE_MEMTAG notes.
 enum {
   // Enumeration to determine the tagging mode. In Android-land, 'SYNC' means
@@ -1665,6 +1670,7 @@ enum : unsigned {
   GNU_PROPERTY_STACK_SIZE = 1,
   GNU_PROPERTY_NO_COPY_ON_PROTECTED = 2,
   GNU_PROPERTY_AARCH64_FEATURE_1_AND = 0xc0000000,
+  GNU_PROPERTY_AARCH64_FEATURE_PAUTH = 0xc0000001,
   GNU_PROPERTY_X86_FEATURE_1_AND = 0xc0000002,
 
   GNU_PROPERTY_X86_UINT32_OR_LO = 0xc0008000,

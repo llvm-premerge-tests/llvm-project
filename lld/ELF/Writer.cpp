@@ -508,8 +508,15 @@ template <class ELFT> void elf::createSyntheticSections() {
   in.iplt = std::make_unique<IpltSection>();
   add(*in.iplt);
 
-  if (config->andFeatures)
-    add(*make<GnuPropertySection>());
+  if (config->andFeatures || !config->gnuPropAarch64Pauth.empty()) {
+    in.gnuProp = std::make_unique<GnuPropertySection>();
+    add(*in.gnuProp);
+  }
+
+  if (!config->aarch64PauthAbiTag.empty()) {
+    in.aarch64PauthAbiTag = std::make_unique<Aarch64PauthAbiTag>();
+    add(*in.aarch64PauthAbiTag);
+  }
 
   // .note.GNU-stack is always added when we are creating a re-linkable
   // object file. Other linkers are using the presence of this marker
@@ -2088,6 +2095,7 @@ template <class ELFT> void Writer<ELFT>::finalizeSections() {
     finalizeSynthetic(in.iplt.get());
     finalizeSynthetic(in.ppc32Got2.get());
     finalizeSynthetic(in.partIndex.get());
+    finalizeSynthetic(in.gnuProp.get());
 
     // Dynamic section must be the last one in this list and dynamic
     // symbol table section (dynSymTab) must be the first one.
