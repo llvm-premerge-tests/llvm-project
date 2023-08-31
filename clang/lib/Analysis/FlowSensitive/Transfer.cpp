@@ -27,12 +27,12 @@
 #include "clang/Analysis/FlowSensitive/Value.h"
 #include "clang/Basic/Builtins.h"
 #include "clang/Basic/OperatorKinds.h"
-#include "llvm/ADT/STLExtras.h"
 #include "llvm/Support/Casting.h"
-#include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/Debug.h"
+#include <assert.h>
 #include <cassert>
-#include <memory>
-#include <tuple>
+
+#define DEBUG_TYPE "dataflow"
 
 namespace clang {
 namespace dataflow {
@@ -629,16 +629,63 @@ public:
       return;
     }
 
-    std::vector<FieldDecl *> Fields =
-        getFieldsForInitListExpr(Type->getAsRecordDecl());
+    // Type comparison for assertions.
+    [[maybe_unused]] auto GetCanonicalType = [](QualType Ty) {
+      return Ty.getCanonicalType().getUnqualifiedType();
+    };
+
     llvm::DenseMap<const ValueDecl *, StorageLocation *> FieldLocs;
 
-    for (auto [Field, Init] : llvm::zip(Fields, S->inits())) {
-      assert(Field != nullptr);
-      assert(Init != nullptr);
+    // This only contains the direct fields for the given type.
+    std::vector<FieldDecl *> FieldsForInit =
+        getFieldsForInitListExpr(Type->getAsRecordDecl());
 
-      FieldLocs.insert({Field, &Env.createObject(Field->getType(), Init)});
+    // `S->init()` contains all the InitListExprs including the direct base
+    // classes.
+    auto Inits = S->inits();
+    int InitIdx = 0;
+
+    if (auto* R = S->getType()->getAsCXXRecordDecl()) {
+      assert(FieldsForInit.size() + R->getNumBases() == Inits.size());
+      for ([[maybe_unused]] const CXXBaseSpecifier &Base : R->bases()) {
+        assert(InitIdx < Inits.size());
+        auto Init = Inits[InitIdx++];
+        assert(GetCanonicalType(Base.getType()) == GetCanonicalType(Init->getType()));
+        auto* RecordVal = dyn_cast<RecordValue>(Env.getValue(*Init));
+        assert(RecordVal != nullptr);
+        auto Children = RecordVal->getLoc().children();
+        FieldLocs.insert(Children.begin(), Children.end());
+      }
     }
+
+    assert(FieldsForInit.size() == Inits.size() - InitIdx);
+    for (auto Field : FieldsForInit) {
+      assert(InitIdx < Inits.size());
+      auto Init = Inits[InitIdx++];
+      assert(
+          // The types are same, or
+          GetCanonicalType(Field->getType()) == GetCanonicalType(Init->getType()) ||
+          // The field's type is T&, and initializer is T
+          (Field->getType()->isReferenceType() &&
+              GetCanonicalType(Field->getType())->getPointeeType() ==
+              GetCanonicalType(Init->getType())));
+      auto& Loc = Env.createObject(Field->getType(), Init);
+      FieldLocs.insert({Field, &Loc});
+    }
+
+    LLVM_DEBUG({
+      // `ModeledFields` also contains from all the bases, but only the modeled
+      // ones. Having an initializer list for a struct basically populates all
+      // the fields for the struct, so the fields set that is populated here
+      // should match the modeled fields without additional filtering.
+      auto Modeled = Env.getDataflowAnalysisContext().getModeledFields(Type);
+      llvm::DenseSet<const Decl *> ModeledFields;
+      ModeledFields.insert(Modeled.begin(), Modeled.end());
+      assert(ModeledFields.size() == FieldLocs.size());
+      for ([[maybe_unused]] auto [Field, Loc] : FieldLocs) {
+        assert(ModeledFields.contains(Field));
+      }
+    });
 
     auto &Loc =
         Env.getDataflowAnalysisContext().arena().create<RecordStorageLocation>(

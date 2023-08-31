@@ -1438,6 +1438,150 @@ TEST(TransferTest, BaseClassInitializer) {
       llvm::Succeeded());
 }
 
+TEST(TransferTest, StructModeledFieldsWithComplicatedInheritance) {
+  std::string Code = R"(
+    struct Base3 {
+      int x7;
+      int x8;
+    };
+    struct Base2 : Base3 {
+      int x5;
+      int x6;
+    };
+    struct Base {
+      int x3;
+      int x4;
+    };
+    struct Foo : public Base, Base2 {
+      int x1;
+      int x2;
+    };
+
+    void target() {
+      Foo F;
+      F.x4 = F.x2;
+      F.x6 = 1;
+      F.x8 = 1;
+      // [[p]]
+    }
+  )";
+  runDataflow(
+      Code,
+      [](const llvm::StringMap<DataflowAnalysisState<NoopLattice>> &Results,
+         ASTContext &ASTCtx) {
+        const Environment &Env =
+              getEnvironmentAtAnnotation(Results, "p");
+
+        const ValueDecl *FooDecl = findValueDecl(ASTCtx, "F");
+        const ValueDecl *X1Decl = findValueDecl(ASTCtx, "x1");
+        const ValueDecl *X2Decl = findValueDecl(ASTCtx, "x2");
+        const ValueDecl *X3Decl = findValueDecl(ASTCtx, "x3");
+        const ValueDecl *X4Decl = findValueDecl(ASTCtx, "x4");
+        const ValueDecl *X5Decl = findValueDecl(ASTCtx, "x5");
+        const ValueDecl *X6Decl = findValueDecl(ASTCtx, "x6");
+        const ValueDecl *X7Decl = findValueDecl(ASTCtx, "x7");
+        const ValueDecl *X8Decl = findValueDecl(ASTCtx, "x8");
+        ASSERT_THAT(FooDecl, NotNull());
+
+        // Only "x2", "x4", "x6", and "x8" are accessed and exist in the model.
+        const auto *FooLoc =
+            cast<RecordStorageLocation>(Env.getStorageLocation(*FooDecl));
+        llvm::DenseSet<const ValueDecl*> Fields;
+        for (auto [Field, _] : FooLoc->children()) {
+          Fields.insert(Field);
+        }
+        ASSERT_EQ(Fields.size(), 4);
+        ASSERT_TRUE(Fields.contains(X2Decl));
+        ASSERT_TRUE(Fields.contains(X4Decl));
+        ASSERT_TRUE(Fields.contains(X6Decl));
+        ASSERT_TRUE(Fields.contains(X8Decl));
+
+        // "x1", "x3", "x5", "x7" are not used therefore are filtered out.
+        ASSERT_FALSE(Fields.contains(X1Decl));
+        ASSERT_FALSE(Fields.contains(X3Decl));
+        ASSERT_FALSE(Fields.contains(X5Decl));
+        ASSERT_FALSE(Fields.contains(X7Decl));
+      });
+}
+
+TEST(TransferTest, StructInitializerListWithComplicatedInheritance) {
+  std::string Code = R"(
+    struct Base3 {
+      int x7;
+      int x8;
+    };
+    struct Base2 : Base3 {
+      int x5;
+      int x6;
+    };
+    struct Base {
+      int x3;
+      int x4;
+    };
+    struct Foo : public Base, Base2 {
+      int x1;
+      int x2;
+    };
+
+    void target() {
+      Foo F = {};
+      F.x4 = F.x2;
+      F.x6 = 1;
+      F.x8 = 1;
+      // [[p]]
+    }
+  )";
+  runDataflow(
+      Code,
+      [](const llvm::StringMap<DataflowAnalysisState<NoopLattice>> &Results,
+         ASTContext &ASTCtx) {
+        const Environment &Env =
+              getEnvironmentAtAnnotation(Results, "p");
+
+        const ValueDecl *FooDecl = findValueDecl(ASTCtx, "F");
+        const ValueDecl *X1Decl = findValueDecl(ASTCtx, "x1");
+        const ValueDecl *X2Decl = findValueDecl(ASTCtx, "x2");
+        const ValueDecl *X3Decl = findValueDecl(ASTCtx, "x3");
+        const ValueDecl *X4Decl = findValueDecl(ASTCtx, "x4");
+        const ValueDecl *X5Decl = findValueDecl(ASTCtx, "x5");
+        const ValueDecl *X6Decl = findValueDecl(ASTCtx, "x6");
+        const ValueDecl *X7Decl = findValueDecl(ASTCtx, "x7");
+        const ValueDecl *X8Decl = findValueDecl(ASTCtx, "x8");
+        ASSERT_THAT(FooDecl, NotNull());
+
+        // When a struct is initialized with a initializer list, all the
+        // fields are considered "accessed", and therefore do exist.
+        // (Without the initializer, we should only see "x2", "x4", "x6",
+        // and "x8")
+        const auto *FooLoc =
+            cast<RecordStorageLocation>(Env.getStorageLocation(*FooDecl));
+        const auto *X1Val =
+            cast<IntegerValue>(getFieldValue(FooLoc, *X1Decl, Env));
+        const auto *X2Val =
+            cast<IntegerValue>(getFieldValue(FooLoc, *X2Decl, Env));
+        const auto *X3Val =
+            cast<IntegerValue>(getFieldValue(FooLoc, *X3Decl, Env));
+        const auto *X4Val =
+            cast<IntegerValue>(getFieldValue(FooLoc, *X4Decl, Env));
+        const auto *X5Val =
+            cast<IntegerValue>(getFieldValue(FooLoc, *X5Decl, Env));
+        const auto *X6Val =
+            cast<IntegerValue>(getFieldValue(FooLoc, *X6Decl, Env));
+        const auto *X7Val =
+            cast<IntegerValue>(getFieldValue(FooLoc, *X7Decl, Env));
+        const auto *X8Val =
+            cast<IntegerValue>(getFieldValue(FooLoc, *X8Decl, Env));
+        ASSERT_THAT(X1Val, NotNull());
+        ASSERT_THAT(X2Val, NotNull());
+        ASSERT_THAT(X3Val, NotNull());
+        ASSERT_THAT(X4Val, NotNull());
+        ASSERT_THAT(X5Val, NotNull());
+        ASSERT_THAT(X6Val, NotNull());
+        ASSERT_THAT(X7Val, NotNull());
+        ASSERT_THAT(X8Val, NotNull());
+      });
+}
+
 TEST(TransferTest, ReferenceMember) {
   std::string Code = R"(
     struct A {
@@ -2043,6 +2187,50 @@ TEST(TransferTest, AssignmentOperatorFromCallResult) {
       });
 }
 
+TEST(TransferTest, AssignmentOperatorWithInitAndInheritance) {
+  // This is a crash repro.
+  std::string Code = R"(
+    struct B { int Foo; };
+    struct S : public B {};
+    void target() {
+      S S1 = { 1 };
+      S S2;
+      S S3;
+      S1 = S2;  // Only Dst has InitListExpr.
+      S3 = S1;  // Only Src has InitListExpr.
+      // [[p]]
+    }
+  )";
+  runDataflow(
+      Code,
+      [](const llvm::StringMap<DataflowAnalysisState<NoopLattice>> &Results,
+         ASTContext &ASTCtx) {
+        const ValueDecl *S1Decl = findValueDecl(ASTCtx, "S1");
+        const ValueDecl *S2Decl = findValueDecl(ASTCtx, "S2");
+        const ValueDecl *S3Decl = findValueDecl(ASTCtx, "S3");
+        const ValueDecl *FooDecl = findValueDecl(ASTCtx, "Foo");
+
+        const Environment &Env =
+              getEnvironmentAtAnnotation(Results, "p");
+        const auto *S1Loc =
+            cast<RecordStorageLocation>(Env.getStorageLocation(*S1Decl));
+        const auto *S2Loc =
+            cast<RecordStorageLocation>(Env.getStorageLocation(*S2Decl));
+        const auto *S3Loc =
+            cast<RecordStorageLocation>(Env.getStorageLocation(*S3Decl));
+
+        // The value of `Foo` should exist in all records and are the same.
+        const auto *S1FooVal =
+            cast<IntegerValue>(getFieldValue(S1Loc, *FooDecl, Env));
+        const auto *S2FooVal =
+            cast<IntegerValue>(getFieldValue(S2Loc, *FooDecl, Env));
+        const auto *S3FooVal =
+            cast<IntegerValue>(getFieldValue(S3Loc, *FooDecl, Env));
+        EXPECT_EQ(S1FooVal, S2FooVal);
+        EXPECT_EQ(S2FooVal, S3FooVal);
+      });
+}
+
 TEST(TransferTest, CopyConstructor) {
   std::string Code = R"(
     struct A {
@@ -2245,6 +2433,75 @@ TEST(TransferTest, CopyConstructorArgIsRefReturnedByFunction) {
     const S &returnsSRef();
     void target() {
       S s(returnsSRef());
+    }
+  )";
+  runDataflow(
+      Code,
+      [](const llvm::StringMap<DataflowAnalysisState<NoopLattice>> &Results,
+         ASTContext &ASTCtx) {});
+}
+
+TEST(TransferTest, CopyConstructorWithInitializerAndInheritance) {
+  // This is a crash repro.
+  std::string Code = R"(
+    struct B { int Foo; };
+    struct S : public B {};
+    void target() {
+      S S1 = { 1 };
+      S S2(S1);
+      // [[p]]
+    }
+  )";
+  runDataflow(
+      Code,
+      [](const llvm::StringMap<DataflowAnalysisState<NoopLattice>> &Results,
+         ASTContext &ASTCtx) {
+        const ValueDecl *S1Decl = findValueDecl(ASTCtx, "S1");
+        const ValueDecl *S2Decl = findValueDecl(ASTCtx, "S2");
+        const ValueDecl *FooDecl = findValueDecl(ASTCtx, "Foo");
+
+        const Environment &Env =
+              getEnvironmentAtAnnotation(Results, "p");
+        const auto *S1Loc =
+            cast<RecordStorageLocation>(Env.getStorageLocation(*S1Decl));
+        const auto *S2Loc =
+            cast<RecordStorageLocation>(Env.getStorageLocation(*S2Decl));
+
+        // The value of `Foo` should exist in all records and are the same.
+        const auto *S1FooVal =
+            cast<IntegerValue>(getFieldValue(S1Loc, *FooDecl, Env));
+        const auto *S2FooVal =
+            cast<IntegerValue>(getFieldValue(S2Loc, *FooDecl, Env));
+        EXPECT_EQ(S1FooVal, S2FooVal);
+      });
+}
+
+TEST(TransferTest, CopyConstructorWithBaseInitAndInheritance) {
+  // This is a crash repro.
+  std::string Code = R"(
+    struct Bar { int Foo; };
+    struct B { Bar Bar = { 1 }; };
+    struct S : public B {};
+    void target() {
+      S S1 = {};
+      S S2(S1);
+      // [[p]]
+    }
+  )";
+  runDataflow(
+      Code,
+      [](const llvm::StringMap<DataflowAnalysisState<NoopLattice>> &Results,
+         ASTContext &ASTCtx) {});
+}
+
+TEST(TransferTest, ReturnStructWithInheritance) {
+  // This is a crash repro. (Returning a struct involves copy/move constructor)
+  std::string Code = R"(
+    struct B { int Foo; };
+    struct S : public B { };
+    S target() {
+      S S1 = { 1 };
+      return S1;
     }
   )";
   runDataflow(
