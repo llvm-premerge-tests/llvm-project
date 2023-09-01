@@ -4666,7 +4666,7 @@ static Instruction *foldICmpOrXX(ICmpInst &I, const SimplifyQuery &Q,
 
   if (ICmpInst::isEquality(Pred) && Op0->hasOneUse()) {
     // icmp (X | Y) eq/ne Y --> (X & ~Y) eq/ne 0 if Y is freely invertible
-    if (IC.isFreeToInvert(Op1, Op1->hasOneUse()))
+    if (IC.isFreeToInvert(Op1, Op1->hasOneUse() || Op1->hasNUses(2)))
       return new ICmpInst(Pred,
                           IC.Builder.CreateAnd(A, IC.Builder.CreateNot(Op1)),
                           Constant::getNullValue(Op1->getType()));
