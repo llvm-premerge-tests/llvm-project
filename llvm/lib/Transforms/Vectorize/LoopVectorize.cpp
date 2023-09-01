@@ -8079,7 +8079,7 @@ void VPRecipeBuilder::createHeaderMask(VPlan &Plan) {
                                      nullptr, "active.lane.mask");
   } else {
     VPValue *BTC = Plan.getOrCreateBackedgeTakenCount();
-    BlockMask = Builder.createNaryOp(VPInstruction::ICmpULE, {IV, BTC});
+    BlockMask = Builder.createICmp(CmpInst::ICMP_ULE, IV, BTC);
   }
   BlockMaskCache[Header] = BlockMask;
 }
