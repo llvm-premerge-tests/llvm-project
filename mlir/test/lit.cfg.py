@@ -41,6 +41,7 @@ config.test_source_root = os.path.dirname(__file__)
 config.test_exec_root = os.path.join(config.mlir_obj_root, "test")
 
 config.substitutions.append(("%PATH%", config.environment["PATH"]))
+config.substitutions.append(("%shlibdir", config.llvm_shlib_dir))
 config.substitutions.append(("%shlibext", config.llvm_shlib_ext))
 config.substitutions.append(("%mlir_src_root", config.mlir_src_root))
 config.substitutions.append(("%host_cxx", config.host_cxx))
