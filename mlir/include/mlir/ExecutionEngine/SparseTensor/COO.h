@@ -6,11 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file is part of the lightweight runtime support library for sparse
-// tensor manipulations.  The functionality of the support library is meant
-// to simplify benchmarking, testing, and debugging MLIR code operating on
-// sparse tensors.  However, the provided functionality is **not** part of
-// core MLIR itself.
+// This file contains a coordinate-scheme representation of sparse tensors.
 //
 //===----------------------------------------------------------------------===//
 
