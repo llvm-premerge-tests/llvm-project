@@ -5349,8 +5349,25 @@ bool AArch64TargetLowering::shouldRemoveExtendFromGSIndex(EVT IndexVT,
 }
 
 bool AArch64TargetLowering::isVectorLoadExtDesirable(SDValue ExtVal) const {
-  return ExtVal.getValueType().isScalableVector() ||
-         Subtarget->useSVEForFixedLengthVectors();
+  // It may be worth creating extending masked loads if there are multiple
+  // masked loads using the same predicate. That way we'll end up creating
+  // extending masked loads that may then get split by the legaliser. This
+  // results in just one set of predicate unpacks at the start, instead of
+  // multiple sets of vector unpacks after each load.
+  EVT ExtVT = ExtVal.getValueType();
+
+  if (auto *Ld = dyn_cast<MaskedLoadSDNode>(ExtVal->getOperand(0))) {
+    if (!isLoadExtLegalOrCustom(ISD::ZEXTLOAD, ExtVT, Ld->getValueType(0))) {
+      unsigned NumExtMaskedLoads = 0;
+      for (auto *U : Ld->getMask()->uses())
+        NumExtMaskedLoads += isa<MaskedLoadSDNode>(U) ? 1 : 0;
+
+      if (NumExtMaskedLoads <= 1)
+        return false;
+    }
+  }
+
+  return ExtVT.isScalableVector() || Subtarget->useSVEForFixedLengthVectors();
 }
 
 unsigned getGatherVecOpcode(bool IsScaled, bool IsSigned, bool NeedsExtend) {
