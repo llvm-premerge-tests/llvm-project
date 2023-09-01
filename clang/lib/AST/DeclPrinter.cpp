@@ -612,6 +612,8 @@ void DeclPrinter::VisitFunctionDecl(FunctionDecl *D) {
          I < NumTemplateParams; ++I)
       printTemplateParameters(D->getTemplateParameterList(I));
   }
+  
+  prettyPrintAttributes(D);
 
   CXXConstructorDecl *CDecl = dyn_cast<CXXConstructorDecl>(D);
   CXXConversionDecl *ConversionDecl = dyn_cast<CXXConversionDecl>(D);
@@ -773,8 +775,6 @@ void DeclPrinter::VisitFunctionDecl(FunctionDecl *D) {
   } else {
     Ty.print(Out, Policy, Proto);
   }
-
-  prettyPrintAttributes(D);
 
   if (D->isPure())
     Out << " = 0";
