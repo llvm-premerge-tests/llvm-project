@@ -76,6 +76,7 @@
 #include <cstdint>
 #include <memory>
 #include <new>
+#include <sys/time.h>
 
 using namespace llvm;
 using namespace llvm::XCOFF;
@@ -2740,14 +2741,18 @@ bool PPCAIXAsmPrinter::doInitialization(Module &M) {
           // and add a format indicator as a part of function name in case we
           // will support more than one format.
           FormatIndicatorAndUniqueModId = "clang_" + UniqueModuleId.substr(1);
-        else
+        else {
           // Use the Pid and current time as the unique module id when we cannot
           // generate one based on a module's strong external symbols.
           // FIXME: Adjust the comment accordingly after we use source file full
           // path instead.
+          struct timeval tp;
+          int stat = gettimeofday(&tp, nullptr);
+          uint64_t Time = stat ? time(nullptr) : tp.tv_usec;
           FormatIndicatorAndUniqueModId =
               "clangPidTime_" + llvm::itostr(sys::Process::getProcessId()) +
-              "_" + llvm::itostr(time(nullptr));
+              "_" + llvm::itostr(Time);
+        }
       }
 
       emitSpecialLLVMGlobal(&G);
