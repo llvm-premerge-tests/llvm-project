@@ -44,6 +44,7 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/PassManager.h"
+#include "llvm/IR/ProfDataUtils.h"
 #include "llvm/IR/User.h"
 #include "llvm/IR/Value.h"
 #include "llvm/Support/CommandLine.h"
@@ -102,9 +103,33 @@ bool blockEndsInUnreachable(const BasicBlock &BB) {
   return !(isa<ReturnInst>(I) || isa<IndirectBrInst>(I));
 }
 
-bool unlikelyExecuted(BasicBlock &BB) {
+void analyzeProfMetadata(BasicBlock &BB, SmallPtrSetImpl<BasicBlock *> &AnnotatedColdBlocks) {
+  // TODO: Handle branches with > 2 successors.
+  BranchInst *CondBr = dyn_cast<BranchInst>(BB.getTerminator());
+  if (!CondBr)
+    return;
+
+  uint64_t TrueWeight, FalseWeight;
+  if (!extractBranchWeights(*CondBr, TrueWeight, FalseWeight))
+    return;
+
+  if (TrueWeight + FalseWeight == 0)
+    return;
+
+  if (BranchProbability(TrueWeight, TrueWeight + FalseWeight) <= BranchProbability(1, 1000))
+    AnnotatedColdBlocks.insert(CondBr->getSuccessor(0));
+
+  if (BranchProbability(FalseWeight, TrueWeight + FalseWeight) <= BranchProbability(1, 1000))
+    AnnotatedColdBlocks.insert(CondBr->getSuccessor(1));
+}
+
+bool unlikelyExecuted(BasicBlock &BB, SmallPtrSetImpl<BasicBlock *> &AnnotatedColdBlocks) {
   // Exception handling blocks are unlikely executed.
   if (BB.isEHPad() || isa<ResumeInst>(BB.getTerminator()))
+    return true;
+
+  analyzeProfMetadata(BB, AnnotatedColdBlocks);
+  if (AnnotatedColdBlocks.count(&BB))
     return true;
 
   // The block is cold if it calls/invokes a cold function. However, do not
@@ -564,6 +589,7 @@ bool HotColdSplitting::outlineColdRegions(Function &F, bool HasProfileSummary) {
 
   // The set of cold blocks.
   SmallPtrSet<BasicBlock *, 4> ColdBlocks;
+  SmallPtrSet<BasicBlock *, 4> AnnotatedColdBlocks;
 
   // The worklist of non-intersecting regions left to outline.
   SmallVector<OutliningRegion, 2> OutliningWorklist;
@@ -595,7 +621,7 @@ bool HotColdSplitting::outlineColdRegions(Function &F, bool HasProfileSummary) {
       continue;
 
     bool Cold = (BFI && PSI->isColdBlock(BB, BFI)) ||
-                (EnableStaticAnalysis && unlikelyExecuted(*BB));
+                (EnableStaticAnalysis && unlikelyExecuted(*BB, AnnotatedColdBlocks));
     if (!Cold)
       continue;
 
