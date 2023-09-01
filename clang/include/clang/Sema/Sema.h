@@ -11216,7 +11216,8 @@ private:
                         ArrayRef<OMPClause *> Clauses,
                         OpenMPBindClauseKind BindKind,
                         OpenMPDirectiveKind &Kind,
-                        OpenMPDirectiveKind &PrevMappedDirective);
+                        OpenMPDirectiveKind &PrevMappedDirective,
+                        SourceLocation StartLoc, SourceLocation EndLoc);
 
 public:
   /// The declarator \p D defines a function in the scope \p S which is nested

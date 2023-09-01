@@ -4,6 +4,7 @@
 
 #define NNN 50
 int aaa[NNN];
+int aaa2[NNN][NNN];
 
 void parallel_loop() {
   #pragma omp parallel
@@ -13,6 +14,50 @@ void parallel_loop() {
        aaa[j] = j*NNN;
      }
    }
+}
+
+void parallel_for_AND_loop_bind() {
+  #pragma omp parallel for
+  for (int i = 0 ; i < NNN ; i++) {
+    #pragma omp loop bind(parallel) // expected-error{{region cannot be closely nested inside 'parallel for' region; perhaps you forget to enclose 'omp loop' directive into a parallel region?}}
+    for (int j = 0 ; j < NNN ; j++) {
+      aaa2[i][j] = i+j;
+    }
+  }
+}
+
+void parallel_for_with_nothing() {
+  #pragma omp parallel for
+  for (int i = 0 ; i < NNN ; i++) {
+    #pragma omp nothing
+    #pragma omp loop // expected-error{{region cannot be closely nested inside 'parallel for' region; perhaps you forget to enclose 'omp loop' directive into a parallel region?}}
+    for (int j = 0 ; j < NNN ; j++) {
+      aaa2[i][j] = i+j;
+    }
+  }
+}
+
+void parallel_targetfor_with_loop_bind() {
+  #pragma omp target teams distribute parallel for 
+  for (int i = 0 ; i < NNN ; i++) {
+    #pragma omp loop bind(parallel) // expected-error{{region cannot be closely nested inside 'target teams distribute parallel for' region; perhaps you forget to enclose 'omp loop' directive into a parallel region?}}
+    for (int j = 0 ; j < NNN ; j++) {
+      aaa2[i][j] = i+j;
+    }
+  }
+}
+
+void loop_bind_AND_loop_bind() {
+  #pragma omp parallel for
+  for (int i = 0; i < 100; ++i) {
+    #pragma omp loop bind(parallel) // expected-error{{region cannot be closely nested inside 'parallel for' region; perhaps you forget to enclose 'omp loop' directive into a parallel region?}} 
+    for (int i = 0 ; i < NNN ; i++) {
+      #pragma omp loop bind(parallel) // expected-error{{region cannot be closely nested inside 'loop' region; perhaps you forget to enclose 'omp loop' directive into a parallel region?}} 
+      for (int j = 0 ; j < NNN ; j++) {
+        aaa[j] = j*NNN;
+      }
+    }
+  }
 }
 
 void teams_loop() {
@@ -65,12 +110,65 @@ void teams_loop_reduction() {
    }
 }
 
+void orphan_loop_teams_bind(){
+  #pragma omp loop bind(teams)
+  for (int i = 0; i < NNN; i++) {
+    aaa[i] = i+i*NNN;
+  }
+}
+
+void parallel_for_with_loop_teams_bind(){
+  #pragma omp parallel for
+  for (int i = 0; i < NNN; i++) {
+    #pragma omp loop bind(teams) // expected-error{{region cannot be closely nested inside 'parallel for' region; perhaps you forget to enclose 'omp loop' directive into a teams region?}}
+    for (int j = 0 ; j < NNN ; j++) {
+      aaa[i] = i+i*NNN;
+    }
+  }
+}
+
+void parallel_with_sections_loop() {
+  #pragma omp parallel
+  {
+     #pragma omp sections
+     {
+        for (int i = 0 ; i < NNN ; i++) {
+          #pragma omp loop bind(parallel) // expected-error{{region cannot be closely nested inside 'sections' region; perhaps you forget to enclose 'omp loop' directive into a parallel region?}}
+          for (int j = 0 ; j < NNN ; j++) {
+            aaa2[i][j] = i+j;
+          }
+        }
+
+        #pragma omp section
+	{
+          aaa[NNN-1] = NNN;
+        }
+     }
+  }
+}
+
+void teams_with_loop_thread_bind(){
+  #pragma omp teams
+  for (int i = 0; i < NNN; i++) {
+    #pragma omp loop bind(thread)
+    for (int j = 0 ; j < NNN ; j++) {
+      aaa[i] = i+i*NNN;
+    }
+  }
+}
+
 int main(int argc, char *argv[]) {
   parallel_loop();
+  parallel_for_AND_loop_bind();
+  parallel_for_with_nothing();
+  parallel_targetfor_with_loop_bind();
   teams_loop();
   orphan_loop_with_bind();
   orphan_loop_no_bind();
   teams_loop_reduction();
+  orphan_loop_teams_bind();
+  parallel_for_with_loop_teams_bind();
+  parallel_with_sections_loop();
 }
 
 #endif
