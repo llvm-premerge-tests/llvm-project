@@ -13,6 +13,17 @@ define i32 @load_extract_idx_0(ptr %x) {
   ret i32 %r
 }
 
+define i32 @load_extract_idx_0_vscale(ptr %x) {
+; CHECK-LABEL: @load_extract_idx_0_vscale(
+; CHECK-NEXT:    [[LV:%.*]] = load <vscale x 4 x i32>, ptr [[X:%.*]], align 16
+; CHECK-NEXT:    [[R:%.*]] = extractelement <vscale x 4 x i32> [[LV]], i32 3
+; CHECK-NEXT:    ret i32 [[R]]
+;
+  %lv = load <vscale x 4 x i32>, ptr %x
+  %r = extractelement <vscale x 4 x i32> %lv, i32 3
+  ret i32 %r
+}
+
 ; If the original load had a smaller alignment than the scalar type, the
 ; smaller alignment should be used.
 define i32 @load_extract_idx_0_small_alignment(ptr %x) {
@@ -48,6 +59,17 @@ define i32 @load_extract_idx_2(ptr %x) {
   ret i32 %r
 }
 
+define i32 @load_extract_idx_2_vscale(ptr %x) {
+; CHECK-LABEL: @load_extract_idx_2_vscale(
+; CHECK-NEXT:    [[LV:%.*]] = load <vscale x 4 x i32>, ptr [[X:%.*]], align 16
+; CHECK-NEXT:    [[R:%.*]] = extractelement <vscale x 4 x i32> [[LV]], i32 2
+; CHECK-NEXT:    ret i32 [[R]]
+;
+  %lv = load <vscale x 4 x i32>, ptr %x
+  %r = extractelement <vscale x 4 x i32> %lv, i32 2
+  ret i32 %r
+}
+
 define i32 @load_extract_idx_3(ptr %x) {
 ; CHECK-LABEL: @load_extract_idx_3(
 ; CHECK-NEXT:    [[TMP1:%.*]] = getelementptr inbounds <4 x i32>, ptr [[X:%.*]], i32 0, i32 3
@@ -69,6 +91,19 @@ define i32 @load_extract_idx_4(ptr %x) {
 ;
   %lv = load <4 x i32>, ptr %x
   %r = extractelement <4 x i32> %lv, i32 4
+  ret i32 %r
+}
+
+; This is not optimized due to the index value 4 exceeds the minimum number
+; of elements.
+define i32 @load_extract_idx_4_vscale(ptr %x) {
+; CHECK-LABEL: @load_extract_idx_4_vscale(
+; CHECK-NEXT:    [[LV:%.*]] = load <vscale x 4 x i32>, ptr [[X:%.*]], align 16
+; CHECK-NEXT:    [[R:%.*]] = extractelement <vscale x 4 x i32> [[LV]], i32 4
+; CHECK-NEXT:    ret i32 [[R]]
+;
+  %lv = load <vscale x 4 x i32>, ptr %x
+  %r = extractelement <vscale x 4 x i32> %lv, i32 4
   ret i32 %r
 }
 
