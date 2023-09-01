@@ -26,16 +26,19 @@
 ; CHECK: double E[270336][200000]; // Element size 8
 ; CHECK: i64 F[270336]; // Element size 8
 ;
-; Check if there are the 3 expected malloc calls with the right parameters at polly.start.
+; Check if there are the 3 expected malloc calls with the right parameters at entry.
 ; 	%D : size(D) = product_all_dimensions*sizeof(type) = 270336*8 = 2162688 cast to double*
 ;	%E : size(E) = 270336*200000*8 = 432537600000 cast to double*
 ; 	%F : size(F) = 270336*8 = 2162688 cast to i64*
-; CODEGEN: polly.start:
-; CODEGEN: %malloccall = tail call ptr @malloc(i64 2162688)
-; CODEGEN: %malloccall1 = tail call ptr @malloc(i64 432537600000)
-; CODEGEN: %malloccall2 = tail call ptr @malloc(i64 2162688)
+; CODEGEN: define void @create_arrays_heap(double %beta, ptr nocapture readonly %A, ptr nocapture %B) local_unnamed_addr #0 {
+; CODEGEN: entry:
+; CODEGEN:  %beta.s2a = alloca double, align 8
+; CODEGEN:  %malloccall = tail call ptr @malloc(i64 2162688)
+; CODEGEN:  %malloccall1 = tail call ptr @malloc(i64 432537600000)
+; CODEGEN:  %malloccall2 = tail call ptr @malloc(i64 2162688)
+; CODEGEN:  br label %polly.split_new_and_old
 ;
-; Check if there are the 3 expected malloc calls with the right parameters at polly.exiting.
+; Check if there are the 3 expected free calls with the right parameters at polly.exiting.
 ; 	Cast to i8* before freeing because malloc give us a i8 and free is waiting for a i8*
 ; CODEGEN: polly.exiting:
 ; CODEGEN: tail call void @free(ptr %malloccall)
