@@ -291,6 +291,8 @@ void Disassembler::PrintInstructions(Debugger &debugger, const ArchSpec &arch,
   SourceManager &source_manager =
       target_sp ? target_sp->GetSourceManager() : debugger.GetSourceManager();
 
+  SetUseColor(debugger.GetUseColor());
+
   if (frame) {
     pc_addr_ptr = &frame->GetFrameCodeAddress();
   }

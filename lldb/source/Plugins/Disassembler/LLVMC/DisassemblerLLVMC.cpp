@@ -9,6 +9,7 @@
 #include "DisassemblerLLVMC.h"
 
 #include "llvm-c/Disassembler.h"
+#include "llvm/ADT/ScopeExit.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/MC/MCAsmInfo.h"
@@ -63,6 +64,8 @@ public:
   void PrintMCInst(llvm::MCInst &mc_inst, lldb::addr_t pc,
                    std::string &inst_string, std::string &comments_string);
   void SetStyle(bool use_hex_immed, HexImmediateStyle hex_style);
+  void SetUseColor(bool use_color);
+  bool GetUseColor() const;
   bool CanBranch(llvm::MCInst &mc_inst) const;
   bool HasDelaySlot(llvm::MCInst &mc_inst) const;
   bool IsCall(llvm::MCInst &mc_inst) const;
@@ -575,6 +578,12 @@ public:
           mc_disasm_ptr = disasm->m_alternate_disasm_up.get();
         else
           mc_disasm_ptr = disasm->m_disasm_up.get();
+
+        // Disable coloring for the duration of this function.
+        const bool saved_use_color = mc_disasm_ptr->GetUseColor();
+        mc_disasm_ptr->SetUseColor(false);
+        auto on_exit = llvm::make_scope_exit(
+            [=]() { mc_disasm_ptr->SetUseColor(saved_use_color); });
 
         lldb::addr_t pc = m_address.GetFileAddress();
         m_using_file_addr = true;
@@ -1344,10 +1353,12 @@ void DisassemblerLLVMC::MCDisasmInstance::PrintMCInst(
   llvm::raw_string_ostream inst_stream(inst_string);
   llvm::raw_string_ostream comments_stream(comments_string);
 
+  inst_stream.enable_colors(m_instr_printer_up->getUseColor());
   m_instr_printer_up->setCommentStream(comments_stream);
   m_instr_printer_up->printInst(&mc_inst, pc, llvm::StringRef(),
                                 *m_subtarget_info_up, inst_stream);
   m_instr_printer_up->setCommentStream(llvm::nulls());
+
   comments_stream.flush();
 
   static std::string g_newlines("\r\n");
@@ -1372,6 +1383,14 @@ void DisassemblerLLVMC::MCDisasmInstance::SetStyle(
     m_instr_printer_up->setPrintHexStyle(llvm::HexStyle::Asm);
     break;
   }
+}
+
+void DisassemblerLLVMC::MCDisasmInstance::SetUseColor(bool use_color) {
+  m_instr_printer_up->setUseColor(use_color);
+}
+
+bool DisassemblerLLVMC::MCDisasmInstance::GetUseColor() const {
+  return m_instr_printer_up->getUseColor();
 }
 
 bool DisassemblerLLVMC::MCDisasmInstance::CanBranch(
@@ -1595,6 +1614,13 @@ lldb::DisassemblerSP DisassemblerLLVMC::CreateInstance(const ArchSpec &arch,
       return disasm_sp;
   }
   return lldb::DisassemblerSP();
+}
+
+void DisassemblerLLVMC::SetUseColor(bool use_color) {
+  if (m_disasm_up)
+    m_disasm_up->SetUseColor(use_color);
+  if (m_alternate_disasm_up)
+    m_alternate_disasm_up->SetUseColor(use_color);
 }
 
 size_t DisassemblerLLVMC::DecodeInstructions(const Address &base_addr,
