@@ -2922,6 +2922,24 @@ static Instruction *foldNestedSelects(SelectInst &OuterSelVal,
                             !IsAndVariant ? SelInner : InnerSel.FalseVal);
 }
 
+static bool canFreelyInvert(InstCombiner &IC, Value *Op,
+                            Instruction *IgnoredUser = nullptr) {
+  auto *I = dyn_cast<Instruction>(Op);
+  return I && IC.isFreeToInvert(I, /*WillInvertAllUses=*/true) &&
+         InstCombiner::canFreelyInvertAllUsersOf(I, IgnoredUser);
+}
+
+static Value *freelyInvert(InstCombinerImpl &IC, Value *Op,
+                           Instruction *IgnoredUser) {
+  auto *I = cast<Instruction>(Op);
+  IC.Builder.SetInsertPoint(&*I->getInsertionPointAfterDef());
+  Value *NotOp = IC.Builder.CreateNot(Op, Op->getName() + ".not");
+  Op->replaceUsesWithIf(NotOp,
+                        [NotOp](Use &U) { return U.getUser() != NotOp; });
+  IC.freelyInvertAllUsersOf(NotOp, IgnoredUser);
+  return NotOp;
+}
+
 Instruction *InstCombinerImpl::foldSelectOfBools(SelectInst &SI) {
   Value *CondVal = SI.getCondition();
   Value *TrueVal = SI.getTrueValue();
@@ -2938,6 +2956,41 @@ Instruction *InstCombinerImpl::foldSelectOfBools(SelectInst &SI) {
   auto *One = ConstantInt::getTrue(SelType);
   auto *Zero = ConstantInt::getFalse(SelType);
   Value *A, *B, *C, *D;
+
+  // Some very basic simplifcations to get out of the way first.
+  if (match(TrueVal, m_Zero()) && match(FalseVal, m_One()))
+    return BinaryOperator::CreateNot(CondVal);
+
+  if (TrueVal == CondVal)
+    return SelectInst::Create(CondVal, One, FalseVal);
+
+  if (match(TrueVal, m_Not(m_Specific(CondVal))))
+    return SelectInst::Create(CondVal, Zero, FalseVal);
+
+  if (FalseVal == CondVal)
+    return SelectInst::Create(CondVal, TrueVal, Zero);
+
+  if (match(FalseVal, m_Not(m_Specific(CondVal))))
+    return SelectInst::Create(CondVal, TrueVal, One);
+
+  // Try our best to canonicalize to `select c, true, false` starting from
+  // `select c, A, true` or `select c, false, B`.
+  // First try to just invert the condition and swap trueval/falseval.
+  // If we can't invert the condition try to invert the select as a whole.
+  if (match(TrueVal, m_Specific(Zero)) || match(FalseVal, m_Specific(One))) {
+    if (canFreelyInvert(*this, CondVal, &SI)) {
+      Value *NotCond = freelyInvert(*this, CondVal, &SI);
+      return SelectInst::Create(NotCond, FalseVal, TrueVal);
+    }
+    if (canFreelyInvert(*this, &SI)) {
+      Value *NotSelect = Builder.CreateSelect(
+          CondVal, Builder.CreateNot(TrueVal), Builder.CreateNot(FalseVal));
+      Instruction *R = replaceInstUsesWith(SI, NotSelect);
+      freelyInvertAllUsersOf(NotSelect);
+      return R;
+    }
+  }
+
 
   // Folding select to and/or i1 isn't poison safe in general. impliesPoison
   // checks whether folding it does not convert a well-defined value into
@@ -2983,6 +3036,28 @@ Instruction *InstCombinerImpl::foldSelectOfBools(SelectInst &SI) {
     }
   }
 
+  if (match(TrueVal, m_Zero())) {
+    if (auto *LHS = dyn_cast<FCmpInst>(CondVal)) {
+      if (auto *RHS = dyn_cast<FCmpInst>(FalseVal)) {
+        InstCombinerImpl::FCmpComponents LHSComponents{
+            LHS->getInversePredicate(), LHS->getOperand(0), LHS->getOperand(1),
+            LHS};
+        if (Value *V = foldLogicOfFCmps(LHSComponents, RHS, /*IsAnd*/ true,
+                                        /*IsSelectLogical*/ true))
+          return replaceInstUsesWith(SI, V);
+      }
+    }
+
+    // !(A || B) && (C || B) --> !(A || B) && C
+    if (match(CondVal, m_LogicalOr(m_Value(A), m_Value(B))) &&
+        match(FalseVal, m_LogicalOr(m_Value(C), m_Value(D)))) {
+      if (A == C || B == C)
+        return SelectInst::Create(CondVal, Zero, D);
+      if (A == D || B == D)
+        return SelectInst::Create(CondVal, Zero, C);
+    }
+  }
+
   if (match(FalseVal, m_Zero())) {
     if (impliesPoison(TrueVal, CondVal)) {
       // Change: A = select B, C, false --> A = and B, C
@@ -3024,17 +3099,25 @@ Instruction *InstCombinerImpl::foldSelectOfBools(SelectInst &SI) {
     }
   }
 
-  // We match the "full" 0 or 1 constant here to avoid a potential infinite
-  // loop with vectors that may have undefined/poison elements.
-  // select a, false, b -> select !a, b, false
-  if (match(TrueVal, m_Specific(Zero))) {
-    Value *NotCond = Builder.CreateNot(CondVal, "not." + CondVal->getName());
-    return SelectInst::Create(NotCond, FalseVal, Zero);
-  }
-  // select a, b, true -> select !a, true, b
-  if (match(FalseVal, m_Specific(One))) {
-    Value *NotCond = Builder.CreateNot(CondVal, "not." + CondVal->getName());
-    return SelectInst::Create(NotCond, One, TrueVal);
+  if (match(FalseVal, m_One())) {
+    if (auto *LHS = dyn_cast<FCmpInst>(CondVal)) {
+      if (auto *RHS = dyn_cast<FCmpInst>(TrueVal)) {
+        InstCombinerImpl::FCmpComponents LHSComponents{
+            LHS->getInversePredicate(), LHS->getOperand(0), LHS->getOperand(1),
+            LHS};
+        if (Value *V = foldLogicOfFCmps(LHSComponents, RHS, /*IsAnd*/ false,
+                                        /*IsSelectLogical*/ true))
+          return replaceInstUsesWith(SI, V);
+      }
+    }
+    // !(A && B) || (C && B) --> !(A && B) || C
+    if (match(CondVal, m_LogicalAnd(m_Value(A), m_Value(B))) &&
+        match(TrueVal, m_LogicalAnd(m_Value(C), m_Value(D)))) {
+      if (A == C || B == C)
+        return SelectInst::Create(CondVal, D, One);
+      if (A == D || B == D)
+        return SelectInst::Create(CondVal, C, One);
+    }
   }
 
   // DeMorgan in select form: !a && !b --> !(a || b)
@@ -3055,10 +3138,22 @@ Instruction *InstCombinerImpl::foldSelectOfBools(SelectInst &SI) {
   if (match(CondVal, m_Select(m_Value(A), m_One(), m_Value(B))) &&
       match(TrueVal, m_One()) && match(FalseVal, m_Specific(B)))
     return replaceOperand(SI, 0, A);
+
+  // select (select a, b, true), b, true -> select a, true, b
+  if (match(CondVal, m_Select(m_Value(A), m_Value(B), m_One())) &&
+      match(FalseVal, m_One()) && match(TrueVal, m_Specific(B)))
+    return SelectInst::Create(A, One, B);
+
   // select (select a, b, false), b, false -> select a, b, false
   if (match(CondVal, m_Select(m_Value(A), m_Value(B), m_Zero())) &&
       match(TrueVal, m_Specific(B)) && match(FalseVal, m_Zero()))
     return replaceOperand(SI, 0, A);
+
+  // select (select a, false, b), false, b -> select a, b, false
+  if (match(CondVal, m_Select(m_Value(A), m_Zero(), m_Value(B))) &&
+      match(TrueVal, m_Zero()) && match(FalseVal, m_Specific(B)))
+    return SelectInst::Create(A, B, Zero);
+
   // select a, (select ~a, true, b), false -> select a, b, false
   if (match(TrueVal, m_c_LogicalOr(m_Not(m_Specific(CondVal)), m_Value(B))) &&
       match(FalseVal, m_Zero()))
@@ -3086,6 +3181,7 @@ Instruction *InstCombinerImpl::foldSelectOfBools(SelectInst &SI) {
     return BinaryOperator::CreateAnd(FalseVal, Builder.CreateOr(C, TrueVal));
   }
 
+
   if (match(FalseVal, m_Zero()) || match(TrueVal, m_One())) {
     Use *Y = nullptr;
     bool IsAnd = match(FalseVal, m_Zero()) ? true : false;
@@ -3107,6 +3203,27 @@ Instruction *InstCombinerImpl::foldSelectOfBools(SelectInst &SI) {
         if (auto *V = foldAndOrOfICmps(ICmp0, ICmp1, SI, IsAnd,
                                        /* IsLogical */ true))
           return replaceInstUsesWith(SI, V);
+  }
+
+  if (match(FalseVal, m_One()) || match(TrueVal, m_Zero())) {
+    bool IsAnd = match(TrueVal, m_Zero());
+    Value *Op1 = IsAnd ? FalseVal : TrueVal;
+    if (auto *Op1SI = dyn_cast<SelectInst>(Op1))
+      if (auto *I = foldAndOrOfSelectUsingImpliedCond(CondVal, *Op1SI,
+                                                      /* IsAnd */ IsAnd,
+                                                      /*NotSICond*/ true))
+        return I;
+
+    if (auto *ICmp0 = dyn_cast<ICmpInst>(CondVal)) {
+      if (auto *ICmp1 = dyn_cast<ICmpInst>(Op1)) {
+        InstCombinerImpl::ICmpComponents ICmp0Components{
+            ICmp0->getInversePredicate(), ICmp0->getOperand(0),
+            ICmp0->getOperand(1), ICmp0};
+        if (auto *V = foldAndOrOfICmps(ICmp0Components, ICmp1, SI, IsAnd,
+                                       /* IsLogical */ true))
+          return replaceInstUsesWith(SI, V);
+      }
+    }
   }
 
   // select (a || b), c, false -> select a, c, false

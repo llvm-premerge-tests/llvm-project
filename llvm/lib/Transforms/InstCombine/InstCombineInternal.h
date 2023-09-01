@@ -239,6 +239,8 @@ public:
     CmpComponents(CmpType *Cmp)
         : Pred_(Cmp->getPredicate()), Op0_(Cmp->getOperand(0)),
           Op1_(Cmp->getOperand(1)), OrigCmp_(Cmp) {}
+    CmpComponents(PredType Pred, Value *Op0, Value *Op1, CmpType *Cmp)
+        : Pred_(Pred), Op0_(Op0), Op1_(Op1), OrigCmp_(Cmp) {}
   };
 
   using FCmpComponents = CmpComponents<FCmpInst>;

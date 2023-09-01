@@ -145,8 +145,7 @@ f:
 define i32 @logical_and_or(i1 %x, i1 %y) {
 ; CHECK-LABEL: @logical_and_or(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[NOT_X:%.*]] = xor i1 [[X:%.*]], true
-; CHECK-NEXT:    [[AND:%.*]] = select i1 [[NOT_X]], i1 true, i1 [[Y:%.*]]
+; CHECK-NEXT:    [[AND:%.*]] = select i1 [[X:%.*]], i1 [[Y:%.*]], i1 true
 ; CHECK-NEXT:    br i1 [[AND]], label [[F:%.*]], label [[T:%.*]]
 ; CHECK:       t:
 ; CHECK-NEXT:    ret i32 42

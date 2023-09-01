@@ -27,8 +27,7 @@ define i1 @logical_or(i1 %a, i1 %b) {
 ; Canonicalize to logical and form, even if that requires adding a "not".
 define i1 @logical_and_not(i1 %a, i1 %b) {
 ; CHECK-LABEL: @logical_and_not(
-; CHECK-NEXT:    [[NOT_A:%.*]] = xor i1 [[A:%.*]], true
-; CHECK-NEXT:    [[RES:%.*]] = select i1 [[NOT_A]], i1 [[B:%.*]], i1 false
+; CHECK-NEXT:    [[RES:%.*]] = select i1 [[A:%.*]], i1 false, i1 [[B:%.*]]
 ; CHECK-NEXT:    ret i1 [[RES]]
 ;
   %res = select i1 %a, i1 false, i1 %b
@@ -38,8 +37,7 @@ define i1 @logical_and_not(i1 %a, i1 %b) {
 ; Canonicalize to logical or form, even if that requires adding a "not".
 define i1 @logical_or_not(i1 %a, i1 %b) {
 ; CHECK-LABEL: @logical_or_not(
-; CHECK-NEXT:    [[NOT_A:%.*]] = xor i1 [[A:%.*]], true
-; CHECK-NEXT:    [[RES:%.*]] = select i1 [[NOT_A]], i1 true, i1 [[B:%.*]]
+; CHECK-NEXT:    [[RES:%.*]] = select i1 [[A:%.*]], i1 [[B:%.*]], i1 true
 ; CHECK-NEXT:    ret i1 [[RES]]
 ;
   %res = select i1 %a, i1 %b, i1 true
@@ -70,8 +68,7 @@ define i1 @logical_or_cond_reuse(i1 %a, i1 %b) {
 
 define i1 @logical_and_not_cond_reuse(i1 %a, i1 %b) {
 ; CHECK-LABEL: @logical_and_not_cond_reuse(
-; CHECK-NEXT:    [[NOT_A:%.*]] = xor i1 [[A:%.*]], true
-; CHECK-NEXT:    [[RES:%.*]] = select i1 [[NOT_A]], i1 true, i1 [[B:%.*]]
+; CHECK-NEXT:    [[RES:%.*]] = select i1 [[A:%.*]], i1 [[B:%.*]], i1 true
 ; CHECK-NEXT:    ret i1 [[RES]]
 ;
   %a.not = xor i1 %a, true
@@ -81,8 +78,7 @@ define i1 @logical_and_not_cond_reuse(i1 %a, i1 %b) {
 
 define i1 @logical_or_not_cond_reuse(i1 %a, i1 %b) {
 ; CHECK-LABEL: @logical_or_not_cond_reuse(
-; CHECK-NEXT:    [[NOT_A:%.*]] = xor i1 [[A:%.*]], true
-; CHECK-NEXT:    [[RES:%.*]] = select i1 [[NOT_A]], i1 [[B:%.*]], i1 false
+; CHECK-NEXT:    [[RES:%.*]] = select i1 [[A:%.*]], i1 false, i1 [[B:%.*]]
 ; CHECK-NEXT:    ret i1 [[RES]]
 ;
   %a.not = xor i1 %a, true

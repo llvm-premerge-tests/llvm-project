@@ -20,8 +20,8 @@ define i1 @both_sides_fold_eq(i32 %param, i1 %cond) {
 ; CHECK-LABEL: define i1 @both_sides_fold_eq
 ; CHECK-SAME: (i32 [[PARAM:%.*]], i1 [[COND:%.*]]) {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[NOT_COND:%.*]] = xor i1 [[COND]], true
-; CHECK-NEXT:    ret i1 [[NOT_COND]]
+; CHECK-NEXT:    [[CMP:%.*]] = xor i1 [[COND]], true
+; CHECK-NEXT:    ret i1 [[CMP]]
 ;
 entry:
   %cond1 = select i1 %cond, i32 1, i32 %param
@@ -50,8 +50,7 @@ define i1 @one_side_fold_sgt(i32 %val1, i32 %val2, i32 %param, i1 %cond) {
 ; CHECK-SAME: (i32 [[VAL1:%.*]], i32 [[VAL2:%.*]], i32 [[PARAM:%.*]], i1 [[COND:%.*]]) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[TMP0:%.*]] = icmp sgt i32 [[VAL2]], [[VAL1]]
-; CHECK-NEXT:    [[NOT_COND:%.*]] = xor i1 [[COND]], true
-; CHECK-NEXT:    [[CMP:%.*]] = select i1 [[NOT_COND]], i1 [[TMP0]], i1 false
+; CHECK-NEXT:    [[CMP:%.*]] = select i1 [[COND]], i1 false, i1 [[TMP0]]
 ; CHECK-NEXT:    ret i1 [[CMP]]
 ;
 entry:
@@ -66,8 +65,7 @@ define i1 @one_side_fold_eq(i32 %val1, i32 %val2, i32 %param, i1 %cond) {
 ; CHECK-SAME: (i32 [[VAL1:%.*]], i32 [[VAL2:%.*]], i32 [[PARAM:%.*]], i1 [[COND:%.*]]) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[TMP0:%.*]] = icmp eq i32 [[VAL2]], [[VAL1]]
-; CHECK-NEXT:    [[NOT_COND:%.*]] = xor i1 [[COND]], true
-; CHECK-NEXT:    [[CMP:%.*]] = select i1 [[NOT_COND]], i1 true, i1 [[TMP0]]
+; CHECK-NEXT:    [[CMP:%.*]] = select i1 [[COND]], i1 [[TMP0]], i1 true
 ; CHECK-NEXT:    ret i1 [[CMP]]
 ;
 entry:

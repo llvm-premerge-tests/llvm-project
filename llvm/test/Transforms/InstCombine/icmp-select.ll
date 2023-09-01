@@ -50,9 +50,8 @@ define i1 @icmp_select_var_select(i8 %x, i8 %y, i1 %c) {
 ; CHECK-LABEL: @icmp_select_var_select(
 ; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i8 [[X:%.*]], 0
 ; CHECK-NEXT:    [[CMP212:%.*]] = icmp eq i8 [[X]], [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_C:%.*]] = xor i1 [[C:%.*]], true
-; CHECK-NEXT:    [[TMP1:%.*]] = select i1 [[CMP1]], i1 true, i1 [[NOT_C]]
-; CHECK-NEXT:    [[CMP2:%.*]] = select i1 [[TMP1]], i1 true, i1 [[CMP212]]
+; CHECK-NEXT:    [[CMP21:%.*]] = select i1 [[C:%.*]], i1 [[CMP212]], i1 true
+; CHECK-NEXT:    [[CMP2:%.*]] = select i1 [[CMP1]], i1 true, i1 [[CMP21]]
 ; CHECK-NEXT:    ret i1 [[CMP2]]
 ;
   %z = select i1 %c, i8 %x, i8 %y
@@ -207,8 +206,7 @@ define i1 @icmp_select_implied_cond_swapped_select_with_inv_cond(i8 %x, i8 %y) {
 ; CHECK-NEXT:    [[CMP1:%.*]] = icmp ne i8 [[X:%.*]], 0
 ; CHECK-NEXT:    call void @use.i1(i1 [[CMP1]])
 ; CHECK-NEXT:    [[CMP21:%.*]] = icmp eq i8 [[Y:%.*]], [[X]]
-; CHECK-NEXT:    [[NOT_CMP1:%.*]] = xor i1 [[CMP1]], true
-; CHECK-NEXT:    [[CMP2:%.*]] = select i1 [[NOT_CMP1]], i1 true, i1 [[CMP21]]
+; CHECK-NEXT:    [[CMP2:%.*]] = select i1 [[CMP1]], i1 [[CMP21]], i1 true
 ; CHECK-NEXT:    ret i1 [[CMP2]]
 ;
   %cmp1 = icmp ne i8 %x, 0
@@ -377,8 +375,8 @@ define i1 @select_constants_and_icmp_eq0_zero_tval(i1 %x, i1 %y) {
 define i1 @select_constants_and_icmp_eq0_zero_fval(i1 %x, i1 %y) {
 ; CHECK-LABEL: @select_constants_and_icmp_eq0_zero_fval(
 ; CHECK-NEXT:    [[TMP1:%.*]] = select i1 [[X:%.*]], i1 [[Y:%.*]], i1 false
-; CHECK-NEXT:    [[NOT_:%.*]] = xor i1 [[TMP1]], true
-; CHECK-NEXT:    ret i1 [[NOT_]]
+; CHECK-NEXT:    [[CMP:%.*]] = xor i1 [[TMP1]], true
+; CHECK-NEXT:    ret i1 [[CMP]]
 ;
   %s1 = select i1 %x, i8 12, i8 0
   %s2 = select i1 %y, i8 12, i8 0
@@ -547,8 +545,8 @@ define i1 @select_constants_and_icmp_ne0_no_common_op2(i1 %x, i1 %y) {
 define i1 @select_constants_and_icmp_ne0_zero_tval(i1 %x, i1 %y) {
 ; CHECK-LABEL: @select_constants_and_icmp_ne0_zero_tval(
 ; CHECK-NEXT:    [[TMP1:%.*]] = select i1 [[X:%.*]], i1 true, i1 [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_:%.*]] = xor i1 [[TMP1]], true
-; CHECK-NEXT:    ret i1 [[NOT_]]
+; CHECK-NEXT:    [[CMP:%.*]] = xor i1 [[TMP1]], true
+; CHECK-NEXT:    ret i1 [[CMP]]
 ;
   %s1 = select i1 %x, i8 0, i8 12
   %s2 = select i1 %y, i8 0, i8 12
