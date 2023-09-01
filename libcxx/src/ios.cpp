@@ -52,8 +52,9 @@ __iostream_category::message(int ev) const
 const error_category&
 iostream_category() noexcept
 {
-    static __iostream_category s;
-    return s;
+    _LIBCPP_NO_DESTROY constinit
+    static __iostream_category iostream_error_category;
+    return iostream_error_category;
 }
 
 // ios_base::failure
