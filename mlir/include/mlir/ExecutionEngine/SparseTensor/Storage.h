@@ -6,12 +6,6 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file is part of the lightweight runtime support library for sparse
-// tensor manipulations.  The functionality of the support library is meant
-// to simplify benchmarking, testing, and debugging MLIR code operating on
-// sparse tensors.  However, the provided functionality is **not** part of
-// core MLIR itself.
-//
 // This file contains definitions for the following classes:
 //
 // * `SparseTensorStorageBase`
@@ -19,14 +13,6 @@
 // * `SparseTensorEnumeratorBase<V>`
 // * `SparseTensorEnumerator<P, C, V>`
 // * `SparseTensorNNZ`
-//
-// Ideally we would split the storage classes and enumerator classes
-// into separate files, to improve legibility.  But alas: because these
-// are template-classes, they must therefore provide *definitions* in the
-// header; and those definitions cause circular dependencies that make it
-// impossible to split the file up along the desired lines.  (We could
-// split the base classes from the derived classes, but that doesn't
-// particularly help improve legibility.)
 //
 //===----------------------------------------------------------------------===//
 
