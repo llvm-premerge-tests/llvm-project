@@ -3650,6 +3650,24 @@ Instruction *InstCombinerImpl::visitOr(BinaryOperator &I) {
     }
   }
 
+  {
+    // ((A & B) ^ A) | ((A & B) ^ B) -> A ^ B
+    if (match(Op0,
+              m_OneUse(m_Xor(m_And(m_Value(A), m_Value(B)), m_Deferred(A)))) &&
+        match(Op1, m_OneUse(m_Xor(m_And(m_Specific(A), m_Specific(B)),
+                                  m_Deferred(B))))) {
+      return BinaryOperator::CreateXor(A, B);
+    }
+
+    // ((A & B) ^ B) | ((A & B) ^ A) -> A ^ B
+    if (match(Op0,
+              m_OneUse(m_Xor(m_And(m_Value(A), m_Value(B)), m_Deferred(B)))) &&
+        match(Op1, m_OneUse(m_Xor(m_And(m_Specific(A), m_Specific(B)),
+                                  m_Deferred(A))))) {
+      return BinaryOperator::CreateXor(A, B);
+    }
+  }
+
   if (Instruction *V =
           canonicalizeCondSignextOfHighBitExtractToSignextHighBitExtract(I))
     return V;
