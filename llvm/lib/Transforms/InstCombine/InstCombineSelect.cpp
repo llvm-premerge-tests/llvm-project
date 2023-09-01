@@ -2643,9 +2643,8 @@ static Value *foldSelectWithFrozenICmp(SelectInst &Sel, InstCombiner::BuilderTy 
   return nullptr;
 }
 
-Instruction *InstCombinerImpl::foldAndOrOfSelectUsingImpliedCond(Value *Op,
-                                                                 SelectInst &SI,
-                                                                 bool IsAnd) {
+Instruction *InstCombinerImpl::foldAndOrOfSelectUsingImpliedCond(
+    Value *Op, SelectInst &SI, bool IsAnd, bool NotSICond) {
   Value *CondVal = SI.getCondition();
   Value *A = SI.getTrueValue();
   Value *B = SI.getFalseValue();
@@ -2656,6 +2655,9 @@ Instruction *InstCombinerImpl::foldAndOrOfSelectUsingImpliedCond(Value *Op,
   std::optional<bool> Res = isImpliedCondition(Op, CondVal, DL, IsAnd);
   if (!Res)
     return nullptr;
+
+  if (NotSICond)
+    *Res = !*Res;
 
   Value *Zero = Constant::getNullValue(A->getType());
   Value *One = Constant::getAllOnesValue(A->getType());

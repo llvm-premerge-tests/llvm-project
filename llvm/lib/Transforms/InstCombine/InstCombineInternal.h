@@ -390,7 +390,8 @@ private:
   //   or i1 Op, SI  / select i1 Op, i1 true, i1 SI  (if IsAnd = false)
   // into simplier select instruction using isImpliedCondition.
   Instruction *foldAndOrOfSelectUsingImpliedCond(Value *Op, SelectInst &SI,
-                                                 bool IsAnd);
+                                                 bool IsAnd,
+                                                 bool NotSICond = false);
 
   Instruction *hoistFNegAboveFMulFDiv(Value *FNegOp, Instruction &FMFSource);
 
