@@ -198,7 +198,8 @@ define <vscale x 8 x i8> @intrinsic_vredsum_vs_nxv8i8_nxv16i8_nxv8i8(<vscale x 8
 ; CHECK-LABEL: intrinsic_vredsum_vs_nxv8i8_nxv16i8_nxv8i8:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e8, m2, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v10, v9
+; CHECK-NEXT:    vredsum.vs v10, v8, v11
+; CHECK-NEXT:    vmv1r.v v8, v10
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 8 x i8> @llvm.riscv.vredsum.nxv8i8.nxv16i8(
@@ -221,7 +222,8 @@ define <vscale x 8 x i8> @intrinsic_vredsum_mask_vs_nxv8i8_nxv16i8_nxv8i8(<vscal
 ; CHECK-LABEL: intrinsic_vredsum_mask_vs_nxv8i8_nxv16i8_nxv8i8:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e8, m2, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v10, v9, v0.t
+; CHECK-NEXT:    vredsum.vs v10, v8, v11, v0.t
+; CHECK-NEXT:    vmv1r.v v8, v10
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 8 x i8> @llvm.riscv.vredsum.mask.nxv8i8.nxv16i8(
@@ -244,7 +246,8 @@ define <vscale x 8 x i8> @intrinsic_vredsum_vs_nxv8i8_nxv32i8_nxv8i8(<vscale x 8
 ; CHECK-LABEL: intrinsic_vredsum_vs_nxv8i8_nxv32i8_nxv8i8:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e8, m4, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v12, v9
+; CHECK-NEXT:    vredsum.vs v12, v8, v13
+; CHECK-NEXT:    vmv1r.v v8, v12
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 8 x i8> @llvm.riscv.vredsum.nxv8i8.nxv32i8(
@@ -267,7 +270,8 @@ define <vscale x 8 x i8> @intrinsic_vredsum_mask_vs_nxv8i8_nxv32i8_nxv8i8(<vscal
 ; CHECK-LABEL: intrinsic_vredsum_mask_vs_nxv8i8_nxv32i8_nxv8i8:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e8, m4, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v12, v9, v0.t
+; CHECK-NEXT:    vredsum.vs v12, v8, v13, v0.t
+; CHECK-NEXT:    vmv1r.v v8, v12
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 8 x i8> @llvm.riscv.vredsum.mask.nxv8i8.nxv32i8(
@@ -428,7 +432,8 @@ define <vscale x 4 x i16> @intrinsic_vredsum_vs_nxv4i16_nxv8i16_nxv4i16(<vscale 
 ; CHECK-LABEL: intrinsic_vredsum_vs_nxv4i16_nxv8i16_nxv4i16:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e16, m2, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v10, v9
+; CHECK-NEXT:    vredsum.vs v10, v8, v11
+; CHECK-NEXT:    vmv1r.v v8, v10
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 4 x i16> @llvm.riscv.vredsum.nxv4i16.nxv8i16(
@@ -451,7 +456,8 @@ define <vscale x 4 x i16> @intrinsic_vredsum_mask_vs_nxv4i16_nxv8i16_nxv4i16(<vs
 ; CHECK-LABEL: intrinsic_vredsum_mask_vs_nxv4i16_nxv8i16_nxv4i16:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e16, m2, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v10, v9, v0.t
+; CHECK-NEXT:    vredsum.vs v10, v8, v11, v0.t
+; CHECK-NEXT:    vmv1r.v v8, v10
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 4 x i16> @llvm.riscv.vredsum.mask.nxv4i16.nxv8i16(
@@ -474,7 +480,8 @@ define <vscale x 4 x i16> @intrinsic_vredsum_vs_nxv4i16_nxv16i16_nxv4i16(<vscale
 ; CHECK-LABEL: intrinsic_vredsum_vs_nxv4i16_nxv16i16_nxv4i16:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e16, m4, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v12, v9
+; CHECK-NEXT:    vredsum.vs v12, v8, v13
+; CHECK-NEXT:    vmv1r.v v8, v12
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 4 x i16> @llvm.riscv.vredsum.nxv4i16.nxv16i16(
@@ -497,7 +504,8 @@ define <vscale x 4 x i16> @intrinsic_vredsum_mask_vs_nxv4i16_nxv16i16_nxv4i16(<v
 ; CHECK-LABEL: intrinsic_vredsum_mask_vs_nxv4i16_nxv16i16_nxv4i16:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e16, m4, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v12, v9, v0.t
+; CHECK-NEXT:    vredsum.vs v12, v8, v13, v0.t
+; CHECK-NEXT:    vmv1r.v v8, v12
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 4 x i16> @llvm.riscv.vredsum.mask.nxv4i16.nxv16i16(
@@ -520,7 +528,8 @@ define <vscale x 4 x i16> @intrinsic_vredsum_vs_nxv4i16_nxv32i16_nxv4i16(<vscale
 ; CHECK-LABEL: intrinsic_vredsum_vs_nxv4i16_nxv32i16_nxv4i16:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e16, m8, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v16, v9
+; CHECK-NEXT:    vredsum.vs v16, v8, v17
+; CHECK-NEXT:    vmv1r.v v8, v16
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 4 x i16> @llvm.riscv.vredsum.nxv4i16.nxv32i16(
@@ -543,7 +552,8 @@ define <vscale x 4 x i16> @intrinsic_vredsum_mask_vs_nxv4i16_nxv32i16_nxv4i16(<v
 ; CHECK-LABEL: intrinsic_vredsum_mask_vs_nxv4i16_nxv32i16_nxv4i16:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e16, m8, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v16, v9, v0.t
+; CHECK-NEXT:    vredsum.vs v16, v8, v17, v0.t
+; CHECK-NEXT:    vmv1r.v v8, v16
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 4 x i16> @llvm.riscv.vredsum.mask.nxv4i16.nxv32i16(
@@ -658,7 +668,8 @@ define <vscale x 2 x i32> @intrinsic_vredsum_vs_nxv2i32_nxv4i32_nxv2i32(<vscale 
 ; CHECK-LABEL: intrinsic_vredsum_vs_nxv2i32_nxv4i32_nxv2i32:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e32, m2, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v10, v9
+; CHECK-NEXT:    vredsum.vs v10, v8, v11
+; CHECK-NEXT:    vmv1r.v v8, v10
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 2 x i32> @llvm.riscv.vredsum.nxv2i32.nxv4i32(
@@ -681,7 +692,8 @@ define <vscale x 2 x i32> @intrinsic_vredsum_mask_vs_nxv2i32_nxv4i32_nxv2i32(<vs
 ; CHECK-LABEL: intrinsic_vredsum_mask_vs_nxv2i32_nxv4i32_nxv2i32:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e32, m2, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v10, v9, v0.t
+; CHECK-NEXT:    vredsum.vs v10, v8, v11, v0.t
+; CHECK-NEXT:    vmv1r.v v8, v10
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 2 x i32> @llvm.riscv.vredsum.mask.nxv2i32.nxv4i32(
@@ -704,7 +716,8 @@ define <vscale x 2 x i32> @intrinsic_vredsum_vs_nxv2i32_nxv8i32_nxv2i32(<vscale 
 ; CHECK-LABEL: intrinsic_vredsum_vs_nxv2i32_nxv8i32_nxv2i32:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e32, m4, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v12, v9
+; CHECK-NEXT:    vredsum.vs v12, v8, v13
+; CHECK-NEXT:    vmv1r.v v8, v12
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 2 x i32> @llvm.riscv.vredsum.nxv2i32.nxv8i32(
@@ -727,7 +740,8 @@ define <vscale x 2 x i32> @intrinsic_vredsum_mask_vs_nxv2i32_nxv8i32_nxv2i32(<vs
 ; CHECK-LABEL: intrinsic_vredsum_mask_vs_nxv2i32_nxv8i32_nxv2i32:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e32, m4, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v12, v9, v0.t
+; CHECK-NEXT:    vredsum.vs v12, v8, v13, v0.t
+; CHECK-NEXT:    vmv1r.v v8, v12
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 2 x i32> @llvm.riscv.vredsum.mask.nxv2i32.nxv8i32(
@@ -750,7 +764,8 @@ define <vscale x 2 x i32> @intrinsic_vredsum_vs_nxv2i32_nxv16i32_nxv2i32(<vscale
 ; CHECK-LABEL: intrinsic_vredsum_vs_nxv2i32_nxv16i32_nxv2i32:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e32, m8, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v16, v9
+; CHECK-NEXT:    vredsum.vs v16, v8, v17
+; CHECK-NEXT:    vmv1r.v v8, v16
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 2 x i32> @llvm.riscv.vredsum.nxv2i32.nxv16i32(
@@ -773,7 +788,8 @@ define <vscale x 2 x i32> @intrinsic_vredsum_mask_vs_nxv2i32_nxv16i32_nxv2i32(<v
 ; CHECK-LABEL: intrinsic_vredsum_mask_vs_nxv2i32_nxv16i32_nxv2i32:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e32, m8, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v16, v9, v0.t
+; CHECK-NEXT:    vredsum.vs v16, v8, v17, v0.t
+; CHECK-NEXT:    vmv1r.v v8, v16
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 2 x i32> @llvm.riscv.vredsum.mask.nxv2i32.nxv16i32(
@@ -842,7 +858,8 @@ define <vscale x 1 x i64> @intrinsic_vredsum_vs_nxv1i64_nxv2i64_nxv1i64(<vscale 
 ; CHECK-LABEL: intrinsic_vredsum_vs_nxv1i64_nxv2i64_nxv1i64:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e64, m2, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v10, v9
+; CHECK-NEXT:    vredsum.vs v10, v8, v11
+; CHECK-NEXT:    vmv1r.v v8, v10
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 1 x i64> @llvm.riscv.vredsum.nxv1i64.nxv2i64(
@@ -865,7 +882,8 @@ define <vscale x 1 x i64> @intrinsic_vredsum_mask_vs_nxv1i64_nxv2i64_nxv1i64(<vs
 ; CHECK-LABEL: intrinsic_vredsum_mask_vs_nxv1i64_nxv2i64_nxv1i64:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e64, m2, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v10, v9, v0.t
+; CHECK-NEXT:    vredsum.vs v10, v8, v11, v0.t
+; CHECK-NEXT:    vmv1r.v v8, v10
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 1 x i64> @llvm.riscv.vredsum.mask.nxv1i64.nxv2i64(
@@ -888,7 +906,8 @@ define <vscale x 1 x i64> @intrinsic_vredsum_vs_nxv1i64_nxv4i64_nxv1i64(<vscale 
 ; CHECK-LABEL: intrinsic_vredsum_vs_nxv1i64_nxv4i64_nxv1i64:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e64, m4, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v12, v9
+; CHECK-NEXT:    vredsum.vs v12, v8, v13
+; CHECK-NEXT:    vmv1r.v v8, v12
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 1 x i64> @llvm.riscv.vredsum.nxv1i64.nxv4i64(
@@ -911,7 +930,8 @@ define <vscale x 1 x i64> @intrinsic_vredsum_mask_vs_nxv1i64_nxv4i64_nxv1i64(<vs
 ; CHECK-LABEL: intrinsic_vredsum_mask_vs_nxv1i64_nxv4i64_nxv1i64:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e64, m4, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v12, v9, v0.t
+; CHECK-NEXT:    vredsum.vs v12, v8, v13, v0.t
+; CHECK-NEXT:    vmv1r.v v8, v12
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 1 x i64> @llvm.riscv.vredsum.mask.nxv1i64.nxv4i64(
@@ -934,7 +954,8 @@ define <vscale x 1 x i64> @intrinsic_vredsum_vs_nxv1i64_nxv8i64_nxv1i64(<vscale 
 ; CHECK-LABEL: intrinsic_vredsum_vs_nxv1i64_nxv8i64_nxv1i64:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e64, m8, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v16, v9
+; CHECK-NEXT:    vredsum.vs v16, v8, v17
+; CHECK-NEXT:    vmv1r.v v8, v16
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 1 x i64> @llvm.riscv.vredsum.nxv1i64.nxv8i64(
@@ -957,7 +978,8 @@ define <vscale x 1 x i64> @intrinsic_vredsum_mask_vs_nxv1i64_nxv8i64_nxv1i64(<vs
 ; CHECK-LABEL: intrinsic_vredsum_mask_vs_nxv1i64_nxv8i64_nxv1i64:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e64, m8, ta, ma
-; CHECK-NEXT:    vredsum.vs v8, v16, v9, v0.t
+; CHECK-NEXT:    vredsum.vs v16, v8, v17, v0.t
+; CHECK-NEXT:    vmv1r.v v8, v16
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 1 x i64> @llvm.riscv.vredsum.mask.nxv1i64.nxv8i64(

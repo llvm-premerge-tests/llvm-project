@@ -89,5 +89,41 @@ void fillValidTuneCPUArchList(SmallVectorImpl<StringRef> &Values, bool IsRV64) {
 #include "llvm/TargetParser/RISCVTargetParserDef.inc"
 }
 
+// Dynamic programming approach for finding the best vector register usages.
+// We can deduce the problem to 0/1 knapsack problem with:
+//   1. capacity == NumArgVRs
+//   2. weight == value == total VRs needed
+// This function determines if each RVV argument is passed by register.
+void RVVArgDispatcher::computeMaxAssignedRegs() {
+  unsigned ToBeAssigned = RVVArgInfos.size();
+  std::vector<std::vector<unsigned>> MaxRegs(
+      ToBeAssigned + 1, std::vector<unsigned>(NumArgVRs + 1, 0));
+
+  for (unsigned i = 1; i <= ToBeAssigned; ++i) {
+    unsigned RegsNeeded = RVVArgInfos[i - 1].RegsNeeded;
+    for (unsigned j = 1; j <= NumArgVRs; ++j)
+      if (j < RegsNeeded)
+        MaxRegs[i][j] = MaxRegs[i - 1][j];
+      else
+        MaxRegs[i][j] = std::max(RegsNeeded + MaxRegs[i - 1][j - RegsNeeded],
+                                 MaxRegs[i - 1][j]);
+  }
+
+  // Walk back through MaxRegs to determine which argument is passed by
+  // register.
+  unsigned RegsLeft = NumArgVRs;
+  while (ToBeAssigned--) {
+    auto &RVVArgInfo = RVVArgInfos[ToBeAssigned];
+    if (!RegsLeft || MaxRegs[ToBeAssigned + 1][RegsLeft] ==
+                         MaxRegs[ToBeAssigned][RegsLeft]) {
+      RVVArgInfo.PassedByReg = false;
+      continue;
+    }
+
+    RVVArgInfo.PassedByReg = true;
+    RegsLeft -= RVVArgInfo.RegsNeeded;
+  }
+}
+
 } // namespace RISCV
 } // namespace llvm

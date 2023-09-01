@@ -121,7 +121,8 @@ define <vscale x 4 x bfloat> @intrinsic_vfncvtbf16_mask_f.f.w_nxv4bf16_nxv4f32(<
 ; CHECK-LABEL: intrinsic_vfncvtbf16_mask_f.f.w_nxv4bf16_nxv4f32:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e16, m1, ta, mu
-; CHECK-NEXT:    vfncvtbf16.f.f.w v8, v10, v0.t
+; CHECK-NEXT:    vfncvtbf16.f.f.w v10, v8, v0.t
+; CHECK-NEXT:    vmv.v.v v8, v10
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 4 x bfloat> @llvm.riscv.vfncvtbf16.f.f.w.mask.nxv4bf16.nxv4f32(
@@ -164,7 +165,8 @@ define <vscale x 8 x bfloat> @intrinsic_vfncvtbf16_mask_f.f.w_nxv8bf16_nxv8f32(<
 ; CHECK-LABEL: intrinsic_vfncvtbf16_mask_f.f.w_nxv8bf16_nxv8f32:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e16, m2, ta, mu
-; CHECK-NEXT:    vfncvtbf16.f.f.w v8, v12, v0.t
+; CHECK-NEXT:    vfncvtbf16.f.f.w v12, v8, v0.t
+; CHECK-NEXT:    vmv.v.v v8, v12
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 8 x bfloat> @llvm.riscv.vfncvtbf16.f.f.w.mask.nxv8bf16.nxv8f32(
@@ -207,7 +209,8 @@ define <vscale x 16 x bfloat> @intrinsic_vfncvtbf16_mask_f.f.w_nxv16bf16_nxv16f3
 ; CHECK-LABEL: intrinsic_vfncvtbf16_mask_f.f.w_nxv16bf16_nxv16f32:
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e16, m4, ta, mu
-; CHECK-NEXT:    vfncvtbf16.f.f.w v8, v16, v0.t
+; CHECK-NEXT:    vfncvtbf16.f.f.w v16, v8, v0.t
+; CHECK-NEXT:    vmv.v.v v8, v16
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 16 x bfloat> @llvm.riscv.vfncvtbf16.f.f.w.mask.nxv16bf16.nxv16f32(

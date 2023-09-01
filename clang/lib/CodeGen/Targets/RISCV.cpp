@@ -8,6 +8,7 @@
 
 #include "ABIInfoImpl.h"
 #include "TargetInfo.h"
+#include "llvm/TargetParser/RISCVTargetParser.h"
 
 using namespace clang;
 using namespace clang::CodeGen;
@@ -40,6 +41,8 @@ public:
   // DefaultABIInfo's classifyReturnType and classifyArgumentType are
   // non-virtual, but computeInfo is virtual, so we overload it.
   void computeInfo(CGFunctionInfo &FI) const override;
+
+  void classifyRVVArgumentType(CGFunctionInfo &FI) const;
 
   ABIArgInfo classifyArgumentType(QualType Ty, bool IsFixed, int &ArgGPRsLeft,
                                   int &ArgFPRsLeft) const;
@@ -92,9 +95,92 @@ void RISCVABIInfo::computeInfo(CGFunctionInfo &FI) const {
   int ArgNum = 0;
   for (auto &ArgInfo : FI.arguments()) {
     bool IsFixed = ArgNum < NumFixedArgs;
+    ArgNum++;
+
+    if (ArgInfo.type.getTypePtr()->isRVVType())
+      continue;
+
     ArgInfo.info =
         classifyArgumentType(ArgInfo.type, IsFixed, ArgGPRsLeft, ArgFPRsLeft);
-    ArgNum++;
+  }
+
+  classifyRVVArgumentType(FI);
+}
+
+static std::vector<llvm::RISCV::RVVArgDispatcher::RVVArgInfo>
+constructRVVArgInfo(CGFunctionInfo &FI) {
+  std::vector<llvm::RISCV::RVVArgDispatcher::RVVArgInfo> RVVArgInfos;
+  unsigned ArgIndex = -1;
+  bool FirstVBool = true;
+  for (auto &ArgInfo : FI.arguments()) {
+    ArgIndex++;
+    const QualType &Ty = ArgInfo.type;
+    if (!Ty->isRVVType())
+      continue;
+
+    // Skip first __rvv_bool*_t type which is assigned to v0, other mask
+    // type registers are treated as normal vector register with LMUL=1.
+    if (Ty->isRVVPredicateType()) {
+      if (!FirstVBool)
+        RVVArgInfos.push_back({ArgIndex, 1});
+
+      FirstVBool = false;
+      continue;
+    }
+
+    // Calcluate the registers needed for each RVV type.
+    unsigned ElemSize = Ty->isRVVType(8, false)    ? 8
+                        : Ty->isRVVType(16, false) ? 16
+                        : Ty->isRVVType(16, true)  ? 16
+                        : Ty->isRVVType(32, false) ? 32
+                        : Ty->isRVVType(32, true)  ? 32
+                                                   : 64;
+    unsigned ElemCount = Ty->isRVVType(1)    ? 1
+                         : Ty->isRVVType(2)  ? 2
+                         : Ty->isRVVType(4)  ? 4
+                         : Ty->isRVVType(8)  ? 8
+                         : Ty->isRVVType(16) ? 16
+                         : Ty->isRVVType(32) ? 32
+                                             : 64;
+    unsigned RegsPerGroup =
+        std::max((ElemSize * ElemCount) / llvm::RISCV::RVVBitsPerBlock, 1U);
+
+    unsigned NumGroups = 1;
+    if (Ty->isRVVTupleType())
+      // Get the number of groups(NF) for each RVV type.
+      NumGroups = Ty->isRVVTupleType(2)   ? 2
+                  : Ty->isRVVTupleType(3) ? 3
+                  : Ty->isRVVTupleType(4) ? 4
+                  : Ty->isRVVTupleType(5) ? 5
+                  : Ty->isRVVTupleType(6) ? 6
+                  : Ty->isRVVTupleType(7) ? 7
+                                          : 8;
+
+    RVVArgInfos.push_back({ArgIndex, RegsPerGroup * NumGroups});
+  }
+
+  return RVVArgInfos;
+}
+
+void RISCVABIInfo::classifyRVVArgumentType(CGFunctionInfo &FI) const {
+  auto ArgInfos = FI.arguments();
+
+  // Set the first mask type register if found.
+  for (auto &ArgInfo : ArgInfos) {
+    const QualType &Ty = ArgInfo.type;
+    if (Ty->isRVVPredicateType()) {
+      ArgInfo.info = ABIArgInfo::getDirect();
+      break;
+    }
+  }
+
+  llvm::RISCV::RVVArgDispatcher Dispatcher{constructRVVArgInfo(FI)};
+  for (const auto &Info : Dispatcher.getRVVArgInfos()) {
+    auto &ArgInfo = ArgInfos[Info.ArgIndex];
+    if (Info.PassedByReg)
+      ArgInfo.info = ABIArgInfo::getDirect();
+    else
+      ArgInfo.info = getNaturalAlignIndirect(ArgInfo.type, /*ByVal=*/false);
   }
 }
 
