@@ -196,6 +196,11 @@ int __kmp_get_global_thread_id() {
   if (i < 0)
     return i;
 
+  // other_threads[i] can be nullptr at this point because the corresponding
+  // thread could have already been release.
+  if (!TCR_SYNC_PTR(other_threads[i]))
+    return i;
+
   /* dynamically updated stack window for uber threads to avoid get_specific
      call */
   if (!TCR_4(other_threads[i]->th.th_info.ds.ds_stackgrow)) {
