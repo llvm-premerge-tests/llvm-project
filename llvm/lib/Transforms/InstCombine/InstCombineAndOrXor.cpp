@@ -746,6 +746,45 @@ InstCombinerImpl::simplifyRangeCheck(InstCombinerImpl::ICmpComponents Cmp0,
   return Builder.CreateICmp(NewPred, Input, RangeEnd);
 }
 
+// (or (icmp eq X, 0), (icmp eq X, Pow2OrZero))
+//      -> (icmp eq (and X, Pow2OrZero), X)
+// (and (icmp ne X, 0), (icmp ne X, Pow2OrZero))
+//      -> (icmp ne (and X, Pow2OrZero), X)
+static Value *foldAndOrOfICmpsWithPow2AndWithZero(
+    InstCombiner::BuilderTy &Builder, InstCombinerImpl::ICmpComponents LHS,
+    InstCombinerImpl::ICmpComponents RHS, bool IsAnd, const SimplifyQuery &Q) {
+  CmpInst::Predicate Pred = IsAnd ? CmpInst::ICMP_NE : CmpInst::ICMP_EQ;
+  // Make sure we have right compares for out op.
+  if (LHS.getPredicate() != Pred || RHS.getPredicate() != Pred)
+    return nullptr;
+
+  // Make it so we can match LHS against the (icmp eq/ne X, 0) just for
+  // simplicity.
+  if (match(RHS.getOperand(1), m_Zero()))
+    std::swap(LHS, RHS);
+
+  Value *Pow2, *Op;
+  // Match the desired pattern:
+  // LHS: (icmp eq/ne X, 0)
+  // RHS: (icmp eq/ne X, Pow2OrZero)
+  Op = LHS.getOperand(0);
+  if (!match(LHS.getOperand(1), m_Zero()))
+    return nullptr;
+  if (RHS.getOperand(0) == Op)
+    Pow2 = RHS.getOperand(1);
+  else if (RHS.getOperand(1) == Op)
+    Pow2 = RHS.getOperand(0);
+  else
+    return nullptr;
+
+  if (!isKnownToBeAPowerOfTwo(Pow2, Q.DL, /*OrZero*/ true, /*Depth*/ 0, Q.AC,
+                              Q.CxtI, Q.DT))
+    return nullptr;
+
+  Value *And = Builder.CreateAnd(Op, Pow2);
+  return Builder.CreateICmp(Pred, And, Op);
+}
+
 // Fold (iszero(A & K1) | iszero(A & K2)) -> (A & (K1 | K2)) != (K1 | K2)
 // Fold (!iszero(A & K1) & !iszero(A & K2)) -> (A & (K1 | K2)) == (K1 | K2)
 Value *InstCombinerImpl::foldAndOrOfICmpsOfAndWithPow2(
@@ -3114,9 +3153,15 @@ Value *InstCombinerImpl::foldAndOrOfICmps(ICmpComponents LHS,
   if (Value *V = foldAndOrOfICmpsOfAndWithPow2(LHS, RHS, &I, IsAnd, IsLogical))
     return V;
 
+  if (!IsLogical)
+    if (Value *V =
+            foldAndOrOfICmpsWithPow2AndWithZero(Builder, LHS, RHS, IsAnd, Q))
+      return V;
+
   ICmpInst::Predicate PredL = LHS.getPredicate(), PredR = RHS.getPredicate();
   Value *LHS0 = LHS.getOperand(0), *RHS0 = RHS.getOperand(0);
   Value *LHS1 = LHS.getOperand(1), *RHS1 = RHS.getOperand(1);
+
   const APInt *LHSC = nullptr, *RHSC = nullptr;
   match(LHS1, m_APInt(LHSC));
   match(RHS1, m_APInt(RHSC));
