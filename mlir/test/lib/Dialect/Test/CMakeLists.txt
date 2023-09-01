@@ -51,6 +51,7 @@ add_mlir_library(MLIRTestDialect
   TestTypes.cpp
   TestOpsSyntax.cpp
   TestDialectInterfaces.cpp
+  TestToLLVMIRTranslation.cpp
 
   EXCLUDE_FROM_LIBMLIR
 
@@ -83,4 +84,6 @@ add_mlir_library(MLIRTestDialect
   MLIRTensorDialect
   MLIRTransformUtils
   MLIRTransforms
-)
+  MLIRBuiltinToLLVMIRTranslation
+  MLIRLLVMToLLVMIRTranslation
+  )
