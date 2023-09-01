@@ -473,6 +473,8 @@ public:
   virtual bool FlavorValidForArchSpec(const lldb_private::ArchSpec &arch,
                                       const char *flavor) = 0;
 
+  virtual void SetUseColor(bool use_color) {}
+
 protected:
   // SourceLine and SourceLinesToDisplay structures are only used in the mixed
   // source and assembly display methods internal to this class.

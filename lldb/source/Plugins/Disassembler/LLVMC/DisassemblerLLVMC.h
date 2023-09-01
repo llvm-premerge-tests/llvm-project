@@ -42,6 +42,8 @@ public:
                             lldb::offset_t data_offset, size_t num_instructions,
                             bool append, bool data_from_file) override;
 
+  void SetUseColor(bool use_color) override;
+
   // PluginInterface protocol
   llvm::StringRef GetPluginName() override { return GetPluginNameStatic(); }
 
