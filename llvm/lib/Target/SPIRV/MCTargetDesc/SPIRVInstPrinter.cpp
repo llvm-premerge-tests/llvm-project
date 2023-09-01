@@ -13,6 +13,7 @@
 #include "SPIRVInstPrinter.h"
 #include "SPIRV.h"
 #include "SPIRVBaseInfo.h"
+#include "llvm/ADT/APFloat.h"
 #include "llvm/CodeGen/Register.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCExpr.h"
@@ -258,19 +259,48 @@ static void printExpr(const MCExpr *Expr, raw_ostream &O) {
 void SPIRVInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
                                     raw_ostream &O, const char *Modifier) {
   assert((Modifier == 0 || Modifier[0] == 0) && "No modifiers supported");
-  if (OpNo < MI->getNumOperands()) {
-    const MCOperand &Op = MI->getOperand(OpNo);
-    if (Op.isReg())
-      O << '%' << (Register::virtReg2Index(Op.getReg()) + 1);
-    else if (Op.isImm())
-      O << formatImm((int64_t)Op.getImm());
-    else if (Op.isDFPImm())
-      O << formatImm((double)Op.getDFPImm());
-    else if (Op.isExpr())
-      printExpr(Op.getExpr(), O);
-    else
-      llvm_unreachable("Unexpected operand type");
+  if (OpNo >= MI->getNumOperands())
+    return;
+
+  const MCOperand &Op = MI->getOperand(OpNo);
+  if (Op.isReg()) {
+    O << '%' << (Register::virtReg2Index(Op.getReg()) + 1);
+    return;
   }
+
+  if (Op.isImm()) {
+    O << formatImm((int64_t)Op.getImm());
+    return;
+  }
+
+  if (Op.isDFPImm()) {
+    double val = bit_cast<double>(Op.getDFPImm());
+
+    // Print infinity and NaN as hex floats.
+    // TODO: Make sure subnormal numbers are handled correctly as they may also
+    // require hex float notation.
+    APFloat FP = APFloat(val);
+    if (FP.isInfinity()) {
+      if (FP.isNegative())
+        O << '-';
+      O << "0x1p+128";
+      return;
+    }
+    if (FP.isNaN()) {
+      O << "0x1.8p+128";
+      return;
+    }
+
+    // Format val as a decimal floating point or scientific notation (whichever
+    // is shorter), with enough digits of precision to produce the exact value.
+    O << format("%.*g", std::numeric_limits<double>::max_digits10, val);
+    return;
+  }
+
+  if (Op.isExpr())
+    return printExpr(Op.getExpr(), O);
+
+  llvm_unreachable("Unexpected operand type");
 }
 
 void SPIRVInstPrinter::printStringImm(const MCInst *MI, unsigned OpNo,

@@ -53,8 +53,8 @@ void SPIRVMCInstLower::lower(const MachineInstr *MI, MCInst &OutMI,
       }
       break;
     case MachineOperand::MO_FPImmediate:
-      MCOp = MCOperand::createDFPImm(
-          MO.getFPImm()->getValueAPF().convertToFloat());
+      APFloat Val = MO.getFPImm()->getValueAPF();
+      MCOp = MCOperand::createDFPImm(bit_cast<uint64_t>(Val.convertToDouble()));
       break;
     }
 
