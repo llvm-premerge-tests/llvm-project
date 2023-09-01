@@ -1,7 +1,9 @@
-; RUN: llc -mtriple=armv7-apple-ios8.0 -o - %s | FileCheck %s
+; RUN: llc -arm-atomic-cfg-tidy=0 -mtriple=armv7-apple-ios8.0 -o - %s | FileCheck %s
 
 %BigInt = type i8500
 
+; FIXME: SimplifyCFG optimizes the CFG here, resulting different asm.
+; Update is needed.
 define %BigInt @test_moved_jumptable(i1 %tst, i32 %sw, %BigInt %l) {
 ; CHECK-LABEL: test_moved_jumptable:
 
