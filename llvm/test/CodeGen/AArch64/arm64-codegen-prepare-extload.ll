@@ -1,6 +1,6 @@
-; RUN: opt -codegenprepare < %s -mtriple=aarch64-apple-ios -S | FileCheck -enable-var-scope %s --check-prefix=OPTALL --check-prefix=OPT --check-prefix=NONSTRESS
-; RUN: opt -codegenprepare < %s -mtriple=aarch64-apple-ios -S -stress-cgp-ext-ld-promotion | FileCheck -enable-var-scope %s --check-prefix=OPTALL --check-prefix=OPT --check-prefix=STRESS
-; RUN: opt -codegenprepare < %s -mtriple=aarch64-apple-ios -S -disable-cgp-ext-ld-promotion | FileCheck -enable-var-scope %s --check-prefix=OPTALL --check-prefix=DISABLE
+; RUN: opt -codegenprepare < %s -mtriple=aarch64-apple-ios -S -mattr=+addr-lsl-fast | FileCheck -enable-var-scope %s --check-prefix=OPTALL --check-prefix=OPT --check-prefix=NONSTRESS
+; RUN: opt -codegenprepare < %s -mtriple=aarch64-apple-ios -S -stress-cgp-ext-ld-promotion -mattr=+addr-lsl-fast | FileCheck -enable-var-scope %s --check-prefix=OPTALL --check-prefix=OPT --check-prefix=STRESS
+; RUN: opt -codegenprepare < %s -mtriple=aarch64-apple-ios -S -disable-cgp-ext-ld-promotion -mattr=+addr-lsl-fast | FileCheck -enable-var-scope %s --check-prefix=OPTALL --check-prefix=DISABLE
 
 ; CodeGenPrepare should move the zext into the block with the load
 ; so that SelectionDAG can select it with the load.
@@ -454,16 +454,16 @@ entry:
 ; The input has one free zext and one free sext. If we would have promoted
 ; all the way through the load we would end up with a free zext and a
 ; non-free sext (of %b).
-; OPTALL-LABEL: @doNotPromoteFreeSExtFromAddrMode128
+; OPTALL-LABEL: @promoteFreeSExtFromAddrMode128
 ; OPTALL: [[LD:%[a-zA-Z_0-9-]+]] = load i8, ptr %p
 ;
 ; STRESS-NEXT: [[ZEXT64:%[a-zA-Z_0-9-]+]] = zext i8 [[LD]] to i64
 ; STRESS-NEXT: [[SEXTB:%[a-zA-Z_0-9-]+]] = sext i32 %b to i64
 ; STRESS-NEXT: [[IDX64:%[a-zA-Z_0-9-]+]] = add nsw i64 [[ZEXT64]], [[SEXTB]]
 ;
-; NONSTRESS-NEXT: [[ZEXT32:%[a-zA-Z_0-9-]+]] = zext i8 [[LD]] to i32
-; NONSTRESS-NEXT: [[RES32:%[a-zA-Z_0-9-]+]] = add nsw i32 [[ZEXT32]], %b
-; NONSTRESS-NEXT: [[IDX64:%[a-zA-Z_0-9-]+]] = sext i32 [[RES32]] to i64
+; NONSTRESS-NEXT: [[ZEXT64:%[a-zA-Z_0-9-]+]] = zext i8 [[LD]] to i64
+; NONSTRESS-NEXT: [[SEXT64:%[a-zA-Z_0-9-]+]] = sext i32 %b to i64
+; NONSTRESS-NEXT: [[IDX64:%[a-zA-Z_0-9-]+]] = add nsw i64 [[ZEXT64]], [[SEXT64]]
 ;
 ; DISABLE-NEXT: [[ZEXT32:%[a-zA-Z_0-9-]+]] = zext i8 [[LD]] to i32
 ; DISABLE-NEXT: [[RES32:%[a-zA-Z_0-9-]+]] = add nsw i32 [[ZEXT32]], %b
@@ -472,7 +472,7 @@ entry:
 ; OPTALL-NEXT: [[GEP:%[a-zA-Z_0-9-]+]] = getelementptr inbounds i128, ptr %addr, i64 [[IDX64]]
 ; OPTALL-NEXT: store i128 %stuff, ptr [[GEP]]
 ; OPTALL-NEXT: ret void
-define void @doNotPromoteFreeSExtFromAddrMode128(ptr %p, i32 %b, ptr %addr, i128 %stuff) {
+define void @promoteFreeSExtFromAddrMode128(ptr %p, i32 %b, ptr %addr, i128 %stuff) {
 entry:
   %t = load i8, ptr %p
   %zextt = zext i8 %t to i32

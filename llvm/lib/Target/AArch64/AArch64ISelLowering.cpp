@@ -14231,8 +14231,9 @@ bool AArch64TargetLowering::isExtFreeImpl(const Instruction *Ext) const {
           llvm::countr_zero(DL.getTypeStoreSizeInBits(IdxTy).getFixedValue()) -
           3;
       // Is the constant foldable in the shift of the addressing mode?
-      // I.e., shift amount is between 1 and 4 inclusive.
-      if (ShiftAmt == 0 || ShiftAmt > 4)
+      // I.e., shift amount is between 1 and 3 inclusive.
+      if (!Subtarget->hasFeature(AArch64::FeatureAddrLSLFast) ||
+          ShiftAmt == 0 || ShiftAmt > 3)
         return false;
       break;
     }

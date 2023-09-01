@@ -11,7 +11,7 @@ define i32 @outer1(ptr %ptr, i32 %i) {
 
 ; sext can be folded into gep.
 ; CHECK: Analyzing call of inner1
-; CHECK: NumInstructionsSimplified: 3
+; CHECK: NumInstructionsSimplified: 2
 ; CHECK: NumInstructions: 4
 define i32 @inner1(ptr %ptr, i32 %i) {
   %E = sext i32 %i to i64
