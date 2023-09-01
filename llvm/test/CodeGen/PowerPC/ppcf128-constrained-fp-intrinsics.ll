@@ -1293,11 +1293,11 @@ define i32 @test_fptoui_ppc_i32_ppc_fp128(ppc_fp128 %first) #0 {
 ; PC64LE-NEXT:    xxlxor 3, 3, 3
 ; PC64LE-NEXT:    std 0, 64(1)
 ; PC64LE-NEXT:    lfs 0, .LCPI31_0@toc@l(3)
+; PC64LE-NEXT:    fcmpo 1, 2, 3
 ; PC64LE-NEXT:    lis 3, -32768
-; PC64LE-NEXT:    fcmpo 0, 2, 3
-; PC64LE-NEXT:    fcmpo 1, 1, 0
-; PC64LE-NEXT:    crand 20, 6, 0
-; PC64LE-NEXT:    crandc 21, 4, 6
+; PC64LE-NEXT:    fcmpo 0, 1, 0
+; PC64LE-NEXT:    crand 20, 2, 4
+; PC64LE-NEXT:    crandc 21, 0, 2
 ; PC64LE-NEXT:    cror 20, 21, 20
 ; PC64LE-NEXT:    isel 30, 0, 3, 20
 ; PC64LE-NEXT:    bc 12, 20, .LBB31_2
@@ -1424,10 +1424,10 @@ define void @test_constrained_libcall_multichain(ptr %firstptr, ptr %result) #0 
 ; PC64LE-NEXT:    std 0, 96(1)
 ; PC64LE-NEXT:    mr 29, 3
 ; PC64LE-NEXT:    xxlxor 2, 2, 2
+; PC64LE-NEXT:    xxlxor 4, 4, 4
+; PC64LE-NEXT:    lfs 31, 0(3)
 ; PC64LE-NEXT:    li 3, 0
 ; PC64LE-NEXT:    mr 30, 4
-; PC64LE-NEXT:    lfs 31, 0(29)
-; PC64LE-NEXT:    xxlxor 4, 4, 4
 ; PC64LE-NEXT:    std 3, 8(4)
 ; PC64LE-NEXT:    fmr 1, 31
 ; PC64LE-NEXT:    fmr 3, 31
@@ -1436,10 +1436,10 @@ define void @test_constrained_libcall_multichain(ptr %firstptr, ptr %result) #0 
 ; PC64LE-NEXT:    nop
 ; PC64LE-NEXT:    fmr 3, 1
 ; PC64LE-NEXT:    fmr 4, 2
-; PC64LE-NEXT:    fmr 30, 1
-; PC64LE-NEXT:    fmr 29, 2
 ; PC64LE-NEXT:    stfd 2, 24(30)
 ; PC64LE-NEXT:    stfd 1, 16(30)
+; PC64LE-NEXT:    fmr 30, 1
+; PC64LE-NEXT:    fmr 29, 2
 ; PC64LE-NEXT:    bl __gcc_qmul
 ; PC64LE-NEXT:    nop
 ; PC64LE-NEXT:    fmr 1, 31
@@ -1456,11 +1456,11 @@ define void @test_constrained_libcall_multichain(ptr %firstptr, ptr %result) #0 
 ; PC64LE-NEXT:    addi 1, 1, 80
 ; PC64LE-NEXT:    ld 0, 16(1)
 ; PC64LE-NEXT:    lfd 31, -8(1) # 8-byte Folded Reload
-; PC64LE-NEXT:    lfd 30, -16(1) # 8-byte Folded Reload
-; PC64LE-NEXT:    ld 30, -40(1) # 8-byte Folded Reload
-; PC64LE-NEXT:    lfd 29, -24(1) # 8-byte Folded Reload
-; PC64LE-NEXT:    ld 29, -48(1) # 8-byte Folded Reload
 ; PC64LE-NEXT:    mtlr 0
+; PC64LE-NEXT:    lfd 30, -16(1) # 8-byte Folded Reload
+; PC64LE-NEXT:    lfd 29, -24(1) # 8-byte Folded Reload
+; PC64LE-NEXT:    ld 30, -40(1) # 8-byte Folded Reload
+; PC64LE-NEXT:    ld 29, -48(1) # 8-byte Folded Reload
 ; PC64LE-NEXT:    blr
 ;
 ; PC64LE9-LABEL: test_constrained_libcall_multichain:
@@ -1741,9 +1741,9 @@ define ppc_fp128 @u64_to_ppcq(i64 %m) #0 {
 ; PC64LE-NEXT:    addi 1, 1, 64
 ; PC64LE-NEXT:    ld 0, 16(1)
 ; PC64LE-NEXT:    lfd 31, -8(1) # 8-byte Folded Reload
+; PC64LE-NEXT:    mtlr 0
 ; PC64LE-NEXT:    lfd 30, -16(1) # 8-byte Folded Reload
 ; PC64LE-NEXT:    ld 30, -32(1) # 8-byte Folded Reload
-; PC64LE-NEXT:    mtlr 0
 ; PC64LE-NEXT:    blr
 ;
 ; PC64LE9-LABEL: u64_to_ppcq:
@@ -1893,9 +1893,9 @@ define ppc_fp128 @u128_to_ppcq(i128 %m) #0 {
 ; PC64LE-NEXT:    addi 1, 1, 64
 ; PC64LE-NEXT:    ld 0, 16(1)
 ; PC64LE-NEXT:    lfd 31, -8(1) # 8-byte Folded Reload
+; PC64LE-NEXT:    mtlr 0
 ; PC64LE-NEXT:    lfd 30, -16(1) # 8-byte Folded Reload
 ; PC64LE-NEXT:    ld 30, -32(1) # 8-byte Folded Reload
-; PC64LE-NEXT:    mtlr 0
 ; PC64LE-NEXT:    blr
 ;
 ; PC64LE9-LABEL: u128_to_ppcq:

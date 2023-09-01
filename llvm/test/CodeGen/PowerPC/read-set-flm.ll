@@ -98,8 +98,8 @@ define void @cse_nomerge(ptr %f1, ptr %f2, double %f3) #0 {
 ; CHECK-NEXT:    addi 1, 1, 64
 ; CHECK-NEXT:    ld 0, 16(1)
 ; CHECK-NEXT:    lfd 31, -8(1) # 8-byte Folded Reload
-; CHECK-NEXT:    ld 30, -24(1) # 8-byte Folded Reload
 ; CHECK-NEXT:    mtlr 0
+; CHECK-NEXT:    ld 30, -24(1) # 8-byte Folded Reload
 ; CHECK-NEXT:    blr
 entry:
   %0 = call double @llvm.ppc.readflm()
@@ -135,8 +135,8 @@ define void @cse_nomerge_readonly(ptr %f1, ptr %f2, double %f3) #0 {
 ; CHECK-NEXT:    addi 1, 1, 64
 ; CHECK-NEXT:    ld 0, 16(1)
 ; CHECK-NEXT:    lfd 31, -8(1) # 8-byte Folded Reload
-; CHECK-NEXT:    ld 30, -24(1) # 8-byte Folded Reload
 ; CHECK-NEXT:    mtlr 0
+; CHECK-NEXT:    ld 30, -24(1) # 8-byte Folded Reload
 ; CHECK-NEXT:    blr
 entry:
   %0 = call double @llvm.ppc.readflm()
