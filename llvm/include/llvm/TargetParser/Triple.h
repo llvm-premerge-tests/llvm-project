@@ -270,7 +270,9 @@ public:
     Callable,
     Mesh,
     Amplification,
+
     OpenHOS,
+
     LastEnvironmentType = OpenHOS
   };
   enum ObjectFormatType {
@@ -753,6 +755,22 @@ public:
   /// Tests whether the target is DXIL.
   bool isDXIL() const {
     return getArch() == Triple::dxil;
+  }
+
+  bool isShaderModelOS() const {
+    return getOS() == Triple::ShaderModel;
+  }
+
+  bool isShaderStageEnvironment() const {
+    EnvironmentType Env = getEnvironment();
+    return Env == Triple::Pixel || Env == Triple::Vertex ||
+           Env == Triple::Geometry || Env == Triple::Hull ||
+           Env == Triple::Domain || Env == Triple::Compute ||
+           Env == Triple::Library || Env == Triple::RayGeneration ||
+           Env == Triple::Intersection || Env == Triple::AnyHit ||
+           Env == Triple::ClosestHit || Env == Triple::Miss ||
+           Env == Triple::Callable || Env == Triple::Mesh ||
+           Env == Triple::Amplification;
   }
 
   /// Tests whether the target is SPIR (32- or 64-bit).
