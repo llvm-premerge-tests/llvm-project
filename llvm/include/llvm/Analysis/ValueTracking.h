@@ -167,6 +167,10 @@ bool isKnownNegative(const Value *V, const DataLayout &DL, unsigned Depth = 0,
                      const DominatorTree *DT = nullptr,
                      bool UseInstrInfo = true);
 
+/// Check if an assume intrinsic covers the non-equality information
+bool getKnownNonEqualFromAssume(const Value *V1, const Value *V2,
+                                const SimplifyQuery &Q);
+
 /// Return true if the given values are known to be non-equal when defined.
 /// Supports scalar integer types only.
 bool isKnownNonEqual(const Value *V1, const Value *V2, const DataLayout &DL,

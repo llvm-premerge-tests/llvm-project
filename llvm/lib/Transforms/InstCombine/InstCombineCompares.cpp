@@ -5164,6 +5164,23 @@ Instruction *InstCombinerImpl::foldICmpEquality(ICmpInst &I) {
     return new ICmpInst(Pred, OtherVal, Constant::getNullValue(A->getType()));
   }
 
+  // ((A / -B) == (A / B)) -> ((A / B) == 0)
+  // if known A != INT_MIN or B != INT_MIN
+  {
+    const unsigned OpWidth = Op0->getType()->getScalarSizeInBits();
+    APInt SignedMinValue = APInt::getSignedMinValue(OpWidth);
+    Constant *MinInt = ConstantInt::get(Op0->getType(), SignedMinValue);
+    if (match(Op0, m_OneUse(m_SDiv(m_Value(A), m_OneUse(m_Neg(m_Value(B)))))) &&
+        match(Op1, m_SDiv(m_Specific(A), m_Specific(B)))) {
+      // Check if A is known to be != INT_MIN
+      if (isKnownNonEqual(A, MinInt, DL, &AC, &I, &DT, true))
+        return new ICmpInst(Pred, Op1, Constant::getNullValue(A->getType()));
+      // Check if B is known to be != INT_MIN
+      if (isKnownNonEqual(B, MinInt, DL, &AC, &I, &DT, true))
+        return new ICmpInst(Pred, Op1, Constant::getNullValue(A->getType()));
+    }
+  }
+
   // (X&Z) == (Y&Z) -> (X^Y) & Z == 0
   if (match(Op0, m_OneUse(m_And(m_Value(A), m_Value(B)))) &&
       match(Op1, m_OneUse(m_And(m_Value(C), m_Value(D))))) {
