@@ -5,10 +5,7 @@ declare void @use(i1)
 
 define i1 @or_xor_xor_normal_variant1(i1 %a, i1 %b) {
 ; CHECK-LABEL: @or_xor_xor_normal_variant1(
-; CHECK-NEXT:    [[AND:%.*]] = and i1 [[A:%.*]], [[B:%.*]]
-; CHECK-NEXT:    [[XOR1:%.*]] = xor i1 [[AND]], [[A]]
-; CHECK-NEXT:    [[XOR2:%.*]] = xor i1 [[AND]], [[B]]
-; CHECK-NEXT:    [[OR:%.*]] = or i1 [[XOR1]], [[XOR2]]
+; CHECK-NEXT:    [[OR:%.*]] = xor i1 [[A:%.*]], [[B:%.*]]
 ; CHECK-NEXT:    ret i1 [[OR]]
 ;
   %and = and i1 %a, %b
@@ -20,10 +17,7 @@ define i1 @or_xor_xor_normal_variant1(i1 %a, i1 %b) {
 
 define i1 @or_xor_xor_normal_variant2(i1 %a, i1 %b) {
 ; CHECK-LABEL: @or_xor_xor_normal_variant2(
-; CHECK-NEXT:    [[AND:%.*]] = and i1 [[A:%.*]], [[B:%.*]]
-; CHECK-NEXT:    [[XOR1:%.*]] = xor i1 [[AND]], [[B]]
-; CHECK-NEXT:    [[XOR2:%.*]] = xor i1 [[AND]], [[A]]
-; CHECK-NEXT:    [[OR:%.*]] = or i1 [[XOR1]], [[XOR2]]
+; CHECK-NEXT:    [[OR:%.*]] = xor i1 [[A:%.*]], [[B:%.*]]
 ; CHECK-NEXT:    ret i1 [[OR]]
 ;
   %and = and i1 %a, %b
@@ -35,10 +29,7 @@ define i1 @or_xor_xor_normal_variant2(i1 %a, i1 %b) {
 
 define <3 x i1> @or_xor_xor_normal_vector(<3 x i1> %a, <3 x i1> %b) {
 ; CHECK-LABEL: @or_xor_xor_normal_vector(
-; CHECK-NEXT:    [[AND:%.*]] = and <3 x i1> [[A:%.*]], [[B:%.*]]
-; CHECK-NEXT:    [[XOR1:%.*]] = xor <3 x i1> [[AND]], [[B]]
-; CHECK-NEXT:    [[XOR2:%.*]] = xor <3 x i1> [[AND]], [[A]]
-; CHECK-NEXT:    [[OR:%.*]] = or <3 x i1> [[XOR1]], [[XOR2]]
+; CHECK-NEXT:    [[OR:%.*]] = xor <3 x i1> [[A:%.*]], [[B:%.*]]
 ; CHECK-NEXT:    ret <3 x i1> [[OR]]
 ;
   %and = and <3 x i1> %a, %b
@@ -52,9 +43,7 @@ define i1 @or_xor_xor_normal_multiple_uses_and(i1 %a, i1 %b) {
 ; CHECK-LABEL: @or_xor_xor_normal_multiple_uses_and(
 ; CHECK-NEXT:    [[AND:%.*]] = and i1 [[A:%.*]], [[B:%.*]]
 ; CHECK-NEXT:    call void @use(i1 [[AND]])
-; CHECK-NEXT:    [[XOR1:%.*]] = xor i1 [[AND]], [[B]]
-; CHECK-NEXT:    [[XOR2:%.*]] = xor i1 [[AND]], [[A]]
-; CHECK-NEXT:    [[OR:%.*]] = or i1 [[XOR1]], [[XOR2]]
+; CHECK-NEXT:    [[OR:%.*]] = xor i1 [[A]], [[B]]
 ; CHECK-NEXT:    ret i1 [[OR]]
 ;
   %and = and i1 %a, %b
