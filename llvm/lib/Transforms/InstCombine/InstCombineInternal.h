@@ -93,8 +93,8 @@ public:
   Instruction *visitFNeg(UnaryOperator &I);
   Instruction *visitAdd(BinaryOperator &I);
   Instruction *visitFAdd(BinaryOperator &I);
-  Value *OptimizePointerDifference(
-      Value *LHS, Value *RHS, Type *Ty, bool isNUW);
+  Value *OptimizePointerDifference(Value *LHS, Value *RHS, Type *Ty,
+                                   BinaryOperator &I, bool isNUW);
   Instruction *visitSub(BinaryOperator &I);
   Instruction *visitFSub(BinaryOperator &I);
   Instruction *visitMul(BinaryOperator &I);

@@ -1908,7 +1908,8 @@ Instruction *InstCombinerImpl::visitFAdd(BinaryOperator &I) {
 ///  &A[10] - &A[0]: we should compile this to "10".  LHS/RHS are the pointer
 /// operands to the ptrtoint instructions for the LHS/RHS of the subtract.
 Value *InstCombinerImpl::OptimizePointerDifference(Value *LHS, Value *RHS,
-                                                   Type *Ty, bool IsNUW) {
+                                                   Type *Ty, BinaryOperator &I,
+                                                   bool IsNUW) {
   // If LHS is a gep based on RHS or RHS is a gep based on LHS, we can optimize
   // this.
   bool Swapped = false;
@@ -1930,6 +1931,65 @@ Value *InstCombinerImpl::OptimizePointerDifference(Value *LHS, Value *RHS,
           RHSGEP->getOperand(0)->stripPointerCasts()) {
         GEP1 = LHSGEP;
         GEP2 = RHSGEP;
+      }
+    } else if (isa<PHINode>(LHSGEP->getPointerOperand())) {
+      // ( gep (PHI(X+A, X)), ...) - ( gep X, ...)
+      auto *PHI = dyn_cast<PHINode>(LHSGEP->getPointerOperand());
+      if (PHI->getNumIncomingValues() == 2) {
+        auto *FirstInst = cast<Value>(PHI->getIncomingValue(0));
+        auto *SecondInst = cast<Value>(PHI->getIncomingValue(1));
+
+        // Check if one of the PHI Node is same as the RHS and other is same as
+        // LHS.
+        if (FirstInst == LHS && SecondInst == RHS) {
+          // Verify if the GEP is indexed at incrementing addresses and the only
+          // use of SUB is to check if one pointer is higher than the other.
+          APInt Offset1(DL.getIndexTypeSizeInBits(FirstInst->getType()), 0);
+          FirstInst = FirstInst->stripAndAccumulateConstantOffsets(
+              DL, Offset1, /* AllowNonInbounds */ true);
+          APInt Offset2(DL.getIndexTypeSizeInBits(SecondInst->getType()), 0);
+          SecondInst = SecondInst->stripAndAccumulateConstantOffsets(
+              DL, Offset2, /* AllowNonInbounds */ true);
+          if (Offset1.slt(Offset2))
+            return nullptr;
+
+          // Check there is only one use of Substract. Handle scenarios where
+          // only use is a PHI or ashr/lshr(PHI)
+          if (I.hasOneUse()) {
+            PHINode *PHI2;
+            Instruction *PHIUser = cast<Instruction>(I.user_back());
+            if (isa<PHINode>(PHIUser))
+              PHI2 = dyn_cast<PHINode>(PHIUser);
+            // Not a 8-bit Pointer. Need to check shift amt as power of 2?
+            else if ((PHIUser->getOpcode() == Instruction::AShr ||
+                      PHIUser->getOpcode() == Instruction::LShr) &&
+                     PHIUser->hasOneUse() &&
+                     (isa<PHINode>(PHIUser->user_back())))
+              PHI2 = dyn_cast<PHINode>(PHIUser->user_back());
+            else
+              return nullptr;
+
+            // PHI now is an early value or difference of 2 pointers. Can verify
+            // if other Incoming Values are 0. Only use of this PHI is a cmp or
+            // a cmp(or), means it reduces to a type bool.
+            for (const auto *U : PHI2->users()) {
+              ICmpInst::Predicate EqPred;
+              // Match to specific. Handling specific predicates. Can relax to
+              // any predicate when compared with Zero.
+              if (!(U->hasOneUse() &&
+                    ((match(U, m_Or(m_Specific(PHI2), m_Value())) &&
+                      match(U->user_back(),
+                            m_ICmp(EqPred, m_Specific(U), m_Zero())) &&
+                      EqPred == ICmpInst::ICMP_EQ) ||
+                     (match(U, m_ICmp(EqPred, m_Specific(PHI2), m_Zero())) &&
+                      EqPred == ICmpInst::ICMP_NE))))
+                return nullptr;
+            }
+            // If we have reached here the sub of 2 ptr2int's can be folded as
+            // X+A > X
+            GEP1 = LHSGEP;
+          }
+        }
       }
     }
   }
@@ -2409,14 +2469,14 @@ Instruction *InstCombinerImpl::visitSub(BinaryOperator &I) {
   Value *LHSOp, *RHSOp;
   if (match(Op0, m_PtrToInt(m_Value(LHSOp))) &&
       match(Op1, m_PtrToInt(m_Value(RHSOp))))
-    if (Value *Res = OptimizePointerDifference(LHSOp, RHSOp, I.getType(),
+    if (Value *Res = OptimizePointerDifference(LHSOp, RHSOp, I.getType(), I,
                                                I.hasNoUnsignedWrap()))
       return replaceInstUsesWith(I, Res);
 
   // trunc(p)-trunc(q) -> trunc(p-q)
   if (match(Op0, m_Trunc(m_PtrToInt(m_Value(LHSOp)))) &&
       match(Op1, m_Trunc(m_PtrToInt(m_Value(RHSOp)))))
-    if (Value *Res = OptimizePointerDifference(LHSOp, RHSOp, I.getType(),
+    if (Value *Res = OptimizePointerDifference(LHSOp, RHSOp, I.getType(), I,
                                                /* IsNUW */ false))
       return replaceInstUsesWith(I, Res);
 
