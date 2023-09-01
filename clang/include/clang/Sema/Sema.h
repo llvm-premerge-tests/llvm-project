@@ -7229,6 +7229,11 @@ public:
 
   CXXMethodDecl *CreateLambdaCallOperator(SourceRange IntroducerRange,
                                           CXXRecordDecl *Class);
+
+  void AddTemplateParametersToLambdaCallOperator(
+      CXXMethodDecl *CallOperator, CXXRecordDecl *Class,
+      TemplateParameterList *TemplateParams);
+
   void CompleteLambdaCallOperator(
       CXXMethodDecl *Method, SourceLocation LambdaLoc,
       SourceLocation CallOperatorLoc, Expr *TrailingRequiresClause,

@@ -250,6 +250,9 @@ Bug Fixes to C++ Support
   (`#64962 <https://github.com/llvm/llvm-project/issues/64962>`_) and
   (`#28679 <https://github.com/llvm/llvm-project/issues/28679>`_).
 
+- Fix crash when parsing the requires clause of some generic lambdas.
+  (`#64689 <https://github.com/llvm/llvm-project/issues/64689>`_`)
+
 Bug Fixes to AST Handling
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 - Fixed an import failure of recursive friend class template.
