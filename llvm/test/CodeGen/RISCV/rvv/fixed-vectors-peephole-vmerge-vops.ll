@@ -89,7 +89,8 @@ define <8 x float> @vpmerge_vpsitofp(<8 x float> %passthru, <8 x i64> %x, <8 x i
 ; CHECK-LABEL: vpmerge_vpsitofp:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetvli zero, a0, e32, m1, tu, mu
-; CHECK-NEXT:    vfncvt.f.x.w v8, v10, v0.t
+; CHECK-NEXT:    vfncvt.f.x.w v10, v8, v0.t
+; CHECK-NEXT:    vmv1r.v v8, v10
 ; CHECK-NEXT:    ret
   %splat = insertelement <8 x i1> poison, i1 true, i32 0
   %mask = shufflevector <8 x i1> %splat, <8 x i1> poison, <8 x i32> zeroinitializer
@@ -119,7 +120,8 @@ define <8 x i32> @vpmerge_vptrunc(<8 x i32> %passthru, <8 x i64> %x, <8 x i1> %m
 ; CHECK-LABEL: vpmerge_vptrunc:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetvli zero, a0, e32, m1, tu, mu
-; CHECK-NEXT:    vnsrl.wi v8, v10, 0, v0.t
+; CHECK-NEXT:    vnsrl.wi v10, v8, 0, v0.t
+; CHECK-NEXT:    vmv1r.v v8, v10
 ; CHECK-NEXT:    ret
   %splat = insertelement <8 x i1> poison, i1 true, i32 0
   %mask = shufflevector <8 x i1> %splat, <8 x i1> poison, <8 x i32> zeroinitializer
@@ -149,7 +151,8 @@ define <8 x float> @vpmerge_vpfptrunc(<8 x float> %passthru, <8 x double> %x, <8
 ; CHECK-LABEL: vpmerge_vpfptrunc:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetvli zero, a0, e32, m1, tu, mu
-; CHECK-NEXT:    vfncvt.f.f.w v8, v10, v0.t
+; CHECK-NEXT:    vfncvt.f.f.w v10, v8, v0.t
+; CHECK-NEXT:    vmv1r.v v8, v10
 ; CHECK-NEXT:    ret
   %splat = insertelement <8 x i1> poison, i1 true, i32 0
   %mask = shufflevector <8 x i1> %splat, <8 x i1> poison, <8 x i32> zeroinitializer
@@ -273,7 +276,8 @@ define <8 x float> @vpselect_vpsitofp(<8 x float> %passthru, <8 x i64> %x, <8 x 
 ; CHECK-LABEL: vpselect_vpsitofp:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetvli zero, a0, e32, m1, ta, mu
-; CHECK-NEXT:    vfncvt.f.x.w v8, v10, v0.t
+; CHECK-NEXT:    vfncvt.f.x.w v10, v8, v0.t
+; CHECK-NEXT:    vmv.v.v v8, v10
 ; CHECK-NEXT:    ret
   %splat = insertelement <8 x i1> poison, i1 true, i32 0
   %mask = shufflevector <8 x i1> %splat, <8 x i1> poison, <8 x i32> zeroinitializer
@@ -301,7 +305,8 @@ define <8 x i32> @vpselect_vptrunc(<8 x i32> %passthru, <8 x i64> %x, <8 x i1> %
 ; CHECK-LABEL: vpselect_vptrunc:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetvli zero, a0, e32, m1, ta, mu
-; CHECK-NEXT:    vnsrl.wi v8, v10, 0, v0.t
+; CHECK-NEXT:    vnsrl.wi v10, v8, 0, v0.t
+; CHECK-NEXT:    vmv.v.v v8, v10
 ; CHECK-NEXT:    ret
   %splat = insertelement <8 x i1> poison, i1 true, i32 0
   %mask = shufflevector <8 x i1> %splat, <8 x i1> poison, <8 x i32> zeroinitializer
@@ -329,7 +334,8 @@ define <8 x float> @vpselect_vpfptrunc(<8 x float> %passthru, <8 x double> %x, <
 ; CHECK-LABEL: vpselect_vpfptrunc:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetvli zero, a0, e32, m1, ta, mu
-; CHECK-NEXT:    vfncvt.f.f.w v8, v10, v0.t
+; CHECK-NEXT:    vfncvt.f.f.w v10, v8, v0.t
+; CHECK-NEXT:    vmv.v.v v8, v10
 ; CHECK-NEXT:    ret
   %splat = insertelement <8 x i1> poison, i1 true, i32 0
   %mask = shufflevector <8 x i1> %splat, <8 x i1> poison, <8 x i32> zeroinitializer

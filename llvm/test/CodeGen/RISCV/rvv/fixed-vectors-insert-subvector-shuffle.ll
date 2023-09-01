@@ -169,7 +169,8 @@ define <4 x i32> @insert_subvector_add_v4i32_v8i32(<4 x i32> %v1, <8 x i32> %v2)
 ; CHECK-NEXT:    vsetivli zero, 4, e32, m1, ta, ma
 ; CHECK-NEXT:    vid.v v9
 ; CHECK-NEXT:    vsetivli zero, 2, e32, m1, tu, ma
-; CHECK-NEXT:    vadd.vv v8, v10, v9
+; CHECK-NEXT:    vadd.vv v10, v8, v9
+; CHECK-NEXT:    vmv1r.v v8, v10
 ; CHECK-NEXT:    ret
   %v3 = add <8 x i32> %v2, <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>
   %v4 = shufflevector <8 x i32> %v3, <8 x i32> poison, <4 x i32> <i32 0, i32 1, i32 poison, i32 poison>
@@ -182,9 +183,10 @@ define <4 x i32> @insert_subvector_vp_add_v4i32_v8i32(<4 x i32> %v1, <8 x i32> %
 ; CHECK-LABEL: insert_subvector_vp_add_v4i32_v8i32:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    vsetivli zero, 8, e32, m2, ta, ma
-; CHECK-NEXT:    vadd.vi v10, v10, 1, v0.t
+; CHECK-NEXT:    vadd.vi v8, v8, 1, v0.t
 ; CHECK-NEXT:    vsetivli zero, 2, e32, m1, tu, ma
-; CHECK-NEXT:    vmv.v.v v8, v10
+; CHECK-NEXT:    vmv.v.v v10, v8
+; CHECK-NEXT:    vmv1r.v v8, v10
 ; CHECK-NEXT:    ret
   %v3 = call <8 x i32> @llvm.vp.add.v8i32(<8 x i32> %v2, <8 x i32> <i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1>, <8 x i1> %mask, i32 8)
   %v4 = shufflevector <8 x i32> %v3, <8 x i32> poison, <4 x i32> <i32 0, i32 1, i32 poison, i32 poison>

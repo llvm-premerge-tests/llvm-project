@@ -108,10 +108,11 @@ vbool4_t test_vmfge_vf_f16m4_b4_mu(vbool4_t mask, vbool4_t maskedoff, vfloat16m4
 }
 
 // CHECK-RV64-LABEL: define dso_local <vscale x 32 x i1> @test_vmfge_vv_f16m8_b2_mu
-// CHECK-RV64-SAME: (<vscale x 32 x i1> [[MASK:%.*]], <vscale x 32 x i1> [[MASKEDOFF:%.*]], <vscale x 32 x half> [[OP1:%.*]], <vscale x 32 x half> [[OP2:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
+// CHECK-RV64-SAME: (<vscale x 32 x i1> [[MASK:%.*]], ptr noundef [[TMP0:%.*]], <vscale x 32 x half> [[OP1:%.*]], <vscale x 32 x half> [[OP2:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
 // CHECK-RV64-NEXT:  entry:
-// CHECK-RV64-NEXT:    [[TMP0:%.*]] = call <vscale x 32 x i1> @llvm.riscv.vmfge.mask.nxv32f16.nxv32f16.i64(<vscale x 32 x i1> [[MASKEDOFF]], <vscale x 32 x half> [[OP1]], <vscale x 32 x half> [[OP2]], <vscale x 32 x i1> [[MASK]], i64 [[VL]])
-// CHECK-RV64-NEXT:    ret <vscale x 32 x i1> [[TMP0]]
+// CHECK-RV64-NEXT:    [[MASKEDOFF:%.*]] = load <vscale x 32 x i1>, ptr [[TMP0]], align 1
+// CHECK-RV64-NEXT:    [[TMP1:%.*]] = call <vscale x 32 x i1> @llvm.riscv.vmfge.mask.nxv32f16.nxv32f16.i64(<vscale x 32 x i1> [[MASKEDOFF]], <vscale x 32 x half> [[OP1]], <vscale x 32 x half> [[OP2]], <vscale x 32 x i1> [[MASK]], i64 [[VL]])
+// CHECK-RV64-NEXT:    ret <vscale x 32 x i1> [[TMP1]]
 //
 vbool2_t test_vmfge_vv_f16m8_b2_mu(vbool2_t mask, vbool2_t maskedoff, vfloat16m8_t op1, vfloat16m8_t op2, size_t vl) {
   return __riscv_vmfge_vv_f16m8_b2_mu(mask, maskedoff, op1, op2, vl);
@@ -208,10 +209,11 @@ vbool8_t test_vmfge_vf_f32m4_b8_mu(vbool8_t mask, vbool8_t maskedoff, vfloat32m4
 }
 
 // CHECK-RV64-LABEL: define dso_local <vscale x 16 x i1> @test_vmfge_vv_f32m8_b4_mu
-// CHECK-RV64-SAME: (<vscale x 16 x i1> [[MASK:%.*]], <vscale x 16 x i1> [[MASKEDOFF:%.*]], <vscale x 16 x float> [[OP1:%.*]], <vscale x 16 x float> [[OP2:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
+// CHECK-RV64-SAME: (<vscale x 16 x i1> [[MASK:%.*]], ptr noundef [[TMP0:%.*]], <vscale x 16 x float> [[OP1:%.*]], <vscale x 16 x float> [[OP2:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
 // CHECK-RV64-NEXT:  entry:
-// CHECK-RV64-NEXT:    [[TMP0:%.*]] = call <vscale x 16 x i1> @llvm.riscv.vmfge.mask.nxv16f32.nxv16f32.i64(<vscale x 16 x i1> [[MASKEDOFF]], <vscale x 16 x float> [[OP1]], <vscale x 16 x float> [[OP2]], <vscale x 16 x i1> [[MASK]], i64 [[VL]])
-// CHECK-RV64-NEXT:    ret <vscale x 16 x i1> [[TMP0]]
+// CHECK-RV64-NEXT:    [[MASKEDOFF:%.*]] = load <vscale x 16 x i1>, ptr [[TMP0]], align 1
+// CHECK-RV64-NEXT:    [[TMP1:%.*]] = call <vscale x 16 x i1> @llvm.riscv.vmfge.mask.nxv16f32.nxv16f32.i64(<vscale x 16 x i1> [[MASKEDOFF]], <vscale x 16 x float> [[OP1]], <vscale x 16 x float> [[OP2]], <vscale x 16 x i1> [[MASK]], i64 [[VL]])
+// CHECK-RV64-NEXT:    ret <vscale x 16 x i1> [[TMP1]]
 //
 vbool4_t test_vmfge_vv_f32m8_b4_mu(vbool4_t mask, vbool4_t maskedoff, vfloat32m8_t op1, vfloat32m8_t op2, size_t vl) {
   return __riscv_vmfge_vv_f32m8_b4_mu(mask, maskedoff, op1, op2, vl);
@@ -288,10 +290,11 @@ vbool16_t test_vmfge_vf_f64m4_b16_mu(vbool16_t mask, vbool16_t maskedoff, vfloat
 }
 
 // CHECK-RV64-LABEL: define dso_local <vscale x 8 x i1> @test_vmfge_vv_f64m8_b8_mu
-// CHECK-RV64-SAME: (<vscale x 8 x i1> [[MASK:%.*]], <vscale x 8 x i1> [[MASKEDOFF:%.*]], <vscale x 8 x double> [[OP1:%.*]], <vscale x 8 x double> [[OP2:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
+// CHECK-RV64-SAME: (<vscale x 8 x i1> [[MASK:%.*]], ptr noundef [[TMP0:%.*]], <vscale x 8 x double> [[OP1:%.*]], <vscale x 8 x double> [[OP2:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
 // CHECK-RV64-NEXT:  entry:
-// CHECK-RV64-NEXT:    [[TMP0:%.*]] = call <vscale x 8 x i1> @llvm.riscv.vmfge.mask.nxv8f64.nxv8f64.i64(<vscale x 8 x i1> [[MASKEDOFF]], <vscale x 8 x double> [[OP1]], <vscale x 8 x double> [[OP2]], <vscale x 8 x i1> [[MASK]], i64 [[VL]])
-// CHECK-RV64-NEXT:    ret <vscale x 8 x i1> [[TMP0]]
+// CHECK-RV64-NEXT:    [[MASKEDOFF:%.*]] = load <vscale x 8 x i1>, ptr [[TMP0]], align 1
+// CHECK-RV64-NEXT:    [[TMP1:%.*]] = call <vscale x 8 x i1> @llvm.riscv.vmfge.mask.nxv8f64.nxv8f64.i64(<vscale x 8 x i1> [[MASKEDOFF]], <vscale x 8 x double> [[OP1]], <vscale x 8 x double> [[OP2]], <vscale x 8 x i1> [[MASK]], i64 [[VL]])
+// CHECK-RV64-NEXT:    ret <vscale x 8 x i1> [[TMP1]]
 //
 vbool8_t test_vmfge_vv_f64m8_b8_mu(vbool8_t mask, vbool8_t maskedoff, vfloat64m8_t op1, vfloat64m8_t op2, size_t vl) {
   return __riscv_vmfge_vv_f64m8_b8_mu(mask, maskedoff, op1, op2, vl);

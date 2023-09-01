@@ -26,6 +26,33 @@ namespace RISCV {
 // We use 64 bits as the known part in the scalable vector types.
 static constexpr unsigned RVVBitsPerBlock = 64;
 
+class RVVArgDispatcher {
+public:
+  static constexpr unsigned NumArgVRs = 16;
+
+  struct RVVArgInfo {
+    unsigned ArgIndex;
+    unsigned RegsNeeded;
+    bool PassedByReg = false;
+  };
+
+  RVVArgDispatcher(std::vector<RVVArgInfo> &&Infos)
+      : RVVArgInfos(std::move(Infos)) {
+    computeMaxAssignedRegs();
+  }
+
+  RVVArgDispatcher(const std::vector<RVVArgInfo> &Infos) : RVVArgInfos(Infos) {
+    computeMaxAssignedRegs();
+  }
+
+  std::vector<RVVArgInfo> &getRVVArgInfos() { return RVVArgInfos; }
+
+private:
+  std::vector<RVVArgInfo> RVVArgInfos;
+
+  void computeMaxAssignedRegs();
+};
+
 bool parseCPU(StringRef CPU, bool IsRV64);
 bool parseTuneCPU(StringRef CPU, bool IsRV64);
 StringRef getMArchFromMcpu(StringRef CPU);

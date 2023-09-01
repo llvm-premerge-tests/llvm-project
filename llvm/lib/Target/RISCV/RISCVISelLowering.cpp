@@ -15426,7 +15426,7 @@ bool RISCV::CC_RISCV(const DataLayout &DL, RISCVABI::ABI ABI, unsigned ValNo,
                      MVT ValVT, MVT LocVT, CCValAssign::LocInfo LocInfo,
                      ISD::ArgFlagsTy ArgFlags, CCState &State, bool IsFixed,
                      bool IsRet, Type *OrigTy, const RISCVTargetLowering &TLI,
-                     std::optional<unsigned> FirstMaskArgument) {
+                     std::map<unsigned, MCPhysReg> &AllocatedMap) {
   unsigned XLen = DL.getLargestLegalIntTypeSizeInBits();
   assert(XLen == 32 || XLen == 64);
   MVT XLenVT = XLen == 32 ? MVT::i32 : MVT::i64;
@@ -15568,7 +15568,7 @@ bool RISCV::CC_RISCV(const DataLayout &DL, RISCVABI::ABI ABI, unsigned ValNo,
   }
 
   // Allocate to a register if possible, or else a stack slot.
-  Register Reg;
+  Register Reg = MCRegister();
   unsigned StoreSizeBytes = XLen / 8;
   Align StackAlign = Align(XLen / 8);
 
@@ -15579,7 +15579,8 @@ bool RISCV::CC_RISCV(const DataLayout &DL, RISCVABI::ABI ABI, unsigned ValNo,
   else if (ValVT == MVT::f64 && !UseGPRForF64)
     Reg = State.AllocateReg(ArgFPR64s);
   else if (ValVT.isVector()) {
-    Reg = allocateRVVReg(ValVT, ValNo, FirstMaskArgument, State, TLI);
+    if (AllocatedMap.count(ValNo))
+      Reg = AllocatedMap[ValNo];
     if (!Reg) {
       // For return values, the vector must be passed fully via registers or
       // via the stack.
@@ -15658,6 +15659,89 @@ static std::optional<unsigned> preAssignMask(const ArgTy &Args) {
   return std::nullopt;
 }
 
+template <typename T>
+static std::vector<RISCV::RVVArgDispatcher::RVVArgInfo>
+constructRVVArgInfo(const SmallVectorImpl<T> &Args,
+                    const RISCVTargetLowering &TLI) {
+  std::vector<RISCV::RVVArgDispatcher::RVVArgInfo> RVVArgInfos;
+  bool FirstVBool = true;
+
+  unsigned NumArgs = Args.size();
+  for (unsigned i = 0; i != NumArgs; ++i) {
+    MVT ArgVT = Args[i].VT;
+
+    // Skip non vector arguments.
+    if (!ArgVT.isVector())
+      continue;
+    // Skip first mask arguments.
+    if (ArgVT.getVectorElementType() == MVT::i1 && FirstVBool) {
+      FirstVBool = false;
+      continue;
+    }
+
+    if (ArgVT.isFixedLengthVector())
+      ArgVT = TLI.getContainerForFixedLengthVector(ArgVT);
+
+    auto [LMUL, Fractional] =
+        RISCVVType::decodeVLMUL(RISCVTargetLowering::getLMUL(ArgVT));
+    if (ArgVT.getVectorElementType() == MVT::i1 || Fractional)
+      LMUL = 1;
+
+    RVVArgInfos.push_back({i, LMUL});
+  }
+
+  return RVVArgInfos;
+}
+
+template <typename T>
+std::map<unsigned, MCPhysReg>
+allocateRegForRVVArg(RISCV::RVVArgDispatcher &Dispatcher,
+                     const SmallVectorImpl<T> &Args, CCState &State,
+                     const RISCVTargetLowering &TLI) {
+  using RVVArgInfo = RISCV::RVVArgDispatcher::RVVArgInfo;
+
+  std::map<unsigned, MCPhysReg> AllocatedMap;
+  std::vector<RVVArgInfo> &RVVArgInfos = Dispatcher.getRVVArgInfos();
+  std::optional<unsigned> FirstMaskArgument = preAssignMask(Args);
+
+  // Sort arguments by LMUL to make sure registers are allocated in correct
+  // order, the order matters here can be proved by the following example.
+  // Consider a function: void func(vint32m1_t a, vint32m2_t b, vint32m1x2_t c);
+  //   Assume c is split into (vint32m1_t c.0, vint32m1_t c.1) in backend,
+  //   if registers are allocated by order, we get the following mapping:
+  //
+  //   |v8 |v9 |v10-v11|v12|v13|v14|v15|    v16-v19    |    v20-v23    |
+  //   | a |c.0|   b   |c.1|   |   |   |               |               |
+  //   which is illegal, since c.0 and c.1 should be in consecutive registers.
+  //
+  //   If we stable_sort the arguments before allocate, we'll have the
+  //   allocated order as: b -> a -> c.0 -> c.1, and the allocated map is:
+  //   | v8-v9 |v10|v11|v12|v13|v14|v15|    v16-v19    |    v20-v23    |
+  //   |   b   | a |c.0|c.1|   |   |   |               |               |
+  //   which is now legal.
+  //
+  // Note that LMUL here is RegsNeeded since tuple type is split in backend,
+  // so each element group can be technically considered as a single argument.
+  std::stable_sort(RVVArgInfos.begin(), RVVArgInfos.end(),
+                   [](const RVVArgInfo &Info1, const RVVArgInfo &Info2) {
+                     return Info1.RegsNeeded > Info2.RegsNeeded;
+                   });
+
+  if (FirstMaskArgument)
+    AllocatedMap[*FirstMaskArgument] = State.AllocateReg(RISCV::V0);
+
+  for (const auto &I : RVVArgInfos) {
+    MVT ArgVT = Args[I.ArgIndex].VT;
+    if (ArgVT.isFixedLengthVector())
+      ArgVT = TLI.getContainerForFixedLengthVector(ArgVT);
+    if (I.PassedByReg)
+      AllocatedMap[I.ArgIndex] =
+          allocateRVVReg(ArgVT, I.ArgIndex, std::nullopt, State, TLI);
+  }
+
+  return AllocatedMap;
+}
+
 void RISCVTargetLowering::analyzeInputArgs(
     MachineFunction &MF, CCState &CCInfo,
     const SmallVectorImpl<ISD::InputArg> &Ins, bool IsRet,
@@ -15665,9 +15749,8 @@ void RISCVTargetLowering::analyzeInputArgs(
   unsigned NumArgs = Ins.size();
   FunctionType *FType = MF.getFunction().getFunctionType();
 
-  std::optional<unsigned> FirstMaskArgument;
-  if (Subtarget.hasVInstructions())
-    FirstMaskArgument = preAssignMask(Ins);
+  RISCV::RVVArgDispatcher Dispatcher{constructRVVArgInfo(Ins, *this)};
+  auto AllocatedMap = allocateRegForRVVArg(Dispatcher, Ins, CCInfo, *this);
 
   for (unsigned i = 0; i != NumArgs; ++i) {
     MVT ArgVT = Ins[i].VT;
@@ -15682,7 +15765,7 @@ void RISCVTargetLowering::analyzeInputArgs(
     RISCVABI::ABI ABI = MF.getSubtarget<RISCVSubtarget>().getTargetABI();
     if (Fn(MF.getDataLayout(), ABI, i, ArgVT, ArgVT, CCValAssign::Full,
            ArgFlags, CCInfo, /*IsFixed=*/true, IsRet, ArgTy, *this,
-           FirstMaskArgument)) {
+           AllocatedMap)) {
       LLVM_DEBUG(dbgs() << "InputArg #" << i << " has unhandled type "
                         << ArgVT << '\n');
       llvm_unreachable(nullptr);
@@ -15696,9 +15779,8 @@ void RISCVTargetLowering::analyzeOutputArgs(
     CallLoweringInfo *CLI, RISCVCCAssignFn Fn) const {
   unsigned NumArgs = Outs.size();
 
-  std::optional<unsigned> FirstMaskArgument;
-  if (Subtarget.hasVInstructions())
-    FirstMaskArgument = preAssignMask(Outs);
+  RISCV::RVVArgDispatcher Dispatcher{constructRVVArgInfo(Outs, *this)};
+  auto AllocatedMap = allocateRegForRVVArg(Dispatcher, Outs, CCInfo, *this);
 
   for (unsigned i = 0; i != NumArgs; i++) {
     MVT ArgVT = Outs[i].VT;
@@ -15708,7 +15790,7 @@ void RISCVTargetLowering::analyzeOutputArgs(
     RISCVABI::ABI ABI = MF.getSubtarget<RISCVSubtarget>().getTargetABI();
     if (Fn(MF.getDataLayout(), ABI, i, ArgVT, ArgVT, CCValAssign::Full,
            ArgFlags, CCInfo, Outs[i].IsFixed, IsRet, OrigTy, *this,
-           FirstMaskArgument)) {
+           AllocatedMap)) {
       LLVM_DEBUG(dbgs() << "OutputArg #" << i << " has unhandled type "
                         << ArgVT << "\n");
       llvm_unreachable(nullptr);
@@ -15883,7 +15965,7 @@ bool RISCV::CC_RISCV_FastCC(const DataLayout &DL, RISCVABI::ABI ABI,
                             ISD::ArgFlagsTy ArgFlags, CCState &State,
                             bool IsFixed, bool IsRet, Type *OrigTy,
                             const RISCVTargetLowering &TLI,
-                            std::optional<unsigned> FirstMaskArgument) {
+                            std::map<unsigned, MCPhysReg> &AllocatedMap) {
 
   // X5 and X6 might be used for save-restore libcall.
   static const MCPhysReg GPRList[] = {
@@ -15968,13 +16050,13 @@ bool RISCV::CC_RISCV_FastCC(const DataLayout &DL, RISCVABI::ABI ABI,
   }
 
   if (LocVT.isVector()) {
-    if (unsigned Reg =
-            allocateRVVReg(ValVT, ValNo, FirstMaskArgument, State, TLI)) {
+    if (AllocatedMap.count(ValNo)) {
       // Fixed-length vectors are located in the corresponding scalable-vector
       // container types.
       if (ValVT.isFixedLengthVector())
         LocVT = TLI.getContainerForFixedLengthVector(LocVT);
-      State.addLoc(CCValAssign::getReg(ValNo, ValVT, Reg, LocVT, LocInfo));
+      State.addLoc(CCValAssign::getReg(ValNo, ValVT, AllocatedMap[ValNo], LocVT,
+                                       LocInfo));
     } else {
       // Try and pass the address via a "fast" GPR.
       if (unsigned GPRReg = State.AllocateReg(GPRList)) {
@@ -16601,17 +16683,16 @@ bool RISCVTargetLowering::CanLowerReturn(
   SmallVector<CCValAssign, 16> RVLocs;
   CCState CCInfo(CallConv, IsVarArg, MF, RVLocs, Context);
 
-  std::optional<unsigned> FirstMaskArgument;
-  if (Subtarget.hasVInstructions())
-    FirstMaskArgument = preAssignMask(Outs);
+  RISCV::RVVArgDispatcher Dispatcher{constructRVVArgInfo(Outs, *this)};
+  auto AllocatedMap = allocateRegForRVVArg(Dispatcher, Outs, CCInfo, *this);
 
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
     MVT VT = Outs[i].VT;
     ISD::ArgFlagsTy ArgFlags = Outs[i].Flags;
     RISCVABI::ABI ABI = MF.getSubtarget<RISCVSubtarget>().getTargetABI();
     if (RISCV::CC_RISCV(MF.getDataLayout(), ABI, i, VT, VT, CCValAssign::Full,
-                 ArgFlags, CCInfo, /*IsFixed=*/true, /*IsRet=*/true, nullptr,
-                 *this, FirstMaskArgument))
+                        ArgFlags, CCInfo, /*IsFixed=*/true, /*IsRet=*/true,
+                        nullptr, *this, AllocatedMap))
       return false;
   }
   return true;

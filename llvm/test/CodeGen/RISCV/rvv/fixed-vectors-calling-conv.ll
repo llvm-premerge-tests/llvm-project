@@ -964,34 +964,29 @@ define <32 x i32> @ret_v32i32_call_v32i32_v32i32_v32i32_i32(<32 x i32> %x, <32 x
 define <32 x i32> @split_vector_args(<2 x i32>,<2 x i32>,<2 x i32>,<2 x i32>,<2 x i32>, <32 x i32> %y, <32 x i32> %z) {
 ; LMULMAX8-LABEL: split_vector_args:
 ; LMULMAX8:       # %bb.0:
-; LMULMAX8-NEXT:    li a1, 32
-; LMULMAX8-NEXT:    vsetvli zero, a1, e32, m8, ta, ma
-; LMULMAX8-NEXT:    vle32.v v8, (a0)
-; LMULMAX8-NEXT:    vadd.vv v8, v16, v8
+; LMULMAX8-NEXT:    li a0, 32
+; LMULMAX8-NEXT:    vsetvli zero, a0, e32, m8, ta, ma
+; LMULMAX8-NEXT:    vadd.vv v8, v8, v16
 ; LMULMAX8-NEXT:    ret
 ;
 ; LMULMAX4-LABEL: split_vector_args:
 ; LMULMAX4:       # %bb.0:
-; LMULMAX4-NEXT:    addi a1, a0, 64
 ; LMULMAX4-NEXT:    vsetivli zero, 16, e32, m4, ta, ma
-; LMULMAX4-NEXT:    vle32.v v8, (a0)
-; LMULMAX4-NEXT:    vle32.v v12, (a1)
-; LMULMAX4-NEXT:    vadd.vv v8, v16, v8
-; LMULMAX4-NEXT:    vadd.vv v12, v20, v12
+; LMULMAX4-NEXT:    vle32.v v20, (a1)
+; LMULMAX4-NEXT:    vadd.vv v8, v8, v16
+; LMULMAX4-NEXT:    vadd.vv v12, v12, v20
 ; LMULMAX4-NEXT:    ret
 ;
 ; LMULMAX2-LABEL: split_vector_args:
 ; LMULMAX2:       # %bb.0:
-; LMULMAX2-NEXT:    addi a1, a0, 64
+; LMULMAX2-NEXT:    addi a0, a1, 32
 ; LMULMAX2-NEXT:    vsetivli zero, 8, e32, m2, ta, ma
-; LMULMAX2-NEXT:    vle32.v v10, (a0)
-; LMULMAX2-NEXT:    addi a0, a0, 32
-; LMULMAX2-NEXT:    vle32.v v12, (a0)
-; LMULMAX2-NEXT:    vle32.v v24, (a1)
-; LMULMAX2-NEXT:    vadd.vv v8, v14, v22
-; LMULMAX2-NEXT:    vadd.vv v10, v16, v10
-; LMULMAX2-NEXT:    vadd.vv v12, v18, v12
-; LMULMAX2-NEXT:    vadd.vv v14, v20, v24
+; LMULMAX2-NEXT:    vle32.v v20, (a1)
+; LMULMAX2-NEXT:    vle32.v v22, (a0)
+; LMULMAX2-NEXT:    vadd.vv v8, v8, v16
+; LMULMAX2-NEXT:    vadd.vv v10, v10, v18
+; LMULMAX2-NEXT:    vadd.vv v12, v12, v20
+; LMULMAX2-NEXT:    vadd.vv v14, v14, v22
 ; LMULMAX2-NEXT:    ret
 ;
 ; LMULMAX1-LABEL: split_vector_args:
@@ -1022,65 +1017,70 @@ define <32 x i32> @split_vector_args(<2 x i32>,<2 x i32>,<2 x i32>,<2 x i32>,<2 
 define <32 x i32> @call_split_vector_args(ptr %pa, ptr %pb) {
 ; LMULMAX8-LABEL: call_split_vector_args:
 ; LMULMAX8:       # %bb.0:
-; LMULMAX8-NEXT:    addi sp, sp, -256
-; LMULMAX8-NEXT:    .cfi_def_cfa_offset 256
-; LMULMAX8-NEXT:    sd ra, 248(sp) # 8-byte Folded Spill
-; LMULMAX8-NEXT:    sd s0, 240(sp) # 8-byte Folded Spill
+; LMULMAX8-NEXT:    addi sp, sp, -48
+; LMULMAX8-NEXT:    .cfi_def_cfa_offset 48
+; LMULMAX8-NEXT:    sd ra, 40(sp) # 8-byte Folded Spill
 ; LMULMAX8-NEXT:    .cfi_offset ra, -8
-; LMULMAX8-NEXT:    .cfi_offset s0, -16
-; LMULMAX8-NEXT:    addi s0, sp, 256
-; LMULMAX8-NEXT:    .cfi_def_cfa s0, 0
-; LMULMAX8-NEXT:    andi sp, sp, -128
 ; LMULMAX8-NEXT:    vsetivli zero, 2, e32, mf2, ta, ma
-; LMULMAX8-NEXT:    vle32.v v8, (a0)
+; LMULMAX8-NEXT:    vle32.v v16, (a0)
 ; LMULMAX8-NEXT:    li a0, 32
 ; LMULMAX8-NEXT:    vsetvli zero, a0, e32, m8, ta, ma
-; LMULMAX8-NEXT:    vle32.v v16, (a1)
-; LMULMAX8-NEXT:    mv a1, sp
+; LMULMAX8-NEXT:    vle32.v v8, (a1)
 ; LMULMAX8-NEXT:    mv a0, sp
-; LMULMAX8-NEXT:    vse32.v v16, (a1)
-; LMULMAX8-NEXT:    vmv1r.v v9, v8
-; LMULMAX8-NEXT:    vmv1r.v v10, v8
-; LMULMAX8-NEXT:    vmv1r.v v11, v8
-; LMULMAX8-NEXT:    vmv1r.v v12, v8
+; LMULMAX8-NEXT:    vsetivli zero, 2, e32, mf2, ta, ma
+; LMULMAX8-NEXT:    vse32.v v16, (a0)
+; LMULMAX8-NEXT:    addi a0, sp, 8
+; LMULMAX8-NEXT:    vse32.v v16, (a0)
+; LMULMAX8-NEXT:    addi a0, sp, 16
+; LMULMAX8-NEXT:    vse32.v v16, (a0)
+; LMULMAX8-NEXT:    addi a0, sp, 24
+; LMULMAX8-NEXT:    vse32.v v16, (a0)
+; LMULMAX8-NEXT:    addi a5, sp, 32
+; LMULMAX8-NEXT:    addi a0, sp, 32
+; LMULMAX8-NEXT:    addi a1, sp, 24
+; LMULMAX8-NEXT:    addi a2, sp, 16
+; LMULMAX8-NEXT:    addi a3, sp, 8
+; LMULMAX8-NEXT:    mv a4, sp
+; LMULMAX8-NEXT:    vse32.v v16, (a5)
+; LMULMAX8-NEXT:    vmv8r.v v16, v8
 ; LMULMAX8-NEXT:    call split_vector_args@plt
-; LMULMAX8-NEXT:    addi sp, s0, -256
-; LMULMAX8-NEXT:    ld ra, 248(sp) # 8-byte Folded Reload
-; LMULMAX8-NEXT:    ld s0, 240(sp) # 8-byte Folded Reload
-; LMULMAX8-NEXT:    addi sp, sp, 256
+; LMULMAX8-NEXT:    ld ra, 40(sp) # 8-byte Folded Reload
+; LMULMAX8-NEXT:    addi sp, sp, 48
 ; LMULMAX8-NEXT:    ret
 ;
 ; LMULMAX4-LABEL: call_split_vector_args:
 ; LMULMAX4:       # %bb.0:
-; LMULMAX4-NEXT:    addi sp, sp, -256
-; LMULMAX4-NEXT:    .cfi_def_cfa_offset 256
-; LMULMAX4-NEXT:    sd ra, 248(sp) # 8-byte Folded Spill
-; LMULMAX4-NEXT:    sd s0, 240(sp) # 8-byte Folded Spill
+; LMULMAX4-NEXT:    addi sp, sp, -128
+; LMULMAX4-NEXT:    .cfi_def_cfa_offset 128
+; LMULMAX4-NEXT:    sd ra, 120(sp) # 8-byte Folded Spill
+; LMULMAX4-NEXT:    sd s0, 112(sp) # 8-byte Folded Spill
 ; LMULMAX4-NEXT:    .cfi_offset ra, -8
 ; LMULMAX4-NEXT:    .cfi_offset s0, -16
-; LMULMAX4-NEXT:    addi s0, sp, 256
+; LMULMAX4-NEXT:    addi s0, sp, 128
 ; LMULMAX4-NEXT:    .cfi_def_cfa s0, 0
 ; LMULMAX4-NEXT:    andi sp, sp, -128
 ; LMULMAX4-NEXT:    vsetivli zero, 2, e32, mf2, ta, ma
-; LMULMAX4-NEXT:    vle32.v v8, (a0)
-; LMULMAX4-NEXT:    vsetivli zero, 16, e32, m4, ta, ma
-; LMULMAX4-NEXT:    vle32.v v16, (a1)
-; LMULMAX4-NEXT:    addi a0, a1, 64
 ; LMULMAX4-NEXT:    vle32.v v20, (a0)
-; LMULMAX4-NEXT:    addi a0, sp, 64
-; LMULMAX4-NEXT:    vse32.v v20, (a0)
-; LMULMAX4-NEXT:    mv a1, sp
+; LMULMAX4-NEXT:    vsetivli zero, 16, e32, m4, ta, ma
+; LMULMAX4-NEXT:    vle32.v v8, (a1)
+; LMULMAX4-NEXT:    addi a0, a1, 64
+; LMULMAX4-NEXT:    vle32.v v12, (a0)
 ; LMULMAX4-NEXT:    mv a0, sp
-; LMULMAX4-NEXT:    vse32.v v16, (a1)
-; LMULMAX4-NEXT:    vmv1r.v v9, v8
-; LMULMAX4-NEXT:    vmv1r.v v10, v8
-; LMULMAX4-NEXT:    vmv1r.v v11, v8
-; LMULMAX4-NEXT:    vmv1r.v v12, v8
+; LMULMAX4-NEXT:    vse32.v v12, (a0)
+; LMULMAX4-NEXT:    addi a2, sp, 104
+; LMULMAX4-NEXT:    vsetivli zero, 2, e32, mf2, ta, ma
+; LMULMAX4-NEXT:    addi a0, sp, 104
+; LMULMAX4-NEXT:    mv a1, sp
+; LMULMAX4-NEXT:    vse32.v v20, (a2)
+; LMULMAX4-NEXT:    vmv1r.v v21, v20
+; LMULMAX4-NEXT:    vmv1r.v v22, v20
+; LMULMAX4-NEXT:    vmv1r.v v23, v20
+; LMULMAX4-NEXT:    vmv4r.v v16, v8
 ; LMULMAX4-NEXT:    call split_vector_args@plt
-; LMULMAX4-NEXT:    addi sp, s0, -256
-; LMULMAX4-NEXT:    ld ra, 248(sp) # 8-byte Folded Reload
-; LMULMAX4-NEXT:    ld s0, 240(sp) # 8-byte Folded Reload
-; LMULMAX4-NEXT:    addi sp, sp, 256
+; LMULMAX4-NEXT:    addi sp, s0, -128
+; LMULMAX4-NEXT:    ld ra, 120(sp) # 8-byte Folded Reload
+; LMULMAX4-NEXT:    ld s0, 112(sp) # 8-byte Folded Reload
+; LMULMAX4-NEXT:    addi sp, sp, 128
 ; LMULMAX4-NEXT:    ret
 ;
 ; LMULMAX2-LABEL: call_split_vector_args:
@@ -1095,27 +1095,29 @@ define <32 x i32> @call_split_vector_args(ptr %pa, ptr %pb) {
 ; LMULMAX2-NEXT:    .cfi_def_cfa s0, 0
 ; LMULMAX2-NEXT:    andi sp, sp, -128
 ; LMULMAX2-NEXT:    vsetivli zero, 2, e32, mf2, ta, ma
-; LMULMAX2-NEXT:    vle32.v v8, (a0)
-; LMULMAX2-NEXT:    vsetivli zero, 8, e32, m2, ta, ma
-; LMULMAX2-NEXT:    vle32.v v14, (a1)
-; LMULMAX2-NEXT:    addi a0, a1, 32
-; LMULMAX2-NEXT:    vle32.v v16, (a0)
-; LMULMAX2-NEXT:    addi a0, a1, 64
-; LMULMAX2-NEXT:    vle32.v v18, (a0)
-; LMULMAX2-NEXT:    addi a0, a1, 96
 ; LMULMAX2-NEXT:    vle32.v v20, (a0)
-; LMULMAX2-NEXT:    addi a0, sp, 64
-; LMULMAX2-NEXT:    vse32.v v20, (a0)
+; LMULMAX2-NEXT:    vsetivli zero, 8, e32, m2, ta, ma
+; LMULMAX2-NEXT:    vle32.v v8, (a1)
+; LMULMAX2-NEXT:    addi a0, a1, 32
+; LMULMAX2-NEXT:    vle32.v v10, (a0)
+; LMULMAX2-NEXT:    addi a0, a1, 64
+; LMULMAX2-NEXT:    vle32.v v12, (a0)
+; LMULMAX2-NEXT:    addi a0, a1, 96
+; LMULMAX2-NEXT:    vle32.v v14, (a0)
 ; LMULMAX2-NEXT:    addi a0, sp, 32
-; LMULMAX2-NEXT:    vse32.v v18, (a0)
-; LMULMAX2-NEXT:    mv a1, sp
+; LMULMAX2-NEXT:    vse32.v v14, (a0)
 ; LMULMAX2-NEXT:    mv a0, sp
-; LMULMAX2-NEXT:    vse32.v v16, (a1)
-; LMULMAX2-NEXT:    vmv1r.v v9, v8
-; LMULMAX2-NEXT:    vmv1r.v v10, v8
-; LMULMAX2-NEXT:    vmv1r.v v11, v8
-; LMULMAX2-NEXT:    vmv1r.v v12, v8
-; LMULMAX2-NEXT:    vmv.v.v v22, v14
+; LMULMAX2-NEXT:    vse32.v v12, (a0)
+; LMULMAX2-NEXT:    addi a2, sp, 104
+; LMULMAX2-NEXT:    vsetivli zero, 2, e32, mf2, ta, ma
+; LMULMAX2-NEXT:    addi a0, sp, 104
+; LMULMAX2-NEXT:    mv a1, sp
+; LMULMAX2-NEXT:    vse32.v v20, (a2)
+; LMULMAX2-NEXT:    vmv1r.v v21, v20
+; LMULMAX2-NEXT:    vmv1r.v v22, v20
+; LMULMAX2-NEXT:    vmv1r.v v23, v20
+; LMULMAX2-NEXT:    vmv2r.v v16, v8
+; LMULMAX2-NEXT:    vmv2r.v v18, v10
 ; LMULMAX2-NEXT:    call split_vector_args@plt
 ; LMULMAX2-NEXT:    addi sp, s0, -128
 ; LMULMAX2-NEXT:    ld ra, 120(sp) # 8-byte Folded Reload

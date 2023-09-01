@@ -32,6 +32,8 @@ private:
   // Whether this is assigning args for a return.
   bool IsRet;
 
+  std::map<unsigned, MCPhysReg> AllocatedMap;
+
 public:
   RISCVOutgoingValueAssigner(
       RISCVTargetLowering::RISCVCCAssignFn *RISCVAssignFn_, bool IsRet)
@@ -46,10 +48,10 @@ public:
     const DataLayout &DL = MF.getDataLayout();
     const RISCVSubtarget &Subtarget = MF.getSubtarget<RISCVSubtarget>();
 
+    // TODO: Handle vector arguments.
     return RISCVAssignFn(DL, Subtarget.getTargetABI(), ValNo, ValVT, LocVT,
                          LocInfo, Flags, State, /*IsFixed=*/true, IsRet,
-                         Info.Ty, *Subtarget.getTargetLowering(),
-                         /*FirstMaskArgument=*/std::nullopt);
+                         Info.Ty, *Subtarget.getTargetLowering(), AllocatedMap);
   }
 };
 
@@ -89,6 +91,8 @@ private:
   // Whether this is assigning args from a return.
   bool IsRet;
 
+  std::map<unsigned, MCPhysReg> AllocatedMap;
+
 public:
   RISCVIncomingValueAssigner(
       RISCVTargetLowering::RISCVCCAssignFn *RISCVAssignFn_, bool IsRet)
@@ -103,10 +107,10 @@ public:
     const DataLayout &DL = MF.getDataLayout();
     const RISCVSubtarget &Subtarget = MF.getSubtarget<RISCVSubtarget>();
 
+    // TODO: Handle vector arguments.
     return RISCVAssignFn(DL, Subtarget.getTargetABI(), ValNo, ValVT, LocVT,
                          LocInfo, Flags, State, /*IsFixed=*/true, IsRet,
-                         Info.Ty, *Subtarget.getTargetLowering(),
-                         /*FirstMaskArgument=*/std::nullopt);
+                         Info.Ty, *Subtarget.getTargetLowering(), AllocatedMap);
   }
 };
 

@@ -135,8 +135,9 @@ define <vscale x 4 x half> @intrinsic_vfncvt_mask_f.f.w_nxv4f16_nxv4f32(<vscale 
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e16, m1, ta, mu
 ; CHECK-NEXT:    fsrmi a0, 0
-; CHECK-NEXT:    vfncvt.f.f.w v8, v10, v0.t
+; CHECK-NEXT:    vfncvt.f.f.w v10, v8, v0.t
 ; CHECK-NEXT:    fsrm a0
+; CHECK-NEXT:    vmv.v.v v8, v10
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 4 x half> @llvm.riscv.vfncvt.f.f.w.mask.nxv4f16.nxv4f32(
@@ -182,8 +183,9 @@ define <vscale x 8 x half> @intrinsic_vfncvt_mask_f.f.w_nxv8f16_nxv8f32(<vscale 
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e16, m2, ta, mu
 ; CHECK-NEXT:    fsrmi a0, 0
-; CHECK-NEXT:    vfncvt.f.f.w v8, v12, v0.t
+; CHECK-NEXT:    vfncvt.f.f.w v12, v8, v0.t
 ; CHECK-NEXT:    fsrm a0
+; CHECK-NEXT:    vmv.v.v v8, v12
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 8 x half> @llvm.riscv.vfncvt.f.f.w.mask.nxv8f16.nxv8f32(
@@ -229,8 +231,9 @@ define <vscale x 16 x half> @intrinsic_vfncvt_mask_f.f.w_nxv16f16_nxv16f32(<vsca
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e16, m4, ta, mu
 ; CHECK-NEXT:    fsrmi a0, 0
-; CHECK-NEXT:    vfncvt.f.f.w v8, v16, v0.t
+; CHECK-NEXT:    vfncvt.f.f.w v16, v8, v0.t
 ; CHECK-NEXT:    fsrm a0
+; CHECK-NEXT:    vmv.v.v v8, v16
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 16 x half> @llvm.riscv.vfncvt.f.f.w.mask.nxv16f16.nxv16f32(
@@ -323,8 +326,9 @@ define <vscale x 2 x float> @intrinsic_vfncvt_mask_f.f.w_nxv2f32_nxv2f64(<vscale
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e32, m1, ta, mu
 ; CHECK-NEXT:    fsrmi a0, 0
-; CHECK-NEXT:    vfncvt.f.f.w v8, v10, v0.t
+; CHECK-NEXT:    vfncvt.f.f.w v10, v8, v0.t
 ; CHECK-NEXT:    fsrm a0
+; CHECK-NEXT:    vmv.v.v v8, v10
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 2 x float> @llvm.riscv.vfncvt.f.f.w.mask.nxv2f32.nxv2f64(
@@ -370,8 +374,9 @@ define <vscale x 4 x float> @intrinsic_vfncvt_mask_f.f.w_nxv4f32_nxv4f64(<vscale
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e32, m2, ta, mu
 ; CHECK-NEXT:    fsrmi a0, 0
-; CHECK-NEXT:    vfncvt.f.f.w v8, v12, v0.t
+; CHECK-NEXT:    vfncvt.f.f.w v12, v8, v0.t
 ; CHECK-NEXT:    fsrm a0
+; CHECK-NEXT:    vmv.v.v v8, v12
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 4 x float> @llvm.riscv.vfncvt.f.f.w.mask.nxv4f32.nxv4f64(
@@ -417,8 +422,9 @@ define <vscale x 8 x float> @intrinsic_vfncvt_mask_f.f.w_nxv8f32_nxv8f64(<vscale
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    vsetvli zero, a0, e32, m4, ta, mu
 ; CHECK-NEXT:    fsrmi a0, 0
-; CHECK-NEXT:    vfncvt.f.f.w v8, v16, v0.t
+; CHECK-NEXT:    vfncvt.f.f.w v16, v8, v0.t
 ; CHECK-NEXT:    fsrm a0
+; CHECK-NEXT:    vmv.v.v v8, v16
 ; CHECK-NEXT:    ret
 entry:
   %a = call <vscale x 8 x float> @llvm.riscv.vfncvt.f.f.w.mask.nxv8f32.nxv8f64(

@@ -270,7 +270,7 @@ define void @mscatter_v4i8(<4 x i8> %val, <4 x ptr> %ptrs, <4 x i1> %m) {
 ; RV64-LABEL: mscatter_v4i8:
 ; RV64:       # %bb.0:
 ; RV64-NEXT:    vsetivli zero, 4, e8, mf4, ta, ma
-; RV64-NEXT:    vsoxei64.v v8, (zero), v10, v0.t
+; RV64-NEXT:    vsoxei64.v v10, (zero), v8, v0.t
 ; RV64-NEXT:    ret
 ;
 ; RV64ZVE32F-LABEL: mscatter_v4i8:
@@ -330,7 +330,7 @@ define void @mscatter_truemask_v4i8(<4 x i8> %val, <4 x ptr> %ptrs) {
 ; RV64-LABEL: mscatter_truemask_v4i8:
 ; RV64:       # %bb.0:
 ; RV64-NEXT:    vsetivli zero, 4, e8, mf4, ta, ma
-; RV64-NEXT:    vsoxei64.v v8, (zero), v10
+; RV64-NEXT:    vsoxei64.v v10, (zero), v8
 ; RV64-NEXT:    ret
 ;
 ; RV64ZVE32F-LABEL: mscatter_truemask_v4i8:
@@ -396,13 +396,13 @@ define void @mscatter_v8i8(<8 x i8> %val, <8 x ptr> %ptrs, <8 x i1> %m) {
 ; RV32-LABEL: mscatter_v8i8:
 ; RV32:       # %bb.0:
 ; RV32-NEXT:    vsetivli zero, 8, e8, mf2, ta, ma
-; RV32-NEXT:    vsoxei32.v v8, (zero), v10, v0.t
+; RV32-NEXT:    vsoxei32.v v10, (zero), v8, v0.t
 ; RV32-NEXT:    ret
 ;
 ; RV64-LABEL: mscatter_v8i8:
 ; RV64:       # %bb.0:
 ; RV64-NEXT:    vsetivli zero, 8, e8, mf2, ta, ma
-; RV64-NEXT:    vsoxei64.v v8, (zero), v12, v0.t
+; RV64-NEXT:    vsoxei64.v v12, (zero), v8, v0.t
 ; RV64-NEXT:    ret
 ;
 ; RV64ZVE32F-LABEL: mscatter_v8i8:
@@ -817,7 +817,7 @@ define void @mscatter_v4i16(<4 x i16> %val, <4 x ptr> %ptrs, <4 x i1> %m) {
 ; RV64-LABEL: mscatter_v4i16:
 ; RV64:       # %bb.0:
 ; RV64-NEXT:    vsetivli zero, 4, e16, mf2, ta, ma
-; RV64-NEXT:    vsoxei64.v v8, (zero), v10, v0.t
+; RV64-NEXT:    vsoxei64.v v10, (zero), v8, v0.t
 ; RV64-NEXT:    ret
 ;
 ; RV64ZVE32F-LABEL: mscatter_v4i16:
@@ -877,7 +877,7 @@ define void @mscatter_truemask_v4i16(<4 x i16> %val, <4 x ptr> %ptrs) {
 ; RV64-LABEL: mscatter_truemask_v4i16:
 ; RV64:       # %bb.0:
 ; RV64-NEXT:    vsetivli zero, 4, e16, mf2, ta, ma
-; RV64-NEXT:    vsoxei64.v v8, (zero), v10
+; RV64-NEXT:    vsoxei64.v v10, (zero), v8
 ; RV64-NEXT:    ret
 ;
 ; RV64ZVE32F-LABEL: mscatter_truemask_v4i16:
@@ -943,13 +943,13 @@ define void @mscatter_v8i16(<8 x i16> %val, <8 x ptr> %ptrs, <8 x i1> %m) {
 ; RV32-LABEL: mscatter_v8i16:
 ; RV32:       # %bb.0:
 ; RV32-NEXT:    vsetivli zero, 8, e16, m1, ta, ma
-; RV32-NEXT:    vsoxei32.v v8, (zero), v10, v0.t
+; RV32-NEXT:    vsoxei32.v v10, (zero), v8, v0.t
 ; RV32-NEXT:    ret
 ;
 ; RV64-LABEL: mscatter_v8i16:
 ; RV64:       # %bb.0:
 ; RV64-NEXT:    vsetivli zero, 8, e16, m1, ta, ma
-; RV64-NEXT:    vsoxei64.v v8, (zero), v12, v0.t
+; RV64-NEXT:    vsoxei64.v v12, (zero), v8, v0.t
 ; RV64-NEXT:    ret
 ;
 ; RV64ZVE32F-LABEL: mscatter_v8i16:
@@ -1725,7 +1725,7 @@ define void @mscatter_v4i32(<4 x i32> %val, <4 x ptr> %ptrs, <4 x i1> %m) {
 ; RV64-LABEL: mscatter_v4i32:
 ; RV64:       # %bb.0:
 ; RV64-NEXT:    vsetivli zero, 4, e32, m1, ta, ma
-; RV64-NEXT:    vsoxei64.v v8, (zero), v10, v0.t
+; RV64-NEXT:    vsoxei64.v v10, (zero), v8, v0.t
 ; RV64-NEXT:    ret
 ;
 ; RV64ZVE32F-LABEL: mscatter_v4i32:
@@ -1785,7 +1785,7 @@ define void @mscatter_truemask_v4i32(<4 x i32> %val, <4 x ptr> %ptrs) {
 ; RV64-LABEL: mscatter_truemask_v4i32:
 ; RV64:       # %bb.0:
 ; RV64-NEXT:    vsetivli zero, 4, e32, m1, ta, ma
-; RV64-NEXT:    vsoxei64.v v8, (zero), v10
+; RV64-NEXT:    vsoxei64.v v10, (zero), v8
 ; RV64-NEXT:    ret
 ;
 ; RV64ZVE32F-LABEL: mscatter_truemask_v4i32:
@@ -1857,7 +1857,7 @@ define void @mscatter_v8i32(<8 x i32> %val, <8 x ptr> %ptrs, <8 x i1> %m) {
 ; RV64-LABEL: mscatter_v8i32:
 ; RV64:       # %bb.0:
 ; RV64-NEXT:    vsetivli zero, 8, e32, m2, ta, ma
-; RV64-NEXT:    vsoxei64.v v8, (zero), v12, v0.t
+; RV64-NEXT:    vsoxei64.v v12, (zero), v8, v0.t
 ; RV64-NEXT:    ret
 ;
 ; RV64ZVE32F-LABEL: mscatter_v8i32:
@@ -6072,7 +6072,7 @@ define void @mscatter_v4f16(<4 x half> %val, <4 x ptr> %ptrs, <4 x i1> %m) {
 ; RV64-LABEL: mscatter_v4f16:
 ; RV64:       # %bb.0:
 ; RV64-NEXT:    vsetivli zero, 4, e16, mf2, ta, ma
-; RV64-NEXT:    vsoxei64.v v8, (zero), v10, v0.t
+; RV64-NEXT:    vsoxei64.v v10, (zero), v8, v0.t
 ; RV64-NEXT:    ret
 ;
 ; RV64ZVE32F-LABEL: mscatter_v4f16:
@@ -6132,7 +6132,7 @@ define void @mscatter_truemask_v4f16(<4 x half> %val, <4 x ptr> %ptrs) {
 ; RV64-LABEL: mscatter_truemask_v4f16:
 ; RV64:       # %bb.0:
 ; RV64-NEXT:    vsetivli zero, 4, e16, mf2, ta, ma
-; RV64-NEXT:    vsoxei64.v v8, (zero), v10
+; RV64-NEXT:    vsoxei64.v v10, (zero), v8
 ; RV64-NEXT:    ret
 ;
 ; RV64ZVE32F-LABEL: mscatter_truemask_v4f16:
@@ -6198,13 +6198,13 @@ define void @mscatter_v8f16(<8 x half> %val, <8 x ptr> %ptrs, <8 x i1> %m) {
 ; RV32-LABEL: mscatter_v8f16:
 ; RV32:       # %bb.0:
 ; RV32-NEXT:    vsetivli zero, 8, e16, m1, ta, ma
-; RV32-NEXT:    vsoxei32.v v8, (zero), v10, v0.t
+; RV32-NEXT:    vsoxei32.v v10, (zero), v8, v0.t
 ; RV32-NEXT:    ret
 ;
 ; RV64-LABEL: mscatter_v8f16:
 ; RV64:       # %bb.0:
 ; RV64-NEXT:    vsetivli zero, 8, e16, m1, ta, ma
-; RV64-NEXT:    vsoxei64.v v8, (zero), v12, v0.t
+; RV64-NEXT:    vsoxei64.v v12, (zero), v8, v0.t
 ; RV64-NEXT:    ret
 ;
 ; RV64ZVE32F-LABEL: mscatter_v8f16:
@@ -6926,7 +6926,7 @@ define void @mscatter_v4f32(<4 x float> %val, <4 x ptr> %ptrs, <4 x i1> %m) {
 ; RV64-LABEL: mscatter_v4f32:
 ; RV64:       # %bb.0:
 ; RV64-NEXT:    vsetivli zero, 4, e32, m1, ta, ma
-; RV64-NEXT:    vsoxei64.v v8, (zero), v10, v0.t
+; RV64-NEXT:    vsoxei64.v v10, (zero), v8, v0.t
 ; RV64-NEXT:    ret
 ;
 ; RV64ZVE32F-LABEL: mscatter_v4f32:
@@ -6986,7 +6986,7 @@ define void @mscatter_truemask_v4f32(<4 x float> %val, <4 x ptr> %ptrs) {
 ; RV64-LABEL: mscatter_truemask_v4f32:
 ; RV64:       # %bb.0:
 ; RV64-NEXT:    vsetivli zero, 4, e32, m1, ta, ma
-; RV64-NEXT:    vsoxei64.v v8, (zero), v10
+; RV64-NEXT:    vsoxei64.v v10, (zero), v8
 ; RV64-NEXT:    ret
 ;
 ; RV64ZVE32F-LABEL: mscatter_truemask_v4f32:
@@ -7058,7 +7058,7 @@ define void @mscatter_v8f32(<8 x float> %val, <8 x ptr> %ptrs, <8 x i1> %m) {
 ; RV64-LABEL: mscatter_v8f32:
 ; RV64:       # %bb.0:
 ; RV64-NEXT:    vsetivli zero, 8, e32, m2, ta, ma
-; RV64-NEXT:    vsoxei64.v v8, (zero), v12, v0.t
+; RV64-NEXT:    vsoxei64.v v12, (zero), v8, v0.t
 ; RV64-NEXT:    ret
 ;
 ; RV64ZVE32F-LABEL: mscatter_v8f32:

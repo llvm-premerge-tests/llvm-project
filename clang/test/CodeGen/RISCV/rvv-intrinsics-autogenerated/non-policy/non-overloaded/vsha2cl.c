@@ -54,10 +54,11 @@ vuint32m4_t test_vsha2cl_vv_u32m4(vuint32m4_t vd, vuint32m4_t vs2, vuint32m4_t v
 }
 
 // CHECK-RV64-LABEL: define dso_local <vscale x 16 x i32> @test_vsha2cl_vv_u32m8
-// CHECK-RV64-SAME: (<vscale x 16 x i32> [[VD:%.*]], <vscale x 16 x i32> [[VS2:%.*]], <vscale x 16 x i32> [[VS1:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
+// CHECK-RV64-SAME: (<vscale x 16 x i32> [[VD:%.*]], <vscale x 16 x i32> [[VS2:%.*]], ptr noundef [[TMP0:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
 // CHECK-RV64-NEXT:  entry:
-// CHECK-RV64-NEXT:    [[TMP0:%.*]] = call <vscale x 16 x i32> @llvm.riscv.vsha2cl.nxv16i32.nxv16i32.i64(<vscale x 16 x i32> [[VD]], <vscale x 16 x i32> [[VS2]], <vscale x 16 x i32> [[VS1]], i64 [[VL]], i64 3)
-// CHECK-RV64-NEXT:    ret <vscale x 16 x i32> [[TMP0]]
+// CHECK-RV64-NEXT:    [[VS1:%.*]] = load <vscale x 16 x i32>, ptr [[TMP0]], align 4
+// CHECK-RV64-NEXT:    [[TMP1:%.*]] = call <vscale x 16 x i32> @llvm.riscv.vsha2cl.nxv16i32.nxv16i32.i64(<vscale x 16 x i32> [[VD]], <vscale x 16 x i32> [[VS2]], <vscale x 16 x i32> [[VS1]], i64 [[VL]], i64 3)
+// CHECK-RV64-NEXT:    ret <vscale x 16 x i32> [[TMP1]]
 //
 vuint32m8_t test_vsha2cl_vv_u32m8(vuint32m8_t vd, vuint32m8_t vs2, vuint32m8_t vs1, size_t vl) {
   return __riscv_vsha2cl_vv_u32m8(vd, vs2, vs1, vl);
@@ -94,10 +95,11 @@ vuint64m4_t test_vsha2cl_vv_u64m4(vuint64m4_t vd, vuint64m4_t vs2, vuint64m4_t v
 }
 
 // CHECK-RV64-LABEL: define dso_local <vscale x 8 x i64> @test_vsha2cl_vv_u64m8
-// CHECK-RV64-SAME: (<vscale x 8 x i64> [[VD:%.*]], <vscale x 8 x i64> [[VS2:%.*]], <vscale x 8 x i64> [[VS1:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
+// CHECK-RV64-SAME: (<vscale x 8 x i64> [[VD:%.*]], <vscale x 8 x i64> [[VS2:%.*]], ptr noundef [[TMP0:%.*]], i64 noundef [[VL:%.*]]) #[[ATTR0]] {
 // CHECK-RV64-NEXT:  entry:
-// CHECK-RV64-NEXT:    [[TMP0:%.*]] = call <vscale x 8 x i64> @llvm.riscv.vsha2cl.nxv8i64.nxv8i64.i64(<vscale x 8 x i64> [[VD]], <vscale x 8 x i64> [[VS2]], <vscale x 8 x i64> [[VS1]], i64 [[VL]], i64 3)
-// CHECK-RV64-NEXT:    ret <vscale x 8 x i64> [[TMP0]]
+// CHECK-RV64-NEXT:    [[VS1:%.*]] = load <vscale x 8 x i64>, ptr [[TMP0]], align 8
+// CHECK-RV64-NEXT:    [[TMP1:%.*]] = call <vscale x 8 x i64> @llvm.riscv.vsha2cl.nxv8i64.nxv8i64.i64(<vscale x 8 x i64> [[VD]], <vscale x 8 x i64> [[VS2]], <vscale x 8 x i64> [[VS1]], i64 [[VL]], i64 3)
+// CHECK-RV64-NEXT:    ret <vscale x 8 x i64> [[TMP1]]
 //
 vuint64m8_t test_vsha2cl_vv_u64m8(vuint64m8_t vd, vuint64m8_t vs2, vuint64m8_t vs1, size_t vl) {
   return __riscv_vsha2cl_vv_u64m8(vd, vs2, vs1, vl);
