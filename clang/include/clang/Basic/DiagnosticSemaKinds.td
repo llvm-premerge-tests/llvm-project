@@ -10176,6 +10176,9 @@ def err_builtin_longjmp_invalid_val : Error<
   "argument to __builtin_longjmp must be a constant 1">;
 def err_builtin_requires_language : Error<"'%0' is only available in %1">;
 
+def err_builtin_dump_struct_too_complex : Error<
+"%select{class|struct|union}0 %1 is too complex to dump">;
+
 def err_constant_integer_arg_type : Error<
   "argument to %0 must be a constant integer">;
 

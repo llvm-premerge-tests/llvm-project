@@ -724,6 +724,16 @@ static ExprResult SemaBuiltinDumpStruct(Sema &S, CallExpr *TheCall) {
   if (Generator.dumpUnnamedRecord(RD, PtrArg, 0))
     return ExprError();
 
+  // We create a `PseudoObjectExpr` as a wrapper, but the
+  // `PseudoObjectExprBits.NumSubExprs` in `PseudoObjectExpr` restricts its
+  // value to no more than std::numeric_limits<uint16_t>::max().
+  if (Generator.Actions.size() > std::numeric_limits<uint16_t>::max()) {
+    int RDKind = RD->isClass() ? 0 : (RD->isStruct() ? 1 : 2);
+    S.Diag(PtrArg->getBeginLoc(), diag::err_builtin_dump_struct_too_complex)
+        << RDKind << RD;
+    return ExprError();
+  }
+
   return Generator.buildWrapper();
 }
 

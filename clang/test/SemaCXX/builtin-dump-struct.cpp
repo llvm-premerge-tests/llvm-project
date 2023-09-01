@@ -184,3 +184,22 @@ struct t2 {
 
 int printf(const char *, ...);
 void f1(t2 w) { __builtin_dump_struct(&w, printf); }
+
+struct t3 { };
+template<typename T1>
+struct templ {
+    T1 v1;
+    T1 v2;
+    T1 v3;
+    T1 v4;
+};
+
+struct t4 {
+  templ<templ<templ<templ<templ<templ<t3>>>>>> c0;
+  templ<templ<templ<templ<templ<templ<t3>>>>>> c1;
+  templ<templ<templ<templ<templ<templ<t3>>>>>> c2;
+};
+
+void aj(...);
+void f2(t4 w) { __builtin_dump_struct(&w, aj); } // expected-error{{struct 't4' is too complex to dump}}
+
