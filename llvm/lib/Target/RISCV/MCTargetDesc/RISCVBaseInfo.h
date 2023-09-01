@@ -444,6 +444,20 @@ struct RISCVOpcode {
 #include "RISCVGenSearchableTables.inc"
 } // end namespace RISCVInsnOpcode
 
+namespace RISCVVPseudosTable {
+
+struct PseudoInfo {
+  uint16_t Pseudo;
+  uint16_t BaseInstr;
+  uint8_t VLMul;
+  uint8_t SEW;
+};
+
+#define GET_RISCVVPseudosTable_DECL
+#include "RISCVGenSearchableTables.inc"
+
+} // end namespace RISCVVPseudosTable
+
 namespace RISCVABI {
 
 enum ABI {

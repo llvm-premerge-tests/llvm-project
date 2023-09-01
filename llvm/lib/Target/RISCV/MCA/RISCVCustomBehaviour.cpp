@@ -20,26 +20,6 @@
 
 #define DEBUG_TYPE "llvm-mca-riscv-custombehaviour"
 
-// This brings in a table with primary key of
-// base instruction opcode and lmul and maps
-// to the opcode of the pseudo instruction.
-namespace RISCVVInversePseudosTable {
-using namespace llvm;
-using namespace llvm::RISCV;
-
-struct PseudoInfo {
-  uint16_t Pseudo;
-  uint16_t BaseInstr;
-  uint8_t VLMul;
-  uint8_t SEW;
-};
-
-#define GET_RISCVVInversePseudosTable_IMPL
-#define GET_RISCVVInversePseudosTable_DECL
-#include "RISCVGenSearchableTables.inc"
-
-} // end namespace RISCVVInversePseudosTable
-
 namespace llvm {
 namespace mca {
 
@@ -215,11 +195,11 @@ unsigned RISCVInstrumentManager::getSchedClassID(
   // and SEW, or (Opcode, LMUL, 0) if does not depend on SEW.
   uint8_t SEW = SI ? SI->getSEW() : 0;
   // Check if it depends on LMUL and SEW
-  const RISCVVInversePseudosTable::PseudoInfo *RVV =
-      RISCVVInversePseudosTable::getBaseInfo(Opcode, LMUL, SEW);
+  const RISCVVPseudosTable::PseudoInfo *RVV =
+      RISCVVPseudosTable::getBaseInfo(Opcode, LMUL, SEW);
   // Check if it depends only on LMUL
   if (!RVV)
-    RVV = RISCVVInversePseudosTable::getBaseInfo(Opcode, LMUL, 0);
+    RVV = RISCVVPseudosTable::getBaseInfo(Opcode, LMUL, 0);
 
   // Not a RVV instr
   if (!RVV) {

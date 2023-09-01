@@ -55,15 +55,6 @@ static cl::opt<MachineTraceStrategy> ForceMachineCombinerStrategy(
                clEnumValN(MachineTraceStrategy::TS_MinInstrCount, "min-instr",
                           "MinInstrCount strategy.")));
 
-namespace llvm::RISCVVPseudosTable {
-
-using namespace RISCV;
-
-#define GET_RISCVVPseudosTable_IMPL
-#include "RISCVGenSearchableTables.inc"
-
-} // namespace llvm::RISCVVPseudosTable
-
 RISCVInstrInfo::RISCVInstrInfo(RISCVSubtarget &STI)
     : RISCVGenInstrInfo(RISCV::ADJCALLSTACKDOWN, RISCV::ADJCALLSTACKUP),
       STI(STI) {}
