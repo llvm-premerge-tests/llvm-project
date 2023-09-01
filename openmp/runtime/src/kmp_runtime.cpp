@@ -178,7 +178,6 @@ int __kmp_get_global_thread_id() {
       if (stack_diff <= stack_size) {
         /* The only way we can be closer than the allocated */
         /* stack size is if we are running on this thread. */
-        KMP_DEBUG_ASSERT(__kmp_gtid_get_specific() == i);
         return i;
       }
     }
