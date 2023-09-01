@@ -706,6 +706,11 @@ buildPreamble(PathRef FileName, CompilerInvocation CI,
       // While extending the life of FileMgr and VFS, StatCache should also be
       // extended.
       Ctx->setStatCache(Result->StatCache);
+      // We have to setup DiagnosticConsumer that will be alife
+      // while preamble callback is executed
+      Ctx->getASTContext().getDiagnostics().setClient(new IgnoringDiagConsumer,
+                                                      true);
+
       PreambleCallback(std::move(*Ctx), Result->Pragmas);
     }
     return Result;
