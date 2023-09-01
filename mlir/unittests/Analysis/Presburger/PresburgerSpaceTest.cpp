@@ -108,3 +108,40 @@ TEST(PresburgerSpaceTest, removeVarRangeIdentifier) {
   EXPECT_EQ(*space.getId<int *>(VarKind::Range, 0), identifiers[4]);
   EXPECT_EQ(*space.getId<int *>(VarKind::Range, 1), identifiers[5]);
 }
+
+TEST(PresburgerSpaceTest, convertVarKind) {
+  PresburgerSpace space = PresburgerSpace::getRelationSpace(2, 1, 3, 0);
+  space.resetIds<int *>();
+
+  int identifiers[6] = {0, 1, 2, 3, 4, 5};
+
+  // Attach identifiers to domain identifiers.
+  space.setId<int *>(VarKind::Domain, 0, &identifiers[0]);
+  space.setId<int *>(VarKind::Domain, 1, &identifiers[1]);
+
+  // Attach identifiers to range identifiers.
+  space.setId<int *>(VarKind::Range, 0, &identifiers[2]);
+
+  // Attach identifiers to symbol identifiers.
+  space.setId<int *>(VarKind::Symbol, 0, &identifiers[3]);
+  space.setId<int *>(VarKind::Symbol, 1, &identifiers[4]);
+  space.setId<int *>(VarKind::Symbol, 2, &identifiers[5]);
+
+  // Make a few kind conversions.
+  space.convertVarKind(VarKind::Domain, 0, 1, VarKind::Range, 0);
+  space.convertVarKind(VarKind::Symbol, 1, 3, VarKind::Domain, 1);
+  space.convertVarKind(VarKind::Symbol, 0, 1, VarKind::Range, 1);
+
+  // Check if var counts are correct.
+  EXPECT_EQ(space.getNumDomainVars(), 3u);
+  EXPECT_EQ(space.getNumRangeVars(), 3u);
+  EXPECT_EQ(space.getNumSymbolVars(), 0u);
+
+  // Check if identifiers are transferred correctly.
+  EXPECT_EQ(*space.getId<int *>(VarKind::Domain, 0), identifiers[1]);
+  EXPECT_EQ(*space.getId<int *>(VarKind::Domain, 1), identifiers[4]);
+  EXPECT_EQ(*space.getId<int *>(VarKind::Domain, 2), identifiers[5]);
+  EXPECT_EQ(*space.getId<int *>(VarKind::Range, 0), identifiers[0]);
+  EXPECT_EQ(*space.getId<int *>(VarKind::Range, 1), identifiers[3]);
+  EXPECT_EQ(*space.getId<int *>(VarKind::Range, 2), identifiers[2]);
+}

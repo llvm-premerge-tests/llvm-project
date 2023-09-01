@@ -152,6 +152,31 @@ void PresburgerSpace::swapVar(VarKind kindA, VarKind kindB, unsigned posA,
   std::swap(atId(kindA, posA), atId(kindB, posB));
 }
 
+void PresburgerSpace::convertVarKind(VarKind srcKind, unsigned varStart,
+                                     unsigned varLimit, VarKind dstKind,
+                                     unsigned pos) {
+  assert(varLimit <= getNumVarKind(srcKind) && "Invalid id range");
+
+  if (varStart >= varLimit)
+    return;
+
+  // Append new variables corresponding to the dimensions to be converted.
+  unsigned convertCount = varLimit - varStart;
+  unsigned newVarsBegin =
+      insertVar(dstKind, pos, convertCount) - getVarKindOffset(dstKind);
+
+  // Swap the new variables with old variables.
+  //
+  // Essentially, this moves the identifier information corresponding to the
+  // specified ids of kind `srcKind` to the `convertCount` newly created ids of
+  // kind `dstKind`.
+  for (unsigned i = 0; i < convertCount; ++i)
+    swapVar(srcKind, dstKind, varStart + i, newVarsBegin + i);
+
+  // Complete the move by deleting the now redundant variables.
+  removeVarRange(srcKind, varStart, varLimit);
+}
+
 bool PresburgerSpace::isCompatible(const PresburgerSpace &other) const {
   return getNumDomainVars() == other.getNumDomainVars() &&
          getNumRangeVars() == other.getNumRangeVars() &&

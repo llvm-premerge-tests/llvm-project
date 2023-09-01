@@ -145,6 +145,19 @@ public:
   /// Swaps the posA^th variable of kindA and posB^th variable of kindB.
   void swapVar(VarKind kindA, VarKind kindB, unsigned posA, unsigned posB);
 
+  /// Converts variables of kind srcKind in the range [varStart, varLimit) to
+  /// variables of kind dstKind. If `pos` is given, the variables are placed at
+  /// position `pos` of dstKind, otherwise they are placed after all the other
+  /// variables of kind dstKind. The internal ordering among the moved variables
+  /// is preserved.
+  void convertVarKind(VarKind srcKind, unsigned varStart, unsigned varLimit,
+                      VarKind dstKind, unsigned pos);
+  void convertVarKind(VarKind srcKind, unsigned varStart, unsigned varLimit,
+                      VarKind dstKind) {
+    convertVarKind(srcKind, varStart, varLimit, dstKind,
+                   getNumVarKind(dstKind));
+  }
+
   /// Returns true if both the spaces are compatible i.e. if both spaces have
   /// the same number of variables of each kind (excluding locals).
   bool isCompatible(const PresburgerSpace &other) const;
