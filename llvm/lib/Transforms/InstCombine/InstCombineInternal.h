@@ -108,7 +108,6 @@ public:
   Instruction *visitUDiv(BinaryOperator &I);
   Instruction *visitSDiv(BinaryOperator &I);
   Instruction *visitFDiv(BinaryOperator &I);
-  Value *simplifyRangeCheck(ICmpInst *Cmp0, ICmpInst *Cmp1, bool Inverted);
   Instruction *visitAnd(BinaryOperator &I);
   Instruction *visitOr(BinaryOperator &I);
   bool sinkNotIntoLogicalOp(Instruction &I);
@@ -197,6 +196,56 @@ public:
 
   LoadInst *combineLoadToNewType(LoadInst &LI, Type *NewTy,
                                  const Twine &Suffix = "");
+
+  // Wrapper around icmp/fcmp instructions to be used in various folds to
+  // avoiding having to have to actual icmp/fcmp Value created.
+  // For use when the question of if we want to create a new cmp is a question
+  // of whether it will get folded.
+  template <typename CmpType> struct CmpComponents {
+    using PredType = typename CmpType::Predicate;
+    PredType Pred_;
+    Value *Op0_;
+    Value *Op1_;
+    CmpType *OrigCmp_;
+
+    bool hasOneUse() const { return OrigCmp_->hasOneUse(); }
+    bool isSigned() const { return CmpType::isSigned(Pred_); }
+
+    Type *getType() const { return OrigCmp_->getType(); }
+
+    Value *getOperand(unsigned Idx) const {
+      assert(Idx <= 1 && "Out of bounds operand");
+      return Idx == 0 ? Op0_ : Op1_;
+    }
+
+    PredType getPredicate() const { return Pred_; }
+
+    PredType getInversePredicate() const {
+      return CmpType::getInversePredicate(Pred_);
+    }
+
+    PredType getSwappedPredicate() const {
+      return CmpType::getSwappedPredicate(Pred_);
+    }
+
+    Value *getOrCreateValue(InstCombiner::BuilderTy &Builder) const {
+      if (Pred_ == OrigCmp_->getPredicate() &&
+          Op0_ == OrigCmp_->getOperand(0) && Op1_ == OrigCmp_->getOperand(1))
+        return OrigCmp_;
+      return Builder.CreateCmp(Pred_, Op0_, Op1_);
+    }
+
+    CmpComponents() = default;
+    CmpComponents(CmpType *Cmp)
+        : Pred_(Cmp->getPredicate()), Op0_(Cmp->getOperand(0)),
+          Op1_(Cmp->getOperand(1)), OrigCmp_(Cmp) {}
+  };
+
+  using FCmpComponents = CmpComponents<FCmpInst>;
+  using ICmpComponents = CmpComponents<ICmpInst>;
+
+  Value *simplifyRangeCheck(ICmpComponents Cmp0, ICmpComponents Cmp1,
+                            bool Inverted);
 
 private:
   bool annotateAnyAllocSite(CallBase &Call, const TargetLibraryInfo *TLI);
@@ -350,19 +399,19 @@ private:
                                             const CastInst *CI2);
   Value *simplifyIntToPtrRoundTripCast(Value *Val);
 
-  Value *foldAndOrOfICmps(ICmpInst *LHS, ICmpInst *RHS, Instruction &I,
-                          bool IsAnd, bool IsLogical = false);
+  Value *foldAndOrOfICmps(ICmpComponents LHS, ICmpComponents RHS,
+                          Instruction &I, bool IsAnd, bool IsLogical = false);
   Value *foldXorOfICmps(ICmpInst *LHS, ICmpInst *RHS, BinaryOperator &Xor);
 
-  Value *foldEqOfParts(ICmpInst *Cmp0, ICmpInst *Cmp1, bool IsAnd);
+  Value *foldEqOfParts(ICmpComponents Cmp0, ICmpComponents Cmp1, bool IsAnd);
 
-  Value *foldAndOrOfICmpsUsingRanges(ICmpInst *ICmp1, ICmpInst *ICmp2,
+  Value *foldAndOrOfICmpsUsingRanges(ICmpComponents ICmp1, ICmpComponents ICmp2,
                                      bool IsAnd);
 
   /// Optimize (fcmp)&(fcmp) or (fcmp)|(fcmp).
   /// NOTE: Unlike most of instcombine, this returns a Value which should
   /// already be inserted into the function.
-  Value *foldLogicOfFCmps(FCmpInst *LHS, FCmpInst *RHS, bool IsAnd,
+  Value *foldLogicOfFCmps(FCmpComponents LHS, FCmpComponents RHS, bool IsAnd,
                           bool IsLogicalSelect = false);
 
   Instruction *foldLogicOfIsFPClass(BinaryOperator &Operator, Value *LHS,
@@ -371,7 +420,7 @@ private:
   Instruction *
   canonicalizeConditionalNegationViaMathToSelect(BinaryOperator &i);
 
-  Value *foldAndOrOfICmpsOfAndWithPow2(ICmpInst *LHS, ICmpInst *RHS,
+  Value *foldAndOrOfICmpsOfAndWithPow2(ICmpComponents LHS, ICmpComponents RHS,
                                        Instruction *CxtI, bool IsAnd,
                                        bool IsLogical = false);
   Value *matchSelectFromAndOr(Value *A, Value *B, Value *C, Value *D,
