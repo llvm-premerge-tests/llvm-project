@@ -269,14 +269,10 @@ STATISTIC(NumRedZoneFunctions, "Number of functions using red zone");
 static int64_t getArgumentStackToRestore(MachineFunction &MF,
                                          MachineBasicBlock &MBB) {
   MachineBasicBlock::iterator MBBI = MBB.getLastNonDebugInstr();
-  bool IsTailCallReturn = false;
-  if (MBB.end() != MBBI) {
-    unsigned RetOpcode = MBBI->getOpcode();
-    IsTailCallReturn = RetOpcode == AArch64::TCRETURNdi ||
-                       RetOpcode == AArch64::TCRETURNri ||
-                       RetOpcode == AArch64::TCRETURNriBTI;
-  }
   AArch64FunctionInfo *AFI = MF.getInfo<AArch64FunctionInfo>();
+  bool IsTailCallReturn = (MBB.end() != MBBI)
+                              ? AArch64InstrInfo::isTailCallReturnInst(*MBBI)
+                              : false;
 
   int64_t ArgumentPopSize = 0;
   if (IsTailCallReturn) {

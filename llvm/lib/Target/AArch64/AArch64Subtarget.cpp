@@ -70,6 +70,13 @@ static cl::opt<bool> ForceStreamingCompatibleSVE(
         "Force the use of streaming-compatible SVE code for all functions"),
     cl::Hidden);
 
+static cl::opt<AArch64PAuth::AuthCheckMethod>
+    AuthenticatedLRCheckMethod("aarch64-authenticated-lr-check-method",
+                               cl::Hidden,
+                               cl::desc("Override the variant of check applied "
+                                        "to authenticated LR during tail call"),
+                               cl::values(AUTH_CHECK_METHOD_CL_VALUES_LR));
+
 unsigned AArch64Subtarget::getVectorInsertExtractBaseCost() const {
   if (OverrideVectorInsertExtractBaseCost.getNumOccurrences() > 0)
     return OverrideVectorInsertExtractBaseCost;
@@ -487,4 +494,27 @@ bool AArch64Subtarget::isNeonAvailable() const {
     return !ForceStreamingCompatibleSVE;
 
   return !isStreaming() && !isStreamingCompatible();
+}
+
+// If return address signing is enabled, tail calls are emitted as follows:
+//
+// ```
+//   <authenticate LR>
+//   <check LR>
+//   TCRETURN          ; the callee may sign and spill the LR in its prologue
+// ```
+//
+// LR may require explicit checking because if FEAT_FPAC is not implemented
+// and LR was tampered with, then `<authenticate LR>` will not generate an
+// exception on its own. Later, if the callee spills the signed LR value and
+// neither FEAT_PAuth2 nor FEAT_EPAC are implemented, the valid PAC replaces
+// the higher bits of LR thus hiding the authentication failure.
+AArch64PAuth::AuthCheckMethod
+AArch64Subtarget::getAuthenticatedLRCheckMethod() const {
+  if (AuthenticatedLRCheckMethod.getNumOccurrences())
+    return AuthenticatedLRCheckMethod;
+
+  // At now, use None by default because checks may introduce an unexpected
+  // performance regression or incompatibility with execute-only mappings.
+  return AArch64PAuth::AuthCheckMethod::None;
 }

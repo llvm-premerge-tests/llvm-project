@@ -16,6 +16,7 @@
 #include "AArch64FrameLowering.h"
 #include "AArch64ISelLowering.h"
 #include "AArch64InstrInfo.h"
+#include "AArch64PointerAuth.h"
 #include "AArch64RegisterInfo.h"
 #include "AArch64SelectionDAGInfo.h"
 #include "llvm/CodeGen/GlobalISel/CallLowering.h"
@@ -424,6 +425,9 @@ public:
       return "__security_check_cookie_arm64ec";
     return "__security_check_cookie";
   }
+
+  /// Choose a method of checking LR before performing a tail call.
+  AArch64PAuth::AuthCheckMethod getAuthenticatedLRCheckMethod() const;
 };
 } // End llvm namespace
 
