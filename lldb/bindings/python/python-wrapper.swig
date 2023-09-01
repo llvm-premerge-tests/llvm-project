@@ -263,11 +263,20 @@ PythonObject lldb_private::python::SWIGBridge::LLDBSwigPythonCreateScriptedObjec
   }
 
   PythonObject result = {};
-  if (arg_info.get().max_positional_args == 2) {
+  switch (arg_info.get().max_positional_args) {
+    case 1:
+      // FIXME: Since this is used by different scripting affordances, they can have different number
+      // of argument but also different types of arguments (i.e SBExecutionContect vs SBProcess)
+      // We need to have a more reliable way to forward positional arguments.
+      result = pfunc(SWIGBridge::ToSWIGWrapper(exe_ctx_sp->GetProcessSP()));
+      break;
+    case 2:
       result = pfunc(SWIGBridge::ToSWIGWrapper(exe_ctx_sp), SWIGBridge::ToSWIGWrapper(args_impl));
-  } else {
-    error_string.assign("wrong number of arguments in __init__, should be 2 "
-                        "(not including self)");
+      break;
+    default:
+      error_string.assign("wrong number of arguments in __init__, should be 2 "
+                          "(not including self)");
+      break;
   }
   return result;
 }
