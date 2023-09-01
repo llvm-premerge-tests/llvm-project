@@ -48,12 +48,10 @@ test2(const S& s)
 }
 
 template <class S>
-TEST_CONSTEXPR_CXX20 void
-test(const S& s)
-{
-    assert(s.max_size() >= s.size());
-    test1(s);
-    test2(s);
+TEST_CONSTEXPR_CXX20 void test(const S& s) {
+  assert(s.max_size() >= s.size());
+  test1(s);
+  test2(s);
 }
 
 template <class S>
@@ -63,28 +61,33 @@ TEST_CONSTEXPR_CXX20 void test_string() {
   test(S("12345678901234567890123456789012345678901234567890"));
 }
 
-TEST_CONSTEXPR_CXX20 bool test() {
+TEST_CONSTEXPR_CXX20
+bool test() {
   test_string<std::string>();
 #if TEST_STD_VER >= 11
-  test_string<std::basic_string<char, std::char_traits<char>, min_allocator<char>>>();
+  test_string<std::basic_string<char, std::char_traits<char>, min_allocator<char> > >();
 #endif
 
   return true;
 }
 
 #if TEST_STD_VER > 17
-constexpr bool test_constexpr() {
-  std::string str;
+template <class S>
+TEST_CONSTEXPR_CXX20 void test_string_constexpr() {
+  S str;
 
   std::size_t size = str.max_size();
   assert(size > 0);
+}
+
+TEST_CONSTEXPR_CXX20 bool test_constexpr() {
+  test_string_constexpr<std::string>();
 
   return true;
 }
 #endif
 
-int main(int, char**)
-{
+int main(int, char**) {
   test();
 #if TEST_STD_VER > 17
   test_constexpr();

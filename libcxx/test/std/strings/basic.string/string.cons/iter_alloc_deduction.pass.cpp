@@ -31,87 +31,75 @@
 #include "min_allocator.h"
 
 class NotAnIterator {};
-using NotAnInputIterator = std::back_insert_iterator<std::basic_string<char16_t>>;
+using NotAnInputIterator = std::back_insert_iterator<std::basic_string<char16_t> >;
 
 template <typename T>
-struct NotAnAllocator { typedef T value_type; };
+struct NotAnAllocator {
+  typedef T value_type;
+};
 
 template <class Iter, class Alloc, class = void>
-struct CanDeduce : std::false_type { };
+struct CanDeduce : std::false_type {};
 
 template <class Iter, class Alloc>
-struct CanDeduce<Iter, Alloc, decltype((void)
-  std::basic_string{std::declval<Iter>(), std::declval<Iter>(), std::declval<Alloc>()}
-)> : std::true_type { };
+struct CanDeduce<Iter,
+                 Alloc,
+                 decltype((void)std::basic_string{std::declval<Iter>(), std::declval<Iter>(), std::declval<Alloc>()})>
+    : std::true_type {};
 
-static_assert( CanDeduce<char*, std::allocator<char>>::value);
+static_assert(CanDeduce<char*, std::allocator<char>>::value);
 static_assert(!CanDeduce<NotAnIterator, std::allocator<char>>::value);
 static_assert(!CanDeduce<NotAnInputIterator, std::allocator<char16_t>>::value);
 static_assert(!CanDeduce<char*, NotAnAllocator<char>>::value);
 #ifndef TEST_HAS_NO_WIDE_CHARACTERS
-static_assert( CanDeduce<wchar_t*, std::allocator<wchar_t>>::value);
+static_assert(CanDeduce<wchar_t*, std::allocator<wchar_t>>::value);
 static_assert(!CanDeduce<wchar_t const*, NotAnAllocator<wchar_t>>::value);
 #endif
+
+template <class CharT, template <class> class Alloc>
+TEST_CONSTEXPR_CXX20 void
+test_string(const CharT* s, const std::basic_string<CharT, std::char_traits<CharT>, Alloc<CharT> > s1) {
+  using S = decltype(s1); // what type did we get?
+  static_assert(std::is_same_v<typename S::value_type, CharT>, "");
+  static_assert(std::is_same_v<typename S::traits_type, std::char_traits<CharT> >, "");
+  static_assert(std::is_same_v<typename S::allocator_type, Alloc<CharT> >, "");
+  assert(s1.size() == 10);
+  assert(s1.compare(0, s1.size(), s, s1.size()) == 0);
+}
 
 TEST_CONSTEXPR_CXX20 bool test() {
   {
     const char* s = "12345678901234";
-    std::basic_string s1(s, s+10);  // Can't use {} here
-    using S = decltype(s1); // what type did we get?
-    static_assert(std::is_same_v<S::value_type,                      char>,  "");
-    static_assert(std::is_same_v<S::traits_type,    std::char_traits<char>>, "");
-    static_assert(std::is_same_v<S::allocator_type,   std::allocator<char>>, "");
-    assert(s1.size() == 10);
-    assert(s1.compare(0, s1.size(), s, s1.size()) == 0);
+    std::basic_string s1(s, s + 10); // Can't use {} here
+    test_string<char, std::allocator>(s, std::move(s1));
   }
   {
     const char* s = "12345678901234";
-    std::basic_string s1{s, s+10, std::allocator<char>{}};
-    using S = decltype(s1); // what type did we get?
-    static_assert(std::is_same_v<S::value_type,                      char>,  "");
-    static_assert(std::is_same_v<S::traits_type,    std::char_traits<char>>, "");
-    static_assert(std::is_same_v<S::allocator_type,   std::allocator<char>>, "");
-    assert(s1.size() == 10);
-    assert(s1.compare(0, s1.size(), s, s1.size()) == 0);
+    std::basic_string s1{s, s + 10, std::allocator<char>{}};
+    test_string<char, std::allocator>(s, std::move(s1));
   }
 #ifndef TEST_HAS_NO_WIDE_CHARACTERS
   {
     const wchar_t* s = L"12345678901234";
-    std::basic_string s1{s, s+10, test_allocator<wchar_t>{}};
-    using S = decltype(s1); // what type did we get?
-    static_assert(std::is_same_v<S::value_type,                      wchar_t>,  "");
-    static_assert(std::is_same_v<S::traits_type,    std::char_traits<wchar_t>>, "");
-    static_assert(std::is_same_v<S::allocator_type,   test_allocator<wchar_t>>, "");
-    assert(s1.size() == 10);
-    assert(s1.compare(0, s1.size(), s, s1.size()) == 0);
+    std::basic_string s1{s, s + 10, test_allocator<wchar_t>{}};
+    test_string<wchar_t, test_allocator>(s, std::move(s1));
+  }
+  {
+    const char16_t* s = u"12345678901234";
+    std::basic_string s1{s, s + 10, min_allocator<char16_t>{}};
+    test_string<char16_t, min_allocator>(s, std::move(s1));
   }
 #endif
   {
-    const char16_t* s = u"12345678901234";
-    std::basic_string s1{s, s+10, min_allocator<char16_t>{}};
-    using S = decltype(s1); // what type did we get?
-    static_assert(std::is_same_v<S::value_type,                      char16_t>,  "");
-    static_assert(std::is_same_v<S::traits_type,    std::char_traits<char16_t>>, "");
-    static_assert(std::is_same_v<S::allocator_type,    min_allocator<char16_t>>, "");
-    assert(s1.size() == 10);
-    assert(s1.compare(0, s1.size(), s, s1.size()) == 0);
-  }
-  {
     const char32_t* s = U"12345678901234";
-    std::basic_string s1{s, s+10, explicit_allocator<char32_t>{}};
-    using S = decltype(s1); // what type did we get?
-    static_assert(std::is_same_v<S::value_type,                        char32_t>,  "");
-    static_assert(std::is_same_v<S::traits_type,      std::char_traits<char32_t>>, "");
-    static_assert(std::is_same_v<S::allocator_type, explicit_allocator<char32_t>>, "");
-    assert(s1.size() == 10);
-    assert(s1.compare(0, s1.size(), s, s1.size()) == 0);
+    std::basic_string s1{s, s + 10, explicit_allocator<char32_t>{}};
+    test_string<char32_t, explicit_allocator>(s, std::move(s1));
   }
 
   return true;
 }
 
-int main(int, char**)
-{
+int main(int, char**) {
   test();
 #if TEST_STD_VER > 17
   static_assert(test());

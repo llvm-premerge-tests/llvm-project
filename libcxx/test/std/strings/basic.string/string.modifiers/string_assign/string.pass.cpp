@@ -107,15 +107,14 @@ TEST_CONSTEXPR_CXX20 bool test() {
 #if TEST_STD_VER > 14
   {
     typedef std::string S;
-    static_assert(noexcept(S().assign(S())), "");  // LWG#2063
+    static_assert(noexcept(S().assign(S())), ""); // LWG#2063
   }
 #endif
 
   return true;
 }
 
-int main(int, char**)
-{
+int main(int, char**) {
   test();
 #if TEST_STD_VER > 17
   static_assert(test());

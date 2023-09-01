@@ -28,6 +28,13 @@ TEST_CONSTEXPR_CXX20 void test() {
   assert(s == CONVERT_TO_CSTRING(CharT, "123abc"));
 }
 
+template <class S>
+TEST_CONSTEXPR_CXX20 void test_string() {
+  S s("123");
+  s.append({'a', 'b', 'c'});
+  assert(s == "123abc");
+}
+
 TEST_CONSTEXPR_CXX20 bool test() {
   test<std::string>();
 #ifndef TEST_HAS_NO_WIDE_CHARACTERS
