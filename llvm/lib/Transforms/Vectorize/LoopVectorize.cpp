@@ -5696,6 +5696,7 @@ void LoopVectorizationCostModel::collectElementTypesForWidening() {
   ElementTypesInLoop.clear();
   // For each block.
   for (BasicBlock *BB : TheLoop->blocks()) {
+    bool HasLoad = false;
     // For each instruction in the loop.
     for (Instruction &I : BB->instructionsWithoutDebug()) {
       Type *T = I.getType();
@@ -5707,6 +5708,10 @@ void LoopVectorizationCostModel::collectElementTypesForWidening() {
       // Only examine Loads, Stores and PHINodes.
       if (!isa<LoadInst>(I) && !isa<StoreInst>(I) && !isa<PHINode>(I))
         continue;
+
+      // Check for loads in the loop.
+      if (isa<LoadInst>(I))
+        HasLoad = true;
 
       // Examine PHI nodes that are reduction variables. Update the type to
       // account for the recurrence type.
@@ -5724,8 +5729,13 @@ void LoopVectorizationCostModel::collectElementTypesForWidening() {
       }
 
       // Examine the stored values.
-      if (auto *ST = dyn_cast<StoreInst>(&I))
+      if (auto *ST = dyn_cast<StoreInst>(&I)) {
         T = ST->getValueOperand()->getType();
+        // If dealing with a truncating store and there are no loads
+        // in the loop then add the source type to list.
+        if (isa<TruncInst>(ST->getValueOperand()) && !HasLoad)
+          T = dyn_cast<TruncInst>(ST->getValueOperand())->getSrcTy();
+      }
 
       assert(T->isSized() &&
              "Expected the load/store/recurrence type to be sized");
