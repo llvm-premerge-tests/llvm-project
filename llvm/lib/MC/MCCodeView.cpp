@@ -265,10 +265,23 @@ void CodeViewContext::emitFileChecksumOffset(MCObjectStreamer &OS,
 
 void CodeViewContext::addLineEntry(const MCCVLoc &LineEntry) {
   size_t Offset = MCCVLines.size();
-  auto I = MCCVLineStartStop.insert(
-      {LineEntry.getFunctionId(), {Offset, Offset + 1}});
-  if (!I.second)
-    I.first->second.second = Offset + 1;
+  {
+    auto I = MCCVLineStartStop.insert(
+        {LineEntry.getFunctionId(), {Offset, Offset + 1}});
+    if (!I.second)
+      I.first->second.second = Offset + 1;
+  }
+
+  // If this line is inlined, then place it in the block of the
+  // "inlined-at" function as well.
+  MCCVFunctionInfo *SiteInfo = getCVFunctionInfo(LineEntry.getFunctionId());
+  if (SiteInfo->isInlinedCallSite()) {
+    auto I = MCCVLineStartStop.insert(
+        {SiteInfo->getParentFuncId(), {Offset, Offset + 1}});
+    if (!I.second)
+      I.first->second.second = Offset + 1;
+  }
+
   MCCVLines.push_back(LineEntry);
 }
 
