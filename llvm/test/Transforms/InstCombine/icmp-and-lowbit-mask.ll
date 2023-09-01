@@ -503,9 +503,8 @@ define i1 @src_is_notmask_lshr_shl_fail_mismatch_shifts(i8 %x_in, i8 %y, i8 %z) 
 ; CHECK-NEXT:    [[X:%.*]] = xor i8 [[X_IN:%.*]], 123
 ; CHECK-NEXT:    [[MASK_SHR:%.*]] = lshr i8 -1, [[Y:%.*]]
 ; CHECK-NEXT:    [[NMASK:%.*]] = shl i8 [[MASK_SHR]], [[Z:%.*]]
-; CHECK-NEXT:    [[MASK:%.*]] = xor i8 [[NMASK]], -1
-; CHECK-NEXT:    [[AND:%.*]] = and i8 [[X]], [[MASK]]
-; CHECK-NEXT:    [[R:%.*]] = icmp eq i8 [[AND]], [[X]]
+; CHECK-NEXT:    [[TMP1:%.*]] = and i8 [[X]], [[NMASK]]
+; CHECK-NEXT:    [[R:%.*]] = icmp eq i8 [[TMP1]], 0
 ; CHECK-NEXT:    ret i1 [[R]]
 ;
   %x = xor i8 %x_in, 123
