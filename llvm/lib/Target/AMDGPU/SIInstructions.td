@@ -1899,6 +1899,12 @@ def : GCNPat <
 /********** ================== **********/
 
 def : GCNPat <
+  (i32 imm:$imm),
+  (S_MOV_B32 imm:$imm)
+>;
+
+// FIXME: Remove VGPRImm
+def : GCNPat <
   (VGPRImm<(i32 imm)>:$imm),
   (V_MOV_B32_e32 imm:$imm)
 >;
@@ -1906,11 +1912,6 @@ def : GCNPat <
 def : GCNPat <
   (VGPRImm<(f32 fpimm)>:$imm),
   (V_MOV_B32_e32 (f32 (bitcast_fpimm_to_i32 $imm)))
->;
-
-def : GCNPat <
-  (i32 imm:$imm),
-  (S_MOV_B32 imm:$imm)
 >;
 
 def : GCNPat <
@@ -1932,13 +1933,28 @@ def : GCNPat <
 >;
 
 def : GCNPat <
+  (VGPRImm<(i16 imm)>:$imm),
+  (V_MOV_B32_e32 imm:$imm)
+>;
+
+def : GCNPat <
   (f32 fpimm:$imm),
   (S_MOV_B32 (f32 (bitcast_fpimm_to_i32 $imm)))
 >;
 
 def : GCNPat <
+  (f32 fpimm:$imm),
+  (V_MOV_B32_e32 (f32 (bitcast_fpimm_to_i32 $imm)))
+>;
+
+def : GCNPat <
   (f16 fpimm:$imm),
   (S_MOV_B32 (i32 (bitcast_fpimm_to_i32 $imm)))
+>;
+
+def : GCNPat <
+  (f16 fpimm:$imm),
+  (V_MOV_B32_e32 (i32 (bitcast_fpimm_to_i32 $imm)))
 >;
 
 def : GCNPat <
@@ -1956,27 +1972,21 @@ def : GCNPat <
   (S_MOV_B64 InlineImm64:$imm)
 >;
 
-// XXX - Should this use a s_cmp to set SCC?
+def : GCNPat <
+  (f64 InlineImmFP64:$imm),
+  (S_MOV_B64 (i64 (bitcast_fpimm_to_i64 $imm)))
+>;
 
 // Set to sign-extended 64-bit value (true = -1, false = 0)
-def : GCNPat <
-  (i1 imm:$imm),
-  (S_MOV_B64 (i64 (as_i64imm $imm)))
-> {
+def : GCNPat <(i1 imm:$imm),
+              (S_MOV_B64 imm:$imm)> {
   let WaveSizePredicate = isWave64;
 }
 
-def : GCNPat <
-  (i1 imm:$imm),
-  (S_MOV_B32 (i32 (as_i32imm $imm)))
-> {
+def : GCNPat <(i1 imm:$imm),
+              (S_MOV_B32 imm:$imm)> {
   let WaveSizePredicate = isWave32;
 }
-
-def : GCNPat <
-  (f64 InlineImmFP64:$imm),
-  (S_MOV_B64 (f64 (bitcast_fpimm_to_i64 InlineImmFP64:$imm)))
->;
 
 /********** ================== **********/
 /********** Intrinsic Patterns **********/

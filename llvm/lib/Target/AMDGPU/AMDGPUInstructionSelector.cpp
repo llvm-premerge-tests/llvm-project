@@ -2440,10 +2440,18 @@ bool AMDGPUInstructionSelector::selectG_SZA_EXT(MachineInstr &I) const {
 }
 
 bool AMDGPUInstructionSelector::selectG_CONSTANT(MachineInstr &I) const {
+  if (selectImpl(I, *CoverageInfo))
+    return true;
+
+  // FIXME: Relying on manual selection for 64-bit case, and pointer typed
+  // constants.
   MachineBasicBlock *BB = I.getParent();
   MachineOperand &ImmOp = I.getOperand(1);
   Register DstReg = I.getOperand(0).getReg();
-  unsigned Size = MRI->getType(DstReg).getSizeInBits();
+  LLT Ty = MRI->getType(DstReg);
+  unsigned Size = Ty.getSizeInBits();
+  assert((Size == 64 || Ty.isPointer()) &&
+         "patterns should have selected this");
 
   // The AMDGPU backend only supports Imm operands and not CImm or FPImm.
   if (ImmOp.isFPImm()) {
@@ -2457,19 +2465,7 @@ bool AMDGPUInstructionSelector::selectG_CONSTANT(MachineInstr &I) const {
 
   const RegisterBank *DstRB = RBI.getRegBank(DstReg, *MRI, TRI);
   const bool IsSgpr = DstRB->getID() == AMDGPU::SGPRRegBankID;
-
-  unsigned Opcode;
-  if (DstRB->getID() == AMDGPU::VCCRegBankID) {
-    Opcode = STI.isWave32() ? AMDGPU::S_MOV_B32 : AMDGPU::S_MOV_B64;
-  } else {
-    Opcode = IsSgpr ? AMDGPU::S_MOV_B32 : AMDGPU::V_MOV_B32_e32;
-
-    // We should never produce s1 values on banks other than VCC. If the user of
-    // this already constrained the register, we may incorrectly think it's VCC
-    // if it wasn't originally.
-    if (Size == 1)
-      return false;
-  }
+  unsigned Opcode = IsSgpr ? AMDGPU::S_MOV_B32 : AMDGPU::V_MOV_B32_e32;
 
   if (Size != 64) {
     I.setDesc(TII.get(Opcode));
@@ -2478,7 +2474,6 @@ bool AMDGPUInstructionSelector::selectG_CONSTANT(MachineInstr &I) const {
   }
 
   const DebugLoc &DL = I.getDebugLoc();
-
   APInt Imm(Size, I.getOperand(1).getImm());
 
   MachineInstr *ResInst;
@@ -5063,18 +5058,12 @@ void AMDGPUInstructionSelector::renderNegateImm(MachineInstrBuilder &MIB,
   MIB.addImm(-MI.getOperand(1).getCImm()->getSExtValue());
 }
 
-void AMDGPUInstructionSelector::renderBitcastImm(MachineInstrBuilder &MIB,
-                                                 const MachineInstr &MI,
-                                                 int OpIdx) const {
-  assert(OpIdx == -1);
-
+void AMDGPUInstructionSelector::renderBitcastFPImm(MachineInstrBuilder &MIB,
+                                                   const MachineInstr &MI,
+                                                   int OpIdx) const {
   const MachineOperand &Op = MI.getOperand(1);
-  if (MI.getOpcode() == TargetOpcode::G_FCONSTANT)
-    MIB.addImm(Op.getFPImm()->getValueAPF().bitcastToAPInt().getZExtValue());
-  else {
-    assert(MI.getOpcode() == TargetOpcode::G_CONSTANT && "Expected G_CONSTANT");
-    MIB.addImm(Op.getCImm()->getSExtValue());
-  }
+  assert(MI.getOpcode() == TargetOpcode::G_FCONSTANT && OpIdx == -1);
+  MIB.addImm(Op.getFPImm()->getValueAPF().bitcastToAPInt().getZExtValue());
 }
 
 void AMDGPUInstructionSelector::renderPopcntImm(MachineInstrBuilder &MIB,

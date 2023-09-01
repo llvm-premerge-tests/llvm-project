@@ -94,14 +94,14 @@ define amdgpu_kernel void @module_0_kernel_normal_extern_normal(i32 %idx) {
 ; CHECK-LABEL: module_0_kernel_normal_extern_normal:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    s_load_dword s0, s[4:5], 0x0
-; CHECK-NEXT:    v_mov_b32_e32 v0, 0
-; CHECK-NEXT:    v_mov_b32_e32 v1, 2
+; CHECK-NEXT:    v_mov_b32_e32 v0, 2
+; CHECK-NEXT:    v_mov_b32_e32 v1, 0
 ; CHECK-NEXT:    s_waitcnt lgkmcnt(0)
 ; CHECK-NEXT:    s_lshl_b32 s0, s0, 2
 ; CHECK-NEXT:    s_add_i32 s0, s0, 4
 ; CHECK-NEXT:    v_mov_b32_e32 v2, s0
-; CHECK-NEXT:    ds_write_b16 v0, v1
-; CHECK-NEXT:    ds_write_b32 v2, v0
+; CHECK-NEXT:    ds_write_b16 v1, v0
+; CHECK-NEXT:    ds_write_b32 v2, v1
 ; CHECK-NEXT:    s_endpgm
   store i16 2, ptr addrspace(3) @kernel_normal
 
@@ -129,14 +129,14 @@ define amdgpu_kernel void @module_1_kernel_normal_extern_normal(i32 %idx) {
 ; CHECK-NEXT:    s_waitcnt lgkmcnt(0)
 ; CHECK-NEXT:    s_swappc_b64 s[30:31], s[10:11]
 ; CHECK-NEXT:    s_lshl_b32 s4, s12, 2
-; CHECK-NEXT:    v_mov_b32_e32 v0, 0
-; CHECK-NEXT:    v_mov_b32_e32 v1, 1
+; CHECK-NEXT:    v_mov_b32_e32 v0, 1
+; CHECK-NEXT:    v_mov_b32_e32 v1, 0
 ; CHECK-NEXT:    s_add_i32 s4, s4, 4
 ; CHECK-NEXT:    v_mov_b32_e32 v2, 2
 ; CHECK-NEXT:    v_mov_b32_e32 v3, s4
-; CHECK-NEXT:    ds_write_b16 v0, v1
-; CHECK-NEXT:    ds_write_b16 v0, v2 offset:2
-; CHECK-NEXT:    ds_write_b32 v3, v0
+; CHECK-NEXT:    ds_write_b16 v1, v0
+; CHECK-NEXT:    ds_write_b16 v1, v2 offset:2
+; CHECK-NEXT:    ds_write_b32 v3, v1
 ; CHECK-NEXT:    s_endpgm
   call void @use_module()
   store i16 1, ptr addrspace(3) @module_variable
@@ -152,14 +152,14 @@ define amdgpu_kernel void @module_0_kernel_overalign_extern_normal(i32 %idx) {
 ; CHECK-LABEL: module_0_kernel_overalign_extern_normal:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    s_load_dword s0, s[4:5], 0x0
-; CHECK-NEXT:    v_mov_b32_e32 v0, 0
-; CHECK-NEXT:    v_mov_b32_e32 v1, 2
+; CHECK-NEXT:    v_mov_b32_e32 v0, 2
+; CHECK-NEXT:    v_mov_b32_e32 v1, 0
 ; CHECK-NEXT:    s_waitcnt lgkmcnt(0)
 ; CHECK-NEXT:    s_lshl_b32 s0, s0, 2
 ; CHECK-NEXT:    s_add_i32 s0, s0, 4
 ; CHECK-NEXT:    v_mov_b32_e32 v2, s0
-; CHECK-NEXT:    ds_write_b16 v0, v1
-; CHECK-NEXT:    ds_write_b32 v2, v0
+; CHECK-NEXT:    ds_write_b16 v1, v0
+; CHECK-NEXT:    ds_write_b32 v2, v1
 ; CHECK-NEXT:    s_endpgm
   store i16 2, ptr addrspace(3) @kernel_overalign
 
@@ -187,14 +187,14 @@ define amdgpu_kernel void @module_1_kernel_overalign_extern_normal(i32 %idx) {
 ; CHECK-NEXT:    s_waitcnt lgkmcnt(0)
 ; CHECK-NEXT:    s_swappc_b64 s[30:31], s[10:11]
 ; CHECK-NEXT:    s_lshl_b32 s4, s12, 2
-; CHECK-NEXT:    v_mov_b32_e32 v0, 0
-; CHECK-NEXT:    v_mov_b32_e32 v1, 1
+; CHECK-NEXT:    v_mov_b32_e32 v0, 1
+; CHECK-NEXT:    v_mov_b32_e32 v1, 0
 ; CHECK-NEXT:    s_add_i32 s4, s4, 8
 ; CHECK-NEXT:    v_mov_b32_e32 v2, 2
 ; CHECK-NEXT:    v_mov_b32_e32 v3, s4
-; CHECK-NEXT:    ds_write_b16 v0, v1
-; CHECK-NEXT:    ds_write_b16 v0, v2 offset:4
-; CHECK-NEXT:    ds_write_b32 v3, v0
+; CHECK-NEXT:    ds_write_b16 v1, v0
+; CHECK-NEXT:    ds_write_b16 v1, v2 offset:4
+; CHECK-NEXT:    ds_write_b32 v3, v1
 ; CHECK-NEXT:    s_endpgm
   call void @use_module()
   store i16 1, ptr addrspace(3) @module_variable
@@ -210,14 +210,14 @@ define amdgpu_kernel void @module_0_kernel_normal_extern_overalign(i32 %idx) {
 ; CHECK-LABEL: module_0_kernel_normal_extern_overalign:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    s_load_dword s0, s[4:5], 0x0
-; CHECK-NEXT:    v_mov_b32_e32 v0, 0
-; CHECK-NEXT:    v_mov_b32_e32 v1, 2
+; CHECK-NEXT:    v_mov_b32_e32 v0, 2
+; CHECK-NEXT:    v_mov_b32_e32 v1, 0
 ; CHECK-NEXT:    s_waitcnt lgkmcnt(0)
 ; CHECK-NEXT:    s_lshl_b32 s0, s0, 2
 ; CHECK-NEXT:    s_add_i32 s0, s0, 8
 ; CHECK-NEXT:    v_mov_b32_e32 v2, s0
-; CHECK-NEXT:    ds_write_b16 v0, v1
-; CHECK-NEXT:    ds_write_b32 v2, v0
+; CHECK-NEXT:    ds_write_b16 v1, v0
+; CHECK-NEXT:    ds_write_b32 v2, v1
 ; CHECK-NEXT:    s_endpgm
   store i16 2, ptr addrspace(3) @kernel_normal
 
@@ -245,14 +245,14 @@ define amdgpu_kernel void @module_1_kernel_normal_extern_overalign(i32 %idx) {
 ; CHECK-NEXT:    s_waitcnt lgkmcnt(0)
 ; CHECK-NEXT:    s_swappc_b64 s[30:31], s[10:11]
 ; CHECK-NEXT:    s_lshl_b32 s4, s12, 2
-; CHECK-NEXT:    v_mov_b32_e32 v0, 0
-; CHECK-NEXT:    v_mov_b32_e32 v1, 1
+; CHECK-NEXT:    v_mov_b32_e32 v0, 1
+; CHECK-NEXT:    v_mov_b32_e32 v1, 0
 ; CHECK-NEXT:    s_add_i32 s4, s4, 8
 ; CHECK-NEXT:    v_mov_b32_e32 v2, 2
 ; CHECK-NEXT:    v_mov_b32_e32 v3, s4
-; CHECK-NEXT:    ds_write_b16 v0, v1
-; CHECK-NEXT:    ds_write_b16 v0, v2 offset:2
-; CHECK-NEXT:    ds_write_b32 v3, v0
+; CHECK-NEXT:    ds_write_b16 v1, v0
+; CHECK-NEXT:    ds_write_b16 v1, v2 offset:2
+; CHECK-NEXT:    ds_write_b32 v3, v1
 ; CHECK-NEXT:    s_endpgm
   call void @use_module()
   store i16 1, ptr addrspace(3) @module_variable
@@ -268,14 +268,14 @@ define amdgpu_kernel void @module_0_kernel_overalign_extern_overalign(i32 %idx) 
 ; CHECK-LABEL: module_0_kernel_overalign_extern_overalign:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    s_load_dword s0, s[4:5], 0x0
-; CHECK-NEXT:    v_mov_b32_e32 v0, 0
-; CHECK-NEXT:    v_mov_b32_e32 v1, 2
+; CHECK-NEXT:    v_mov_b32_e32 v0, 2
+; CHECK-NEXT:    v_mov_b32_e32 v1, 0
 ; CHECK-NEXT:    s_waitcnt lgkmcnt(0)
 ; CHECK-NEXT:    s_lshl_b32 s0, s0, 2
 ; CHECK-NEXT:    s_add_i32 s0, s0, 8
 ; CHECK-NEXT:    v_mov_b32_e32 v2, s0
-; CHECK-NEXT:    ds_write_b16 v0, v1
-; CHECK-NEXT:    ds_write_b32 v2, v0
+; CHECK-NEXT:    ds_write_b16 v1, v0
+; CHECK-NEXT:    ds_write_b32 v2, v1
 ; CHECK-NEXT:    s_endpgm
   store i16 2, ptr addrspace(3) @kernel_overalign
 
@@ -303,14 +303,14 @@ define amdgpu_kernel void @module_1_kernel_overalign_extern_overalign(i32 %idx) 
 ; CHECK-NEXT:    s_waitcnt lgkmcnt(0)
 ; CHECK-NEXT:    s_swappc_b64 s[30:31], s[10:11]
 ; CHECK-NEXT:    s_lshl_b32 s4, s12, 2
-; CHECK-NEXT:    v_mov_b32_e32 v0, 0
-; CHECK-NEXT:    v_mov_b32_e32 v1, 1
+; CHECK-NEXT:    v_mov_b32_e32 v0, 1
+; CHECK-NEXT:    v_mov_b32_e32 v1, 0
 ; CHECK-NEXT:    s_add_i32 s4, s4, 8
 ; CHECK-NEXT:    v_mov_b32_e32 v2, 2
 ; CHECK-NEXT:    v_mov_b32_e32 v3, s4
-; CHECK-NEXT:    ds_write_b16 v0, v1
-; CHECK-NEXT:    ds_write_b16 v0, v2 offset:4
-; CHECK-NEXT:    ds_write_b32 v3, v0
+; CHECK-NEXT:    ds_write_b16 v1, v0
+; CHECK-NEXT:    ds_write_b16 v1, v2 offset:4
+; CHECK-NEXT:    ds_write_b32 v3, v1
 ; CHECK-NEXT:    s_endpgm
   call void @use_module()
   store i16 1, ptr addrspace(3) @module_variable
@@ -342,12 +342,12 @@ define amdgpu_kernel void @module_0_kernel_normal_indirect_extern_normal(i32 %id
 ; CHECK-NEXT:    s_getpc_b64 s[6:7]
 ; CHECK-NEXT:    s_add_u32 s6, s6, use_extern_normal@gotpcrel32@lo+4
 ; CHECK-NEXT:    s_addc_u32 s7, s7, use_extern_normal@gotpcrel32@hi+12
-; CHECK-NEXT:    v_mov_b32_e32 v0, 0
+; CHECK-NEXT:    v_mov_b32_e32 v0, 2
 ; CHECK-NEXT:    s_load_dwordx2 s[8:9], s[6:7], 0x0
-; CHECK-NEXT:    v_mov_b32_e32 v1, 2
+; CHECK-NEXT:    v_mov_b32_e32 v1, 0
 ; CHECK-NEXT:    s_mov_b64 s[6:7], s[4:5]
 ; CHECK-NEXT:    s_mov_b32 s15, 0
-; CHECK-NEXT:    ds_write_b16 v0, v1
+; CHECK-NEXT:    ds_write_b16 v1, v0
 ; CHECK-NEXT:    s_waitcnt lgkmcnt(0)
 ; CHECK-NEXT:    s_swappc_b64 s[30:31], s[8:9]
 ; CHECK-NEXT:    s_endpgm
@@ -377,13 +377,13 @@ define amdgpu_kernel void @module_1_kernel_normal_indirect_extern_normal(i32 %id
 ; CHECK-NEXT:    s_getpc_b64 s[4:5]
 ; CHECK-NEXT:    s_add_u32 s4, s4, use_extern_normal@gotpcrel32@lo+4
 ; CHECK-NEXT:    s_addc_u32 s5, s5, use_extern_normal@gotpcrel32@hi+12
-; CHECK-NEXT:    v_mov_b32_e32 v0, 0
+; CHECK-NEXT:    v_mov_b32_e32 v0, 1
 ; CHECK-NEXT:    s_load_dwordx2 s[4:5], s[4:5], 0x0
-; CHECK-NEXT:    v_mov_b32_e32 v1, 1
+; CHECK-NEXT:    v_mov_b32_e32 v1, 0
 ; CHECK-NEXT:    v_mov_b32_e32 v2, 2
 ; CHECK-NEXT:    s_mov_b32 s15, 4
-; CHECK-NEXT:    ds_write_b16 v0, v1
-; CHECK-NEXT:    ds_write_b16 v0, v2 offset:2
+; CHECK-NEXT:    ds_write_b16 v1, v0
+; CHECK-NEXT:    ds_write_b16 v1, v2 offset:2
 ; CHECK-NEXT:    s_waitcnt lgkmcnt(0)
 ; CHECK-NEXT:    s_swappc_b64 s[30:31], s[4:5]
 ; CHECK-NEXT:    s_endpgm
@@ -409,12 +409,12 @@ define amdgpu_kernel void @module_0_kernel_overalign_indirect_extern_normal(i32 
 ; CHECK-NEXT:    s_getpc_b64 s[6:7]
 ; CHECK-NEXT:    s_add_u32 s6, s6, use_extern_normal@gotpcrel32@lo+4
 ; CHECK-NEXT:    s_addc_u32 s7, s7, use_extern_normal@gotpcrel32@hi+12
-; CHECK-NEXT:    v_mov_b32_e32 v0, 0
+; CHECK-NEXT:    v_mov_b32_e32 v0, 2
 ; CHECK-NEXT:    s_load_dwordx2 s[8:9], s[6:7], 0x0
-; CHECK-NEXT:    v_mov_b32_e32 v1, 2
+; CHECK-NEXT:    v_mov_b32_e32 v1, 0
 ; CHECK-NEXT:    s_mov_b64 s[6:7], s[4:5]
 ; CHECK-NEXT:    s_mov_b32 s15, 2
-; CHECK-NEXT:    ds_write_b16 v0, v1
+; CHECK-NEXT:    ds_write_b16 v1, v0
 ; CHECK-NEXT:    s_waitcnt lgkmcnt(0)
 ; CHECK-NEXT:    s_swappc_b64 s[30:31], s[8:9]
 ; CHECK-NEXT:    s_endpgm
@@ -444,13 +444,13 @@ define amdgpu_kernel void @module_1_kernel_overalign_indirect_extern_normal(i32 
 ; CHECK-NEXT:    s_getpc_b64 s[4:5]
 ; CHECK-NEXT:    s_add_u32 s4, s4, use_extern_normal@gotpcrel32@lo+4
 ; CHECK-NEXT:    s_addc_u32 s5, s5, use_extern_normal@gotpcrel32@hi+12
-; CHECK-NEXT:    v_mov_b32_e32 v0, 0
+; CHECK-NEXT:    v_mov_b32_e32 v0, 1
 ; CHECK-NEXT:    s_load_dwordx2 s[4:5], s[4:5], 0x0
-; CHECK-NEXT:    v_mov_b32_e32 v1, 1
+; CHECK-NEXT:    v_mov_b32_e32 v1, 0
 ; CHECK-NEXT:    v_mov_b32_e32 v2, 2
 ; CHECK-NEXT:    s_mov_b32 s15, 6
-; CHECK-NEXT:    ds_write_b16 v0, v1
-; CHECK-NEXT:    ds_write_b16 v0, v2 offset:4
+; CHECK-NEXT:    ds_write_b16 v1, v0
+; CHECK-NEXT:    ds_write_b16 v1, v2 offset:4
 ; CHECK-NEXT:    s_waitcnt lgkmcnt(0)
 ; CHECK-NEXT:    s_swappc_b64 s[30:31], s[4:5]
 ; CHECK-NEXT:    s_endpgm
@@ -476,12 +476,12 @@ define amdgpu_kernel void @module_0_kernel_normal_indirect_extern_overalign(i32 
 ; CHECK-NEXT:    s_getpc_b64 s[6:7]
 ; CHECK-NEXT:    s_add_u32 s6, s6, use_extern_overalign@gotpcrel32@lo+4
 ; CHECK-NEXT:    s_addc_u32 s7, s7, use_extern_overalign@gotpcrel32@hi+12
-; CHECK-NEXT:    v_mov_b32_e32 v0, 0
+; CHECK-NEXT:    v_mov_b32_e32 v0, 2
 ; CHECK-NEXT:    s_load_dwordx2 s[8:9], s[6:7], 0x0
-; CHECK-NEXT:    v_mov_b32_e32 v1, 2
+; CHECK-NEXT:    v_mov_b32_e32 v1, 0
 ; CHECK-NEXT:    s_mov_b64 s[6:7], s[4:5]
 ; CHECK-NEXT:    s_mov_b32 s15, 1
-; CHECK-NEXT:    ds_write_b16 v0, v1
+; CHECK-NEXT:    ds_write_b16 v1, v0
 ; CHECK-NEXT:    s_waitcnt lgkmcnt(0)
 ; CHECK-NEXT:    s_swappc_b64 s[30:31], s[8:9]
 ; CHECK-NEXT:    s_endpgm
@@ -511,13 +511,13 @@ define amdgpu_kernel void @module_1_kernel_normal_indirect_extern_overalign(i32 
 ; CHECK-NEXT:    s_getpc_b64 s[4:5]
 ; CHECK-NEXT:    s_add_u32 s4, s4, use_extern_overalign@gotpcrel32@lo+4
 ; CHECK-NEXT:    s_addc_u32 s5, s5, use_extern_overalign@gotpcrel32@hi+12
-; CHECK-NEXT:    v_mov_b32_e32 v0, 0
+; CHECK-NEXT:    v_mov_b32_e32 v0, 1
 ; CHECK-NEXT:    s_load_dwordx2 s[4:5], s[4:5], 0x0
-; CHECK-NEXT:    v_mov_b32_e32 v1, 1
+; CHECK-NEXT:    v_mov_b32_e32 v1, 0
 ; CHECK-NEXT:    v_mov_b32_e32 v2, 2
 ; CHECK-NEXT:    s_mov_b32 s15, 5
-; CHECK-NEXT:    ds_write_b16 v0, v1
-; CHECK-NEXT:    ds_write_b16 v0, v2 offset:2
+; CHECK-NEXT:    ds_write_b16 v1, v0
+; CHECK-NEXT:    ds_write_b16 v1, v2 offset:2
 ; CHECK-NEXT:    s_waitcnt lgkmcnt(0)
 ; CHECK-NEXT:    s_swappc_b64 s[30:31], s[4:5]
 ; CHECK-NEXT:    s_endpgm
@@ -543,12 +543,12 @@ define amdgpu_kernel void @module_0_kernel_overalign_indirect_extern_overalign(i
 ; CHECK-NEXT:    s_getpc_b64 s[6:7]
 ; CHECK-NEXT:    s_add_u32 s6, s6, use_extern_overalign@gotpcrel32@lo+4
 ; CHECK-NEXT:    s_addc_u32 s7, s7, use_extern_overalign@gotpcrel32@hi+12
-; CHECK-NEXT:    v_mov_b32_e32 v0, 0
+; CHECK-NEXT:    v_mov_b32_e32 v0, 2
 ; CHECK-NEXT:    s_load_dwordx2 s[8:9], s[6:7], 0x0
-; CHECK-NEXT:    v_mov_b32_e32 v1, 2
+; CHECK-NEXT:    v_mov_b32_e32 v1, 0
 ; CHECK-NEXT:    s_mov_b64 s[6:7], s[4:5]
 ; CHECK-NEXT:    s_mov_b32 s15, 3
-; CHECK-NEXT:    ds_write_b16 v0, v1
+; CHECK-NEXT:    ds_write_b16 v1, v0
 ; CHECK-NEXT:    s_waitcnt lgkmcnt(0)
 ; CHECK-NEXT:    s_swappc_b64 s[30:31], s[8:9]
 ; CHECK-NEXT:    s_endpgm
@@ -578,13 +578,13 @@ define amdgpu_kernel void @module_1_kernel_overalign_indirect_extern_overalign(i
 ; CHECK-NEXT:    s_getpc_b64 s[4:5]
 ; CHECK-NEXT:    s_add_u32 s4, s4, use_extern_overalign@gotpcrel32@lo+4
 ; CHECK-NEXT:    s_addc_u32 s5, s5, use_extern_overalign@gotpcrel32@hi+12
-; CHECK-NEXT:    v_mov_b32_e32 v0, 0
+; CHECK-NEXT:    v_mov_b32_e32 v0, 1
 ; CHECK-NEXT:    s_load_dwordx2 s[4:5], s[4:5], 0x0
-; CHECK-NEXT:    v_mov_b32_e32 v1, 1
+; CHECK-NEXT:    v_mov_b32_e32 v1, 0
 ; CHECK-NEXT:    v_mov_b32_e32 v2, 2
 ; CHECK-NEXT:    s_mov_b32 s15, 7
-; CHECK-NEXT:    ds_write_b16 v0, v1
-; CHECK-NEXT:    ds_write_b16 v0, v2 offset:4
+; CHECK-NEXT:    ds_write_b16 v1, v0
+; CHECK-NEXT:    ds_write_b16 v1, v2 offset:4
 ; CHECK-NEXT:    s_waitcnt lgkmcnt(0)
 ; CHECK-NEXT:    s_swappc_b64 s[30:31], s[4:5]
 ; CHECK-NEXT:    s_endpgm
