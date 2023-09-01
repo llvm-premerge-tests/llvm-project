@@ -16,6 +16,7 @@
 #include "format.h"
 #include "internal-unit.h"
 #include "io-error.h"
+#include "flang/Common/reference.h"
 #include "flang/Common/visit.h"
 #include "flang/Runtime/descriptor.h"
 #include "flang/Runtime/io-api.h"
@@ -200,39 +201,31 @@ public:
   }
 
 private:
-  std::variant<std::reference_wrapper<OpenStatementState>,
-      std::reference_wrapper<CloseStatementState>,
-      std::reference_wrapper<NoopStatementState>,
-      std::reference_wrapper<
-          InternalFormattedIoStatementState<Direction::Output>>,
-      std::reference_wrapper<
-          InternalFormattedIoStatementState<Direction::Input>>,
-      std::reference_wrapper<InternalListIoStatementState<Direction::Output>>,
-      std::reference_wrapper<InternalListIoStatementState<Direction::Input>>,
-      std::reference_wrapper<
-          ExternalFormattedIoStatementState<Direction::Output>>,
-      std::reference_wrapper<
-          ExternalFormattedIoStatementState<Direction::Input>>,
-      std::reference_wrapper<ExternalListIoStatementState<Direction::Output>>,
-      std::reference_wrapper<ExternalListIoStatementState<Direction::Input>>,
-      std::reference_wrapper<
-          ExternalUnformattedIoStatementState<Direction::Output>>,
-      std::reference_wrapper<
-          ExternalUnformattedIoStatementState<Direction::Input>>,
-      std::reference_wrapper<ChildFormattedIoStatementState<Direction::Output>>,
-      std::reference_wrapper<ChildFormattedIoStatementState<Direction::Input>>,
-      std::reference_wrapper<ChildListIoStatementState<Direction::Output>>,
-      std::reference_wrapper<ChildListIoStatementState<Direction::Input>>,
-      std::reference_wrapper<
-          ChildUnformattedIoStatementState<Direction::Output>>,
-      std::reference_wrapper<
-          ChildUnformattedIoStatementState<Direction::Input>>,
-      std::reference_wrapper<InquireUnitState>,
-      std::reference_wrapper<InquireNoUnitState>,
-      std::reference_wrapper<InquireUnconnectedFileState>,
-      std::reference_wrapper<InquireIOLengthState>,
-      std::reference_wrapper<ExternalMiscIoStatementState>,
-      std::reference_wrapper<ErroneousIoStatementState>>
+  std::variant<common::Reference<OpenStatementState>,
+      common::Reference<CloseStatementState>,
+      common::Reference<NoopStatementState>,
+      common::Reference<InternalFormattedIoStatementState<Direction::Output>>,
+      common::Reference<InternalFormattedIoStatementState<Direction::Input>>,
+      common::Reference<InternalListIoStatementState<Direction::Output>>,
+      common::Reference<InternalListIoStatementState<Direction::Input>>,
+      common::Reference<ExternalFormattedIoStatementState<Direction::Output>>,
+      common::Reference<ExternalFormattedIoStatementState<Direction::Input>>,
+      common::Reference<ExternalListIoStatementState<Direction::Output>>,
+      common::Reference<ExternalListIoStatementState<Direction::Input>>,
+      common::Reference<ExternalUnformattedIoStatementState<Direction::Output>>,
+      common::Reference<ExternalUnformattedIoStatementState<Direction::Input>>,
+      common::Reference<ChildFormattedIoStatementState<Direction::Output>>,
+      common::Reference<ChildFormattedIoStatementState<Direction::Input>>,
+      common::Reference<ChildListIoStatementState<Direction::Output>>,
+      common::Reference<ChildListIoStatementState<Direction::Input>>,
+      common::Reference<ChildUnformattedIoStatementState<Direction::Output>>,
+      common::Reference<ChildUnformattedIoStatementState<Direction::Input>>,
+      common::Reference<InquireUnitState>,
+      common::Reference<InquireNoUnitState>,
+      common::Reference<InquireUnconnectedFileState>,
+      common::Reference<InquireIOLengthState>,
+      common::Reference<ExternalMiscIoStatementState>,
+      common::Reference<ErroneousIoStatementState>>
       u_;
 };
 
