@@ -8,6 +8,7 @@
 
 #include "support/Threading.h"
 #include "support/Trace.h"
+#include "clang/Basic/Stack.h"
 #include "llvm/ADT/ScopeExit.h"
 #include "llvm/Support/Threading.h"
 #include "llvm/Support/thread.h"
