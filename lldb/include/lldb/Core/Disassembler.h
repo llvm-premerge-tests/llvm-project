@@ -64,14 +64,16 @@ public:
 
   const Address &GetAddress() const { return m_address; }
 
-  const char *GetMnemonic(const ExecutionContext *exe_ctx) {
+  const char *GetMnemonic(const ExecutionContext *exe_ctx,
+                          bool markup = false) {
     CalculateMnemonicOperandsAndCommentIfNeeded(exe_ctx);
-    return m_opcode_name.c_str();
+    return markup ? m_markup_opcode_name.c_str() : m_opcode_name.c_str();
   }
 
-  const char *GetOperands(const ExecutionContext *exe_ctx) {
+  const char *GetOperands(const ExecutionContext *exe_ctx,
+                          bool markup = false) {
     CalculateMnemonicOperandsAndCommentIfNeeded(exe_ctx);
-    return m_mnemonics.c_str();
+    return markup ? m_markup_mnemonics.c_str() : m_mnemonics.c_str();
   }
 
   const char *GetComment(const ExecutionContext *exe_ctx) {
@@ -153,7 +155,7 @@ public:
   ///     May be 0 to indicate no indentation/alignment of the opcodes.
   virtual void Dump(Stream *s, uint32_t max_opcode_byte_size, bool show_address,
                     bool show_bytes, bool show_control_flow_kind,
-                    const ExecutionContext *exe_ctx,
+                    bool show_color, const ExecutionContext *exe_ctx,
                     const SymbolContext *sym_ctx,
                     const SymbolContext *prev_sym_ctx,
                     const FormatEntity::Entry *disassembly_addr_format,
@@ -244,7 +246,9 @@ private:
 protected:
   Opcode m_opcode; // The opcode for this instruction
   std::string m_opcode_name;
+  std::string m_markup_opcode_name;
   std::string m_mnemonics;
+  std::string m_markup_mnemonics;
   std::string m_comment;
   bool m_calculated_strings;
 
@@ -336,7 +340,8 @@ public:
   void Append(lldb::InstructionSP &inst_sp);
 
   void Dump(Stream *s, bool show_address, bool show_bytes,
-            bool show_control_flow_kind, const ExecutionContext *exe_ctx);
+            bool show_control_flow_kind, bool show_color,
+            const ExecutionContext *exe_ctx);
 
 private:
   typedef std::vector<lldb::InstructionSP> collection;
@@ -449,8 +454,8 @@ public:
   void PrintInstructions(Debugger &debugger, const ArchSpec &arch,
                          const ExecutionContext &exe_ctx,
                          bool mixed_source_and_assembly,
-                         uint32_t num_mixed_context_lines, uint32_t options,
-                         Stream &strm);
+                         uint32_t num_mixed_context_lines, bool show_color,
+                         uint32_t options, Stream &strm);
 
   size_t ParseInstructions(Target &target, Address address, Limit limit,
                            Stream *error_strm_ptr,

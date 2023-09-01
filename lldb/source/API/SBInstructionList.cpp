@@ -166,8 +166,8 @@ bool SBInstructionList::GetDescription(Stream &sref) {
         }
 
         inst->Dump(&sref, max_opcode_byte_size, true, false,
-                   /*show_control_flow_kind=*/false, nullptr, &sc, &prev_sc,
-                   &format, 0);
+                   /*show_control_flow_kind=*/false, /*show_color=*/false,
+                   nullptr, &sc, &prev_sc, &format, 0);
         sref.EOL();
       }
       return true;

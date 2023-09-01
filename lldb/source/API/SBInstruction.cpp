@@ -261,7 +261,7 @@ bool SBInstruction::GetDescription(lldb::SBStream &s) {
     FormatEntity::Entry format;
     FormatEntity::Parse("${addr}: ", format);
     inst_sp->Dump(&s.ref(), 0, true, false, /*show_control_flow_kind=*/false,
-                  nullptr, &sc, nullptr, &format, 0);
+                  /*show_color=*/false, nullptr, &sc, nullptr, &format, 0);
     return true;
   }
   return false;
@@ -296,7 +296,7 @@ void SBInstruction::Print(FileSP out_sp) {
     FormatEntity::Entry format;
     FormatEntity::Parse("${addr}: ", format);
     inst_sp->Dump(&out_stream, 0, true, false, /*show_control_flow_kind=*/false,
-                  nullptr, &sc, nullptr, &format, 0);
+                  /*show_color=*/false, nullptr, &sc, nullptr, &format, 0);
   }
 }
 

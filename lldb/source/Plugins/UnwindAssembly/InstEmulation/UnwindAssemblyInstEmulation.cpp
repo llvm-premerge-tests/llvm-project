@@ -84,6 +84,7 @@ bool UnwindAssemblyInstEmulation::GetNonCallSiteUnwindPlanFromAssembly(
       const bool show_address = true;
       const bool show_bytes = true;
       const bool show_control_flow_kind = true;
+      const bool show_color = false;
       m_cfa_reg_info = *m_inst_emulator_up->GetRegisterInfo(
           unwind_plan.GetRegisterKind(), unwind_plan.GetInitialCFARegister());
       m_fp_is_cfa = false;
@@ -242,8 +243,8 @@ bool UnwindAssemblyInstEmulation::GetNonCallSiteUnwindPlanFromAssembly(
               lldb_private::FormatEntity::Entry format;
               FormatEntity::Parse("${frame.pc}: ", format);
               inst->Dump(&strm, inst_list.GetMaxOpcocdeByteSize(), show_address,
-                         show_bytes, show_control_flow_kind, nullptr, nullptr,
-                         nullptr, &format, 0);
+                         show_bytes, show_control_flow_kind, show_color,
+                         nullptr, nullptr, nullptr, &format, 0);
               log->PutString(strm.GetString());
             }
 

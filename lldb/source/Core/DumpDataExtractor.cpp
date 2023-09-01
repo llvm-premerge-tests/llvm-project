@@ -12,6 +12,7 @@
 #include "lldb/lldb-forward.h"
 
 #include "lldb/Core/Address.h"
+#include "lldb/Core/Debugger.h"
 #include "lldb/Core/Disassembler.h"
 #include "lldb/Core/ModuleList.h"
 #include "lldb/Target/ABI.h"
@@ -155,7 +156,8 @@ static lldb::offset_t DumpInstructions(const DataExtractor &DE, Stream *s,
         ExecutionContext exe_ctx;
         exe_scope->CalculateExecutionContext(exe_ctx);
         disassembler_sp->GetInstructionList().Dump(
-            s, show_address, show_bytes, show_control_flow_kind, &exe_ctx);
+            s, show_address, show_bytes, show_control_flow_kind,
+            target_sp->GetDebugger().GetUseColor(), &exe_ctx);
       }
     }
   } else

@@ -189,7 +189,8 @@ public:
             &m_s, /*max_opcode_byte_size=*/0,
             /*show_address=*/false,
             /*show_bytes=*/false, m_options.show_control_flow_kind,
-            &item.symbol_info->exe_ctx, &item.symbol_info->sc,
+            /*show_color=*/false, &item.symbol_info->exe_ctx,
+            &item.symbol_info->sc,
             /*prev_sym_ctx=*/nullptr,
             /*disassembly_addr_format=*/nullptr,
             /*max_address_text_size=*/0);

@@ -171,13 +171,14 @@ void ThreadPlanAssemblyTracer::Log() {
         const bool show_bytes = true;
         const bool show_address = true;
         const bool show_control_flow_kind = true;
+        const bool show_color = false;
         Instruction *instruction =
             instruction_list.GetInstructionAtIndex(0).get();
         const FormatEntity::Entry *disassemble_format =
             m_process.GetTarget().GetDebugger().GetDisassemblyFormat();
         instruction->Dump(stream, max_opcode_byte_size, show_address,
-                          show_bytes, show_control_flow_kind, nullptr, nullptr,
-                          nullptr, disassemble_format, 0);
+                          show_bytes, show_control_flow_kind, show_color,
+                          nullptr, nullptr, nullptr, disassemble_format, 0);
       }
     }
   }

@@ -182,9 +182,9 @@ bool Disassembler::Disassemble(Debugger &debugger, const ArchSpec &arch,
   if (bytes_disassembled == 0)
     return false;
 
-  disasm_sp->PrintInstructions(debugger, arch, exe_ctx,
-                               mixed_source_and_assembly,
-                               num_mixed_context_lines, options, strm);
+  disasm_sp->PrintInstructions(
+      debugger, arch, exe_ctx, mixed_source_and_assembly,
+      num_mixed_context_lines, debugger.GetUseColor(), options, strm);
   return true;
 }
 
@@ -275,7 +275,8 @@ void Disassembler::PrintInstructions(Debugger &debugger, const ArchSpec &arch,
                                      const ExecutionContext &exe_ctx,
                                      bool mixed_source_and_assembly,
                                      uint32_t num_mixed_context_lines,
-                                     uint32_t options, Stream &strm) {
+                                     bool show_color, uint32_t options,
+                                     Stream &strm) {
   // We got some things disassembled...
   size_t num_instructions_found = GetInstructionList().GetSize();
 
@@ -526,8 +527,8 @@ void Disassembler::PrintInstructions(Debugger &debugger, const ArchSpec &arch,
       const bool show_control_flow_kind =
           (options & eOptionShowControlFlowKind) != 0;
       inst->Dump(&strm, max_opcode_byte_size, true, show_bytes,
-                 show_control_flow_kind, &exe_ctx, &sc, &prev_sc, nullptr,
-                 address_text_size);
+                 show_control_flow_kind, show_color, &exe_ctx, &sc, &prev_sc,
+                 nullptr, address_text_size);
       strm.EOL();
     } else {
       break;
@@ -600,7 +601,7 @@ const char *Instruction::GetNameForInstructionControlFlowKind(
 
 void Instruction::Dump(lldb_private::Stream *s, uint32_t max_opcode_byte_size,
                        bool show_address, bool show_bytes,
-                       bool show_control_flow_kind,
+                       bool show_control_flow_kind, bool show_color,
                        const ExecutionContext *exe_ctx,
                        const SymbolContext *sym_ctx,
                        const SymbolContext *prev_sym_ctx,
@@ -646,17 +647,20 @@ void Instruction::Dump(lldb_private::Stream *s, uint32_t max_opcode_byte_size,
   }
 
   const size_t opcode_pos = ss.GetSizeOfLastLine();
+  const std::string &opcode_name =
+      show_color ? m_markup_opcode_name : m_opcode_name;
+  const std::string &mnemonics = show_color ? m_markup_mnemonics : m_mnemonics;
 
   // The default opcode size of 7 characters is plenty for most architectures
   // but some like arm can pull out the occasional vqrshrun.s16.  We won't get
   // consistent column spacing in these cases, unfortunately.
-  if (m_opcode_name.length() >= opcode_column_width) {
-    opcode_column_width = m_opcode_name.length() + 1;
+  if (opcode_name.length() >= opcode_column_width) {
+    opcode_column_width = opcode_name.length() + 1;
   }
 
-  ss.PutCString(m_opcode_name);
+  ss.PutCString(opcode_name);
   ss.FillLastLineToColumn(opcode_pos + opcode_column_width, ' ');
-  ss.PutCString(m_mnemonics);
+  ss.PutCString(mnemonics);
 
   if (!m_comment.empty()) {
     ss.FillLastLineToColumn(
@@ -985,7 +989,7 @@ InstructionSP InstructionList::GetInstructionAtAddress(const Address &address) {
 }
 
 void InstructionList::Dump(Stream *s, bool show_address, bool show_bytes,
-                           bool show_control_flow_kind,
+                           bool show_control_flow_kind, bool show_color,
                            const ExecutionContext *exe_ctx) {
   const uint32_t max_opcode_byte_size = GetMaxOpcocdeByteSize();
   collection::const_iterator pos, begin, end;
@@ -1005,7 +1009,7 @@ void InstructionList::Dump(Stream *s, bool show_address, bool show_bytes,
     if (pos != begin)
       s->EOL();
     (*pos)->Dump(s, max_opcode_byte_size, show_address, show_bytes,
-                 show_control_flow_kind, exe_ctx, nullptr, nullptr,
+                 show_control_flow_kind, show_color, exe_ctx, nullptr, nullptr,
                  disassembly_format, 0);
   }
 }

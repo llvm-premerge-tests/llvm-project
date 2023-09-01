@@ -9,6 +9,7 @@
 #include "DisassemblerLLVMC.h"
 
 #include "llvm-c/Disassembler.h"
+#include "llvm/ADT/ScopeExit.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/MC/MCAsmInfo.h"
@@ -63,6 +64,8 @@ public:
   void PrintMCInst(llvm::MCInst &mc_inst, lldb::addr_t pc,
                    std::string &inst_string, std::string &comments_string);
   void SetStyle(bool use_hex_immed, HexImmediateStyle hex_style);
+  void SetUseColor(bool use_color);
+  bool GetUseColor() const;
   bool CanBranch(llvm::MCInst &mc_inst) const;
   bool HasDelaySlot(llvm::MCInst &mc_inst) const;
   bool IsCall(llvm::MCInst &mc_inst) const;
@@ -565,7 +568,9 @@ public:
 
     if (m_opcode.GetData(data)) {
       std::string out_string;
+      std::string markup_out_string;
       std::string comment_string;
+      std::string markup_comment_string;
 
       DisassemblerScope disasm(*this, exe_ctx);
       if (disasm) {
@@ -607,7 +612,14 @@ public:
 
         if (inst_size > 0) {
           mc_disasm_ptr->SetStyle(use_hex_immediates, hex_style);
+
+          const bool saved_use_color = mc_disasm_ptr->GetUseColor();
+          mc_disasm_ptr->SetUseColor(false);
           mc_disasm_ptr->PrintMCInst(inst, pc, out_string, comment_string);
+          mc_disasm_ptr->SetUseColor(true);
+          mc_disasm_ptr->PrintMCInst(inst, pc, markup_out_string,
+                                     markup_comment_string);
+          mc_disasm_ptr->SetUseColor(saved_use_color);
 
           if (!comment_string.empty()) {
             AppendComment(comment_string);
@@ -671,6 +683,11 @@ public:
         if (s_regex.Execute(out_string, &matches)) {
           m_opcode_name = matches[1].str();
           m_mnemonics = matches[2].str();
+        }
+        matches.clear();
+        if (s_regex.Execute(markup_out_string, &matches)) {
+          m_markup_opcode_name = matches[1].str();
+          m_markup_mnemonics = matches[2].str();
         }
       }
     }
@@ -1344,10 +1361,12 @@ void DisassemblerLLVMC::MCDisasmInstance::PrintMCInst(
   llvm::raw_string_ostream inst_stream(inst_string);
   llvm::raw_string_ostream comments_stream(comments_string);
 
+  inst_stream.enable_colors(m_instr_printer_up->getUseColor());
   m_instr_printer_up->setCommentStream(comments_stream);
   m_instr_printer_up->printInst(&mc_inst, pc, llvm::StringRef(),
                                 *m_subtarget_info_up, inst_stream);
   m_instr_printer_up->setCommentStream(llvm::nulls());
+
   comments_stream.flush();
 
   static std::string g_newlines("\r\n");
@@ -1372,6 +1391,14 @@ void DisassemblerLLVMC::MCDisasmInstance::SetStyle(
     m_instr_printer_up->setPrintHexStyle(llvm::HexStyle::Asm);
     break;
   }
+}
+
+void DisassemblerLLVMC::MCDisasmInstance::SetUseColor(bool use_color) {
+  m_instr_printer_up->setUseColor(use_color);
+}
+
+bool DisassemblerLLVMC::MCDisasmInstance::GetUseColor() const {
+  return m_instr_printer_up->getUseColor();
 }
 
 bool DisassemblerLLVMC::MCDisasmInstance::CanBranch(
