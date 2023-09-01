@@ -2518,8 +2518,10 @@ public:
 
   ~VPlan();
 
-  /// Create an initial VPlan with preheader and entry blocks. Creates a
-  /// VPExpandSCEVRecipe for \p TripCount and uses it as plan's trip count.
+  /// Create initial VPlan skeleton, having a VPBasicBlock for the pre-header
+  /// which contains SCEV expansions that need to happen before the CFG is
+  /// modified; a VPbasicBlock for the vector pre-header, followed by a region
+  /// for the vector loop, followed by the middle VPBasicBlock.
   static VPlanPtr createInitialVPlan(const SCEV *TripCount,
                                      ScalarEvolution &PSE);
 

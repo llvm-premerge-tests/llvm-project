@@ -303,6 +303,19 @@ void PlainCFGBuilder::createVPInstructionsForVPBB(VPBasicBlock *VPBB,
 
 // Main interface to build the plain CFG.
 void PlainCFGBuilder::buildPlainCFG() {
+  // 0. Reuse the top-level region, vector-preheader and exit VPBBs from the
+  // skeleton.
+  VPRegionBlock *TheRegion = Plan.getVectorLoopRegion();
+  Loop2Region[TheLoop] = TheRegion;
+  BasicBlock *ThePreheaderBB = TheLoop->getLoopPreheader();
+  assert((ThePreheaderBB->getTerminator()->getNumSuccessors() == 1) &&
+         "Unexpected loop preheader");
+  VPBasicBlock *VectorPreheaderVPBB = Plan.getEntry();
+  BB2VPBB[ThePreheaderBB] = VectorPreheaderVPBB;
+  BasicBlock *LoopExitBB = TheLoop->getUniqueExitBlock();
+  assert(LoopExitBB && "Loops with multiple exits are not supported.");
+  BB2VPBB[LoopExitBB] = cast<VPBasicBlock>(TheRegion->getSingleSuccessor());
+
   // 1. Scan the body of the loop in a topological order to visit each basic
   // block after having visited its predecessor basic blocks. Create a VPBB for
   // each BB and link it to its successor and predecessor VPBBs. Note that
@@ -312,22 +325,17 @@ void PlainCFGBuilder::buildPlainCFG() {
 
   // Loop PH needs to be explicitly visited since it's not taken into account by
   // LoopBlocksDFS.
-  BasicBlock *ThePreheaderBB = TheLoop->getLoopPreheader();
-  assert((ThePreheaderBB->getTerminator()->getNumSuccessors() == 1) &&
-         "Unexpected loop preheader");
-  VPBasicBlock *ThePreheaderVPBB = Plan.getEntry();
-  BB2VPBB[ThePreheaderBB] = ThePreheaderVPBB;
-  ThePreheaderVPBB->setName("vector.ph");
+  VectorPreheaderVPBB->setName("vector.ph");
   for (auto &I : *ThePreheaderBB) {
     if (I.getType()->isVoidTy())
       continue;
     IRDef2VPValue[&I] = Plan.getVPValueOrAddLiveIn(&I);
   }
-  // Create region (and header block) for the outer loop, so that we can link
-  // PH->Region.
-  auto *TopRegion = cast<VPRegionBlock>(getOrCreateVPB(TheLoop->getHeader()));
-  ThePreheaderVPBB->setOneSuccessor(TopRegion);
-  TopRegion->getEntry()->setName("vector.body");
+  // Create empty VPBB for header block of the top region and set its name.
+  VPBlockBase *HeaderVPBB = getOrCreateVPBB(TheLoop->getHeader());
+  HeaderVPBB->setName("vector.body");
+  HeaderVPBB->setParent(TheRegion);
+  TheRegion->setEntry(HeaderVPBB);
 
   LoopBlocksRPO RPO(TheLoop);
   RPO.perform(LI);
@@ -343,7 +351,8 @@ void PlainCFGBuilder::buildPlainCFG() {
     if (isHeaderVPBB(VPBB)) {
       // BB is a loop header, set the predecessor for the region.
       assert(LI->getLoopFor(BB)->getHeader() == BB);
-      setRegionPredsFromBB(Region, BB);
+      if (TheRegion != Region)
+        setRegionPredsFromBB(Region, BB);
     } else
       setVPBBPredsFromBB(VPBB, BB);
 
@@ -374,7 +383,10 @@ void PlainCFGBuilder::buildPlainCFG() {
           Successors[0] == Region ? Successors[1] : Successors[0];
       Region->setExiting(VPBB);
       Region->setParent(ExitVPBB->getParent());
-      Successors = {ExitVPBB};
+      if (TheRegion != Region)
+        Successors = {ExitVPBB};
+      else
+        continue;
       // For the latch, we need to set the successor for the region.
       VPB = Region;
     }
@@ -382,21 +394,13 @@ void PlainCFGBuilder::buildPlainCFG() {
     // Link successors.
     if (Successors.size() == 1)
       VPB->setOneSuccessor(Successors[0]);
-    else if (Successors.size() == 2)
+    else {
+      assert(Successors.size() == 2);
       VPB->setTwoSuccessors(Successors[0], Successors[1]);
+    }
   }
 
-  // 2. Process outermost loop exit. We created an empty VPBB for the loop
-  // single exit BB during the RPO traversal of the loop body but Instructions
-  // weren't visited because it's not part of the the loop.
-  BasicBlock *LoopExitBB = TheLoop->getUniqueExitBlock();
-  assert(LoopExitBB && "Loops with multiple exits are not supported.");
-  VPBasicBlock *LoopExitVPBB = BB2VPBB[LoopExitBB];
-  // Loop exit was already set as successor of the loop exiting BB.
-  // We only set its predecessor VPBB now.
-  setVPBBPredsFromBB(LoopExitVPBB, LoopExitBB);
-
-  // 3. The whole CFG has been built at this point so all the input Values must
+  // 2. The whole CFG has been built at this point so all the input Values must
   // have a VPlan couterpart. Fix VPlan phi nodes by adding their corresponding
   // VPlan operands.
   fixPhiNodes();
