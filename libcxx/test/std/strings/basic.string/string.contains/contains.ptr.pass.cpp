@@ -16,9 +16,8 @@
 
 #include "test_macros.h"
 
-constexpr bool test() {
-  using S = std::string;
-
+template <class S>
+TEST_CONSTEXPR_CXX20 void test_string() {
   const char* s = "abcde";
   S s0;
   S s1{s + 4, 1};
@@ -60,6 +59,10 @@ constexpr bool test() {
   assert(!sNot.contains("abcde"));
   assert(sNot.contains("xyz"));
   assert(!sNot.contains("zyx"));
+}
+
+TEST_CONSTEXPR_CXX20 bool test() {
+  test_string<std::string>();
 
   return true;
 }

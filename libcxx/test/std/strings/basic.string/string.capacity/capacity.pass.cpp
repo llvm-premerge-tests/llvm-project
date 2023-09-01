@@ -37,10 +37,16 @@ TEST_CONSTEXPR_CXX20 void test(S s, test_allocator_statistics& alloc_stats) {
   alloc_stats.throw_after = INT_MAX;
 }
 
+template <class S>
+TEST_CONSTEXPR_CXX20 void test_string() {
+  S s;
+  assert(s.capacity() > 0);
+}
+
 TEST_CONSTEXPR_CXX20 bool test() {
   {
+    using S = std::basic_string<char, std::char_traits<char>, test_allocator<char> >;
     test_allocator_statistics alloc_stats;
-    typedef std::basic_string<char, std::char_traits<char>, test_allocator<char> > S;
     S s((test_allocator<char>(&alloc_stats)));
     test(s, alloc_stats);
     s.assign(10, 'a');
@@ -51,11 +57,7 @@ TEST_CONSTEXPR_CXX20 bool test() {
     test(s, alloc_stats);
   }
 #if TEST_STD_VER >= 11
-  {
-    typedef std::basic_string<char, std::char_traits<char>, min_allocator<char>> S;
-    S s;
-    assert(s.capacity() > 0);
-  }
+  test_string<std::basic_string<char, std::char_traits<char>, min_allocator<char> > >();
 #endif
 
   return true;

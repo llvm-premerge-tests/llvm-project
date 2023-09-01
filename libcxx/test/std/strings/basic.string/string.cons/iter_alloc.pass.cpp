@@ -57,64 +57,39 @@ TEST_CONSTEXPR_CXX20 void test(It first, It last, const A& a) {
   assert(s2.capacity() >= s2.size());
 }
 
+template <class Alloc>
+TEST_CONSTEXPR_CXX20 void test(const Alloc& a) {
+  const char* s = "12345678901234567890123456789012345678901234567890";
+
+  test(s, s);
+  test(s, s, Alloc(a));
+
+  test(s, s + 1);
+  test(s, s + 1, Alloc(a));
+
+  test(s, s + 10);
+  test(s, s + 10, Alloc(a));
+
+  test(s, s + 50);
+  test(s, s + 50, Alloc(a));
+
+  test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s));
+  test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s), Alloc(a));
+
+  test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s + 1));
+  test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s + 1), Alloc(a));
+
+  test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s + 10));
+  test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s + 10), Alloc(a));
+
+  test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s + 50));
+  test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s + 50), Alloc(a));
+}
+
 TEST_CONSTEXPR_CXX20 bool test() {
-  {
-    typedef test_allocator<char> A;
-    const char* s = "12345678901234567890123456789012345678901234567890";
-
-    test(s, s);
-    test(s, s, A(2));
-
-    test(s, s + 1);
-    test(s, s + 1, A(2));
-
-    test(s, s + 10);
-    test(s, s + 10, A(2));
-
-    test(s, s + 50);
-    test(s, s + 50, A(2));
-
-    test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s));
-    test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s), A(2));
-
-    test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s + 1));
-    test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s + 1), A(2));
-
-    test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s + 10));
-    test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s + 10), A(2));
-
-    test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s + 50));
-    test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s + 50), A(2));
-  }
+  test<test_allocator<char> >(test_allocator<char>(2));
 #if TEST_STD_VER >= 11
-  {
-    typedef min_allocator<char> A;
-    const char* s = "12345678901234567890123456789012345678901234567890";
-
-    test(s, s);
-    test(s, s, A());
-
-    test(s, s + 1);
-    test(s, s + 1, A());
-
-    test(s, s + 10);
-    test(s, s + 10, A());
-
-    test(s, s + 50);
-    test(s, s + 50, A());
-
-    test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s));
-    test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s), A());
-
-    test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s + 1));
-    test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s + 1), A());
-
-    test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s + 10));
-    test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s + 10), A());
-
-    test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s + 50));
-    test(cpp17_input_iterator<const char*>(s), cpp17_input_iterator<const char*>(s + 50), A());
-  }
+  test<min_allocator<char> >(min_allocator<char>());
 #endif
   {
     static_assert((!std::is_constructible<std::string, std::string, std::string>::value), "");

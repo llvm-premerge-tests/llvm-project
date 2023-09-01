@@ -33,9 +33,9 @@ TEST_CONSTEXPR_CXX20 void test(unsigned n, charT c) {
   assert(s2.capacity() >= s2.size());
 }
 
-template <class charT, class A>
-TEST_CONSTEXPR_CXX20 void test(unsigned n, charT c, const A& a) {
-  typedef std::basic_string<charT, std::char_traits<charT>, A> S;
+template <class charT, class Alloc>
+TEST_CONSTEXPR_CXX20 void test(unsigned n, charT c, const Alloc& a) {
+  typedef std::basic_string<charT, std::char_traits<charT>, Alloc> S;
   S s2(n, c, a);
   LIBCPP_ASSERT(s2.__invariants());
   assert(s2.size() == n);
@@ -72,10 +72,27 @@ TEST_CONSTEXPR_CXX20 void test(Tp n, Tp c, const A& a) {
   assert(s2.capacity() >= s2.size());
 }
 
+template <class A>
+TEST_CONSTEXPR_CXX20 void test_string() {
+  test(0, 'a');
+  test(0, 'a', A());
+
+  test(1, 'a');
+  test(1, 'a', A());
+
+  test(10, 'a');
+  test(10, 'a', A());
+
+  test(100, 'a');
+  test(100, 'a', A());
+
+  test(static_cast<char>(100), static_cast<char>(65));
+  test(static_cast<char>(100), static_cast<char>(65), A());
+}
+
 TEST_CONSTEXPR_CXX20 bool test() {
   {
-    typedef test_allocator<char> A;
-
+    using A = test_allocator<char>;
     test(0, 'a');
     test(0, 'a', A(2));
 
@@ -92,24 +109,7 @@ TEST_CONSTEXPR_CXX20 bool test() {
     test(static_cast<char>(100), static_cast<char>(65), A(3));
   }
 #if TEST_STD_VER >= 11
-  {
-    typedef min_allocator<char> A;
-
-    test(0, 'a');
-    test(0, 'a', A());
-
-    test(1, 'a');
-    test(1, 'a', A());
-
-    test(10, 'a');
-    test(10, 'a', A());
-
-    test(100, 'a');
-    test(100, 'a', A());
-
-    test(static_cast<char>(100), static_cast<char>(65));
-    test(static_cast<char>(100), static_cast<char>(65), A());
-  }
+  test_string<min_allocator<char> >();
 #endif
 
   return true;

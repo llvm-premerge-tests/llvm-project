@@ -18,18 +18,16 @@
 #include "test_macros.h"
 #include "min_allocator.h"
 
+template <class S>
+TEST_CONSTEXPR_CXX20 void test_case() {
+  S s;
+  s = {'a', 'b', 'c'};
+  assert(s == "abc");
+}
+
 TEST_CONSTEXPR_CXX20 bool test() {
-  {
-    std::string s;
-    s = {'a', 'b', 'c'};
-    assert(s == "abc");
-  }
-  {
-    typedef std::basic_string<char, std::char_traits<char>, min_allocator<char>> S;
-    S s;
-    s = {'a', 'b', 'c'};
-    assert(s == "abc");
-  }
+  test_case<std::string>();
+  test_case<std::basic_string<char, std::char_traits<char>, min_allocator<char> > >();
 
   return true;
 }

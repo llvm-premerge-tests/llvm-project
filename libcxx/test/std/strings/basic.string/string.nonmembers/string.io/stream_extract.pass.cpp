@@ -20,10 +20,12 @@
 #include "min_allocator.h"
 #include "test_macros.h"
 
-int main(int, char**) {
+template <template <class> class Alloc>
+void test_string() {
   {
+    using S = std::basic_string<char, std::char_traits<char>, Alloc<char> >;
     std::istringstream in("a bc defghij");
-    std::string s("initial text");
+    S s("initial text");
     in >> s;
     assert(in.good());
     assert(s == "a");
@@ -45,8 +47,9 @@ int main(int, char**) {
   }
 #ifndef TEST_HAS_NO_WIDE_CHARACTERS
   {
+    using WS = std::basic_string<wchar_t, std::char_traits<wchar_t>, Alloc<wchar_t> >;
     std::wistringstream in(L"a bc defghij");
-    std::wstring s(L"initial text");
+    WS s(L"initial text");
     in >> s;
     assert(in.good());
     assert(s == L"a");
@@ -66,6 +69,13 @@ int main(int, char**) {
     in >> s;
     assert(in.fail());
   }
+#endif
+}
+
+int main(int, char**) {
+  test_string<std::allocator>();
+#if TEST_STD_VER >= 11
+  test_string<min_allocator>();
 #endif
 #ifndef TEST_HAS_NO_EXCEPTIONS
   {
@@ -105,56 +115,6 @@ int main(int, char**) {
     assert(threw);
   }
 #endif // TEST_HAS_NO_EXCEPTIONS
-#if TEST_STD_VER >= 11
-  {
-    typedef std::basic_string<char, std::char_traits<char>, min_allocator<char>> S;
-    std::istringstream in("a bc defghij");
-    S s("initial text");
-    in >> s;
-    assert(in.good());
-    assert(s == "a");
-    assert(in.peek() == ' ');
-    in >> s;
-    assert(in.good());
-    assert(s == "bc");
-    assert(in.peek() == ' ');
-    in.width(3);
-    in >> s;
-    assert(in.good());
-    assert(s == "def");
-    assert(in.peek() == 'g');
-    in >> s;
-    assert(in.eof());
-    assert(s == "ghij");
-    in >> s;
-    assert(in.fail());
-  }
-#  ifndef TEST_HAS_NO_WIDE_CHARACTERS
-  {
-    typedef std::basic_string<wchar_t, std::char_traits<wchar_t>, min_allocator<wchar_t>> S;
-    std::wistringstream in(L"a bc defghij");
-    S s(L"initial text");
-    in >> s;
-    assert(in.good());
-    assert(s == L"a");
-    assert(in.peek() == L' ');
-    in >> s;
-    assert(in.good());
-    assert(s == L"bc");
-    assert(in.peek() == L' ');
-    in.width(3);
-    in >> s;
-    assert(in.good());
-    assert(s == L"def");
-    assert(in.peek() == L'g');
-    in >> s;
-    assert(in.eof());
-    assert(s == L"ghij");
-    in >> s;
-    assert(in.fail());
-  }
-#  endif // TEST_HAS_NO_WIDE_CHARACTERS
-#endif   // TEST_STD_VER >= 11
 
   return 0;
 }

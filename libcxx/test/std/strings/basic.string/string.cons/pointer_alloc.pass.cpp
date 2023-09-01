@@ -47,38 +47,25 @@ TEST_CONSTEXPR_CXX20 void test(const charT* s, const A& a) {
   assert(s2.capacity() >= s2.size());
 }
 
+template <class Alloc>
+TEST_CONSTEXPR_CXX20 void test(const Alloc& a) {
+  test("");
+  test("", Alloc(a));
+
+  test("1");
+  test("1", Alloc(a));
+
+  test("1234567980");
+  test("1234567980", Alloc(a));
+
+  test("123456798012345679801234567980123456798012345679801234567980");
+  test("123456798012345679801234567980123456798012345679801234567980", Alloc(a));
+}
+
 TEST_CONSTEXPR_CXX20 bool test() {
-  {
-    typedef test_allocator<char> A;
-
-    test("");
-    test("", A(2));
-
-    test("1");
-    test("1", A(2));
-
-    test("1234567980");
-    test("1234567980", A(2));
-
-    test("123456798012345679801234567980123456798012345679801234567980");
-    test("123456798012345679801234567980123456798012345679801234567980", A(2));
-  }
+  test<test_allocator<char> >(test_allocator<char>(2));
 #if TEST_STD_VER >= 11
-  {
-    typedef min_allocator<char> A;
-
-    test("");
-    test("", A());
-
-    test("1");
-    test("1", A());
-
-    test("1234567980");
-    test("1234567980", A());
-
-    test("123456798012345679801234567980123456798012345679801234567980");
-    test("123456798012345679801234567980123456798012345679801234567980", A());
-  }
+  test<min_allocator<char> >(min_allocator<char>());
 #endif
 
   return true;

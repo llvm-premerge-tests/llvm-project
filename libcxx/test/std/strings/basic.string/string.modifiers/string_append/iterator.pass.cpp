@@ -143,7 +143,7 @@ TEST_CONSTEXPR_CXX20 void test_string() {
 TEST_CONSTEXPR_CXX20 bool test() {
   test_string<std::string>();
 #if TEST_STD_VER >= 11
-  test_string<std::basic_string<char, std::char_traits<char>, min_allocator<char>>>();
+  test_string<std::basic_string<char, std::char_traits<char>, min_allocator<char> > >();
 #endif
 
 #ifndef TEST_HAS_NO_EXCEPTIONS
@@ -191,39 +191,42 @@ TEST_CONSTEXPR_CXX20 bool test() {
   }
 
   { // regression-test appending to self in sneaky ways
-    std::string s_short     = "hello";
-    std::string s_long      = "Lorem ipsum dolor sit amet, consectetur/";
-    std::string s_othertype = "hello";
-    std::string s_sneaky    = "hello";
+    typedef std::string S;
+    S s_short     = "hello";
+    S s_long      = "Lorem ipsum dolor sit amet, consectetur/";
+    S s_othertype = "hello";
+    S s_sneaky    = "hello";
 
-    test(s_short, s_short.data() + s_short.size(), s_short.data() + s_short.size() + 1, std::string("hello\0", 6));
+    test(s_short, s_short.data() + s_short.size(), s_short.data() + s_short.size() + 1, S("hello\0", 6));
     test(s_long,
          s_long.data() + s_long.size(),
          s_long.data() + s_long.size() + 1,
-         std::string("Lorem ipsum dolor sit amet, consectetur/\0", 41));
+         S("Lorem ipsum dolor sit amet, consectetur/\0", 41));
 
     s_sneaky.reserve(12);
-    test(s_sneaky, s_sneaky.data(), s_sneaky.data() + 6, std::string("hellohello\0", 11));
+    test(s_sneaky, s_sneaky.data(), s_sneaky.data() + 6, S("hellohello\0", 11));
 
     if (!TEST_IS_CONSTANT_EVALUATED) {
       const unsigned char* first = reinterpret_cast<const unsigned char*>(s_othertype.data());
-      test(s_othertype, first + 2, first + 5, std::string("hellollo"));
+      test(s_othertype, first + 2, first + 5, S("hellollo"));
     }
   }
 
   { // test with a move iterator that returns char&&
+    typedef std::string S;
     typedef forward_iterator<const char*> It;
     typedef std::move_iterator<It> MoveIt;
     const char p[] = "ABCD";
-    std::string s;
+    S s;
     s.append(MoveIt(It(std::begin(p))), MoveIt(It(std::end(p) - 1)));
     assert(s == "ABCD");
   }
   { // test with a move iterator that returns char&&
+    typedef std::string S;
     typedef const char* It;
     typedef std::move_iterator<It> MoveIt;
     const char p[] = "ABCD";
-    std::string s;
+    S s;
     s.append(MoveIt(It(std::begin(p))), MoveIt(It(std::end(p) - 1)));
     assert(s == "ABCD");
   }

@@ -119,7 +119,7 @@ TEST_CONSTEXPR_CXX20 void test_string() {
 TEST_CONSTEXPR_CXX20 bool test() {
   test_string<std::string>();
 #if TEST_STD_VER >= 11
-  test_string<std::basic_string<char, std::char_traits<char>, min_allocator<char>>>();
+  test_string<std::basic_string<char, std::char_traits<char>, min_allocator<char> > >();
 #endif
 
 #ifndef TEST_HAS_NO_EXCEPTIONS
@@ -168,9 +168,10 @@ TEST_CONSTEXPR_CXX20 bool test() {
   }
 
   { // regression-test assigning to self in sneaky ways
-    std::string sneaky = "hello";
+    typedef std::string S;
+    S sneaky = "hello";
     sneaky.resize(sneaky.capacity(), 'x');
-    std::string expected = sneaky + std::string(1, '\0');
+    S expected = sneaky + S(1, '\0');
     test(sneaky, sneaky.data(), sneaky.data() + sneaky.size() + 1, expected);
   }
   return true;
