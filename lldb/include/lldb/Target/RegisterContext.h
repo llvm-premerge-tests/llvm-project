@@ -37,6 +37,15 @@ public:
 
   virtual lldb::ByteOrder GetByteOrder();
 
+  /// Retrieves the per-thread data area.
+  /// Most OSs maintain a per-thread pointer (e.g. the FS register on
+  /// x64), which we return the value of here.
+  ///
+  /// \return
+  ///     LLDB_INVALID_ADDRESS if not supported, otherwise the thread
+  ///     pointer value.
+  virtual uint64_t GetThreadPointer();
+
   virtual bool ReadRegister(const RegisterInfo *reg_info,
                             RegisterValue &reg_value) = 0;
 

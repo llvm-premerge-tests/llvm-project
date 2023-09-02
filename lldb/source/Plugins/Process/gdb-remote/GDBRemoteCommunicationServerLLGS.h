@@ -185,6 +185,8 @@ protected:
 
   PacketResult Handle_qsThreadInfo(StringExtractorGDBRemote &packet);
 
+  PacketResult Handle_qGetTLSAddr(StringExtractorGDBRemote &packet);
+  
   PacketResult Handle_p(StringExtractorGDBRemote &packet);
 
   PacketResult Handle_P(StringExtractorGDBRemote &packet);

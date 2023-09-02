@@ -55,6 +55,8 @@ public:
 
   const RegisterInfo *GetRegisterInfoAtIndex(size_t reg) override;
 
+  uint64_t GetThreadPointer() override;
+
   size_t GetRegisterSetCount() override;
 
   const RegisterSet *GetRegisterSet(size_t reg_set) override;
