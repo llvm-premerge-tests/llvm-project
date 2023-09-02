@@ -17,6 +17,23 @@ endif()
 include(GNUInstallDirs)
 set(CMAKE_CXX_STANDARD 17)
 
+if (CYGWIN)
+  # On most UNIX like platforms g++ and clang++ define _GNU_SOURCE as a
+  # predefined macro, which turns on all of the wonderful libc extensions.
+  # However g++ doesn't do this in Cygwin so we have to define it ourselfs
+  # since we depend on GNU/POSIX/BSD extensions.
+  add_definitions(-D_GNU_SOURCE=1)
+  # Compiling large source files that use templates intensively, you may
+  # receive the "File too big/too many sections" error. For MSVC you can
+  # use the /bigobj flag while GNU Assembler provides the -mbig-obj flag.
+  if( MSVC )
+    append("/bigobj" CMAKE_C_FLAGS CMAKE_CXX_FLAGS)
+  endif()
+  if ( LLVM_COMPILER_IS_GCC_COMPATIBLE )
+    append("-Wa,-mbig-obj" CMAKE_C_FLAGS CMAKE_CXX_FLAGS)
+  endif( LLVM_COMPILER_IS_GCC_COMPATIBLE )
+endif()
+
 if(MLIR_STANDALONE_BUILD)
   find_package(LLVM CONFIG REQUIRED)
   set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${LLVM_CMAKE_DIR})
