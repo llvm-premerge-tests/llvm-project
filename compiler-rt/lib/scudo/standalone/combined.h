@@ -572,7 +572,7 @@ public:
         reportDeleteSizeMismatch(Ptr, DeleteSize, Size);
     }
 
-    quarantineOrDeallocateChunk(Options, TaggedPtr, &Header, Size);
+    quarantineOrDeallocateChunk(Options, TaggedPtr, Ptr, &Header, Size);
   }
 
   void *reallocate(void *OldPtr, uptr NewSize, uptr Alignment = MinAlignment) {
@@ -672,7 +672,8 @@ public:
     void *NewPtr = allocate(NewSize, Chunk::Origin::Malloc, Alignment);
     if (LIKELY(NewPtr)) {
       memcpy(NewPtr, OldTaggedPtr, Min(NewSize, OldSize));
-      quarantineOrDeallocateChunk(Options, OldTaggedPtr, &OldHeader, OldSize);
+      quarantineOrDeallocateChunk(Options, OldTaggedPtr, OldPtr, &OldHeader,
+                                  OldSize);
     }
     return NewPtr;
   }
@@ -1107,9 +1108,10 @@ private:
   }
 
   void quarantineOrDeallocateChunk(const Options &Options, void *TaggedPtr,
+                                   void *HeaderTaggedPtr,
                                    Chunk::UnpackedHeader *Header,
                                    uptr Size) NO_THREAD_SAFETY_ANALYSIS {
-    void *Ptr = getHeaderTaggedPointer(TaggedPtr);
+    void *Ptr = HeaderTaggedPtr;
     Chunk::UnpackedHeader NewHeader = *Header;
     // If the quarantine is disabled, the actual size of a chunk is 0 or larger
     // than the maximum allowed, we return a chunk directly to the backend.
@@ -1121,31 +1123,20 @@ private:
       NewHeader.State = Chunk::State::Available;
     else
       NewHeader.State = Chunk::State::Quarantined;
-    NewHeader.OriginOrWasZeroed = useMemoryTagging<Config>(Options) &&
-                                  NewHeader.ClassId &&
-                                  !TSDRegistry.getDisableMemInit();
+    NewHeader.OriginOrWasZeroed = 0U;
     Chunk::compareExchangeHeader(Cookie, Ptr, &NewHeader, Header);
 
+    void *BlockBegin = getBlockBegin(Ptr, &NewHeader);
     if (UNLIKELY(useMemoryTagging<Config>(Options))) {
-      u8 PrevTag = extractTag(reinterpret_cast<uptr>(TaggedPtr));
-      storeDeallocationStackMaybe(Options, Ptr, PrevTag, Size);
-      if (NewHeader.ClassId) {
-        if (!TSDRegistry.getDisableMemInit()) {
-          uptr TaggedBegin, TaggedEnd;
-          const uptr OddEvenMask = computeOddEvenMaskForPointerMaybe(
-              Options, reinterpret_cast<uptr>(getBlockBegin(Ptr, &NewHeader)),
-              NewHeader.ClassId);
-          // Exclude the previous tag so that immediate use after free is
-          // detected 100% of the time.
-          setRandomTag(Ptr, Size, OddEvenMask | (1UL << PrevTag), &TaggedBegin,
-                       &TaggedEnd);
-        }
-      }
+      NewHeader.OriginOrWasZeroed =
+          NewHeader.ClassId && !TSDRegistry.getDisableMemInit();
+      BlockBegin =
+          unTagBlock(Options, TaggedPtr, HeaderTaggedPtr, &NewHeader, Size);
+    } else {
+      BlockBegin = getBlockBegin(Ptr, &NewHeader);
     }
+
     if (BypassQuarantine) {
-      if (allocatorSupportsMemoryTagging<Config>())
-        Ptr = untagPointer(Ptr);
-      void *BlockBegin = getBlockBegin(Ptr, &NewHeader);
       const uptr ClassId = NewHeader.ClassId;
       if (LIKELY(ClassId)) {
         bool UnlockRequired;
@@ -1161,9 +1152,6 @@ private:
         if (CacheDrained)
           Primary.tryReleaseToOS(ClassId, ReleaseToOS::Normal);
       } else {
-        if (UNLIKELY(useMemoryTagging<Config>(Options)))
-          storeTags(reinterpret_cast<uptr>(BlockBegin),
-                    reinterpret_cast<uptr>(Ptr));
         Secondary.deallocate(Options, BlockBegin);
       }
     } else {
@@ -1174,6 +1162,36 @@ private:
       if (UnlockRequired)
         TSD->unlock();
     }
+  }
+
+  NOINLINE void *unTagBlock(const Options &Options, void *TaggedPtr,
+                            void *HeaderTaggedPtr,
+                            Chunk::UnpackedHeader *Header, const uptr Size) {
+    DCHECK(useMemoryTagging<Config>(Options));
+    void *Ptr = HeaderTaggedPtr;
+
+    const u8 PrevTag = extractTag(reinterpret_cast<uptr>(TaggedPtr));
+    storeDeallocationStackMaybe(Options, Ptr, PrevTag, Size);
+    if (Header->ClassId) {
+      if (!TSDRegistry.getDisableMemInit()) {
+        uptr TaggedBegin, TaggedEnd;
+        const uptr OddEvenMask = computeOddEvenMaskForPointerMaybe(
+            Options, reinterpret_cast<uptr>(getBlockBegin(Ptr, Header)),
+            Header->ClassId);
+        // Exclude the previous tag so that immediate use after free is
+        // detected 100% of the time.
+        setRandomTag(Ptr, Size, OddEvenMask | (1UL << PrevTag), &TaggedBegin,
+                     &TaggedEnd);
+      }
+    }
+    Ptr = untagPointer(Ptr);
+    void *BlockBegin = getBlockBegin(Ptr, Header);
+    if (!Header->ClassId) {
+      storeTags(reinterpret_cast<uptr>(BlockBegin),
+                reinterpret_cast<uptr>(Ptr));
+    }
+
+    return BlockBegin;
   }
 
   bool getChunkFromBlock(uptr Block, uptr *Chunk,
