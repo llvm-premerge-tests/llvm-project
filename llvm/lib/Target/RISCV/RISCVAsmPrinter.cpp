@@ -89,7 +89,7 @@ public:
 
   void emitFunctionEntryLabel() override;
   void emitDirectiveOptionArch();
-  bool isSameAttribute();
+  bool isSameSupportedAttribute();
 
 private:
   void emitAttributes();
@@ -272,16 +272,25 @@ void RISCVAsmPrinter::emitDirectiveOptionArch() {
     RTS.emitDirectiveOptionArch(NeedEmitStdOptionArgs);
 }
 
-bool RISCVAsmPrinter::isSameAttribute() {
+bool RISCVAsmPrinter::isSameSupportedAttribute() {
   const MCSubtargetInfo &MCSTI = *TM.getMCSubtargetInfo();
-  return MCSTI.getFeatureBits() == STI->getFeatureBits();
+  for (const auto &Feature : RISCVFeatureKV) {
+    if (STI->hasFeature(Feature.Value) == MCSTI.hasFeature(Feature.Value))
+      continue;
+
+    if (!llvm::RISCVISAInfo::isSupportedExtensionFeature(Feature.Key))
+      continue;
+
+    return false;
+  }
+  return true;
 }
 
 bool RISCVAsmPrinter::runOnMachineFunction(MachineFunction &MF) {
   STI = &MF.getSubtarget<RISCVSubtarget>();
   RISCVTargetStreamer &RTS =
       static_cast<RISCVTargetStreamer &>(*OutStreamer->getTargetStreamer());
-  if (!isSameAttribute()) {
+  if (!isSameSupportedAttribute()) {
     RTS.emitDirectiveOptionPush();
     emitDirectiveOptionArch();
   }
@@ -289,7 +298,7 @@ bool RISCVAsmPrinter::runOnMachineFunction(MachineFunction &MF) {
   SetupMachineFunction(MF);
   emitFunctionBody();
 
-  if (!isSameAttribute())
+  if (!isSameSupportedAttribute())
     RTS.emitDirectiveOptionPop();
   return false;
 }
