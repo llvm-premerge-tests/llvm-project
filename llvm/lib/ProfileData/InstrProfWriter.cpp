@@ -253,7 +253,7 @@ void InstrProfWriter::addRecord(StringRef Name, uint64_t Hash,
       Dest.scale(Weight, 1, MapWarn);
   } else {
     // We're updating a function we've seen before.
-    Dest.merge(I, Weight, MapWarn);
+    Dest.merge(I, Weight, MapWarn, hasSingleByteCoverage());
   }
 
   Dest.sortValueData();

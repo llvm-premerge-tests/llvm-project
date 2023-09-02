@@ -755,7 +755,8 @@ struct InstrProfRecord {
   /// Merge the counts in \p Other into this one.
   /// Optionally scale merged counts by \p Weight.
   void merge(InstrProfRecord &Other, uint64_t Weight,
-             function_ref<void(instrprof_error)> Warn);
+             function_ref<void(instrprof_error)> Warn,
+             bool HasSingleByteCoverage);
 
   /// Scale up profile counts (including value profile data) by
   /// a factor of (N / D).

@@ -693,7 +693,8 @@ void InstrProfRecord::mergeValueProfData(
 }
 
 void InstrProfRecord::merge(InstrProfRecord &Other, uint64_t Weight,
-                            function_ref<void(instrprof_error)> Warn) {
+                            function_ref<void(instrprof_error)> Warn,
+                            bool HasSingleByteCoverage) {
   // If the number of counters doesn't match we either have bad data
   // or a hash collision.
   if (Counts.size() != Other.Counts.size()) {
@@ -721,15 +722,23 @@ void InstrProfRecord::merge(InstrProfRecord &Other, uint64_t Weight,
 
   for (size_t I = 0, E = Other.Counts.size(); I < E; ++I) {
     bool Overflowed;
-    uint64_t Value =
-        SaturatingMultiplyAdd(Other.Counts[I], Weight, Counts[I], &Overflowed);
-    if (Value > getInstrMaxCountValue()) {
-      Value = getInstrMaxCountValue();
-      Overflowed = true;
+    uint64_t Value;
+    // When a profile has single byte coverage, use || to merge counters.
+    if (HasSingleByteCoverage)
+      Value = Other.Counts[I] || Counts[I];
+    else {
+      Value = SaturatingMultiplyAdd(Other.Counts[I], Weight, Counts[I],
+                                    &Overflowed);
+
+      if (Value > getInstrMaxCountValue()) {
+        Value = getInstrMaxCountValue();
+        Overflowed = true;
+      }
+
+      if (Overflowed)
+        Warn(instrprof_error::counter_overflow);
     }
     Counts[I] = Value;
-    if (Overflowed)
-      Warn(instrprof_error::counter_overflow);
   }
 
   for (uint32_t Kind = IPVK_First; Kind <= IPVK_Last; ++Kind)

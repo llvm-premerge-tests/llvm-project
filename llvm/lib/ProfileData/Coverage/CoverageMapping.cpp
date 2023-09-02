@@ -283,7 +283,8 @@ Error CoverageMapping::loadFunctionRecord(
       consumeError(std::move(E));
       return Error::success();
     }
-    Function.pushRegion(Region, *ExecutionCount, *AltExecutionCount);
+    Function.pushRegion(Region, *ExecutionCount, *AltExecutionCount,
+                        ProfileReader.hasSingleByteCoverage());
   }
 
   // Don't create records for (filenames, function) pairs we've already seen.
@@ -675,8 +676,14 @@ class SegmentBuilder {
       // value for that area.
       // We add counts of the regions of the same kind as the active region
       // to handle the both situations.
-      if (I->Kind == Active->Kind)
-        Active->ExecutionCount += I->ExecutionCount;
+      if (I->Kind == Active->Kind) {
+        assert(I->HasSingleByteCoverage == Active->HasSingleByteCoverage &&
+               "Regions are generated in different coverage modes");
+        if (I->HasSingleByteCoverage)
+          Active->ExecutionCount = Active->ExecutionCount || I->ExecutionCount;
+        else
+          Active->ExecutionCount += I->ExecutionCount;
+      }
     }
     return Regions.drop_back(std::distance(++Active, End));
   }
