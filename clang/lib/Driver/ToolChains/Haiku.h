@@ -22,10 +22,6 @@ public:
   Haiku(const Driver &D, const llvm::Triple &Triple,
           const llvm::opt::ArgList &Args);
 
-  bool isPIEDefault(const llvm::opt::ArgList &Args) const override {
-    return getTriple().getArch() == llvm::Triple::x86_64;
-  }
-
   void AddClangSystemIncludeArgs(
       const llvm::opt::ArgList &DriverArgs,
       llvm::opt::ArgStringList &CC1Args) const override;
