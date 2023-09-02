@@ -6552,6 +6552,20 @@ static bool SwitchToLookupTable(SwitchInst *SI, IRBuilder<> &Builder,
     // Note: We call removeProdecessor later since we need to be able to get the
     // PHI value for the default case in case we're using a bit mask.
   } else {
+    const APInt *MaskC;
+    if (UseSwitchConditionAsTableIndex &&
+        match(TableIndex, m_And(m_Value(), m_APInt(MaskC)))) {
+      APInt SCVPlus1 = *MaskC + 1;
+      const uint64_t *RawData = MaskC->getRawData();
+      // Expand the size of the table when the MaskC < 64.
+      if (SCVPlus1.isPowerOf2() && SCVPlus1.logBase2() <= 6 && RawData) {
+        assert(TableSize <= RawData[0] && "unexpect mask value");
+        // The range check will be deleted later when we enlarge the lookup
+        // table because the check always return true.
+        TableSize = RawData[0] + 1;
+      }
+    }
+
     Value *Cmp = Builder.CreateICmpULT(
         TableIndex, ConstantInt::get(MinCaseVal->getType(), TableSize));
     RangeCheckBranch =
