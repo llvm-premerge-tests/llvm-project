@@ -3117,6 +3117,50 @@ static bool isNonEqualPHIs(const PHINode *PN1, const PHINode *PN2,
   return true;
 }
 
+bool llvm::getKnownNonEqualFromAssume(const Value *V1, const Value *V2,
+                                      const SimplifyQuery &Q) {
+  // Use of assumptions is context-sensitive. If we don't have a context, we
+  // cannot use them!
+  if (!Q.AC || !Q.CxtI)
+    return false;
+
+  // Note that the patterns below need to be kept in sync with the code
+  // in AssumptionCache::updateAffectedValues.
+
+  for (auto &AssumeVH : Q.AC->assumptionsFor(V1)) {
+    if (!AssumeVH)
+      continue;
+
+    CallInst *I = cast<CallInst>(AssumeVH);
+    assert(I->getParent()->getParent() == Q.CxtI->getParent()->getParent() &&
+           "Got assumption for the wrong function!");
+
+    // Warning: This loop can end up being somewhat performance sensitive.
+    // We're running this loop for once for each value queried resulting in a
+    // runtime of ~O(#assumes * #values).
+
+    assert(I->getCalledFunction()->getIntrinsicID() == Intrinsic::assume &&
+           "must be an assume intrinsic");
+
+    Value *Arg = I->getArgOperand(0);
+    ICmpInst *Cmp = dyn_cast<ICmpInst>(Arg);
+    if (!Cmp || !isValidAssumeForContext(I, Q.CxtI, Q.DT))
+      continue;
+    if (!Cmp->isEquality())
+      continue;
+
+    // If we have a matching assumption:
+    // - EQ: return false
+    // - NE: return true
+    Value *Op0 = Cmp->getOperand(0);
+    Value *Op1 = Cmp->getOperand(1);
+    if ((Op0 == V1 && Op1 == V2) || (Op0 == V2 && Op1 == V1))
+      return Cmp->getPredicate() == CmpInst::ICMP_NE;
+  }
+
+  return false;
+}
+
 /// Return true if it is known that V1 != V2.
 static bool isKnownNonEqual(const Value *V1, const Value *V2, unsigned Depth,
                             const SimplifyQuery &Q) {
@@ -3166,7 +3210,9 @@ static bool isKnownNonEqual(const Value *V1, const Value *V2, unsigned Depth,
         Known2.Zero.intersects(Known1.One))
       return true;
   }
-  return false;
+
+  // Check whether a nearby assume intrinsic can determine non-equality.
+  return getKnownNonEqualFromAssume(V1, V2, Q);
 }
 
 /// Return true if 'V & Mask' is known to be zero.  We use this predicate to
