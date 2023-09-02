@@ -48,6 +48,8 @@ public:
   virtual Status ReadRegister(const RegisterInfo *reg_info,
                               RegisterValue &reg_value) = 0;
 
+  virtual llvm::Expected<uint64_t> ReadThreadPointer();
+
   virtual Status WriteRegister(const RegisterInfo *reg_info,
                                const RegisterValue &reg_value) = 0;
 

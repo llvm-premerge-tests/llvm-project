@@ -183,14 +183,7 @@ void DynamicLoaderPOSIXDYLD::DidLaunch() {
 
     LLDB_LOGF(log, "DynamicLoaderPOSIXDYLD::%s about to call ProbeEntry()",
               __FUNCTION__);
-
-    if (!SetRendezvousBreakpoint()) {
-      // If we cannot establish rendezvous breakpoint right now we'll try again
-      // at entry point.
-      ProbeEntry();
-    }
-
-    LoadVDSO();
+    ProbeEntry();
     m_process->GetTarget().ModulesDidLoad(module_list);
   }
 }

@@ -105,7 +105,6 @@ protected:
   virtual Status ReadGPR();
 
   virtual Status WriteGPR();
-
   virtual Status ReadFPR();
 
   virtual Status WriteFPR();
