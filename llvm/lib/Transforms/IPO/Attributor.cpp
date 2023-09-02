@@ -3540,14 +3540,13 @@ void Attributor::identifyDefaultAbstractAttributes(Function &F) {
   };
 
   auto &OpcodeInstMap = InfoCache.getOpcodeInstMapForFunction(F);
-  bool Success;
+  [[maybe_unused]] bool Success;
   bool UsedAssumedInformation = false;
   Success = checkForAllInstructionsImpl(
       nullptr, OpcodeInstMap, CallSitePred, nullptr, nullptr,
       {(unsigned)Instruction::Invoke, (unsigned)Instruction::CallBr,
        (unsigned)Instruction::Call},
       UsedAssumedInformation);
-  (void)Success;
   assert(Success && "Expected the check call to be successful!");
 
   auto LoadStorePred = [&](Instruction &I) -> bool {
@@ -3573,7 +3572,18 @@ void Attributor::identifyDefaultAbstractAttributes(Function &F) {
       nullptr, OpcodeInstMap, LoadStorePred, nullptr, nullptr,
       {(unsigned)Instruction::Load, (unsigned)Instruction::Store},
       UsedAssumedInformation);
-  (void)Success;
+  assert(Success && "Expected the check call to be successful!");
+
+  // AllocaInstPredicate
+  auto AAAllocationInfoPred = [&](Instruction &I) -> bool {
+    getOrCreateAAFor<AAAllocationInfo>(IRPosition::value(I));
+    return true;
+  };
+
+  Success = checkForAllInstructionsImpl(
+      nullptr, OpcodeInstMap, AAAllocationInfoPred, nullptr, nullptr,
+      {(unsigned)Instruction::Alloca, (unsigned)Instruction::Call},
+      UsedAssumedInformation);
   assert(Success && "Expected the check call to be successful!");
 }
 
