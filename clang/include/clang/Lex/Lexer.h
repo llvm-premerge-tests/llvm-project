@@ -807,7 +807,7 @@ private:
   ///        sequence. On success, updated to point past the end of it.
   /// \return \c true if a UTF-8 sequence mapping to an acceptable identifier
   ///         character was lexed, \c false otherwise.
-  bool tryConsumeIdentifierUTF8Char(const char *&CurPtr);
+  bool tryConsumeIdentifierUTF8Char(const char *&CurPtr, Token &Tok);
 };
 
 } // namespace clang
