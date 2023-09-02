@@ -80,6 +80,19 @@ const RegisterSet *GDBRemoteRegisterContext::GetRegisterSet(size_t reg_set) {
   return m_reg_info_sp->GetRegisterSet(reg_set);
 }
 
+uint64_t GDBRemoteRegisterContext::GetThreadPointer() {
+  ExecutionContext exe_ctx(CalculateThread());
+  Process *process = exe_ctx.GetProcessPtr();
+  Thread *thread = exe_ctx.GetThreadPtr();
+  if (process == nullptr || thread == nullptr)
+    return LLDB_INVALID_ADDRESS;
+  GDBRemoteCommunicationClient &gdb_comm(
+      ((ProcessGDBRemote *)process)->GetGDBRemote());
+  uint64_t tid = thread->GetProtocolID();
+  // Return thread pointer here, offset and link_map will be filled by GetThreadLocalData in DYLD
+  return gdb_comm.GetQGetTLSAddr(tid, LLDB_INVALID_ADDRESS /* offset */, LLDB_INVALID_ADDRESS /* lm */);
+}
+
 bool GDBRemoteRegisterContext::ReadRegister(const RegisterInfo *reg_info,
                                             RegisterValue &value) {
   // Read the register

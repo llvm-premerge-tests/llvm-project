@@ -82,6 +82,8 @@ public:
         "Architecture does not support memory tagging");
   }
 
+  virtual Status ReadThreadPointer(uint64_t &tp) override;
+
 protected:
   // NB: This constructor is here only because gcc<=6.5 requires a virtual base
   // class initializer on abstract class (even though it is never used). It can
@@ -105,7 +107,6 @@ protected:
   virtual Status ReadGPR();
 
   virtual Status WriteGPR();
-
   virtual Status ReadFPR();
 
   virtual Status WriteFPR();

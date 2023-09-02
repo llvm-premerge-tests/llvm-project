@@ -120,6 +120,12 @@ const char *NativeRegisterContext::GetRegisterSetNameForRegisterAtIndex(
   return nullptr;
 }
 
+Status NativeRegisterContext::ReadThreadPointer(uint64_t& tp) {
+  tp = LLDB_INVALID_ADDRESS;
+  Status error;
+  return error;
+}
+
 lldb::addr_t NativeRegisterContext::GetPC(lldb::addr_t fail_value) {
   Log *log = GetLog(LLDBLog::Thread);
 
