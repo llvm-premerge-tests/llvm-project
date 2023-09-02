@@ -37,6 +37,8 @@ public:
 
   uint32_t GetUserRegisterCount() const override;
 
+  Status ReadThreadPointer(uint64_t &tp) override;
+
   Status ReadRegister(const RegisterInfo *reg_info,
                       RegisterValue &reg_value) override;
 

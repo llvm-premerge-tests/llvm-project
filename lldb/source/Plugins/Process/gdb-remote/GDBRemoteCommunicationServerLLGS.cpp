@@ -149,6 +149,9 @@ void GDBRemoteCommunicationServerLLGS::RegisterPacketHandlers() {
       StringExtractorGDBRemote::eServerPacketType_qsThreadInfo,
       &GDBRemoteCommunicationServerLLGS::Handle_qsThreadInfo);
   RegisterMemberFunctionHandler(
+      StringExtractorGDBRemote::eServerPacketType_qGetTLSAddr,
+      &GDBRemoteCommunicationServerLLGS::Handle_qGetTLSAddr);
+  RegisterMemberFunctionHandler(
       StringExtractorGDBRemote::eServerPacketType_qThreadStopInfo,
       &GDBRemoteCommunicationServerLLGS::Handle_qThreadStopInfo);
   RegisterMemberFunctionHandler(
@@ -2106,6 +2109,30 @@ GDBRemoteCommunicationServerLLGS::Handle_qsThreadInfo(
   // FIXME for now we return the full thread list in the initial packet and
   // always do nothing here.
   return SendPacketNoLock("l");
+}
+
+GDBRemoteCommunication::PacketResult
+GDBRemoteCommunicationServerLLGS::Handle_qGetTLSAddr(
+    StringExtractorGDBRemote &packet) {
+  llvm::StringRef s = packet.GetStringRef();
+  if (!s.consume_front("qGetTLSAddr:"))
+    return SendErrorResponse(8);
+  llvm::SmallVector<llvm::StringRef, 16> argv;
+  s.split(argv, ',');
+  lldb::tid_t tid =  StringExtractor(argv[0]).GetU64(LLDB_INVALID_ADDRESS, 16);
+  lldb::addr_t offset = StringExtractor(argv[1]).GetU64(LLDB_INVALID_ADDRESS, 16);
+  lldb::addr_t lm = StringExtractor(argv[2]).GetU64(LLDB_INVALID_ADDRESS, 16);
+  (void) offset;
+  (void) lm;
+  NativeThreadProtocol *ntp = m_current_process->GetThreadByID(tid);
+  NativeRegisterContext &reg_ctx = ntp->GetRegisterContext();
+  lldb::addr_t tp = LLDB_INVALID_ADDRESS;
+  StreamGDBRemote response;
+  if(!reg_ctx.ReadThreadPointer(tp).Fail()) {
+    response.PutHex64(tp, lldb::eByteOrderBig);
+    return SendPacketNoLock(response.GetString());
+  } else
+    return SendErrorResponse(8);
 }
 
 GDBRemoteCommunication::PacketResult

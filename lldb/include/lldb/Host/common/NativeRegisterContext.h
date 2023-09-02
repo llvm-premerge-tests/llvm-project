@@ -48,6 +48,8 @@ public:
   virtual Status ReadRegister(const RegisterInfo *reg_info,
                               RegisterValue &reg_value) = 0;
 
+  virtual Status ReadThreadPointer(uint64_t &tp);
+
   virtual Status WriteRegister(const RegisterInfo *reg_info,
                                const RegisterValue &reg_value) = 0;
 

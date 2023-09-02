@@ -13,6 +13,7 @@
 #include "Plugins/Process/Utility/RegisterContextLinux_i386.h"
 #include "Plugins/Process/Utility/RegisterContextLinux_x86_64.h"
 #include "lldb/Host/HostInfo.h"
+#include "lldb/Host/linux/Ptrace.h"
 #include "lldb/Utility/DataBufferHeap.h"
 #include "lldb/Utility/Log.h"
 #include "lldb/Utility/RegisterValue.h"
@@ -371,6 +372,16 @@ NativeRegisterContextLinux_x86_64::NativeRegisterContextLinux_x86_64(
   // Store byte offset of fctrl (i.e. first register of FPR)
   const RegisterInfo *reg_info_fctrl = GetRegisterInfoByName("fctrl");
   m_fctrl_offset_in_userarea = reg_info_fctrl->byte_offset;
+}
+
+Status NativeRegisterContextLinux_x86_64::ReadThreadPointer(uint64_t& tp) {
+  Status error;
+  errno = 0;
+  auto ret= ptrace(static_cast<__ptrace_request>(PTRACE_ARCH_PRCTL), m_thread.GetID(),
+                   &tp, (void *)ARCH_GET_FS, 0);
+  if (ret == -1)
+    error.SetErrorToErrno();
+    return error;
 }
 
 // CONSIDER after local and llgs debugging are merged, register set support can
