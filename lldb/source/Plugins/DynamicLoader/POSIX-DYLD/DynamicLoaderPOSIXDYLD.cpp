@@ -183,14 +183,7 @@ void DynamicLoaderPOSIXDYLD::DidLaunch() {
 
     LLDB_LOGF(log, "DynamicLoaderPOSIXDYLD::%s about to call ProbeEntry()",
               __FUNCTION__);
-
-    if (!SetRendezvousBreakpoint()) {
-      // If we cannot establish rendezvous breakpoint right now we'll try again
-      // at entry point.
-      ProbeEntry();
-    }
-
-    LoadVDSO();
+    ProbeEntry();
     m_process->GetTarget().ModulesDidLoad(module_list);
   }
 }
@@ -745,9 +738,10 @@ DynamicLoaderPOSIXDYLD::GetThreadLocalData(const lldb::ModuleSP module_sp,
     return LLDB_INVALID_ADDRESS;
 
   // Find the module's modid.
+
   int modid_size = 4; // FIXME(spucci): This isn't right for big-endian 64-bit
   int64_t modid = ReadUnsignedIntWithSizeInBytes(
-      link_map + metadata.modid_offset, modid_size);
+                    link_map + metadata.modid_offset, modid_size);
   if (modid == -1)
     return LLDB_INVALID_ADDRESS;
 

@@ -112,6 +112,12 @@ Status NativeRegisterContextLinux::ReadFPR() {
                                            GetFPRSize());
 }
 
+Status NativeRegisterContextLinux::ReadThreadPointer(uint64_t &tp) {
+  tp = LLDB_INVALID_ADDRESS;
+  Status error;
+  return error;
+}
+
 Status NativeRegisterContextLinux::WriteFPR() {
   return NativeProcessLinux::PtraceWrapper(PTRACE_SETFPREGS, m_thread.GetID(),
                                            nullptr, GetFPRBuffer(),

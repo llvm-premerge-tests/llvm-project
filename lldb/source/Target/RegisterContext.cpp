@@ -29,6 +29,10 @@ RegisterContext::RegisterContext(Thread &thread, uint32_t concrete_frame_idx)
 
 RegisterContext::~RegisterContext() = default;
 
+uint64_t RegisterContext::GetThreadPointer() {
+  return UINT64_MAX;
+}
+
 void RegisterContext::InvalidateIfNeeded(bool force) {
   ProcessSP process_sp(m_thread.GetProcess());
   bool invalidate = force;
