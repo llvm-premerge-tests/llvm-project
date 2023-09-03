@@ -12,13 +12,13 @@
 #include "../ClangTidyCheck.h"
 #include "../ClangTidyDiagnosticConsumer.h"
 #include "../ClangTidyOptions.h"
+#include "../utils/IncludeInserter.h"
 #include "clang-include-cleaner/Record.h"
 #include "clang-include-cleaner/Types.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Basic/LLVM.h"
+#include "clang/Basic/LangOptions.h"
 #include "clang/Basic/SourceLocation.h"
-#include "clang/Lex/HeaderSearch.h"
-#include "clang/Lex/Preprocessor.h"
 #include "llvm/Support/Regex.h"
 #include <vector>
 
@@ -47,6 +47,7 @@ private:
   std::vector<StringRef> IgnoreHeaders;
   // Whether emit only one finding per usage of a symbol.
   const bool DeduplicateFindings;
+  utils::IncludeInserter IncludeInserter;
   llvm::SmallVector<llvm::Regex> IgnoreHeadersRegex;
   bool shouldIgnore(const include_cleaner::Header &H);
 };

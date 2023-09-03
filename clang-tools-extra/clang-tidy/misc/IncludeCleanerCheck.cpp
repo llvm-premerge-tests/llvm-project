@@ -10,6 +10,7 @@
 #include "../ClangTidyCheck.h"
 #include "../ClangTidyDiagnosticConsumer.h"
 #include "../ClangTidyOptions.h"
+#include "../utils/IncludeSorter.h"
 #include "../utils/OptionsUtils.h"
 #include "clang-include-cleaner/Analysis.h"
 #include "clang-include-cleaner/IncludeSpeller.h"
@@ -25,10 +26,8 @@
 #include "clang/Basic/LLVM.h"
 #include "clang/Basic/LangOptions.h"
 #include "clang/Basic/SourceLocation.h"
-#include "clang/Format/Format.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Tooling/Core/Replacement.h"
-#include "clang/Tooling/Inclusions/HeaderIncludes.h"
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
@@ -36,7 +35,6 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/Regex.h"
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -57,7 +55,10 @@ IncludeCleanerCheck::IncludeCleanerCheck(StringRef Name,
       IgnoreHeaders(utils::options::parseStringList(
           Options.getLocalOrGlobal("IgnoreHeaders", ""))),
       DeduplicateFindings(
-          Options.getLocalOrGlobal("DeduplicateFindings", true)) {
+          Options.getLocalOrGlobal("DeduplicateFindings", true)),
+      IncludeInserter(Options.getLocalOrGlobal("IncludeStyle",
+                                               utils::IncludeSorter::IS_LLVM),
+                      areDiagsSelfContained()) {
   for (const auto &Header : IgnoreHeaders) {
     if (!llvm::Regex{Header}.isValid())
       configurationDiag("Invalid ignore headers regex '%0'") << Header;
@@ -71,6 +72,7 @@ IncludeCleanerCheck::IncludeCleanerCheck(StringRef Name,
 void IncludeCleanerCheck::storeOptions(ClangTidyOptions::OptionMap &Opts) {
   Options.store(Opts, "IgnoreHeaders",
                 utils::options::serializeStringList(IgnoreHeaders));
+  Options.store(Opts, "IncludeStyle", IncludeInserter.getStyle());
   Options.store(Opts, "DeduplicateFindings", DeduplicateFindings);
 }
 
@@ -86,6 +88,7 @@ void IncludeCleanerCheck::registerMatchers(MatchFinder *Finder) {
 void IncludeCleanerCheck::registerPPCallbacks(const SourceManager &SM,
                                               Preprocessor *PP,
                                               Preprocessor *ModuleExpanderPP) {
+  IncludeInserter.registerPreprocessor(PP);
   PP->addPPCallbacks(RecordedPreprocessor.record(*PP));
   this->PP = PP;
   RecordedPI.record(*PP);
@@ -180,14 +183,6 @@ void IncludeCleanerCheck::check(const MatchFinder::MatchResult &Result) {
       Unused.push_back(&I);
   }
 
-  llvm::StringRef Code = SM->getBufferData(SM->getMainFileID());
-  auto FileStyle =
-      format::getStyle(format::DefaultFormatStyle, getCurrentMainFile(),
-                       format::DefaultFallbackStyle, Code,
-                       &SM->getFileManager().getVirtualFileSystem());
-  if (!FileStyle)
-    FileStyle = format::getLLVMStyle();
-
   for (const auto *Inc : Unused) {
     diag(Inc->HashLocation, "included header %0 is not used directly")
         << llvm::sys::path::filename(Inc->Spelled,
@@ -197,26 +192,14 @@ void IncludeCleanerCheck::check(const MatchFinder::MatchResult &Result) {
                SM->translateLineCol(SM->getMainFileID(), Inc->Line + 1, 1)));
   }
 
-  tooling::HeaderIncludes HeaderIncludes(getCurrentMainFile(), Code,
-                                         FileStyle->IncludeStyle);
   for (const auto &Inc : Missing) {
     std::string Spelling = include_cleaner::spellHeader(
         {Inc.Missing, PP->getHeaderSearchInfo(), MainFile});
-    bool Angled = llvm::StringRef{Spelling}.starts_with("<");
-    // We might suggest insertion of an existing include in edge cases, e.g.,
-    // include is present in a PP-disabled region, or spelling of the header
-    // turns out to be the same as one of the unresolved includes in the
-    // main file.
-    if (auto Replacement =
-            HeaderIncludes.insert(llvm::StringRef{Spelling}.trim("\"<>"),
-                                  Angled, tooling::IncludeDirective::Include))
-      diag(SM->getSpellingLoc(Inc.SymRef.RefLocation),
-           "no header providing \"%0\" is directly included")
-          << Inc.SymRef.Target.name()
-          << FixItHint::CreateInsertion(
-                 SM->getComposedLoc(SM->getMainFileID(),
-                                    Replacement->getOffset()),
-                 Replacement->getReplacementText());
+    diag(SM->getSpellingLoc(Inc.SymRef.RefLocation),
+         "no header providing \"%0\" is directly included")
+        << Inc.SymRef.Target.name()
+        << IncludeInserter.createMainFileIncludeInsertion(
+               llvm::StringRef{Spelling}.trim("\""));
   }
 }
 
