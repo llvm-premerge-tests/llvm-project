@@ -8,11 +8,13 @@
 
 #if defined(__i386__) || defined(__x86_64__)
 
+#include "Plugins/Process/Linux/NativeProcessLinux.h"
 #include "NativeRegisterContextLinux_x86_64.h"
 #include "Plugins/Process/Linux/NativeThreadLinux.h"
 #include "Plugins/Process/Utility/RegisterContextLinux_i386.h"
 #include "Plugins/Process/Utility/RegisterContextLinux_x86_64.h"
 #include "lldb/Host/HostInfo.h"
+#include "lldb/Host/linux/Ptrace.h"
 #include "lldb/Utility/DataBufferHeap.h"
 #include "lldb/Utility/Log.h"
 #include "lldb/Utility/RegisterValue.h"
@@ -371,6 +373,16 @@ NativeRegisterContextLinux_x86_64::NativeRegisterContextLinux_x86_64(
   // Store byte offset of fctrl (i.e. first register of FPR)
   const RegisterInfo *reg_info_fctrl = GetRegisterInfoByName("fctrl");
   m_fctrl_offset_in_userarea = reg_info_fctrl->byte_offset;
+}
+
+llvm::Expected<uint64_t> NativeRegisterContextLinux_x86_64::ReadThreadPointer() {
+  Status error;
+  uint64_t tp;
+  error = NativeProcessLinux::PtraceWrapper(
+      PTRACE_ARCH_PRCTL, m_thread.GetID(), (void *)&tp, (void *)ARCH_GET_FS, 0);
+  if (error.Fail())
+    return error.ToError();
+  return tp;
 }
 
 // CONSIDER after local and llgs debugging are merged, register set support can

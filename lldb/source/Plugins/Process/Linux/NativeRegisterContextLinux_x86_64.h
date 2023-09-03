@@ -37,6 +37,8 @@ public:
 
   uint32_t GetUserRegisterCount() const override;
 
+  llvm::Expected<uint64_t> ReadThreadPointer() override;
+
   Status ReadRegister(const RegisterInfo *reg_info,
                       RegisterValue &reg_value) override;
 

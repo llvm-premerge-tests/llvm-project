@@ -3752,6 +3752,28 @@ std::optional<QOffsets> GDBRemoteCommunicationClient::GetQOffsets() {
   return std::nullopt;
 }
 
+lldb::addr_t GDBRemoteCommunicationClient::GetQGetTLSAddr(lldb::tid_t tid, lldb::addr_t offset, lldb::addr_t lm) {
+  StreamString packet;
+  packet.PutCString("qGetTLSAddr:");
+  packet.PutHex64(tid, lldb::eByteOrderBig);
+  packet.PutCString(",");
+  packet.PutHex64(offset, lldb::eByteOrderBig);
+  packet.PutCString(",");
+  packet.PutHex64(lm, lldb::eByteOrderBig);
+  StringExtractorGDBRemote response;
+  if (SendPacketAndWaitForResponse(packet.GetString(), response) !=
+      PacketResult::Success)
+    return LLDB_INVALID_ADDRESS;
+  if (response.IsErrorResponse())
+    return LLDB_INVALID_ADDRESS;
+  if (response.IsUnsupportedResponse())
+    return LLDB_INVALID_ADDRESS;
+  llvm::StringRef ref = response.GetStringRef();
+  uint64_t addr = LLDB_INVALID_ADDRESS;
+  ref.consumeInteger(16, addr);
+  return addr;
+}
+
 bool GDBRemoteCommunicationClient::GetModuleInfo(
     const FileSpec &module_file_spec, const lldb_private::ArchSpec &arch_spec,
     ModuleSpec &module_spec) {

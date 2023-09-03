@@ -120,6 +120,12 @@ const char *NativeRegisterContext::GetRegisterSetNameForRegisterAtIndex(
   return nullptr;
 }
 
+llvm::Expected<uint64_t> NativeRegisterContext::ReadThreadPointer() {
+  return llvm::createStringError(
+            llvm::inconvertibleErrorCode(),
+            "Architecture does not implement Reading Thread Pointer");
+}
+
 lldb::addr_t NativeRegisterContext::GetPC(lldb::addr_t fail_value) {
   Log *log = GetLog(LLDBLog::Thread);
 

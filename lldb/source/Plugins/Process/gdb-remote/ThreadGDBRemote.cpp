@@ -66,6 +66,15 @@ const char *ThreadGDBRemote::GetName() {
   return m_thread_name.c_str();
 }
 
+lldb::addr_t ThreadGDBRemote::GetThreadPointer() {
+  ProcessSP process_sp(GetProcess());
+  ProcessGDBRemote *gdb_process =
+    static_cast<ProcessGDBRemote *>(process_sp.get());
+  uint64_t tid = this->GetProtocolID();
+  // Return thread pointer here, offset and link_map will be filled by GetThreadLocalData in DYLD
+  return gdb_process->m_gdb_comm.GetQGetTLSAddr(tid, LLDB_INVALID_ADDRESS /* offset */, LLDB_INVALID_ADDRESS /* lm */);
+}
+
 void ThreadGDBRemote::ClearQueueInfo() {
   m_dispatch_queue_name.clear();
   m_queue_kind = eQueueKindUnknown;

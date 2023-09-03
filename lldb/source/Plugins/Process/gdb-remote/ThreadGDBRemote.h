@@ -71,6 +71,8 @@ public:
       m_thread_name.clear();
   }
 
+  lldb::addr_t GetThreadPointer() override;
+
   lldb::addr_t GetThreadDispatchQAddr() { return m_thread_dispatch_qaddr; }
 
   void SetThreadDispatchQAddr(lldb::addr_t thread_dispatch_qaddr) {
