@@ -265,6 +265,7 @@ const char BinaryFunctionPassManager::TimerGroupDesc[] =
 
 void BinaryFunctionPassManager::runPasses() {
   auto &BFs = BC.getBinaryFunctions();
+  bool IsCFGSafe = true;
   for (size_t PassIdx = 0; PassIdx < Passes.size(); PassIdx++) {
     const std::pair<const bool, std::unique_ptr<BinaryFunctionPass>>
         &OptPassPair = Passes[PassIdx];
@@ -284,7 +285,9 @@ void BinaryFunctionPassManager::runPasses() {
     callWithDynoStats([this, &Pass] { Pass->runOnFunctions(BC); }, BFs,
                       Pass->getName(), opts::DynoStatsAll, BC.isAArch64());
 
-    if (opts::VerifyCFG &&
+    if (strcmp(Pass->getName(), "inst-lowering") == 0)
+      IsCFGSafe = false;
+    if (opts::VerifyCFG && IsCFGSafe &&
         !std::accumulate(
             BFs.begin(), BFs.end(), true,
             [](const bool Valid,
