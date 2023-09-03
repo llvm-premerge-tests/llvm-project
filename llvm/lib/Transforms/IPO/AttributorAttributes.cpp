@@ -65,6 +65,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/GraphWriter.h"
 #include "llvm/Support/MathExtras.h"
+#include "llvm/Support/TypeSize.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/CallPromotionUtils.h"
@@ -192,6 +193,7 @@ PIPE_OPERATOR(AAPointerInfo)
 PIPE_OPERATOR(AAAssumptionInfo)
 PIPE_OPERATOR(AAUnderlyingObjects)
 PIPE_OPERATOR(AAAddressSpace)
+PIPE_OPERATOR(AAAllocationInfo)
 PIPE_OPERATOR(AAIndirectCallInfo)
 PIPE_OPERATOR(AAGlobalValueInfo)
 PIPE_OPERATOR(AADenormalFPMath)
@@ -880,6 +882,7 @@ struct AA::PointerInfo::State : public AbstractState {
   using const_bin_iterator = OffsetBinsTy::const_iterator;
   const_bin_iterator begin() const { return OffsetBins.begin(); }
   const_bin_iterator end() const { return OffsetBins.end(); }
+  int64_t numOffsetBins() const { return OffsetBins.size(); }
 
   const AAPointerInfo::Access &getAccess(unsigned Index) const {
     return AccessList[Index];
@@ -1101,6 +1104,14 @@ struct AAPointerInfoImpl
   /// See AbstractAttribute::manifest(...).
   ChangeStatus manifest(Attributor &A) override {
     return AAPointerInfo::manifest(A);
+  }
+
+  using OffsetBinsTy = DenseMap<AA::RangeTy, SmallSet<unsigned, 4>>;
+  using const_bin_iterator = OffsetBinsTy::const_iterator;
+  virtual const_bin_iterator begin() const override { return State::begin(); }
+  virtual const_bin_iterator end() const override { return State::end(); }
+  virtual int64_t numOffsetBins() const override {
+    return State::numOffsetBins();
   }
 
   bool forallInterferingAccesses(
@@ -12647,6 +12658,256 @@ struct AAAddressSpaceCallSiteArgument final : AAAddressSpaceImpl {
 };
 } // namespace
 
+/// ----------- Allocation Info ----------
+namespace {
+struct AAAllocationInfoImpl : public AAAllocationInfo {
+  AAAllocationInfoImpl(const IRPosition &IRP, Attributor &A)
+      : AAAllocationInfo(IRP, A) {}
+
+  std::optional<TypeSize> getAllocatedSize() const override {
+    assert(isValidState() && "the AA is invalid");
+    return AssumedAllocatedSize;
+  }
+
+  bool isaMallocInst(Instruction *I) {
+    CallInst *Call = dyn_cast<CallInst>(I);
+    auto CallName = Call->getCalledFunction()->getName();
+    if (CallName.str() == "malloc")
+      return true;
+
+    return false;
+  };
+
+  ChangeStatus updateImpl(Attributor &A) override {
+
+    Instruction *I = getIRPosition().getCtxI();
+
+    const IRPosition &IRP = getIRPosition();
+
+    if (!(isa<AllocaInst>(I) || isaMallocInst(I)))
+      return llvm::IntegerStateBase<bool, true,
+                                    false>::indicatePessimisticFixpoint();
+
+    const AAPointerInfo *PI =
+        A.getOrCreateAAFor<AAPointerInfo>(IRP, *this, DepClassTy::REQUIRED);
+
+    if (!PI)
+      return indicatePessimisticFixpoint();
+
+    if (!PI->getState().isValidState())
+      return indicatePessimisticFixpoint();
+
+    int64_t BinSize = PI->numOffsetBins();
+
+    // TODO: Handle for more than one Bin
+    if (BinSize > 1)
+      return indicatePessimisticFixpoint();
+
+    const auto &It = PI->begin();
+
+    if (BinSize == 0)
+      return indicatePessimisticFixpoint();
+
+    if (It->first.Offset != 0)
+      return indicatePessimisticFixpoint();
+
+    uint64_t OffsetEnd = It->first.Offset + It->first.Size;
+    const DataLayout &DL = A.getDataLayout();
+
+    switch (I->getOpcode()) {
+    case Instruction::Alloca: {
+      AllocaInst *AI = dyn_cast<AllocaInst>(getIRPosition().getCtxI());
+      if (!AI)
+        return indicatePessimisticFixpoint();
+      const auto &AllocationSize = AI->getAllocationSize(DL);
+
+      if (!AllocationSize || AllocationSize == 0)
+        return indicatePessimisticFixpoint();
+
+      if (OffsetEnd == *AllocationSize)
+        return indicatePessimisticFixpoint();
+
+      break;
+    }
+    case Instruction::Call: {
+      CallInst *Call = dyn_cast<CallInst>(getIRPosition().getCtxI());
+      auto CallName = Call->getCalledFunction()->getName();
+      if (CallName.str() != "malloc")
+        return llvm::IntegerStateBase<bool, true,
+                                      false>::indicatePessimisticFixpoint();
+
+      // TODO: Handle if this is a variable.
+      // If it can be constant folded at compile time then we can reduce the
+      // allocation size.
+      Value *ValueOperand = Call->getArgOperand(0);
+
+      if (!ValueOperand)
+        return llvm::IntegerStateBase<bool, true,
+                                      false>::indicatePessimisticFixpoint();
+
+      ConstantInt *IntOperand = dyn_cast<ConstantInt>(ValueOperand);
+
+      if (!IntOperand)
+        return indicatePessimisticFixpoint();
+
+      if (OffsetEnd == IntOperand->getZExtValue())
+        return llvm::IntegerStateBase<bool, true,
+                                      false>::indicatePessimisticFixpoint();
+
+      break;
+    }
+    default:
+      return indicatePessimisticFixpoint();
+    }
+
+    auto SizeOfTypeInBits =
+        std::optional<TypeSize>(TypeSize(OffsetEnd * 8, false));
+
+    if (!changeAllocationSize(SizeOfTypeInBits))
+      return ChangeStatus::UNCHANGED;
+
+    return ChangeStatus::CHANGED;
+  }
+
+  /// See AbstractAttribute::manifest(...).
+  ChangeStatus manifest(Attributor &A) override {
+
+    assert(isValidState() &&
+           "Manifest should only be called if the state is valid.");
+
+    Instruction *I = getIRPosition().getCtxI();
+
+    auto FixedAllocatedSizeInBits = getAllocatedSize()->getFixedValue();
+
+    int NumBytesToAllocate = (FixedAllocatedSizeInBits + 7) / 8;
+
+    Type *CharType = Type::getInt8Ty(I->getContext());
+
+    auto *NumBytesToValue = llvm::ConstantInt::get(
+        I->getContext(), llvm::APInt(32, NumBytesToAllocate));
+
+    switch (I->getOpcode()) {
+    case Instruction::Alloca: {
+
+      AllocaInst *AI = dyn_cast<AllocaInst>(I);
+
+      AllocaInst *NewAllocaInst =
+          new AllocaInst(CharType, AI->getAddressSpace(), NumBytesToValue,
+                         AI->getAlign(), AI->getName(), AI->getNextNode());
+
+      if (A.changeAfterManifest(IRPosition::inst(*AI), *NewAllocaInst))
+        return ChangeStatus::CHANGED;
+
+      break;
+    }
+    case Instruction::Call: {
+
+      if (!isaMallocInst(I))
+        return llvm::IntegerStateBase<bool, true,
+                                      false>::indicatePessimisticFixpoint();
+
+      Type *IntPtrTy = IntegerType::getInt32Ty(I->getContext());
+      Instruction *NewMallocInst = CallInst::CreateMalloc(
+          I->getNextNode(), IntPtrTy, CharType, NumBytesToValue, nullptr,
+          nullptr, I->getName());
+
+      if (A.changeAfterManifest(IRPosition::inst(*I), *NewMallocInst)) {
+        A.deleteAfterManifest(*I);
+        return ChangeStatus::CHANGED;
+      }
+
+      break;
+    }
+    default:
+      break;
+    }
+
+    return llvm::ChangeStatus::UNCHANGED;
+  }
+
+  /// See AbstractAttribute::getAsStr().
+  const std::string getAsStr(Attributor *A) const override {
+    if (!isValidState())
+      return "allocationinfo(<invalid>)";
+    return "allocationinfo(" +
+           (AssumedAllocatedSize == HasNoAllocationSize
+                ? "none"
+                : std::to_string(AssumedAllocatedSize->getFixedValue())) +
+           ")";
+  }
+
+private:
+  std::optional<TypeSize> AssumedAllocatedSize = HasNoAllocationSize;
+
+  bool changeAllocationSize(std::optional<TypeSize> Size) {
+    if (AssumedAllocatedSize == HasNoAllocationSize ||
+        AssumedAllocatedSize != Size) {
+      AssumedAllocatedSize = Size;
+      return true;
+    }
+    return false;
+  }
+};
+
+struct AAAllocationInfoFloating : AAAllocationInfoImpl {
+  AAAllocationInfoFloating(const IRPosition &IRP, Attributor &A)
+      : AAAllocationInfoImpl(IRP, A) {}
+
+  void trackStatistics() const override {
+    STATS_DECLTRACK_FLOATING_ATTR(allocationinfo);
+  }
+};
+
+struct AAAllocationInfoReturned : AAAllocationInfoImpl {
+  AAAllocationInfoReturned(const IRPosition &IRP, Attributor &A)
+      : AAAllocationInfoImpl(IRP, A) {}
+
+  /// See AbstractAttribute::initialize(...).
+  void initialize(Attributor &A) override {
+    // TODO: we don't rewrite function argument for now because it will need to
+    // rewrite the function signature and all call sites
+    (void)indicatePessimisticFixpoint();
+  }
+
+  void trackStatistics() const override {
+    STATS_DECLTRACK_FNRET_ATTR(allocationinfo);
+  }
+};
+
+struct AAAllocationInfoCallSiteReturned : AAAllocationInfoImpl {
+  AAAllocationInfoCallSiteReturned(const IRPosition &IRP, Attributor &A)
+      : AAAllocationInfoImpl(IRP, A) {}
+
+  void trackStatistics() const override {
+    STATS_DECLTRACK_CSRET_ATTR(allocationinfo);
+  }
+};
+
+struct AAAllocationInfoArgument : AAAllocationInfoImpl {
+  AAAllocationInfoArgument(const IRPosition &IRP, Attributor &A)
+      : AAAllocationInfoImpl(IRP, A) {}
+
+  void trackStatistics() const override {
+    STATS_DECLTRACK_ARG_ATTR(allocationinfo);
+  }
+};
+
+struct AAAllocationInfoCallSiteArgument : AAAllocationInfoImpl {
+  AAAllocationInfoCallSiteArgument(const IRPosition &IRP, Attributor &A)
+      : AAAllocationInfoImpl(IRP, A) {}
+
+  /// See AbstractAttribute::initialize(...).
+  void initialize(Attributor &A) override {
+
+    (void)indicatePessimisticFixpoint();
+  }
+
+  void trackStatistics() const override {
+    STATS_DECLTRACK_CSARG_ATTR(allocationinfo);
+  }
+};
+} // namespace
+
 const char AANoUnwind::ID = 0;
 const char AANoSync::ID = 0;
 const char AANoFree::ID = 0;
@@ -12680,6 +12941,7 @@ const char AAPointerInfo::ID = 0;
 const char AAAssumptionInfo::ID = 0;
 const char AAUnderlyingObjects::ID = 0;
 const char AAAddressSpace::ID = 0;
+const char AAAllocationInfo::ID = 0;
 const char AAIndirectCallInfo::ID = 0;
 const char AAGlobalValueInfo::ID = 0;
 const char AADenormalFPMath::ID = 0;
@@ -12813,6 +13075,7 @@ CREATE_VALUE_ABSTRACT_ATTRIBUTE_FOR_POSITION(AANoUndef)
 CREATE_VALUE_ABSTRACT_ATTRIBUTE_FOR_POSITION(AANoFPClass)
 CREATE_VALUE_ABSTRACT_ATTRIBUTE_FOR_POSITION(AAPointerInfo)
 CREATE_VALUE_ABSTRACT_ATTRIBUTE_FOR_POSITION(AAAddressSpace)
+CREATE_VALUE_ABSTRACT_ATTRIBUTE_FOR_POSITION(AAAllocationInfo)
 
 CREATE_ALL_ABSTRACT_ATTRIBUTE_FOR_POSITION(AAValueSimplify)
 CREATE_ALL_ABSTRACT_ATTRIBUTE_FOR_POSITION(AAIsDead)
