@@ -19,6 +19,16 @@ def BufferDeallocation : Pass<"buffer-deallocation", "func::FuncOp"> {
     deallocation operations for all buffers in the input program. This ensures
     that the resulting program does not have any memory leaks.
 
+    It is recommended to bufferize all operations first such that no tensor
+    values remain in the IR once this pass is applied. That way all allocated
+    MemRefs will be properly deallocated without any additional manual work.
+    Otherwise, the pass that bufferizes the remaining tensors is responsible to
+    add the corresponding deallocation operations. Note that this pass does not
+    consider any values of tensor type and assumes that MemRef values defined by
+    `bufferization.to_memref` do not return ownership and do not have to be
+    deallocated. `bufferization.to_tensor` operations are handled similarly to
+    `bufferization.clone` operations with the exception that the result value is
+    not handled because it's a tensor (not a MemRef).
 
     Input
 
@@ -85,7 +95,19 @@ def BufferDeallocation : Pass<"buffer-deallocation", "func::FuncOp"> {
     ```
 
   }];
+  let options = [
+    Option<"privateFuncDynamicOwnership", "private-function-dynamic-ownership",
+           "bool", /*default=*/"false",
+           "Allows to add additional arguments to private functions to "
+           "dynamically pass ownership of memrefs to callees. This can enable "
+           "earlier deallocations.">,
+  ];
   let constructor = "mlir::bufferization::createBufferDeallocationPass()";
+
+  let dependentDialects = [
+    "mlir::bufferization::BufferizationDialect", "mlir::arith::ArithDialect",
+    "mlir::memref::MemRefDialect", "mlir::scf::SCFDialect"
+  ];
 }
 
 def BufferDeallocationSimplification :
