@@ -3,6 +3,7 @@ add_mlir_dialect_library(MLIRBufferizationDialect
   BufferizableOpInterface.cpp
   BufferizationOps.cpp
   BufferizationDialect.cpp
+  InferDestinationOpInterface
 
   ADDITIONAL_HEADER_DIRS
   ${MLIR_MAIN_INCLUDE_DIR}/mlir/Dialect/Bufferization

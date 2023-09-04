@@ -1,12 +1,21 @@
-// RUN: mlir-opt %s --test-transform-dialect-interpreter --split-input-file | FileCheck %s
+// RUN: mlir-opt %s --test-transform-dialect-interpreter --split-input-file | \
+// RUN:     FileCheck %s
+// RUN: mlir-opt %s --test-transform-dialect-interpreter \
+// RUN:             --one-shot-bufferize="bufferize-function-boundaries" \
+// RUN:             --split-input-file | \
+// RUN:     FileCheck %s --check-prefix=CHECK-BUFFERIZE
 
 // CHECK-LABEL: func.func @eliminate_tensor_empty(
 //  CHECK-SAME:     %[[arg0:.*]]: tensor<50x91xf32>,
 //   CHECK-NOT:   tensor.empty
 //       CHECK:   %[[filled:.*]] = linalg.fill {{.*}} outs(%[[arg0]]
 //       CHECK:   %[[matmul:.*]] = linalg.matmul {{.*}} outs(%[[filled]]
-//       CHECK:   %[[generic:.*]] = linalg.generic {{.*}} outs(%[[matmul]]
+//       CHECK:   %[[generic:.*]] = linalg.generic {{.*}} ins(%{{.*}}, %[[matmul]] : {{.*}}) outs(%[[arg0]]
 //       CHECK:   return %[[generic]]
+
+// CHECK-BUFFERIZE-LABEL: func @eliminate_tensor_empty(
+//   CHECK-BUFFERIZE-NOT:   memref.alloc
+//   CHECK-BUFFERIZE-NOT:   memref.copy
 func.func @eliminate_tensor_empty(
     %arg0: tensor<50x91xf32>, %arg1: tensor<91xf32>, %arg2: tensor<50x1280xf32>,
     %arg3: tensor<1280x91xf32>) -> tensor<50x91xf32>
@@ -35,8 +44,5 @@ func.func @eliminate_tensor_empty(
 transform.sequence failures(propagate) {
 ^bb1(%arg1: !transform.any_op):
   %0 = transform.structured.match ops{["func.func"]} in %arg1 : (!transform.any_op) -> !transform.any_op
-  transform.structured.eliminate_empty_tensors %0 : !transform.any_op
-  transform.apply_patterns to %0 {
-    transform.apply_patterns.linalg.erase_unnecessary_inputs
-  } : !transform.any_op
+  transform.bufferization.eliminate_empty_tensors %0 : !transform.any_op
 }

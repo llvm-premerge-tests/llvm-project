@@ -7,9 +7,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Dialect/Linalg/Transforms/BufferizableOpInterfaceImpl.h"
+
 #include "mlir/Dialect/Bufferization/IR/BufferizableOpInterface.h"
 #include "mlir/Dialect/Bufferization/IR/Bufferization.h"
 #include "mlir/Dialect/Bufferization/IR/DstBufferizableOpInterfaceImpl.h"
+#include "mlir/Dialect/Bufferization/IR/InferDestinationOpInterface.h"
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/IR/Dialect.h"
@@ -143,12 +145,69 @@ struct LinalgOpInterface
   }
 };
 
+template <typename OpTy>
+struct LinalgOpInferDestinationInterface
+    : public InferDestinationOpInterface::ExternalModel<
+          LinalgOpInferDestinationInterface<OpTy>, OpTy> {
+  static Value findMatchingDestinationOperand(LinalgOp linalgOp,
+                                              OpOperand &inOperand) {
+    // Only element-wise ops with a single result are supported. "tensor.empty"
+    // anchored on non-element-wise ops could still be eliminated but this op
+    // would bufferize out-of-place because of a RaW between `inOperand` and the
+    // "out" operand. (Both operands are aliasing after empty tensor
+    // elimination.)
+    if (linalgOp.getNumDpsInits() != 1)
+      return {};
+    if (linalgOp.getNumParallelLoops() != linalgOp.getNumLoops())
+      return {};
+    OpOperand *outOperand = linalgOp.getDpsInitOperand(0);
+    // Operand must be unused. If it is used, the "tensor.empty" could still be
+    // eliminated but an OpOperand would have to bufferize out-of-place due to
+    // a RaW conflict.
+    if (linalgOp.payloadUsesValueFromOperand(outOperand))
+      return {};
+    // Types must match. Other cases are not supported by empty tensor
+    // elimination.
+    if (outOperand->get().getType() != inOperand.get().getType())
+      return {};
+    // Indexing maps must match.
+    if (linalgOp.getMatchingIndexingMap(outOperand) !=
+        linalgOp.getMatchingIndexingMap(&inOperand))
+      return {};
+    return outOperand->get();
+  }
+
+  Value getOrBuildDestination(Operation *op, OpBuilder &builder, Location loc,
+                              OpOperand &operand) const {
+    return findMatchingDestinationOperand(cast<linalg::LinalgOp>(op), operand);
+  }
+
+  SmallVector<Value> getNeededValues(Operation *op, OpOperand &operand) const {
+    SmallVector<Value> neededValues;
+    neededValues.push_back(
+        findMatchingDestinationOperand(cast<LinalgOp>(op), operand));
+    return neededValues;
+  }
+
+  bool isAnchor(Operation *op, OpOperand &operand) const {
+    // Check if `operand` (or a computation on its data) is transferred into an
+    // unused "init".
+    auto linalgOp = cast<LinalgOp>(op);
+    if (!linalgOp.isDpsInput(&operand))
+      return false;
+    return static_cast<bool>(findMatchingDestinationOperand(linalgOp, operand));
+  }
+};
+
 /// Helper structure that iterates over all LinalgOps in `OpTys` and registers
 /// the `BufferizableOpInterface` with each of them.
 template <typename... Ops>
 struct LinalgOpInterfaceHelper {
   static void registerOpInterface(MLIRContext *ctx) {
     (Ops::template attachInterface<LinalgOpInterface<Ops>>(*ctx), ...);
+    (Ops::template attachInterface<LinalgOpInferDestinationInterface<Ops>>(
+         *ctx),
+     ...);
   }
 };
 } // namespace

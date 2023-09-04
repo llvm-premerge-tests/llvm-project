@@ -19,15 +19,6 @@ struct BufferizationStatistics;
 class OneShotAnalysisState;
 struct OneShotBufferizationOptions;
 
-/// A function that matches anchor OpOperands for tensor::EmptyOp elimination.
-/// If an OpOperand is matched, the function should populate the SmallVector
-/// with all values that are needed during `RewriteFn` to produce the
-/// replacement value.
-using AnchorMatchFn = std::function<bool(OpOperand &, SmallVector<Value> &)>;
-
-/// A function that rewrites matched anchors.
-using RewriteFn = std::function<Value(OpBuilder &, Location, OpOperand &)>;
-
 /// Try to eliminate tensor::EmptyOps inside `op`.
 ///
 /// * `rewriteFunc` generates the replacement for the tensor::EmptyOp.
@@ -37,19 +28,11 @@ using RewriteFn = std::function<Value(OpBuilder &, Location, OpOperand &)>;
 ///   following the aliasing  OpOperand, that eventually ends at a single
 ///   tensor::EmptyOp.
 LogicalResult eliminateEmptyTensors(RewriterBase &rewriter, Operation *op,
-                                    OneShotAnalysisState &state,
-                                    AnchorMatchFn anchorMatchFunc,
-                                    RewriteFn rewriteFunc);
+                                    OneShotAnalysisState &state);
 
 /// Within the given operation, hoist buffers from loops where possible. See
 /// "BufferLoopHoistingPass" for more information.
 void hoistBuffersFromLoops(Operation *op);
-
-/// Try to eliminate tensor::EmptyOps inside `op` that are anchored on an
-/// InsertSliceOp, i.e., if it is eventually inserted into another tensor
-/// (and some other conditions are met).
-LogicalResult insertSliceAnchoredEmptyTensorEliminationStep(
-    RewriterBase &rewriter, Operation *op, OneShotAnalysisState &state);
 
 /// Resolve RaW and other conflicts by inserting bufferization.alloc_tensor ops.
 /// After applying this transform, the IR can be bufferized without inserting

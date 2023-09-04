@@ -9651,6 +9651,36 @@ gentbl_cc_library(
 )
 
 td_library(
+    name = "InferDestinationOpInterfaceTdFiles",
+    srcs = [
+        "include/mlir/Dialect/Bufferization/IR/InferDestinationOpInterface.td",
+    ],
+    includes = ["include"],
+    deps = [
+        ":OpBaseTdFiles",
+    ],
+)
+
+gentbl_cc_library(
+    name = "InferDestinationOpInterfaceIncGen",
+    tbl_outs = [
+        (
+            ["-gen-op-interface-decls"],
+            "include/mlir/Dialect/Bufferization/IR/InferDestinationOpInterface.h.inc",
+        ),
+        (
+            ["-gen-op-interface-defs"],
+            "include/mlir/Dialect/Bufferization/IR/InferDestinationOpInterface.cpp.inc",
+        ),
+    ],
+    tblgen = ":mlir-tblgen",
+    td_file = "include/mlir/Dialect/Bufferization/IR/InferDestinationOpInterface.td",
+    deps = [
+        ":InferDestinationOpInterfaceTdFiles",
+    ],
+)
+
+td_library(
     name = "LinalgDocTdFiles",
     srcs = ["include/mlir/Dialect/Linalg/IR/LinalgDoc.td"],
     includes = ["include"],
@@ -11907,11 +11937,13 @@ cc_library(
         "lib/Dialect/Bufferization/IR/BufferizableOpInterface.cpp",
         "lib/Dialect/Bufferization/IR/BufferizationDialect.cpp",
         "lib/Dialect/Bufferization/IR/BufferizationOps.cpp",
+        "lib/Dialect/Bufferization/IR/InferDestinationOpInterface.cpp",
     ],
     hdrs = [
         "include/mlir/Dialect/Bufferization/IR/BufferizableOpInterface.h",
         "include/mlir/Dialect/Bufferization/IR/Bufferization.h",
         "include/mlir/Dialect/Bufferization/IR/DstBufferizableOpInterfaceImpl.h",
+        "include/mlir/Dialect/Bufferization/IR/InferDestinationOpInterface.h",
     ],
     includes = ["include"],
     deps = [
@@ -11927,6 +11959,7 @@ cc_library(
         ":DestinationStyleOpInterface",
         ":FuncDialect",
         ":IR",
+        ":InferDestinationOpInterfaceIncGen",
         ":InferTypeOpInterface",
         ":MemRefDialect",
         ":SparseTensorDialect",
