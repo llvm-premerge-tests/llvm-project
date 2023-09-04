@@ -461,18 +461,20 @@ Value linalg::bufferizeToAllocation(
   AnalysisState state(bufferizationOptions);
 
 #ifndef NDEBUG
-  // Ops with nested tensor ops are not supported yet. At the moment, this
-  // function just bufferizes the given op itself, but not its body.
-  op->walk([&](Operation *nestedOp) {
-    if (op == nestedOp)
-      return;
-    if (llvm::any_of(nestedOp->getOperands(),
-                     [](Value v) { return v.getType().isa<TensorType>(); }))
-      llvm_unreachable("ops with nested tensor ops are not supported yet");
-    if (llvm::any_of(nestedOp->getResults(),
-                     [](Value v) { return v.getType().isa<TensorType>(); }))
-      llvm_unreachable("ops with nested tensor ops are not supported yet");
-  });
+  if (!options.bufferizeDestinationOnly) {
+    // Ops with nested tensor ops are not supported yet. At the moment, this
+    // function just bufferizes the given op itself, but not its body.
+    op->walk([&](Operation *nestedOp) {
+      if (op == nestedOp)
+        return;
+      if (llvm::any_of(nestedOp->getOperands(),
+                       [](Value v) { return v.getType().isa<TensorType>(); }))
+        llvm_unreachable("ops with nested tensor ops are not supported yet");
+      if (llvm::any_of(nestedOp->getResults(),
+                       [](Value v) { return v.getType().isa<TensorType>(); }))
+        llvm_unreachable("ops with nested tensor ops are not supported yet");
+    });
+  }
 #endif // NDEBUG
 
   // Gather tensor results.
