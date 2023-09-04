@@ -172,6 +172,8 @@ Bug Fixes in This Version
 - Clang now prints unnamed members in diagnostic messages instead of giving an
   empty ''. Fixes
   (`#63759 <https://github.com/llvm/llvm-project/issues/63759>`_)
+- Support MSVC predefined macro expressions in constant expressions and in
+  local structs.
 
 Bug Fixes to Compiler Builtins
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
