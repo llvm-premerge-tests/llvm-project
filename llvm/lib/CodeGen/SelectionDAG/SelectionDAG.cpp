@@ -4037,6 +4037,43 @@ static SelectionDAG::OverflowKind mapOverflowResult(ConstantRange::OverflowResul
 }
 
 SelectionDAG::OverflowKind
+SelectionDAG::computeOverflowForUnsignedMul(SDValue N0, SDValue N1) const {
+  // X * 0 and X * 1 never overflow.
+  if (isNullConstant(N1) || isOneConstant(N1))
+    return OFK_Never;
+  KnownBits N0Known = computeKnownBits(N0);
+  KnownBits N1Known = computeKnownBits(N1);
+  ConstantRange N0Range = ConstantRange::fromKnownBits(N0Known, false);
+  ConstantRange N1Range = ConstantRange::fromKnownBits(N1Known, false);
+  return mapOverflowResult(N0Range.unsignedMulMayOverflow(N1Range));
+}
+
+SelectionDAG::OverflowKind
+SelectionDAG::computeOverflowForSignedMul(SDValue N0, SDValue N1) const {
+  // X * 0 and X * 1 never overflow.
+  if (isNullConstant(N1) || isOneConstant(N1))
+    return OFK_Never;
+  // Get the size of the result.
+  unsigned BitWidth = N0.getScalarValueSizeInBits();
+  // Sum of the leading zeros.
+  unsigned SignBits = ComputeNumSignBits(N0) + ComputeNumSignBits(N1);
+  // If we have enough leading zeros, then there's no overflow.
+  if (SignBits > BitWidth + 1)
+    return OFK_Never;
+  if (SignBits == BitWidth + 1) {
+    // The overflow occurs when the true multiplication of the
+    // the operands is the minimum negative number.
+    KnownBits N0Known = computeKnownBits(N0);
+    KnownBits N1Known = computeKnownBits(N1);
+    // If one of the operands is non-negative, then there's no
+    // overflow.
+    if (N0Known.isNonNegative() || N1Known.isNonNegative())
+      return OFK_Never;
+  }
+  return OFK_Sometime;
+}
+
+SelectionDAG::OverflowKind
 SelectionDAG::computeOverflowForSignedAdd(SDValue N0, SDValue N1) const {
   // X + 0 never overflow
   if (isNullConstant(N1))
@@ -4047,8 +4084,11 @@ SelectionDAG::computeOverflowForSignedAdd(SDValue N0, SDValue N1) const {
   if (ComputeNumSignBits(N0) > 1 && ComputeNumSignBits(N1) > 1)
     return OFK_Never;
 
-  // TODO: Add ConstantRange::signedAddMayOverflow handling.
-  return OFK_Sometime;
+  KnownBits N0Known = computeKnownBits(N0);
+  KnownBits N1Known = computeKnownBits(N1);
+  ConstantRange N0Range = ConstantRange::fromKnownBits(N0Known, false);
+  ConstantRange N1Range = ConstantRange::fromKnownBits(N1Known, false);
+  return mapOverflowResult(N0Range.signedAddMayOverflow(N1Range));
 }
 
 SelectionDAG::OverflowKind
@@ -4085,8 +4125,11 @@ SelectionDAG::computeOverflowForSignedSub(SDValue N0, SDValue N1) const {
   if (ComputeNumSignBits(N0) > 1 && ComputeNumSignBits(N1) > 1)
     return OFK_Never;
 
-  // TODO: Add ConstantRange::signedSubMayOverflow handling.
-  return OFK_Sometime;
+  KnownBits N0Known = computeKnownBits(N0);
+  KnownBits N1Known = computeKnownBits(N1);
+  ConstantRange N0Range = ConstantRange::fromKnownBits(N0Known, false);
+  ConstantRange N1Range = ConstantRange::fromKnownBits(N1Known, false);
+  return mapOverflowResult(N0Range.signedSubMayOverflow(N1Range));
 }
 
 SelectionDAG::OverflowKind
@@ -4095,8 +4138,11 @@ SelectionDAG::computeOverflowForUnsignedSub(SDValue N0, SDValue N1) const {
   if (isNullConstant(N1))
     return OFK_Never;
 
-  // TODO: Add ConstantRange::unsignedSubMayOverflow handling.
-  return OFK_Sometime;
+  KnownBits N0Known = computeKnownBits(N0);
+  KnownBits N1Known = computeKnownBits(N1);
+  ConstantRange N0Range = ConstantRange::fromKnownBits(N0Known, false);
+  ConstantRange N1Range = ConstantRange::fromKnownBits(N1Known, false);
+  return mapOverflowResult(N0Range.unsignedSubMayOverflow(N1Range));
 }
 
 bool SelectionDAG::isKnownToBeAPowerOfTwo(SDValue Val, unsigned Depth) const {
