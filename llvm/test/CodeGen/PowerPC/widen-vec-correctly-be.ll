@@ -12,9 +12,9 @@ define void @test() local_unnamed_addr #0 align 2 {
 ; CHECK-BE-NEXT:    lhz r3, 0(r3)
 ; CHECK-BE-NEXT:    xxlxor vs1, vs1, vs1
 ; CHECK-BE-NEXT:    addi r3, r3, 1
-; CHECK-BE-NEXT:    vsrw v2, v2, v2
 ; CHECK-BE-NEXT:    sth r3, -32(r1)
 ; CHECK-BE-NEXT:    addi r3, r1, -32
+; CHECK-BE-NEXT:    vsrw v2, v2, v2
 ; CHECK-BE-NEXT:    lxvw4x vs0, 0, r3
 ; CHECK-BE-NEXT:    addi r3, r1, -16
 ; CHECK-BE-NEXT:    xxsel vs0, vs0, vs1, v2

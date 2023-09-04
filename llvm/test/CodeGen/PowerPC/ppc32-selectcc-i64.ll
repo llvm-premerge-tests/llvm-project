@@ -7,8 +7,8 @@ define i1 @cmp(i8* %a, i8* %b) {
 ; CHECK:       # %bb.0: # %entry
 ; CHECK-NEXT:    lwz 5, 4(3)
 ; CHECK-NEXT:    lwz 7, 0(3)
-; CHECK-NEXT:    lwz 6, 4(4)
 ; CHECK-NEXT:    lwz 8, 0(4)
+; CHECK-NEXT:    lwz 6, 4(4)
 ; CHECK-NEXT:    xor 9, 7, 8
 ; CHECK-NEXT:    xor 10, 5, 6
 ; CHECK-NEXT:    or. 9, 10, 9
@@ -21,9 +21,9 @@ define i1 @cmp(i8* %a, i8* %b) {
 ; CHECK-NEXT:    blr
 ; CHECK-NEXT:  .LBB0_2: # %res_block
 ; CHECK-NEXT:    cmplw 7, 8
-; CHECK-NEXT:    cmplw 1, 5, 6
 ; CHECK-NEXT:    li 3, 1
 ; CHECK-NEXT:    li 4, -1
+; CHECK-NEXT:    cmplw 1, 5, 6
 ; CHECK-NEXT:    crandc 20, 0, 2
 ; CHECK-NEXT:    crand 21, 2, 4
 ; CHECK-NEXT:    cror 20, 21, 20
