@@ -800,6 +800,12 @@ DefinedOrUnknownSVal MemRegionManager::getStaticSize(const MemRegion *MR,
       return UnknownVal();
 
     QualType Ty = cast<TypedValueRegion>(SR)->getDesugaredValueType(Ctx);
+    if (Ty->isPointerType()) {
+      QualType PointeeTy = Ty->getPointeeType();
+      if(!PointeeTy->isIncompleteType() && PointeeTy->isObjectType()){
+        Ty = PointeeTy;
+      }
+    }
     const DefinedOrUnknownSVal Size = getElementExtent(Ty, SVB);
 
     // We currently don't model flexible array members (FAMs), which are:
