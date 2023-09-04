@@ -2001,6 +2001,47 @@ static void getTrivialDefaultFunctionAttributes(
   }
 }
 
+static void
+overrideFunctionFeaturesWithTargetFeatures(llvm::AttrBuilder &FuncAttr,
+                                           const llvm::Function &F,
+                                           const TargetOptions &TargetOpts) {
+  auto FFeatures = F.getFnAttribute("target-features");
+
+  SmallVector<StringRef> MergedFeatures(TargetOpts.Features.begin(),
+                                        TargetOpts.Features.end());
+
+  if (FFeatures.isValid()) {
+    const auto &TFeatures = TargetOpts.FeatureMap;
+    for (StringRef Feature : llvm::split(FFeatures.getValueAsString(), ',')) {
+      if (Feature.empty())
+        continue;
+
+      bool EnabledForFunc = Feature.starts_with("+");
+      assert(EnabledForFunc || Feature.starts_with("-"));
+
+      StringRef Name = Feature.drop_front(1);
+      auto TEntry = TFeatures.find(Name);
+
+      // If the feature is not set for the target-opts, it must be preserved
+      if (TEntry == TFeatures.end()) {
+        MergedFeatures.push_back(Feature);
+        continue;
+      }
+
+      // If the feature is enabled for one and disabled for the other, they are
+      // not compatible
+      bool EnabledForTarget = TEntry->second;
+      if (EnabledForTarget != EnabledForFunc) {
+        FuncAttr.addAttribute(FFeatures);
+        return;
+      }
+    }
+  }
+
+  if (!MergedFeatures.empty())
+    FuncAttr.addAttribute("target-features", llvm::join(MergedFeatures, ","));
+}
+
 void CodeGen::mergeDefaultFunctionDefinitionAttributes(
     llvm::Function &F, const CodeGenOptions &CodeGenOpts,
     const LangOptions &LangOpts, const TargetOptions &TargetOpts,
@@ -2058,6 +2099,9 @@ void CodeGen::mergeDefaultFunctionDefinitionAttributes(
 
   F.removeFnAttrs(AttrsToRemove);
   addDenormalModeAttrs(Merged, MergedF32, FuncAttrs);
+
+  overrideFunctionFeaturesWithTargetFeatures(FuncAttrs, F, TargetOpts);
+
   F.addFnAttrs(FuncAttrs);
 }
 
