@@ -88,8 +88,8 @@ public:
   void emitEndOfAsmFile(Module &M) override;
 
   void emitFunctionEntryLabel() override;
-  void emitDirectiveOptionArch();
-  bool isSameAttribute();
+  bool emitDirectiveOptionArch();
+  bool isSameSupportedAttribute();
 
 private:
   void emitAttributes();
@@ -252,9 +252,14 @@ bool RISCVAsmPrinter::PrintAsmMemoryOperand(const MachineInstr *MI,
   return false;
 }
 
-void RISCVAsmPrinter::emitDirectiveOptionArch() {
+bool RISCVAsmPrinter::emitDirectiveOptionArch() {
+  if (isSameSupportedAttribute())
+    return false;
+
   RISCVTargetStreamer &RTS =
       static_cast<RISCVTargetStreamer &>(*OutStreamer->getTargetStreamer());
+  RTS.emitDirectiveOptionPush();
+
   SmallVector<RISCVOptionArchArg> NeedEmitStdOptionArgs;
   const MCSubtargetInfo &MCSTI = *TM.getMCSubtargetInfo();
   for (const auto &Feature : RISCVFeatureKV) {
@@ -270,26 +275,35 @@ void RISCVAsmPrinter::emitDirectiveOptionArch() {
   }
   if (!NeedEmitStdOptionArgs.empty())
     RTS.emitDirectiveOptionArch(NeedEmitStdOptionArgs);
+
+  return true;
 }
 
-bool RISCVAsmPrinter::isSameAttribute() {
+bool RISCVAsmPrinter::isSameSupportedAttribute() {
   const MCSubtargetInfo &MCSTI = *TM.getMCSubtargetInfo();
-  return MCSTI.getFeatureBits() == STI->getFeatureBits();
+  for (const auto &Feature : RISCVFeatureKV) {
+    if (STI->hasFeature(Feature.Value) == MCSTI.hasFeature(Feature.Value))
+      continue;
+
+    if (!llvm::RISCVISAInfo::isSupportedExtensionFeature(Feature.Key))
+      continue;
+
+    return false;
+  }
+  return true;
 }
 
 bool RISCVAsmPrinter::runOnMachineFunction(MachineFunction &MF) {
   STI = &MF.getSubtarget<RISCVSubtarget>();
   RISCVTargetStreamer &RTS =
       static_cast<RISCVTargetStreamer &>(*OutStreamer->getTargetStreamer());
-  if (!isSameAttribute()) {
-    RTS.emitDirectiveOptionPush();
-    emitDirectiveOptionArch();
-  }
+
+  bool NeedEmitOptionArch = emitDirectiveOptionArch();
 
   SetupMachineFunction(MF);
   emitFunctionBody();
 
-  if (!isSameAttribute())
+  if (NeedEmitOptionArch)
     RTS.emitDirectiveOptionPop();
   return false;
 }
