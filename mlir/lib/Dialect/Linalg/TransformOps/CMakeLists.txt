@@ -22,6 +22,7 @@ add_mlir_dialect_library(MLIRLinalgTransformOps
   MLIRFunctionInterfaces
   MLIRIndexDialect
   MLIRIR
+  MLIRIndexDialect
   MLIRLinalgDialect
   MLIRLinalgTransforms
   MLIRParser

@@ -1,26 +1,18 @@
 // RUN: mlir-opt %s \
-// RUN:   -test-transform-dialect-interpreter \
-// RUN: | FileCheck %s --check-prefix=CHECK-MMA-SYNC
-
-// CHECK-MMA-SYNC-LABEL: func @main() {
-//       CHECK-MMA-SYNC:   nvgpu.mma.sync(%{{.*}}) {mmaShape = [16, 8, 4], tf32Enabled} 
-//  CHECK-MMA-SYNC-SAME:     : (vector<2x1xf32>, vector<1x1xf32>, vector<2x2xf32>) -> vector<2x2xf32>
-
-// Tested to run locally in 1.7s.
-
-// RUN: mlir-opt %s \
-// RUN:   -test-transform-dialect-interpreter \
+// RUN:   -test-transform-dialect-interpreter=debug-payload-root-tag="payload" \
 // RUN:   -test-transform-dialect-erase-schedule \
-// RUN:   -test-lower-to-nvvm="kernel-index-bitwidth=32 cubin-chip=sm_80 cubin-features=+ptx76" \
 // RUN: | mlir-cpu-runner \
 // RUN:   --shared-libs=%mlir_cuda_runtime \
 // RUN:   --shared-libs=%mlir_runner_utils \
 // RUN:   --entry-point-result=void \
 // RUN: | FileCheck %s
 
+
 !lhs_memref_type = memref<16x4xf32>
 !rhs_memref_type = memref<4x8xf32>
 !res_memref_type = memref<16x8xf32>
+
+module attributes {transform.target_tag="payload"} {
 
 func.func @compute_linspace_val(%ridx: index, %cidx: index, %strideCidx: index) -> f32 {
   %r = arith.index_cast %ridx : index to i32
@@ -154,10 +146,135 @@ func.func @main() {
 
 func.func private @printMemrefF32(memref<*xf32>)
 
+} // module
+
+
+/// Schedule to lower device GPU IR and host IR to LLVM.
+/// In the future this should be preloaded from a separate file.
+module @named_inclusion_in_named attributes { transform.with_named_sequence } {
+
+// Spell out lowering to NVVM to make it less bespoke and more easily configurable.
+transform.named_sequence @lower_gpu(
+    %module: !transform.any_op {transform.consumed}) -> !transform.any_op {
+  
+  %m2 = transform.apply_registered_pass "gpu-kernel-outlining" to %module : (!transform.any_op) -> !transform.any_op
+
+  %gpu_module = transform.structured.match ops{["gpu.module"]} in %m2 : (!transform.any_op) -> !transform.any_op
+  %gm2 = transform.apply_registered_pass "convert-vector-to-scf" to %gpu_module : (!transform.any_op) -> !transform.any_op
+  %gm3 = transform.apply_registered_pass "convert-scf-to-cf" to %gm2 : (!transform.any_op) -> !transform.any_op
+  %gm4 = transform.apply_registered_pass "expand-strided-metadata" to %gm3 : (!transform.any_op) -> !transform.any_op
+  %gm5 = transform.apply_registered_pass "lower-affine" to %gm4 : (!transform.any_op) -> !transform.any_op
+  transform.apply_conversion_patterns to %gm5 {
+    transform.apply_conversion_patterns.dialect_to_llvm "math"
+    transform.apply_conversion_patterns.dialect_to_llvm "memref"
+    transform.apply_conversion_patterns.func.func_to_llvm
+    transform.apply_conversion_patterns.dialect_to_llvm "index"
+  } with type_converter {
+    transform.apply_conversion_patterns.memref.memref_to_llvm_type_converter
+      {index_bitwidth = 32,
+       use_bare_ptr = true,
+       use_bare_ptr_memref_call_conv = true,
+       use_opaque_pointers = true}
+  } {
+    legal_dialects = ["llvm", "gpu", "nvvm"],
+    partial_conversion
+  } : !transform.any_op
+
+  // apply_conversion_patterns loses track of handles so we rematch.
+  %gpu_module2 = transform.structured.match ops{["gpu.module"]} in %m2 : (!transform.any_op) -> !transform.any_op
+  transform.apply_patterns to %gpu_module2 {
+    transform.apply_patterns.gpu.gpu_rewrite_patterns
+  } : !transform.any_op
+
+  // apply_conversion_patterns loses track of handles so we rematch.
+  %gpu_module3 = transform.structured.match ops{["gpu.module"]} in %m2 : (!transform.any_op) -> !transform.any_op
+  transform.apply_conversion_patterns to %gpu_module3 {
+    transform.apply_conversion_patterns.dialect_to_llvm "arith"
+    transform.apply_conversion_patterns.dialect_to_llvm "cf"
+    transform.apply_conversion_patterns.vector.vector_to_llvm
+    transform.apply_conversion_patterns.func.func_to_llvm
+    transform.apply_conversion_patterns.dialect_to_llvm "memref"
+    transform.apply_conversion_patterns.gpu.gpu_to_nvvm
+    transform.apply_conversion_patterns.gpu.gpu_wmma_to_nvvm
+    transform.apply_conversion_patterns.gpu.gpu_subgroup_reduce_to_nvvm
+    transform.apply_conversion_patterns.nvgpu.nvgpu_to_nvvm
+  } with type_converter {
+    transform.apply_conversion_patterns.memref.memref_to_llvm_type_converter
+      {index_bitwidth = 32,
+       use_bare_ptr = true,
+       use_bare_ptr_memref_call_conv = true,
+       use_opaque_pointers = true}
+  } {
+    legal_dialects = ["llvm", "memref", "nvvm"],
+    legal_ops = ["func.func", "gpu.module", "gpu.module_end", "gpu.yield"],
+    illegal_dialects = ["gpu"],
+    illegal_ops = ["llvm.cos", "llvm.exp", "llvm.exp2", "llvm.fabs", "llvm.fceil",
+                   "llvm.ffloor", "llvm.log", "llvm.log10", "llvm.log2","llvm.pow",
+                   "llvm.sin", "llvm.sqrt"],
+    partial_conversion
+  } : !transform.any_op
+
+  // apply_conversion_patterns loses track of handles so we rematch.
+  %gpu_module4 = transform.structured.match ops{["gpu.module"]} in %m2 : (!transform.any_op) -> !transform.any_op
+  %mm2 = transform.apply_registered_pass "convert-vector-to-llvm" to %gpu_module4 : (!transform.any_op) -> !transform.any_op
+  %mm3 = transform.apply_registered_pass "canonicalize" to %mm2 : (!transform.any_op) -> !transform.any_op
+  %mm4 = transform.apply_registered_pass "cse" to %mm3 : (!transform.any_op) -> !transform.any_op
+  %mm5 = transform.apply_registered_pass "reconcile-unrealized-casts" to %mm4 : (!transform.any_op) -> !transform.any_op
+  %mm6 = transform.apply_registered_pass "gpu-to-cubin" to %mm5 {options="chip=sm_80 features=+ptx76"} : (!transform.any_op) -> !transform.any_op
+
+  transform.yield %m2 : !transform.any_op
+}
+
+transform.named_sequence @lower_host(
+    %module: !transform.any_op {transform.consumed}) -> !transform.any_op {
+  %m3 = transform.apply_registered_pass "convert-vector-to-scf" to %module : (!transform.any_op) -> !transform.any_op
+  %m4 = transform.apply_registered_pass "convert-scf-to-cf" to %m3 : (!transform.any_op) -> !transform.any_op
+  %m5 = transform.apply_registered_pass "expand-strided-metadata" to %m4 : (!transform.any_op) -> !transform.any_op
+  %m6 = transform.apply_registered_pass "lower-affine" to %m5 : (!transform.any_op) -> !transform.any_op
+
+  // TODO: apply_conversion_patterns loses track of handles so we only apply it to func.func ops.
+  %func = transform.structured.match ops{["func.func"]} in %m6 : (!transform.any_op) -> !transform.any_op
+  transform.apply_conversion_patterns to %func {
+    transform.apply_conversion_patterns.dialect_to_llvm "math"
+    transform.apply_conversion_patterns.vector.vector_to_llvm
+    transform.apply_conversion_patterns.dialect_to_llvm "memref"
+    transform.apply_conversion_patterns.func.func_to_llvm
+    transform.apply_conversion_patterns.dialect_to_llvm "index"
+    transform.apply_conversion_patterns.dialect_to_llvm "arith"
+    transform.apply_conversion_patterns.dialect_to_llvm "cf"
+  } with type_converter {
+    transform.apply_conversion_patterns.memref.memref_to_llvm_type_converter
+      {index_bitwidth = 64,
+       use_bare_ptr = true,
+       use_bare_ptr_memref_call_conv = true,
+       use_opaque_pointers = true}
+  } {
+    legal_dialects = ["llvm", "nvvm"],
+    legal_ops = ["builtin.module", "gpu.module", "gpu.module_end", "gpu.yield"],
+    partial_conversion
+  } : !transform.any_op
+
+  %m7 = transform.apply_registered_pass "gpu-to-llvm" to %m6
+    : (!transform.any_op) -> !transform.any_op
+  %m8 = transform.apply_registered_pass "reconcile-unrealized-casts" to %m7
+    : (!transform.any_op) -> !transform.any_op
+
+  transform.yield %m8 : !transform.any_op
+}
+
+
 transform.sequence failures(propagate) {
-^bb1(%arg1: !transform.any_op):
-  %matmul = transform.structured.match ops{["linalg.matmul"]} in %arg1 
+^bb1(%toplevel_module: !transform.any_op):
+
+  %matmul = transform.structured.match ops{["linalg.matmul"]} in %toplevel_module 
     : (!transform.any_op) -> !transform.any_op
   transform.nvgpu.rewrite_matmul_as_mma_sync %matmul 
     : (!transform.any_op) -> ()
+
+  %m2 = transform.include @lower_gpu failures(suppress) (%toplevel_module) 
+     : (!transform.any_op) -> (!transform.any_op)
+  %m3 = transform.include @lower_host failures(suppress) (%m2)
+     : (!transform.any_op) -> (!transform.any_op)
 }
+
+} // transform module
