@@ -62,6 +62,15 @@ class BPFAdjustOptPass : public PassInfoMixin<BPFAdjustOptPass> {
 public:
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
 };
+
+class BPFHoistArgumentAccessPass
+    : public PassInfoMixin<BPFHoistArgumentAccessPass> {
+public:
+  PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
+
+  static bool isRequired() { return true; }
+};
+
 } // namespace llvm
 
 #endif

@@ -20,6 +20,7 @@ add_llvm_target(BPFCodeGen
   BPFAsmPrinter.cpp
   BPFCheckAndAdjustIR.cpp
   BPFFrameLowering.cpp
+  BPFHoistArgumentAccess.cpp
   BPFInstrInfo.cpp
   BPFIRPeephole.cpp
   BPFISelDAGToDAG.cpp

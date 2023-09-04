@@ -105,6 +105,10 @@ void BPFTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
           FPM.addPass(BPFIRPeepholePass());
           return true;
         }
+        if (PassName == "bpf-hoist-argument-access") {
+          FPM.addPass(BPFHoistArgumentAccessPass());
+          return true;
+        }
         return false;
       });
   PB.registerPipelineStartEPCallback(
@@ -122,6 +126,12 @@ void BPFTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
   PB.registerPipelineEarlySimplificationEPCallback(
       [=](ModulePassManager &MPM, OptimizationLevel) {
         MPM.addPass(BPFAdjustOptPass());
+      });
+  PB.registerOptimizerLastEPCallback(
+      [=](ModulePassManager &MPM, OptimizationLevel) {
+        FunctionPassManager FPM;
+        FPM.addPass(BPFHoistArgumentAccessPass());
+        MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
       });
 }
 
