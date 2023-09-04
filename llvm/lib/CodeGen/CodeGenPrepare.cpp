@@ -7883,6 +7883,51 @@ static bool GEPSequentialConstIndexed(GetElementPtrInst *GEP) {
          isa<ConstantInt>(GEP->getOperand(1));
 }
 
+// Returns the size of the GEP type.
+// GEP must meet GEPSequentialConstIndexed requirements.
+static TypeSize GEPSequentialConstIndexedTypeSize(GetElementPtrInst &GEP) {
+  const DataLayout &DL = GEP.getModule()->getDataLayout();
+  gep_type_iterator GTI = gep_type_begin(GEP);
+  return DL.getTypeAllocSize(GTI.getIndexedType());
+}
+
+// Returns true if the Target can be addressed from Source
+// in case types mismatch.
+// Both GEPs must meet GEPSequentialConstIndexed requirements.
+static bool GEPIsAddressableFromSource(GetElementPtrInst &Target,
+                                       GetElementPtrInst &Source) {
+  if (Source.getSourceElementType() == Target.getSourceElementType()) {
+    return true;
+  }
+
+  TypeSize SourceTypeSize = GEPSequentialConstIndexedTypeSize(Source);
+  TypeSize TargetTypeSize = GEPSequentialConstIndexedTypeSize(Target);
+
+  return (TargetTypeSize % SourceTypeSize) == 0;
+}
+
+// Calculates the relative index required to address Target
+// from Source with respect to their element types.
+// Both GEPs must meet GEPSequentialConstIndexed requirements.
+static APInt GEPCalculateRelativeIndex(GetElementPtrInst &Target,
+                                       GetElementPtrInst &Source) {
+  uint64_t Scale = 1;
+
+  if (Source.getSourceElementType() != Target.getSourceElementType()) {
+    TypeSize SourceTypeSize = GEPSequentialConstIndexedTypeSize(Source);
+    TypeSize TargetTypeSize = GEPSequentialConstIndexedTypeSize(Target);
+
+    Scale = TargetTypeSize / SourceTypeSize;
+    assert(Scale * SourceTypeSize == TargetTypeSize &&
+           "Target GEP must be addressable from Source GEP");
+  }
+
+  ConstantInt *SourceIdx = cast<ConstantInt>(Source.getOperand(1));
+  ConstantInt *TargetIdx = cast<ConstantInt>(Target.getOperand(1));
+
+  return (TargetIdx->getValue() * Scale) - SourceIdx->getValue();
+}
+
 // Try unmerging GEPs to reduce liveness interference (register pressure) across
 // IndirectBr edges. Since IndirectBr edges tend to touch on many blocks,
 // reducing liveness interference across those edges benefits global register
@@ -7997,6 +8042,9 @@ static bool tryUnmergingGEPsAcrossIndirectBr(GetElementPtrInst *GEPI,
     // up.
     if (!GEPSequentialConstIndexed(UGEPI))
       return false;
+    // Check if GEP Types match or if types are compatible
+    if (!GEPIsAddressableFromSource(*UGEPI, *GEPI))
+      return false;
     if (UGEPI->getOperand(0) != GEPIOp)
       return false;
     if (GEPIIdx->getType() !=
@@ -8013,8 +8061,7 @@ static bool tryUnmergingGEPsAcrossIndirectBr(GetElementPtrInst *GEPI,
     return false;
   // Check the materializing cost of (Uidx-Idx).
   for (GetElementPtrInst *UGEPI : UGEPIs) {
-    ConstantInt *UGEPIIdx = cast<ConstantInt>(UGEPI->getOperand(1));
-    APInt NewIdx = UGEPIIdx->getValue() - GEPIIdx->getValue();
+    APInt NewIdx = GEPCalculateRelativeIndex(*UGEPI, *GEPI);
     InstructionCost ImmCost = TTI->getIntImmCost(
         NewIdx, GEPIIdx->getType(), TargetTransformInfo::TCK_SizeAndLatency);
     if (ImmCost > TargetTransformInfo::TCC_Basic)
@@ -8022,11 +8069,12 @@ static bool tryUnmergingGEPsAcrossIndirectBr(GetElementPtrInst *GEPI,
   }
   // Now unmerge between GEPI and UGEPIs.
   for (GetElementPtrInst *UGEPI : UGEPIs) {
+    APInt NewIdx = GEPCalculateRelativeIndex(*UGEPI, *GEPI);
+    Constant *NewUGEPIIdx = ConstantInt::get(GEPIIdx->getType(), NewIdx);
     UGEPI->setOperand(0, GEPI);
-    ConstantInt *UGEPIIdx = cast<ConstantInt>(UGEPI->getOperand(1));
-    Constant *NewUGEPIIdx = ConstantInt::get(
-        GEPIIdx->getType(), UGEPIIdx->getValue() - GEPIIdx->getValue());
     UGEPI->setOperand(1, NewUGEPIIdx);
+    UGEPI->setSourceElementType(GEPI->getSourceElementType());
+    UGEPI->setResultElementType(GEPI->getResultElementType());
     // If GEPI is not inbounds but UGEPI is inbounds, change UGEPI to not
     // inbounds to avoid UB.
     if (!GEPI->isInBounds()) {
