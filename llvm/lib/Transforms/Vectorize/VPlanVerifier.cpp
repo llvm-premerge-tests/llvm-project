@@ -147,6 +147,11 @@ static bool verifyPhiRecipes(const VPBasicBlock *VPBB) {
     if (isa<VPActiveLaneMaskPHIRecipe>(RecipeI))
       NumActiveLaneMaskPhiRecipes++;
 
+    if (isa<VPBOSCCLiveOutRecipe>(*RecipeI)) {
+      ++RecipeI;
+      continue;
+    }
+
     if (IsHeaderVPBB && !isa<VPHeaderPHIRecipe>(*RecipeI)) {
       errs() << "Found non-header PHI recipe in header VPBB";
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)

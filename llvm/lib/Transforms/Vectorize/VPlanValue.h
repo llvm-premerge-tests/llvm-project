@@ -336,6 +336,7 @@ public:
   /// type identification.
   using VPRecipeTy = enum {
     VPBranchOnMaskSC,
+    VPBranchOnBOSCCGuardSC,
     VPDerivedIVSC,
     VPExpandSCEVSC,
     VPInstructionSC,
@@ -361,6 +362,7 @@ public:
     VPWidenPHISC,
     VPWidenIntOrFpInductionSC,
     VPWidenPointerInductionSC,
+    VPBOSCCLiveOutSC,
     VPReductionPHISC,
     // END: SubclassID for recipes that inherit VPHeaderPHIRecipe
     // END: Phi-like recipes

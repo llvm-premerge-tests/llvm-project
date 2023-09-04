@@ -16,6 +16,7 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/Twine.h"
 #include "llvm/Analysis/IVDescriptors.h"
+#include "llvm/Analysis/VectorUtils.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instruction.h"
@@ -53,6 +54,7 @@ bool VPRecipeBase::mayWriteToMemory() const {
   case VPBranchOnMaskSC:
   case VPScalarIVStepsSC:
   case VPPredInstPHISC:
+  case VPBranchOnBOSCCGuardSC:
     return false;
   case VPBlendSC:
   case VPReductionSC:
@@ -87,6 +89,7 @@ bool VPRecipeBase::mayReadFromMemory() const {
   case VPBranchOnMaskSC:
   case VPScalarIVStepsSC:
   case VPPredInstPHISC:
+  case VPBranchOnBOSCCGuardSC:
     return false;
   case VPBlendSC:
   case VPReductionSC:
@@ -1315,6 +1318,52 @@ void VPReplicateRecipe::print(raw_ostream &O, const Twine &Indent,
 }
 #endif
 
+// Creates the condition inside the boscc-guard block, which
+// ensures when all the lanes in mask is set to zero then do
+// not execute the respective vector block at runtime.
+// i.e.
+// if.then.boscc.guard:             ; preds = %vector.body
+//   %5 = bitcast <8 x i1> %mask to i8
+//   %6 = icmp ne i8 %5, 0
+//   br i1 %6, label %if.then.boscc, label %if.then.boscc.join
+//
+// if.then.boscc:                   ; preds = %if.then.boscc.guard
+//   ;; The Vector Block
+// 
+// if.then.boscc.join:                   
+//
+void VPBranchOnBOSCCGuardRecipe::execute(VPTransformState &State) {
+  VPValue *BlockInMask = getMask();
+  Value *GuardMask = nullptr;
+  // Create a common mask by appending the mask from different
+  // unroll instances representing the same condition
+  auto *CurrentTerminator = State.CFG.PrevBB->getTerminator();
+  for (unsigned Part = 0, UF = State.UF; Part < UF; ++Part) {
+    Value *PartMask = nullptr;
+    if (BlockInMask)
+      PartMask = State.get(BlockInMask, Part);
+    else
+      PartMask = State.Builder.getTrue();
+    assert(PartMask && "PartMask Missing");
+    if (!PartMask->getType()->isVectorTy())
+      PartMask = State.Builder.CreateVectorSplat(State.VF, PartMask, "");
+    // Change the vector mask to scalar value, and then generate the condition
+    // check inside boscc-guard block
+    Value *ScalarCond = createVectorToScalarCast(PartMask, State.Builder, TTI);
+    if (!GuardMask) {
+      GuardMask = ScalarCond;
+      continue;
+    }
+    GuardMask = State.Builder.CreateOr(GuardMask, ScalarCond);
+  }
+
+  Value *Cond = State.Builder.CreateICmpNE(
+      GuardMask, ConstantInt::get(GuardMask->getType(), 0));
+  auto *CondBr = BranchInst::Create(State.CFG.PrevBB, nullptr, Cond);
+  CondBr->setSuccessor(0, nullptr);
+  ReplaceInstWithInst(CurrentTerminator, CondBr);
+}
+
 void VPBranchOnMaskRecipe::execute(VPTransformState &State) {
   assert(State.Instance && "Branch on Mask works only on single instance.");
 
@@ -1339,6 +1388,76 @@ void VPBranchOnMaskRecipe::execute(VPTransformState &State) {
   auto *CondBr = BranchInst::Create(State.CFG.PrevBB, nullptr, ConditionBit);
   CondBr->setSuccessor(0, nullptr);
   ReplaceInstWithInst(CurrentTerminator, CondBr);
+}
+
+// Create the PHI node in the join block.
+// 
+// It will have 2 incoming values, first representing value from
+// vector block, and the second in poison value when vector block
+// is not executed.
+// 
+// i.e.
+// if.then.boscc.guard:          ; preds = %vector.body
+//   br i1 %6, label %if.then.boscc, label %if.then.boscc.join
+// 
+// if.then.boscc:                ; preds = %if.then.boscc.guard
+//   ;; The Vector Block
+//   br label %if.then.boscc.vec.continue
+//
+// if.then.boscc.vec.continue:   ; preds = %if.then.boscc
+//   br label %if.then.boscc.join
+//
+// if.then.boscc.join:           ; preds = %if.then.boscc.vec.continue,
+//                                         %if.then.boscc.guard
+//   %12 = phi <8 x i32> [ %SomeComputedValue, %if.then.boscc.vec.continue ],
+//                       [ poison, %if.then.boscc.guard ]
+void VPBOSCCLiveOutRecipe::execute(VPTransformState &State) {
+  VPValue *ScalarLiveOut = getOperand(0);
+  // Identify the guard and continue blocks
+  BasicBlock *GuardBlock = State.CFG.VPBB2IRBB[getVPGuardBlock()];
+  BasicBlock *ContinueBlock = State.CFG.VPBB2IRBB[getVPVecContinueBlock()];
+  // For each UF instance create associated liveouts
+  for (unsigned Part = 0, UF = State.UF; Part < UF; ++Part) {
+    if (State.hasVectorValue(ScalarLiveOut, Part)) {
+      // Create vector liveout
+      // if.then.boscc.join:           ; preds = %if.then.boscc.vec.continue,
+      //                                         %if.then.boscc.guard
+      //   %1 = phi <4 x i32> [ %VectorValue, %if.then.boscc.vec.continue ],
+      //                      [ poison, %if.then.boscc.guard ]
+      Instruction *VecInst = cast<Instruction>(State.get(ScalarLiveOut, Part));
+      PHINode *ExitPhi = State.Builder.CreatePHI(VecInst->getType(), 2);
+      ExitPhi->addIncoming(VecInst, ContinueBlock);
+      ExitPhi->addIncoming(PoisonValue::get(VecInst->getType()), GuardBlock);
+      // Update state
+      State.set(this, ExitPhi, Part);
+      State.reset(ScalarLiveOut, ExitPhi, Part);
+    } else if (State.hasScalarValue(ScalarLiveOut, {Part, 0})) {
+      // Create scalar liveout
+      // if.then.boscc.join:           ; preds = %if.then.boscc.vec.continue,
+      //                                         %if.then.boscc.guard
+      //   %1 = phi i32 [ %ScalarValueForLane#1, %if.then.boscc.vec.continue ],
+      //                [ poison, %if.then.boscc.guard ]
+      //   %2 = phi i32 [ %ScalarValueForLane#2, %if.then.boscc.vec.continue ],
+      //                [ poison, %if.then.boscc.guard ]
+      //    ....
+      //
+      // If the value is UniformAfterVectorization then create a liveout just
+      // for lane 0, else for all the lanes
+      unsigned PartItrs = vputils::isUniformAfterVectorization(ScalarLiveOut)
+                          ? 1 : State.VF.getKnownMinValue();
+      for (unsigned Lane = 0; Lane < PartItrs; ++Lane) {
+        Instruction *ScalarInst =
+            cast<Instruction>(State.get(ScalarLiveOut, {Part, Lane}));
+        PHINode *ExitPhi = State.Builder.CreatePHI(ScalarInst->getType(), 2);
+        ExitPhi->addIncoming(ScalarInst, ContinueBlock);
+        ExitPhi->addIncoming(PoisonValue::get(ScalarInst->getType()),
+                             GuardBlock);
+        // Update state
+        State.set(this, ExitPhi, {Part, Lane});
+        State.reset(ScalarLiveOut, ExitPhi, {Part, Lane});
+      }
+    }
+  }
 }
 
 void VPPredInstPHIRecipe::execute(VPTransformState &State) {
@@ -1388,6 +1507,14 @@ void VPPredInstPHIRecipe::execute(VPTransformState &State) {
 }
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+void VPBOSCCLiveOutRecipe::print(raw_ostream &O, const Twine &Indent,
+                                 VPSlotTracker &SlotTracker) const {
+  O << Indent << "BOSCC-LIVE-OUT-INSTRUCTION ";
+  printAsOperand(O, SlotTracker);
+  O << " = ";
+  printOperands(O, SlotTracker);
+}
+
 void VPPredInstPHIRecipe::print(raw_ostream &O, const Twine &Indent,
                                 VPSlotTracker &SlotTracker) const {
   O << Indent << "PHI-PREDICATED-INSTRUCTION ";

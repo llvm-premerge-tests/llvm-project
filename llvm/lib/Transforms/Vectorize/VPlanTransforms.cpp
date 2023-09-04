@@ -187,10 +187,13 @@ static bool sinkScalarOperands(VPlan &Plan) {
 VPValue *getPredicatedMask(VPRegionBlock *R) {
   auto *EntryBB = dyn_cast<VPBasicBlock>(R->getEntry());
   if (!EntryBB || EntryBB->size() != 1 ||
-      !isa<VPBranchOnMaskRecipe>(EntryBB->begin()))
+      (!isa<VPBranchOnMaskRecipe>(EntryBB->begin()) &&
+      !isa<VPBranchOnBOSCCGuardRecipe>(EntryBB->begin())))
     return nullptr;
-
-  return cast<VPBranchOnMaskRecipe>(&*EntryBB->begin())->getOperand(0);
+  if (isa<VPBranchOnBOSCCGuardRecipe>(EntryBB->begin()))
+    return cast<VPBranchOnBOSCCGuardRecipe>(&*EntryBB->begin())->getOperand(0);
+  else
+    return cast<VPBranchOnMaskRecipe>(&*EntryBB->begin())->getOperand(0);
 }
 
 /// If \p R is a triangle region, return the 'then' block of the triangle.
@@ -385,6 +388,8 @@ bool VPlanTransforms::mergeBlocksIntoPredecessors(VPlan &Plan) {
            vp_depth_first_deep(Plan.getEntry()))) {
     auto *PredVPBB =
         dyn_cast_or_null<VPBasicBlock>(VPBB->getSinglePredecessor());
+    if (VPBB->isBOSCCBlock())
+      continue;
     if (PredVPBB && PredVPBB->getNumSuccessors() == 1)
       WorkList.push_back(VPBB);
   }

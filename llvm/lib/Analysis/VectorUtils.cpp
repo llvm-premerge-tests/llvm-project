@@ -423,6 +423,62 @@ void llvm::getShuffleMaskWithWidestElts(ArrayRef<int> Mask,
   ScaledMask.assign(InputMask.begin(), InputMask.end());
 }
 
+/// Create a mask vector to scalar cast
+/// i.e. if any lane set in mask vector then the casted result
+/// is expected to be non zero
+Value *llvm::createVectorToScalarCast(Value *V, IRBuilderBase &Builder,
+                                      const TargetTransformInfo *TTI) {
+  VectorType *VTy = dyn_cast<VectorType>(V->getType());
+  assert(VTy && "Expected vector Type");
+  assert(VTy->getElementType()->isIntegerTy(1) && "Expected vector of I1 type");
+  unsigned VF = VTy->getElementCount().getKnownMinValue();
+  TypeSize WidestRegister =
+      TTI->getRegisterBitWidth(TargetTransformInfo::RGK_Scalar);
+  unsigned ScalarRegSize = WidestRegister.getKnownMinSize();
+  // If ptest not feasible then generate the default
+  // cast based checks
+  if (VF <= 4) {
+    // Create the intermediate vector type cast if required
+    // i.e. promote <4 x i1> to <4 x i8> type
+    Type *VecTy = FixedVectorType::get(Builder.getIntNTy(8), VF);
+    V = Builder.CreateZExt(V, VecTy);
+    // Create the scalar type cast, by casting the vector type to the scalar
+    // type i.e. convert <4 x i8> type to i32 type
+    return Builder.CreateBitCast(V, Builder.getIntNTy(VF * 8));
+  } else if (ScalarRegSize >= VF) {
+    // Convert <16 x i1> type to i16 type
+    return Builder.CreateBitCast(V, Builder.getIntNTy(VF));
+  } else {
+    assert(((VF % ScalarRegSize) == 0) &&
+           "VF is not divisible by ScalarRegSize");
+    Value *ScalarCastRes = nullptr;
+    for (unsigned I = 0; I < (VF / ScalarRegSize); I++) {
+      // 1. SubVector Extract
+      // %vec.extract = shufflevector <128 x i1> %Vector, <128 x i1> %poison, <32
+      // x i32> Mask
+      SmallVector<Constant *, 32> Indices;
+      Indices.clear();
+      for (unsigned Index = 0; Index < ScalarRegSize; Index++)
+        Indices.push_back(ConstantInt::get(Builder.getInt32Ty(),
+                                           (I * ScalarRegSize) + Index));
+      Constant *Mask = ConstantVector::get(Indices);
+      Value *SubVec =
+          Builder.CreateShuffleVector(V, PoisonValue::get(V->getType()), Mask);
+      // 2. Cast to Scalar
+      // Convert <32 x i1> type to i32 type
+      Value *ScalarVal =
+          Builder.CreateBitCast(SubVec, Builder.getIntNTy(ScalarRegSize));
+      // 3. OR With Previous Result If Any
+      if (ScalarCastRes) {
+        ScalarCastRes = Builder.CreateOr(ScalarCastRes, ScalarVal);
+      } else {
+        ScalarCastRes = ScalarVal;
+      }
+    }
+    return ScalarCastRes;
+  }
+}
+
 void llvm::processShuffleMasks(
     ArrayRef<int> Mask, unsigned NumOfSrcRegs, unsigned NumOfDestRegs,
     unsigned NumOfUsedRegs, function_ref<void()> NoInputAction,
