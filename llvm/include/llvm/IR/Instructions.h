@@ -1635,9 +1635,6 @@ public:
   static Instruction *CreateFree(Value *Source,
                                  ArrayRef<OperandBundleDef> Bundles,
                                  Instruction *InsertBefore);
-  static Instruction *CreateFree(Value *Source,
-                                 ArrayRef<OperandBundleDef> Bundles,
-                                 BasicBlock *InsertAtEnd);
 
   // Note that 'musttail' implies 'tail'.
   enum TailCallKind : unsigned {
