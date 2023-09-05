@@ -261,7 +261,9 @@ lprofWriteDataImpl(ProfDataWriter *Writer, const __llvm_profile_data *DataBegin,
                    const char *NamesEnd, int SkipNameDataWrite) {
   int DebugInfoCorrelate =
       (__llvm_profile_get_version() & VARIANT_MASK_DBG_CORRELATE) != 0ULL;
-
+  int IRLevelProfile =
+      (__llvm_profile_get_version() & VARIANT_MASK_IR_PROF) != 0ULL;
+  
   /* Calculate size of sections. */
   const uint64_t DataSectionSize =
       DebugInfoCorrelate ? 0 : __llvm_profile_get_data_size(DataBegin, DataEnd);
@@ -271,7 +273,8 @@ lprofWriteDataImpl(ProfDataWriter *Writer, const __llvm_profile_data *DataBegin,
       __llvm_profile_get_counters_size(CountersBegin, CountersEnd);
   const uint64_t NumCounters =
       __llvm_profile_get_num_counters(CountersBegin, CountersEnd);
-  const uint64_t NamesSize = DebugInfoCorrelate ? 0 : NamesEnd - NamesBegin;
+  const uint64_t NamesSize =
+      DebugInfoCorrelate && IRLevelProfile ? 0 : NamesEnd - NamesBegin;
 
   /* Create the header. */
   __llvm_profile_header Header;
@@ -297,10 +300,12 @@ lprofWriteDataImpl(ProfDataWriter *Writer, const __llvm_profile_data *DataBegin,
   Header.CountersDelta = (uint32_t)Header.CountersDelta;
 #endif
 
-  /* The data and names sections are omitted in lightweight mode. */
+  /* The data section is omitted in lightweight mode. */
   if (DebugInfoCorrelate) {
     Header.CountersDelta = 0;
-    Header.NamesDelta = 0;
+    if (IRLevelProfile) {
+      Header.NamesDelta = 0;
+    }
   }
 
   /* Write the profile header. */
@@ -319,7 +324,9 @@ lprofWriteDataImpl(ProfDataWriter *Writer, const __llvm_profile_data *DataBegin,
       {NULL, sizeof(uint8_t), PaddingBytesBeforeCounters, 1},
       {CountersBegin, sizeof(uint8_t), CountersSectionSize, 0},
       {NULL, sizeof(uint8_t), PaddingBytesAfterCounters, 1},
-      {(SkipNameDataWrite || DebugInfoCorrelate) ? NULL : NamesBegin,
+      {(SkipNameDataWrite || (DebugInfoCorrelate && IRLevelProfile))
+           ? NULL
+           : NamesBegin,
        sizeof(uint8_t), NamesSize, 0},
       {NULL, sizeof(uint8_t), PaddingBytesAfterNames, 1}};
   if (Writer->Write(Writer, IOVecData, sizeof(IOVecData) / sizeof(*IOVecData)))
