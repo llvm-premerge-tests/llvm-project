@@ -230,7 +230,9 @@ bool XRayInstrumentation::runOnMachineFunction(MachineFunction &MF) {
     case Triple::ArchType::mips:
     case Triple::ArchType::mipsel:
     case Triple::ArchType::mips64:
-    case Triple::ArchType::mips64el: {
+    case Triple::ArchType::mips64el:
+    case Triple::ArchType::riscv32:
+    case Triple::ArchType::riscv64: {
       // For the architectures which don't have a single return instruction
       InstrumentationOptions op;
       op.HandleTailcall = false;

@@ -162,6 +162,10 @@ public:
     assert(i < RISCV::NUM_TARGET_REGS && "Register out of range");
     return UserReservedRegister[i];
   }
+  // Add XRay support - assume D and C extensions available
+  bool isXRaySupported() const override {
+    return hasStdExtD() && hasStdExtC();
+  }
 
   bool hasMacroFusion() const { return hasLUIADDIFusion(); }
 
