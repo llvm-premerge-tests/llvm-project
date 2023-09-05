@@ -26,6 +26,16 @@ struct TestTopologicalSortPass
     return "Print operations in topological order";
   }
   void runOnOperation() override {
+    if (!isa<SymbolOpInterface>(Pass::getOperation())) {
+      auto passName = getArgument();
+      Pass::getOperation()->emitError()
+          << passName
+          << " pass can operate on an operation with SymbolOpInteface.\n"
+          << "NOTE: The option may need to be fixed to `-pass-pipeline="
+          << "\"builtin.module(func.func(" << passName << "))\"`\n";
+      return signalPassFailure();
+    }
+
     std::map<int, Operation *> ops;
     getOperation().walk([&ops](Operation *op) {
       if (auto originalOrderAttr = op->getAttrOfType<IntegerAttr>(kOrderMarker))

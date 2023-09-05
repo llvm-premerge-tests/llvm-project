@@ -31,6 +31,16 @@ struct TestDiagnosticFilterPass
   TestDiagnosticFilterPass(const TestDiagnosticFilterPass &) {}
 
   void runOnOperation() override {
+    if (!isa<SymbolOpInterface>(Pass::getOperation())) {
+      auto passName = getArgument();
+      Pass::getOperation()->emitError()
+          << passName
+          << " pass can operate on an operation with SymbolOpInteface.\n"
+          << "NOTE: The option may need to be fixed to `-pass-pipeline="
+          << "\"builtin.module(func.func(" << passName << "{filters=..}))\"`\n";
+      return signalPassFailure();
+    }
+
     llvm::errs() << "Test '" << getOperation().getName() << "'\n";
 
     // Build a diagnostic handler that has filtering capabilities.
