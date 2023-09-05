@@ -18,9 +18,13 @@
 #include "llvm/ADT/APInt.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/StringSwitch.h"
+#include "llvm/CodeGen/MachineInstr.h"
+#include "llvm/CodeGen/MachineOperand.h"
 #include "llvm/MC/MCInstrDesc.h"
 #include "llvm/Support/RISCVISAInfo.h"
 #include "llvm/TargetParser/SubtargetFeature.h"
+#include <cassert>
+#include <cstdint>
 
 namespace llvm {
 
@@ -113,6 +117,12 @@ enum {
 
   UsesVXRMShift = HasRoundModeOpShift + 1,
   UsesVXRMMask = 1 << UsesVXRMShift,
+
+  HasImplictSEWShift = UsesVXRMShift + 1,
+  HasImplictSEWMask = 1 << HasImplictSEWShift,
+
+  VSEWShift = HasImplictSEWShift + 1,
+  VSEWMask = 0b11 << VSEWShift,
 };
 
 enum VLMUL : uint8_t {
@@ -124,6 +134,13 @@ enum VLMUL : uint8_t {
   LMUL_F8,
   LMUL_F4,
   LMUL_F2
+};
+
+enum VSEW : uint8_t {
+  SEW_8 = 0,
+  SEW_16,
+  SEW_32,
+  SEW_64,
 };
 
 enum {
@@ -178,14 +195,29 @@ static inline bool hasRoundModeOp(uint64_t TSFlags) {
 /// \returns true if this instruction uses vxrm
 static inline bool usesVXRM(uint64_t TSFlags) { return TSFlags & UsesVXRMMask; }
 
+/// \returns true if this instruction has implict SEW value.
+static inline bool hasImplictSEW(uint64_t TSFlags) {
+  return TSFlags & HasImplictSEWMask;
+}
+
+/// \returns the SEW for the instruction.
+static inline VSEW getVSEW(uint64_t TSFlags) {
+  return static_cast<VSEW>((TSFlags & VSEWMask) >> VSEWShift);
+}
+
+/// \returns true if there is a SEW value for the instruction.
+static inline bool hasSEW(uint64_t TSFlags) {
+  return hasSEWOp(TSFlags) || hasImplictSEW(TSFlags);
+}
+
 static inline unsigned getVLOpNum(const MCInstrDesc &Desc) {
   const uint64_t TSFlags = Desc.TSFlags;
-  // This method is only called if we expect to have a VL operand, and all
-  // instructions with VL also have SEW.
-  assert(hasSEWOp(TSFlags) && hasVLOp(TSFlags));
-  unsigned Offset = 2;
+  // This method is only called if we expect to have a VL operand.
+  assert(hasVLOp(TSFlags));
+  // Some instructions don't have SEW operand.
+  unsigned Offset = 1 + hasSEWOp(TSFlags);
   if (hasVecPolicyOp(TSFlags))
-    Offset = 3;
+    Offset = Offset + 1;
   return Desc.getNumOperands() - Offset;
 }
 
@@ -196,6 +228,15 @@ static inline unsigned getSEWOpNum(const MCInstrDesc &Desc) {
   if (hasVecPolicyOp(TSFlags))
     Offset = 2;
   return Desc.getNumOperands() - Offset;
+}
+
+static inline MachineOperand getSEW(const MachineInstr &MI) {
+  uint64_t TSFlags = MI.getDesc().TSFlags;
+  assert(hasSEW(TSFlags) && "The instruction doesn't have SEW value!");
+  if (hasSEWOp(TSFlags))
+    return MI.getOperand(getSEWOpNum(MI.getDesc()));
+
+  return MachineOperand::CreateImm(3 + getVSEW(TSFlags));
 }
 
 static inline unsigned getVecPolicyOpNum(const MCInstrDesc &Desc) {
