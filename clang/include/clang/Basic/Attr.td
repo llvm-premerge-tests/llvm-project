@@ -4222,3 +4222,18 @@ def AvailableOnlyInDefaultEvalMethod : InheritableAttr {
   let Subjects = SubjectList<[TypedefName], ErrorDiag>;
   let Documentation = [Undocumented];
 }
+
+def CountedBy : InheritableAttr {
+  let Spellings = [Clang<"counted_by">];
+  let Subjects = SubjectList<[Field]>;
+  let Args = [IdentifierArgument<"CountedByField">];
+  let Documentation = [CountedByDocs];
+  let LangOpts = [COnly];
+  code AdditionalMembers = [{
+    private:
+      SourceRange countedByFieldLoc;
+    public:
+      SourceRange getCountedByFieldLoc(void) const { return countedByFieldLoc; }
+      void setCountedByFieldLoc(SourceRange Loc) { countedByFieldLoc = Loc; }
+  }];
+}
