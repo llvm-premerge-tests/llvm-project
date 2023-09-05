@@ -13,6 +13,9 @@
 // UNSUPPORTED: no-threads
 // UNSUPPORTED: no-exceptions
 
+// VE supports only SjLj libunwind.  It doesn't have _Unwind_ForcedUnwind.
+// UNSUPPORTED: target={{ve-.*}}
+
 #include <assert.h>
 #include <exception>
 #include <stdlib.h>
