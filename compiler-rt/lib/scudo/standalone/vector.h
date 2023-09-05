@@ -9,7 +9,7 @@
 #ifndef SCUDO_VECTOR_H_
 #define SCUDO_VECTOR_H_
 
-#include "common.h"
+#include "mem_map.h"
 
 #include <string.h>
 
@@ -27,7 +27,9 @@ public:
   }
   void destroy() {
     if (Data != &LocalData[0])
-      unmap(Data, CapacityBytes, 0, &MapData);
+      ExternalBuffer.unmap(ExternalBuffer.getBase(),
+                           ExternalBuffer.getCapacity());
+    Data = nullptr;
   }
   T &operator[](uptr I) {
     DCHECK_LT(I, Size);
@@ -82,20 +84,30 @@ private:
   void reallocate(uptr NewCapacity) {
     DCHECK_GT(NewCapacity, 0);
     DCHECK_LE(Size, NewCapacity);
+
+    // Allocate a new memory buffer.
+    MemMapT NewExternalBuffer;
     NewCapacity = roundUp(NewCapacity * sizeof(T), getPageSizeCached());
-    T *NewData = reinterpret_cast<T *>(
-        map(nullptr, NewCapacity, "scudo:vector", 0, &MapData));
-    memcpy(NewData, Data, Size * sizeof(T));
+    NewExternalBuffer.map(/*Addr=*/0U, NewCapacity, "scudo:vector");
+    T *NewExternalData = reinterpret_cast<T *>(NewExternalBuffer.getBase());
+
+    // Move the old contents into it and free the old memory buffer.
+    memcpy(NewExternalData, Data, Size * sizeof(T));
     destroy();
-    Data = NewData;
+
+    Data = NewExternalData;
     CapacityBytes = NewCapacity;
+    ExternalBuffer = NewExternalBuffer;
   }
 
   T *Data = nullptr;
-  T LocalData[256 / sizeof(T)] = {};
   uptr CapacityBytes = 0;
   uptr Size = 0;
-  [[no_unique_address]] MapPlatformData MapData = {};
+
+  // We can store the contents within the VectorNoCtor itself up to a given
+  // capacity, or in an external memory buffer if it grows bigger than that.
+  T LocalData[256 / sizeof(T)] = {};
+  MemMapT ExternalBuffer;
 };
 
 template <typename T> class Vector : public VectorNoCtor<T> {
