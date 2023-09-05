@@ -2308,13 +2308,13 @@ public:
 
   void Unparse(const OmpAtomicDefaultMemOrderClause &x) {
     switch (x.v) {
-    case OmpAtomicDefaultMemOrderClause::Type::SeqCst:
+    case common::OmpAtomicDefaultMemOrderType::SeqCst:
       Word("SEQ_CST");
       break;
-    case OmpAtomicDefaultMemOrderClause::Type::AcqRel:
+    case common::OmpAtomicDefaultMemOrderType::AcqRel:
       Word("ACQ_REL");
       break;
-    case OmpAtomicDefaultMemOrderClause::Type::Relaxed:
+    case common::OmpAtomicDefaultMemOrderType::Relaxed:
       Word("RELAXED");
       break;
     }
