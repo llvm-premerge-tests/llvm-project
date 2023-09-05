@@ -265,6 +265,13 @@ enum {
   /// - NewOpIdx
   GIM_CheckCanReplaceReg,
 
+  /// Checks for the presence of a MIFlag.
+  /// Supports checking for multiple OR'd flags at once
+  /// (then all of them must be present)
+  ///  - InsnID - Instruction ID to check.
+  ///  - Flag - Flag(s) to check.
+  GIM_CheckHasMIFlag,
+
   /// Predicates with 'let PredicateCodeUsesOperands = 1' need to examine some
   /// named operands that will be recorded in RecordedOperands. Names of these
   /// operands are referenced in predicate argument list. Emitter determines
@@ -331,6 +338,13 @@ enum {
   ///
   /// OpIdx starts at 0 for the first implicit def.
   GIR_SetImplicitDefDead,
+
+  /// Sets MIFlags of a given instruction.
+  /// Supports add multiple OR'd flags at once.
+  /// Note: Overwrites all previously set flags on the instruction!
+  ///  - InsnID - Instruction ID to modify.
+  ///  - Flag - Flag(s) to add.
+  GIR_SetMIFlags,
 
   /// Add a temporary register to the specified instruction
   /// - InsnID - Instruction ID to modify
@@ -549,7 +563,9 @@ public:
   };
 
 protected:
-  GIMatchTableExecutor();
+  const bool PropagateMIFlags;
+
+  GIMatchTableExecutor(bool PropagateMIFlags);
 
   /// Execute a given matcher table and return true if the match was successful
   /// and false otherwise.

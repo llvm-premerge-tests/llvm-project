@@ -217,6 +217,13 @@ def def_named_imm_apply : GICombineRule<
   (apply (COPY i32:$tmp, $y),
          (COPY $x, (i32 0):$tmp):$foo)>;
 
+// CHECK: :[[@LINE+2]]:{{[0-9]+}}: error: MIFlags operands cannot be named
+// CHECK: :[[@LINE+1]]:{{[0-9]+}}: error: Failed to parse pattern: '(COPY ?:$x, ?:$y, anonymous_6988:$tmp)'
+def miflags_named : GICombineRule<
+  (defs root:$x),
+  (match (G_FNEG $x, $y)),
+  (apply (COPY $x, $y, MIFlag<FmNoInfs>:$tmp))>;
+
 // CHECK: error: Failed to parse one or more rules
 
 def MyCombiner: GICombiner<"GenMyCombiner", [
@@ -251,5 +258,6 @@ def MyCombiner: GICombiner<"GenMyCombiner", [
   bad_mo_type_not_a_valuetype,
   untyped_new_reg_in_apply,
   def_named_imm_match,
-  def_named_imm_apply
+  def_named_imm_apply,
+  miflags_named
 ]>;

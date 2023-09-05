@@ -271,6 +271,13 @@ def root_def_has_multi_defs : GICombineRule<
   (match (RootDefHasMultiDefs $root, (i32 10))),
   (apply (COPY $root, (i32 0)))>;
 
+// CHECK: :[[@LINE+2]]:{{[0-9]+}}: error: MIFlags operands are only allowed on CodeGenInstruction patterns
+// CHECK: :[[@LINE+1]]:{{[0-9]+}}: error: Failed to parse pattern: '(DummyPF anonymous_
+def miflags_notinst : GICombineRule<
+  (defs root:$root),
+  (match (COPY $root, $src), (DummyPF MIFlag<FmNoInfs>)),
+  (apply (COPY $root, (i32 0)))>;
+
 // CHECK: error: Failed to parse one or more rules
 
 def MyCombiner: GICombiner<"GenMyCombiner", [
@@ -293,5 +300,6 @@ def MyCombiner: GICombiner<"GenMyCombiner", [
   patfrag_in_apply,
   patfrag_cannot_be_root,
   inconsistent_arg_type,
-  root_def_has_multi_defs
+  root_def_has_multi_defs,
+  miflags_notinst
 ]>;

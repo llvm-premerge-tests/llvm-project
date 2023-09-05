@@ -297,6 +297,26 @@ def VariadicsOutTest : GICombineRule<
   (apply (COPY $a, (i32 0)),
          (COPY $b, (i32 0)))>;
 
+// CHECK:      (CombineRule name:MIFlagsTest id:10 root:dst
+// CHECK-NEXT:   (MatchPats
+// CHECK-NEXT:     <match_root>__MIFlagsTest_match_0:(CodeGenInstructionPattern G_ZEXT operands:[<def>$dst, $src] flags:[MachineInstr::FmNoInfs, MachineInstr::FmNoNans])
+// CHECK-NEXT:   )
+// CHECK-NEXT:   (ApplyPats
+// CHECK-NEXT:     <apply_root>__MIFlagsTest_apply_0:(CodeGenInstructionPattern G_ZEXT operands:[<def>$dst, $src] flags:[MachineInstr::FmReassoc, MachineInstr::FmAfn])
+// CHECK-NEXT:   )
+// CHECK-NEXT:   (OperandTable MatchPats
+// CHECK-NEXT:     dst -> __MIFlagsTest_match_0
+// CHECK-NEXT:     src -> <live-in>
+// CHECK-NEXT:   )
+// CHECK-NEXT:   (OperandTable ApplyPats
+// CHECK-NEXT:     dst -> __MIFlagsTest_apply_0
+// CHECK-NEXT:     src -> <live-in>
+// CHECK-NEXT:   )
+// CHECK-NEXT: )
+def MIFlagsTest : GICombineRule<
+  (defs root:$dst),
+  (match (G_ZEXT $dst, $src, MIFlag<FmNoInfs>, MIFlags<[FmNoNans, FmNoInfs]>)),
+  (apply (G_ZEXT $dst, $src, MIFlag<FmReassoc>, MIFlags<[FmReassoc, FmAfn]>))>;
 
 def MyCombiner: GICombiner<"GenMyCombiner", [
   WipOpcodeTest0,
@@ -308,5 +328,6 @@ def MyCombiner: GICombiner<"GenMyCombiner", [
   PatFragTest0,
   PatFragTest1,
   VariadicsInTest,
-  VariadicsOutTest
+  VariadicsOutTest,
+  MIFlagsTest
 ]>;

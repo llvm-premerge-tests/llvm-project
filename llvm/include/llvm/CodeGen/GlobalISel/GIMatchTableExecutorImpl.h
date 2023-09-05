@@ -80,8 +80,6 @@ bool GIMatchTableExecutor::executeMatchTable(
         MIBFlags |= MachineInstr::NoFPExcept;
       MIB.setMIFlags(MIBFlags);
     }
-
-    return true;
   };
 
   while (true) {
@@ -885,6 +883,23 @@ bool GIMatchTableExecutor::executeMatchTable(
       }
       break;
     }
+    case GIM_CheckHasMIFlag: {
+      int64_t InsnID = MatchTable[CurrentIdx++];
+      int64_t Flags = MatchTable[CurrentIdx++];
+
+      DEBUG_WITH_TYPE(TgtExecutor::getName(),
+                      dbgs()
+                          << CurrentIdx << ": GIM_CheckHasMIFlag(MIs[" << InsnID
+                          << "], Flags=" << (uint64_t)Flags << ")\n");
+
+      // Need to support multiple OR'd flags, so we can't just do a simple AND.
+      const int64_t MIFlags = State.MIs[InsnID]->getFlags();
+      if ((MIFlags & Flags) != Flags) {
+        if (handleReject() == RejectAndGiveUp)
+          return false;
+      }
+      break;
+    }
     case GIM_Reject:
       DEBUG_WITH_TYPE(TgtExecutor::getName(),
                       dbgs() << CurrentIdx << ": GIM_Reject\n");
@@ -1013,6 +1028,19 @@ bool GIMatchTableExecutor::executeMatchTable(
       MachineInstr *MI = OutMIs[InsnID];
       assert(MI && "Modifying undefined instruction");
       MI->getOperand(MI->getNumExplicitOperands() + OpIdx).setIsDead();
+      break;
+    }
+    case GIR_SetMIFlags: {
+      int64_t InsnID = MatchTable[CurrentIdx++];
+      int64_t Flags = MatchTable[CurrentIdx++];
+      DEBUG_WITH_TYPE(TgtExecutor::getName(),
+                      dbgs() << CurrentIdx << ": GIR_SetMIFlags(OutMIs["
+                             << InsnID << "], Flags=" << Flags << ")\n");
+      auto &MI = OutMIs[InsnID];
+      // TODO: Should we really clear MIFlags here? It's to avoid MutateOpcode
+      // keeping old flags around.
+      MI->clearFlag(MachineInstr::MIFlag(~uint32_t(0)));
+      MI.setMIFlags(Flags);
       break;
     }
     case GIR_AddTempRegister:
@@ -1313,7 +1341,8 @@ bool GIMatchTableExecutor::executeMatchTable(
         for (MachineInstr *MI : OutMIs)
           Observer->createdInstr(*MI);
       }
-      propagateFlags(OutMIs);
+      if (PropagateMIFlags)
+        propagateFlags(OutMIs);
       return true;
     default:
       llvm_unreachable("Unexpected command");

@@ -141,6 +141,35 @@ Semantics:
 * The root cannot have any output operands.
 * The root must be a CodeGenInstruction
 
+Instruction Flags
+-----------------
+
+MIR Patterns support both matching & writing ``MIFlags``.
+``MIFlags`` are never preserved; output instructions have never have
+any flags unless explicitly set.
+
+.. code-block:: text
+  :caption: Example
+
+  # MIFlags<list> supports multiple flags.
+  # MIFlag<x> is a shorthand version for a single flag.
+  def Test : GICombineRule<
+    (defs root:$dst),
+    (match (G_ZEXT $dst, $src, MIFlags<[FmNoNans, FmNoInfs]>)),
+    (apply (G_SEXT $dst, $src, MIFlag<FmReassoc>))>;
+
+``MIFlags`` operands are not actual instruction operands - they just tell
+the backend that the pattern being matched/written has some flags.
+
+``MIFlags`` may appear multiple times, and anywhere in a
+CodeGenInstruction pattern, but for readability, please try to keep the style
+consistent. e.g. If they're always at the end of the pattern in the current
+file, keep it that way. Similarly, if the current file prefers using one
+``MIFlags`` instead of multiple ``MIFlag`` to describe multiple flags,
+keep it that way as well.
+
+Note that flags are uniqued for the whole pattern, so even if a given flag is
+mentioned multiple times, it's only checked/added once.
 
 Limitations
 -----------

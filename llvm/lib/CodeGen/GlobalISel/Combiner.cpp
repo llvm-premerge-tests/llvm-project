@@ -91,7 +91,8 @@ public:
 Combiner::Combiner(MachineFunction &MF, CombinerInfo &CInfo,
                    const TargetPassConfig *TPC, GISelKnownBits *KB,
                    GISelCSEInfo *CSEInfo)
-    : Builder(CSEInfo ? std::make_unique<CSEMIRBuilder>()
+    : GIMatchTableExecutor(/*PropagateMIFlags=*/false),
+      Builder(CSEInfo ? std::make_unique<CSEMIRBuilder>()
                       : std::make_unique<MachineIRBuilder>()),
       WLObserver(std::make_unique<WorkListMaintainer>(WorkList)),
       ObserverWrapper(std::make_unique<GISelObserverWrapper>()), CInfo(CInfo),

@@ -111,6 +111,28 @@ class GICombinePatFrag<dag outs, dag ins, list<dag> alts> {
 }
 
 //===----------------------------------------------------------------------===//
+// Pattern MIFlags
+//===----------------------------------------------------------------------===//
+
+class MIFlagEnum<string enumName> {
+  string EnumName = "MachineInstr::" # enumName;
+}
+
+def FmNoNans : MIFlagEnum<"FmNoNans">;
+def FmNoInfs : MIFlagEnum<"FmNoInfs">;
+def FmNsz : MIFlagEnum<"FmNsz">;
+def FmArcp : MIFlagEnum<"FmArcp">;
+def FmContract : MIFlagEnum<"FmContract">;
+def FmAfn : MIFlagEnum<"FmAfn">;
+def FmReassoc : MIFlagEnum<"FmReassoc">;
+
+class MIFlags<list<MIFlagEnum> flags> {
+  list<MIFlagEnum> Flags = flags;
+}
+
+class MIFlag<MIFlagEnum flag> : MIFlags<[flag]>;
+
+//===----------------------------------------------------------------------===//
 // Pattern Builtins
 //===----------------------------------------------------------------------===//
 

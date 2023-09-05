@@ -18,6 +18,7 @@
 namespace llvm {
 class InstructionSelector : public GIMatchTableExecutor {
 public:
+  InstructionSelector() : GIMatchTableExecutor(/*PropagateMIFlags*/ true) {}
   virtual ~InstructionSelector();
 
   /// Select the (possibly generic) instruction \p I to only use target-specific

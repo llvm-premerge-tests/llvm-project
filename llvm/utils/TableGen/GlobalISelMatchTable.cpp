@@ -1509,6 +1509,21 @@ void GenericInstructionPredicateMatcher::emitPredicateOpcodes(
         << MatchTable::LineBreak;
 }
 
+//===- MIFlagsInstructionPredicateMatcher ---------------------------------===//
+
+bool MIFlagsInstructionPredicateMatcher::isIdentical(
+    const PredicateMatcher &B) const {
+  return InstructionPredicateMatcher::isIdentical(B) &&
+         Flags ==
+             static_cast<const MIFlagsInstructionPredicateMatcher &>(B).Flags;
+}
+void MIFlagsInstructionPredicateMatcher::emitPredicateOpcodes(
+    MatchTable &Table, RuleMatcher &Rule) const {
+  Table << MatchTable::Opcode("GIM_CheckHasMIFlag") << MatchTable::Comment("MI")
+        << MatchTable::IntValue(InsnVarID)
+        << MatchTable::NamedValue(join(Flags, " | ")) << MatchTable::LineBreak;
+}
+
 //===- InstructionMatcher -------------------------------------------------===//
 
 OperandMatcher &
@@ -1924,6 +1939,17 @@ void BuildMIAction::chooseInsnToMutate(RuleMatcher &Rule) {
 
 void BuildMIAction::emitActionOpcodes(MatchTable &Table,
                                       RuleMatcher &Rule) const {
+
+  const auto AddMIFlags = [&]() {
+    if (Flags.empty())
+      return;
+
+    Table << MatchTable::Opcode("GIR_SetMIFlags")
+          << MatchTable::Comment("InsnID") << MatchTable::IntValue(InsnID)
+          << MatchTable::NamedValue(join(Flags, " | "))
+          << MatchTable::LineBreak;
+  };
+
   if (Matched) {
     assert(canMutate(Rule, Matched) &&
            "Arranged to mutate an insn that isn't mutatable");
@@ -1936,6 +1962,10 @@ void BuildMIAction::emitActionOpcodes(MatchTable &Table,
           << MatchTable::Comment("Opcode")
           << MatchTable::NamedValue(I->Namespace, I->TheDef->getName())
           << MatchTable::LineBreak;
+
+    // GIR_SetMIFlags clears flags so we don't need to worry about pre-existing
+    // ones.
+    AddMIFlags();
 
     if (!I->ImplicitDefs.empty() || !I->ImplicitUses.empty()) {
       for (auto *Def : I->ImplicitDefs) {
@@ -1970,6 +2000,9 @@ void BuildMIAction::emitActionOpcodes(MatchTable &Table,
         << MatchTable::IntValue(InsnID) << MatchTable::Comment("Opcode")
         << MatchTable::NamedValue(I->Namespace, I->TheDef->getName())
         << MatchTable::LineBreak;
+
+  AddMIFlags();
+
   for (const auto &Renderer : OperandRenderers)
     Renderer->emitRenderOpcodes(Table, Rule);
 

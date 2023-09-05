@@ -750,6 +750,7 @@ public:
     IPM_VectorSplatImm,
     IPM_NoUse,
     IPM_GenericPredicate,
+    IPM_MIFlags,
     OPM_SameOperand,
     OPM_ComplexPattern,
     OPM_IntrinsicID,
@@ -1556,6 +1557,26 @@ public:
                             RuleMatcher &Rule) const override;
 };
 
+class MIFlagsInstructionPredicateMatcher : public InstructionPredicateMatcher {
+  std::vector<StringRef> Flags;
+
+public:
+  MIFlagsInstructionPredicateMatcher(unsigned InsnVarID,
+                                     std::vector<StringRef> FlagsToCheck)
+      : InstructionPredicateMatcher(IPM_MIFlags, InsnVarID),
+        Flags(FlagsToCheck) {
+    sort(Flags);
+  }
+
+  static bool classof(const InstructionPredicateMatcher *P) {
+    return P->getKind() == IPM_MIFlags;
+  }
+
+  bool isIdentical(const PredicateMatcher &B) const override;
+  void emitPredicateOpcodes(MatchTable &Table,
+                            RuleMatcher &Rule) const override;
+};
+
 /// Generates code to check for the absence of use of the result.
 // TODO? Generalize this to support checking for one use.
 class NoUsePredicateMatcher : public InstructionPredicateMatcher {
@@ -2159,13 +2180,16 @@ private:
   InstructionMatcher *Matched;
   std::vector<std::unique_ptr<OperandRenderer>> OperandRenderers;
   SmallPtrSet<Record *, 4> DeadImplicitDefs;
+  std::vector<StringRef> Flags;
 
   /// True if the instruction can be built solely by mutating the opcode.
   bool canMutate(RuleMatcher &Rule, const InstructionMatcher *Insn) const;
 
 public:
-  BuildMIAction(unsigned InsnID, const CodeGenInstruction *I)
-      : MatchAction(AK_BuildMI), InsnID(InsnID), I(I), Matched(nullptr) {}
+  BuildMIAction(unsigned InsnID, const CodeGenInstruction *I,
+                const std::vector<StringRef> &MIFlags = {})
+      : MatchAction(AK_BuildMI), InsnID(InsnID), I(I), Matched(nullptr),
+        Flags(MIFlags) {}
 
   static bool classof(const MatchAction *A) {
     return A->getKind() == AK_BuildMI;

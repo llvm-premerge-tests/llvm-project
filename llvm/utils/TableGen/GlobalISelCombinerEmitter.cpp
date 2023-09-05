@@ -73,6 +73,8 @@ constexpr StringLiteral CXXApplyPrefix = "GICXXCustomAction_CombineApply";
 constexpr StringLiteral CXXPredPrefix = "GICXXPred_MI_Predicate_";
 constexpr StringLiteral PatFragClassName = "GICombinePatFrag";
 constexpr StringLiteral BuiltinInstClassName = "GIBuiltinInst";
+constexpr StringLiteral MIFlagsEnumClassName = "MIFlagEnum";
+constexpr StringLiteral MIFlagsClassName = "MIFlags";
 
 std::string getIsEnabledPredicateEnumName(unsigned CombinerRuleID) {
   return "GICXXPred_Simple_IsRule" + to_string(CombinerRuleID) + "Enabled";
@@ -630,6 +632,8 @@ public:
 protected:
   InstructionPattern(unsigned K, StringRef Name) : Pattern(K, Name) {}
 
+  virtual void printExtras(raw_ostream &OS) const {}
+
   SmallVector<InstructionOperand, 4> Operands;
 };
 
@@ -673,6 +677,8 @@ void InstructionPattern::print(raw_ostream &OS, bool PrintName) const {
       Sep = ", ";
     }
     OS << "]";
+
+    printExtras(OS);
   });
 }
 
@@ -783,11 +789,21 @@ public:
   unsigned getNumInstDefs() const override;
   unsigned getNumInstOperands() const override;
 
+  bool hasMIFlags() const { return !MIFlags.empty(); }
+  void addMIFlag(StringRef Flag) {
+    if (find(MIFlags, Flag) == MIFlags.end())
+      MIFlags.push_back(Flag);
+  }
+  const auto &mi_flags() const { return MIFlags; }
+
   const CodeGenInstruction &getInst() const { return I; }
   StringRef getInstName() const override { return I.TheDef->getName(); }
 
 private:
+  void printExtras(raw_ostream &OS) const override;
+
   const CodeGenInstruction &I;
+  std::vector<StringRef> MIFlags;
 };
 
 bool CodeGenInstructionPattern::hasVariadicDefs() const {
@@ -819,6 +835,13 @@ unsigned CodeGenInstructionPattern::getNumInstOperands() const {
   unsigned NumCGIOps = I.Operands.size();
   return isVariadic() ? std::max<unsigned>(NumCGIOps, Operands.size())
                       : NumCGIOps;
+}
+
+void CodeGenInstructionPattern::printExtras(raw_ostream &OS) const {
+  if (MIFlags.empty())
+    return;
+
+  OS << " flags:[" << join(MIFlags, ", ") << ']';
 }
 
 //===- OperandTypeChecker -------------------------------------------------===//
@@ -1604,6 +1627,8 @@ private:
   bool parseInstructionPatternOperand(InstructionPattern &IP,
                                       const Init *OpInit,
                                       const StringInit *OpName) const;
+  bool parseInstructionPatternMIFlagsOperand(InstructionPattern &IP,
+                                             const Record *Flag) const;
   std::unique_ptr<PatFrag> parsePatFragImpl(const Record *Def) const;
   bool parsePatFragParamList(
       ArrayRef<SMLoc> DiagLoc, const DagInit &OpsList,
@@ -2400,6 +2425,22 @@ CombineRuleBuilder::parseInstructionPattern(const Init &Arg,
   }
 
   for (unsigned K = 0; K < DagPat->getNumArgs(); ++K) {
+    Init *Arg = DagPat->getArg(K);
+    StringInit *Name = DagPat->getArgName(K);
+
+    if (auto *Def = dyn_cast<DefInit>(Arg);
+        Def && Def->getDef()->isSubClassOf(MIFlagsClassName)) {
+      if (!parseInstructionPatternMIFlagsOperand(*Pat, Def->getDef()))
+        return nullptr;
+
+      if (Name) {
+        PrintError("" + MIFlagsClassName + " operands cannot be named");
+        return nullptr;
+      }
+
+      continue;
+    }
+
     if (!parseInstructionPatternOperand(*Pat, DagPat->getArg(K),
                                         DagPat->getArgName(K)))
       return nullptr;
@@ -2508,6 +2549,27 @@ bool CombineRuleBuilder::parseInstructionPatternOperand(
   }
 
   return ParseErr();
+}
+
+bool CombineRuleBuilder::parseInstructionPatternMIFlagsOperand(
+    InstructionPattern &IP, const Record *OpDef) const {
+  assert(OpDef->isSubClassOf(MIFlagsClassName));
+
+  auto *CGIP = dyn_cast<CodeGenInstructionPattern>(&IP);
+  if (!CGIP) {
+    PrintError(MIFlagsClassName +
+               " operands are only allowed on CodeGenInstruction patterns");
+    return false;
+  }
+
+  const auto Flags = OpDef->getValueAsListOfDefs("Flags");
+  for (auto *Flag : Flags) {
+    // TableGen file should ensure this is correct.
+    assert(Flag->isSubClassOf(MIFlagsEnumClassName));
+    CGIP->addMIFlag(Flag->getValueAsString("EnumName"));
+  }
+
+  return true;
 }
 
 std::unique_ptr<PatFrag>
@@ -2981,7 +3043,8 @@ bool CombineRuleBuilder::emitInstructionApplyPattern(
 
   // Now render this inst.
   auto &DstMI =
-      M.addAction<BuildMIAction>(M.allocateOutputInsnID(), &CGIP.getInst());
+      M.addAction<BuildMIAction>(M.allocateOutputInsnID(), &CGIP.getInst(),
+                                 std::vector<StringRef>(CGIP.mi_flags()));
 
   for (auto &Op : P.operands()) {
     if (Op.isNamedImmediate()) {
@@ -3192,6 +3255,9 @@ bool CombineRuleBuilder::emitCodeGenInstructionMatchPattern(
 
   IM.addPredicate<InstructionOpcodeMatcher>(&P.getInst());
   declareInstExpansion(CE, IM, P.getName());
+
+  if (P.hasMIFlags())
+    IM.addPredicate<MIFlagsInstructionPredicateMatcher>(P.mi_flags());
 
   for (const auto &[Idx, OriginalO] : enumerate(P.operands())) {
     // Remap the operand. This is used when emitting InstructionPatterns inside

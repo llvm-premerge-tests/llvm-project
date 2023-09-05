@@ -24,7 +24,8 @@ using namespace llvm;
 GIMatchTableExecutor::MatcherState::MatcherState(unsigned MaxRenderers)
     : Renderers(MaxRenderers) {}
 
-GIMatchTableExecutor::GIMatchTableExecutor() = default;
+GIMatchTableExecutor::GIMatchTableExecutor(bool PropagateMIFlags)
+    : PropagateMIFlags(PropagateMIFlags) {}
 
 bool GIMatchTableExecutor::isOperandImmEqual(const MachineOperand &MO,
                                              int64_t Value,

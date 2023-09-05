@@ -78,6 +78,13 @@ def replacereg_nonroot : GICombineRule<
   (match (COPY $dst, $tmp), (COPY $tmp, $src)),
   (apply (GIReplaceReg $dst, $src), (GIReplaceReg $tmp, $src))>;
 
+// CHECK: :[[@LINE+2]]:{{[0-9]+}}: error: MIFlags operands are only allowed on CodeGenInstruction patterns
+// CHECK: :[[@LINE+1]]:{{[0-9]+}}: error: Failed to parse pattern: '(GIEraseRoot anonymous_
+def miflags_notinst : GICombineRule<
+  (defs root:$mi),
+  (match (G_STORE $a, $b):$mi),
+  (apply (GIEraseRoot MIFlag<FmNoInfs>))>;
+
 // CHECK: error: Failed to parse one or more rules
 
 def MyCombiner: GICombiner<"GenMyCombiner", [
@@ -90,5 +97,6 @@ def MyCombiner: GICombiner<"GenMyCombiner", [
   eraseroot_notinstmatch,
   replacereg_in_match,
   replacereg_ops,
-  replacereg_nonroot
+  replacereg_nonroot,
+  miflags_notinst
 ]>;
