@@ -11,6 +11,8 @@
 int BarResult = bar();
 int BazResult = baz();
 // CHECK-MESSAGES: :[[@LINE-1]]:17: warning: no header providing "baz" is directly included [misc-include-cleaner]
+int BazResultAgain = BAZ; // Header should not be inserted more than once
+// CHECK-MESSAGES: :[[@LINE-1]]:22: warning: no header providing "BAZ" is directly included [misc-include-cleaner]
 std::string HelloString;
 // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: no header providing "std::string" is directly included [misc-include-cleaner]
 int FooBarResult = foobar();
