@@ -184,8 +184,8 @@ public:
     /// integral type ``T``.
     ///
     /// Reads the option with the check-local name \p LocalName from the
-    /// ``CheckOptions``. If the corresponding key is not present, return
-    /// ``std::nullopt``.
+    /// ``CheckOptions``. If the corresponding key is not present or empty,
+    ///  return ``std::nullopt``.
     ///
     /// If the corresponding key can't be parsed as a ``T``, emit a
     /// diagnostic and return ``std::nullopt``.
@@ -193,6 +193,9 @@ public:
     std::enable_if_t<std::is_integral_v<T>, std::optional<T>>
     get(StringRef LocalName) const {
       if (std::optional<StringRef> Value = get(LocalName)) {
+        if (Value == "" || Value == "none" || Value == "null" ||
+          Value == "false" || (std::is_unsigned_v<T> && Value == "-1"))
+              return std::nullopt;
         T Result{};
         if (!StringRef(*Value).getAsInteger(10, Result))
           return Result;
@@ -286,8 +289,8 @@ public:
     /// enum type ``T``.
     ///
     /// Reads the option with the check-local name \p LocalName from the
-    /// ``CheckOptions``. If the corresponding key is not present, return
-    /// \p Default.
+    /// ``CheckOptions``. If the corresponding key is not present or empty,
+    /// return \p Default.
     ///
     /// If the corresponding key can't be parsed as a ``T``, emit a
     /// diagnostic and return \p Default.
