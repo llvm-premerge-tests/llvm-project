@@ -28,8 +28,18 @@ void SMEAttrs::set(unsigned M, bool Enable) {
 
 SMEAttrs::SMEAttrs(const CallBase &CB) {
   *this = SMEAttrs(CB.getAttributes());
-  if (auto *F = CB.getCalledFunction())
-    set(SMEAttrs(*F).Bitmask);
+  if (auto *F = CB.getCalledFunction()) {
+    set(SMEAttrs(*F).Bitmask | SMEAttrs(F->getName()).Bitmask);
+  }
+}
+
+SMEAttrs::SMEAttrs(StringRef FuncName) : Bitmask(0) {
+  if (FuncName == "__arm_tpidr2_save" || FuncName == "__arm_sme_state")
+    Bitmask |= (SMEAttrs::SM_Compatible | SMEAttrs::ZA_Preserved |
+                SMEAttrs::ZA_NoLazySave);
+  if (FuncName == "__arm_tpidr2_restore")
+    Bitmask |= (SMEAttrs::SM_Compatible | SMEAttrs::ZA_Shared |
+                SMEAttrs::ZA_NoLazySave);
 }
 
 SMEAttrs::SMEAttrs(const AttributeList &Attrs) {
