@@ -61,10 +61,13 @@ private:
   StringMap<std::vector<yaml::bolt::BinaryFunctionProfile *>> LTOCommonNameMap;
 
   /// Map a common LTO prefix to a set of binary functions.
-  StringMap<FunctionSet> LTOCommonNameFunctionMap;
+  StringMap<std::unordered_set<BinaryFunction *>> LTOCommonNameFunctionMap;
 
-  /// Strict matching of a name in a profile to its contents.
-  StringMap<yaml::bolt::BinaryFunctionProfile *> ProfileNameToProfile;
+  /// Function names in profile.
+  StringSet<> ProfileFunctionNames;
+
+  /// BinaryFunction pointers indexed by YamlBP functions.
+  std::vector<BinaryFunction *> ProfileBFs;
 
   /// Populate \p Function profile with the one supplied in YAML format.
   bool parseFunctionProfile(BinaryFunction &Function,
@@ -75,10 +78,10 @@ private:
                          const yaml::bolt::BinaryFunctionProfile &YamlBF);
 
   /// Initialize maps for profile matching.
-  void buildNameMaps(std::map<uint64_t, BinaryFunction> &Functions);
+  void buildNameMaps(BinaryContext &BC);
 
   /// Update matched YAML -> BinaryFunction pair.
-  void matchProfileToFunction(yaml::bolt::BinaryFunctionProfile &YamlBF,
+  bool matchProfileToFunction(yaml::bolt::BinaryFunctionProfile &YamlBF,
                               BinaryFunction &BF) {
     if (YamlBF.Id >= YamlProfileToFunction.size())
       YamlProfileToFunction.resize(YamlBF.Id + 1);
@@ -88,6 +91,7 @@ private:
     assert(!ProfiledFunctions.count(&BF) &&
            "function already has an assigned profile");
     ProfiledFunctions.emplace(&BF);
+    return true;
   }
 
   /// Check if the profile uses an event with a given \p Name.
