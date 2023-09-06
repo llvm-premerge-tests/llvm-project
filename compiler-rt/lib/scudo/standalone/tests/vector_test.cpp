@@ -23,13 +23,18 @@ TEST(ScudoVectorTest, Basic) {
 }
 
 TEST(ScudoVectorTest, Stride) {
+  // Fill two pages of elements, to exercise the code that grows the buffer as
+  // needed by allocating a bigger buffer and copying the old contents in it.
+  scudo::uptr NumElements =
+      2U * scudo::getPageSizeCached() / sizeof(scudo::uptr);
+
   scudo::Vector<scudo::uptr> V;
-  for (scudo::uptr I = 0; I < 1000; I++) {
+  for (scudo::uptr I = 0; I < NumElements; I++) {
     V.push_back(I);
     EXPECT_EQ(V.size(), I + 1U);
     EXPECT_EQ(V[I], I);
   }
-  for (scudo::uptr I = 0; I < 1000; I++)
+  for (scudo::uptr I = 0; I < NumElements; I++)
     EXPECT_EQ(V[I], I);
 }
 
