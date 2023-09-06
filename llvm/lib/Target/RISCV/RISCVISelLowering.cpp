@@ -938,6 +938,9 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
           continue;
         setOperationAction({ISD::FP_ROUND, ISD::FP_EXTEND}, VT, Custom);
         setOperationAction({ISD::VP_FP_ROUND, ISD::VP_FP_EXTEND}, VT, Custom);
+        setOperationAction({ISD::VP_MERGE, ISD::VP_SELECT, ISD::SELECT}, VT,
+                           Custom);
+        setOperationAction(ISD::SELECT_CC, VT, Expand);
         setOperationAction({ISD::SINT_TO_FP, ISD::UINT_TO_FP,
                             ISD::VP_SINT_TO_FP, ISD::VP_UINT_TO_FP},
                            VT, Custom);
@@ -1145,6 +1148,9 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
             !Subtarget.hasVInstructionsF16()) {
           setOperationAction({ISD::FP_ROUND, ISD::FP_EXTEND}, VT, Custom);
           setOperationAction({ISD::VP_FP_ROUND, ISD::VP_FP_EXTEND}, VT, Custom);
+          setOperationAction(
+              {ISD::VP_MERGE, ISD::VP_SELECT, ISD::VSELECT, ISD::SELECT}, VT,
+              Custom);
           setOperationAction({ISD::SINT_TO_FP, ISD::UINT_TO_FP,
                               ISD::VP_SINT_TO_FP, ISD::VP_UINT_TO_FP},
                              VT, Custom);
@@ -13978,6 +13984,45 @@ SDValue RISCVTargetLowering::PerformDAGCombine(SDNode *N,
     // Only perform this combine on legal MVT types.
     if (!isTypeLegal(VT))
       break;
+    // For splat_vector to fp16 vectors when we only have zvfhmin, we promote it
+    // to fp_round(vf32 splat_vector(c)). But the constant folder of getNode
+    // would fold fp_round(vf32 splat_vector(c)) back to vf16 splat_vector(c)
+    // again, so we should early lower splat_vector(fp16 c) to vmv.v.f before
+    // the promotion.
+    if (ConstantFPSDNode *Const = dyn_cast<ConstantFPSDNode>(N->getOperand(0));
+        Const && VT.isVector() && VT.getScalarType() == MVT::f16 &&
+        (Subtarget.hasVInstructionsF16Minimal() &&
+         !Subtarget.hasVInstructionsF16())) {
+      // If the input scalar is constant zero, we don't need to do promote with fp_round.
+      bool IsZero = isNullFPConstant(N->getOperand(0));
+      MVT OVT = N->getSimpleValueType(0);
+      MVT NVT = IsZero
+                    ? OVT
+                    : MVT::getVectorVT(MVT::f32, OVT.getVectorElementCount());
+      MVT OVTContainer = OVT;
+      MVT NVTContainer = NVT;
+      if (OVT.isFixedLengthVector()) {
+        OVTContainer = getContainerForFixedLengthVector(OVTContainer);
+        NVTContainer = getContainerForFixedLengthVector(NVTContainer);
+      }
+      auto [Mask, VL] =
+          getDefaultVLOps(NVT, NVTContainer, SDLoc(N), DAG, Subtarget);
+      SDValue Splat =
+          DAG.getNode(RISCVISD::VFMV_V_F_VL, SDLoc(N), NVTContainer,
+                      DAG.getUNDEF(NVTContainer),
+                      IsZero ? N->getOperand(0) :
+                      DAG.getConstantFP(Const->getValueAPF(), SDLoc(N),
+                                        NVT.getScalarType(), /*isTarget=*/true),
+                      VL);
+      SDValue Res =
+          IsZero ? Splat
+                 : DAG.getNode(
+                       ISD::FP_ROUND, SDLoc(N), OVTContainer, Splat,
+                       DAG.getIntPtrConstant(0, SDLoc(N), /*isTarget=*/true));
+      if (!OVT.isFixedLengthVector())
+        return Res;
+      return convertFromScalableVector(OVT, Res, DAG, Subtarget);
+    }
     if (auto Gather = matchSplatAsGather(N->getOperand(0), VT.getSimpleVT(), N,
                                          DAG, Subtarget))
       return Gather;
