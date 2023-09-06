@@ -205,6 +205,8 @@ Bug Fixes in This Version
 - Clang's ``-Wunused-private-field`` no longer warns on fields whose type is
   declared with ``[[maybe_unused]]``.
   (`#61334 <https://github.com/llvm/llvm-project/issues/61334>`_)
+- Correctly parse non-ascii identifiers that appear immediately after a line splicing
+  (`#65156 <https://github.com/llvm/llvm-project/issues/65156>`_`)
 
 Bug Fixes to Compiler Builtins
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
