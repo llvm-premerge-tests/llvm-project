@@ -6468,6 +6468,11 @@ def : Pat<(v4i32 (AArch64uaddlv (v8i8 V64:$Rn))),
 def : Pat<(v4i32 (AArch64uaddlv (v16i8 V128:$Rn))),
           (v4i32 (SUBREG_TO_REG (i64 0), (UADDLVv16i8v V128:$Rn), hsub))>;
 
+def : Pat<(v1i64 (scalar_to_vector
+                   (i64 (zext (i32 (vector_extract (v4i32 (AArch64uaddlv (v8i8 V64:$Rn))),
+                                                   (i64 0))))))),
+          (v1i64 (SUBREG_TO_REG (i64 0), (UADDLVv8i8v V64:$Rn), hsub))>;
+
 // Patterns for across-vector intrinsics, that have a node equivalent, that
 // returns a vector (with only the low lane defined) instead of a scalar.
 // In effect, opNode is the same as (scalar_to_vector (IntNode)).
