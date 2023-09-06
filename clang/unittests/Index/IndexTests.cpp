@@ -428,6 +428,19 @@ TEST(IndexTest, NonTypeTemplateParameter) {
                              WrittenAt(Position(3, 15)))));
 }
 
+TEST(IndexTest, UnconstrainedAuto) {
+  std::string Code = R"cpp(
+    template <typename T>
+    class Client {
+      template <const auto& S>
+      void foo() {
+      }
+    };
+  )cpp";
+  auto Index = std::make_shared<Indexer>();
+  tooling::runToolOnCode(std::make_unique<IndexAction>(Index), Code);
+  EXPECT_THAT(Index->Symbols, Contains(AllOf(QName("Client::foo"))));
+}
 } // namespace
 } // namespace index
 } // namespace clang
