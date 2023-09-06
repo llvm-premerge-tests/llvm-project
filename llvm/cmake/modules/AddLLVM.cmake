@@ -3,6 +3,7 @@ include(LLVMDistributionSupport)
 include(LLVMProcessSources)
 include(LLVM-Config)
 include(DetermineGCCCompatible)
+include(CheckLibraryExists)
 
 function(llvm_update_compile_flags name)
   get_property(sources TARGET ${name} PROPERTY SOURCES)
@@ -681,6 +682,12 @@ function(llvm_add_library name)
   else()
     # We can use PRIVATE since SO knows its dependent libs.
     set(libtype PRIVATE)
+  endif()
+
+  # Many LLVM libs require libm, so do this globally.
+  check_library_exists(m ceil "" HAVE_LIBM)
+  if(HAVE_LIBM)
+    set_target_properties(${name} PROPERTIES INTERFACE_LINK_LIBRARIES m)
   endif()
 
   if(ARG_MODULE AND LLVM_EXPORT_SYMBOLS_FOR_PLUGINS AND ARG_PLUGIN_TOOL AND (WIN32 OR CYGWIN))

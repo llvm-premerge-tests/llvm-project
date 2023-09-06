@@ -42,6 +42,9 @@ if(HAVE_LIB_RT)
   target_link_libraries(benchmark PRIVATE rt)
 endif(HAVE_LIB_RT)
 
+if(HAVE_LIB_M)
+  target_link_libraries(benchmark PRIVATE m)
+endif()
 
 # We need extra libraries on Windows
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")

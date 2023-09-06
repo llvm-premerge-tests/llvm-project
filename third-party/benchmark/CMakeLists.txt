@@ -129,6 +129,7 @@ include(CXXFeatureCheck)
 include(CheckLibraryExists)
 
 check_library_exists(rt shm_open "" HAVE_LIB_RT)
+check_library_exists(m ceil "" HAVE_LIB_M)
 
 if (BENCHMARK_BUILD_32_BITS)
   add_required_cxx_compiler_flag(-m32)
