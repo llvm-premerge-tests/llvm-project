@@ -11,7 +11,6 @@ add_mlir_dialect_library(MLIRLinalgTransforms
   DropUnitDims.cpp
   ElementwiseOpFusion.cpp
   ElementwiseToLinalg.cpp
-  EliminateEmptyTensors.cpp
   EraseUnusedOperandsAndResults.cpp
   FusePadOpWithLinalgProducer.cpp
   Fusion.cpp

@@ -374,36 +374,6 @@ DiagnosedSilenceableFailure transform::DecomposeInterfaceOp::applyToOne(
 }
 
 //===----------------------------------------------------------------------===//
-// EliminateLinalgOpAnchoredEmptyTensorsOp
-//===----------------------------------------------------------------------===//
-
-void transform::EliminateLinalgOpAnchoredEmptyTensorsOp::getEffects(
-    SmallVectorImpl<MemoryEffects::EffectInstance> &effects) {
-  onlyReadsHandle(getTarget(), effects);
-  modifiesPayload(effects);
-}
-
-DiagnosedSilenceableFailure
-transform::EliminateLinalgOpAnchoredEmptyTensorsOp::apply(
-    transform::TransformRewriter &rewriter, TransformResults &transformResults,
-    TransformState &state) {
-  bufferization::OneShotBufferizationOptions options;
-  options.allowReturnAllocs = true;
-
-  for (Operation *target : state.getPayloadOps(getTarget())) {
-    bufferization::OneShotAnalysisState state(target, options);
-    if (failed(analyzeOp(target, state)))
-      return mlir::emitSilenceableFailure(target->getLoc())
-             << "failed to analyze op";
-    if (failed(linalg::linalgOpAnchoredEmptyTensorEliminationStep(
-            rewriter, target, state)))
-      return mlir::emitSilenceableFailure(target->getLoc())
-             << "failed to eliminate LinalgOp anchored tensor.empty ops";
-  }
-  return DiagnosedSilenceableFailure::success();
-}
-
-//===----------------------------------------------------------------------===//
 // FuseOp
 //===----------------------------------------------------------------------===//
 

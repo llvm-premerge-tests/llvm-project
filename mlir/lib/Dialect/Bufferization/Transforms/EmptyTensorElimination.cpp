@@ -10,6 +10,7 @@
 
 #include "mlir/Dialect/Bufferization/IR/BufferizableOpInterface.h"
 #include "mlir/Dialect/Bufferization/IR/Bufferization.h"
+#include "mlir/Dialect/Bufferization/IR/InferDestinationOpInterface.h"
 #include "mlir/Dialect/Bufferization/Transforms/OneShotAnalysis.h"
 #include "mlir/Dialect/Bufferization/Transforms/Transforms.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
@@ -114,20 +115,21 @@ findValidInsertionPoint(Operation *emptyTensorOp,
 /// op. When tracing back the reverse use-def chain, we end up at a
 /// tensor.empty op.
 LogicalResult mlir::bufferization::eliminateEmptyTensors(
-    RewriterBase &rewriter, Operation *op, OneShotAnalysisState &state,
-    AnchorMatchFn anchorMatchFunc, RewriteFn rewriteFunc) {
+    RewriterBase &rewriter, Operation *op, OneShotAnalysisState &state) {
   OpBuilder::InsertionGuard g(rewriter);
 
-  op->walk([&](Operation *op) {
+  op->walk([&](InferDestinationOpInterface op) {
     for (OpOperand &operand : op->getOpOperands()) {
+      if (!isa<RankedTensorType>(operand.get().getType()))
+        continue;
       // Skip operands that do not bufferize inplace.
       if (!state.isInPlace(operand))
         continue;
-      // All values that are needed to create the replacement op.
-      SmallVector<Value> neededValues;
       // Is this an anchor?
-      if (!anchorMatchFunc(operand, neededValues))
+      if (!op.isAnchor(operand))
         continue;
+      // All values that are needed to create the replacement op.
+      SmallVector<Value> neededValues = op.getNeededValues(operand);
 
       // Find tensor.empty ops on the reverse SSA use-def chain. Only follow
       // equivalent tensors. I.e., stop when there are ops such as extract_slice
@@ -159,8 +161,8 @@ LogicalResult mlir::bufferization::eliminateEmptyTensors(
           continue;
 
         rewriter.setInsertionPoint(insertionPoint);
-        Value replacement =
-            rewriteFunc(rewriter, emptyTensorOp->getLoc(), operand);
+        Value replacement = op.getOrBuildDestination(
+            rewriter, emptyTensorOp->getLoc(), operand);
         if (!replacement)
           continue;
         if (replacement.getType() != v.getType()) {
@@ -175,78 +177,6 @@ LogicalResult mlir::bufferization::eliminateEmptyTensors(
     }
   });
 
-  return success();
-}
-
-/// Try to eliminate tensor::EmptyOps inside `op`. An tensor::EmptyOp can be
-/// eliminated if it is eventually inserted into another tensor (and some other
-/// conditions are met).
-///
-/// E.g.:
-/// %0 = tensor.empty()
-/// %1 = linalg.fill(%cst, %0) {inplace = [true]}
-/// %2 = tensor.insert_slice %1 into %t[10][20][1]
-///
-/// tensor::EmptyOp elimination will try to fill %t inplace instead of filling a
-/// new allocation %0 and inserting it into %t. This is done by replacing the
-/// tensor::EmptyOp with:
-///
-/// %0 = tensor.extract_slice %t[10][20][1]
-///
-/// The analysis looks for matching ExtractSliceOp/InsertSliceOp pairs and lets
-/// those bufferize inplace in the absence of other conflicts.
-///
-/// Starting from an InsertSliceOp, an tensor::EmptyOp at the end of the insert
-/// source's reverse use-def chain is eliminated if:
-/// * On the reverse use-def chain path from the InsertSliceOp to the
-///   tensor::EmptyOp, all ops were decided to bufferize inplace and the buffer
-///   relation is "equivalent" (TODO: can be relaxed if needed).
-/// * The reverse use-def chain has exactly one end, which is the
-///   tensor::EmptyOp.
-template <typename OpTy>
-static LogicalResult insertSliceLikeAnchoredEmptyTensorEliminationStep(
-    RewriterBase &rewriter, Operation *op, OneShotAnalysisState &state) {
-  return eliminateEmptyTensors(
-      rewriter, op, state,
-      /*anchorMatchFunc=*/
-      [&](OpOperand &operand, SmallVector<Value> &neededValues) {
-        auto insertSliceOp = dyn_cast<OpTy>(operand.getOwner());
-        if (!insertSliceOp)
-          return false;
-        if (&operand != &insertSliceOp->getOpOperand(0) /*source*/)
-          return false;
-
-        // Collect all values that are needed to construct the replacement op.
-        neededValues.append(insertSliceOp.getOffsets().begin(),
-                            insertSliceOp.getOffsets().end());
-        neededValues.append(insertSliceOp.getSizes().begin(),
-                            insertSliceOp.getSizes().end());
-        neededValues.append(insertSliceOp.getStrides().begin(),
-                            insertSliceOp.getStrides().end());
-        neededValues.push_back(insertSliceOp.getDest());
-
-        return true;
-      },
-      /*rewriteFunc=*/
-      [](OpBuilder &b, Location loc, OpOperand &operand) {
-        auto insertOp = cast<OpTy>(operand.getOwner());
-        auto extractOp = b.create<tensor::ExtractSliceOp>(
-            loc, insertOp.getSourceType(), insertOp.getDest(),
-            insertOp.getMixedOffsets(), insertOp.getMixedSizes(),
-            insertOp.getMixedStrides());
-        return extractOp.getResult();
-      });
-}
-
-LogicalResult
-mlir::bufferization::insertSliceAnchoredEmptyTensorEliminationStep(
-    RewriterBase &rewriter, Operation *op, OneShotAnalysisState &state) {
-  if (failed(insertSliceLikeAnchoredEmptyTensorEliminationStep<
-             tensor::InsertSliceOp>(rewriter, op, state)))
-    return failure();
-  if (failed(insertSliceLikeAnchoredEmptyTensorEliminationStep<
-             tensor::ParallelInsertSliceOp>(rewriter, op, state)))
-    return failure();
   return success();
 }
 
@@ -276,8 +206,7 @@ void EmptyTensorElimination::runOnOperation() {
   }
 
   IRRewriter rewriter(op->getContext());
-  if (failed(bufferization::insertSliceAnchoredEmptyTensorEliminationStep(
-          rewriter, op, state)))
+  if (failed(bufferization::eliminateEmptyTensors(rewriter, op, state)))
     signalPassFailure();
 }
 

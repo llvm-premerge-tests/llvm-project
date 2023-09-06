@@ -7,11 +7,13 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/Dialect/Tensor/Transforms/BufferizableOpInterfaceImpl.h"
+
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/Bufferization/IR/BufferizableOpInterface.h"
 #include "mlir/Dialect/Bufferization/IR/Bufferization.h"
 #include "mlir/Dialect/Bufferization/IR/DstBufferizableOpInterfaceImpl.h"
+#include "mlir/Dialect/Bufferization/IR/InferDestinationOpInterface.h"
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SCF/IR/SCF.h"
@@ -1147,6 +1149,44 @@ struct SplatOpInterface
   }
 };
 
+template <typename OpTy>
+struct InsertSliceLikeOpInferDestinationInterface
+    : public InferDestinationOpInterface::ExternalModel<
+          InsertSliceLikeOpInferDestinationInterface<OpTy>, OpTy> {
+  Value getOrBuildDestination(Operation *op, OpBuilder &builder, Location loc,
+                              OpOperand &operand) const {
+    auto insertSliceOp = cast<OpTy>(op);
+    assert(&operand == &op->getOpOperand(0) /*source*/ &&
+           "expected source operand");
+    auto extractOp = builder.create<tensor::ExtractSliceOp>(
+        loc, insertSliceOp.getSourceType(), insertSliceOp.getDest(),
+        insertSliceOp.getMixedOffsets(), insertSliceOp.getMixedSizes(),
+        insertSliceOp.getMixedStrides());
+    return extractOp.getResult();
+  }
+
+  SmallVector<Value> getNeededValues(Operation *op, OpOperand &operand) const {
+    auto insertSliceOp = cast<OpTy>(op);
+    assert(&operand == &op->getOpOperand(0) /*source*/ &&
+           "expected source operand");
+    SmallVector<Value> neededValues;
+    // Collect all values that are needed to construct the replacement op.
+    neededValues.append(insertSliceOp.getOffsets().begin(),
+                        insertSliceOp.getOffsets().end());
+    neededValues.append(insertSliceOp.getSizes().begin(),
+                        insertSliceOp.getSizes().end());
+    neededValues.append(insertSliceOp.getStrides().begin(),
+                        insertSliceOp.getStrides().end());
+    neededValues.push_back(insertSliceOp.getDest());
+    return neededValues;
+  }
+
+  bool isAnchor(Operation *op, OpOperand &operand) const {
+    // The source is transferred into the destination.
+    return &operand == &op->getOpOperand(0) /*source*/;
+  }
+};
+
 } // namespace
 } // namespace tensor
 } // namespace mlir
@@ -1165,9 +1205,15 @@ void mlir::tensor::registerBufferizableOpInterfaceExternalModels(
     GenerateOp::attachInterface<GenerateOpInterface>(*ctx);
     InsertOp::attachInterface<InsertOpInterface>(*ctx);
     InsertSliceOp::attachInterface<InsertSliceOpInterface>(*ctx);
+    InsertSliceOp::attachInterface<
+        InsertSliceLikeOpInferDestinationInterface<tensor::InsertSliceOp>>(
+        *ctx);
     PadOp::attachInterface<PadOpInterface>(*ctx);
     ParallelInsertSliceOp::attachInterface<ParallelInsertSliceOpInterface>(
         *ctx);
+    ParallelInsertSliceOp::attachInterface<
+        InsertSliceLikeOpInferDestinationInterface<
+            tensor::ParallelInsertSliceOp>>(*ctx);
     RankOp::attachInterface<RankOpInterface>(*ctx);
     ReshapeOp::attachInterface<ReshapeOpInterface>(*ctx);
     SplatOp::attachInterface<SplatOpInterface>(*ctx);
