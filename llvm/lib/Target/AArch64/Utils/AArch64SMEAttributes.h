@@ -35,6 +35,7 @@ public:
     ZA_Shared = 1 << 3,     // aarch64_pstate_sm_shared
     ZA_New = 1 << 4,        // aarch64_pstate_sm_new
     ZA_Preserved = 1 << 5,  // aarch64_pstate_sm_preserved
+    ZA_NoLazySave = 1 << 6, // Don't emit TPI_DR2 lazy saves
     All = ZA_Preserved - 1
   };
 
@@ -80,9 +81,10 @@ public:
   bool hasZAState() const {
     return hasNewZABody() || hasSharedZAInterface();
   }
+  bool hasNoLazySave() const { return Bitmask & ZA_NoLazySave; }
   bool requiresLazySave(const SMEAttrs &Callee) const {
     return hasZAState() && Callee.hasPrivateZAInterface() &&
-           !Callee.preservesZA();
+           !Callee.hasNoLazySave();
   }
 };
 
