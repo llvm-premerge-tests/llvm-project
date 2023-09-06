@@ -44,6 +44,8 @@
 ; CHECK-NEXT: .amdhsa_user_sgpr_dispatch_id 0
 ; CHECK-NEXT: .amdhsa_user_sgpr_flat_scratch_init 0
 ; CHECK-NEXT: .amdhsa_user_sgpr_private_segment_size 0
+; CHECK-NEXT: .amdhsa_user_sgpr_kernarg_preload_length  0
+; CHECK-NEXT: .amdhsa_user_sgpr_kernarg_preload_offset  0
 ; CHECK-NEXT: .end_amdhsa_kernel
 .amdhsa_kernel kernel
   .amdhsa_next_free_vgpr 0
@@ -95,6 +97,8 @@
 ; CHECK-NEXT: .amdhsa_user_sgpr_dispatch_id 0
 ; CHECK-NEXT: .amdhsa_user_sgpr_flat_scratch_init 0
 ; CHECK-NEXT: .amdhsa_user_sgpr_private_segment_size 0
+; CHECK-NEXT: .amdhsa_user_sgpr_kernarg_preload_length  0
+; CHECK-NEXT: .amdhsa_user_sgpr_kernarg_preload_offset  0
 ; CHECK-NEXT: .end_amdhsa_kernel
 .amdhsa_kernel kernel
   .amdhsa_next_free_vgpr 0
@@ -146,6 +150,8 @@
 ; CHECK-NEXT: .amdhsa_user_sgpr_dispatch_id 0
 ; CHECK-NEXT: .amdhsa_user_sgpr_flat_scratch_init 0
 ; CHECK-NEXT: .amdhsa_user_sgpr_private_segment_size 0
+; CHECK-NEXT: .amdhsa_user_sgpr_kernarg_preload_length  2
+; CHECK-NEXT: .amdhsa_user_sgpr_kernarg_preload_offset  1
 ; CHECK-NEXT: .end_amdhsa_kernel
 .amdhsa_kernel kernel
   .amdhsa_next_free_vgpr 0
@@ -153,4 +159,6 @@
   .amdhsa_reserve_flat_scratch 1
   .amdhsa_reserve_xnack_mask 0
   .amdhsa_reserve_vcc 1
+  .amdhsa_user_sgpr_kernarg_preload_length 2
+  .amdhsa_user_sgpr_kernarg_preload_offset 1
 .end_amdhsa_kernel

@@ -1148,6 +1148,7 @@ bool hasG16(const MCSubtargetInfo &STI);
 bool hasPackedD16(const MCSubtargetInfo &STI);
 bool hasGDS(const MCSubtargetInfo &STI);
 unsigned getNSAMaxSize(const MCSubtargetInfo &STI);
+unsigned getMaxNumUserSGPRs(const MCSubtargetInfo &STI);
 
 bool isSI(const MCSubtargetInfo &STI);
 bool isCI(const MCSubtargetInfo &STI);

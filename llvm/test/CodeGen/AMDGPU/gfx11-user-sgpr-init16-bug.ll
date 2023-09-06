@@ -34,6 +34,8 @@
 ; GCN-NEXT: .amdhsa_user_sgpr_queue_ptr 0
 ; GCN-NEXT: .amdhsa_user_sgpr_kernarg_segment_ptr 0
 ; GCN-NEXT: .amdhsa_user_sgpr_dispatch_id 0
+; GCN-NEXT: .amdhsa_user_sgpr_kernarg_preload_length  0
+; GCN-NEXT: .amdhsa_user_sgpr_kernarg_preload_offset  0
 ; GCN-NEXT: .amdhsa_user_sgpr_private_segment_size 0
 ; GCN-NEXT: .amdhsa_wavefront_size32
 ; GCN-NEXT: .amdhsa_enable_private_segment 0
@@ -62,6 +64,8 @@ define amdgpu_kernel void @minimal_kernel_inputs() {
 ; GCN-NEXT: .amdhsa_user_sgpr_queue_ptr 0
 ; GCN-NEXT: .amdhsa_user_sgpr_kernarg_segment_ptr 0
 ; GCN-NEXT: .amdhsa_user_sgpr_dispatch_id 0
+; GCN-NEXT: .amdhsa_user_sgpr_kernarg_preload_length  0
+; GCN-NEXT: .amdhsa_user_sgpr_kernarg_preload_offset  0
 ; GCN-NEXT: .amdhsa_user_sgpr_private_segment_size 0
 ; GCN-NEXT: .amdhsa_wavefront_size32
 ; GCN-NEXT: .amdhsa_enable_private_segment 1
@@ -94,6 +98,8 @@ define amdgpu_kernel void @minimal_kernel_inputs_with_stack() {
 ; GCN-NEXT: .amdhsa_user_sgpr_queue_ptr 1
 ; GCN-NEXT: .amdhsa_user_sgpr_kernarg_segment_ptr 0
 ; GCN-NEXT: .amdhsa_user_sgpr_dispatch_id 0
+; GCN-NEXT: .amdhsa_user_sgpr_kernarg_preload_length  0
+; GCN-NEXT: .amdhsa_user_sgpr_kernarg_preload_offset  0
 ; GCN-NEXT: .amdhsa_user_sgpr_private_segment_size 0
 ; GCN-NEXT: .amdhsa_wavefront_size32
 ; GCN-NEXT: .amdhsa_enable_private_segment 0
@@ -140,6 +146,8 @@ define amdgpu_kernel void @queue_ptr() {
 ; GCN-NEXT: .amdhsa_user_sgpr_queue_ptr 1
 ; GCN-NEXT: .amdhsa_user_sgpr_kernarg_segment_ptr 1
 ; GCN-NEXT: .amdhsa_user_sgpr_dispatch_id 1
+; GCN-NEXT: .amdhsa_user_sgpr_kernarg_preload_length  0
+; GCN-NEXT: .amdhsa_user_sgpr_kernarg_preload_offset  0
 ; GCN-NEXT: .amdhsa_user_sgpr_private_segment_size 0
 ; GCN-NEXT: .amdhsa_wavefront_size32
 ; GCN-NEXT: .amdhsa_enable_private_segment 1

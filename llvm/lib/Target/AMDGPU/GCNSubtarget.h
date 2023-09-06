@@ -855,7 +855,7 @@ public:
                            unsigned NumRegionInstrs) const override;
 
   unsigned getMaxNumUserSGPRs() const {
-    return 16;
+    return AMDGPU::getMaxNumUserSGPRs(*this);
   }
 
   bool hasSMemRealTime() const {

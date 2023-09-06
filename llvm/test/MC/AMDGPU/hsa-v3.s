@@ -34,7 +34,7 @@
 // OBJDUMP-NEXT: 0040 01000000 01000000 08000000 00000000
 // OBJDUMP-NEXT: 0050 00000000 00000000 00000000 00000000
 // OBJDUMP-NEXT: 0060 00000000 00000000 00000000 00000000
-// OBJDUMP-NEXT: 0070 c2500104 1f0f007f 7f000000 00000000
+// OBJDUMP-NEXT: 0070 c2500104 1f0f007f 7f008100 00000000
 // special_sgpr
 // OBJDUMP-NEXT: 0080 00000000 00000000 00000000 00000000
 // OBJDUMP-NEXT: 0090 00000000 00000000 00000000 00000000
@@ -100,6 +100,8 @@ disabled_user_sgpr:
   .amdhsa_user_sgpr_kernarg_segment_ptr 1
   .amdhsa_user_sgpr_dispatch_id 1
   .amdhsa_user_sgpr_flat_scratch_init 1
+  .amdhsa_user_sgpr_kernarg_preload_length  1
+  .amdhsa_user_sgpr_kernarg_preload_offset  1
   .amdhsa_user_sgpr_private_segment_size 1
   .amdhsa_system_sgpr_private_segment_wavefront_offset 1
   .amdhsa_system_sgpr_workgroup_id_x 0
@@ -139,6 +141,8 @@ disabled_user_sgpr:
 // ASM-NEXT: .amdhsa_user_sgpr_kernarg_segment_ptr 1
 // ASM-NEXT: .amdhsa_user_sgpr_dispatch_id 1
 // ASM-NEXT: .amdhsa_user_sgpr_flat_scratch_init 1
+// ASM-NEXT: .amdhsa_user_sgpr_kernarg_preload_length  1
+// ASM-NEXT: .amdhsa_user_sgpr_kernarg_preload_offset  1
 // ASM-NEXT: .amdhsa_user_sgpr_private_segment_size 1
 // ASM-NEXT: .amdhsa_system_sgpr_private_segment_wavefront_offset 1
 // ASM-NEXT: .amdhsa_system_sgpr_workgroup_id_x 0

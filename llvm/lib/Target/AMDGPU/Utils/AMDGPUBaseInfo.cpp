@@ -2047,6 +2047,8 @@ unsigned getNSAMaxSize(const MCSubtargetInfo &STI) {
   return 0;
 }
 
+unsigned getMaxNumUserSGPRs(const MCSubtargetInfo &STI) { return 16; }
+
 bool isSI(const MCSubtargetInfo &STI) {
   return STI.hasFeature(AMDGPU::FeatureSouthernIslands);
 }

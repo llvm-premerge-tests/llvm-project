@@ -85,3 +85,11 @@
   .amdhsa_next_free_vgpr 32
   .amdhsa_next_free_sgpr 32
 .end_amdhsa_kernel
+
+.amdhsa_kernel preload_kernarg_0
+  .amdhsa_user_sgpr_count 2
+  .amdhsa_user_sgpr_queue_ptr 1
+  .amdhsa_user_sgpr_kernarg_preload_length 1
+  .amdhsa_next_free_vgpr 32
+  .amdhsa_next_free_sgpr 32
+.end_amdhsa_kernel

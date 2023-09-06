@@ -66,6 +66,8 @@
 ; OBJDUMP-NEXT:         .amdhsa_user_sgpr_flat_scratch_init 0
 ; OBJDUMP-NEXT:         .amdhsa_user_sgpr_private_segment_size 0
 ; OBJDUMP-NEXT:         .amdhsa_wavefront_size32 0
+; OBJDUMP-NEXT:         .amdhsa_user_sgpr_kernarg_preload_length  0
+; OBJDUMP-NEXT:         .amdhsa_user_sgpr_kernarg_preload_offset  0
 ; OBJDUMP-NEXT: .end_amdhsa_kernel
 
 .amdhsa_kernel my_kernel

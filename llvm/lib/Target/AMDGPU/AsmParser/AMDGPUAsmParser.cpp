@@ -1462,6 +1462,10 @@ public:
     return AMDGPU::getNSAMaxSize(getSTI());
   }
 
+  unsigned getMaxNumUserSGPRs() const {
+    return AMDGPU::getMaxNumUserSGPRs(getSTI());
+  }
+
   AMDGPUTargetStreamer &getTargetStreamer() {
     MCTargetStreamer &TS = *getParser().getStreamer().getTargetStreamer();
     return static_cast<AMDGPUTargetStreamer &>(TS);
@@ -4933,6 +4937,8 @@ bool AMDGPUAsmParser::ParseDirectiveAMDHSAKernel() {
 
   // Count the number of user SGPRs implied from the enabled feature bits.
   unsigned ImpliedUserSGPRCount = 0;
+  // Track the number of SGPRs used to preload kernel agruments.
+  unsigned KernargPreloadSGPRCount = 0;
 
   // Track if the asm explicitly contains the directive for the user SGPR
   // count.
@@ -4996,6 +5002,18 @@ bool AMDGPUAsmParser::ParseDirectiveAMDHSAKernel() {
                        Val, ValRange);
       if (Val)
         ImpliedUserSGPRCount += 4;
+    } else if (ID == ".amdhsa_user_sgpr_kernarg_preload_length") {
+      if (Val > getMaxNumUserSGPRs())
+        return OutOfRangeError(ValRange);
+      PARSE_BITS_ENTRY(KD.kernarg_preload, KERNARG_PRELOAD_SPEC_LENGTH, Val,
+                       ValRange);
+      if (Val)
+        KernargPreloadSGPRCount += Val;
+    } else if (ID == ".amdhsa_user_sgpr_kernarg_preload_offset") {
+      if (Val >= 1024)
+        return OutOfRangeError(ValRange);
+      PARSE_BITS_ENTRY(KD.kernarg_preload, KERNARG_PRELOAD_SPEC_OFFSET, Val,
+                       ValRange);
     } else if (ID == ".amdhsa_user_sgpr_dispatch_ptr") {
       PARSE_BITS_ENTRY(KD.kernel_code_properties,
                        KERNEL_CODE_PROPERTY_ENABLE_SGPR_DISPATCH_PTR, Val,
@@ -5235,6 +5253,11 @@ bool AMDGPUAsmParser::ParseDirectiveAMDHSAKernel() {
 
   unsigned UserSGPRCount =
       ExplicitUserSGPRCount ? *ExplicitUserSGPRCount : ImpliedUserSGPRCount;
+
+  if (KernargPreloadSGPRCount &&
+      KernargPreloadSGPRCount + UserSGPRCount > getMaxNumUserSGPRs())
+    return TokError(".amdhsa_user_sgpr_kernarg_preload_length + implicit user "
+                    " SGPR count exceeds maximum supported.");
 
   if (!isUInt<COMPUTE_PGM_RSRC2_USER_SGPR_COUNT_WIDTH>(UserSGPRCount))
     return TokError("too many user SGPRs enabled");
