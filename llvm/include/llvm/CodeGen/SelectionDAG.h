@@ -1984,6 +1984,24 @@ public:
     OFK_Always,
   };
 
+  /// Determine if the result of the signed mul of 2 nodes can overflow.
+  OverflowKind computeOverflowForSignedMul(SDValue N0, SDValue N1) const;
+
+  /// Determine if the result of the unsigned mul of 2 nodes can overflow.
+  OverflowKind computeOverflowForUnsignedMul(SDValue N0, SDValue N1) const;
+
+  /// Determine if the result of the mul of 2 nodes can overflow.
+  OverflowKind computeOverflowForMul(bool IsSigned, SDValue N0,
+                                     SDValue N1) const {
+    return IsSigned ? computeOverflowForSignedMul(N0, N1)
+                    : computeOverflowForUnsignedMul(N0, N1);
+  }
+
+  /// Determine if the result of the mul of 2 nodes can never overflow.
+  bool willNotOverflowMul(bool IsSigned, SDValue N0, SDValue N1) const {
+    return computeOverflowForMul(IsSigned, N0, N1) == OFK_Never;
+  }
+
   /// Determine if the result of the signed addition of 2 nodes can overflow.
   OverflowKind computeOverflowForSignedAdd(SDValue N0, SDValue N1) const;
 
