@@ -73,6 +73,7 @@ constexpr void run_tests() {
 
   test(std::ranges::any_of, in, unary_pred);
   test(std::ranges::all_of, in, unary_pred);
+  test(std::ranges::ends_with, in, in2);
   test(std::ranges::none_of, in, unary_pred);
   test(std::ranges::find, in, x);
   test(std::ranges::find_if, in, unary_pred);
