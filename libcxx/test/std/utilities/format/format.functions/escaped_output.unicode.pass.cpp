@@ -565,7 +565,6 @@ int main(int, char**) {
 #ifndef TEST_HAS_NO_WIDE_CHARACTERS
 #  ifdef _LIBCPP_SHORT_WCHAR
   test_ill_formed_utf16();
-  assert(false);
 #  else  // _LIBCPP_SHORT_WCHAR
   test_ill_formed_utf32();
 #  endif // _LIBCPP_SHORT_WCHAR
