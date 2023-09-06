@@ -119,7 +119,17 @@ struct _LIBCPP_STANDALONE_DEBUG __hash_node
     typedef _Tp __node_value_type;
 
     size_t            __hash_;
+
+#ifndef _LIBCPP_CXX03_LANG
+    union {
+        __node_value_type __value_;
+    };
+
+    _LIBCPP_HIDE_FROM_ABI
+    explicit __hash_node() {}
+#else
     __node_value_type __value_;
+#endif
 };
 
 inline _LIBCPP_INLINE_VISIBILITY
@@ -2193,6 +2203,9 @@ __hash_table<_Tp, _Hash, _Equal, _Alloc>::__construct_node(_Args&& ...__args)
                   "Construct cannot be called with a hash value type");
     __node_allocator& __na = __node_alloc();
     __node_holder __h(__node_traits::allocate(__na, 1), _Dp(__na));
+#ifndef _LIBCPP_CXX03_LANG
+    ::new ((void*)std::addressof(*__h)) __node();
+#endif
     __node_traits::construct(__na, _NodeTypes::__get_ptr(__h->__value_), _VSTD::forward<_Args>(__args)...);
     __h.get_deleter().__value_constructed = true;
     __h->__hash_ = hash_function()(__h->__value_);
@@ -2210,6 +2223,9 @@ __hash_table<_Tp, _Hash, _Equal, _Alloc>::__construct_node_hash(
                   "Construct cannot be called with a hash value type");
     __node_allocator& __na = __node_alloc();
     __node_holder __h(__node_traits::allocate(__na, 1), _Dp(__na));
+#ifndef _LIBCPP_CXX03_LANG
+    ::new ((void*)std::addressof(*__h)) __node();
+#endif
     __node_traits::construct(__na, _NodeTypes::__get_ptr(__h->__value_),
                              _VSTD::forward<_First>(__f),
                              _VSTD::forward<_Rest>(__rest)...);
