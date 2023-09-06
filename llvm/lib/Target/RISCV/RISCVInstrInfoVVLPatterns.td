@@ -615,14 +615,17 @@ class VPatBinaryVL_V<SDPatternOperator vop,
                        (result_type result_reg_class:$merge),
                        (mask_type V0),
                        VLOpFrag)),
-      (!cast<Instruction>(
-                   !if(isSEWAware,
-                       instruction_name#"_"#suffix#"_"#vlmul.MX#"_E"#!shl(1, log2sew)#"_MASK",
-                       instruction_name#"_"#suffix#"_"#vlmul.MX#"_MASK"))
-                   result_reg_class:$merge,
-                   op1_reg_class:$rs1,
-                   op2_reg_class:$rs2,
-                   (mask_type V0), GPR:$vl, log2sew, TAIL_AGNOSTIC)>;
+      !if(isSEWAware,
+          (!cast<Instruction>(instruction_name#"_"#suffix#"_"#vlmul.MX#"_E"#!shl(1, log2sew)#"_MASK")
+                       result_reg_class:$merge,
+                       op1_reg_class:$rs1,
+                       op2_reg_class:$rs2,
+                       (mask_type V0), GPR:$vl, TAIL_AGNOSTIC),
+          (!cast<Instruction>(instruction_name#"_"#suffix#"_"#vlmul.MX#"_MASK")
+                       result_reg_class:$merge,
+                       op1_reg_class:$rs1,
+                       op2_reg_class:$rs2,
+                       (mask_type V0), GPR:$vl, log2sew, TAIL_AGNOSTIC))>;
 
 class VPatBinaryVL_V_RM<SDPatternOperator vop,
                      string instruction_name,
@@ -643,18 +646,25 @@ class VPatBinaryVL_V_RM<SDPatternOperator vop,
                        (result_type result_reg_class:$merge),
                        (mask_type V0),
                        VLOpFrag)),
-      (!cast<Instruction>(
-                   !if(isSEWAware,
-                       instruction_name#"_"#suffix#"_"#vlmul.MX#"_E"#!shl(1, log2sew)#"_MASK",
-                       instruction_name#"_"#suffix#"_"#vlmul.MX#"_MASK"))
-                   result_reg_class:$merge,
-                   op1_reg_class:$rs1,
-                   op2_reg_class:$rs2,
-                   (mask_type V0),
-                   // Value to indicate no rounding mode change in
-                   // RISCVInsertReadWriteCSR
-                   FRM_DYN,
-                   GPR:$vl, log2sew, TAIL_AGNOSTIC)>;
+      !if(isSEWAware,
+          (!cast<Instruction>(instruction_name#"_"#suffix#"_"#vlmul.MX#"_E"#!shl(1, log2sew)#"_MASK")
+                       result_reg_class:$merge,
+                       op1_reg_class:$rs1,
+                       op2_reg_class:$rs2,
+                       (mask_type V0),
+                       // Value to indicate no rounding mode change in
+                       // RISCVInsertReadWriteCSR
+                       FRM_DYN,
+                       GPR:$vl, TAIL_AGNOSTIC),
+          (!cast<Instruction>(instruction_name#"_"#suffix#"_"#vlmul.MX#"_MASK")
+                       result_reg_class:$merge,
+                       op1_reg_class:$rs1,
+                       op2_reg_class:$rs2,
+                       (mask_type V0),
+                       // Value to indicate no rounding mode change in
+                       // RISCVInsertReadWriteCSR
+                       FRM_DYN,
+                       GPR:$vl, log2sew, TAIL_AGNOSTIC))>;
 
 multiclass VPatTiedBinaryNoMaskVL_V<SDNode vop,
                                     string instruction_name,
@@ -750,14 +760,17 @@ class VPatBinaryVL_XI<SDPatternOperator vop,
                    (result_type result_reg_class:$merge),
                    (mask_type V0),
                    VLOpFrag)),
-      (!cast<Instruction>(
-                   !if(isSEWAware,
-                       instruction_name#_#suffix#_#vlmul.MX#"_E"#!shl(1, log2sew)#"_MASK",
-                       instruction_name#_#suffix#_#vlmul.MX#"_MASK"))
-                   result_reg_class:$merge,
-                   vop_reg_class:$rs1,
-                   xop_kind:$rs2,
-                   (mask_type V0), GPR:$vl, log2sew, TAIL_AGNOSTIC)>;
+      !if(isSEWAware,
+          (!cast<Instruction>(instruction_name#_#suffix#_#vlmul.MX#"_E"#!shl(1, log2sew)#"_MASK")
+                       result_reg_class:$merge,
+                       vop_reg_class:$rs1,
+                       xop_kind:$rs2,
+                       (mask_type V0), GPR:$vl, TAIL_AGNOSTIC),
+          (!cast<Instruction>(instruction_name#_#suffix#_#vlmul.MX#"_MASK")
+                       result_reg_class:$merge,
+                       vop_reg_class:$rs1,
+                       xop_kind:$rs2,
+                       (mask_type V0), GPR:$vl, log2sew, TAIL_AGNOSTIC))>;
 
 multiclass VPatBinaryVL_VV_VX<SDPatternOperator vop, string instruction_name,
                               list<VTypeInfo> vtilist = AllIntegerVectors,
@@ -870,14 +883,17 @@ class VPatBinaryVL_VF<SDPatternOperator vop,
                        (result_type result_reg_class:$merge),
                        (mask_type V0),
                        VLOpFrag)),
-      (!cast<Instruction>(
-                   !if(isSEWAware,
-                       instruction_name#"_"#vlmul.MX#"_E"#!shl(1, log2sew)#"_MASK",
-                       instruction_name#"_"#vlmul.MX#"_MASK"))
-                   result_reg_class:$merge,
-                   vop_reg_class:$rs1,
-                   scalar_reg_class:$rs2,
-                   (mask_type V0), GPR:$vl, log2sew, TAIL_AGNOSTIC)>;
+      !if(isSEWAware,
+          (!cast<Instruction>(instruction_name#"_"#vlmul.MX#"_E"#!shl(1, log2sew)#"_MASK")
+                       result_reg_class:$merge,
+                       vop_reg_class:$rs1,
+                       scalar_reg_class:$rs2,
+                       (mask_type V0), GPR:$vl, TAIL_AGNOSTIC),
+          (!cast<Instruction>(instruction_name#"_"#vlmul.MX#"_MASK")
+                       result_reg_class:$merge,
+                       vop_reg_class:$rs1,
+                       scalar_reg_class:$rs2,
+                       (mask_type V0), GPR:$vl, log2sew, TAIL_AGNOSTIC))>;
 
 class VPatBinaryVL_VF_RM<SDPatternOperator vop,
                       string instruction_name,
@@ -896,18 +912,25 @@ class VPatBinaryVL_VF_RM<SDPatternOperator vop,
                        (result_type result_reg_class:$merge),
                        (mask_type V0),
                        VLOpFrag)),
-      (!cast<Instruction>(
-                   !if(isSEWAware,
-                       instruction_name#"_"#vlmul.MX#"_E"#!shl(1, log2sew)#"_MASK",
-                       instruction_name#"_"#vlmul.MX#"_MASK"))
-                   result_reg_class:$merge,
-                   vop_reg_class:$rs1,
-                   scalar_reg_class:$rs2,
-                   (mask_type V0),
-                   // Value to indicate no rounding mode change in
-                   // RISCVInsertReadWriteCSR
-                   FRM_DYN,
-                   GPR:$vl, log2sew, TAIL_AGNOSTIC)>;
+      !if(isSEWAware,
+          (!cast<Instruction>(instruction_name#"_"#vlmul.MX#"_E"#!shl(1, log2sew)#"_MASK")
+                       result_reg_class:$merge,
+                       vop_reg_class:$rs1,
+                       scalar_reg_class:$rs2,
+                       (mask_type V0),
+                       // Value to indicate no rounding mode change in
+                       // RISCVInsertReadWriteCSR
+                       FRM_DYN,
+                       GPR:$vl, TAIL_AGNOSTIC),
+          (!cast<Instruction>(instruction_name#"_"#vlmul.MX#"_MASK")
+                       result_reg_class:$merge,
+                       vop_reg_class:$rs1,
+                       scalar_reg_class:$rs2,
+                       (mask_type V0),
+                       // Value to indicate no rounding mode change in
+                       // RISCVInsertReadWriteCSR
+                       FRM_DYN,
+                       GPR:$vl, log2sew, TAIL_AGNOSTIC))>;
 
 multiclass VPatBinaryFPVL_VV_VF<SDPatternOperator vop, string instruction_name,
                                 bit isSEWAware = 0> {
@@ -950,13 +973,15 @@ multiclass VPatBinaryFPVL_R_VF<SDPatternOperator vop, string instruction_name,
                                 (fvti.Vector fvti.RegClass:$merge),
                                 (fvti.Mask V0),
                                 VLOpFrag)),
-              (!cast<Instruction>(
-                           !if(isSEWAware,
-                               instruction_name#"_V"#fvti.ScalarSuffix#"_"#fvti.LMul.MX#"_E"#fvti.SEW#"_MASK",
-                               instruction_name#"_V"#fvti.ScalarSuffix#"_"#fvti.LMul.MX#"_MASK"))
-                           fvti.RegClass:$merge,
-                           fvti.RegClass:$rs1, fvti.ScalarRegClass:$rs2,
-                           (fvti.Mask V0), GPR:$vl, fvti.Log2SEW, TAIL_AGNOSTIC)>;
+              !if(isSEWAware,
+                  (!cast<Instruction>(instruction_name#"_V"#fvti.ScalarSuffix#"_"#fvti.LMul.MX#"_E"#fvti.SEW#"_MASK")
+                               fvti.RegClass:$merge,
+                               fvti.RegClass:$rs1, fvti.ScalarRegClass:$rs2,
+                               (fvti.Mask V0), GPR:$vl, TAIL_AGNOSTIC),
+                  (!cast<Instruction>(instruction_name#"_V"#fvti.ScalarSuffix#"_"#fvti.LMul.MX#"_MASK")
+                               fvti.RegClass:$merge,
+                               fvti.RegClass:$rs1, fvti.ScalarRegClass:$rs2,
+                               (fvti.Mask V0), GPR:$vl, fvti.Log2SEW, TAIL_AGNOSTIC))>;
   }
 }
 
@@ -969,17 +994,23 @@ multiclass VPatBinaryFPVL_R_VF_RM<SDPatternOperator vop, string instruction_name
                                 (fvti.Vector fvti.RegClass:$merge),
                                 (fvti.Mask V0),
                                 VLOpFrag)),
-              (!cast<Instruction>(
-                           !if(isSEWAware,
-                               instruction_name#"_V"#fvti.ScalarSuffix#"_"#fvti.LMul.MX#"_E"#fvti.SEW#"_MASK",
-                               instruction_name#"_V"#fvti.ScalarSuffix#"_"#fvti.LMul.MX#"_MASK"))
-                           fvti.RegClass:$merge,
-                           fvti.RegClass:$rs1, fvti.ScalarRegClass:$rs2,
-                           (fvti.Mask V0),
-                           // Value to indicate no rounding mode change in
-                           // RISCVInsertReadWriteCSR
-                           FRM_DYN,
-                           GPR:$vl, fvti.Log2SEW, TAIL_AGNOSTIC)>;
+              !if(isSEWAware,
+                  (!cast<Instruction>(instruction_name#"_V"#fvti.ScalarSuffix#"_"#fvti.LMul.MX#"_E"#fvti.SEW#"_MASK")
+                               fvti.RegClass:$merge,
+                               fvti.RegClass:$rs1, fvti.ScalarRegClass:$rs2,
+                               (fvti.Mask V0),
+                               // Value to indicate no rounding mode change in
+                               // RISCVInsertReadWriteCSR
+                               FRM_DYN,
+                               GPR:$vl, TAIL_AGNOSTIC),
+                  (!cast<Instruction>(instruction_name#"_V"#fvti.ScalarSuffix#"_"#fvti.LMul.MX#"_MASK")
+                               fvti.RegClass:$merge,
+                               fvti.RegClass:$rs1, fvti.ScalarRegClass:$rs2,
+                               (fvti.Mask V0),
+                               // Value to indicate no rounding mode change in
+                               // RISCVInsertReadWriteCSR
+                               FRM_DYN,
+                               GPR:$vl, fvti.Log2SEW, TAIL_AGNOSTIC))>;
   }
 }
 
@@ -1388,7 +1419,7 @@ multiclass VPatReductionVL<SDNode vop, string instruction_name, bit is_float> {
               (vti_m1.Vector VR:$merge),
               (vti.Vector vti.RegClass:$rs1),
               (vti_m1.Vector VR:$rs2),
-              GPR:$vl, vti.Log2SEW, (XLenVT timm:$policy))>;
+              GPR:$vl, (XLenVT timm:$policy))>;
 
       def: Pat<(vti_m1.Vector (vop (vti_m1.Vector VR:$merge),
                                    (vti.Vector vti.RegClass:$rs1), VR:$rs2,
@@ -1398,7 +1429,7 @@ multiclass VPatReductionVL<SDNode vop, string instruction_name, bit is_float> {
               (vti_m1.Vector VR:$merge),
               (vti.Vector vti.RegClass:$rs1),
               (vti_m1.Vector VR:$rs2),
-              (vti.Mask V0), GPR:$vl, vti.Log2SEW, (XLenVT timm:$policy))>;
+              (vti.Mask V0), GPR:$vl, (XLenVT timm:$policy))>;
     }
   }
 }
@@ -1418,7 +1449,7 @@ multiclass VPatReductionVL_RM<SDNode vop, string instruction_name, bit is_float>
               // Value to indicate no rounding mode change in
               // RISCVInsertReadWriteCSR
               FRM_DYN,
-              GPR:$vl, vti.Log2SEW, (XLenVT timm:$policy))>;
+              GPR:$vl, (XLenVT timm:$policy))>;
 
       def: Pat<(vti_m1.Vector (vop (vti_m1.Vector VR:$merge),
                                    (vti.Vector vti.RegClass:$rs1), VR:$rs2,
@@ -1432,7 +1463,7 @@ multiclass VPatReductionVL_RM<SDNode vop, string instruction_name, bit is_float>
               // Value to indicate no rounding mode change in
               // RISCVInsertReadWriteCSR
               FRM_DYN,
-              GPR:$vl, vti.Log2SEW, (XLenVT timm:$policy))>;
+              GPR:$vl, (XLenVT timm:$policy))>;
     }
   }
 }
@@ -1491,7 +1522,7 @@ multiclass VPatWidenReductionVL<SDNode vop, PatFrags extop, string instruction_n
                                    (XLenVT timm:$policy))),
                (!cast<Instruction>(instruction_name#"_VS_"#vti.LMul.MX#"_E"#vti.SEW)
                   (wti_m1.Vector VR:$merge), (vti.Vector vti.RegClass:$rs1),
-                  (wti_m1.Vector VR:$rs2), GPR:$vl, vti.Log2SEW,
+                  (wti_m1.Vector VR:$rs2), GPR:$vl,
                   (XLenVT timm:$policy))>;
       def: Pat<(wti_m1.Vector (vop (wti_m1.Vector VR:$merge),
                                    (wti.Vector (extop (vti.Vector vti.RegClass:$rs1))),
@@ -1499,7 +1530,7 @@ multiclass VPatWidenReductionVL<SDNode vop, PatFrags extop, string instruction_n
                                    (XLenVT timm:$policy))),
                (!cast<Instruction>(instruction_name#"_VS_"#vti.LMul.MX#"_E"#vti.SEW#"_MASK")
                   (wti_m1.Vector VR:$merge), (vti.Vector vti.RegClass:$rs1),
-                  (wti_m1.Vector VR:$rs2), (vti.Mask V0), GPR:$vl, vti.Log2SEW,
+                  (wti_m1.Vector VR:$rs2), (vti.Mask V0), GPR:$vl,
                   (XLenVT timm:$policy))>;
     }
   }
@@ -1522,7 +1553,7 @@ multiclass VPatWidenReductionVL_RM<SDNode vop, PatFrags extop, string instructio
                   // Value to indicate no rounding mode change in
                   // RISCVInsertReadWriteCSR
                   FRM_DYN,
-                  GPR:$vl, vti.Log2SEW,
+                  GPR:$vl,
                   (XLenVT timm:$policy))>;
       def: Pat<(wti_m1.Vector (vop (wti_m1.Vector VR:$merge),
                                    (wti.Vector (extop (vti.Vector vti.RegClass:$rs1))),
@@ -1534,7 +1565,7 @@ multiclass VPatWidenReductionVL_RM<SDNode vop, PatFrags extop, string instructio
                   // Value to indicate no rounding mode change in
                   // RISCVInsertReadWriteCSR
                   FRM_DYN,
-                  GPR:$vl, vti.Log2SEW,
+                  GPR:$vl,
                   (XLenVT timm:$policy))>;
     }
   }
@@ -1553,7 +1584,7 @@ multiclass VPatWidenReductionVL_Ext_VL<SDNode vop, PatFrags extop, string instru
                                    (XLenVT timm:$policy))),
                (!cast<Instruction>(instruction_name#"_VS_"#vti.LMul.MX#"_E"#vti.SEW)
                   (wti_m1.Vector VR:$merge), (vti.Vector vti.RegClass:$rs1),
-                  (wti_m1.Vector VR:$rs2), GPR:$vl, vti.Log2SEW,
+                  (wti_m1.Vector VR:$rs2), GPR:$vl,
                   (XLenVT timm:$policy))>;
       def: Pat<(wti_m1.Vector (vop (wti_m1.Vector VR:$merge),
                                    (wti.Vector (extop (vti.Vector vti.RegClass:$rs1), (vti.Mask true_mask), VLOpFrag)),
@@ -1561,7 +1592,7 @@ multiclass VPatWidenReductionVL_Ext_VL<SDNode vop, PatFrags extop, string instru
                                    (XLenVT timm:$policy))),
                (!cast<Instruction>(instruction_name#"_VS_"#vti.LMul.MX#"_E"#vti.SEW#"_MASK")
                   (wti_m1.Vector VR:$merge), (vti.Vector vti.RegClass:$rs1),
-                  (wti_m1.Vector VR:$rs2), (vti.Mask V0), GPR:$vl, vti.Log2SEW,
+                  (wti_m1.Vector VR:$rs2), (vti.Mask V0), GPR:$vl,
                   (XLenVT timm:$policy))>;
     }
   }
@@ -1584,7 +1615,7 @@ multiclass VPatWidenReductionVL_Ext_VL_RM<SDNode vop, PatFrags extop, string ins
                   // Value to indicate no rounding mode change in
                   // RISCVInsertReadWriteCSR
                   FRM_DYN,
-                  GPR:$vl, vti.Log2SEW,
+                  GPR:$vl,
                   (XLenVT timm:$policy))>;
       def: Pat<(wti_m1.Vector (vop (wti_m1.Vector VR:$merge),
                                    (wti.Vector (extop (vti.Vector vti.RegClass:$rs1), (vti.Mask true_mask), VLOpFrag)),
@@ -1596,7 +1627,7 @@ multiclass VPatWidenReductionVL_Ext_VL_RM<SDNode vop, PatFrags extop, string ins
                   // Value to indicate no rounding mode change in
                   // RISCVInsertReadWriteCSR
                   FRM_DYN,
-                  GPR:$vl, vti.Log2SEW,
+                  GPR:$vl,
                   (XLenVT timm:$policy))>;
     }
   }
@@ -2410,7 +2441,7 @@ foreach vti = AllFloatVectors in {
                    // Value to indicate no rounding mode change in
                    // RISCVInsertReadWriteCSR
                    FRM_DYN,
-                   GPR:$vl, vti.Log2SEW, TA_MA)>;
+                   GPR:$vl, TA_MA)>;
 
     // 13.12. Vector Floating-Point Sign-Injection Instructions
     def : Pat<(riscv_fabs_vl (vti.Vector vti.RegClass:$rs), (vti.Mask V0),
@@ -2785,7 +2816,7 @@ foreach vti = AllIntegerVectors in {
                                                 VLOpFrag)),
               (!cast<Instruction>("PseudoVRGATHER_VV_"# vti.LMul.MX#"_E"# vti.SEW#"_MASK")
                    vti.RegClass:$merge, vti.RegClass:$rs2, vti.RegClass:$rs1,
-                   (vti.Mask V0), GPR:$vl, vti.Log2SEW, TAIL_AGNOSTIC)>;
+                   (vti.Mask V0), GPR:$vl, TAIL_AGNOSTIC)>;
     def : Pat<(vti.Vector (riscv_vrgather_vx_vl vti.RegClass:$rs2, GPR:$rs1,
                                                 vti.RegClass:$merge,
                                                 (vti.Mask V0),
@@ -2820,7 +2851,7 @@ foreach vti = AllIntegerVectors in {
                                          VLOpFrag)),
               (!cast<Instruction>(inst#"_MASK")
                    vti.RegClass:$merge, vti.RegClass:$rs2, ivti.RegClass:$rs1,
-                   (vti.Mask V0), GPR:$vl, vti.Log2SEW, TAIL_AGNOSTIC)>;
+                   (vti.Mask V0), GPR:$vl, TAIL_AGNOSTIC)>;
   }
 }
 
@@ -2855,7 +2886,7 @@ foreach vti = AllFloatVectors in {
                                      VLOpFrag)),
               (!cast<Instruction>("PseudoVRGATHER_VV_"# vti.LMul.MX#"_E"# vti.SEW#"_MASK")
                    vti.RegClass:$merge, vti.RegClass:$rs2, vti.RegClass:$rs1,
-                   (vti.Mask V0), GPR:$vl, vti.Log2SEW, TAIL_AGNOSTIC)>;
+                   (vti.Mask V0), GPR:$vl, TAIL_AGNOSTIC)>;
     def : Pat<(vti.Vector (riscv_vrgather_vx_vl vti.RegClass:$rs2, GPR:$rs1,
                                                 vti.RegClass:$merge,
                                                 (vti.Mask V0),
@@ -2891,7 +2922,7 @@ foreach vti = AllFloatVectors in {
                                          VLOpFrag)),
               (!cast<Instruction>(inst#"_MASK")
                    vti.RegClass:$merge, vti.RegClass:$rs2, ivti.RegClass:$rs1,
-                   (vti.Mask V0), GPR:$vl, vti.Log2SEW, TAIL_AGNOSTIC)>;
+                   (vti.Mask V0), GPR:$vl, TAIL_AGNOSTIC)>;
   }
 }
 

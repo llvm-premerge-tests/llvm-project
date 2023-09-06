@@ -212,6 +212,13 @@ class RVInstCommon<dag outs, dag ins, string opcodestr, string argstr,
   // to the correct CSR.
   bit UsesVXRM = 0;
   let TSFlags{20} =  UsesVXRM;
+
+  bit HasImplictSEW = 0;
+  let TSFlags{21} = HasImplictSEW;
+
+  // The actual SEW value is 8 * (2 ^ VSEW).
+  bits<2> VSEW = 0;
+  let TSFlags{23-22} = VSEW;
 }
 
 class RVInst<dag outs, dag ins, string opcodestr, string argstr,
