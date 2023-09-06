@@ -56,6 +56,16 @@ struct __simd_operations<_Tp, simd_abi::__vec_ext<_Np>> {
     }
     return __result;
   }
+
+  template <class _Generator, size_t... _Is>
+  static _SimdStorage __generate_init(_Generator&& __g, std::index_sequence<_Is...>) {
+    return _SimdStorage{{__g(std::integral_constant<size_t, _Is>())...}};
+  }
+
+  template <class _Generator>
+  static _SimdStorage __generate(_Generator&& __g) noexcept {
+    return __generate_init(std::forward<_Generator>(__g), std::make_index_sequence<_Np>());
+  }
 };
 
 template <class _Tp, int _Np>
