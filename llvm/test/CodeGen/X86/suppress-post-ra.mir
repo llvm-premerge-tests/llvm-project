@@ -1,0 +1,78 @@
+# Check if the function attribute "optdebug" suppresses the post-RA scheduler.
+
+# Note: This code is a reduced sample of code that will be affected by the
+# post-RA scheduler, and the test will start to fail if the post-RA scheduler
+# no longer makes any change to this test case; if this starts to happen due to
+# a valid post-RA scheduler change, either change the test so that it is still
+# affected, or XFAIL the test.
+
+# RUN: llc %s -run-pass verify -o %t1
+# RUN: llc %s -run-pass post-RA-sched -o %t2
+# RUN: diff %t1 %t2
+
+# Detect if this test becomes rotten by verifying that post-RA-sched does
+# *something* to this test case.
+# RUN: sed 's/optdebug //' %s | llc - -x mir -run-pass verify -o %t3
+# RUN: sed 's/optdebug //' %s | llc - -x mir -run-pass post-RA-sched -o %t4
+# RUN: not diff %t3 %t4
+
+--- |
+  ; ModuleID = '/tmp/llvm-reduce-efe8f0.ll'
+  source_filename = "/tmp/llvm-reduce-efe8f0.ll"
+  target datalayout = "e-m:e-p:32:32-p270:32:32-p271:32:32-p272:64:64-f64:32:64-f80:32-n8:16:32-S128"
+  target triple = "i686-unknown-unknown"
+  
+  define void @update() #0 {
+  entry:
+    %v = alloca <3 x i16>, i32 0, align 8
+    ret void
+  }
+  
+  attributes #0 = { optdebug "target-cpu"="slm" }
+
+...
+---
+name:            update
+alignment:       16
+tracksRegLiveness: true
+tracksDebugUserValues: true
+registers:       []
+liveins:         []
+frameInfo:
+  stackSize:       12
+  offsetAdjustment: -8
+  maxAlignment:    8
+  stackProtector:  ''
+  functionContext: ''
+  maxCallFrameSize: 0
+  cvBytesOfCalleeSavedRegisters: 0
+  localFrameSize:  0
+  savePoint:       ''
+  restorePoint:    ''
+fixedStack:
+  - { id: 0, type: spill-slot, offset: -8, size: 4, alignment: 4, stack-id: default, 
+      callee-saved-register: '', callee-saved-restored: true, debug-info-variable: '', 
+      debug-info-expression: '', debug-info-location: '' }
+stack:
+  - { id: 0, name: v, type: default, offset: -16, size: 1, alignment: 8, 
+      stack-id: default, callee-saved-register: '', callee-saved-restored: true, 
+      debug-info-variable: '', debug-info-expression: '', debug-info-location: '' }
+entry_values:    []
+callSites:       []
+debugValueSubstitutions: []
+constants:       []
+machineFunctionInfo: {}
+body:             |
+  bb.0.entry:
+    frame-setup PUSH32r killed $ebp, implicit-def $esp, implicit $esp
+    frame-setup CFI_INSTRUCTION def_cfa_offset 8
+    frame-setup CFI_INSTRUCTION offset $ebp, -8
+    $ebp = frame-setup MOV32rr $esp
+    frame-setup CFI_INSTRUCTION def_cfa_register $ebp
+    $esp = frame-setup AND32ri $esp, -8, implicit-def dead $eflags
+    $esp = MOV32rr $ebp
+    $ebp = frame-destroy POP32r implicit-def $esp, implicit $esp
+    frame-destroy CFI_INSTRUCTION def_cfa $esp, 4
+    RET32
+
+...

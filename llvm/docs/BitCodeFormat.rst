@@ -1085,6 +1085,7 @@ The integer codes are mapped to well-known attributes as follows.
 * code 77: ``elementtype``
 * code 78: ``disable_sanitizer_instrumentation``
 * code 79: ``nosanitize_bounds``
+* code 88: ``optdebug``
 
 .. note::
   The ``allocsize`` attribute has a special encoding for its arguments. Its two

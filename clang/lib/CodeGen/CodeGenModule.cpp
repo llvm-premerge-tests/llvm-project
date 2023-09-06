@@ -2325,6 +2325,7 @@ void CodeGenModule::SetLLVMFunctionAttributesForDefinition(const Decl *D,
       B.addAttribute(llvm::Attribute::Naked);
 
     // OptimizeNone wins over OptimizeForSize and MinSize.
+    F->removeFnAttr(llvm::Attribute::OptimizeForDebugging);
     F->removeFnAttr(llvm::Attribute::OptimizeForSize);
     F->removeFnAttr(llvm::Attribute::MinSize);
   } else if (D->hasAttr<NakedAttr>()) {
