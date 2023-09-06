@@ -34,11 +34,10 @@ multiclass VPatUSLoadStoreSDNode<ValueType type,
   defvar store_instr = !cast<Instruction>("PseudoVSE"#sew#"_V_"#vlmul.MX);
   // Load
   def : Pat<(type (load GPR:$rs1)),
-            (load_instr (type (IMPLICIT_DEF)), GPR:$rs1, avl,
-                        log2sew, TA_MA)>;
+            (load_instr (type (IMPLICIT_DEF)), GPR:$rs1, avl, TA_MA)>;
   // Store
   def : Pat<(store type:$rs2, GPR:$rs1),
-            (store_instr reg_class:$rs2, GPR:$rs1, avl, log2sew)>;
+            (store_instr reg_class:$rs2, GPR:$rs1, avl)>;
 }
 
 multiclass VPatUSLoadStoreWholeVRSDNode<ValueType type,
@@ -83,14 +82,17 @@ class VPatBinarySDNode_VV<SDPatternOperator vop,
     Pat<(result_type (vop
                      (op_type op_reg_class:$rs1),
                      (op_type op_reg_class:$rs2))),
-        (!cast<Instruction>(
-                     !if(isSEWAware,
-                         instruction_name#"_VV_"# vlmul.MX#"_E"#!shl(1, log2sew),
-                         instruction_name#"_VV_"# vlmul.MX))
+        !if(isSEWAware,
+            (!cast<Instruction>(instruction_name#"_VV_"# vlmul.MX#"_E"#!shl(1, log2sew))
                      (result_type (IMPLICIT_DEF)),
                      op_reg_class:$rs1,
                      op_reg_class:$rs2,
-                     avl, log2sew, TA_MA)>;
+                     avl, TA_MA),
+            (!cast<Instruction>(instruction_name#"_VV_"# vlmul.MX)
+                     (result_type (IMPLICIT_DEF)),
+                     op_reg_class:$rs1,
+                     op_reg_class:$rs2,
+                     avl, log2sew, TA_MA))>;
 
 class VPatBinarySDNode_VV_RM<SDPatternOperator vop,
                              string instruction_name,
@@ -104,17 +106,21 @@ class VPatBinarySDNode_VV_RM<SDPatternOperator vop,
     Pat<(result_type (vop
                      (op_type op_reg_class:$rs1),
                      (op_type op_reg_class:$rs2))),
-        (!cast<Instruction>(
-                     !if(isSEWAware,
-                         instruction_name#"_VV_"# vlmul.MX#"_E"#!shl(1, log2sew),
-                         instruction_name#"_VV_"# vlmul.MX))
-                     (result_type (IMPLICIT_DEF)),
-                     op_reg_class:$rs1,
-                     op_reg_class:$rs2,
-                     // Value to indicate no rounding mode change in
-                     // RISCVInsertReadWriteCSR
-                     FRM_DYN,
-                     avl, log2sew, TA_MA)>;
+        !if(isSEWAware,
+            (!cast<Instruction>(instruction_name#"_VV_"# vlmul.MX#"_E"#!shl(1, log2sew))
+                         (result_type (IMPLICIT_DEF)),
+                         op_reg_class:$rs1,
+                         op_reg_class:$rs2,
+                         // Value to indicate no rounding mode change in
+                         // RISCVInsertReadWriteCSR
+                         FRM_DYN,
+                         avl, TA_MA),
+            (!cast<Instruction>(instruction_name#"_VV_"# vlmul.MX)
+                         (result_type (IMPLICIT_DEF)),
+                         op_reg_class:$rs1,
+                         op_reg_class:$rs2,
+                         FRM_DYN,
+                         avl, log2sew, TA_MA))>;
 
 class VPatBinarySDNode_XI<SDPatternOperator vop,
                           string instruction_name,
@@ -131,14 +137,17 @@ class VPatBinarySDNode_XI<SDPatternOperator vop,
     Pat<(result_type (vop
                      (vop_type vop_reg_class:$rs1),
                      (vop_type (SplatPatKind (XLenVT xop_kind:$rs2))))),
-        (!cast<Instruction>(
-                     !if(isSEWAware,
-                         instruction_name#_#suffix#_# vlmul.MX#"_E"#!shl(1, log2sew),
-                         instruction_name#_#suffix#_# vlmul.MX))
-                     (result_type (IMPLICIT_DEF)),
-                     vop_reg_class:$rs1,
-                     xop_kind:$rs2,
-                     avl, log2sew, TA_MA)>;
+        !if(isSEWAware,
+            (!cast<Instruction>(instruction_name#_#suffix#_# vlmul.MX#"_E"#!shl(1, log2sew))
+                         (result_type (IMPLICIT_DEF)),
+                         vop_reg_class:$rs1,
+                         xop_kind:$rs2,
+                         avl, TA_MA),
+            (!cast<Instruction>(instruction_name#_#suffix#_# vlmul.MX)
+                         (result_type (IMPLICIT_DEF)),
+                         vop_reg_class:$rs1,
+                         xop_kind:$rs2,
+                         avl, log2sew, TA_MA))>;
 
 multiclass VPatBinarySDNode_VV_VX<SDPatternOperator vop, string instruction_name,
                                   list<VTypeInfo> vtilist = AllIntegerVectors,
@@ -182,14 +191,17 @@ class VPatBinarySDNode_VF<SDPatternOperator vop,
                           bit isSEWAware = 0> :
     Pat<(result_type (vop (vop_type vop_reg_class:$rs1),
                           (vop_type (SplatFPOp xop_kind:$rs2)))),
-        (!cast<Instruction>(
-                     !if(isSEWAware,
-                         instruction_name#"_"#vlmul.MX#"_E"#!shl(1, log2sew),
-                         instruction_name#"_"#vlmul.MX))
-                     (result_type (IMPLICIT_DEF)),
-                     vop_reg_class:$rs1,
-                     (xop_type xop_kind:$rs2),
-                     avl, log2sew, TA_MA)>;
+        !if(isSEWAware,
+            (!cast<Instruction>(instruction_name#"_"#vlmul.MX#"_E"#!shl(1, log2sew))
+                         (result_type (IMPLICIT_DEF)),
+                         vop_reg_class:$rs1,
+                         (xop_type xop_kind:$rs2),
+                         avl, TA_MA),
+            (!cast<Instruction>(instruction_name#"_"#vlmul.MX)
+                         (result_type (IMPLICIT_DEF)),
+                         vop_reg_class:$rs1,
+                         (xop_type xop_kind:$rs2),
+                         avl, log2sew, TA_MA))>;
 
 class VPatBinarySDNode_VF_RM<SDPatternOperator vop,
                              string instruction_name,
@@ -204,17 +216,21 @@ class VPatBinarySDNode_VF_RM<SDPatternOperator vop,
                              bit isSEWAware = 0> :
     Pat<(result_type (vop (vop_type vop_reg_class:$rs1),
                           (vop_type (SplatFPOp xop_kind:$rs2)))),
-        (!cast<Instruction>(
-                     !if(isSEWAware,
-                         instruction_name#"_"#vlmul.MX#"_E"#!shl(1, log2sew),
-                         instruction_name#"_"#vlmul.MX))
-                     (result_type (IMPLICIT_DEF)),
-                     vop_reg_class:$rs1,
-                     (xop_type xop_kind:$rs2),
-                     // Value to indicate no rounding mode change in
-                     // RISCVInsertReadWriteCSR
-                     FRM_DYN,
-                     avl, log2sew, TA_MA)>;
+        !if(isSEWAware,
+            (!cast<Instruction>(instruction_name#"_"#vlmul.MX#"_E"#!shl(1, log2sew))
+                         (result_type (IMPLICIT_DEF)),
+                         vop_reg_class:$rs1,
+                         (xop_type xop_kind:$rs2),
+                         // Value to indicate no rounding mode change in
+                         // RISCVInsertReadWriteCSR
+                         FRM_DYN,
+                         avl, TA_MA),
+            (!cast<Instruction>(instruction_name#"_"#vlmul.MX)
+                         (result_type (IMPLICIT_DEF)),
+                         vop_reg_class:$rs1,
+                         (xop_type xop_kind:$rs2),
+                         FRM_DYN,
+                         avl, log2sew, TA_MA))>;
 
 multiclass VPatBinaryFPSDNode_VV_VF<SDPatternOperator vop, string instruction_name,
                                     bit isSEWAware = 0> {
@@ -252,14 +268,17 @@ multiclass VPatBinaryFPSDNode_R_VF<SDPatternOperator vop, string instruction_nam
     let Predicates = GetVTypePredicates<fvti>.Predicates in
     def : Pat<(fvti.Vector (vop (fvti.Vector (SplatFPOp fvti.Scalar:$rs2)),
                                 (fvti.Vector fvti.RegClass:$rs1))),
-              (!cast<Instruction>(
-                           !if(isSEWAware,
-                             instruction_name#"_V"#fvti.ScalarSuffix#"_"#fvti.LMul.MX#"_E"#fvti.SEW,
-                             instruction_name#"_V"#fvti.ScalarSuffix#"_"#fvti.LMul.MX))
-                           (fvti.Vector (IMPLICIT_DEF)),
-                           fvti.RegClass:$rs1,
-                           (fvti.Scalar fvti.ScalarRegClass:$rs2),
-                           fvti.AVL, fvti.Log2SEW, TA_MA)>;
+              !if(isSEWAware,
+                  (!cast<Instruction>(instruction_name#"_V"#fvti.ScalarSuffix#"_"#fvti.LMul.MX#"_E"#fvti.SEW)
+                               (fvti.Vector (IMPLICIT_DEF)),
+                               fvti.RegClass:$rs1,
+                               (fvti.Scalar fvti.ScalarRegClass:$rs2),
+                               fvti.AVL, TA_MA),
+                  (!cast<Instruction>(instruction_name#"_V"#fvti.ScalarSuffix#"_"#fvti.LMul.MX)
+                               (fvti.Vector (IMPLICIT_DEF)),
+                               fvti.RegClass:$rs1,
+                               (fvti.Scalar fvti.ScalarRegClass:$rs2),
+                               fvti.AVL, fvti.Log2SEW, TA_MA))>;
 }
 
 multiclass VPatBinaryFPSDNode_R_VF_RM<SDPatternOperator vop, string instruction_name,
@@ -268,17 +287,21 @@ multiclass VPatBinaryFPSDNode_R_VF_RM<SDPatternOperator vop, string instruction_
     let Predicates = GetVTypePredicates<fvti>.Predicates in
     def : Pat<(fvti.Vector (vop (fvti.Vector (SplatFPOp fvti.Scalar:$rs2)),
                                 (fvti.Vector fvti.RegClass:$rs1))),
-              (!cast<Instruction>(
-                           !if(isSEWAware,
-                             instruction_name#"_V"#fvti.ScalarSuffix#"_"#fvti.LMul.MX#"_E"#fvti.SEW,
-                             instruction_name#"_V"#fvti.ScalarSuffix#"_"#fvti.LMul.MX))
-                           (fvti.Vector (IMPLICIT_DEF)),
-                           fvti.RegClass:$rs1,
-                           (fvti.Scalar fvti.ScalarRegClass:$rs2),
-                           // Value to indicate no rounding mode change in
-                           // RISCVInsertReadWriteCSR
-                           FRM_DYN,
-                           fvti.AVL, fvti.Log2SEW, TA_MA)>;
+              !if(isSEWAware,
+                  (!cast<Instruction>(instruction_name#"_V"#fvti.ScalarSuffix#"_"#fvti.LMul.MX#"_E"#fvti.SEW)
+                               (fvti.Vector (IMPLICIT_DEF)),
+                               fvti.RegClass:$rs1,
+                               (fvti.Scalar fvti.ScalarRegClass:$rs2),
+                               // Value to indicate no rounding mode change in
+                               // RISCVInsertReadWriteCSR
+                               FRM_DYN,
+                               fvti.AVL, TA_MA),
+                  (!cast<Instruction>(instruction_name#"_V"#fvti.ScalarSuffix#"_"#fvti.LMul.MX)
+                               (fvti.Vector (IMPLICIT_DEF)),
+                               fvti.RegClass:$rs1,
+                               (fvti.Scalar fvti.ScalarRegClass:$rs2),
+                               FRM_DYN,
+                               fvti.AVL, fvti.Log2SEW, TA_MA))>;
 }
 
 multiclass VPatIntegerSetCCSDNode_VV<string instruction_name,
@@ -1068,7 +1091,7 @@ foreach vtiTowti = AllWidenableIntVectors in {
         (vti.Mask true_mask), (XLenVT srcvalue))),
       (!cast<Instruction>("PseudoVREM_VV_"#vti.LMul.MX#"_E"#!shl(1, vti.Log2SEW))
         (vti.Vector (IMPLICIT_DEF)),
-        vti.RegClass:$rs1, vti.RegClass:$rs2, vti.AVL, vti.Log2SEW, TA_MA)>;
+        vti.RegClass:$rs1, vti.RegClass:$rs2, vti.AVL, TA_MA)>;
   }
 }
 
@@ -1300,7 +1323,7 @@ foreach vti = AllFloatVectors in {
                    // Value to indicate no rounding mode change in
                    // RISCVInsertReadWriteCSR
                    FRM_DYN,
-                   vti.AVL, vti.Log2SEW, TA_MA)>;
+                   vti.AVL, TA_MA)>;
 
     // 13.12. Vector Floating-Point Sign-Injection Instructions
     def : Pat<(fabs (vti.Vector vti.RegClass:$rs)),

@@ -278,7 +278,7 @@ static bool isConvertibleToVMV_V_V(const RISCVSubtarget &STI,
 
           // If the producing instruction does not depend on vsetvli, do not
           // convert COPY to vmv.v.v. For example, VL1R_V or PseudoVRELOAD.
-          if (!RISCVII::hasSEWOp(TSFlags) || !RISCVII::hasVLOp(TSFlags))
+          if (!RISCVII::hasSEW(TSFlags) || !RISCVII::hasVLOp(TSFlags))
             return false;
 
           // Found the definition.
@@ -465,7 +465,7 @@ void RISCVInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
       if (UseVMV_V_V) {
         const MCInstrDesc &Desc = DefMBBI->getDesc();
         MIB.add(DefMBBI->getOperand(RISCVII::getVLOpNum(Desc))); // AVL
-        MIB.add(DefMBBI->getOperand(RISCVII::getSEWOpNum(Desc))); // SEW
+        MIB.add(RISCVII::getSEWOp(*DefMBBI));                    // SEW
         MIB.addImm(0); // tu, mu
         MIB.addReg(RISCV::VL, RegState::Implicit);
         MIB.addReg(RISCV::VTYPE, RegState::Implicit);
@@ -498,7 +498,7 @@ void RISCVInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
         if (UseVMV_V_V) {
           const MCInstrDesc &Desc = DefMBBI->getDesc();
           MIB.add(DefMBBI->getOperand(RISCVII::getVLOpNum(Desc))); // AVL
-          MIB.add(DefMBBI->getOperand(RISCVII::getSEWOpNum(Desc))); // SEW
+          MIB.add(RISCVII::getSEWOp(*DefMBBI));                    // SEW
           MIB.addImm(0);  // tu, mu
           MIB.addReg(RISCV::VL, RegState::Implicit);
           MIB.addReg(RISCV::VTYPE, RegState::Implicit);
@@ -1840,10 +1840,6 @@ bool RISCVInstrInfo::verifyInstruction(const MachineInstr &MI,
         ErrInfo = "Invalid register class for VL operand";
         return false;
       }
-    }
-    if (!RISCVII::hasSEWOp(TSFlags)) {
-      ErrInfo = "VL operand w/o SEW operand?";
-      return false;
     }
   }
   if (RISCVII::hasSEWOp(TSFlags)) {

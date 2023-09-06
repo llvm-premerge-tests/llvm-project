@@ -48,10 +48,6 @@ static unsigned getVLOpNum(const MachineInstr &MI) {
   return RISCVII::getVLOpNum(MI.getDesc());
 }
 
-static unsigned getSEWOpNum(const MachineInstr &MI) {
-  return RISCVII::getSEWOpNum(MI.getDesc());
-}
-
 static bool isVectorConfigInstr(const MachineInstr &MI) {
   return MI.getOpcode() == RISCV::PseudoVSETVLI ||
          MI.getOpcode() == RISCV::PseudoVSETVLIX0 ||
@@ -162,7 +158,7 @@ static std::optional<unsigned> getEEWForLoadStore(const MachineInstr &MI) {
 static bool isMaskRegOp(const MachineInstr &MI) {
   if (!RISCVII::hasSEWOp(MI.getDesc().TSFlags))
     return false;
-  const unsigned Log2SEW = MI.getOperand(getSEWOpNum(MI)).getImm();
+  const unsigned Log2SEW = RISCVII::getLog2SEW(MI);
   // A Log2SEW of 0 is an operation on mask registers only.
   return Log2SEW == 0;
 }
@@ -343,7 +339,7 @@ DemandedFields getDemanded(const MachineInstr &MI,
     Res.demandVTYPE();
   // Start conservative on the unlowered form too
   uint64_t TSFlags = MI.getDesc().TSFlags;
-  if (RISCVII::hasSEWOp(TSFlags)) {
+  if (RISCVII::hasSEW(TSFlags)) {
     Res.demandVTYPE();
     if (RISCVII::hasVLOp(TSFlags))
       Res.demandVL();
@@ -365,7 +361,7 @@ DemandedFields getDemanded(const MachineInstr &MI,
   }
 
   // Store instructions don't use the policy fields.
-  if (RISCVII::hasSEWOp(TSFlags) && MI.getNumExplicitDefs() == 0) {
+  if (RISCVII::hasSEW(TSFlags) && MI.getNumExplicitDefs() == 0) {
     Res.TailPolicy = false;
     Res.MaskPolicy = false;
   }
@@ -788,7 +784,7 @@ static VSETVLIInfo computeInfoForInstr(const MachineInstr &MI, uint64_t TSFlags,
 
   RISCVII::VLMUL VLMul = RISCVII::getLMul(TSFlags);
 
-  unsigned Log2SEW = MI.getOperand(getSEWOpNum(MI)).getImm();
+  unsigned Log2SEW = RISCVII::getLog2SEW(MI);
   // A Log2SEW of 0 is an operation on mask registers only.
   unsigned SEW = Log2SEW ? 1 << Log2SEW : 8;
   assert(RISCVVType::isValidSEW(SEW) && "Unexpected SEW");
@@ -1006,7 +1002,7 @@ bool RISCVInsertVSETVLI::needVSETVLI(const MachineInstr &MI,
 void RISCVInsertVSETVLI::transferBefore(VSETVLIInfo &Info,
                                         const MachineInstr &MI) const {
   uint64_t TSFlags = MI.getDesc().TSFlags;
-  if (!RISCVII::hasSEWOp(TSFlags))
+  if (!RISCVII::hasSEW(TSFlags))
     return;
 
   const VSETVLIInfo NewInfo = computeInfoForInstr(MI, TSFlags, MRI);
@@ -1089,7 +1085,7 @@ bool RISCVInsertVSETVLI::computeVLVTYPEChanges(const MachineBasicBlock &MBB,
   for (const MachineInstr &MI : MBB) {
     transferBefore(Info, MI);
 
-    if (isVectorConfigInstr(MI) || RISCVII::hasSEWOp(MI.getDesc().TSFlags))
+    if (isVectorConfigInstr(MI) || RISCVII::hasSEW(MI.getDesc().TSFlags))
       HadVectorOp = true;
 
     transferAfter(Info, MI);
@@ -1221,7 +1217,7 @@ void RISCVInsertVSETVLI::emitVSETVLIs(MachineBasicBlock &MBB) {
     }
 
     uint64_t TSFlags = MI.getDesc().TSFlags;
-    if (RISCVII::hasSEWOp(TSFlags)) {
+    if (RISCVII::hasSEW(TSFlags)) {
       if (PrevInfo != CurInfo) {
         // If this is the first implicit state change, and the state change
         // requested can be proven to produce the same register contents, we
