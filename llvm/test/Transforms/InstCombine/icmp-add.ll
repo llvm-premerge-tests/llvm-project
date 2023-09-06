@@ -5,6 +5,36 @@ declare void @use(i32)
 
 ; PR1949
 
+define i1 @cvt_icmp_1_to_xor(i1 %arg, i1 %arg1) {
+; CHECK-LABEL: @cvt_icmp_1_to_xor(
+; CHECK-NEXT:  bb:
+; CHECK-NEXT:    [[I4:%.*]] = xor i1 [[ARG1:%.*]], [[ARG:%.*]]
+; CHECK-NEXT:    ret i1 [[I4]]
+;
+bb:
+  %i = zext i1 %arg to i32
+  %i2 = zext i1 %arg1 to i32
+  %i3 = add nuw nsw i32 %i2, %i
+  %i4 = icmp eq i32 %i3, 1
+  ret i1 %i4
+}
+
+define i1 @cvt_icmp_0_to_nor(i1 %arg, i1 %arg1) {
+; CHECK-LABEL: @cvt_icmp_0_to_nor(
+; CHECK-NEXT:  bb:
+; CHECK-NEXT:    [[TMP0:%.*]] = or i1 [[ARG1:%.*]], [[ARG:%.*]]
+; CHECK-NEXT:    [[I4:%.*]] = xor i1 [[TMP0]], true
+; CHECK-NEXT:    ret i1 [[I4]]
+;
+bb:
+  %i = zext i1 %arg to i32
+  %i2 = zext i1 %arg1 to i32
+  %i3 = add nuw nsw i32 %i2, %i
+  %i4 = icmp eq i32 %i3, 0
+  ret i1 %i4
+}
+
+
 define i1 @test1(i32 %a) {
 ; CHECK-LABEL: @test1(
 ; CHECK-NEXT:    [[C:%.*]] = icmp ugt i32 [[A:%.*]], -5

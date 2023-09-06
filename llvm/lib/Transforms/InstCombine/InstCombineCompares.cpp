@@ -2899,12 +2899,34 @@ Instruction *InstCombinerImpl::foldICmpAddConstant(ICmpInst &Cmp,
                                                    BinaryOperator *Add,
                                                    const APInt &C) {
   Value *Y = Add->getOperand(1);
+  Value *X = Add->getOperand(0);
+
+  // We have two cases to handle here:
+  // 1- (zext i1 X + zext i1 Y) == 1 --> xor i1 X, Y
+  // 2- (zext i1 X + zext i1 Y) == 0 --> !(or i1 X, Y)
+  if (Cmp.isEquality()) {
+    if (match(Add, m_c_Add(m_OneUse(m_ZExt(m_Value(X))),
+                           m_OneUse(m_ZExt(m_Value(Y))))) &&
+        X->getType()->isIntOrIntVectorTy(1) &&
+        Y->getType()->isIntOrIntVectorTy(1) && (C.isZero() || C.isOne())) {
+      Value *Cond = Builder.getFalse();
+      // Case 1:
+      if (C.isOne()) {
+        Cond = Builder.CreateXor(X, Y);
+      } else {
+        // Case 2:
+        Cond = Builder.CreateNot(Builder.CreateOr(X, Y));
+      }
+      return replaceInstUsesWith(Cmp, Cond);
+    }
+    return nullptr;
+  }
+
   const APInt *C2;
-  if (Cmp.isEquality() || !match(Y, m_APInt(C2)))
+  if (!match(Y, m_APInt(C2)))
     return nullptr;
 
   // Fold icmp pred (add X, C2), C.
-  Value *X = Add->getOperand(0);
   Type *Ty = Add->getType();
   const CmpInst::Predicate Pred = Cmp.getPredicate();
 
