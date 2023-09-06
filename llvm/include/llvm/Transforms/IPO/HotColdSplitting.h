@@ -42,6 +42,10 @@ public:
 
 private:
   bool isFunctionCold(const Function &F) const;
+  bool isBasicBlockCold(BasicBlock* BB,
+                        SmallPtrSetImpl<BasicBlock *> &ColdBlocks,
+                        SmallPtrSetImpl<BasicBlock *> &AnnotatedColdBlocks,
+                        BlockFrequencyInfo *BFI) const;
   bool shouldOutlineFrom(const Function &F) const;
   bool outlineColdRegions(Function &F, bool HasProfileSummary);
   Function *extractColdRegion(const BlockSequence &Region,
