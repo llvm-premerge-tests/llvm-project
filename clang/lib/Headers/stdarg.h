@@ -7,9 +7,10 @@
  *===-----------------------------------------------------------------------===
  */
 
-#if !defined(__STDARG_H) || defined(__need___va_list) ||                       \
-    defined(__need_va_list) || defined(__need_va_arg) ||                       \
-    defined(__need___va_copy) || defined(__need_va_copy)
+#if !defined(__STDARG_H) || __has_feature(modules) ||                          \
+    defined(__need___va_list) || defined(__need_va_list) ||                    \
+    defined(__need_va_arg) || defined(__need___va_copy) ||                     \
+    defined(__need_va_copy)
 
 #if !defined(__need___va_list) && !defined(__need_va_list) &&                  \
     !defined(__need_va_arg) && !defined(__need___va_copy) &&                   \
