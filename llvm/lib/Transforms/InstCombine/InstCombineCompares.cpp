@@ -2899,12 +2899,69 @@ Instruction *InstCombinerImpl::foldICmpAddConstant(ICmpInst &Cmp,
                                                    BinaryOperator *Add,
                                                    const APInt &C) {
   Value *Y = Add->getOperand(1);
+  Value *X = Add->getOperand(0);
+
+  // We handle all (s/zext i1 X + s/zext i1 Y == 0/1/2) here.
+  if (Cmp.isEquality()) {
+    Value *Op0 = X;
+    Value *Op1 = Y;
+    // Handles zext i1 Op0, zext i1 Op1 == 0/1/2
+    if (match(Add, m_c_Add(m_OneUse(m_ZExt(m_Value(Op0))),
+                           m_OneUse(m_ZExt(m_Value(Op1))))) &&
+        Op0->getType()->isIntOrIntVectorTy(1) &&
+        Op1->getType()->isIntOrIntVectorTy(1)) {
+      Value *Cond = Builder.getFalse();
+      // Case 1: zext i1 Op0 + zext i1 Op1 == 0 --> !(or i1 Op0, Op1)
+      if (C.isZero())
+        Cond = Builder.CreateNot(Builder.CreateOr(Op0, Op1));
+      else if (C.isOne())
+        // Case 2:  zext i1 Op0 + zext i1 Op1 == 1 --> xor i1 Op0, Op1
+        Cond = Builder.CreateXor(Op0, Op1);
+      else if (C.exactLogBase2() == 1)
+        // Case 3: zext i1 Op0 + zext i1 Op1 == 2 --> xor i1 Op0, Op1
+        Cond = Builder.CreateAnd(Op0, Op1);
+      return replaceInstUsesWith(Cmp, Cond);
+    }
+
+    // Handles sext i1 Op0, sext i1 Op1 == 0/1/2
+    if (match(Add, m_c_Add(m_OneUse(m_SExt(m_Value(Op0))),
+                           m_OneUse(m_SExt(m_Value(Op1))))) &&
+        Op0->getType()->isIntOrIntVectorTy(1) &&
+        Op1->getType()->isIntOrIntVectorTy(1)) {
+      Value *Cond = Builder.getFalse();
+      // Case 1: sext i1 Op0 + sext i1 Op1 == 0 --> !(or i1 Op0, Op1)
+      if (C.isZero())
+        Cond = Builder.CreateNot(Builder.CreateOr(Op0, Op1));
+      // Case 2: sext i1 Op0 + sext i1 Op1 == 1 --> false
+      // Case 3: sext i1 Op0 + sext i1 Op2 == 2 --> false,
+      // these two cases were handled int initialization of Cond.
+      return replaceInstUsesWith(Cmp, Cond);
+    }
+
+    // Handles sext i1 Op0 + zext i1 Op1 == 0/1/2
+    if (match(Add, m_c_Add(m_OneUse(m_SExt(m_Value(Op0))),
+                           m_OneUse(m_ZExt(m_Value(Op1))))) &&
+        Op0->getType()->isIntOrIntVectorTy(1) &&
+        Op1->getType()->isIntOrIntVectorTy(1)) {
+      Value *Cond = Builder.getFalse();
+      // Case 1: sext i1 Op0 + zext i1 Op1 == 0 --> !(xor i1 Op0, Op1)
+      if (C.isZero())
+        Cond = Builder.CreateNot(Builder.CreateXor(Op0, Op1));
+      else if (C.isOne())
+        // Case 2: sext i1 Op0 + zext i1 Op1 == 1 --> (!Op0) & Op1
+        Cond = Builder.CreateAnd(Builder.CreateNot(Op0), Op1);
+      // Case 3: sext i1 Op0 + zext i1 Op1 == 2 --> false,
+      // already handled in the initilization of Cond.
+      return replaceInstUsesWith(Cmp, Cond);
+    }
+    return nullptr;
+  }
+
   const APInt *C2;
-  if (Cmp.isEquality() || !match(Y, m_APInt(C2)))
+  if (!match(Y, m_APInt(C2)))
     return nullptr;
 
   // Fold icmp pred (add X, C2), C.
-  Value *X = Add->getOperand(0);
   Type *Ty = Add->getType();
   const CmpInst::Predicate Pred = Cmp.getPredicate();
 
