@@ -67,6 +67,42 @@ STATISTIC(NumLoadsFromStoresPromoted, "Number of loads from stores promoted");
 DEBUG_COUNTER(RegRenamingCounter, DEBUG_TYPE "-reg-renaming",
               "Controls which pairs are considered for renaming");
 
+enum LdpPolicy {
+  LDP_POLICY_ALWAYS, ///< Emit ldp regardless of alignment.
+  LDP_POLICY_NEVER,  ///< Do not emit ldp.
+  LDP_POLICY_ALIGNED ///< In order to emit ldp, first check if the load will
+                     ///< be aligned to 2 * element_size.
+};
+
+enum StpPolicy {
+  STP_POLICY_ALWAYS, ///< Emit stp regardless of alignment.
+  STP_POLICY_NEVER,  ///< Do not emit stp.
+  STP_POLICY_ALIGNED ///< In order to emit stp, first check if the store will
+                     ///< be aligned to 2 * element_size.
+};
+
+static cl::opt<LdpPolicy> AArch64LdpPolicy(
+    "aarch64-ldp-policy", cl::Optional, cl::init(LDP_POLICY_ALWAYS),
+    cl::desc("AArch64 Specific: Load pair policy."),
+    cl::values(clEnumValN(LDP_POLICY_NEVER, "never", "Do not emit ldp."),
+               clEnumValN(LDP_POLICY_ALIGNED, "aligned",
+                          "Emit ldp only if the source pointer is aligned to "
+                          "at least double the alignment of the type."),
+               clEnumValN(LDP_POLICY_ALWAYS, "always",
+                          "Emit ldp regardless of alignment. (default)"),
+               clEnumValN(LDP_POLICY_ALWAYS, "default", "Use the default.")));
+
+static cl::opt<StpPolicy> AArch64StpPolicy(
+    "aarch64-stp-policy", cl::Optional, cl::init(STP_POLICY_ALWAYS),
+    cl::desc("AArch64 Specific: Store pair policy."),
+    cl::values(clEnumValN(STP_POLICY_NEVER, "never", "Do not emit stp."),
+               clEnumValN(STP_POLICY_ALIGNED, "aligned",
+                          "Emit stp only if the source pointer is aligned to "
+                          "at least double the alignment of the type."),
+               clEnumValN(STP_POLICY_ALWAYS, "always",
+                          "Emit stp regardless of alignment. (default)"),
+               clEnumValN(STP_POLICY_ALWAYS, "default", "Use the default.")));
+
 // The LdStLimit limits how far we search for load/store pairs.
 static cl::opt<unsigned> LdStLimit("aarch64-load-store-scan-limit",
                                    cl::init(20), cl::Hidden);
@@ -2136,6 +2172,16 @@ bool AArch64LoadStoreOpt::tryToPairLdStInst(MachineBasicBlock::iterator &MBBI) {
   if (!TII->isCandidateToMergeOrPair(MI))
     return false;
 
+  // Fetch the memoperand of the load/store that is a candidate for combination.
+  MachineMemOperand *memOp = MBBI->memoperands().data()[0];
+
+  // If a load arrives and LDP_POLICY_NEVER is opted, do not emit ldp.
+  if (memOp->isLoad() && AArch64LdpPolicy == LDP_POLICY_NEVER)
+    return false;
+  // If a store arrives and STP_POLICY_NEVER is opted, do not emit stp.
+  if (memOp->isStore() && AArch64StpPolicy == STP_POLICY_NEVER)
+    return false;
+
   // Early exit if the offset is not possible to match. (6 bits of positive
   // range, plus allow an extra one in case we find a later insn that matches
   // with Offset-1)
@@ -2159,6 +2205,24 @@ bool AArch64LoadStoreOpt::tryToPairLdStInst(MachineBasicBlock::iterator &MBBI) {
     // Keeping the iterator straight is a pain, so we let the merge routine tell
     // us what the next instruction is after it's done mucking about.
     auto Prev = std::prev(MBBI);
+
+    // Get the needed alignments to check them if LDP_POLICY_ALIGNED/STP_POLICY_ALIGNED
+    // is opted.
+    uint64_t memAlignment = memOp->getAlign().value();
+    uint64_t typeAlignment = Align(memOp->getSize()).value();
+
+    // If a load arrives and LDP_POLICY_ALIGNED is opted, check that the
+    // alignment of the source pointer is at least double the alignment of the
+    // type.
+    if (memOp->isLoad() && AArch64LdpPolicy == LDP_POLICY_ALIGNED &&
+        memAlignment < 2 * typeAlignment)
+      return false;
+    // If a store arrives and STP_POLICY_ALIGNED is opted, check that the
+    // alignment of the source pointer is at least double the alignment of the
+    // type.
+    if (memOp->isStore() && AArch64StpPolicy == STP_POLICY_ALIGNED &&
+        memAlignment < 2 * typeAlignment)
+      return false;
     MBBI = mergePairedInsns(MBBI, Paired, Flags);
     // Collect liveness info for instructions between Prev and the new position
     // MBBI.

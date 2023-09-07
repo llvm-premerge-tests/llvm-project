@@ -1846,6 +1846,32 @@ void Clang::AddAArch64TargetArgs(const ArgList &Args,
   }
 
   AddUnalignedAccessWarning(CmdArgs);
+
+  // Handle -aarch64-ldp-policy=
+  if (Arg *A = Args.getLastArg(options::OPT_aarch64_ldp_policy_EQ)) {
+    StringRef Val = A->getValue();
+    const Driver &D = getToolChain().getDriver();
+    if (!Val.equals("aligned") && !Val.equals("never") &&
+        !Val.equals("always") && !Val.equals("default"))
+      // Handle the unsupported values passed to aarch64-ldp-policy.
+      D.Diag(diag::err_drv_unsupported_option_argument)
+          << A->getSpelling() << Val;
+    CmdArgs.push_back("-mllvm");
+    CmdArgs.push_back(Args.MakeArgString("-aarch64-ldp-policy=" + Val));
+  }
+
+  // Handle -aarch64-stp-policy=
+  if (Arg *A = Args.getLastArg(options::OPT_aarch64_stp_policy_EQ)) {
+    StringRef Val = A->getValue();
+    const Driver &D = getToolChain().getDriver();
+    if (!Val.equals("aligned") && !Val.equals("never") &&
+        !Val.equals("always") && !Val.equals("default"))
+      // Handle the unsupported values passed to aarch64-stp-policy.
+      D.Diag(diag::err_drv_unsupported_option_argument)
+          << A->getSpelling() << Val;
+    CmdArgs.push_back("-mllvm");
+    CmdArgs.push_back(Args.MakeArgString("-aarch64-stp-policy=" + Val));
+  }
 }
 
 void Clang::AddLoongArchTargetArgs(const ArgList &Args,

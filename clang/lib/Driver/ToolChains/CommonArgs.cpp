@@ -867,6 +867,30 @@ void tools::addLTOOptions(const ToolChain &ToolChain, const ArgList &Args,
 
   addMachineOutlinerArgs(D, Args, CmdArgs, ToolChain.getEffectiveTriple(),
                          /*IsLTO=*/true, PluginOptPrefix);
+
+  // Handle -aarch64-ldp-policy=
+  if (Arg *A = Args.getLastArg(options::OPT_aarch64_ldp_policy_EQ)) {
+    StringRef Val = A->getValue();
+    if (!Val.equals("aligned") && !Val.equals("never") &&
+        !Val.equals("always") && !Val.equals("default"))
+      // Handle the unsupported values passed to aarch64-ldp-policy.
+      D.Diag(diag::err_drv_unsupported_option_argument)
+          << A->getSpelling() << Val;
+    CmdArgs.push_back(Args.MakeArgString(Twine(PluginOptPrefix) +
+                                         "-aarch64-ldp-policy=" + Val));
+  }
+
+  // Handle -aarch64-stp-policy=
+  if (Arg *A = Args.getLastArg(options::OPT_aarch64_stp_policy_EQ)) {
+    StringRef Val = A->getValue();
+    if (!Val.equals("aligned") && !Val.equals("never") &&
+        !Val.equals("always") && !Val.equals("default"))
+      // Handle the unsupported values passed to aarch64-stp-policy.
+      D.Diag(diag::err_drv_unsupported_option_argument)
+          << A->getSpelling() << Val;
+    CmdArgs.push_back(Args.MakeArgString(Twine(PluginOptPrefix) +
+                                         "-aarch64-stp-policy=" + Val));
+  }
 }
 
 void tools::addOpenMPRuntimeLibraryPath(const ToolChain &TC,

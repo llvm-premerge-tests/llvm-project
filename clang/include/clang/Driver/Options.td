@@ -4526,6 +4526,12 @@ def mno_bti_at_return_twice : Flag<["-"], "mno-bti-at-return-twice">,
   Group<m_arm_Features_Group>,
   HelpText<"Do not add a BTI instruction after a setjmp or other"
            " return-twice construct (Arm/AArch64 only)">;
+def aarch64_ldp_policy_EQ : Joined<["-"], "aarch64-ldp-policy=">,
+  Group<m_aarch64_Features_Group>,
+  HelpText<"Fine-grained load pair policy (AArch64 only)">;
+def aarch64_stp_policy_EQ : Joined<["-"], "aarch64-stp-policy=">,
+  Group<m_aarch64_Features_Group>,
+  HelpText<"Fine-grained store pair policy (AArch64 only)">;
 
 foreach i = {1-31} in
   def ffixed_x#i : Flag<["-"], "ffixed-x"#i>, Group<m_Group>,
