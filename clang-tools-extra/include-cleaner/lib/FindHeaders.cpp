@@ -125,7 +125,7 @@ headerForAmbiguousStdSymbol(const NamedDecl *ND) {
     if (FD->getNumParams() == 1)
       // move(T&& t)
       return tooling::stdlib::Header::named("<utility>");
-    if (FD->getNumParams() == 3)
+    if (FD->getNumParams() == 3 || FD->getNumParams() == 4)
       // move(InputIt first, InputIt last, OutputIt dest);
       return tooling::stdlib::Header::named("<algorithm>");
   } else if (FName == "remove") {
