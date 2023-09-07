@@ -214,10 +214,22 @@ public:
   }
 
   void Visit(const OMPClause *C) {
+    if (const auto *OMPC = dyn_cast<OMPFailClause>(C)) {
+      Visit(OMPC);
+      return;
+    }
     getNodeDelegate().AddChild([=] {
       getNodeDelegate().Visit(C);
       for (const auto *S : C->children())
         Visit(S);
+    });
+  }
+
+  void Visit(const OMPFailClause *C) {
+    getNodeDelegate().AddChild([=] {
+      getNodeDelegate().Visit(C);
+      const OMPClause *MOC = C->const_getMemoryOrderClause();
+      Visit(MOC);
     });
   }
 
