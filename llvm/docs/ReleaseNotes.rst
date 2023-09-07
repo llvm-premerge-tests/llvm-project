@@ -167,6 +167,8 @@ Changes to the LLVM tools
 * llvm-symbolizer now treats invalid input as an address for which source
   information is not found.
 
+* llvm-symbolizer and llvm-addr2line now support addresses specified as symbol names.
+
 Changes to LLDB
 ---------------------------------
 
