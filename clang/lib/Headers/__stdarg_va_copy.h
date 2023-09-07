@@ -7,6 +7,6 @@
  *===-----------------------------------------------------------------------===
  */
 
-#ifndef va_copy
+#if !defined(va_copy) || __has_feature(builtin_headers_in_system_modules)
 #define va_copy(dest, src) __builtin_va_copy(dest, src)
 #endif

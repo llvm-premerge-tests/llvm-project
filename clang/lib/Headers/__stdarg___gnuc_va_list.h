@@ -7,7 +7,7 @@
  *===-----------------------------------------------------------------------===
  */
 
-#ifndef __GNUC_VA_LIST
+#if !defined(__GNUC_VA_LIST) || __has_feature(builtin_headers_in_system_modules)
 #define __GNUC_VA_LIST
 typedef __builtin_va_list __gnuc_va_list;
 #endif
