@@ -141,6 +141,17 @@ namespace ranges {
       (is_lvalue_reference_v<_Tp> ||
        (movable<remove_reference_t<_Tp>> && !__is_std_initializer_list<remove_cvref_t<_Tp>>))));
 
+#  if _LIBCPP_STD_VER >= 23
+
+  // [concept.object]
+
+  template <class _Rp>
+  concept __range_with_movable_references =
+      ranges::input_range<_Rp> && std::move_constructible<ranges::range_reference_t<_Rp>> &&
+      std::move_constructible<ranges::range_rvalue_reference_t<_Rp>>; // exposition only
+
+#  endif // _LIBCPP_STD_VER >= 23
+
 } // namespace ranges
 
 #endif // _LIBCPP_STD_VER >= 20
