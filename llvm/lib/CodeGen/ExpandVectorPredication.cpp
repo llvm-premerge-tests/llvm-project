@@ -601,6 +601,18 @@ Value *CachingVPExpander::expandPredication(VPIntrinsic &VPI) {
   switch (VPI.getIntrinsicID()) {
   default:
     break;
+  case Intrinsic::vp_inttoptr: {
+    Value *NewOp =
+        Builder.CreateIntToPtr(VPI.getOperand(0), VPI.getType(), VPI.getName());
+    replaceOperation(*NewOp, VPI);
+    return NewOp;
+  }
+  case Intrinsic::vp_ptrtoint: {
+    Value *NewOp =
+        Builder.CreatePtrToInt(VPI.getOperand(0), VPI.getType(), VPI.getName());
+    replaceOperation(*NewOp, VPI);
+    return NewOp;
+  }
   case Intrinsic::vp_fneg: {
     Value *NewNegOp = Builder.CreateFNeg(VPI.getOperand(0), VPI.getName());
     replaceOperation(*NewNegOp, VPI);
