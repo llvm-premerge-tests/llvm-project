@@ -7,7 +7,7 @@
  *===-----------------------------------------------------------------------===
  */
 
-#ifndef va_arg
+#if !defined(va_arg) || __has_feature(builtin_headers_in_system_modules)
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
 /* C23 does not require the second parameter for va_start. */
