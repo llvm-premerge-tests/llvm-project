@@ -996,13 +996,14 @@ define i128 @cas_weak_acquire_acquire(ptr %a, i128 %cmp, i128 %new) {
 ; PWR7-NEXT:    std r0, 144(r1)
 ; PWR7-NEXT:    .cfi_def_cfa_offset 128
 ; PWR7-NEXT:    .cfi_offset lr, 16
-; PWR7-NEXT:    std r5, 120(r1)
+; PWR7-NEXT:    mr r9, r7
 ; PWR7-NEXT:    std r4, 112(r1)
 ; PWR7-NEXT:    addi r4, r1, 112
-; PWR7-NEXT:    mr r5, r6
-; PWR7-NEXT:    mr r6, r7
 ; PWR7-NEXT:    li r7, 2
 ; PWR7-NEXT:    li r8, 2
+; PWR7-NEXT:    std r5, 120(r1)
+; PWR7-NEXT:    mr r5, r6
+; PWR7-NEXT:    mr r6, r9
 ; PWR7-NEXT:    bl __atomic_compare_exchange_16
 ; PWR7-NEXT:    nop
 ; PWR7-NEXT:    ld r4, 120(r1)
@@ -1130,13 +1131,14 @@ define i128 @cas_weak_release_monotonic(ptr %a, i128 %cmp, i128 %new) {
 ; PWR7-NEXT:    std r0, 144(r1)
 ; PWR7-NEXT:    .cfi_def_cfa_offset 128
 ; PWR7-NEXT:    .cfi_offset lr, 16
-; PWR7-NEXT:    std r5, 120(r1)
+; PWR7-NEXT:    mr r9, r7
 ; PWR7-NEXT:    std r4, 112(r1)
 ; PWR7-NEXT:    addi r4, r1, 112
-; PWR7-NEXT:    mr r5, r6
-; PWR7-NEXT:    mr r6, r7
 ; PWR7-NEXT:    li r7, 3
 ; PWR7-NEXT:    li r8, 0
+; PWR7-NEXT:    std r5, 120(r1)
+; PWR7-NEXT:    mr r5, r6
+; PWR7-NEXT:    mr r6, r9
 ; PWR7-NEXT:    bl __atomic_compare_exchange_16
 ; PWR7-NEXT:    nop
 ; PWR7-NEXT:    ld r4, 120(r1)
@@ -1265,13 +1267,14 @@ define i128 @cas_sc_sc(ptr %a, i128 %cmp, i128 %new) {
 ; PWR7-NEXT:    std r0, 144(r1)
 ; PWR7-NEXT:    .cfi_def_cfa_offset 128
 ; PWR7-NEXT:    .cfi_offset lr, 16
-; PWR7-NEXT:    std r5, 120(r1)
+; PWR7-NEXT:    mr r9, r7
 ; PWR7-NEXT:    std r4, 112(r1)
 ; PWR7-NEXT:    addi r4, r1, 112
-; PWR7-NEXT:    mr r5, r6
-; PWR7-NEXT:    mr r6, r7
 ; PWR7-NEXT:    li r7, 5
 ; PWR7-NEXT:    li r8, 5
+; PWR7-NEXT:    std r5, 120(r1)
+; PWR7-NEXT:    mr r5, r6
+; PWR7-NEXT:    mr r6, r9
 ; PWR7-NEXT:    bl __atomic_compare_exchange_16
 ; PWR7-NEXT:    nop
 ; PWR7-NEXT:    ld r4, 120(r1)
@@ -1402,13 +1405,14 @@ define i128 @cas_acqrel_acquire(ptr %a, i128 %cmp, i128 %new) {
 ; PWR7-NEXT:    std r0, 144(r1)
 ; PWR7-NEXT:    .cfi_def_cfa_offset 128
 ; PWR7-NEXT:    .cfi_offset lr, 16
-; PWR7-NEXT:    std r5, 120(r1)
+; PWR7-NEXT:    mr r9, r7
 ; PWR7-NEXT:    std r4, 112(r1)
 ; PWR7-NEXT:    addi r4, r1, 112
-; PWR7-NEXT:    mr r5, r6
-; PWR7-NEXT:    mr r6, r7
 ; PWR7-NEXT:    li r7, 4
 ; PWR7-NEXT:    li r8, 2
+; PWR7-NEXT:    std r5, 120(r1)
+; PWR7-NEXT:    mr r5, r6
+; PWR7-NEXT:    mr r6, r9
 ; PWR7-NEXT:    bl __atomic_compare_exchange_16
 ; PWR7-NEXT:    nop
 ; PWR7-NEXT:    ld r4, 120(r1)
@@ -1542,13 +1546,14 @@ define i1 @cas_acqrel_acquire_check_succ(ptr %a, i128 %cmp, i128 %new) {
 ; PWR7-NEXT:    std r0, 144(r1)
 ; PWR7-NEXT:    .cfi_def_cfa_offset 128
 ; PWR7-NEXT:    .cfi_offset lr, 16
-; PWR7-NEXT:    std r5, 120(r1)
+; PWR7-NEXT:    mr r9, r7
 ; PWR7-NEXT:    std r4, 112(r1)
 ; PWR7-NEXT:    addi r4, r1, 112
-; PWR7-NEXT:    mr r5, r6
-; PWR7-NEXT:    mr r6, r7
 ; PWR7-NEXT:    li r7, 4
 ; PWR7-NEXT:    li r8, 2
+; PWR7-NEXT:    std r5, 120(r1)
+; PWR7-NEXT:    mr r5, r6
+; PWR7-NEXT:    mr r6, r9
 ; PWR7-NEXT:    bl __atomic_compare_exchange_16
 ; PWR7-NEXT:    nop
 ; PWR7-NEXT:    addi r1, r1, 128

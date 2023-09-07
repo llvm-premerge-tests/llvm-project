@@ -442,11 +442,11 @@ define dso_local void @stq_unordered(i128 %val, ptr %dst) {
 ; PWR7-NEXT:    std r0, 128(r1)
 ; PWR7-NEXT:    .cfi_def_cfa_offset 112
 ; PWR7-NEXT:    .cfi_offset lr, 16
-; PWR7-NEXT:    mr r6, r4
+; PWR7-NEXT:    mr r7, r4
+; PWR7-NEXT:    li r6, 0
 ; PWR7-NEXT:    mr r4, r3
 ; PWR7-NEXT:    mr r3, r5
-; PWR7-NEXT:    mr r5, r6
-; PWR7-NEXT:    li r6, 0
+; PWR7-NEXT:    mr r5, r7
 ; PWR7-NEXT:    bl __atomic_store_16
 ; PWR7-NEXT:    nop
 ; PWR7-NEXT:    addi r1, r1, 112
@@ -586,11 +586,11 @@ define dso_local void @stq_big_offset_unordered(i128 %val, ptr %dst) {
 ; PWR7-NEXT:    std r0, 128(r1)
 ; PWR7-NEXT:    .cfi_def_cfa_offset 112
 ; PWR7-NEXT:    .cfi_offset lr, 16
-; PWR7-NEXT:    mr r6, r4
+; PWR7-NEXT:    mr r7, r4
 ; PWR7-NEXT:    mr r4, r3
 ; PWR7-NEXT:    addis r3, r5, 32
-; PWR7-NEXT:    mr r5, r6
 ; PWR7-NEXT:    li r6, 0
+; PWR7-NEXT:    mr r5, r7
 ; PWR7-NEXT:    bl __atomic_store_16
 ; PWR7-NEXT:    nop
 ; PWR7-NEXT:    addi r1, r1, 112
@@ -658,11 +658,11 @@ define dso_local void @stq_monotonic(i128 %val, ptr %dst) {
 ; PWR7-NEXT:    std r0, 128(r1)
 ; PWR7-NEXT:    .cfi_def_cfa_offset 112
 ; PWR7-NEXT:    .cfi_offset lr, 16
-; PWR7-NEXT:    mr r6, r4
+; PWR7-NEXT:    mr r7, r4
+; PWR7-NEXT:    li r6, 0
 ; PWR7-NEXT:    mr r4, r3
 ; PWR7-NEXT:    mr r3, r5
-; PWR7-NEXT:    mr r5, r6
-; PWR7-NEXT:    li r6, 0
+; PWR7-NEXT:    mr r5, r7
 ; PWR7-NEXT:    bl __atomic_store_16
 ; PWR7-NEXT:    nop
 ; PWR7-NEXT:    addi r1, r1, 112
@@ -725,11 +725,11 @@ define dso_local void @stq_release(i128 %val, ptr %dst) {
 ; PWR7-NEXT:    std r0, 128(r1)
 ; PWR7-NEXT:    .cfi_def_cfa_offset 112
 ; PWR7-NEXT:    .cfi_offset lr, 16
-; PWR7-NEXT:    mr r6, r4
+; PWR7-NEXT:    mr r7, r4
+; PWR7-NEXT:    li r6, 3
 ; PWR7-NEXT:    mr r4, r3
 ; PWR7-NEXT:    mr r3, r5
-; PWR7-NEXT:    mr r5, r6
-; PWR7-NEXT:    li r6, 3
+; PWR7-NEXT:    mr r5, r7
 ; PWR7-NEXT:    bl __atomic_store_16
 ; PWR7-NEXT:    nop
 ; PWR7-NEXT:    addi r1, r1, 112
@@ -794,11 +794,11 @@ define dso_local void @stq_seqcst(i128 %val, ptr %dst) {
 ; PWR7-NEXT:    std r0, 128(r1)
 ; PWR7-NEXT:    .cfi_def_cfa_offset 112
 ; PWR7-NEXT:    .cfi_offset lr, 16
-; PWR7-NEXT:    mr r6, r4
+; PWR7-NEXT:    mr r7, r4
+; PWR7-NEXT:    li r6, 5
 ; PWR7-NEXT:    mr r4, r3
 ; PWR7-NEXT:    mr r3, r5
-; PWR7-NEXT:    mr r5, r6
-; PWR7-NEXT:    li r6, 5
+; PWR7-NEXT:    mr r5, r7
 ; PWR7-NEXT:    bl __atomic_store_16
 ; PWR7-NEXT:    nop
 ; PWR7-NEXT:    addi r1, r1, 112
