@@ -5,6 +5,133 @@ declare void @use(i32)
 
 ; PR1949
 
+define i1 @cvt_icmp_0_zext_plus_zext(i1 %arg, i1 %arg1) {
+; CHECK-LABEL: @cvt_icmp_0_zext_plus_zext(
+; CHECK-NEXT:  bb:
+; CHECK-NEXT:    [[TMP0:%.*]] = or i1 [[ARG1:%.*]], [[ARG:%.*]]
+; CHECK-NEXT:    [[I4:%.*]] = xor i1 [[TMP0]], true
+; CHECK-NEXT:    ret i1 [[I4]]
+;
+bb:
+  %i = zext i1 %arg to i32
+  %i2 = zext i1 %arg1 to i32
+  %i3 = add i32 %i2, %i
+  %i4 = icmp eq i32 %i3, 0
+  ret i1 %i4
+}
+
+define i1 @cvt_icmp_1_zext_plus_zext(i1 %arg, i1 %arg1) {
+; CHECK-LABEL: @cvt_icmp_1_zext_plus_zext(
+; CHECK-NEXT:  bb:
+; CHECK-NEXT:    [[I4:%.*]] = xor i1 [[ARG1:%.*]], [[ARG:%.*]]
+; CHECK-NEXT:    ret i1 [[I4]]
+;
+bb:
+  %i = zext i1 %arg to i32
+  %i2 = zext i1 %arg1 to i32
+  %i3 = add i32 %i2, %i
+  %i4 = icmp eq i32 %i3, 1
+  ret i1 %i4
+}
+
+define i1 @cvt_icmp_2_zext_plus_zext(i1 %arg, i1 %arg1) {
+; CHECK-LABEL: @cvt_icmp_2_zext_plus_zext(
+; CHECK-NEXT:  bb:
+; CHECK-NEXT:    [[T:%.*]] = and i1 [[ARG:%.*]], [[ARG1:%.*]]
+; CHECK-NEXT:    ret i1 [[T]]
+;
+bb:
+  %i = zext i1 %arg to i32
+  %i2 = zext i1 %arg1 to i32
+  %i3 = add i32 %i, %i2
+  %t = icmp eq i32 %i3, 2
+  ret i1 %t
+}
+
+define i1 @cvt_icmp_0_sext_plus_sext(i1 %arg, i1 %arg1) {
+; CHECK-LABEL: @cvt_icmp_0_sext_plus_sext(
+; CHECK-NEXT:  bb:
+; CHECK-NEXT:    [[TMP0:%.*]] = or i1 [[ARG:%.*]], [[ARG1:%.*]]
+; CHECK-NEXT:    [[T:%.*]] = xor i1 [[TMP0]], true
+; CHECK-NEXT:    ret i1 [[T]]
+;
+bb:
+  %i = sext i1 %arg to i32
+  %i2 = sext i1 %arg1 to i32
+  %i3 = add i32 %i, %i2
+  %t = icmp eq i32 %i3, 0
+  ret i1 %t
+}
+
+define i1 @cvt_icmp_1_sext_plus_sext(i1 %arg, i1 %arg1) {
+; CHECK-LABEL: @cvt_icmp_1_sext_plus_sext(
+; CHECK-NEXT:  bb:
+; CHECK-NEXT:    ret i1 false
+;
+bb:
+  %i = sext i1 %arg to i32
+  %i2 = sext i1 %arg1 to i32
+  %i3 = add i32 %i, %i2
+  %t = icmp eq i32 %i3, 1
+  ret i1 %t
+}
+
+define i1 @cvt_icmp_2_sext_plus_sext(i1 %arg, i1 %arg1) {
+; CHECK-LABEL: @cvt_icmp_2_sext_plus_sext(
+; CHECK-NEXT:  bb:
+; CHECK-NEXT:    ret i1 false
+;
+bb:
+  %i = sext i1 %arg to i32
+  %i2 = sext i1 %arg1 to i32
+  %i3 = add i32 %i, %i2
+  %t = icmp eq i32 %i3, 2
+  ret i1 %t
+}
+
+define i1 @cvt_icmp_0_sext_plus_zext(i1 %arg, i1 %arg1) {
+; CHECK-LABEL: @cvt_icmp_0_sext_plus_zext(
+; CHECK-NEXT:  bb:
+; CHECK-NEXT:    [[TMP0:%.*]] = xor i1 [[ARG:%.*]], [[ARG1:%.*]]
+; CHECK-NEXT:    [[T:%.*]] = xor i1 [[TMP0]], true
+; CHECK-NEXT:    ret i1 [[T]]
+;
+bb:
+  %i = sext i1 %arg to i32
+  %i2 = zext i1 %arg1 to i32
+  %i3 = add i32 %i, %i2
+  %t = icmp eq i32 %i3, 0
+  ret i1 %t
+}
+
+define i1 @cvt_icmp_1_sext_plus_zext(i1 %arg, i1 %arg1) {
+; CHECK-LABEL: @cvt_icmp_1_sext_plus_zext(
+; CHECK-NEXT:  bb:
+; CHECK-NEXT:    [[TMP0:%.*]] = xor i1 [[ARG:%.*]], true
+; CHECK-NEXT:    [[T:%.*]] = and i1 [[TMP0]], [[ARG1:%.*]]
+; CHECK-NEXT:    ret i1 [[T]]
+;
+bb:
+  %i = sext i1 %arg to i32
+  %i2 = zext i1 %arg1 to i32
+  %i3 = add i32 %i, %i2
+  %t = icmp eq i32 %i3, 1
+  ret i1 %t
+}
+
+define i1 @cvt_icmp_2_sext_plus_zext(i1 %arg, i1 %arg1) {
+; CHECK-LABEL: @cvt_icmp_2_sext_plus_zext(
+; CHECK-NEXT:  bb:
+; CHECK-NEXT:    ret i1 false
+;
+bb:
+  %i = sext i1 %arg to i32
+  %i2 = zext i1 %arg1 to i32
+  %i3 = add i32 %i, %i2
+  %t = icmp eq i32 %i3, 2
+  ret i1 %t
+}
+
 define i1 @test1(i32 %a) {
 ; CHECK-LABEL: @test1(
 ; CHECK-NEXT:    [[C:%.*]] = icmp ugt i32 [[A:%.*]], -5
