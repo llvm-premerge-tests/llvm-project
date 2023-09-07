@@ -24,12 +24,14 @@ define dso_local void @_Z12d2s_bufferedmPc(i64 %arg, ptr nocapture %arg1) {
 ; CHECK-NEXT:    shrq $32, %rax
 ; CHECK-NEXT:    imull $100, %eax, %r10d
 ; CHECK-NEXT:    subl %r10d, %r9d
+; CHECK-NEXT:    addl %r9d, %r9d
+; CHECK-NEXT:    addl %eax, %eax
 ; CHECK-NEXT:    movl %ecx, %r10d
 ; CHECK-NEXT:    movq %rsi, %r11
 ; CHECK-NEXT:    subq %r10, %r11
-; CHECK-NEXT:    movzwl _ZL11DIGIT_TABLE(%r9,%r9), %r9d
+; CHECK-NEXT:    movzwl _ZL11DIGIT_TABLE(%r9), %r9d
 ; CHECK-NEXT:    movw %r9w, -1(%r11)
-; CHECK-NEXT:    movzwl _ZL11DIGIT_TABLE(%rax,%rax), %eax
+; CHECK-NEXT:    movzwl _ZL11DIGIT_TABLE(%rax), %eax
 ; CHECK-NEXT:    movw %ax, -3(%r11)
 ; CHECK-NEXT:    addl $4, %ecx
 ; CHECK-NEXT:    cmpq $99999999, %rdi # imm = 0x5F5E0FF
