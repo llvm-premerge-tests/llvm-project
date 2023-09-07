@@ -7,23 +7,20 @@
  *===-----------------------------------------------------------------------===
  */
 
-#if !defined(__STDDEF_H) || defined(__need_ptrdiff_t) ||                       \
-    defined(__need_size_t) || defined(__need_rsize_t) ||                       \
-    defined(__need_wchar_t) || defined(__need_NULL) ||                         \
-    defined(__need_nullptr_t) || defined(__need_unreachable) ||                \
-    defined(__need_max_align_t) || defined(__need_offsetof) ||                 \
-    defined(__need_wint_t) ||                                                  \
-    (defined(__STDC_WANT_LIB_EXT1__) && __STDC_WANT_LIB_EXT1__ >= 1)
+#if !defined(__STDDEF_H) || __has_feature(modules) ||                          \
+    (defined(__STDC_WANT_LIB_EXT1__) && __STDC_WANT_LIB_EXT1__ >= 1) ||        \
+    defined(__need_ptrdiff_t) || defined(__need_size_t) ||                     \
+    defined(__need_rsize_t) || defined(__need_wchar_t) ||                      \
+    defined(__need_NULL) || defined(__need_nullptr_t) ||                       \
+    defined(__need_unreachable) || defined(__need_max_align_t) ||              \
+    defined(__need_offsetof) || defined(__need_wint_t)
 
 #if !defined(__need_ptrdiff_t) && !defined(__need_size_t) &&                   \
     !defined(__need_rsize_t) && !defined(__need_wchar_t) &&                    \
     !defined(__need_NULL) && !defined(__need_nullptr_t) &&                     \
     !defined(__need_unreachable) && !defined(__need_max_align_t) &&            \
     !defined(__need_offsetof) && !defined(__need_wint_t)
-/* Always define miscellaneous pieces when modules are available. */
-#if !__has_feature(modules)
 #define __STDDEF_H
-#endif
 #define __need_ptrdiff_t
 #define __need_size_t
 /* ISO9899:2011 7.20 (C11 Annex K): Define rsize_t if __STDC_WANT_LIB_EXT1__ is

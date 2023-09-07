@@ -7,7 +7,6 @@
  *===-----------------------------------------------------------------------===
  */
 
-#if !defined(offsetof) || __has_feature(modules)
-/* Always define offsetof when modules are available. */
+#if !defined(offsetof) || __has_feature(builtin_headers_in_system_modules)
 #define offsetof(t, d) __builtin_offsetof(t, d)
 #endif
