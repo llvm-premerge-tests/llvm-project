@@ -24,6 +24,7 @@
 #include <__utility/forward.h>
 #include <__utility/move.h>
 #include <__utility/swap.h>
+#include <cstddef>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header
@@ -63,6 +64,50 @@ concept __cpp17_equality_comparable = requires(_Tp __lhs, _Tp __rhs) {
 
 template <class _Tp>
 concept __cpp17_default_constructible = is_default_constructible_v<_Tp>;
+
+template <class _Tp, class _Up = _Tp>
+concept __cpp17_swappable = requires(_Tp& __lhs, _Up& __rhs) {
+  swap(__lhs, __rhs);
+  swap(__rhs, __lhs);
+};
+
+template <class _Ptr>
+concept __cpp17_nullable_pointer =
+    __cpp17_equality_comparable<_Ptr> && __cpp17_default_constructible<_Ptr> && __cpp17_copy_constructible<_Ptr> &&
+    __cpp17_move_assignable<_Ptr> && __cpp17_swappable<_Ptr> && requires(std::nullptr_t __np) {
+      requires requires(_Ptr __u) {
+        // { __u(__np) == nullptr } -> __boolean_testable;
+        { __u.operator=(__np) == nullptr } -> __boolean_testable;
+      };
+
+      { _Ptr(__np) == nullptr } -> __boolean_testable;
+
+      requires requires(_Ptr __t) {
+        { (__t = __np) == nullptr } -> __boolean_testable;
+      };
+
+      requires requires(_Ptr __lhs, _Ptr __rhs) {
+        { __lhs != __rhs } -> __boolean_testable;
+        { std::as_const(__lhs) != __rhs } -> __boolean_testable;
+        { __lhs != std::as_const(__rhs) } -> __boolean_testable;
+
+        { __lhs == __np } -> __boolean_testable;
+        { std::as_const(__lhs) == __np } -> __boolean_testable;
+        { __lhs == std::as_const(__np) } -> __boolean_testable;
+
+        { __np == __lhs } -> __boolean_testable;
+        { std::as_const(__np) == __lhs } -> __boolean_testable;
+        { __np == std::as_const(__lhs) } -> __boolean_testable;
+
+        { __lhs != __np } -> __boolean_testable;
+        { std::as_const(__lhs) != __np } -> __boolean_testable;
+        { __lhs != std::as_const(__np) } -> __boolean_testable;
+
+        { __np != __lhs } -> __boolean_testable;
+        { std::as_const(__np) != __lhs } -> __boolean_testable;
+        { __np != std::as_const(__lhs) } -> __boolean_testable;
+      };
+    };
 
 template <class _Iter>
 concept __cpp17_iterator =
