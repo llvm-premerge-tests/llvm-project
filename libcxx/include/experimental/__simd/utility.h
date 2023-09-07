@@ -19,6 +19,7 @@
 #include <__type_traits/is_volatile.h>
 #include <__type_traits/void_t.h>
 #include <__utility/declval.h>
+#include <__utility/integer_sequence.h>
 #include <cstdint>
 #include <limits>
 
@@ -70,6 +71,22 @@ inline constexpr bool __can_broadcast_v =
     (__is_vectorizable_v<_Up> && __is_non_narrowing_convertible_v<_Up, _Tp>) ||
     (!__is_vectorizable_v<_Up> && is_convertible_v<_Up, _Tp>) || is_same_v<_Up, int> ||
     (is_same_v<_Up, unsigned int> && is_unsigned_v<_Tp>);
+
+template <class _Tp, class _Generator, std::size_t _I, class = void>
+inline constexpr bool __is_well_formed = false;
+
+template <class _Tp, class _Generator, std::size_t _I>
+inline constexpr bool
+    __is_well_formed<_Tp,
+                     _Generator,
+                     _I,
+                     std::void_t<decltype(std::declval<_Generator>()(integral_constant<size_t, _I>()))>> =
+        __can_broadcast_v<_Tp, decltype(std::declval<_Generator>()(integral_constant<size_t, _I>()))>;
+
+template <class _Tp, class _Generator, std::size_t... _Is>
+constexpr bool __can_generate(index_sequence<_Is...>) {
+  return (true && ... && __is_well_formed<_Tp, _Generator, _Is>);
+}
 
 } // namespace parallelism_v2
 _LIBCPP_END_NAMESPACE_EXPERIMENTAL
