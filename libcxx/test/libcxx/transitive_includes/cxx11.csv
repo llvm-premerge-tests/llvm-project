@@ -862,6 +862,11 @@ string_view version
 strstream istream
 strstream ostream
 strstream version
+syncstream iosfwd
+syncstream mutex
+syncstream ostream
+syncstream string
+syncstream unordered_map
 system_error cerrno
 system_error compare
 system_error cstddef
