@@ -18,7 +18,7 @@ typedef decltype(nullptr) nullptr_t;
 }
 using ::std::nullptr_t;
 #endif
-#else
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
 typedef typeof(nullptr) nullptr_t;
 #endif
 
