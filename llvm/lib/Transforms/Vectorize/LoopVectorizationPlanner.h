@@ -136,6 +136,13 @@ public:
     return createInstruction(Opcode, Operands, DL, Name);
   }
 
+  VPValue *createOverflowingOp(unsigned Opcode,
+                               std::initializer_list<VPValue *> Operands,
+                               VPRecipeWithIRFlags::WrapFlagsTy WrapFlags,
+                               DebugLoc DL, const Twine &Name = "") {
+    return tryInsertInstruction(
+        new VPInstruction(Opcode, Operands, WrapFlags, DL, Name));
+  }
   VPValue *createNot(VPValue *Operand, DebugLoc DL, const Twine &Name = "") {
     return createInstruction(VPInstruction::Not, {Operand}, DL, Name);
   }
