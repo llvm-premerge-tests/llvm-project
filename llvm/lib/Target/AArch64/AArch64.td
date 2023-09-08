@@ -223,14 +223,9 @@ def FeatureEnableSelectOptimize : SubtargetFeature<
     "enable-select-opt", "EnableSelectOptimize", "true",
     "Enable the select optimize pass for select loop heuristics">;
 
-def FeatureCustomCheapAsMoveHandling : SubtargetFeature<"custom-cheap-as-move",
-    "HasCustomCheapAsMoveHandling", "true",
-    "Use custom handling of cheap instructions">;
-
 def FeatureExynosCheapAsMoveHandling : SubtargetFeature<"exynos-cheap-as-move",
     "HasExynosCheapAsMoveHandling", "true",
-    "Use Exynos specific handling of cheap instructions",
-    [FeatureCustomCheapAsMoveHandling]>;
+    "Use Exynos specific handling of cheap instructions">;
 
 def FeaturePostRAScheduler : SubtargetFeature<"use-postra-scheduler",
     "UsePostRAScheduler", "true", "Schedule again after register allocation">;
@@ -782,7 +777,6 @@ def TuneA53     : SubtargetFeature<"a53", "ARMProcFamily", "CortexA53",
                                    FeatureFuseAES,
                                    FeatureFuseAdrpAdd,
                                    FeatureBalanceFPOps,
-                                   FeatureCustomCheapAsMoveHandling,
                                    FeaturePostRAScheduler]>;
 
 def TuneA55     : SubtargetFeature<"a55", "ARMProcFamily", "CortexA55",
@@ -803,7 +797,6 @@ def TuneA57     : SubtargetFeature<"a57", "ARMProcFamily", "CortexA57",
                                    "Cortex-A57 ARM processors", [
                                    FeatureFuseAES,
                                    FeatureBalanceFPOps,
-                                   FeatureCustomCheapAsMoveHandling,
                                    FeatureFuseAdrpAdd,
                                    FeatureFuseLiterals,
                                    FeaturePostRAScheduler,
@@ -1098,7 +1091,6 @@ def TuneExynosM4 : SubtargetFeature<"exynosm4", "ARMProcFamily", "ExynosM3",
 
 def TuneKryo    : SubtargetFeature<"kryo", "ARMProcFamily", "Kryo",
                                    "Qualcomm Kryo processors", [
-                                   FeatureCustomCheapAsMoveHandling,
                                    FeaturePostRAScheduler,
                                    FeaturePredictableSelectIsExpensive,
                                    FeatureZCZeroing,
@@ -1108,7 +1100,6 @@ def TuneKryo    : SubtargetFeature<"kryo", "ARMProcFamily", "Kryo",
 
 def TuneFalkor  : SubtargetFeature<"falkor", "ARMProcFamily", "Falkor",
                                    "Qualcomm Falkor processors", [
-                                   FeatureCustomCheapAsMoveHandling,
                                    FeaturePostRAScheduler,
                                    FeaturePredictableSelectIsExpensive,
                                    FeatureZCZeroing,
@@ -1176,7 +1167,6 @@ def TuneNeoverseV2 : SubtargetFeature<"neoversev2", "ARMProcFamily", "NeoverseV2
 
 def TuneSaphira  : SubtargetFeature<"saphira", "ARMProcFamily", "Saphira",
                                    "Qualcomm Saphira processors", [
-                                   FeatureCustomCheapAsMoveHandling,
                                    FeaturePostRAScheduler,
                                    FeaturePredictableSelectIsExpensive,
                                    FeatureZCZeroing,
@@ -1225,7 +1215,6 @@ def TuneThunderXT83 : SubtargetFeature<"thunderxt83", "ARMProcFamily",
 
 def TuneTSV110 : SubtargetFeature<"tsv110", "ARMProcFamily", "TSV110",
                                   "HiSilicon TS-V110 processors", [
-                                  FeatureCustomCheapAsMoveHandling,
                                   FeatureFuseAES,
                                   FeaturePostRAScheduler]>;
 
