@@ -26979,6 +26979,10 @@ The '``llvm.memcpy.element.unordered.atomic.*``' intrinsic is a specialization o
 as arrays with elements that are exactly ``element_size`` bytes, and the copy between
 buffers uses a sequence of :ref:`unordered atomic <ordering>` load/store operations
 that are a positive integer multiple of the ``element_size`` in size.
+If this intrinsic is called in a function that requires garbage collection
+:ref:`gc`, then the ``dest`` and ``src`` arguments should have ``elementtype``
+attribute set. The element type information is needed to choose the correct lowering for
+the intrinsic.
 
 Arguments:
 """"""""""
@@ -27054,6 +27058,10 @@ of the '``llvm.memmove.*``' intrinsic. It differs in that the ``dest`` and
 bytes, and the copy between buffers uses a sequence of
 :ref:`unordered atomic <ordering>` load/store operations that are a positive
 integer multiple of the ``element_size`` in size.
+If this intrinsic is called in a function that requires garbage collection
+:ref:`gc`, then the ``dest`` and ``src`` arguments should have ``elementtype``
+attribute set. The element type information is needed to choose the correct lowering for
+the intrinsic.
 
 Arguments:
 """"""""""

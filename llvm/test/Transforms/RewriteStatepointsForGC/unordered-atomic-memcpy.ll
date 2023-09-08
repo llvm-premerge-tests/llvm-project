@@ -14,22 +14,22 @@ define void @test_memcpy_gc_leaf_function(ptr addrspace(1) %src, i64 %src_offset
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[SRC_DERIVED:%.*]] = getelementptr inbounds i8, ptr addrspace(1) [[SRC]], i64 [[SRC_OFFSET]]
 ; CHECK-NEXT:    [[DEST_DERIVED:%.*]] = getelementptr inbounds i8, ptr addrspace(1) [[DEST]], i64 [[DEST_OFFSET]]
-; CHECK-NEXT:    call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 [[SRC_DERIVED]], ptr addrspace(1) align 16 [[DEST_DERIVED]], i32 [[LEN]], i32 1) #[[ATTR2:[0-9]+]]
-; CHECK-NEXT:    call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 [[SRC_DERIVED]], ptr addrspace(1) align 16 [[DEST_DERIVED]], i32 [[LEN]], i32 2) #[[ATTR2]]
-; CHECK-NEXT:    call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 [[SRC_DERIVED]], ptr addrspace(1) align 16 [[DEST_DERIVED]], i32 [[LEN]], i32 4) #[[ATTR2]]
-; CHECK-NEXT:    call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 [[SRC_DERIVED]], ptr addrspace(1) align 16 [[DEST_DERIVED]], i32 [[LEN]], i32 8) #[[ATTR2]]
-; CHECK-NEXT:    call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 [[SRC_DERIVED]], ptr addrspace(1) align 16 [[DEST_DERIVED]], i32 [[LEN]], i32 16) #[[ATTR2]]
+; CHECK-NEXT:    call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 [[SRC_DERIVED]], ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 [[DEST_DERIVED]], i32 [[LEN]], i32 1) #[[ATTR2:[0-9]+]]
+; CHECK-NEXT:    call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 [[SRC_DERIVED]], ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 [[DEST_DERIVED]], i32 [[LEN]], i32 2) #[[ATTR2]]
+; CHECK-NEXT:    call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 [[SRC_DERIVED]], ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 [[DEST_DERIVED]], i32 [[LEN]], i32 4) #[[ATTR2]]
+; CHECK-NEXT:    call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 [[SRC_DERIVED]], ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 [[DEST_DERIVED]], i32 [[LEN]], i32 8) #[[ATTR2]]
+; CHECK-NEXT:    call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 [[SRC_DERIVED]], ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 [[DEST_DERIVED]], i32 [[LEN]], i32 16) #[[ATTR2]]
 ; CHECK-NEXT:    ret void
 ;
 entry:
   %src_derived = getelementptr inbounds i8, ptr addrspace(1) %src, i64 %src_offset
   %dest_derived = getelementptr inbounds i8, ptr addrspace(1) %dest, i64 %dest_offset
 
-  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 1) "gc-leaf-function"
-  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 2) "gc-leaf-function"
-  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 4) "gc-leaf-function"
-  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 8) "gc-leaf-function"
-  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 16) "gc-leaf-function"
+  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 1) "gc-leaf-function"
+  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 2) "gc-leaf-function"
+  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 4) "gc-leaf-function"
+  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 8) "gc-leaf-function"
+  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 16) "gc-leaf-function"
   ret void
 }
 
@@ -43,7 +43,7 @@ define void @test_memcpy_element_atomic_1(ptr addrspace(1) %src, i64 %src_offset
 entry:
   %src_derived = getelementptr inbounds i8, ptr addrspace(1) %src, i64 %src_offset
   %dest_derived = getelementptr inbounds i8, ptr addrspace(1) %dest, i64 %dest_offset
-  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 1)
+  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 1)
   ret void
 }
 
@@ -57,7 +57,7 @@ define void @test_memcpy_element_atomic_2(ptr addrspace(1) %src, i64 %src_offset
 entry:
   %src_derived = getelementptr inbounds i8, ptr addrspace(1) %src, i64 %src_offset
   %dest_derived = getelementptr inbounds i8, ptr addrspace(1) %dest, i64 %dest_offset
-  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 2)
+  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 2)
   ret void
 }
 
@@ -71,7 +71,7 @@ define void @test_memcpy_element_atomic_4(ptr addrspace(1) %src, i64 %src_offset
 entry:
   %src_derived = getelementptr inbounds i8, ptr addrspace(1) %src, i64 %src_offset
   %dest_derived = getelementptr inbounds i8, ptr addrspace(1) %dest, i64 %dest_offset
-  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 4)
+  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 4)
   ret void
 }
 
@@ -85,7 +85,7 @@ define void @test_memcpy_element_atomic_8(ptr addrspace(1) %src, i64 %src_offset
 entry:
   %src_derived = getelementptr inbounds i8, ptr addrspace(1) %src, i64 %src_offset
   %dest_derived = getelementptr inbounds i8, ptr addrspace(1) %dest, i64 %dest_offset
-  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 8)
+  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 8)
   ret void
 }
 
@@ -99,7 +99,7 @@ define void @test_memcpy_element_atomic_16(ptr addrspace(1) %src, i64 %src_offse
 entry:
   %src_derived = getelementptr inbounds i8, ptr addrspace(1) %src, i64 %src_offset
   %dest_derived = getelementptr inbounds i8, ptr addrspace(1) %dest, i64 %dest_offset
-  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 16)
+  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 16)
   ret void
 }
 
@@ -109,22 +109,22 @@ define void @test_memmove_gc_leaf_function(ptr addrspace(1) %src, i64 %src_offse
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[SRC_DERIVED:%.*]] = getelementptr inbounds i8, ptr addrspace(1) [[SRC]], i64 [[SRC_OFFSET]]
 ; CHECK-NEXT:    [[DEST_DERIVED:%.*]] = getelementptr inbounds i8, ptr addrspace(1) [[DEST]], i64 [[DEST_OFFSET]]
-; CHECK-NEXT:    call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 [[SRC_DERIVED]], ptr addrspace(1) align 16 [[DEST_DERIVED]], i32 [[LEN]], i32 1) #[[ATTR2]]
-; CHECK-NEXT:    call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 [[SRC_DERIVED]], ptr addrspace(1) align 16 [[DEST_DERIVED]], i32 [[LEN]], i32 2) #[[ATTR2]]
-; CHECK-NEXT:    call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 [[SRC_DERIVED]], ptr addrspace(1) align 16 [[DEST_DERIVED]], i32 [[LEN]], i32 4) #[[ATTR2]]
-; CHECK-NEXT:    call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 [[SRC_DERIVED]], ptr addrspace(1) align 16 [[DEST_DERIVED]], i32 [[LEN]], i32 8) #[[ATTR2]]
-; CHECK-NEXT:    call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 [[SRC_DERIVED]], ptr addrspace(1) align 16 [[DEST_DERIVED]], i32 [[LEN]], i32 16) #[[ATTR2]]
+; CHECK-NEXT:    call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 [[SRC_DERIVED]], ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 [[DEST_DERIVED]], i32 [[LEN]], i32 1) #[[ATTR2]]
+; CHECK-NEXT:    call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 [[SRC_DERIVED]], ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 [[DEST_DERIVED]], i32 [[LEN]], i32 2) #[[ATTR2]]
+; CHECK-NEXT:    call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 [[SRC_DERIVED]], ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 [[DEST_DERIVED]], i32 [[LEN]], i32 4) #[[ATTR2]]
+; CHECK-NEXT:    call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 [[SRC_DERIVED]], ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 [[DEST_DERIVED]], i32 [[LEN]], i32 8) #[[ATTR2]]
+; CHECK-NEXT:    call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 [[SRC_DERIVED]], ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 [[DEST_DERIVED]], i32 [[LEN]], i32 16) #[[ATTR2]]
 ; CHECK-NEXT:    ret void
 ;
 entry:
   %src_derived = getelementptr inbounds i8, ptr addrspace(1) %src, i64 %src_offset
   %dest_derived = getelementptr inbounds i8, ptr addrspace(1) %dest, i64 %dest_offset
 
-  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 1) "gc-leaf-function"
-  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 2) "gc-leaf-function"
-  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 4) "gc-leaf-function"
-  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 8) "gc-leaf-function"
-  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 16) "gc-leaf-function"
+  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 1) "gc-leaf-function"
+  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 2) "gc-leaf-function"
+  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 4) "gc-leaf-function"
+  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 8) "gc-leaf-function"
+  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 16) "gc-leaf-function"
   ret void
 }
 
@@ -138,7 +138,7 @@ define void @test_memmove_element_atomic_1(ptr addrspace(1) %src, i64 %src_offse
 entry:
   %src_derived = getelementptr inbounds i8, ptr addrspace(1) %src, i64 %src_offset
   %dest_derived = getelementptr inbounds i8, ptr addrspace(1) %dest, i64 %dest_offset
-  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 1)
+  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 1)
   ret void
 }
 
@@ -152,7 +152,7 @@ define void @test_memmove_element_atomic_2(ptr addrspace(1) %src, i64 %src_offse
 entry:
   %src_derived = getelementptr inbounds i8, ptr addrspace(1) %src, i64 %src_offset
   %dest_derived = getelementptr inbounds i8, ptr addrspace(1) %dest, i64 %dest_offset
-  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 2)
+  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 2)
   ret void
 }
 
@@ -166,7 +166,7 @@ define void @test_memmove_element_atomic_4(ptr addrspace(1) %src, i64 %src_offse
 entry:
   %src_derived = getelementptr inbounds i8, ptr addrspace(1) %src, i64 %src_offset
   %dest_derived = getelementptr inbounds i8, ptr addrspace(1) %dest, i64 %dest_offset
-  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 4)
+  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 4)
   ret void
 }
 
@@ -180,7 +180,7 @@ define void @test_memmove_element_atomic_8(ptr addrspace(1) %src, i64 %src_offse
 entry:
   %src_derived = getelementptr inbounds i8, ptr addrspace(1) %src, i64 %src_offset
   %dest_derived = getelementptr inbounds i8, ptr addrspace(1) %dest, i64 %dest_offset
-  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 8)
+  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 8)
   ret void
 }
 
@@ -194,6 +194,6 @@ define void @test_memmove_element_atomic_16(ptr addrspace(1) %src, i64 %src_offs
 entry:
   %src_derived = getelementptr inbounds i8, ptr addrspace(1) %src, i64 %src_offset
   %dest_derived = getelementptr inbounds i8, ptr addrspace(1) %dest, i64 %dest_offset
-  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 16)
+  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 16)
   ret void
 }

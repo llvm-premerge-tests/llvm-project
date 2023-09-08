@@ -1070,6 +1070,9 @@ public:
 // This class wraps the atomic memcpy/memmove intrinsics
 // i.e. llvm.element.unordered.atomic.memcpy/memmove
 class AtomicMemTransferInst : public MemTransferBase<AtomicMemIntrinsic> {
+private:
+  enum { ARG_DEST = 0, ARG_SOURCE = 1 };
+
 public:
   static bool classof(const IntrinsicInst *I) {
     switch (I->getIntrinsicID()) {
@@ -1083,6 +1086,10 @@ public:
   static bool classof(const Value *V) {
     return isa<IntrinsicInst>(V) && classof(cast<IntrinsicInst>(V));
   }
+  // These API returns a type only if the AtomicMemTransferInst is
+  // called from a function that has a GC strategy specified. 
+  Type *getSourceElementType() const { return getParamElementType(ARG_SOURCE); }
+  Type *getDestElementType() const { return getParamElementType(ARG_DEST); }
 };
 
 /// This class represents the atomic memcpy intrinsic

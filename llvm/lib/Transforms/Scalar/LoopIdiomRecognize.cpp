@@ -1413,12 +1413,19 @@ bool LoopIdiomRecognize::processLoopStoreOfLoopLoad(
     if (StoreSize > TTI->getAtomicMemIntrinsicMaxElementSize())
       return Changed;
 
+    std::optional<Type *> ElementType = std::nullopt;
+    // Record ElementType for correct lowering of atomic memcpy if the function
+    // requires GC support.
+    if (TheLoad->getFunction()->hasGC())
+      ElementType = TheLoad->getType();
+
     // Create the call.
     // Note that unordered atomic loads/stores are *required* by the spec to
     // have an alignment but non-atomic loads/stores may not.
     NewCall = Builder.CreateElementUnorderedAtomicMemCpy(
         StoreBasePtr, *StoreAlign, LoadBasePtr, *LoadAlign, NumBytes, StoreSize,
-        AATags.TBAA, AATags.TBAAStruct, AATags.Scope, AATags.NoAlias);
+        AATags.TBAA, AATags.TBAAStruct, AATags.Scope, AATags.NoAlias,
+        ElementType);
   }
   NewCall->setDebugLoc(TheStore->getDebugLoc());
 

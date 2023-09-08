@@ -41,6 +41,44 @@ for.end:                                          ; preds = %for.body, %entry
   ret void
 }
 
+
+define void @test1_gc(i64 %Size) nounwind ssp gc "statepoint-example" {
+; CHECK-LABEL: @test1_gc(
+; CHECK-NEXT:  bb.nph:
+; CHECK-NEXT:    [[BASE:%.*]] = alloca i8, i32 10000, align 1
+; CHECK-NEXT:    [[DEST:%.*]] = alloca i8, i32 10000, align 1
+; CHECK-NEXT:    call void @llvm.memcpy.element.unordered.atomic.p0.p0.i64(ptr elementtype(i8) align 1 [[DEST]], ptr elementtype(i8) align 1 [[BASE]], i64 [[SIZE:%.*]], i32 1)
+; CHECK-NEXT:    br label [[FOR_BODY:%.*]]
+; CHECK:       for.body:
+; CHECK-NEXT:    [[INDVAR:%.*]] = phi i64 [ 0, [[BB_NPH:%.*]] ], [ [[INDVAR_NEXT:%.*]], [[FOR_BODY]] ]
+; CHECK-NEXT:    [[I_0_014:%.*]] = getelementptr i8, ptr [[BASE]], i64 [[INDVAR]]
+; CHECK-NEXT:    [[DESTI:%.*]] = getelementptr i8, ptr [[DEST]], i64 [[INDVAR]]
+; CHECK-NEXT:    [[V:%.*]] = load atomic i8, ptr [[I_0_014]] unordered, align 1
+; CHECK-NEXT:    [[INDVAR_NEXT]] = add i64 [[INDVAR]], 1
+; CHECK-NEXT:    [[EXITCOND:%.*]] = icmp eq i64 [[INDVAR_NEXT]], [[SIZE]]
+; CHECK-NEXT:    br i1 [[EXITCOND]], label [[FOR_END:%.*]], label [[FOR_BODY]]
+; CHECK:       for.end:
+; CHECK-NEXT:    ret void
+;
+bb.nph:
+  %Base = alloca i8, i32 10000
+  %Dest = alloca i8, i32 10000
+  br label %for.body
+
+for.body:                                         ; preds = %bb.nph, %for.body
+  %indvar = phi i64 [ 0, %bb.nph ], [ %indvar.next, %for.body ]
+  %I.0.014 = getelementptr i8, ptr %Base, i64 %indvar
+  %DestI = getelementptr i8, ptr %Dest, i64 %indvar
+  %V = load atomic i8, ptr %I.0.014 unordered, align 1
+  store atomic i8 %V, ptr %DestI unordered, align 1
+  %indvar.next = add i64 %indvar, 1
+  %exitcond = icmp eq i64 %indvar.next, %Size
+  br i1 %exitcond, label %for.end, label %for.body
+
+for.end:                                          ; preds = %for.body, %entry
+  ret void
+}
+
 ;; memcpy.atomic formation (atomic store, normal load)
 define void @test2(i64 %Size) nounwind ssp {
 ; CHECK-LABEL: @test2(

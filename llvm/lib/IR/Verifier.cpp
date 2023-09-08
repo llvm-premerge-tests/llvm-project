@@ -5180,6 +5180,17 @@ void Verifier::visitIntrinsicCall(Intrinsic::ID ID, CallBase &Call) {
   }
   case Intrinsic::memcpy_element_unordered_atomic:
   case Intrinsic::memmove_element_unordered_atomic:
+                                 {
+    const auto *AMTI = cast<AtomicMemTransferInst>(&Call);
+    if (Call.getParent()->getParent()->hasGC()) {
+      Check(AMTI->getSourceElementType() != nullptr,
+            "elementtype required for atomic memory intrinsic with GC support",
+            Call);
+      Check(AMTI->getSourceElementType() == AMTI->getDestElementType(),
+            "expected source and dest element type to be same", Call);
+    }
+                                 }
+    [[fallthrough]];
   case Intrinsic::memset_element_unordered_atomic: {
     const auto *AMI = cast<AtomicMemIntrinsic>(&Call);
 

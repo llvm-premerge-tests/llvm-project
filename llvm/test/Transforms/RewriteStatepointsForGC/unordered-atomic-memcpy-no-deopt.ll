@@ -14,7 +14,7 @@ define void @test_memcpy_no_deopt(ptr addrspace(1) %src, i64 %src_offset, ptr ad
 entry:
   %src_derived = getelementptr inbounds i8, ptr addrspace(1) %src, i64 %src_offset
   %dest_derived = getelementptr inbounds i8, ptr addrspace(1) %dest, i64 %dest_offset
-  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 1)
+  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 1)
   ret void
 }
 
@@ -25,7 +25,7 @@ define void @test_memmove_no_deopt(ptr addrspace(1) %src, i64 %src_offset, ptr a
 entry:
   %src_derived = getelementptr inbounds i8, ptr addrspace(1) %src, i64 %src_offset
   %dest_derived = getelementptr inbounds i8, ptr addrspace(1) %dest, i64 %dest_offset
-  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 1)
+  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 1)
   ret void
 }
 
@@ -36,7 +36,7 @@ define void @test_memcpy_with_deopt(ptr addrspace(1) %src, i64 %src_offset, ptr 
 entry:
   %src_derived = getelementptr inbounds i8, ptr addrspace(1) %src, i64 %src_offset
   %dest_derived = getelementptr inbounds i8, ptr addrspace(1) %dest, i64 %dest_offset
-  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 1) [ "deopt"(i32 0) ]
+  call void @llvm.memcpy.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 1) [ "deopt"(i32 0) ]
   ret void
 }
 
@@ -47,6 +47,6 @@ define void @test_memmove_with_deopt(ptr addrspace(1) %src, i64 %src_offset, ptr
 entry:
   %src_derived = getelementptr inbounds i8, ptr addrspace(1) %src, i64 %src_offset
   %dest_derived = getelementptr inbounds i8, ptr addrspace(1) %dest, i64 %dest_offset
-  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) align 16 %src_derived, ptr addrspace(1) align 16 %dest_derived, i32 %len, i32 1) [ "deopt"(i32 0) ]
+  call void @llvm.memmove.element.unordered.atomic.p1.p1.i32(ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %src_derived, ptr addrspace(1) elementtype(ptr addrspace(1)) align 16 %dest_derived, i32 %len, i32 1) [ "deopt"(i32 0) ]
   ret void
 }

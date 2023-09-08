@@ -681,7 +681,8 @@ public:
       Value *Dst, Align DstAlign, Value *Src, Align SrcAlign, Value *Size,
       uint32_t ElementSize, MDNode *TBAATag = nullptr,
       MDNode *TBAAStructTag = nullptr, MDNode *ScopeTag = nullptr,
-      MDNode *NoAliasTag = nullptr);
+      MDNode *NoAliasTag = nullptr,
+      std::optional<Type *> ElementType = std::nullopt);
 
   CallInst *CreateMemMove(Value *Dst, MaybeAlign DstAlign, Value *Src,
                           MaybeAlign SrcAlign, uint64_t Size,
@@ -716,7 +717,8 @@ public:
       Value *Dst, Align DstAlign, Value *Src, Align SrcAlign, Value *Size,
       uint32_t ElementSize, MDNode *TBAATag = nullptr,
       MDNode *TBAAStructTag = nullptr, MDNode *ScopeTag = nullptr,
-      MDNode *NoAliasTag = nullptr);
+      MDNode *NoAliasTag = nullptr,
+      std::optional<Type *> ElementTy = std::nullopt);
 
 private:
   CallInst *getReductionIntrinsic(Intrinsic::ID ID, Value *Src);

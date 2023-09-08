@@ -256,7 +256,7 @@ CallInst *IRBuilderBase::CreateMemTransferInst(
 CallInst *IRBuilderBase::CreateElementUnorderedAtomicMemCpy(
     Value *Dst, Align DstAlign, Value *Src, Align SrcAlign, Value *Size,
     uint32_t ElementSize, MDNode *TBAATag, MDNode *TBAAStructTag,
-    MDNode *ScopeTag, MDNode *NoAliasTag) {
+    MDNode *ScopeTag, MDNode *NoAliasTag, std::optional<Type *> ElementTy) {
   assert(DstAlign >= ElementSize &&
          "Pointer alignment must be at least element size");
   assert(SrcAlign >= ElementSize &&
@@ -288,13 +288,20 @@ CallInst *IRBuilderBase::CreateElementUnorderedAtomicMemCpy(
   if (NoAliasTag)
     CI->setMetadata(LLVMContext::MD_noalias, NoAliasTag);
 
+  if (ElementTy.has_value()) {
+    CI->addParamAttr(0, Attribute::get(CI->getContext(), Attribute::ElementType,
+                                       *ElementTy));
+    CI->addParamAttr(1, Attribute::get(CI->getContext(), Attribute::ElementType,
+                                       *ElementTy));
+  }
+
   return CI;
 }
 
 CallInst *IRBuilderBase::CreateElementUnorderedAtomicMemMove(
     Value *Dst, Align DstAlign, Value *Src, Align SrcAlign, Value *Size,
     uint32_t ElementSize, MDNode *TBAATag, MDNode *TBAAStructTag,
-    MDNode *ScopeTag, MDNode *NoAliasTag) {
+    MDNode *ScopeTag, MDNode *NoAliasTag, std::optional<Type *> ElementTy) {
   assert(DstAlign >= ElementSize &&
          "Pointer alignment must be at least element size");
   assert(SrcAlign >= ElementSize &&
@@ -324,6 +331,13 @@ CallInst *IRBuilderBase::CreateElementUnorderedAtomicMemMove(
 
   if (NoAliasTag)
     CI->setMetadata(LLVMContext::MD_noalias, NoAliasTag);
+
+  if (ElementTy.has_value()) {
+    CI->addParamAttr(0, Attribute::get(CI->getContext(), Attribute::ElementType,
+                                       *ElementTy));
+    CI->addParamAttr(1, Attribute::get(CI->getContext(), Attribute::ElementType,
+                                       *ElementTy));
+  }
 
   return CI;
 }
