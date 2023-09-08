@@ -3,7 +3,6 @@
 
 ; Check that assume is propagated backwards through all
 ; operations that are `isGuaranteedToTransferExecutionToSuccessor`
-; (it should reach the load and mark it as `align 32`).
 define i32 @assume_inevitable(ptr %a, ptr %b, ptr %c) {
 ; CHECK-LABEL: @assume_inevitable(
 ; CHECK-NEXT:  entry:

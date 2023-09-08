@@ -97,25 +97,6 @@ entry:
   ret i16 %E
 }
 
-; Check that we improve the alignment information.
-; The base pointer is 16-byte aligned and we access the field at
-; an offset of 8-byte.
-; Every element in the @CallerInfos array is 16-byte aligned so
-; any access from the following gep is 8-byte aligned.
-%struct.CallerInfo = type { ptr, i32 }
-@CallerInfos = global [128 x %struct.CallerInfo] zeroinitializer, align 16
-
-define i32 @test_gep_in_struct(i64 %idx) {
-; CHECK-LABEL: @test_gep_in_struct(
-; CHECK-NEXT:    [[NS7:%.*]] = getelementptr inbounds [128 x %struct.CallerInfo], ptr @CallerInfos, i64 0, i64 [[IDX:%.*]], i32 1
-; CHECK-NEXT:    [[RES:%.*]] = load i32, ptr [[NS7]], align 8
-; CHECK-NEXT:    ret i32 [[RES]]
-;
-  %NS7 = getelementptr inbounds [128 x %struct.CallerInfo], ptr @CallerInfos, i64 0, i64 %idx, i32 1
-  %res = load i32, ptr %NS7, align 1
-  ret i32 %res
-}
-
 @g = external global i8
 @g2 = external global i8
 
