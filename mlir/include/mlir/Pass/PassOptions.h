@@ -120,7 +120,7 @@ private:
     /// Returns an argument name that maps to the specified value.
     std::optional<StringRef> findArgStrForValue(const DataType &value) {
       for (auto &it : this->Values)
-        if (it.V.compare(value))
+        if (!it.V.compare(value))
           return it.Name;
       return std::nullopt;
     }
