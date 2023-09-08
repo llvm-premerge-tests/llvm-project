@@ -7,7 +7,7 @@
  *===-----------------------------------------------------------------------===
  */
 
-#if !defined(unreachable) || __has_feature(modules)
-/* Always define unreachable when modules are available. */
+/* See stddef.h for an explanation of builtin_headers_in_system_modules. */
+#if !defined(unreachable) || __has_feature(builtin_headers_in_system_modules)
 #define unreachable() __builtin_unreachable()
 #endif
