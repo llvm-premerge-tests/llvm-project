@@ -149,11 +149,11 @@ define void @loadStore1(double noundef %x) {
 ; SMALL-LOCAL-EXEC-SMALLCM64-LABEL: loadStore1:
 ; SMALL-LOCAL-EXEC-SMALLCM64:       # %bb.0: # %entry
 ; SMALL-LOCAL-EXEC-SMALLCM64-NEXT:    vspltisw v2, 1
-; SMALL-LOCAL-EXEC-SMALLCM64-NEXT:    lfd f1, IThreadLocalVarInit[TL]@le(r13)
-; SMALL-LOCAL-EXEC-SMALLCM64-NEXT:    xvcvsxwdp vs0, vs34
-; SMALL-LOCAL-EXEC-SMALLCM64-NEXT:    vspltisw v2, 8
-; SMALL-LOCAL-EXEC-SMALLCM64-NEXT:    xsadddp f0, f1, f0
+; SMALL-LOCAL-EXEC-SMALLCM64-NEXT:    vspltisw v3, 8
 ; SMALL-LOCAL-EXEC-SMALLCM64-NEXT:    xvcvsxwdp vs1, vs34
+; SMALL-LOCAL-EXEC-SMALLCM64-NEXT:    lfd f0, IThreadLocalVarInit[TL]@le(r13)
+; SMALL-LOCAL-EXEC-SMALLCM64-NEXT:    xsadddp f0, f0, f1
+; SMALL-LOCAL-EXEC-SMALLCM64-NEXT:    xvcvsxwdp vs1, vs35
 ; SMALL-LOCAL-EXEC-SMALLCM64-NEXT:    xsadddp f0, f0, f1
 ; SMALL-LOCAL-EXEC-SMALLCM64-NEXT:    stfd f0, IThreadLocalVarInit[TL]@le(r13)
 ; SMALL-LOCAL-EXEC-SMALLCM64-NEXT:    blr
@@ -161,11 +161,11 @@ define void @loadStore1(double noundef %x) {
 ; SMALL-LOCAL-EXEC-LARGECM64-LABEL: loadStore1:
 ; SMALL-LOCAL-EXEC-LARGECM64:       # %bb.0: # %entry
 ; SMALL-LOCAL-EXEC-LARGECM64-NEXT:    vspltisw v2, 1
-; SMALL-LOCAL-EXEC-LARGECM64-NEXT:    lfd f1, IThreadLocalVarInit[TL]@le(r13)
-; SMALL-LOCAL-EXEC-LARGECM64-NEXT:    xvcvsxwdp vs0, vs34
-; SMALL-LOCAL-EXEC-LARGECM64-NEXT:    vspltisw v2, 8
-; SMALL-LOCAL-EXEC-LARGECM64-NEXT:    xsadddp f0, f1, f0
+; SMALL-LOCAL-EXEC-LARGECM64-NEXT:    vspltisw v3, 8
 ; SMALL-LOCAL-EXEC-LARGECM64-NEXT:    xvcvsxwdp vs1, vs34
+; SMALL-LOCAL-EXEC-LARGECM64-NEXT:    lfd f0, IThreadLocalVarInit[TL]@le(r13)
+; SMALL-LOCAL-EXEC-LARGECM64-NEXT:    xsadddp f0, f0, f1
+; SMALL-LOCAL-EXEC-LARGECM64-NEXT:    xvcvsxwdp vs1, vs35
 ; SMALL-LOCAL-EXEC-LARGECM64-NEXT:    xsadddp f0, f0, f1
 ; SMALL-LOCAL-EXEC-LARGECM64-NEXT:    stfd f0, IThreadLocalVarInit[TL]@le(r13)
 ; SMALL-LOCAL-EXEC-LARGECM64-NEXT:    blr
