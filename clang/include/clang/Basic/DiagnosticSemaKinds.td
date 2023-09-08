@@ -6365,6 +6365,15 @@ def warn_superclass_variable_sized_type_not_at_end : Warning<
   "field %0 can overwrite instance variable %1 with variable sized type %2"
   " in superclass %3">, InGroup<ObjCFlexibleArray>;
 
+def warn_flexible_array_counted_by_attr_field_not_found : Warning<
+  "counted_by field %0 not found">;
+def err_flexible_array_counted_by_attr_refers_to_self : Error<
+  "counted_by field %0 cannot refer to the flexible array">;
+def err_flexible_array_counted_by_attr_field_not_integral : Error<
+  "counted_by field %0 is not an integral type">;
+def note_flexible_array_counted_by_attr_field : Note<
+  "counted_by field %0 declared here">;
+
 let CategoryName = "ARC Semantic Issue" in {
 
 // ARC-mode diagnostics.
