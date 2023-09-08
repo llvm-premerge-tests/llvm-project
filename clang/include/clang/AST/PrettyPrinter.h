@@ -77,7 +77,7 @@ struct PrintingPolicy {
         PrintCanonicalTypes(false), PrintInjectedClassNameWithArguments(true),
         UsePreferredNames(true), AlwaysIncludeTypeForTemplateArgument(false),
         CleanUglifiedParameters(false), EntireContentsOfLargeArray(true),
-        UseEnumerators(true) {}
+        UseEnumerators(true), ParenthesizeFunctionName(true) {}
 
   /// Adjust this printing policy for cases where it's known that we're
   /// printing C++ code (for instance, if AST dumping reaches a C++-only
@@ -303,6 +303,21 @@ struct PrintingPolicy {
   /// Whether to print enumerator non-type template parameters with a matching
   /// enumerator name or via cast of an integer.
   unsigned UseEnumerators : 1;
+
+  /// Whether to wrap function names in function types in parentheses.
+  ///
+  /// This flag determines whether function types will printed with parentheses surrounding the name:
+  ///
+  /// \code
+  /// void (funcName)(int);
+  /// \endcode
+  ///
+  /// or without parentheses:
+  ///
+  /// \code
+  /// void funcName(int);
+  /// \endcode
+  unsigned ParenthesizeFunctionName : 1;
 
   /// Callbacks to use to allow the behavior of printing to be customized.
   const PrintingCallbacks *Callbacks = nullptr;

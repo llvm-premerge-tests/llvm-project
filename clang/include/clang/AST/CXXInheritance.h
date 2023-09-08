@@ -303,25 +303,60 @@ public:
   void replaceAll(UniqueVirtualMethod Overriding);
 };
 
-/// A mapping from each virtual member function to its set of
-/// final overriders.
+/// A mapping from each virtual member function to its set of final overriders.
 ///
-/// Within a class hierarchy for a given derived class, each virtual
-/// member function in that hierarchy has one or more "final
-/// overriders" (C++ [class.virtual]p2). A final overrider for a
-/// virtual function "f" is the virtual function that will actually be
-/// invoked when dispatching a call to "f" through the
-/// vtable. Well-formed classes have a single final overrider for each
-/// virtual function; in abstract classes, the final overrider for at
-/// least one virtual function is a pure virtual function. Due to
-/// multiple, virtual inheritance, it is possible for a class to have
-/// more than one final overrider. Although this is an error (per C++
-/// [class.virtual]p2), it is not considered an error here: the final
-/// overrider map can represent multiple final overriders for a
-/// method, and it is up to the client to determine whether they are
-/// problem. For example, the following class \c D has two final
-/// overriders for the virtual function \c A::f(), one in \c C and one
-/// in \c D:
+/// Within a class hierarchy for a given derived class, each virtual member
+/// function in that hierarchy has one or more "final overriders" (C++
+/// [class.virtual]p2). A final overrider for a virtual function "f" is the
+/// virtual function that will actually be invoked when dispatching a call to
+/// "f" through the vtable. In abstract classes, the final overrider for at
+/// least one virtual function is a pure virtual function. Well-formed classes
+/// have a single final overrider for each virtual function per base class
+/// subobject. A virtual function can have multiple final overriders in
+/// different base class subobjects. This makes "final overrider" a property of
+/// a base class subobject; in other words, a function "f" is a "final
+/// overrider" for a specific base class subobject:
+///
+/// \code
+///   struct A { virtual void f(); };
+///   struct B : A { virtual void f(); };
+///   struct C : A { virtual void f(); };
+///   struct D : B, C { };
+///   // In D, B::f and C::f are final overriders of A::f
+/// \endcode
+///
+/// Therefore, the first level of this data structure maps from virtual
+/// functions to a list of pairs \c OverridingMethods := (subobject id,
+/// overriders). Subobject id 0 represents the virtual base class subobject of
+/// that type, while subobject numbers greater than 0 refer to non-virtual base
+/// class subobjects of that type.
+/// For the example above, we map \c A::f to the list
+/// [(1, [\c B::f]), (2, [\c C::f])].
+///
+/// The domain of the map is the set of all virtual member functions
+/// declarations of all base class subobjects and the class itself. The order of
+/// the MapVector is the depth-first, post-order traversal of all base classes
+/// and within each base class, the declaration order of the virtual functions.
+/// If a base class appears via multiple subobjects, the order for the methods
+/// it generates for the domain are from the first occurrence in the traversal
+/// order. For the example above:
+/// - \c A::f -> [(1, [\c B::f]), (2, [\c C::f])]
+/// - \c B::f -> [(1, [\c B::f])]
+/// - \c C::f -> [(1, [\c C::f])]
+/// Note that a final overrider like \c C::f can appear multiple times in the
+/// codomain of the map. Further note that the \c A subobject appears via two
+/// different base classes (D->B->A and D->C->A), and its methods are listed
+/// first since D->B->A is before D->C->A in the traversal order, and D->B->A is
+/// the first class we visit post-order at all (D->B->A, then D->B,
+/// then D->C->A, then D->C).
+///
+/// Due to multiple, virtual inheritance, it is possible for a class to have
+/// more than one final overrider per base class suboject. Although this is an
+/// error (per C++ [class.virtual]p2), we will still represent multiple final
+/// overriders per subobject in the final overrider map: it is up to the client
+/// to determine whether they are a problem. For example, the following class \c
+/// D has two final overriders for the virtual function \c A::f() in the same
+/// subobject \c A, one overrider in \c C and one overrider in \c D:
 ///
 /// \code
 ///   struct A { virtual void f(); };
@@ -330,30 +365,16 @@ public:
 ///   struct D : B, C { };
 /// \endcode
 ///
-/// This data structure contains a mapping from every virtual
-/// function *that does not override an existing virtual function* and
-/// in every subobject where that virtual function occurs to the set
-/// of virtual functions that override it. Thus, the same virtual
-/// function \c A::f can actually occur in multiple subobjects of type
-/// \c A due to multiple inheritance, and may be overridden by
-/// different virtual functions in each, as in the following example:
+/// Note that D->B->A and D->C->A are the same subobject due to the virtual
+/// inheritance.
 ///
-/// \code
-///   struct A { virtual void f(); };
-///   struct B : A { virtual void f(); };
-///   struct C : A { virtual void f(); };
-///   struct D : B, C { };
-/// \endcode
+/// Thus, the overriders in the \c OverridingMethods are a list of
+/// \c UniqueVirtualMethod, each of which represents a final overrider. For the
+/// example above, we map \c A::f to the list [(0, [\c B::f, \c C::f])].
 ///
-/// Unlike in the previous example, where the virtual functions \c
-/// B::f and \c C::f both overrode \c A::f in the same subobject of
-/// type \c A, in this example the two virtual functions both override
-/// \c A::f but in *different* subobjects of type A. This is
-/// represented by numbering the subobjects in which the overridden
-/// and the overriding virtual member functions are located. Subobject
-/// 0 represents the virtual base class subobject of that type, while
-/// subobject numbers greater than 0 refer to non-virtual base class
-/// subobjects of that type.
+/// Combined, we map in general:
+/// virtual function -> [(subobject id, [final overriders in that subobject]),
+///                      ...]
 class CXXFinalOverriderMap
   : public llvm::MapVector<const CXXMethodDecl *, OverridingMethods> {};
 

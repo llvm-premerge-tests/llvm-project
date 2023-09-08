@@ -91,9 +91,15 @@ protected:
   std::string apply(llvm::StringRef MarkedCode,
                     llvm::StringMap<std::string> *EditedFiles = nullptr) const;
 
+  // TODO: doc
+  // TODO: what if prepare fails?
+  std::string title(llvm::StringRef MarkedCode) const;
+
   // Helpers for EXPECT_AVAILABLE/EXPECT_UNAVAILABLE macros.
   using WrappedAST = std::pair<ParsedAST, /*WrappingOffset*/ unsigned>;
   WrappedAST build(llvm::StringRef) const;
+  // TODO: remove
+  WrappedAST buildErr(llvm::StringRef) const;
   bool isAvailable(WrappedAST &, llvm::Annotations::Range) const;
   // Return code re-decorated with a single point/range.
   static std::string decorate(llvm::StringRef, unsigned);

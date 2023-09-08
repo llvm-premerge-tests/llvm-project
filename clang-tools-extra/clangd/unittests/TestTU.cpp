@@ -111,6 +111,31 @@ TestTU::preamble(PreambleParsedCallback PreambleCallback) const {
                                       /*StoreInMemory=*/true, PreambleCallback);
 }
 
+// TODO: remove
+ParsedAST TestTU::buildErr() const {
+  MockFS FS;
+  auto Inputs = inputs(FS);
+  Inputs.Opts = ParseOpts;
+  StoreDiags Diags;
+  auto CI = buildCompilerInvocation(Inputs, Diags);
+  assert(CI && "Failed to build compilation invocation.");
+  if (OverlayRealFileSystemForModules)
+    initializeModuleCache(*CI);
+  auto ModuleCacheDeleter = llvm::make_scope_exit(
+      std::bind(deleteModuleCache, CI->getHeaderSearchOpts().ModuleCachePath));
+
+  auto Preamble = clang::clangd::buildPreamble(testPath(Filename), *CI, Inputs,
+                                               /*StoreInMemory=*/true,
+                                               /*PreambleCallback=*/nullptr);
+  auto AST = ParsedAST::build(testPath(Filename), Inputs, std::move(CI),
+                              Diags.take(), Preamble);
+  if (!AST) {
+    llvm::errs() << "Failed to build code:\n" << Code;
+    std::abort();
+  }
+  return std::move(*AST);
+}
+
 ParsedAST TestTU::build() const {
   MockFS FS;
   auto Inputs = inputs(FS);

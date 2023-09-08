@@ -118,6 +118,7 @@ add_unittest(ClangdUnitTests ClangdTests
   tweaks/AnnotateHighlightingsTests.cpp
   tweaks/DefineInlineTests.cpp
   tweaks/DefineOutlineTests.cpp
+  tweaks/DeclarePureVirtualsTests.cpp
   tweaks/DumpASTTests.cpp
   tweaks/DumpRecordLayoutTests.cpp
   tweaks/DumpSymbolTests.cpp

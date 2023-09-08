@@ -409,10 +409,10 @@ preferredIncludeDirective(llvm::StringRef FileName, const LangOptions &LangOpts,
 }
 
 std::string printType(const QualType QT, const DeclContext &CurContext,
-                      const llvm::StringRef Placeholder) {
+                      const llvm::StringRef Placeholder, PrintingPolicy* CustomPP) {
   std::string Result;
   llvm::raw_string_ostream OS(Result);
-  PrintingPolicy PP(CurContext.getParentASTContext().getPrintingPolicy());
+  PrintingPolicy PP(CustomPP ? *CustomPP : CurContext.getParentASTContext().getPrintingPolicy());
   PP.SuppressTagKeyword = true;
   PP.SuppressUnwrittenScope = true;
 

@@ -1080,6 +1080,7 @@ struct CodeAction {
   const static llvm::StringLiteral QUICKFIX_KIND;
   const static llvm::StringLiteral REFACTOR_KIND;
   const static llvm::StringLiteral INFO_KIND;
+  const static llvm::StringLiteral GENERATE_KIND;
 
   /// The diagnostics that this code action resolves.
   std::optional<std::vector<Diagnostic>> diagnostics;

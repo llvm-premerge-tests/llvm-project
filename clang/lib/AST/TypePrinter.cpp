@@ -873,13 +873,13 @@ void TypePrinter::printFunctionProtoBefore(const FunctionProtoType *T,
                                            raw_ostream &OS) {
   if (T->hasTrailingReturn()) {
     OS << "auto ";
-    if (!HasEmptyPlaceHolder)
+    if (!HasEmptyPlaceHolder && Policy.ParenthesizeFunctionName)
       OS << '(';
   } else {
     // If needed for precedence reasons, wrap the inner part in grouping parens.
     SaveAndRestore PrevPHIsEmpty(HasEmptyPlaceHolder, false);
     printBefore(T->getReturnType(), OS);
-    if (!PrevPHIsEmpty.get())
+    if (!PrevPHIsEmpty.get() && Policy.ParenthesizeFunctionName)
       OS << '(';
   }
 }
@@ -903,7 +903,7 @@ StringRef clang::getParameterABISpelling(ParameterABI ABI) {
 void TypePrinter::printFunctionProtoAfter(const FunctionProtoType *T,
                                           raw_ostream &OS) {
   // If needed for precedence reasons, wrap the inner part in grouping parens.
-  if (!HasEmptyPlaceHolder)
+  if (!HasEmptyPlaceHolder && Policy.ParenthesizeFunctionName)
     OS << ')';
   SaveAndRestore NonEmptyPH(HasEmptyPlaceHolder, false);
 

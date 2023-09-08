@@ -29,6 +29,7 @@ add_clang_library(clangDaemonTweaks OBJECT
   RemoveUsingNamespace.cpp
   SpecialMembers.cpp
   SwapIfBranches.cpp
+  DeclarePureVirtuals.cpp
 
   LINK_LIBS
   clangAST

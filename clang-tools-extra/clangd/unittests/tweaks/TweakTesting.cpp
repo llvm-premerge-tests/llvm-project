@@ -8,10 +8,13 @@
 
 #include "TweakTesting.h"
 
+#include "ParsedAST.h"
 #include "SourceCode.h"
 #include "TestTU.h"
 #include "refactor/Tweak.h"
 #include "llvm/Support/Error.h"
+#include "llvm/Support/VirtualFileSystem.h"
+#include "llvm/Testing/Annotations/Annotations.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include <optional>
@@ -80,6 +83,26 @@ applyTweak(ParsedAST &AST, llvm::Annotations::Range Range, StringRef TweakID,
   return Result;
 }
 
+// TODO: doc
+std::optional<std::string>
+getTweakTitle(ParsedAST &AST, llvm::Annotations::Range Range, StringRef TweakID,
+              const SymbolIndex *Index, llvm::vfs::FileSystem *FS) {
+  std::string Result;
+  SelectionTree::createEach(AST.getASTContext(), AST.getTokens(), Range.Begin,
+                            Range.End, [&](SelectionTree ST) {
+                              Tweak::Selection S(Index, AST, Range.Begin,
+                                                 Range.End, std::move(ST), FS);
+                              if (auto T = prepareTweak(TweakID, S, nullptr)) {
+                                Result = (*T)->title();
+                                return true;
+                              } else {
+                                llvm::consumeError(T.takeError());
+                                return false;
+                              }
+                            });
+  return Result;
+}
+
 } // namespace
 
 std::string TweakTest::apply(llvm::StringRef MarkedCode,
@@ -126,6 +149,26 @@ std::string TweakTest::apply(llvm::StringRef MarkedCode,
   return EditedMainFile;
 }
 
+std::string TweakTest::title(llvm::StringRef MarkedCode) const {
+  // TODO: code dup
+  std::string WrappedCode = wrap(Context, MarkedCode);
+  llvm::Annotations Input(WrappedCode);
+  TestTU TU;
+  TU.Filename = std::string(FileName);
+  TU.HeaderCode = Header;
+  TU.AdditionalFiles = std::move(ExtraFiles);
+  TU.Code = std::string(Input.code());
+  TU.ExtraArgs = ExtraArgs;
+  ParsedAST AST = TU.build();
+
+  auto Result = getTweakTitle(
+      AST, rangeOrPoint(Input), TweakID, Index.get(),
+      &AST.getSourceManager().getFileManager().getVirtualFileSystem());
+  if (!Result)
+    return "unavailable";
+  return *Result;
+}
+
 bool TweakTest::isAvailable(WrappedAST &AST,
                             llvm::Annotations::Range Range) const {
   // Adjust range for wrapping offset.
@@ -148,6 +191,17 @@ TweakTest::WrappedAST TweakTest::build(llvm::StringRef Code) const {
   TU.ExtraArgs = ExtraArgs;
   TU.AdditionalFiles = std::move(ExtraFiles);
   return {TU.build(), wrapping(Context).first.size()};
+}
+
+// TODO: remove
+TweakTest::WrappedAST TweakTest::buildErr(llvm::StringRef Code) const {
+  TestTU TU;
+  TU.Filename = std::string(FileName);
+  TU.HeaderCode = Header;
+  TU.Code = wrap(Context, Code);
+  TU.ExtraArgs = ExtraArgs;
+  TU.AdditionalFiles = std::move(ExtraFiles);
+  return {TU.buildErr(), wrapping(Context).first.size()};
 }
 
 std::string TweakTest::decorate(llvm::StringRef Code, unsigned Point) {
