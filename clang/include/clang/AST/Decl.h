@@ -4268,6 +4268,19 @@ public:
     return field_begin() == field_end();
   }
 
+  FieldDecl *getLastField() {
+    FieldDecl *FD = nullptr;
+    for (FieldDecl *Field : fields())
+      FD = Field;
+    return FD;
+  }
+  const FieldDecl *getLastField() const {
+    const FieldDecl *FD = nullptr;
+    for (const FieldDecl *Field : fields())
+      FD = Field;
+    return FD;
+  }
+
   /// Note that the definition of this type is now complete.
   virtual void completeDefinition();
 

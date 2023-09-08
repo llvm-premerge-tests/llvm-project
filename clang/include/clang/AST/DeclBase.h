@@ -18,6 +18,7 @@
 #include "clang/AST/DeclarationName.h"
 #include "clang/Basic/IdentifierTable.h"
 #include "clang/Basic/LLVM.h"
+#include "clang/Basic/LangOptions.h"
 #include "clang/Basic/SourceLocation.h"
 #include "clang/Basic/Specifiers.h"
 #include "llvm/ADT/ArrayRef.h"
@@ -476,6 +477,12 @@ public:
 
   // Return true if this is a FileContext Decl.
   bool isFileContextDecl() const;
+
+  /// Whether it resembles a flexible array member.
+  static bool isFlexibleArrayMemberLike(
+      ASTContext &Context, const Decl *D, QualType Ty,
+      LangOptions::StrictFlexArraysLevelKind StrictFlexArraysLevel,
+      bool IgnoreTemplateOrMacroSubstitution);
 
   ASTContext &getASTContext() const LLVM_READONLY;
 
