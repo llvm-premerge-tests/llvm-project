@@ -389,6 +389,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeAMDGPUTarget() {
   initializeAMDGPULateCodeGenPreparePass(*PR);
   initializeAMDGPURemoveIncompatibleFunctionsPass(*PR);
   initializeAMDGPULowerModuleLDSLegacyPass(*PR);
+  initializeAMDGPULowerBufferFatPointersPass(*PR);
   initializeAMDGPURewriteOutArgumentsPass(*PR);
   initializeAMDGPURewriteUndefForPHIPass(*PR);
   initializeAMDGPUUnifyMetadataPass(*PR);
@@ -611,6 +612,10 @@ void AMDGPUTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
         }
         if (PassName == "amdgpu-lower-module-lds") {
           PM.addPass(AMDGPULowerModuleLDSPass(*this));
+          return true;
+        }
+        if (PassName == "amdgpu-lower-buffer-fat-pointers") {
+          PM.addPass(AMDGPULowerBufferFatPointersPass(*this));
           return true;
         }
         if (PassName == "amdgpu-lower-ctor-dtor") {
@@ -1068,6 +1073,17 @@ void AMDGPUPassConfig::addCodeGenPrepare() {
 
   if (isPassEnabled(EnableLoadStoreVectorizer))
     addPass(createLoadStoreVectorizerPass());
+
+  if (TM->getTargetTriple().getArch() == Triple::amdgcn) {
+    // This lowering has been placed after codegenprepare to take advantage of
+    // address mode matching (which is why it isn't put with the LDS lowerings).
+    // It could be placed anywhere before uniformity annotations (an analysis
+    // that it changes by splitting up fat pointers into their components)
+    // but has been put before switch lowering and CFG flattening so that those
+    // passes can run on the more optimized control flow this pass creates in
+    // many cases.
+    addPass(createAMDGPULowerBufferFatPointersPass());
+  }
 
   // LowerSwitch pass may introduce unreachable blocks that can
   // cause unexpected behavior for subsequent passes. Placing it
