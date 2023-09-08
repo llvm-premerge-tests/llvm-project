@@ -563,8 +563,12 @@ DecodeStatus RISCVDisassembler::getInstruction(MCInst &MI, uint64_t &Size,
     TRY_TO_DECODE_FEATURE(RISCV::FeatureVendorXCVbitmanip,
                           DecoderTableXCVbitmanip32,
                           "CORE-V Bit Manipulation custom opcode table");
+    TRY_TO_DECODE_FEATURE(RISCV::FeatureVendorXCVelw, DecoderTableXCVelw32,
+                          "CORE-V Event load custom opcode table");
     TRY_TO_DECODE_FEATURE(RISCV::FeatureVendorXCVmac, DecoderTableXCVmac32,
                           "CORE-V MAC custom opcode table");
+    TRY_TO_DECODE_FEATURE(RISCV::FeatureVendorXCVmem, DecoderTableXCVmem32,
+                          "CORE-V MEM custom opcode table");
     TRY_TO_DECODE_FEATURE(RISCV::FeatureVendorXCValu, DecoderTableXCValu32,
                           "CORE-V ALU custom opcode table");
     TRY_TO_DECODE_FEATURE(RISCV::FeatureVendorXCVsimd, DecoderTableXCVsimd32,
