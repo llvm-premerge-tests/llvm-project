@@ -207,8 +207,7 @@ define i1 @test_conditional2(i32 %a, i32 %b, ptr %c) {
 ; CHECK-NEXT:    b.eq LBB3_6
 ; CHECK-NEXT:  ; %bb.8: ; %if.then
 ; CHECK-NEXT:    ; in Loop: Header=BB3_6 Depth=1
-; CHECK-NEXT:    sxtw x8, w22
-; CHECK-NEXT:    str w9, [x19, x8, lsl #2]
+; CHECK-NEXT:    str w9, [x19, w22, sxtw #2]
 ; CHECK-NEXT:    bl _foo
 ; CHECK-NEXT:    mov w8, wzr
 ; CHECK-NEXT:    b LBB3_6
@@ -250,8 +249,7 @@ define i1 @test_conditional2(i32 %a, i32 %b, ptr %c) {
 ; OUTLINE-ATOMICS-NEXT:    b.eq LBB3_1
 ; OUTLINE-ATOMICS-NEXT:  ; %bb.3: ; %if.then
 ; OUTLINE-ATOMICS-NEXT:    ; in Loop: Header=BB3_1 Depth=1
-; OUTLINE-ATOMICS-NEXT:    sxtw x8, w22
-; OUTLINE-ATOMICS-NEXT:    str w9, [x19, x8, lsl #2]
+; OUTLINE-ATOMICS-NEXT:    str w9, [x19, w22, sxtw #2]
 ; OUTLINE-ATOMICS-NEXT:    bl _foo
 ; OUTLINE-ATOMICS-NEXT:    mov w8, wzr
 ; OUTLINE-ATOMICS-NEXT:    b LBB3_1

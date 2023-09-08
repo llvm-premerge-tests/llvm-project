@@ -28,8 +28,8 @@ define <4 x i8> @test_varidx_extract_v8s8(<8 x i8> %x, i32 %idx) {
 ; CHECK-GISEL-NEXT:    sub sp, sp, #16
 ; CHECK-GISEL-NEXT:    .cfi_def_cfa_offset 16
 ; CHECK-GISEL-NEXT:    mov w9, w0
-; CHECK-GISEL-NEXT:    add x8, sp, #8
 ; CHECK-GISEL-NEXT:    // kill: def $d0 killed $d0 def $q0
+; CHECK-GISEL-NEXT:    add x8, sp, #8
 ; CHECK-GISEL-NEXT:    str d0, [sp, #8]
 ; CHECK-GISEL-NEXT:    and x9, x9, #0x7
 ; CHECK-GISEL-NEXT:    mov b2, v0.b[1]
@@ -37,8 +37,7 @@ define <4 x i8> @test_varidx_extract_v8s8(<8 x i8> %x, i32 %idx) {
 ; CHECK-GISEL-NEXT:    lsl x10, x9, #1
 ; CHECK-GISEL-NEXT:    mov b0, v0.b[3]
 ; CHECK-GISEL-NEXT:    sub x9, x10, x9
-; CHECK-GISEL-NEXT:    add x8, x8, x9
-; CHECK-GISEL-NEXT:    ldrb w8, [x8]
+; CHECK-GISEL-NEXT:    ldrb w8, [x8, x9]
 ; CHECK-GISEL-NEXT:    fmov s1, w8
 ; CHECK-GISEL-NEXT:    mov v1.h[1], v2.h[0]
 ; CHECK-GISEL-NEXT:    mov v1.h[2], v3.h[0]

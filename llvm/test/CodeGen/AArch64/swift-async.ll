@@ -120,8 +120,7 @@ define swifttailcc ptr @context_in_func() "frame-pointer"="non-leaf" {
 
 define swifttailcc void @write_frame_context(ptr swiftasync %ctx, ptr %newctx) "frame-pointer"="non-leaf" {
 ; CHECK-LABEL: write_frame_context:
-; CHECK: sub x[[ADDR:[0-9]+]], x29, #8
-; CHECK: str x0, [x[[ADDR]]]
+; CHECK: stur x0, [x29, #-8]
   %ptr = call ptr @llvm.swift.async.context.addr()
   store ptr %newctx, ptr %ptr
   ret void

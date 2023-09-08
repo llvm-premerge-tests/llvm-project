@@ -245,9 +245,9 @@ define dso_local i8 @test_atomic_load_and_i8(i8 %offset) nounwind {
 ; OUTLINE_ATOMICS-LABEL: test_atomic_load_and_i8:
 ; OUTLINE_ATOMICS:       // %bb.0:
 ; OUTLINE_ATOMICS-NEXT:    str x30, [sp, #-16]! // 8-byte Folded Spill
-; OUTLINE_ATOMICS-NEXT:    mvn w0, w0
 ; OUTLINE_ATOMICS-NEXT:    adrp x1, var8
 ; OUTLINE_ATOMICS-NEXT:    add x1, x1, :lo12:var8
+; OUTLINE_ATOMICS-NEXT:    mvn w0, w0
 ; OUTLINE_ATOMICS-NEXT:    bl __aarch64_ldclr1_rel
 ; OUTLINE_ATOMICS-NEXT:    ldr x30, [sp], #16 // 8-byte Folded Reload
 ; OUTLINE_ATOMICS-NEXT:    ret
@@ -273,9 +273,9 @@ define dso_local i16 @test_atomic_load_and_i16(i16 %offset) nounwind {
 ; OUTLINE_ATOMICS-LABEL: test_atomic_load_and_i16:
 ; OUTLINE_ATOMICS:       // %bb.0:
 ; OUTLINE_ATOMICS-NEXT:    str x30, [sp, #-16]! // 8-byte Folded Spill
-; OUTLINE_ATOMICS-NEXT:    mvn w0, w0
 ; OUTLINE_ATOMICS-NEXT:    adrp x1, var16
 ; OUTLINE_ATOMICS-NEXT:    add x1, x1, :lo12:var16
+; OUTLINE_ATOMICS-NEXT:    mvn w0, w0
 ; OUTLINE_ATOMICS-NEXT:    bl __aarch64_ldclr2_relax
 ; OUTLINE_ATOMICS-NEXT:    ldr x30, [sp], #16 // 8-byte Folded Reload
 ; OUTLINE_ATOMICS-NEXT:    ret
@@ -301,9 +301,9 @@ define dso_local i32 @test_atomic_load_and_i32(i32 %offset) nounwind {
 ; OUTLINE_ATOMICS-LABEL: test_atomic_load_and_i32:
 ; OUTLINE_ATOMICS:       // %bb.0:
 ; OUTLINE_ATOMICS-NEXT:    str x30, [sp, #-16]! // 8-byte Folded Spill
-; OUTLINE_ATOMICS-NEXT:    mvn w0, w0
 ; OUTLINE_ATOMICS-NEXT:    adrp x1, var32
 ; OUTLINE_ATOMICS-NEXT:    add x1, x1, :lo12:var32
+; OUTLINE_ATOMICS-NEXT:    mvn w0, w0
 ; OUTLINE_ATOMICS-NEXT:    bl __aarch64_ldclr4_acq_rel
 ; OUTLINE_ATOMICS-NEXT:    ldr x30, [sp], #16 // 8-byte Folded Reload
 ; OUTLINE_ATOMICS-NEXT:    ret
@@ -329,9 +329,9 @@ define dso_local i64 @test_atomic_load_and_i64(i64 %offset) nounwind {
 ; OUTLINE_ATOMICS-LABEL: test_atomic_load_and_i64:
 ; OUTLINE_ATOMICS:       // %bb.0:
 ; OUTLINE_ATOMICS-NEXT:    str x30, [sp, #-16]! // 8-byte Folded Spill
-; OUTLINE_ATOMICS-NEXT:    mvn x0, x0
 ; OUTLINE_ATOMICS-NEXT:    adrp x1, var64
 ; OUTLINE_ATOMICS-NEXT:    add x1, x1, :lo12:var64
+; OUTLINE_ATOMICS-NEXT:    mvn x0, x0
 ; OUTLINE_ATOMICS-NEXT:    bl __aarch64_ldclr8_acq
 ; OUTLINE_ATOMICS-NEXT:    ldr x30, [sp], #16 // 8-byte Folded Reload
 ; OUTLINE_ATOMICS-NEXT:    ret

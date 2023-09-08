@@ -527,14 +527,14 @@ define <4 x i65> @test_ldnp_v4i65(ptr %A) {
 define <4 x i63> @test_ldnp_v4i63(ptr %A) {
 ; CHECK-LABEL: test_ldnp_v4i63:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    ldp x8, x9, [x0]
-; CHECK-NEXT:    ldp x10, x11, [x0, #16]
-; CHECK-NEXT:    extr x12, x9, x8, #63
-; CHECK-NEXT:    and x0, x8, #0x7fffffffffffffff
-; CHECK-NEXT:    extr x9, x10, x9, #62
-; CHECK-NEXT:    extr x3, x11, x10, #61
-; CHECK-NEXT:    and x1, x12, #0x7fffffffffffffff
-; CHECK-NEXT:    and x2, x9, #0x7fffffffffffffff
+; CHECK-NEXT:    ldp x8, x9, [x0, #16]
+; CHECK-NEXT:    ldp x10, x11, [x0]
+; CHECK-NEXT:    extr x3, x9, x8, #61
+; CHECK-NEXT:    extr x9, x11, x10, #63
+; CHECK-NEXT:    extr x8, x8, x11, #62
+; CHECK-NEXT:    and x0, x10, #0x7fffffffffffffff
+; CHECK-NEXT:    and x1, x9, #0x7fffffffffffffff
+; CHECK-NEXT:    and x2, x8, #0x7fffffffffffffff
 ; CHECK-NEXT:    ret
 ;
 ; CHECK-BE-LABEL: test_ldnp_v4i63:
