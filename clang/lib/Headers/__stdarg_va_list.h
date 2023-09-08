@@ -7,7 +7,8 @@
  *===-----------------------------------------------------------------------===
  */
 
-#ifndef _VA_LIST
+/* See stdarg.h for an explanation of builtin_headers_in_system_modules. */
+#if !defined(_VA_LIST) || __has_feature(builtin_headers_in_system_modules)
 #define _VA_LIST
 typedef __builtin_va_list va_list;
 #endif

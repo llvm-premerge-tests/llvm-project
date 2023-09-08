@@ -8,14 +8,17 @@
  */
 
 #if !defined(__cplusplus) || (defined(_MSC_VER) && !_NATIVE_WCHAR_T_DEFINED)
-/* Always define wchar_t when modules are available. */
-#if !defined(_WCHAR_T) || __has_feature(modules)
-#if !__has_feature(modules)
+
+/* See stddef.h for an explanation of builtin_headers_in_system_modules. */
+#if !defined(_WCHAR_T) || __has_feature(builtin_headers_in_system_modules)
 #define _WCHAR_T
-#if defined(_MSC_EXTENSIONS)
+
+#ifdef _MSC_EXTENSIONS
 #define _WCHAR_T_DEFINED
 #endif
-#endif
+
 typedef __WCHAR_TYPE__ wchar_t;
+
 #endif
+
 #endif
