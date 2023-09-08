@@ -2899,14 +2899,114 @@ Instruction *InstCombinerImpl::foldICmpAddConstant(ICmpInst &Cmp,
                                                    BinaryOperator *Add,
                                                    const APInt &C) {
   Value *Y = Add->getOperand(1);
+  Value *X = Add->getOperand(0);
+
+  Value *Op0 = X, *Op1 = Y;
+  const CmpInst::Predicate Pred = Cmp.getPredicate();
+
+  // We handle all (s/zext i1 Op0 + s/zext i1 Op1 ==/!= 0/1/2) here.
+  // TODO: sext -1, sext -2
+  // sext i1 X + sext i1 Y == -1 --> xor i1 X, Y
+  // https://alive2.llvm.org/ce/z/2nSJ22
+  // sext i1 X + sext i1 Y == -2 --> and i1 X, Y
+  // https://alive2.llvm.org/ce/z/rasQlX
+  if (Cmp.isEquality() &&
+      match(Add, m_c_Add(m_OneUse(m_ZExtOrSExt(m_Value(Op0))),
+                         m_OneUse(m_ZExtOrSExt(m_Value(Op1))))) &&
+      Op0->getType()->isIntOrIntVectorTy(1) &&
+      Op1->getType()->isIntOrIntVectorTy(1) &&
+      (C.isZero() || C.isOne() || (C.exactLogBase2() == 1))) {
+    Value *Cond = Builder.getFalse();
+    // Handle zext/zext additions
+    if (match(X, m_OneUse(m_ZExt(m_Value(Op0)))) &&
+        match(Y, m_OneUse(m_ZExt(m_Value(Op1))))) {
+      if (Pred == ICmpInst::ICMP_EQ) {
+        // Case 1: zext i1 Op0 + zext i1 Op1 == 0 --> !(or i1 Op0, Op1)
+        if (C.isZero())
+          Cond = Builder.CreateNot(Builder.CreateOr(Op0, Op1));
+        else if (C.isOne())
+          // Case 2:  zext i1 Op0 + zext i1 Op1 == 1 --> xor i1 Op0, Op1
+          Cond = Builder.CreateXor(Op0, Op1);
+        else
+          // Case 3: zext i1 Op0 + zext i1 Op1 == 2 --> xor i1 Op0, Op1
+          Cond = Builder.CreateAnd(Op0, Op1);
+      } else {
+        // Case 1: zext i1 Op0 + zext i1 Op1 != 0 --> or i1 Op0, Op1
+        if (C.isZero())
+          Cond = Builder.CreateOr(Op0, Op1);
+        else if (C.isOne())
+          // Case 2: zext i1 Op0 + zext i1 Op1 != 1 --> !(xor i1 Op0, Op1)
+          Cond = Builder.CreateNot(Builder.CreateXor(Op0, Op1));
+        else
+          // Case 3: zext i1 Op0 + zext i1 Op1 != 2 --> !(and i1 Op0, Op1)
+          Cond = Builder.CreateNot(Builder.CreateAnd(Op0, Op1));
+      }
+      return replaceInstUsesWith(Cmp, Cond);
+    }
+
+    // Handles sext i1 Op0 + sext i1 Op1 ==/!= 0/1/2
+    if (match(X, m_OneUse(m_SExt(m_Value(Op0)))) &&
+        match(Y, m_OneUse(m_SExt(m_Value(Op1))))) {
+      if (Pred == ICmpInst::ICMP_EQ) {
+        // Case 1: sext i1 Op0 + sext i1 Op1 == 0 --> !(or i1 Op0, Op1)
+        if (C.isZero())
+          Cond = Builder.CreateNot(Builder.CreateOr(Op0, Op1));
+        // Case 2: sext i1 Op0 + sext i1 Op1 == 1 --> false
+        // Case 3: sext i1 Op0 + sext i1 Op2 == 2 --> false,
+        else
+          Cond = Builder.getFalse();
+      } else {
+        // Case 1: sext i1 Op0 + sext i1 Op1 != 0 --> or i1 Op0, Op1
+        if (C.isZero())
+          Cond = Builder.CreateOr(Op0, Op1);
+        else
+          // Case 2: sext i1 Op0 + sext i1 Op1 != 1 --> true
+          // Case 3: sext i1 Op0 + sext i1 Op2 != 2 --> true
+          Cond = Builder.getTrue();
+      }
+      return replaceInstUsesWith(Cmp, Cond);
+    }
+
+    // Sum is cummulative so swap the operations to avoid recompuations
+    if (match(X, m_OneUse(m_ZExt(m_OneUse(m_Value(Op0))))) &&
+        match(Y, m_OneUse(m_SExt(m_OneUse(m_Value(Op1))))))
+      std::swap(Op0, Op1);
+
+    // Handles sext i1 Op0 + zext Op1 == 0/1/2
+    if (match(X, m_OneUse(m_SExt(m_Value(Op0)))) &&
+        match(Y, m_OneUse(m_ZExt(m_Value(Op1))))) {
+      if (Pred == ICmpInst::ICMP_EQ) {
+        // Case 1: sext i1 Op0 + zext i1 Op1 == 0 --> !(xor i1 Op0, Op1)
+        if (C.isZero())
+          Cond = Builder.CreateNot(Builder.CreateXor(Op0, Op1));
+        else if (C.isOne())
+          // Case 2: sext i1 Op0 + zext i1 Op1 == 1 --> (!Op0) & Op1
+          Cond = Builder.CreateAnd(Builder.CreateNot(Op0), Op1);
+        else
+          // Case 3: sext i1 Op0 + zext i1 Op1 == 2 --> false
+          Cond = Builder.getFalse();
+      } else {
+        // Case 1: sext i1 Op0 + zext i1 Op1 != 0 --> xor i1 Op0, Op1
+        if (C.isZero())
+          Cond = Builder.CreateXor(Op0, Op1);
+        else if (C.isOne())
+          // Case 2: sext i1 Op0 + zext i1 Op1 != 1 --> Op0 | (!Op1)
+          Cond = Builder.CreateOr(Op0, Builder.CreateNot(Op1));
+        else
+          // Case 3: sext i1 Op0 + zext i1 Op1 != 2 --> true
+          Cond = Builder.getTrue();
+      }
+      return replaceInstUsesWith(Cmp, Cond);
+    }
+    return nullptr;
+  }
+
   const APInt *C2;
   if (Cmp.isEquality() || !match(Y, m_APInt(C2)))
     return nullptr;
 
   // Fold icmp pred (add X, C2), C.
-  Value *X = Add->getOperand(0);
   Type *Ty = Add->getType();
-  const CmpInst::Predicate Pred = Cmp.getPredicate();
 
   // If the add does not wrap, we can always adjust the compare by subtracting
   // the constants. Equality comparisons are handled elsewhere. SGE/SLE/UGE/ULE
