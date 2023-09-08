@@ -1,19 +1,21 @@
 // -O2
 // RUN: %clang_cc1 -Wno-implicit-function-declaration  \
-// RUN: -fmath-errno -ffp-contract=on -fno-rounding-math -O2 -emit-llvm -o - %s \
+// RUN: -triple x86_64-unknown-unknown -fmath-errno -ffp-contract=on \
+// RUN: -fno-rounding-math -O2 -emit-llvm -o - %s \
 // RUN: | FileCheck %s
 
 // -ffast-math
 // RUN: %clang_cc1 -Wno-implicit-function-declaration  \
-// RUN: -menable-no-infs -menable-no-nans -fapprox-func \
-// RUN: -funsafe-math-optimizations -fno-signed-zeros -mreassociate \
+// RUN: -triple x86_64-unknown-unknown -menable-no-infs -menable-no-nans \
+// RUN: -fapprox-func -funsafe-math-optimizations -fno-signed-zeros -mreassociate \
 // RUN: -freciprocal-math -ffp-contract=fast -fno-rounding-math -ffast-math \
 // RUN: -ffinite-math-only -ffast-math -emit-llvm -o - %s \
 // RUN: | FileCheck %s -check-prefix=FAST
 
 // -O0
 // RUN: %clang_cc1 -Wno-implicit-function-declaration  \
-// RUN: -fmath-errno -ffp-contract=on -fno-rounding-math -O0 \
+// RUN: -triple x86_64-unknown-unknown -fmath-errno -ffp-contract=on \
+// RUN: -fno-rounding-math -O0 \
 // RUN: -emit-llvm -o - %s | FileCheck %s -check-prefix=NOOPT
 
 #pragma float_control(precise,on)
