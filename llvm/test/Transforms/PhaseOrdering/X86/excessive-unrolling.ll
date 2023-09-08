@@ -132,10 +132,10 @@ define void @test_known_trip_count() {
 ; CHECK-NEXT:    [[WIDE_LOAD3_29:%.*]] = load <2 x double>, ptr getelementptr inbounds ([58 x double], ptr @c, i64 1, i64 0), align 16
 ; CHECK-NEXT:    [[TMP29:%.*]] = fadd <2 x double> [[WIDE_LOAD_29]], [[WIDE_LOAD3_29]]
 ; CHECK-NEXT:    store <2 x double> [[TMP29]], ptr getelementptr inbounds ([58 x double], ptr @a, i64 1, i64 0), align 16
-; CHECK-NEXT:    [[TMP30:%.*]] = load double, ptr getelementptr inbounds ([58 x double], ptr @b, i64 1, i64 2), align 16
-; CHECK-NEXT:    [[TMP31:%.*]] = load double, ptr getelementptr inbounds ([58 x double], ptr @c, i64 1, i64 2), align 16
+; CHECK-NEXT:    [[TMP30:%.*]] = load double, ptr getelementptr inbounds ([58 x double], ptr @b, i64 1, i64 2), align 8
+; CHECK-NEXT:    [[TMP31:%.*]] = load double, ptr getelementptr inbounds ([58 x double], ptr @c, i64 1, i64 2), align 8
 ; CHECK-NEXT:    [[ADD:%.*]] = fadd double [[TMP30]], [[TMP31]]
-; CHECK-NEXT:    store double [[ADD]], ptr getelementptr inbounds ([58 x double], ptr @a, i64 1, i64 2), align 16
+; CHECK-NEXT:    store double [[ADD]], ptr getelementptr inbounds ([58 x double], ptr @a, i64 1, i64 2), align 8
 ; CHECK-NEXT:    ret void
 ;
 entry:
