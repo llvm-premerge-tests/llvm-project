@@ -7,6 +7,7 @@
  *===-----------------------------------------------------------------------===
  */
 
-#ifndef va_copy
+/* See stdarg.h for an explanation of builtin_headers_in_system_modules. */
+#if !defined(va_copy) || __has_feature(builtin_headers_in_system_modules)
 #define va_copy(dest, src) __builtin_va_copy(dest, src)
 #endif
