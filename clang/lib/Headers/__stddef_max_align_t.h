@@ -1,4 +1,4 @@
-/*===---- __stddef_max_align_t.h - Definition of max_align_t for modules ---===
+/*===---- __stddef_max_align_t.h - Definition of max_align_t ---------------===
  *
  * Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
  * See https://llvm.org/LICENSE.txt for license information.
@@ -7,7 +7,9 @@
  *===-----------------------------------------------------------------------===
  */
 
-#ifndef __CLANG_MAX_ALIGN_T_DEFINED
+/* See stddef.h for an explanation of builtin_headers_in_system_modules. */
+#if !defined(__CLANG_MAX_ALIGN_T_DEFINED) ||                                   \
+    __has_feature(builtin_headers_in_system_modules)
 #define __CLANG_MAX_ALIGN_T_DEFINED
 
 #if defined(_MSC_VER)
