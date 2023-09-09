@@ -113,6 +113,10 @@ Improvements to clang-tidy
 
 - Improved `--dump-config` to print check options in alphabetical order.
 
+- Added support for optional parameters. Parameters that previously used -1 to disable
+  their effect can now be set to `none`, `null`, `false`, or left empty to ge the same
+  behaviour.
+
 New checks
 ^^^^^^^^^^
 
