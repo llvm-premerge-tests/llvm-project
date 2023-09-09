@@ -71,12 +71,20 @@ static cl::opt<bool> EnableRISCVCopyPropagation(
     cl::desc("Enable the copy propagation with RISC-V copy instr"),
     cl::init(true), cl::Hidden);
 
+static cl::opt<bool> EnableRISCVDeadRegisterElimination(
+    "riscv-enable-dead-defs", cl::Hidden,
+    cl::desc("Enable the pass that removes dead"
+             " definitons and replaces stores to"
+             " them with stores to x0"),
+    cl::init(true));
+
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeRISCVTarget() {
   RegisterTargetMachine<RISCVTargetMachine> X(getTheRISCV32Target());
   RegisterTargetMachine<RISCVTargetMachine> Y(getTheRISCV64Target());
   auto *PR = PassRegistry::getPassRegistry();
   initializeGlobalISel(*PR);
   initializeKCFIPass(*PR);
+  initializeRISCVDeadRegisterDefinitionsPass(*PR);
   initializeRISCVMakeCompressibleOptPass(*PR);
   initializeRISCVGatherScatterLoweringPass(*PR);
   initializeRISCVCodeGenPreparePass(*PR);
@@ -389,12 +397,14 @@ void RISCVPassConfig::addPreRegAlloc() {
   if (TM->getOptLevel() != CodeGenOpt::None)
     addPass(createRISCVMergeBaseOffsetOptPass());
   addPass(createRISCVInsertVSETVLIPass());
+  if (TM->getOptLevel() != CodeGenOpt::None &&
+      EnableRISCVDeadRegisterElimination)
+    addPass(createRISCVDeadRegisterDefinitionsPass());
   addPass(createRISCVInsertReadWriteCSRPass());
 }
 
 void RISCVPassConfig::addOptimizedRegAlloc() {
   insertPass(&DetectDeadLanesID, &RISCVInitUndefID);
-
   TargetPassConfig::addOptimizedRegAlloc();
 }
 
