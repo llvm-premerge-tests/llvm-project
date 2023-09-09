@@ -41,12 +41,12 @@ public:
   void check(const ast_matchers::MatchFinder::MatchResult &Result) override;
 
 private:
-  const unsigned LineThreshold;
-  const unsigned StatementThreshold;
-  const unsigned BranchThreshold;
-  const unsigned ParameterThreshold;
-  const unsigned NestingThreshold;
-  const unsigned VariableThreshold;
+  const std::optional<unsigned> LineThreshold;
+  const std::optional<unsigned> StatementThreshold;
+  const std::optional<unsigned> BranchThreshold;
+  const std::optional<unsigned> ParameterThreshold;
+  const std::optional<unsigned> NestingThreshold;
+  const std::optional<unsigned> VariableThreshold;
 };
 
 } // namespace clang::tidy::readability
