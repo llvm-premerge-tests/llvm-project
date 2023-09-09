@@ -17,21 +17,21 @@ namespace clang::tidy::readability {
 ///
 /// These options are supported:
 ///
-///   * `LineThreshold` - flag functions exceeding this number of lines. The
-///     default is `-1` (ignore the number of lines).
+///   * `LineThreshold` - flag functions exceeding this number of lines. This
+///     parameter is disabled by default.
 ///   * `StatementThreshold` - flag functions exceeding this number of
 ///     statements. This may differ significantly from the number of lines for
 ///     macro-heavy code. The default is `800`.
 ///   * `BranchThreshold` - flag functions exceeding this number of control
-///     statements. The default is `-1` (ignore the number of branches).
+///     statements. This parameter is disabled by default.
 ///   * `ParameterThreshold` - flag functions having a high number of
-///     parameters. The default is `-1` (ignore the number of parameters).
+///     parameters. This parameter is disabled by default.
 ///   * `NestingThreshold` - flag compound statements which create next nesting
 ///     level after `NestingThreshold`. This may differ significantly from the
-///     expected value for macro-heavy code. The default is `-1` (ignore the
-///     nesting level).
+///     expected value for macro-heavy code. This parameter is disabled by
+///     default.
 ///   * `VariableThreshold` - flag functions having a high number of variable
-///     declarations. The default is `-1` (ignore the number of variables).
+///     declarations. This parameter is disabled by default.
 class FunctionSizeCheck : public ClangTidyCheck {
 public:
   FunctionSizeCheck(StringRef Name, ClangTidyContext *Context);
@@ -41,12 +41,12 @@ public:
   void check(const ast_matchers::MatchFinder::MatchResult &Result) override;
 
 private:
-  const unsigned LineThreshold;
-  const unsigned StatementThreshold;
-  const unsigned BranchThreshold;
-  const unsigned ParameterThreshold;
-  const unsigned NestingThreshold;
-  const unsigned VariableThreshold;
+  const std::optional<unsigned> LineThreshold;
+  const std::optional<unsigned> StatementThreshold;
+  const std::optional<unsigned> BranchThreshold;
+  const std::optional<unsigned> ParameterThreshold;
+  const std::optional<unsigned> NestingThreshold;
+  const std::optional<unsigned> VariableThreshold;
 };
 
 } // namespace clang::tidy::readability
