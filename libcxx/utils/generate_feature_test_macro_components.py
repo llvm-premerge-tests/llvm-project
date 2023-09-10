@@ -1025,7 +1025,6 @@ feature_test_macros = [
             "name": "__cpp_lib_syncbuf",
             "values": {"c++20": 201803},
             "headers": ["syncstream"],
-            "unimplemented": True,
         },
         {
             "name": "__cpp_lib_text_encoding",
