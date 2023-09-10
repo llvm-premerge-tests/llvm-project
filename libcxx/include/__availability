@@ -179,6 +179,13 @@
 // #   define _LIBCPP_AVAILABILITY_HAS_NO_TZDB
 #   define _LIBCPP_AVAILABILITY_TZDB
 
+    // This controls the availability of C++23 <print>, which
+    // has a dependency on the built library (it needs access to
+    // the underlying buffer types of std::cout, std::cerr, and std::clog.
+// #   define _LIBCPP_AVAILABILITY_HAS_NO_PRINT
+#   define _LIBCPP_AVAILABILITY_PRINT
+
+
 #elif defined(__APPLE__)
 
     // shared_mutex and shared_timed_mutex
@@ -353,8 +360,13 @@
 #    define _LIBCPP_AVAILABILITY_PMR
 #  endif
 
+
 #  define _LIBCPP_AVAILABILITY_HAS_NO_TZDB
 #  define _LIBCPP_AVAILABILITY_TZDB __attribute__((unavailable))
+
+#  define _LIBCPP_AVAILABILITY_HAS_NO_PRINT
+#  define _LIBCPP_AVAILABILITY_PRINT __attribute__((unavailable))
+
 
 #else
 

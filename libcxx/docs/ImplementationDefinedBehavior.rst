@@ -28,6 +28,21 @@ The Standard allows implementations to automatically update the
 This offers a way for users to update the *remote time zone database* and
 give them full control over the process.
 
+
+`[ostream.formatted.print]/3 <http://eel.is/c++draft/ostream.formatted.print#3>`_ A terminal capable of displaying Unicode
+--------------------------------------------------------------------------------------------------------------------------
+
+* First it determines whether the stream's ``rdbuf()`` has an underlying
+  ``FILE*``. This is ``true`` in the following cases:
+
+  * The stream is ``std::cout``, ``std::cerr``, or ``std::clog``.
+
+  * A ``std::basic_filebuf<CharT, Traits>`` derived from ``std::filebuf``.
+
+* The way to determine whether this ``FILE*`` is the same as specified
+  for `void vprint_unicode(FILE* stream, string_view fmt, format_args args);
+  <http://eel.is/c++draft/print.fun#7>`_.
+
 Listed in the index of implementation-defined behavior
 ======================================================
 
