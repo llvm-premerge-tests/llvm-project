@@ -8,21 +8,19 @@
 //===----------------------------------------------------------------------===//
 
 export namespace std {
-#if 0
   using std::basic_syncbuf;
 
   // [syncstream.syncbuf.special], specialized algorithms
   using std::swap;
 
   using std::syncbuf;
-#  ifndef _LIBCPP_HAS_NO_WIDE_CHARACTERS
+#ifndef _LIBCPP_HAS_NO_WIDE_CHARACTERS
   using std::wsyncbuf;
-#  endif
+#endif
   using std::basic_osyncstream;
 
   using std::osyncstream;
-#  ifndef _LIBCPP_HAS_NO_WIDE_CHARACTERS
+#ifndef _LIBCPP_HAS_NO_WIDE_CHARACTERS
   using std::wosyncstream;
-#  endif
 #endif
 } // namespace std
