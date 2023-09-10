@@ -127,7 +127,7 @@ mandatory_inclusions = {
     "stack": ["compare", "initializer_list"],
     "string_view": ["compare"],
     "string": ["compare", "initializer_list"],
-    # TODO "syncstream": ["ostream"],
+    "syncstream": ["ostream"],
     "system_error": ["compare"],
     "tgmath.h": ["cmath", "complex"],
     "thread": ["compare"],
@@ -156,7 +156,6 @@ headers_not_available = [
     "spanstream",
     "stacktrace",
     "stdfloat",
-    "syncstream",
     "text_encoding",
 ]
 
