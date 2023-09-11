@@ -146,6 +146,7 @@ public:
   const Node *commonAncestor() const;
   // The selection node corresponding to TranslationUnitDecl.
   const Node &root() const { return *Root; }
+  bool TochesSourceLoc(SourceLocation Pos, const SourceManager &SM);
 
 private:
   // Creates a selection tree for the given range in the main file.
