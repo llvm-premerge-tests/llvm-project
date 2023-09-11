@@ -5663,8 +5663,8 @@ RValue CodeGenFunction::EmitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
 
   ErrorUnsupported(E, "builtin function");
 
-  // Unknown builtin, for now just dump it out and return undef.
-  return GetUndefRValue(E->getType());
+  // Unknown builtin, for now just dump it out and return poison.
+  return GetPoisonRValue(E->getType());
 }
 
 static Value *EmitTargetArchBuiltinExpr(CodeGenFunction *CGF,

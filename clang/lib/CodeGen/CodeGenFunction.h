@@ -3774,8 +3774,8 @@ public:
   /// Create a check that a scalar RValue is non-null.
   llvm::Value *EmitNonNullRValueCheck(RValue RV, QualType T);
 
-  /// GetUndefRValue - Get an appropriate 'undef' rvalue for the given type.
-  RValue GetUndefRValue(QualType Ty);
+  /// GetPoisonRValue - Get an appropriate 'poison' rvalue for the given type.
+  RValue GetPoisonRValue(QualType Ty);
 
   /// EmitUnsupportedRValue - Emit a dummy r-value using the type of E
   /// and issue an ErrorUnsupported style diagnostic (using the

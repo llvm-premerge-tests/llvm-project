@@ -1176,7 +1176,7 @@ llvm::Value *CodeGenFunction::EmitNonNullRValueCheck(RValue RV, QualType T) {
   return Builder.CreateICmpNE(V, llvm::Constant::getNullValue(V->getType()));
 }
 
-RValue CodeGenFunction::GetUndefRValue(QualType Ty) {
+RValue CodeGenFunction::GetPoisonRValue(QualType Ty) {
   if (Ty->isVoidType())
     return RValue::get(nullptr);
 
@@ -1184,7 +1184,7 @@ RValue CodeGenFunction::GetUndefRValue(QualType Ty) {
   case TEK_Complex: {
     llvm::Type *EltTy =
       ConvertType(Ty->castAs<ComplexType>()->getElementType());
-    llvm::Value *U = llvm::UndefValue::get(EltTy);
+    llvm::Value *U = llvm::PoisonValue::get(EltTy);
     return RValue::getComplex(std::make_pair(U, U));
   }
 
@@ -1197,7 +1197,7 @@ RValue CodeGenFunction::GetUndefRValue(QualType Ty) {
   }
 
   case TEK_Scalar:
-    return RValue::get(llvm::UndefValue::get(ConvertType(Ty)));
+    return RValue::get(llvm::PoisonValue::get(ConvertType(Ty)));
   }
   llvm_unreachable("bad evaluation kind");
 }
@@ -1205,7 +1205,7 @@ RValue CodeGenFunction::GetUndefRValue(QualType Ty) {
 RValue CodeGenFunction::EmitUnsupportedRValue(const Expr *E,
                                               const char *Name) {
   ErrorUnsupported(E, Name);
-  return GetUndefRValue(E->getType());
+  return GetPoisonRValue(E->getType());
 }
 
 LValue CodeGenFunction::EmitUnsupportedLValue(const Expr *E,
@@ -1214,7 +1214,7 @@ LValue CodeGenFunction::EmitUnsupportedLValue(const Expr *E,
   llvm::Type *ElTy = ConvertType(E->getType());
   llvm::Type *Ty = llvm::PointerType::getUnqual(ElTy);
   return MakeAddrLValue(
-      Address(llvm::UndefValue::get(Ty), ElTy, CharUnits::One()), E->getType());
+      Address(llvm::PoisonValue::get(Ty), ElTy, CharUnits::One()), E->getType());
 }
 
 bool CodeGenFunction::IsWrappedCXXThis(const Expr *Obj) {

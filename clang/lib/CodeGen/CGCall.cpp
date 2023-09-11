@@ -5712,7 +5712,7 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
     EnsureInsertPoint();
 
     // Return a reasonable RValue.
-    return GetUndefRValue(RetTy);
+    return GetPoisonRValue(RetTy);
   }
 
   // If this is a musttail call, return immediately. We do not branch to the
@@ -5730,7 +5730,7 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
       Builder.CreateRet(CI);
     Builder.ClearInsertionPoint();
     EnsureInsertPoint();
-    return GetUndefRValue(RetTy);
+    return GetPoisonRValue(RetTy);
   }
 
   // Perform the swifterror writeback.
@@ -5785,7 +5785,7 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
     case ABIArgInfo::Ignore:
       // If we are ignoring an argument that had a result, make sure to
       // construct the appropriate return value for our caller.
-      return GetUndefRValue(RetTy);
+      return GetPoisonRValue(RetTy);
 
     case ABIArgInfo::Extend:
     case ABIArgInfo::Direct: {
