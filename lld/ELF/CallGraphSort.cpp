@@ -45,6 +45,7 @@
 #include "InputSection.h"
 #include "Symbols.h"
 #include "llvm/Support/FileSystem.h"
+#include "llvm/Transforms/Utils/CodeLayout.h"
 
 #include <numeric>
 
@@ -260,11 +261,87 @@ DenseMap<const InputSectionBase *, int> CallGraphSort::run() {
   return orderMap;
 }
 
+using CallT = std::pair<uint64_t, uint64_t>;
+
+// Fill in necessary data for Cache-Directed Sort.
+void buildCallGraph(std::vector<uint64_t> &FuncSizes,
+                    std::vector<uint64_t> &FuncCounts,
+                    std::vector<std::pair<CallT, uint64_t>> &CallCounts,
+                    std::vector<uint64_t> &CallOffsets,
+                    std::vector<const InputSectionBase *> &Sections) {
+  MapVector<SectionPair, uint64_t> &Profile = config->callGraphProfile;
+  DenseMap<const InputSectionBase *, size_t> SecToTargetId;
+
+  auto getOrCreateNode = [&](const InputSectionBase *InSec) -> size_t {
+    auto Res = SecToTargetId.try_emplace(InSec, Sections.size());
+    if (Res.second) {
+      // Isec does not appear before in the graph.
+      Sections.push_back(InSec);
+      assert(InSec->getSize() > 0 && "found a function with zero size");
+      FuncSizes.push_back(InSec->getSize());
+      FuncCounts.push_back(0);
+    }
+    return Res.first->second;
+  };
+
+  // Create the graph
+  for (std::pair<SectionPair, uint64_t> &C : Profile) {
+    const InputSectionBase *FromSB = cast<InputSectionBase>(C.first.first);
+    const InputSectionBase *ToSB = cast<InputSectionBase>(C.first.second);
+    // Ignore edges between input sections belonging to different sections.
+    if (FromSB->getOutputSection() != ToSB->getOutputSection())
+      continue;
+
+    uint64_t Weight = C.second;
+    // Ignore edges with zero weight.
+    if (Weight == 0)
+      continue;
+
+    size_t From = getOrCreateNode(FromSB);
+    size_t To = getOrCreateNode(ToSB);
+
+    // Ignore self-edges (recursive calls).
+    if (From == To)
+      continue;
+
+    auto It = std::make_pair(From, To);
+    CallCounts.push_back(std::make_pair(It, Weight));
+    CallOffsets.push_back((FuncSizes[From] + 1) / 2);
+    FuncCounts[To] += Weight;
+  }
+}
+
+// Sort sections by the profile data using the Cache-Directed Sort algorithm.
+// The placement is done by optimizing the locality by co-locating frequently
+// executed code sections together.
+DenseMap<const InputSectionBase *, int> elf::applyCDSort() {
+  // Creating a call graph and necessary data.
+  std::vector<uint64_t> FuncSizes;
+  std::vector<uint64_t> FuncCounts;
+  std::vector<std::pair<CallT, uint64_t>> CallCounts;
+  std::vector<uint64_t> CallOffsets;
+  std::vector<const InputSectionBase *> Sections;
+  buildCallGraph(FuncSizes, FuncCounts, CallCounts, CallOffsets, Sections);
+
+  // Run the layout algorithm.
+  std::vector<uint64_t> SortedSections =
+      applyCDSLayout(FuncSizes, FuncCounts, CallCounts, CallOffsets);
+
+  // Create the final order.
+  DenseMap<const InputSectionBase *, int> OrderMap;
+  int CurOrder = 1;
+  for (uint64_t SecIdx : SortedSections)
+    OrderMap[Sections[SecIdx]] = CurOrder++;
+
+  return OrderMap;
+}
+
 // Sort sections by the profile data provided by --callgraph-profile-file.
 //
 // This first builds a call graph based on the profile data then merges sections
-// according to the C³ heuristic. All clusters are then sorted by a density
-// metric to further improve locality.
+// according either to the C³ or Cache-Directed-Sort ordering algorithm.
 DenseMap<const InputSectionBase *, int> elf::computeCallGraphProfileOrder() {
+  if (config->useCDSort)
+    return applyCDSort();
   return CallGraphSort().run();
 }
