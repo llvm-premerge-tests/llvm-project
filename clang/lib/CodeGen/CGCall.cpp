@@ -40,6 +40,7 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Type.h"
+#include "llvm/Support/TypeSize.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include <optional>
 using namespace clang;
@@ -4510,6 +4511,10 @@ void CodeGenFunction::EmitCallArgs(
     Args.allocateArgumentMemory(*this);
   }
 
+  bool ReturnsReference = false;
+  if (const auto *F = dyn_cast_or_null<FunctionDecl>(AC.getDecl()))
+    ReturnsReference = F->getReturnType()->isReferenceType();
+
   // Evaluate each argument in the appropriate order.
   size_t CallArgsStart = Args.size();
   for (unsigned I = 0, E = ArgTypes.size(); I != E; ++I) {
@@ -4524,7 +4529,7 @@ void CodeGenFunction::EmitCallArgs(
             (isa<ObjCMethodDecl>(AC.getDecl()) &&
              isObjCMethodWithTypeParams(cast<ObjCMethodDecl>(AC.getDecl())))) &&
            "Argument and parameter types don't match");
-    EmitCallArg(Args, *Arg, ArgTypes[Idx]);
+    EmitCallArg(Args, *Arg, ArgTypes[Idx], ReturnsReference);
     // In particular, we depend on it being the last arg in Args, and the
     // objectsize bits depend on there only being one arg if !LeftToRight.
     assert(InitialArgSize + 1 == Args.size() &&
@@ -4615,7 +4620,8 @@ void CallArg::copyInto(CodeGenFunction &CGF, Address Addr) const {
 }
 
 void CodeGenFunction::EmitCallArg(CallArgList &args, const Expr *E,
-                                  QualType type) {
+                                  QualType type,
+                                  const bool CalleeReturnsReference) {
   DisableDebugLocationUpdates Dis(*this, E);
   if (const ObjCIndirectCopyRestoreExpr *CRE
         = dyn_cast<ObjCIndirectCopyRestoreExpr>(E)) {
@@ -4677,7 +4683,28 @@ void CodeGenFunction::EmitCallArg(CallArgList &args, const Expr *E,
     return;
   }
 
-  args.add(EmitAnyExprToTemp(E), type);
+  AggValueSlot ArgSlot = AggValueSlot::ignored();
+  // If the callee returns a reference, skip this stack saving optimization;
+  // we don't want to prematurely end the lifetime of the temporary. It may be
+  // possible to still perform this optimization if the return type is a
+  // reference to a different type than the parameter.
+  if (!CalleeReturnsReference && hasAggregateEvaluationKind(E->getType())) {
+    Address ArgSlotAlloca = Address::invalid();
+    ArgSlot = CreateAggTemp(E->getType(), "agg.tmp", &ArgSlotAlloca);
+
+    // Emit a lifetime start/end for this temporary. If the type has a
+    // destructor, then we need to keep it alive. FIXME: We should still be able
+    // to end the lifetime after the destructor returns.
+    if (!E->getType().isDestructedType()) {
+      llvm::TypeSize size =
+          CGM.getDataLayout().getTypeAllocSize(ConvertTypeForMem(E->getType()));
+      if (llvm::Value *lifetimeSize =
+              EmitLifetimeStart(size, ArgSlotAlloca.getPointer()))
+        args.addLifetimeCleanup({ArgSlotAlloca.getPointer(), lifetimeSize});
+    }
+  }
+
+  args.add(EmitAnyExpr(E, ArgSlot), type);
 }
 
 QualType CodeGenFunction::getVarArgType(const Expr *Arg) {
@@ -5872,6 +5899,9 @@ RValue CodeGenFunction::EmitCall(const CGFunctionInfo &CallInfo,
   // we can't use the full cleanup mechanism.
   for (CallLifetimeEnd &LifetimeEnd : CallLifetimeEndAfterCall)
     LifetimeEnd.Emit(*this, /*Flags=*/{});
+
+  for (const CallArgList::EndLifetimeInfo &LT : CallArgs.getLifetimeCleanups())
+    EmitLifetimeEnd(LT.Size, LT.Addr);
 
   if (!ReturnValue.isExternallyDestructed() &&
       RetTy.isDestructedType() == QualType::DK_nontrivial_c_struct)
