@@ -904,7 +904,7 @@ static void addPltEntry(PltSection &plt, GotPltSection &gotPlt,
                 sym, 0, R_ABS});
 }
 
-static void addGotEntry(Symbol &sym) {
+void elf::addGotEntry(Symbol &sym) {
   in.got->addEntry(sym);
   uint64_t off = sym.getGotOffset();
 
@@ -1052,9 +1052,6 @@ void RelocationScanner::processAux(RelExpr expr, RelType type, uint64_t offset,
              type == R_HEX_GD_PLT_B22_PCREL_X ||
              type == R_HEX_GD_PLT_B32_PCREL_X)))
         expr = fromPlt(expr);
-    } else if (!isAbsoluteValue(sym)) {
-      expr =
-          target->adjustGotPcExpr(type, addend, sec->content().data() + offset);
     }
   }
 
@@ -1438,6 +1435,12 @@ template <class ELFT, class RelTy> void RelocationScanner::scanOne(RelTy *&i) {
     }
   }
 
+  if (expr == R_GOT_PC && !sym.isPreemptible && !isAbsoluteValue(sym) &&
+      (!sym.isGnuIFunc() || config->zIfuncNoplt)) {
+    expr =
+        target->adjustGotPcExpr(type, addend, sec->content().data() + offset);
+  }
+
   // If the relocation does not emit a GOT or GOTPLT entry but its computation
   // uses their addresses, we need GOT or GOTPLT to be created.
   //
@@ -1446,7 +1449,7 @@ template <class ELFT, class RelTy> void RelocationScanner::scanOne(RelTy *&i) {
             R_TLSDESC_GOTPLT, R_TLSGD_GOTPLT>(expr)) {
     in.gotPlt->hasGotPltOffRel.store(true, std::memory_order_relaxed);
   } else if (oneof<R_GOTONLY_PC, R_GOTREL, R_PPC32_PLTREL, R_PPC64_TOCBASE,
-                   R_PPC64_RELAX_TOC>(expr)) {
+                   R_PPC64_RELAX_TOC, R_RELAX_GOT_PC>(expr)) {
     in.got->hasGotOffRel.store(true, std::memory_order_relaxed);
   }
 

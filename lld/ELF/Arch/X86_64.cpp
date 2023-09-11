@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "OutputSections.h"
+#include "Relocations.h"
 #include "Symbols.h"
 #include "SyntheticSections.h"
 #include "Target.h"
@@ -47,6 +48,7 @@ public:
                                         uint8_t stOther) const override;
   bool deleteFallThruJmpInsn(InputSection &is, InputFile *file,
                              InputSection *nextIS) const override;
+  bool relaxOnce(int pass) const override;
 };
 } // namespace
 
@@ -303,6 +305,47 @@ bool X86_64::deleteFallThruJmpInsn(InputSection &is, InputFile *file,
   is.drop_back(sizeOfDirectJmpInsn);
   is.nopFiller = true;
   return true;
+}
+
+bool X86_64::relaxOnce(int pass) const {
+  uint64_t minVA = UINT64_MAX, maxVA = 0;
+  for (OutputSection *osec : outputSections) {
+    minVA = std::min(minVA, osec->addr);
+    maxVA = std::max(maxVA, osec->addr + osec->size);
+  }
+  // If the max VA difference is under 2^31-1, 32 bit signed offsets cannot
+  // overflow.
+  if (maxVA - minVA < (uint64_t(1) << 31) - 1)
+    return false;
+
+  SmallVector<InputSection *, 0> storage;
+  bool changed = false;
+  for (OutputSection *osec : outputSections) {
+    if (!(osec->flags & SHF_EXECINSTR))
+      continue;
+    for (InputSection *sec : getInputSections(*osec, storage)) {
+      for (Relocation &rel : sec->relocs()) {
+        if (rel.type != R_X86_64_GOTPCRELX &&
+            rel.type != R_X86_64_REX_GOTPCRELX)
+          continue;
+        if (rel.expr != R_RELAX_GOT_PC)
+          continue;
+
+        uint64_t v = sec->getRelocTargetVA(
+            sec->file, rel.type, rel.addend,
+            sec->getOutputSection()->addr + rel.offset, *rel.sym, rel.expr);
+        if (static_cast<int64_t>(v) == llvm::SignExtend64(v, 32))
+          continue;
+        if (rel.sym->auxIdx == 0) {
+          rel.sym->allocateAux();
+          addGotEntry(*rel.sym);
+          changed = true;
+        }
+        rel.expr = R_GOT_PC;
+      }
+    }
+  }
+  return changed;
 }
 
 RelExpr X86_64::getRelExpr(RelType type, const Symbol &s,
