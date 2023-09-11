@@ -1178,6 +1178,9 @@ public:
   // \returns true if the target supports the pre-NGG legacy geometry path.
   bool hasLegacyGeometry() const { return getGeneration() < GFX11; }
 
+  // \returns true if preloading kernel arguments is supported.
+  bool hasKernargPreload() const { return hasGFX90AInsts(); }
+
   // \returns true if FP8/BF8 VOP1 form of conversion to F32 is unreliable.
   bool hasCvtFP8VOP1Bug() const { return true; }
 
