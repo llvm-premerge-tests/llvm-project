@@ -31,7 +31,7 @@ class IntEqClasses {
   /// itself.
   ///
   /// When compressed, EC[i] is the equivalence class of i.
-  SmallVector<unsigned, 8> EC;
+  mutable SmallVector<unsigned, 8> EC;
 
   /// NumClasses - The number of equivalence classes when compressed, or 0 when
   /// uncompressed.

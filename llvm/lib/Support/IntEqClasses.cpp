@@ -47,13 +47,19 @@ unsigned IntEqClasses::join(unsigned a, unsigned b) {
       eca = EC[a];
     }
 
+  // Make sure that eca is actually the leader of the equivalence class (this
+  // can happen if a and b were already in the same equivalence class).
+  eca = findLeader(eca);
   return eca;
 }
 
 unsigned IntEqClasses::findLeader(unsigned a) const {
   assert(NumClasses == 0 && "findLeader() called after compress().");
-  while (a != EC[a])
-    a = EC[a];
+  while (a != EC[a]) {
+    unsigned eca = EC[a];
+    EC[a] = EC[eca];
+    a = eca;
+  }
   return a;
 }
 
