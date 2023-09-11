@@ -2091,6 +2091,41 @@ Instruction *InstCombinerImpl::foldICmpOrConstant(ICmpInst &Cmp,
   if (Value *V = foldICmpOrXorSubChain(Cmp, Or, Builder))
     return replaceInstUsesWith(Cmp, V);
 
+  // icmp eq (or(phi1, phi2)), 0..where there is another use to phi1, phi2 as
+  // "icmp ne phi1, 0" and "icmp ne phi2, 0" We can possibly fold this as icmp
+  // eq (or((icmp ne phi1, 0), (icmp ne phi2, 0))), 0. The above transformation
+  // helps reuse icmps, bring icmp closer to phi and allow other transforms.
+  auto *Phi1 = dyn_cast<PHINode>(OrOp0);
+  auto *Phi2 = dyn_cast<PHINode>(OrOp1);
+  // Phi1 and Phi2 must have multiple users.
+  if (Phi1 && Phi2 && !Phi1->hasOneUser() && !Phi2->hasOneUser()) {
+    ICmpInst::Predicate EqPred;
+    // Check all users of PHI. It should either be the "Or" or a "icmp ne".
+    for (User *U : Phi1->users()) {
+      // Match to specific
+      if (!(U->hasOneUse() &&
+            (match(U, m_Or(m_Specific(OrOp0), m_Specific(OrOp1))) ||
+             (match(U, m_ICmp(EqPred, m_Specific(OrOp0), m_Zero())) &&
+              EqPred == ICmpInst::ICMP_NE))))
+        return nullptr;
+    }
+    for (User *U : Phi2->users()) {
+      // Match to specific
+      if (!(U->hasOneUse() &&
+            (match(U, m_Or(m_Specific(OrOp0), m_Specific(OrOp1))) ||
+             (match(U, m_ICmp(EqPred, m_Specific(OrOp1), m_Zero())) &&
+              EqPred == ICmpInst::ICMP_NE))))
+        return nullptr;
+    }
+    Value *Zero = Constant::getNullValue(OrOp0->getType());
+    Value *Cmp1 = Builder.CreateICmp(EqPred, OrOp0, Zero);
+    Value *Cmp2 = Builder.CreateICmp(EqPred, OrOp1, Zero);
+    Value *newOr = Builder.CreateOr(Cmp1, Cmp2);
+    Cmp1 = Builder.CreateICmp(Pred, newOr,
+                              Constant::getNullValue(newOr->getType()));
+    return replaceInstUsesWith(Cmp, Cmp1);
+  }
+
   return nullptr;
 }
 
