@@ -626,9 +626,9 @@ define i64 @select_pow2_diff_neg_invert(i1 zeroext %cond) {
 ;
 ; X64-LABEL: select_pow2_diff_neg_invert:
 ; X64:       # %bb.0:
-; X64-NEXT:    movl %edi, %eax
-; X64-NEXT:    xorq $1, %rax
-; X64-NEXT:    shlq $7, %rax
+; X64-NEXT:    xorb $1, %dil
+; X64-NEXT:    movzbl %dil, %eax
+; X64-NEXT:    shll $7, %eax
 ; X64-NEXT:    addq $-99, %rax
 ; X64-NEXT:    retq
   %sel = select i1 %cond, i64 -99, i64 29

@@ -153,12 +153,13 @@ bb:
 }
 
 ; GCN-LABEL: barrier_vmcnt_vscnt_flat_workgroup:
-; GCN:        flat_load_{{dword|b32}}
-; GFX8_9:     s_waitcnt lgkmcnt(0){{$}}
-; GFX8_9:     s_waitcnt vmcnt(0){{$}}
-; GFX10PLUS:  s_waitcnt vmcnt(0) lgkmcnt(0){{$}}
-; GFX10PLUS:  s_waitcnt_vscnt null, 0x0
-; GCN-NEXT:   s_barrier
+; GCN:            flat_load_{{dword|b32}}
+; GFX8_9:         s_waitcnt vmcnt(0) lgkmcnt(0){{$}}
+; GFX8_9-NEXT:    s_barrier
+; GFX8_9-NEXT:    s_waitcnt lgkmcnt(0){{$}}
+; GFX10PLUS:      s_waitcnt vmcnt(0) lgkmcnt(0){{$}}
+; GFX10PLUS-NEXT: s_waitcnt_vscnt null, 0x0
+; GFX10PLUS-NEXT: s_barrier
 define amdgpu_kernel void @barrier_vmcnt_vscnt_flat_workgroup(ptr %arg) {
 bb:
   %tmp = tail call i32 @llvm.amdgcn.workitem.id.x()
