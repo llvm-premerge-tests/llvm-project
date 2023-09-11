@@ -122,7 +122,7 @@ export namespace std {
 
     namespace views {
       using std::ranges::views::repeat;
-    } // namespace views
+    }  // namespace views
 #endif // _LIBCPP_STD_VER >= 23
 
 #ifndef _LIBCPP_HAS_NO_LOCALIZATION
@@ -159,7 +159,7 @@ export namespace std {
 
     namespace views {
       using std::ranges::views::as_rvalue;
-    } // namespace views
+    }  // namespace views
 #endif // _LIBCPP_STD_VER >= 23
 
     // [range.filter], filter view
@@ -209,7 +209,7 @@ export namespace std {
 
     namespace views {
       using std::ranges::views::join;
-    } // namespace views
+    }  // namespace views
 #endif // _LIBCPP_ENABLE_EXPERIMENTAL
 #if 0
     using std::ranges::join_with_view;
@@ -273,7 +273,7 @@ export namespace std {
 
     namespace views {
       using std::ranges::views::zip;
-    } // namespace views
+    }  // namespace views
 #endif // _LIBCPP_STD_VER >= 23
 
 #if 0
@@ -320,9 +320,8 @@ export namespace std {
     namespace views {
       using std::ranges::views::chunk_by;
     }
-#endif // _LIBCPP_STD_VER >= 23
 
-#if 0
+#  if 0
     // [range.stride], stride view
     using std::ranges::stride_view;
 
@@ -335,8 +334,16 @@ export namespace std {
     namespace views {
       using std::ranges::views::cartesian_product;
     }
-#endif
-  } // namespace ranges
+#  endif
+
+    // [range.enumerate]
+    using std::ranges::enumerate_view;
+
+    namespace views {
+      using std::ranges::views::enumerate;
+    }
+#endif // _LIBCPP_STD_VER >= 23
+  }    // namespace ranges
 
   namespace views = ranges::views;
 
