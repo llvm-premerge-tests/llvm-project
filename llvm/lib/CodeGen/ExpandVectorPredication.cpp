@@ -294,6 +294,16 @@ Value *CachingVPExpander::expandPredicationToFPCall(
     replaceOperation(*NewOp, VPI);
     return NewOp;
   }
+  case Intrinsic::maxnum:
+  case Intrinsic::minnum: {
+    Value *Op0 = VPI.getOperand(0);
+    Value *Op1 = VPI.getOperand(1);
+    Function *Fn = Intrinsic::getDeclaration(
+        VPI.getModule(), UnpredicatedIntrinsicID, {VPI.getType()});
+    Value *NewOp = Builder.CreateCall(Fn, {Op0, Op1}, VPI.getName());
+    replaceOperation(*NewOp, VPI);
+    return NewOp;
+  }
   case Intrinsic::experimental_constrained_fma:
   case Intrinsic::experimental_constrained_fmuladd: {
     Value *Op0 = VPI.getOperand(0);
@@ -635,6 +645,10 @@ Value *CachingVPExpander::expandPredication(VPIntrinsic &VPI) {
     replaceOperation(*NewNegOp, VPI);
     return NewNegOp;  
   }
+  case Intrinsic::vp_maxnum:
+    return expandPredicationToFPCall(Builder, VPI, Intrinsic::maxnum);
+  case Intrinsic::vp_minnum:
+    return expandPredicationToFPCall(Builder, VPI, Intrinsic::minnum);
   case Intrinsic::vp_fabs:
     return expandPredicationToFPCall(Builder, VPI, Intrinsic::fabs);
   case Intrinsic::vp_sqrt:
