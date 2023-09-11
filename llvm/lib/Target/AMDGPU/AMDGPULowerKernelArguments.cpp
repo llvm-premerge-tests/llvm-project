@@ -169,10 +169,10 @@ static bool lowerKernelArguments(Function &F, const TargetMachine &TM) {
             ConstantInt::get(Builder.getInt32Ty(), PreloadSGPRs));
         PreloadInfo.KernelArgMetadata.push_back(
             MDNode::get(Ctx, {MDIndex, MDAllocSizeSGPRs}));
+        continue;
       }
-    } else {
-      InPreloadSequence = false;
     }
+    InPreloadSequence = false;
 
     // If this is byval, the loads are already explicit in the function. We just
     // need to rewrite the pointer values.
