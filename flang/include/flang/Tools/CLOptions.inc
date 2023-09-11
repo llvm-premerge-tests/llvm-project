@@ -252,6 +252,7 @@ inline void createHLFIRToFIRPassPipeline(
   pm.addPass(hlfir::createLowerHLFIRIntrinsicsPass());
   pm.addPass(hlfir::createBufferizeHLFIRPass());
   pm.addPass(hlfir::createConvertHLFIRtoFIRPass());
+  pm.addPass(fir::createConstExtruderPass());
 }
 
 #if !defined(FLANG_EXCLUDE_CODEGEN)
