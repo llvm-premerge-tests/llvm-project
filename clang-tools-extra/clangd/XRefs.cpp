@@ -179,6 +179,12 @@ getDeclAtPositionWithRelations(ParsedAST &AST, SourceLocation Pos,
   unsigned Offset = AST.getSourceManager().getDecomposedSpellingLoc(Pos).second;
   std::vector<std::pair<const NamedDecl *, DeclRelationSet>> Result;
   auto ResultFromTree = [&](SelectionTree ST) {
+    // If the SelectionTree does not have nodes from Pos, we will navigate to
+    // wrong locations. In these cases, it is better to return empty results
+    // rather than jumping to irrelevant location.
+    if (!ST.TochesSourceLoc(Pos, AST.getSourceManager())) {
+      return false;
+    }
     if (const SelectionTree::Node *N = ST.commonAncestor()) {
       if (NodeKind)
         *NodeKind = N->ASTNode.getNodeKind();

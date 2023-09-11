@@ -1104,6 +1104,29 @@ const Node *SelectionTree::commonAncestor() const {
   return Ancestor != Root ? Ancestor : nullptr;
 }
 
+// Check if source line at Pos touches any node in SelectionTree. In the
+// presence of compilation error, we will have only root nodes without the
+// nodes that coresponds to tokens from Pos. In these cases, clangd cannot
+// provide meaningful navigation and often jumps to the conataining scope
+// identifier such as napespace.
+bool SelectionTree::TochesSourceLoc(SourceLocation Pos,
+                                    const SourceManager &SM) {
+  const auto DecomposedPos = SM.getDecomposedSpellingLoc(Pos);
+  int Line = SM.getLineNumber(DecomposedPos.first, DecomposedPos.second);
+  for (const auto &Node : Nodes) {
+    const auto Begin =
+        SM.getDecomposedSpellingLoc(getSourceRange(Node.ASTNode).getBegin());
+    const auto End =
+        SM.getDecomposedSpellingLoc(getSourceRange(Node.ASTNode).getEnd());
+    int startLine = SM.getLineNumber(Begin.first, Begin.second);
+    int endLine = SM.getLineNumber(End.first, End.second);
+    if (startLine == Line || endLine == Line) {
+      return true;
+    }
+  }
+  return false;
+}
+
 const DeclContext &SelectionTree::Node::getDeclContext() const {
   for (const Node *CurrentNode = this; CurrentNode != nullptr;
        CurrentNode = CurrentNode->Parent) {
