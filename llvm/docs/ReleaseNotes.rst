@@ -165,6 +165,9 @@ Changes to the LLVM tools
 * llvm-symbolizer now treats invalid input as an address for which source
   information is not found.
 
+* ``llvm-nm`` now supports the ``--line-numbers`` (``-l``) option to use
+  debugging information to print symbols' filenames and line numbers.
+
 Changes to LLDB
 ---------------------------------
 
