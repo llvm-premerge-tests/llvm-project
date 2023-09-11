@@ -3822,17 +3822,11 @@
 #   error "__cpp_lib_submdspan should not be defined before c++26"
 # endif
 
-# if !defined(_LIBCPP_VERSION)
-#   ifndef __cpp_lib_syncbuf
-#     error "__cpp_lib_syncbuf should be defined in c++20"
-#   endif
-#   if __cpp_lib_syncbuf != 201803L
-#     error "__cpp_lib_syncbuf should have the value 201803L in c++20"
-#   endif
-# else // _LIBCPP_VERSION
-#   ifdef __cpp_lib_syncbuf
-#     error "__cpp_lib_syncbuf should not be defined because it is unimplemented in libc++!"
-#   endif
+# ifndef __cpp_lib_syncbuf
+#   error "__cpp_lib_syncbuf should be defined in c++20"
+# endif
+# if __cpp_lib_syncbuf != 201803L
+#   error "__cpp_lib_syncbuf should have the value 201803L in c++20"
 # endif
 
 # ifdef __cpp_lib_text_encoding
@@ -5300,17 +5294,11 @@
 #   error "__cpp_lib_submdspan should not be defined before c++26"
 # endif
 
-# if !defined(_LIBCPP_VERSION)
-#   ifndef __cpp_lib_syncbuf
-#     error "__cpp_lib_syncbuf should be defined in c++23"
-#   endif
-#   if __cpp_lib_syncbuf != 201803L
-#     error "__cpp_lib_syncbuf should have the value 201803L in c++23"
-#   endif
-# else // _LIBCPP_VERSION
-#   ifdef __cpp_lib_syncbuf
-#     error "__cpp_lib_syncbuf should not be defined because it is unimplemented in libc++!"
-#   endif
+# ifndef __cpp_lib_syncbuf
+#   error "__cpp_lib_syncbuf should be defined in c++23"
+# endif
+# if __cpp_lib_syncbuf != 201803L
+#   error "__cpp_lib_syncbuf should have the value 201803L in c++23"
 # endif
 
 # ifdef __cpp_lib_text_encoding
@@ -6880,17 +6868,11 @@
 #   endif
 # endif
 
-# if !defined(_LIBCPP_VERSION)
-#   ifndef __cpp_lib_syncbuf
-#     error "__cpp_lib_syncbuf should be defined in c++26"
-#   endif
-#   if __cpp_lib_syncbuf != 201803L
-#     error "__cpp_lib_syncbuf should have the value 201803L in c++26"
-#   endif
-# else // _LIBCPP_VERSION
-#   ifdef __cpp_lib_syncbuf
-#     error "__cpp_lib_syncbuf should not be defined because it is unimplemented in libc++!"
-#   endif
+# ifndef __cpp_lib_syncbuf
+#   error "__cpp_lib_syncbuf should be defined in c++26"
+# endif
+# if __cpp_lib_syncbuf != 201803L
+#   error "__cpp_lib_syncbuf should have the value 201803L in c++26"
 # endif
 
 # if !defined(_LIBCPP_VERSION)
