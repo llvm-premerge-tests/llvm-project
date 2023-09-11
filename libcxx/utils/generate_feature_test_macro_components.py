@@ -755,7 +755,6 @@ feature_test_macros = [
             "name": "__cpp_lib_out_ptr",
             "values": {"c++23": 202106},
             "headers": ["memory"],
-            "unimplemented": True,
         },
         {
             "name": "__cpp_lib_parallel_algorithm",
