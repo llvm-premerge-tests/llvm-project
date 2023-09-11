@@ -5,7 +5,7 @@
 ---
 {"jsonrpc":"2.0","id":5,"method":"textDocument/codeAction","params":{"textDocument":{"uri":"test:///main.cc"},"range":{"start":{"line":0,"character":11},"end":{"line":0,"character":11}},"context":{"diagnostics":[]}}}
 ---
-{"jsonrpc":"2.0","id":6,"method":"workspace/executeCommand","params":{"command":"clangd.applyTweak","arguments":[{"file":"test:///main.cc","selection":{"end":{"character":11,"line":0},"start":{"character":11,"line":0}},"tweakID":"SwapIfBranches"}]}}
+{"jsonrpc":"2.0","id":6,"method":"workspace/executeCommand","params":{"command":"clangd.applyTweak","arguments":[{"file":"test:///main.cc","requestedActionKinds":[],"selection":{"end":{"character":11,"line":0},"start":{"character":11,"line":0}},"tweakID":"SwapIfBranches"}]}}
 #      CHECK:    "newText": "\n  ",
 # CHECK-NEXT:    "range": {
 # CHECK-NEXT:      "end": {

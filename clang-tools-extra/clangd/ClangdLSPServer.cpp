@@ -77,7 +77,8 @@ const llvm::StringLiteral ApplyTweakCommand = "clangd.applyTweak";
 /// Transforms a tweak into a code action that would apply it if executed.
 /// EXPECTS: T.prepare() was called and returned true.
 CodeAction toCodeAction(const ClangdServer::TweakRef &T, const URIForFile &File,
-                        Range Selection) {
+                        Range Selection,
+                        const std::vector<std::string> &RequestedActionKinds) {
   CodeAction CA;
   CA.title = T.Title;
   CA.kind = T.Kind.str();
@@ -93,6 +94,7 @@ CodeAction toCodeAction(const ClangdServer::TweakRef &T, const URIForFile &File,
   Args.file = File;
   Args.tweakID = T.ID;
   Args.selection = Selection;
+  Args.requestedActionKinds = RequestedActionKinds;
   CA.command->argument = std::move(Args);
   return CA;
 }
@@ -648,7 +650,8 @@ void ClangdLSPServer::onInitialize(const InitializeParams &Params,
           ? llvm::json::Object{{"codeActionKinds",
                                 {CodeAction::QUICKFIX_KIND,
                                  CodeAction::REFACTOR_KIND,
-                                 CodeAction::INFO_KIND}}}
+                                 CodeAction::INFO_KIND,
+                                 CodeAction::SOURCE_KIND}}}
           : llvm::json::Value(true);
 
   std::vector<llvm::StringRef> Commands;
@@ -804,7 +807,12 @@ void ClangdLSPServer::onCommandApplyTweak(const TweakArgs &Args,
     // ApplyEdit will take care of calling Reply().
     return applyEdit(std::move(WE), "Tweak applied.", std::move(Reply));
   };
-  Server->applyTweak(Args.file.file(), Args.selection, Args.tweakID,
+  Server->applyTweak(Args.tweakID,
+                     {Args.file.file().str(),
+                      Args.selection,
+                      Args.requestedActionKinds,
+                      {},
+                      {}},
                      std::move(Action));
 }
 
@@ -1023,13 +1031,10 @@ void ClangdLSPServer::onCodeAction(const CodeActionParams &Params,
   Inputs.File = File.file();
   Inputs.Selection = Params.range;
   Inputs.RequestedActionKinds = Params.context.only;
-  Inputs.TweakFilter = [this](const Tweak &T) {
-    return Opts.TweakFilter(T);
-  };
-  auto CB = [this,
-             Reply = std::move(Reply),
-             ToLSPDiags = std::move(ToLSPDiags), File,
-             Selection = Params.range](
+  Inputs.TweakFilter = [this](const Tweak &T) { return Opts.TweakFilter(T); };
+  auto CB = [this, Reply = std::move(Reply), ToLSPDiags = std::move(ToLSPDiags),
+             File, Selection = Params.range,
+             ActionKinds = Inputs.RequestedActionKinds](
                 llvm::Expected<ClangdServer::CodeActionResult> Fixits) mutable {
     if (!Fixits)
       return Reply(Fixits.takeError());
@@ -1038,13 +1043,12 @@ void ClangdLSPServer::onCodeAction(const CodeActionParams &Params,
     for (const auto &QF : Fixits->QuickFixes) {
       CAs.push_back(toCodeAction(QF.F, File, Version, SupportsDocumentChanges,
                                  SupportsChangeAnnotation));
-      if (auto It = ToLSPDiags.find(QF.Diag);
-          It != ToLSPDiags.end()) {
+      if (auto It = ToLSPDiags.find(QF.Diag); It != ToLSPDiags.end()) {
         CAs.back().diagnostics = {It->second};
       }
     }
     for (const auto &TR : Fixits->TweakRefs)
-      CAs.push_back(toCodeAction(TR, File, Selection));
+      CAs.push_back(toCodeAction(TR, File, Selection, ActionKinds));
 
     // If there's exactly one quick-fix, call it "preferred".
     // We never consider refactorings etc as preferred.

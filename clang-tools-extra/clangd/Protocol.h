@@ -28,6 +28,7 @@
 #include "support/MemoryTree.h"
 #include "clang/Index/IndexSymbol.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/StringRef.h"
 #include "llvm/Support/JSON.h"
 #include "llvm/Support/raw_ostream.h"
 #include <bitset>
@@ -1035,6 +1036,9 @@ struct TweakArgs {
   Range selection;
   /// ID of the tweak that should be executed. Corresponds to Tweak::id().
   std::string tweakID;
+  /// Code action kinds requested by the client via the `only` field in
+  /// the context.
+  std::vector<std::string> requestedActionKinds;
 };
 bool fromJSON(const llvm::json::Value &, TweakArgs &, llvm::json::Path);
 llvm::json::Value toJSON(const TweakArgs &A);
@@ -1070,6 +1074,7 @@ struct CodeAction {
   const static llvm::StringLiteral QUICKFIX_KIND;
   const static llvm::StringLiteral REFACTOR_KIND;
   const static llvm::StringLiteral INFO_KIND;
+  const static llvm::StringLiteral SOURCE_KIND;
 
   /// The diagnostics that this code action resolves.
   std::optional<std::vector<Diagnostic>> diagnostics;

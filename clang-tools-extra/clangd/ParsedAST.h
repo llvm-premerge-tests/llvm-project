@@ -28,6 +28,7 @@
 #include "clang-include-cleaner/Record.h"
 #include "support/Path.h"
 #include "clang/Frontend/FrontendAction.h"
+#include "clang/Lex/Lexer.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Tooling/Syntax/Tokens.h"
 #include "llvm/ADT/ArrayRef.h"
@@ -117,6 +118,11 @@ public:
   /// Returns the version of the ParseInputs used to build Preamble part of this
   /// AST. Might be std::nullopt if no Preamble is used.
   std::optional<llvm::StringRef> preambleVersion() const;
+
+  // Describes the bounds of the preamble.
+  PreambleBounds getPreambleBounds() const {
+    return Preamble->Preamble.getBounds();
+  }
 
   const HeuristicResolver *getHeuristicResolver() const {
     return Resolver.get();
