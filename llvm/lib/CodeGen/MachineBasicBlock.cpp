@@ -1166,32 +1166,29 @@ MachineBasicBlock *MachineBasicBlock::SplitCriticalEdge(
 
   ReplaceUsesOfBlockWith(Succ, NMBB);
 
-  // If updateTerminator() removes instructions, we need to remove them from
-  // SlotIndexes.
-  SmallVector<MachineInstr*, 4> Terminators;
-  if (Indexes) {
-    for (MachineInstr &MI :
-         llvm::make_range(getFirstInstrTerminator(), instr_end()))
-      Terminators.push_back(&MI);
-  }
+  if (!ChangedIndirectJump) {
+    // If updateTerminator() removes instructions they need to be removed from
+    // SlotIndexes, but we do not know which will be removed, so we have to
+    // remove all pre-emptively as their pointers will no longer be valid.
+    SmallVector<MachineInstr*, 4> Terminators;
+    if (Indexes) {
+      for (MachineInstr &MI :
+           llvm::make_range(getFirstInstrTerminator(), instr_end()))
+        Indexes->removeMachineInstrFromMaps(MI);
+    }
 
-  // Since we replaced all uses of Succ with NMBB, that should also be treated
-  // as the fallthrough successor
-  if (Succ == PrevFallthrough)
-    PrevFallthrough = NMBB;
+    // Since we replaced all uses of Succ with NMBB, that should also be treated
+    // as the fallthrough successor
+    if (Succ == PrevFallthrough)
+      PrevFallthrough = NMBB;
 
-  if (!ChangedIndirectJump)
     updateTerminator(PrevFallthrough);
 
-  if (Indexes) {
-    SmallVector<MachineInstr*, 4> NewTerminators;
-    for (MachineInstr &MI :
-         llvm::make_range(getFirstInstrTerminator(), instr_end()))
-      NewTerminators.push_back(&MI);
-
-    for (MachineInstr *Terminator : Terminators) {
-      if (!is_contained(NewTerminators, Terminator))
-        Indexes->removeMachineInstrFromMaps(*Terminator);
+    // Reinsert terminators into maps.
+    if (Indexes) {
+      for (MachineInstr &MI :
+           llvm::make_range(getFirstInstrTerminator(), instr_end()))
+        Indexes->insertMachineInstrInMaps(MI);
     }
   }
 
@@ -1275,6 +1272,8 @@ MachineBasicBlock *MachineBasicBlock::SplitCriticalEdge(
           assert(VNI &&
                  "PHI sources should be live out of their predecessors.");
           LI.addSegment(LiveInterval::Segment(StartIndex, EndIndex, VNI));
+          for (auto &SR : LI.subranges())
+            SR.addSegment(LiveInterval::Segment(StartIndex, EndIndex, VNI));
         }
       }
     }
@@ -1294,8 +1293,18 @@ MachineBasicBlock *MachineBasicBlock::SplitCriticalEdge(
         VNInfo *VNI = LI.getVNInfoAt(PrevIndex);
         assert(VNI && "LiveInterval should have VNInfo where it is live.");
         LI.addSegment(LiveInterval::Segment(StartIndex, EndIndex, VNI));
+        // Update subranges with live values
+        for (auto &SR : LI.subranges()) {
+          VNInfo *VNI = SR.getVNInfoAt(PrevIndex);
+          if (VNI)
+            SR.addSegment(LiveInterval::Segment(StartIndex, EndIndex, VNI));
+        }
       } else if (!isLiveOut && !isLastMBB) {
         LI.removeSegment(StartIndex, EndIndex);
+        for (auto &SR : LI.subranges()) {
+          if (SR.overlaps(StartIndex, EndIndex))
+            SR.removeSegment(StartIndex, EndIndex);
+        }
       }
     }
 
