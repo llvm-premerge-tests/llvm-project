@@ -14,15 +14,59 @@
 #include "AMDGPU.h"
 #include "GCNSubtarget.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
-#include "llvm/IR/IntrinsicsAMDGPU.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/IntrinsicsAMDGPU.h"
 #include "llvm/IR/MDBuilder.h"
 #include "llvm/Target/TargetMachine.h"
+
 #define DEBUG_TYPE "amdgpu-lower-kernel-arguments"
 
 using namespace llvm;
 
 namespace {
+
+class PreloadKernelArgInfo {
+private:
+  Function &F;
+
+  const GCNSubtarget &ST;
+
+  unsigned NumFreeUserSGPRs;
+
+public:
+  SmallVector<llvm::Metadata *, 8> KernelArgMetadata;
+
+  PreloadKernelArgInfo(Function &F, const GCNSubtarget &ST) : F(F), ST(ST) {
+    setInitialFreeUserSGPRsCount();
+  }
+
+  // Returns the maximum number of user SGPRs that we have available to preload
+  // arguments.
+  void setInitialFreeUserSGPRsCount() {
+    const unsigned MaxUserSGRPs = ST.getMaxNumUserSGPRs();
+    GCNUserSGPRUsageInfo UserSGPRInfo(F, ST);
+
+    NumFreeUserSGPRs = MaxUserSGRPs - UserSGPRInfo.getNumUsedUserSGPRs();
+  }
+
+  bool tryAllocPreloadSGPRs(unsigned AllocSize, uint64_t ArgOffset,
+                            uint64_t LastExplicitArgOffset) {
+    //  Check if this arguemnt may be loaded into the same register as the
+    //  previous argument.
+    if (!isAligned(Align(4), ArgOffset) && AllocSize < 4)
+      return true;
+
+    // Pad SGPRs for kernarg alignment.
+    unsigned Padding = ArgOffset - LastExplicitArgOffset;
+    unsigned PaddingSGPRs = alignTo(Padding, 4) / 4;
+    unsigned NumPreloadSGPRs = alignTo(AllocSize, 4) / 4;
+    if (NumPreloadSGPRs + PaddingSGPRs > NumFreeUserSGPRs)
+      return false;
+
+    NumFreeUserSGPRs -= (NumPreloadSGPRs + PaddingSGPRs);
+    return true;
+  }
+};
 
 class AMDGPULowerKernelArguments : public FunctionPass {
 public:
@@ -84,6 +128,9 @@ static bool lowerKernelArguments(Function &F, const TargetMachine &TM) {
       Attribute::getWithDereferenceableBytes(Ctx, TotalKernArgSize));
 
   uint64_t ExplicitArgOffset = 0;
+  // Preloaded kernel arguments must be sequential.
+  bool InPreloadSequence = true;
+  PreloadKernelArgInfo PreloadInfo(F, ST);
 
   for (Argument &Arg : F.args()) {
     const bool IsByRef = Arg.hasByRefAttr();
@@ -95,10 +142,22 @@ static bool lowerKernelArguments(Function &F, const TargetMachine &TM) {
     uint64_t AllocSize = DL.getTypeAllocSize(ArgTy);
 
     uint64_t EltOffset = alignTo(ExplicitArgOffset, ABITypeAlign) + BaseOffset;
+    uint64_t LastExplicitArgOffset = ExplicitArgOffset;
     ExplicitArgOffset = alignTo(ExplicitArgOffset, ABITypeAlign) + AllocSize;
 
-    if (Arg.use_empty())
+    if (Arg.use_empty()) {
+      InPreloadSequence = false;
       continue;
+    }
+
+    // Try to preload this argument into user SGPRs.
+    if (Arg.hasInRegAttr() && InPreloadSequence && ST.hasKernargPreload() &&
+        !Arg.getType()->isAggregateType())
+      if (PreloadInfo.tryAllocPreloadSGPRs(AllocSize, EltOffset,
+                                           LastExplicitArgOffset))
+        continue;
+
+    InPreloadSequence = false;
 
     // If this is byval, the loads are already explicit in the function. We just
     // need to rewrite the pointer values.
