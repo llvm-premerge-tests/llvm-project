@@ -584,6 +584,7 @@ template <class Key, class T, class Hash, class Pred, class Alloc>
 */
 
 #include <__algorithm/is_permutation.h>
+#include <__algorithm/mismatch.h>
 #include <__assert> // all public C++ headers provide the assertion handler
 #include <__availability>
 #include <__config>
@@ -2748,16 +2749,22 @@ operator==(const unordered_multimap<_Key, _Tp, _Hash, _Pred, _Alloc>& __x,
 {
     if (__x.size() != __y.size())
         return false;
-    typedef typename unordered_multimap<_Key, _Tp, _Hash, _Pred, _Alloc>::const_iterator
-                                                                 const_iterator;
-    typedef pair<const_iterator, const_iterator> _EqRng;
-    for (const_iterator __i = __x.begin(), __ex = __x.end(); __i != __ex;)
-    {
-        _EqRng __xeq = __x.equal_range(__i->first);
-        _EqRng __yeq = __y.equal_range(__i->first);
-        if (_VSTD::distance(__xeq.first, __xeq.second) !=
-            _VSTD::distance(__yeq.first, __yeq.second) ||
-                  !_VSTD::is_permutation(__xeq.first, __xeq.second, __yeq.first))
+    typedef typename unordered_multimap<_Key, _Tp, _Hash, _Pred, _Alloc>::const_iterator const_iterator;
+    typedef pair<const_iterator, const_iterator> _IteratorRange;
+
+    // First advance both sequences until we find a mismatch. If the two unordered maps
+    // happen to be in the same order, this can be a lot faster than doing repeated lookups.
+    const_iterator const __xend = __x.end();
+    _IteratorRange __mismatch = std::mismatch(__x.begin(), __xend, __y.begin());
+
+    // Then compare the "tail" of the unordered maps using repeated lookups.
+    // Note that we need to check with std::is_permutation because equal_range only considers
+    // the keys, not the values.
+    for (const_iterator __i = __mismatch.first; __i != __xend;) {
+        _IteratorRange __xeq = __x.equal_range(__i->first);
+        _IteratorRange __yeq = __y.equal_range(__i->first);
+        if (std::distance(__xeq.first, __xeq.second) != std::distance(__yeq.first, __yeq.second) ||
+            !std::is_permutation(__xeq.first, __xeq.second, __yeq.first))
             return false;
         __i = __xeq.second;
     }
