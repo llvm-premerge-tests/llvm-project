@@ -869,6 +869,7 @@ llvm::json::Value toJSON(const Command &C) {
 const llvm::StringLiteral CodeAction::QUICKFIX_KIND = "quickfix";
 const llvm::StringLiteral CodeAction::REFACTOR_KIND = "refactor";
 const llvm::StringLiteral CodeAction::INFO_KIND = "info";
+const llvm::StringLiteral CodeAction::SOURCE_KIND = "source";
 
 llvm::json::Value toJSON(const CodeAction &CA) {
   auto CodeAction = llvm::json::Object{{"title", CA.title}};
@@ -928,12 +929,15 @@ bool fromJSON(const llvm::json::Value &Params, TweakArgs &A,
               llvm::json::Path P) {
   llvm::json::ObjectMapper O(Params, P);
   return O && O.map("file", A.file) && O.map("selection", A.selection) &&
-         O.map("tweakID", A.tweakID);
+         O.map("tweakID", A.tweakID) &&
+         O.map("requestedActionKinds", A.requestedActionKinds);
 }
 
 llvm::json::Value toJSON(const TweakArgs &A) {
-  return llvm::json::Object{
-      {"tweakID", A.tweakID}, {"selection", A.selection}, {"file", A.file}};
+  return llvm::json::Object{{"tweakID", A.tweakID},
+                            {"selection", A.selection},
+                            {"file", A.file},
+                            {"requestedActionKinds", A.requestedActionKinds}};
 }
 
 llvm::json::Value toJSON(const ApplyWorkspaceEditParams &Params) {

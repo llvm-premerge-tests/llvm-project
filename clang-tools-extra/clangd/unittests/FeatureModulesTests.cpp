@@ -49,8 +49,8 @@ TEST(FeatureModulesTest, ContributesTweak) {
   auto Tree =
       SelectionTree::createRight(AST.getASTContext(), AST.getTokens(), 0, 0);
   auto Actual = prepareTweak(
-      TweakID, Tweak::Selection(nullptr, AST, 0, 0, std::move(Tree), nullptr),
-      &Set);
+      TweakID,
+      Tweak::Selection(nullptr, AST, 0, 0, std::move(Tree), nullptr, {}), &Set);
   ASSERT_TRUE(bool(Actual));
   EXPECT_EQ(Actual->get()->id(), TweakID);
 }

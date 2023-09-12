@@ -49,7 +49,8 @@ public:
   struct Selection {
     Selection(const SymbolIndex *Index, ParsedAST &AST, unsigned RangeBegin,
               unsigned RangeEnd, SelectionTree ASTSelection,
-              llvm::vfs::FileSystem *VFS);
+              llvm::vfs::FileSystem *VFS,
+              const std::vector<std::string> &RequestedActionKinds);
     /// The text of the active document.
     llvm::StringRef Code;
     /// The Index for handling codebase related queries.
@@ -68,6 +69,9 @@ public:
     /// File system used to access source code (for cross-file tweaks).
     /// This is only populated when applying a tweak, not during prepare.
     llvm::vfs::FileSystem *FS = nullptr;
+    /// Requested code action kinds from the `only` field of
+    /// code action request context.
+    std::vector<std::string> RequestedActionKinds;
     // FIXME: provide a way to get sources and ASTs for other files.
   };
 

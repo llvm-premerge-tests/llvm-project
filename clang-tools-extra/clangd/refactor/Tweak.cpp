@@ -57,12 +57,13 @@ getAllTweaks(const FeatureModuleSet *Modules) {
 }
 } // namespace
 
-Tweak::Selection::Selection(const SymbolIndex *Index, ParsedAST &AST,
-                            unsigned RangeBegin, unsigned RangeEnd,
-                            SelectionTree ASTSelection,
-                            llvm::vfs::FileSystem *FS)
+Tweak::Selection::Selection(
+    const SymbolIndex *Index, ParsedAST &AST, unsigned RangeBegin,
+    unsigned RangeEnd, SelectionTree ASTSelection, llvm::vfs::FileSystem *FS,
+    const std::vector<std::string> &RequestedActionKinds)
     : Index(Index), AST(&AST), SelectionBegin(RangeBegin),
-      SelectionEnd(RangeEnd), ASTSelection(std::move(ASTSelection)), FS(FS) {
+      SelectionEnd(RangeEnd), ASTSelection(std::move(ASTSelection)), FS(FS),
+      RequestedActionKinds(RequestedActionKinds) {
   auto &SM = AST.getSourceManager();
   Code = SM.getBufferData(SM.getMainFileID());
   Cursor = SM.getComposedLoc(SM.getMainFileID(), RangeBegin);
