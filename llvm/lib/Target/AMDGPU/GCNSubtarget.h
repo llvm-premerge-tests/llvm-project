@@ -78,6 +78,7 @@ protected:
   bool UnalignedAccessMode = false;
   bool HasApertureRegs = false;
   bool SupportsXNACK = false;
+  bool KernargPreload = false;
 
   // This should not be used directly. 'TargetID' tracks the dynamic settings
   // for XNACK.
@@ -856,7 +857,7 @@ public:
                            unsigned NumRegionInstrs) const override;
 
   unsigned getMaxNumUserSGPRs() const {
-    return 16;
+    return AMDGPU::getMaxNumUserSGPRs(*this);
   }
 
   bool hasSMemRealTime() const {
@@ -1179,9 +1180,7 @@ public:
   bool hasLegacyGeometry() const { return getGeneration() < GFX11; }
 
   // \returns true if preloading kernel arguments is supported.
-  bool hasKernargPreload() const {
-    return hasGFX90AInsts() || hasGFX940Insts();
-  }
+  bool hasKernargPreload() const { return KernargPreload; }
 
   // \returns true if FP8/BF8 VOP1 form of conversion to F32 is unreliable.
   bool hasCvtFP8VOP1Bug() const { return true; }
