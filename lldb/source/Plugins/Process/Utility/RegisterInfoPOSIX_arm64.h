@@ -109,6 +109,8 @@ public:
 
   void AddRegSetZA();
 
+  void AddRegSetSME();
+
   uint32_t ConfigureVectorLength(uint32_t sve_vq);
 
   void ConfigureVectorLengthZA(uint32_t za_vq);
@@ -147,6 +149,7 @@ public:
   uint32_t GetMTEOffset() const;
   uint32_t GetTLSOffset() const;
   uint32_t GetZAOffset() const;
+  uint32_t GetSMEOffset() const;
 
 private:
   typedef std::map<uint32_t, std::vector<lldb_private::RegisterInfo>>
