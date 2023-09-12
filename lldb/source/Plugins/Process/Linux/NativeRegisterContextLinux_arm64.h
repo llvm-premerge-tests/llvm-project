@@ -114,6 +114,12 @@ private:
 
   uint64_t m_mte_ctrl_reg;
 
+  struct sme_regs {
+    uint64_t svg_reg;
+  };
+
+  struct sme_regs m_sme_regs;
+
   struct tls_regs {
     uint64_t tpidr_reg;
     // Only valid when SME is present.
@@ -144,6 +150,8 @@ private:
 
   Status WriteTLS();
 
+  Status ReadSMESVG();
+
   Status ReadZAHeader();
 
   Status ReadZA();
@@ -159,6 +167,7 @@ private:
   bool IsPAuth(unsigned reg) const;
   bool IsMTE(unsigned reg) const;
   bool IsTLS(unsigned reg) const;
+  bool IsSME(unsigned reg) const;
 
   uint64_t GetSVERegVG() { return m_sve_header.vl / 8; }
 
@@ -175,6 +184,8 @@ private:
   void *GetMTEControl() { return &m_mte_ctrl_reg; }
 
   void *GetTLSBuffer() { return &m_tls_regs; }
+
+  void *GetSMEBuffer() { return &m_sme_regs; }
 
   void *GetSVEBuffer() { return m_sve_ptrace_payload.data(); }
 
@@ -193,6 +204,8 @@ private:
   size_t GetMTEControlSize() { return sizeof(m_mte_ctrl_reg); }
 
   size_t GetTLSBufferSize() { return m_tls_size; }
+
+  size_t GetSMEBufferSize() { return sizeof(m_sme_regs); }
 
   llvm::Error ReadHardwareDebugInfo() override;
 
