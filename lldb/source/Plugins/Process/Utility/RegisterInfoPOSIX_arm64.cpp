@@ -88,6 +88,9 @@ static lldb_private::RegisterInfo g_register_infos_za[] =
     {{"za", nullptr, 16, 0, lldb::eEncodingVector, lldb::eFormatVectorOfUInt8,
       KIND_ALL_INVALID, nullptr, nullptr, nullptr}};
 
+static lldb_private::RegisterInfo g_register_infos_sme[] = {
+    DEFINE_EXTENSION_REG(svg)};
+
 // Number of register sets provided by this context.
 enum {
   k_num_gpr_registers = gpr_w28 - gpr_x0 + 1,
@@ -255,8 +258,10 @@ RegisterInfoPOSIX_arm64::RegisterInfoPOSIX_arm64(
       // present.
       AddRegSetTLS(m_opt_regsets.AllSet(eRegsetMaskSSVE));
 
-      if (m_opt_regsets.AnySet(eRegsetMaskSSVE))
+      if (m_opt_regsets.AnySet(eRegsetMaskSSVE)) {
         AddRegSetZA();
+        AddRegSetSME();
+      }
 
       m_register_info_count = m_dynamic_reg_infos.size();
       m_register_info_p = m_dynamic_reg_infos.data();
@@ -375,6 +380,24 @@ void RegisterInfoPOSIX_arm64::AddRegSetZA() {
       std::make_pair(za_regnum, za_regnum + 1);
   m_dynamic_reg_sets.push_back(g_reg_set_za_arm64);
   m_dynamic_reg_sets.back().registers = m_za_regnum_collection.data();
+}
+
+void RegisterInfoPOSIX_arm64::AddRegSetSME() {
+  uint32_t sme_regnum = m_dynamic_reg_infos.size();
+  for (uint32_t i = 0; i < k_num_sme_register; i++) {
+    m_sme_regnum_collection.push_back(sme_regnum + i);
+    m_dynamic_reg_infos.push_back(g_register_infos_sme[i]);
+    m_dynamic_reg_infos[sme_regnum + i].byte_offset =
+        m_dynamic_reg_infos[sme_regnum + i - 1].byte_offset +
+        m_dynamic_reg_infos[sme_regnum + i - 1].byte_size;
+    m_dynamic_reg_infos[sme_regnum + i].kinds[lldb::eRegisterKindLLDB] =
+        sme_regnum + i;
+  }
+
+  m_per_regset_regnum_range[m_register_set_count] =
+      std::make_pair(sme_regnum, m_dynamic_reg_infos.size());
+  m_dynamic_reg_sets.push_back(g_reg_set_sme_arm64);
+  m_dynamic_reg_sets.back().registers = m_sme_regnum_collection.data();
 }
 
 uint32_t RegisterInfoPOSIX_arm64::ConfigureVectorLength(uint32_t sve_vq) {
@@ -522,4 +545,8 @@ uint32_t RegisterInfoPOSIX_arm64::GetTLSOffset() const {
 
 uint32_t RegisterInfoPOSIX_arm64::GetZAOffset() const {
   return m_register_info_p[m_za_regnum_collection[0]].byte_offset;
+}
+
+uint32_t RegisterInfoPOSIX_arm64::GetSMEOffset() const {
+  return m_register_info_p[m_sme_regnum_collection[0]].byte_offset;
 }
