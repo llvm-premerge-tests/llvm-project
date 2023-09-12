@@ -147,6 +147,7 @@ NativeRegisterContextLinux_arm64::NativeRegisterContextLinux_arm64(
   ::memset(&m_sve_header, 0, sizeof(m_sve_header));
   ::memset(&m_pac_mask, 0, sizeof(m_pac_mask));
   ::memset(&m_tls_regs, 0, sizeof(m_tls_regs));
+  ::memset(&m_sme_regs, 0, sizeof(m_sme_regs));
 
   m_mte_ctrl_reg = 0;
 
@@ -353,6 +354,14 @@ NativeRegisterContextLinux_arm64::ReadRegister(const RegisterInfo *reg_info,
              GetZAHeaderSize();
     assert(offset < GetZABufferSize());
     src = (uint8_t *)GetZABuffer() + offset;
+  } else if (IsSME(reg)) {
+    error = ReadSMESVG();
+    if (error.Fail())
+      return error;
+
+    offset = reg_info->byte_offset - GetRegisterInfo().GetSMEOffset();
+    assert(offset < GetSMEBufferSize());
+    src = (uint8_t *)GetSMEBuffer() + offset;
   } else
     return Status("failed - register wasn't recognized to be a GPR or an FPR, "
                   "write strategy unknown");
@@ -552,6 +561,8 @@ Status NativeRegisterContextLinux_arm64::WriteRegister(
     // way to change that is via the vg register. So here we assume the length
     // will always be the current length and no reconfigure is needed.
     return WriteZA();
+  } else if (IsSME(reg)) {
+    return Status("Writing to SVG is not supported.");
   }
 
   return Status("Failed to write register value");
@@ -899,6 +910,10 @@ bool NativeRegisterContextLinux_arm64::IsMTE(unsigned reg) const {
 
 bool NativeRegisterContextLinux_arm64::IsTLS(unsigned reg) const {
   return GetRegisterInfo().IsTLSReg(reg);
+}
+
+bool NativeRegisterContextLinux_arm64::IsSME(unsigned reg) const {
+  return GetRegisterInfo().IsSMEReg(reg);
 }
 
 llvm::Error NativeRegisterContextLinux_arm64::ReadHardwareDebugInfo() {
@@ -1355,6 +1370,16 @@ uint32_t NativeRegisterContextLinux_arm64::CalculateSVEOffset(
         sve::SigRegsOffset() + reg_info->byte_offset - sve_z0_offset;
   }
   return sve_reg_offset;
+}
+
+Status NativeRegisterContextLinux_arm64::ReadSMESVG() {
+  // This register is the streaming vector length, so we will get it from
+  // NT_ARM_ZA regardless of the current streaming mode.
+  Status error = ReadZAHeader();
+  if (error.Success())
+    m_sme_regs.svg_reg = m_za_header.vl / 8;
+
+  return error;
 }
 
 std::vector<uint32_t> NativeRegisterContextLinux_arm64::GetExpeditedRegisters(
