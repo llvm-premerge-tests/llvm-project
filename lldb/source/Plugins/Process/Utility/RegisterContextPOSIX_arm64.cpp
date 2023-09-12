@@ -43,6 +43,10 @@ bool RegisterContextPOSIX_arm64::IsSVE(unsigned reg) const {
   return m_register_info_up->IsSVEReg(reg);
 }
 
+bool RegisterContextPOSIX_arm64::IsZA(unsigned reg) const {
+  return m_register_info_up->IsZAReg(reg);
+}
+
 bool RegisterContextPOSIX_arm64::IsPAuth(unsigned reg) const {
   return m_register_info_up->IsPAuthReg(reg);
 }
