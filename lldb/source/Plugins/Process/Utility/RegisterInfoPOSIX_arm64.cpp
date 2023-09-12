@@ -89,7 +89,7 @@ static lldb_private::RegisterInfo g_register_infos_za[] =
       KIND_ALL_INVALID, nullptr, nullptr, nullptr}};
 
 static lldb_private::RegisterInfo g_register_infos_sme[] = {
-    DEFINE_EXTENSION_REG(svg)};
+    DEFINE_EXTENSION_REG(svg), DEFINE_EXTENSION_REG(svcr)};
 
 // Number of register sets provided by this context.
 enum {
@@ -100,7 +100,7 @@ enum {
   // Number of TLS registers is dynamic so it is not listed here.
   k_num_pauth_register = 2,
   k_num_za_register = 1,
-  k_num_sme_register = 1,
+  k_num_sme_register = 2,
   k_num_register_sets_default = 2,
   k_num_register_sets = 3
 };
