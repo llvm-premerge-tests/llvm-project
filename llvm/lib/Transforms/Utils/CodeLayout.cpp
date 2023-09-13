@@ -1388,7 +1388,7 @@ llvm::applyExtTspLayout(const std::vector<uint64_t> &NodeSizes,
   std::vector<uint64_t> Result;
   Alg.run(Result);
 
-  // Verify correctness of the output.
+  // Verify correctness of the output
   assert(Result.front() == 0 && "Original entry point is not preserved");
   assert(Result.size() == NodeSizes.size() && "Incorrect size of layout");
   return Result;
