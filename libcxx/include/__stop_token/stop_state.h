@@ -14,9 +14,10 @@
 #include <__config>
 #include <__stop_token/atomic_unique_lock.h>
 #include <__stop_token/intrusive_list_view.h>
+#include <__thread/this_thread.h>
+#include <__thread/thread.h>
 #include <atomic>
 #include <cstdint>
-#include <thread>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header
