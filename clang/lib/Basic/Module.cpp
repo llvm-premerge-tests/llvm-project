@@ -300,7 +300,7 @@ bool Module::directlyUses(const Module *Requested) {
       return true;
 
   // Anyone is allowed to use our builtin stddef.h and its accompanying module.
-  if (!Requested->Parent && Requested->Name == "_Builtin_stddef_max_align_t")
+  if (!Requested->Parent && Requested->Name == "_Builtin_stddef")
     return true;
 
   if (NoUndeclaredIncludes)
