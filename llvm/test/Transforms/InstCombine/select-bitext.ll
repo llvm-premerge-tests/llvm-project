@@ -341,8 +341,7 @@ define i32 @test_sext2(i1 %cca, i1 %ccb) {
 
 define i32 @test_sext3(i1 %cca, i1 %ccb) {
 ; CHECK-LABEL: @test_sext3(
-; CHECK-NEXT:    [[NOT_CCB:%.*]] = xor i1 [[CCB:%.*]], true
-; CHECK-NEXT:    [[NARROW:%.*]] = select i1 [[NOT_CCB]], i1 [[CCA:%.*]], i1 false
+; CHECK-NEXT:    [[NARROW:%.*]] = select i1 [[CCB:%.*]], i1 false, i1 [[CCA:%.*]]
 ; CHECK-NEXT:    [[R:%.*]] = sext i1 [[NARROW]] to i32
 ; CHECK-NEXT:    ret i32 [[R]]
 ;
@@ -353,8 +352,7 @@ define i32 @test_sext3(i1 %cca, i1 %ccb) {
 
 define i32 @test_sext4(i1 %cca, i1 %ccb) {
 ; CHECK-LABEL: @test_sext4(
-; CHECK-NEXT:    [[NOT_CCB:%.*]] = xor i1 [[CCB:%.*]], true
-; CHECK-NEXT:    [[NARROW:%.*]] = select i1 [[NOT_CCB]], i1 true, i1 [[CCA:%.*]]
+; CHECK-NEXT:    [[NARROW:%.*]] = select i1 [[CCB:%.*]], i1 [[CCA:%.*]], i1 true
 ; CHECK-NEXT:    [[R:%.*]] = sext i1 [[NARROW]] to i32
 ; CHECK-NEXT:    ret i32 [[R]]
 ;
@@ -387,8 +385,7 @@ define i32 @test_zext2(i1 %cca, i1 %ccb) {
 
 define i32 @test_zext3(i1 %cca, i1 %ccb) {
 ; CHECK-LABEL: @test_zext3(
-; CHECK-NEXT:    [[NOT_CCB:%.*]] = xor i1 [[CCB:%.*]], true
-; CHECK-NEXT:    [[NARROW:%.*]] = select i1 [[NOT_CCB]], i1 [[CCA:%.*]], i1 false
+; CHECK-NEXT:    [[NARROW:%.*]] = select i1 [[CCB:%.*]], i1 false, i1 [[CCA:%.*]]
 ; CHECK-NEXT:    [[R:%.*]] = zext i1 [[NARROW]] to i32
 ; CHECK-NEXT:    ret i32 [[R]]
 ;
@@ -399,8 +396,7 @@ define i32 @test_zext3(i1 %cca, i1 %ccb) {
 
 define i32 @test_zext4(i1 %cca, i1 %ccb) {
 ; CHECK-LABEL: @test_zext4(
-; CHECK-NEXT:    [[NOT_CCB:%.*]] = xor i1 [[CCB:%.*]], true
-; CHECK-NEXT:    [[NARROW:%.*]] = select i1 [[NOT_CCB]], i1 true, i1 [[CCA:%.*]]
+; CHECK-NEXT:    [[NARROW:%.*]] = select i1 [[CCB:%.*]], i1 [[CCA:%.*]], i1 true
 ; CHECK-NEXT:    [[R:%.*]] = zext i1 [[NARROW]] to i32
 ; CHECK-NEXT:    ret i32 [[R]]
 ;
