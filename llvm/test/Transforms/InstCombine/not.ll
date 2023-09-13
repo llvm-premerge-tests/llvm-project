@@ -481,8 +481,8 @@ define i1 @not_select_bool(i1 %x, i1 %y, i1 %z) {
 
 define i1 @not_select_bool_const1(i1 %x, i1 %y) {
 ; CHECK-LABEL: @not_select_bool_const1(
-; CHECK-NEXT:    [[Y_NOT:%.*]] = xor i1 [[Y:%.*]], true
-; CHECK-NEXT:    [[R:%.*]] = select i1 [[X:%.*]], i1 [[Y_NOT]], i1 false
+; CHECK-NEXT:    [[SEL:%.*]] = select i1 [[X:%.*]], i1 [[Y:%.*]], i1 true
+; CHECK-NEXT:    [[R:%.*]] = xor i1 [[SEL]], true
 ; CHECK-NEXT:    ret i1 [[R]]
 ;
   %sel = select i1 %x, i1 %y, i1 true
@@ -514,8 +514,8 @@ define i1 @not_select_bool_const3(i1 %x, i1 %y) {
 
 define i1 @not_select_bool_const4(i1 %x, i1 %y) {
 ; CHECK-LABEL: @not_select_bool_const4(
-; CHECK-NEXT:    [[Y_NOT:%.*]] = xor i1 [[Y:%.*]], true
-; CHECK-NEXT:    [[R:%.*]] = select i1 [[X:%.*]], i1 true, i1 [[Y_NOT]]
+; CHECK-NEXT:    [[SEL:%.*]] = select i1 [[X:%.*]], i1 false, i1 [[Y:%.*]]
+; CHECK-NEXT:    [[R:%.*]] = xor i1 [[SEL]], true
 ; CHECK-NEXT:    ret i1 [[R]]
 ;
   %sel = select i1 %x, i1 false, i1 %y
@@ -537,8 +537,7 @@ define <2 x i1> @not_logicalAnd_not_op0(<2 x i1> %x, <2 x i1> %y) {
 
 define i1 @not_logicalAnd_not_op1(i1 %x, i1 %y) {
 ; CHECK-LABEL: @not_logicalAnd_not_op1(
-; CHECK-NEXT:    [[NOT_X:%.*]] = xor i1 [[X:%.*]], true
-; CHECK-NEXT:    [[NOTAND:%.*]] = select i1 [[NOT_X]], i1 true, i1 [[Y:%.*]]
+; CHECK-NEXT:    [[NOTAND:%.*]] = select i1 [[X:%.*]], i1 [[Y:%.*]], i1 true
 ; CHECK-NEXT:    ret i1 [[NOTAND]]
 ;
   %noty = xor i1 %y, true
@@ -593,8 +592,7 @@ define <2 x i1> @not_logicalOr_not_op0(<2 x i1> %x, <2 x i1> %y) {
 
 define i1 @not_logicalOr_not_op1(i1 %x, i1 %y) {
 ; CHECK-LABEL: @not_logicalOr_not_op1(
-; CHECK-NEXT:    [[NOT_X:%.*]] = xor i1 [[X:%.*]], true
-; CHECK-NEXT:    [[NOTOR:%.*]] = select i1 [[NOT_X]], i1 [[Y:%.*]], i1 false
+; CHECK-NEXT:    [[NOTOR:%.*]] = select i1 [[X:%.*]], i1 false, i1 [[Y:%.*]]
 ; CHECK-NEXT:    ret i1 [[NOTOR]]
 ;
   %noty = xor i1 %y, true
