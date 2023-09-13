@@ -58,8 +58,7 @@ define i1 @cond_eq_or_const(i8 %X, i8 %Y) {
 define i1 @xor_and(i1 %c, i32 %X, i32 %Y) {
 ; CHECK-LABEL: @xor_and(
 ; CHECK-NEXT:    [[COMP:%.*]] = icmp uge i32 [[X:%.*]], [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_C:%.*]] = xor i1 [[C:%.*]], true
-; CHECK-NEXT:    [[SEL:%.*]] = select i1 [[NOT_C]], i1 true, i1 [[COMP]]
+; CHECK-NEXT:    [[SEL:%.*]] = select i1 [[C:%.*]], i1 [[COMP]], i1 true
 ; CHECK-NEXT:    ret i1 [[SEL]]
 ;
   %comp = icmp ult i32 %X, %Y
@@ -97,8 +96,7 @@ define <2 x i1> @xor_and3(<2 x i1> %c, <2 x i32> %X, <2 x i32> %Y) {
 define i1 @xor_or(i1 %c, i32 %X, i32 %Y) {
 ; CHECK-LABEL: @xor_or(
 ; CHECK-NEXT:    [[COMP:%.*]] = icmp uge i32 [[X:%.*]], [[Y:%.*]]
-; CHECK-NEXT:    [[NOT_C:%.*]] = xor i1 [[C:%.*]], true
-; CHECK-NEXT:    [[SEL:%.*]] = select i1 [[NOT_C]], i1 [[COMP]], i1 false
+; CHECK-NEXT:    [[SEL:%.*]] = select i1 [[C:%.*]], i1 false, i1 [[COMP]]
 ; CHECK-NEXT:    ret i1 [[SEL]]
 ;
   %comp = icmp ult i32 %X, %Y
