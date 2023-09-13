@@ -799,6 +799,11 @@ void GDBRemoteRegisterContext::AArch64SMEReconfigure() {
   if (!reg_info)
     return;
 
+  // When vg is written it is automatically made invalid. Writing vg will also
+  // change svg if we're in streaming mode, so we must fetch the latest value
+  // from the remote.
+  SetRegisterIsValid(reg_info, false);
+
   uint64_t fail_value = LLDB_INVALID_ADDRESS;
   uint32_t svg_reg_num = reg_info->kinds[eRegisterKindLLDB];
   uint64_t svg_reg_value = ReadRegisterAsUnsigned(svg_reg_num, fail_value);
