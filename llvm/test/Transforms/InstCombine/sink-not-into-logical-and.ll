@@ -40,8 +40,7 @@ define i1 @n1(i1 %i1, i32 %v2, i32 %v3) {
 define i1 @n2(i32 %v0, i32 %v1, i1 %i2) {
 ; CHECK-LABEL: @n2(
 ; CHECK-NEXT:    [[I1:%.*]] = icmp ne i32 [[V0:%.*]], [[V1:%.*]]
-; CHECK-NEXT:    [[NOT_I2:%.*]] = xor i1 [[I2:%.*]], true
-; CHECK-NEXT:    [[I3:%.*]] = select i1 [[NOT_I2]], i1 true, i1 [[I1]]
+; CHECK-NEXT:    [[I3:%.*]] = select i1 [[I2:%.*]], i1 [[I1]], i1 true
 ; CHECK-NEXT:    ret i1 [[I3]]
 ;
   %i1 = icmp eq i32 %v0, %v1
@@ -82,8 +81,7 @@ define i1 @n5(i32 %v0, i32 %v1, i32 %v2, i32 %v3) {
 ; CHECK-NEXT:    [[I1:%.*]] = icmp ne i32 [[V0:%.*]], [[V1:%.*]]
 ; CHECK-NEXT:    [[I2:%.*]] = icmp eq i32 [[V2:%.*]], [[V3:%.*]]
 ; CHECK-NEXT:    call void @use1(i1 [[I2]])
-; CHECK-NEXT:    [[NOT_I2:%.*]] = xor i1 [[I2]], true
-; CHECK-NEXT:    [[I3:%.*]] = select i1 [[NOT_I2]], i1 true, i1 [[I1]]
+; CHECK-NEXT:    [[I3:%.*]] = select i1 [[I2]], i1 [[I1]], i1 true
 ; CHECK-NEXT:    ret i1 [[I3]]
 ;
   %i1 = icmp eq i32 %v0, %v1
@@ -211,10 +209,10 @@ define i1 @PR59704(i1 %c, i1 %b, i64 %arg) {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    br i1 [[C:%.*]], label [[IF:%.*]], label [[JOIN:%.*]]
 ; CHECK:       if:
-; CHECK-NEXT:    [[CMP_NOT:%.*]] = icmp eq i64 [[ARG:%.*]], 0
+; CHECK-NEXT:    [[CMP:%.*]] = icmp eq i64 [[ARG:%.*]], 0
 ; CHECK-NEXT:    br label [[JOIN]]
 ; CHECK:       join:
-; CHECK-NEXT:    [[PHI:%.*]] = phi i1 [ true, [[ENTRY:%.*]] ], [ [[CMP_NOT]], [[IF]] ]
+; CHECK-NEXT:    [[PHI:%.*]] = phi i1 [ true, [[ENTRY:%.*]] ], [ [[CMP]], [[IF]] ]
 ; CHECK-NEXT:    ret i1 [[PHI]]
 ;
 entry:
