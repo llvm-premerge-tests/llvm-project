@@ -40,8 +40,7 @@ define i1 @n1(i1 %i1, i32 %v2, i32 %v3) {
 define i1 @n2(i32 %v0, i32 %v1, i1 %i2) {
 ; CHECK-LABEL: @n2(
 ; CHECK-NEXT:    [[I1:%.*]] = icmp ne i32 [[V0:%.*]], [[V1:%.*]]
-; CHECK-NEXT:    [[NOT_I2:%.*]] = xor i1 [[I2:%.*]], true
-; CHECK-NEXT:    [[I3:%.*]] = select i1 [[NOT_I2]], i1 [[I1]], i1 false
+; CHECK-NEXT:    [[I3:%.*]] = select i1 [[I2:%.*]], i1 false, i1 [[I1]]
 ; CHECK-NEXT:    ret i1 [[I3]]
 ;
   %i1 = icmp eq i32 %v0, %v1
@@ -82,8 +81,7 @@ define i1 @n5(i32 %v0, i32 %v1, i32 %v2, i32 %v3) {
 ; CHECK-NEXT:    [[I1:%.*]] = icmp ne i32 [[V0:%.*]], [[V1:%.*]]
 ; CHECK-NEXT:    [[I2:%.*]] = icmp eq i32 [[V2:%.*]], [[V3:%.*]]
 ; CHECK-NEXT:    call void @use1(i1 [[I2]])
-; CHECK-NEXT:    [[NOT_I2:%.*]] = xor i1 [[I2]], true
-; CHECK-NEXT:    [[I3:%.*]] = select i1 [[NOT_I2]], i1 [[I1]], i1 false
+; CHECK-NEXT:    [[I3:%.*]] = select i1 [[I2]], i1 false, i1 [[I1]]
 ; CHECK-NEXT:    ret i1 [[I3]]
 ;
   %i1 = icmp eq i32 %v0, %v1
