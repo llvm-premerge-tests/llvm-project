@@ -72,6 +72,7 @@ add_lld_library(lldELF
   Option
   Passes
   Support
+  TransformUtils
   TargetParser
 
   LINK_LIBS
