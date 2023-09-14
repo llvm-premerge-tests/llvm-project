@@ -243,6 +243,31 @@ Register SIMachineFunctionInfo::addLDSKernelId() {
   return ArgInfo.LDSKernelId.getRegister();
 }
 
+SmallVectorImpl<MCRegister> *SIMachineFunctionInfo::addPreloadedKernArg(
+    const SIRegisterInfo &TRI, const TargetRegisterClass *RC,
+    unsigned AllocSizeDWord, int KernArgIdx, int PaddingSGPRs) {
+  assert(!ArgInfo.PreloadKernArgs.count(KernArgIdx) &&
+         "Preload kernel argument allocated twice.");
+  NumUserSGPRs += PaddingSGPRs;
+  // If the available register tuples are aligned with the kernarg to be
+  // preloaded use that register, otherwise we need to use a set of SGPRs and
+  // merge them.
+  if (Register PreloadReg =
+          TRI.getMatchingSuperReg(getNextUserSGPR(), AMDGPU::sub0, RC)) {
+    ArgInfo.PreloadKernArgs[KernArgIdx].Regs.push_back(PreloadReg);
+    NumUserSGPRs += AllocSizeDWord;
+  } else {
+    for (unsigned I = 0; I < AllocSizeDWord; ++I) {
+      ArgInfo.PreloadKernArgs[KernArgIdx].Regs.push_back(getNextUserSGPR());
+      NumUserSGPRs++;
+    }
+  }
+
+  // Track the actual number of SGPRs that HW will preload to.
+  UserSGPRInfo.allocKerargPreloadSGPRs(AllocSizeDWord + PaddingSGPRs);
+  return &ArgInfo.PreloadKernArgs[KernArgIdx].Regs;
+}
+
 void SIMachineFunctionInfo::allocateWWMSpill(MachineFunction &MF, Register VGPR,
                                              uint64_t Size, Align Alignment) {
   // Skip if it is an entry function or the register is already added.
@@ -570,6 +595,7 @@ convertArgumentInfo(const AMDGPUFunctionArgInfo &ArgInfo,
     return true;
   };
 
+  // TODO: Need to serialize kernarg preloads.
   bool Any = false;
   Any |= convertArg(AI.PrivateSegmentBuffer, ArgInfo.PrivateSegmentBuffer);
   Any |= convertArg(AI.DispatchPtr, ArgInfo.DispatchPtr);

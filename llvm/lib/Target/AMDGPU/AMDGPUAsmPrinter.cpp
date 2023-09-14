@@ -219,6 +219,11 @@ void AMDGPUAsmPrinter::emitFunctionBodyStart() {
 
   if (STM.isAmdHsaOS())
     HSAMetadataStream->emitKernel(*MF, CurrentProgramInfo);
+
+  if (MF->getInfo<SIMachineFunctionInfo>()->getNumKernargPreloadedSGPRs() > 0) {
+    assert(AMDGPU::hasKernargPreload(STM));
+    getTargetStreamer()->EmitKernargPreloadHeader(*getGlobalSTI());
+  }
 }
 
 void AMDGPUAsmPrinter::emitFunctionBodyEnd() {
@@ -436,6 +441,7 @@ amdhsa::kernel_descriptor_t AMDGPUAsmPrinter::getAmdhsaKernelDescriptor(
     const SIProgramInfo &PI) const {
   const GCNSubtarget &STM = MF.getSubtarget<GCNSubtarget>();
   const Function &F = MF.getFunction();
+  const SIMachineFunctionInfo *Info = MF.getInfo<SIMachineFunctionInfo>();
 
   amdhsa::kernel_descriptor_t KernelDescriptor;
   memset(&KernelDescriptor, 0x0, sizeof(KernelDescriptor));
@@ -458,6 +464,10 @@ amdhsa::kernel_descriptor_t AMDGPUAsmPrinter::getAmdhsaKernelDescriptor(
   if (STM.hasGFX90AInsts())
     KernelDescriptor.compute_pgm_rsrc3 =
       CurrentProgramInfo.ComputePGMRSrc3GFX90A;
+
+  if (AMDGPU::hasKernargPreload(STM))
+    KernelDescriptor.kernarg_preload =
+        static_cast<uint16_t>(Info->getNumKernargPreloadedSGPRs());
 
   return KernelDescriptor;
 }
