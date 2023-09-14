@@ -548,6 +548,32 @@ void Function::dropAllReferences() {
   clearMetadata();
 }
 
+// This function do almost all the same things as Function::dropAllReferences(),
+// except setting Op<0..3> with PointerNull.
+void Function::deleteBodyImpl() {
+  setIsMaterializable(false);
+
+  for (BasicBlock &BB : *this)
+    BB.dropAllReferences();
+
+  // Delete all basic blocks. They are now unused, except possibly by
+  // blockaddresses, but BasicBlock's destructor takes care of those.
+  while (!BasicBlocks.empty())
+    BasicBlocks.begin()->eraseFromParent();
+
+  // The code needs to match Function::allocHungoffUselist().
+  if (getNumOperands()) {
+    auto *CPN = ConstantPointerNull::get(PointerType::get(getContext(), 0));
+    Op<0>().set(CPN);
+    Op<1>().set(CPN);
+    Op<2>().set(CPN);
+    setValueSubclassData(getSubclassDataFromValue() & ~0xe);
+  }
+
+  // Metadata is stored in a side-table.
+  clearMetadata();
+}
+
 void Function::addAttributeAtIndex(unsigned i, Attribute Attr) {
   AttributeSets = AttributeSets.addAttributeAtIndex(getContext(), i, Attr);
 }

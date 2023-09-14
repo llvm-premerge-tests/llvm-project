@@ -116,6 +116,8 @@ private:
 
   void clearArguments();
 
+  void deleteBodyImpl();
+
   /// Function ctor - If the (optional) Module argument is specified, the
   /// function is automatically inserted into the end of the function list for
   /// the module.
@@ -667,7 +669,7 @@ public:
   /// the linkage to external.
   ///
   void deleteBody() {
-    dropAllReferences();
+    deleteBodyImpl();
     setLinkage(ExternalLinkage);
   }
 
