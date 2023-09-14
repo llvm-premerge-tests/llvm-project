@@ -810,6 +810,48 @@ public:
   }
 };
 
+// x86-64 UEFI target
+class LLVM_LIBRARY_VISIBILITY UEFIX86_64TargetInfo
+    : public UEFITargetInfo<X86_64TargetInfo> {
+public:
+  UEFIX86_64TargetInfo(const llvm::Triple &Triple, const TargetOptions &Opts)
+      : UEFITargetInfo<X86_64TargetInfo>(Triple, Opts) {
+    LongWidth = LongAlign = 32;
+    DoubleAlign = LongLongAlign = 64;
+    IntMaxType = SignedLongLong;
+    Int64Type = SignedLongLong;
+    SizeType = UnsignedLongLong;
+    PtrDiffType = SignedLongLong;
+    IntPtrType = SignedLongLong;
+    LongDoubleWidth = LongDoubleAlign = 64;
+    LongDoubleFormat = &llvm::APFloat::IEEEdouble();
+  }
+
+  void getTargetDefines(const LangOptions &Opts,
+                        MacroBuilder &Builder) const override {
+    getOSDefines(Opts, X86TargetInfo::getTriple(), Builder);
+  }
+
+  BuiltinVaListKind getBuiltinVaListKind() const override {
+    return TargetInfo::CharPtrBuiltinVaList;
+  }
+
+  CallingConvCheckResult checkCallingConvention(CallingConv CC) const override {
+    switch (CC) {
+    case CC_C:
+    case CC_Win64:
+      return CCCR_OK;
+    default:
+      return CCCR_Warning;
+    }
+  }
+
+  TargetInfo::CallingConvKind
+  getCallingConvKind(bool ClangABICompat4) const override {
+    return CCK_MicrosoftWin64;
+  }
+};
+
 // x86-64 Windows target
 class LLVM_LIBRARY_VISIBILITY WindowsX86_64TargetInfo
     : public WindowsTargetInfo<X86_64TargetInfo> {
