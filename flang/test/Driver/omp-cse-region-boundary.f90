@@ -19,7 +19,7 @@ subroutine writeIndex(sum)
         integer :: myconst1
         integer :: myconst2
         myconst1 = 10
-!$omp target map(from:new_len)
+!$omp target map(from:myconst2)
         myconst2 = 10
 !$omp end target
         sum = myconst2 + myconst2
