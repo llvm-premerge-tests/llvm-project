@@ -29,6 +29,19 @@ class OMPEarlyOutliningPass
     return std::string(parentName) + "_omp_outline_" + std::to_string(count);
   }
 
+  bool isDeclareTargetOp(mlir::Operation *op) {
+    if (fir::AddrOfOp addressOfOp = mlir::dyn_cast<fir::AddrOfOp>(op))
+      if (fir::GlobalOp gOp = mlir::dyn_cast<fir::GlobalOp>(
+              addressOfOp->getParentOfType<mlir::ModuleOp>().lookupSymbol(
+                  addressOfOp.getSymbol())))
+        if (auto declareTargetGlobal =
+                llvm::dyn_cast<mlir::omp::DeclareTargetInterface>(
+                    gOp.getOperation()))
+          if (declareTargetGlobal.isDeclareTarget())
+            return true;
+    return false;
+  }
+
   mlir::func::FuncOp outlineTargetOp(mlir::OpBuilder &builder,
                                      mlir::omp::TargetOp &targetOp,
                                      mlir::func::FuncOp &parentFunc,
@@ -40,6 +53,14 @@ class OMPEarlyOutliningPass
 
     mlir::Region &targetRegion = targetOp.getRegion();
     mlir::getUsedValuesDefinedAbove(targetRegion, inputs);
+
+    // filter out declareTarget entries which are specially handled
+    // at the moment, we do not wish these to end up as function arguments
+    // as they do not end up as kernel arguments.
+    for (auto value : inputs)
+      if (value.getDefiningOp())
+        if (isDeclareTargetOp(value.getDefiningOp()))
+          inputs.remove(value);
 
     // Create new function and initialize
     mlir::FunctionType funcType = builder.getFunctionType(
@@ -68,8 +89,26 @@ class OMPEarlyOutliningPass
                 newFunc.getOperation()))
       earlyOutlineOp.setParentName(parentName);
 
-    // Create input map from inputs to function parameters.
+    // Special handling for declare target mapped variables, declare
+    // target has its addressOfOp cloned over, whereas we skip it for
+    // regular map variables. This is because We need knowledge of
+    // which global is linked to the map operation for declare
+    // target, whereas we aren't bothered for the regular map
+    // variables for the moment. We could treat both the same,
+    // however, cloning across the minimum for the moment to avoid
+    // optimisations breaking segments of the lowering seems prudent
+    // as this was the original intent of the pass.
     mlir::IRMapping valueMap;
+    for (auto oper : targetOp.getMapOperands()) {
+      if (oper.getDefiningOp() && isDeclareTargetOp(oper.getDefiningOp())) {
+        fir::AddrOfOp addrOp =
+            mlir::dyn_cast<fir::AddrOfOp>(oper.getDefiningOp());
+        mlir::Value newV = builder.clone(*addrOp)->getResult(0);
+        valueMap.map(addrOp, newV);
+      }
+    }
+
+    // Create input map from inputs to function parameters.
     for (auto InArg : llvm::zip(inputs, newInputs))
       valueMap.map(std::get<0>(InArg), std::get<1>(InArg));
 
