@@ -261,7 +261,7 @@ lprofWriteDataImpl(ProfDataWriter *Writer, const __llvm_profile_data *DataBegin,
                    const char *NamesEnd, int SkipNameDataWrite) {
   int DebugInfoCorrelate =
       (__llvm_profile_get_version() & VARIANT_MASK_DBG_CORRELATE) != 0ULL;
-
+  
   /* Calculate size of sections. */
   const uint64_t DataSectionSize =
       DebugInfoCorrelate ? 0 : __llvm_profile_get_data_size(DataBegin, DataEnd);
