@@ -2370,25 +2370,24 @@ define i1 @fold_or_phi_into_or_icmp(ptr noundef readnone %dv1, ptr noundef readn
 ; CHECK-NEXT:    [[CMP_I:%.*]] = icmp eq ptr [[VAL1:%.*]], null
 ; CHECK-NEXT:    br i1 [[CMP_I]], label [[_Z3FOOPKC_EXIT:%.*]], label [[COND_I:%.*]]
 ; CHECK:       cond.i:
+; CHECK-NEXT:    [[TMP0:%.*]] = icmp ne i64 [[I1:%.*]], 0
 ; CHECK-NEXT:    br label [[_Z3FOOPKC_EXIT]]
 ; CHECK:       _Z3fooPKc.exit:
-; CHECK-NEXT:    [[RETVAL_0_I:%.*]] = phi i64 [ 0, [[ENTRY:%.*]] ], [ [[I1:%.*]], [[COND_I]] ]
+; CHECK-NEXT:    [[RETVAL_0_I:%.*]] = phi i1 [ false, [[ENTRY:%.*]] ], [ [[TMP0]], [[COND_I]] ]
 ; CHECK-NEXT:    [[CMP_I10:%.*]] = icmp eq ptr [[VAL2:%.*]], null
 ; CHECK-NEXT:    br i1 [[CMP_I10]], label [[_Z3FOOPKC_EXIT19:%.*]], label [[COND_I11:%.*]]
 ; CHECK:       cond.i11:
+; CHECK-NEXT:    [[TMP1:%.*]] = icmp ne i64 [[I2:%.*]], 0
 ; CHECK-NEXT:    br label [[_Z3FOOPKC_EXIT19]]
 ; CHECK:       _Z3fooPKc.exit19:
-; CHECK-NEXT:    [[RETVAL_0_I20:%.*]] = phi i64 [ 0, [[_Z3FOOPKC_EXIT]] ], [ [[I2:%.*]], [[COND_I11]] ]
-; CHECK-NEXT:    [[TMP0:%.*]] = or i64 [[RETVAL_0_I]], [[RETVAL_0_I20]]
-; CHECK-NEXT:    [[OR_COND_NOT:%.*]] = icmp eq i64 [[TMP0]], 0
-; CHECK-NEXT:    br i1 [[OR_COND_NOT]], label [[IF_THEN:%.*]], label [[IF_END4:%.*]]
+; CHECK-NEXT:    [[RETVAL_0_I20:%.*]] = phi i1 [ false, [[_Z3FOOPKC_EXIT]] ], [ [[TMP1]], [[COND_I11]] ]
+; CHECK-NEXT:    [[TMP2:%.*]] = or i1 [[RETVAL_0_I]], [[RETVAL_0_I20]]
+; CHECK-NEXT:    br i1 [[TMP2]], label [[IF_END4:%.*]], label [[IF_THEN:%.*]]
 ; CHECK:       if.then:
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp eq ptr [[DV1:%.*]], [[DV2:%.*]]
 ; CHECK-NEXT:    br label [[CLEANUP:%.*]]
 ; CHECK:       if.end4:
-; CHECK-NEXT:    [[TOBOOL2:%.*]] = icmp ne i64 [[RETVAL_0_I20]], 0
-; CHECK-NEXT:    [[TOBOOL:%.*]] = icmp ne i64 [[RETVAL_0_I]], 0
-; CHECK-NEXT:    [[OR_COND10:%.*]] = and i1 [[TOBOOL]], [[TOBOOL2]]
+; CHECK-NEXT:    [[OR_COND10:%.*]] = and i1 [[RETVAL_0_I]], [[RETVAL_0_I20]]
 ; CHECK-NEXT:    br label [[CLEANUP]]
 ; CHECK:       cleanup:
 ; CHECK-NEXT:    [[RETVAL_0:%.*]] = phi i1 [ [[CMP]], [[IF_THEN]] ], [ [[OR_COND10]], [[IF_END4]] ]
@@ -2443,37 +2442,30 @@ define i1 @fold_or_phi_into_or_icmp2(ptr noundef readnone %dv1, ptr noundef %val
 ; CHECK-NEXT:    [[INCDEC_PTR_I]] = getelementptr inbounds i8, ptr [[TEST_0_I]], i64 1
 ; CHECK-NEXT:    br i1 [[CMP1_NOT_I]], label [[WHILE_END_I:%.*]], label [[WHILE_COND_I]]
 ; CHECK:       while.end.i:
-; CHECK-NEXT:    [[SUB_PTR_LHS_CAST_I:%.*]] = ptrtoint ptr [[TEST_0_I]] to i64
-; CHECK-NEXT:    [[SUB_PTR_RHS_CAST_I:%.*]] = ptrtoint ptr [[VAL1]] to i64
-; CHECK-NEXT:    [[SUB_PTR_SUB_I:%.*]] = sub i64 [[SUB_PTR_LHS_CAST_I]], [[SUB_PTR_RHS_CAST_I]]
+; CHECK-NEXT:    [[TMP1:%.*]] = icmp ne ptr [[TEST_0_I]], [[VAL1]]
 ; CHECK-NEXT:    br label [[_Z3FOOPKC_EXIT]]
 ; CHECK:       _Z3fooPKc.exit:
-; CHECK-NEXT:    [[RETVAL_0_I:%.*]] = phi i64 [ [[SUB_PTR_SUB_I]], [[WHILE_END_I]] ], [ 0, [[ENTRY]] ]
+; CHECK-NEXT:    [[RETVAL_0_I:%.*]] = phi i1 [ [[TMP1]], [[WHILE_END_I]] ], [ false, [[ENTRY]] ]
 ; CHECK-NEXT:    [[CMP_I10:%.*]] = icmp eq ptr [[VAL2:%.*]], null
 ; CHECK-NEXT:    br i1 [[CMP_I10]], label [[_Z3FOOPKC_EXIT19:%.*]], label [[WHILE_COND_I11:%.*]]
 ; CHECK:       while.cond.i11:
 ; CHECK-NEXT:    [[TEST_0_I12:%.*]] = phi ptr [ [[INCDEC_PTR_I14:%.*]], [[WHILE_COND_I11]] ], [ [[VAL2]], [[_Z3FOOPKC_EXIT]] ]
-; CHECK-NEXT:    [[TMP1:%.*]] = load i8, ptr [[TEST_0_I12]], align 1
-; CHECK-NEXT:    [[CMP1_NOT_I13:%.*]] = icmp eq i8 [[TMP1]], 0
+; CHECK-NEXT:    [[TMP2:%.*]] = load i8, ptr [[TEST_0_I12]], align 1
+; CHECK-NEXT:    [[CMP1_NOT_I13:%.*]] = icmp eq i8 [[TMP2]], 0
 ; CHECK-NEXT:    [[INCDEC_PTR_I14]] = getelementptr inbounds i8, ptr [[TEST_0_I12]], i64 1
 ; CHECK-NEXT:    br i1 [[CMP1_NOT_I13]], label [[WHILE_END_I15:%.*]], label [[WHILE_COND_I11]]
 ; CHECK:       while.end.i15:
-; CHECK-NEXT:    [[SUB_PTR_LHS_CAST_I16:%.*]] = ptrtoint ptr [[TEST_0_I12]] to i64
-; CHECK-NEXT:    [[SUB_PTR_RHS_CAST_I17:%.*]] = ptrtoint ptr [[VAL2]] to i64
-; CHECK-NEXT:    [[SUB_PTR_SUB_I18:%.*]] = sub i64 [[SUB_PTR_LHS_CAST_I16]], [[SUB_PTR_RHS_CAST_I17]]
+; CHECK-NEXT:    [[TMP3:%.*]] = icmp ne ptr [[TEST_0_I12]], [[VAL2]]
 ; CHECK-NEXT:    br label [[_Z3FOOPKC_EXIT19]]
 ; CHECK:       _Z3fooPKc.exit19:
-; CHECK-NEXT:    [[RETVAL_0_I20:%.*]] = phi i64 [ [[SUB_PTR_SUB_I18]], [[WHILE_END_I15]] ], [ 0, [[_Z3FOOPKC_EXIT]] ]
-; CHECK-NEXT:    [[TMP2:%.*]] = or i64 [[RETVAL_0_I]], [[RETVAL_0_I20]]
-; CHECK-NEXT:    [[OR_COND_NOT:%.*]] = icmp eq i64 [[TMP2]], 0
-; CHECK-NEXT:    br i1 [[OR_COND_NOT]], label [[IF_THEN:%.*]], label [[IF_END4:%.*]]
+; CHECK-NEXT:    [[RETVAL_0_I20:%.*]] = phi i1 [ [[TMP3]], [[WHILE_END_I15]] ], [ false, [[_Z3FOOPKC_EXIT]] ]
+; CHECK-NEXT:    [[TMP4:%.*]] = or i1 [[RETVAL_0_I]], [[RETVAL_0_I20]]
+; CHECK-NEXT:    br i1 [[TMP4]], label [[IF_END4:%.*]], label [[IF_THEN:%.*]]
 ; CHECK:       if.then:
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp eq ptr [[DV1:%.*]], [[DV2:%.*]]
 ; CHECK-NEXT:    br label [[CLEANUP:%.*]]
 ; CHECK:       if.end4:
-; CHECK-NEXT:    [[TOBOOL2:%.*]] = icmp ne i64 [[RETVAL_0_I20]], 0
-; CHECK-NEXT:    [[TOBOOL:%.*]] = icmp ne i64 [[RETVAL_0_I]], 0
-; CHECK-NEXT:    [[OR_COND10:%.*]] = and i1 [[TOBOOL]], [[TOBOOL2]]
+; CHECK-NEXT:    [[OR_COND10:%.*]] = and i1 [[RETVAL_0_I]], [[RETVAL_0_I20]]
 ; CHECK-NEXT:    br label [[CLEANUP]]
 ; CHECK:       cleanup:
 ; CHECK-NEXT:    [[RETVAL_0:%.*]] = phi i1 [ [[CMP]], [[IF_THEN]] ], [ [[OR_COND10]], [[IF_END4]] ]

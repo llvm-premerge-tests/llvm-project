@@ -2004,6 +2004,43 @@ static Value *foldICmpOrXorSubChain(ICmpInst &Cmp, BinaryOperator *Or,
   return LhsCmp;
 }
 
+/// Fold icmp eq (or phi, phi), 0.
+static Value *foldICmpOrPhiPhi(ICmpInst &Cmp, BinaryOperator *Or,
+                               InstCombiner::BuilderTy &Builder) {
+  // icmp eq (or(phi1, phi2)), 0..where there is another use to phi1, phi2 as
+  // "icmp ne phi1, 0" and "icmp ne phi2, 0" We can possibly fold this as icmp
+  // eq (or((icmp ne phi1, 0), (icmp ne phi2, 0))), 0. The above transformation
+  // helps reuse icmps, reduce uses of phi, bring icmp closer to phi and allow
+  // other transforms.
+
+  ICmpInst::Predicate Pred = Cmp.getPredicate();
+  Value *OrOp0 = Or->getOperand(0), *OrOp1 = Or->getOperand(1);
+  ICmpInst::Predicate EqPred;
+  for (auto operand = Or->operands().begin(); operand != Or->operands().end();
+       ++operand) {
+    auto *Phi = dyn_cast<PHINode>(operand->get());
+    if (Phi && !Phi->hasOneUser()) {
+      // Check all users of PHI. It should either be the "Or" or a "icmp ne".
+      for (User *U : Phi->users()) {
+        // Match to specific
+        if (!(U->hasOneUse() &&
+              (match(U, m_Or(m_Specific(OrOp0), m_Specific(OrOp1))) ||
+               (match(U,
+                      m_ICmp(EqPred, m_Specific(operand->get()), m_Zero())) &&
+                EqPred == ICmpInst::ICMP_NE))))
+          return nullptr;
+      }
+    } else
+      return nullptr;
+  }
+  Value *Zero = Constant::getNullValue(OrOp0->getType());
+  Value *Cmp1 = Builder.CreateICmpNE(OrOp0, Zero);
+  Value *Cmp2 = Builder.CreateICmpNE(OrOp1, Zero);
+  Value *NewOr = Builder.CreateOr(Cmp1, Cmp2);
+  return Builder.CreateICmp(Pred, NewOr,
+                            Constant::getNullValue(NewOr->getType()));
+}
+
 /// Fold icmp (or X, Y), C.
 Instruction *InstCombinerImpl::foldICmpOrConstant(ICmpInst &Cmp,
                                                   BinaryOperator *Or,
@@ -2090,6 +2127,9 @@ Instruction *InstCombinerImpl::foldICmpOrConstant(ICmpInst &Cmp,
   }
 
   if (Value *V = foldICmpOrXorSubChain(Cmp, Or, Builder))
+    return replaceInstUsesWith(Cmp, V);
+
+  if (Value *V = foldICmpOrPhiPhi(Cmp, Or, Builder))
     return replaceInstUsesWith(Cmp, V);
 
   return nullptr;
