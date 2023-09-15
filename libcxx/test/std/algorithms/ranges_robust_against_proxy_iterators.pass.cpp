@@ -73,6 +73,9 @@ constexpr void run_tests() {
 
   test(std::ranges::any_of, in, unary_pred);
   test(std::ranges::all_of, in, unary_pred);
+#if TEST_STD_VER >= 23
+  test(std::ranges::ends_with, in, in2);
+#endif
   test(std::ranges::none_of, in, unary_pred);
   test(std::ranges::find, in, x);
   test(std::ranges::find_if, in, unary_pred);
@@ -129,6 +132,9 @@ constexpr void run_tests() {
     test(std::ranges::replace_copy, in, out, x, x);
     test(std::ranges::replace_copy_if, in, out, unary_pred, x);
   }
+#if TEST_STD_VER >= 23
+  test(std::ranges::starts_with, in, in2);
+#endif
   test(std::ranges::swap_ranges, in, in2);
   if constexpr (std::copyable<T>) {
     test(std::ranges::reverse_copy, in, out);
