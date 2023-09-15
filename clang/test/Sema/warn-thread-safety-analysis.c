@@ -23,6 +23,7 @@
   __attribute__ ((shared_locks_required(__VA_ARGS__)))
 #define NO_THREAD_SAFETY_ANALYSIS  __attribute__ ((no_thread_safety_analysis))
 
+
 // Define the mutex struct.
 // Simplified only for test purpose.
 struct LOCKABLE Mutex {};
@@ -71,6 +72,8 @@ void set_value(int *a, int value) EXCLUSIVE_LOCKS_REQUIRED(foo_.mu_) {
 int get_value(int *p) SHARED_LOCKS_REQUIRED(foo_.mu_){
   return *p;
 }
+
+void unlock_scope(struct Mutex *const *mu) __attribute__((release_capability(**mu)));
 
 int main(void) {
 
@@ -126,6 +129,13 @@ int main(void) {
   mutex_exclusive_unlock(&mu1); // expected-warning {{releasing mutex 'mu1' using exclusive access, expected shared access}}
                                 // expected-note@-1{{mutex released here}}
   mutex_shared_unlock(&mu1);    // expected-warning {{releasing mutex 'mu1' that was not held}}
+
+  /// Cleanup functions
+  {
+    struct Mutex* const __attribute__((cleanup(unlock_scope))) scope = &mu1;
+    mutex_exclusive_lock(scope);  // Note that we have to lock through scope, because no alias analysis!
+    // Cleanup happens automatically -> no warning.
+  }
 
   return 0;
 }
