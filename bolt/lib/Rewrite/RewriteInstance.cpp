@@ -3173,12 +3173,9 @@ void RewriteInstance::preregisterSections() {
     // Fully register a relocatable copy of the original .eh_frame.
     BC->registerSection(".relocated.eh_frame", *EHFrameSection);
   }
-  BC->registerOrUpdateSection(getNewSecPrefix() + ".gcc_except_table",
-                              ELF::SHT_PROGBITS, ROFlags);
-  BC->registerOrUpdateSection(getNewSecPrefix() + ".rodata", ELF::SHT_PROGBITS,
-                              ROFlags);
-  BC->registerOrUpdateSection(getNewSecPrefix() + ".rodata.cold",
-                              ELF::SHT_PROGBITS, ROFlags);
+  for (StringRef SectionName : {".gcc_except_table", ".rodata", ".rodata.cold"})
+    BC->registerOrUpdateSection(getNewSecPrefix() + SectionName,
+                                ELF::SHT_PROGBITS, ROFlags);
   BC->registerOrUpdateSection(AddressMap::SectionName, ELF::SHT_PROGBITS,
                               ROFlags)
       .setLinkOnly();
