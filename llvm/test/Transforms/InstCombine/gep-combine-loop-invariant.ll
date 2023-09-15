@@ -182,6 +182,90 @@ loop:                                             ; preds = %loop, %entry
   br label %loop
 }
 
+; Test that ADD->GEP chains get reassociated to separate invariants and
+; thus provide more LICM opportunities.
+define void @test1(float* %a, float* %b, i64 %disp) {
+; CHECK-LABEL: @test1(
+entry:
+  br label %for.body
+
+for.body:
+; CHECK: for.body:
+  %indvars.iv = phi i64 [ 0, %entry ], [ %indvars.iv.next, %for.body ]
+  ; CHECK: %[[INV:.*]] = getelementptr float, ptr %a, i64 %indvars.iv
+; CHECK: %arrayidx = getelementptr inbounds float, ptr %[[INV]], i64 %disp
+  %idx = add i64 %indvars.iv, %disp
+  %arrayidx = getelementptr inbounds float, float* %a, i64 %idx
+  %0 = load float, float* %arrayidx
+  %div = fdiv float 1.500000e+00, %0
+; CHECK: %[[INV1:.*]] = getelementptr float, ptr %b, i64 %indvars.iv
+; CHECK: %arrayidx1 = getelementptr inbounds float, ptr %[[INV1]], i64 %disp
+  %arrayidx1 = getelementptr inbounds float, float* %b, i64 %idx
+  store float %div, float* %arrayidx1
+  %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
+  %exitcond = icmp ne i64 %indvars.iv.next, 1024
+  br i1 %exitcond, label %for.body, label %for.cond.cleanup
+
+for.cond.cleanup:
+  ret void
+}
+
+; As test1 but esnure no transformation when we cannot prove the original ADD
+; will become redundant, because it's used by a non-GEP.
+define i64 @test2(float* %a, float* %b, i64 %disp) {
+; CHECK-LABEL: @test2(
+entry:
+  br label %for.body
+
+for.body:
+; CHECK: for.body:
+  %indvars.iv = phi i64 [ 0, %entry ], [ %indvars.iv.next, %for.body ]
+; CHECK: %[[VAR1:.*]] = getelementptr float, ptr %a, i64 %indvars.iv
+; CHECK: %arrayidx = getelementptr inbounds float, ptr %[[VAR1]], i64 %disp
+  %idx = add i64 %indvars.iv, %disp
+  %arrayidx = getelementptr inbounds float, float* %a, i64 %idx
+  %0 = load float, float* %arrayidx
+  %div = fdiv float 1.500000e+00, %0
+; CHECK: %[[VAR2:.*]] = getelementptr float, ptr %b, i64 %indvars.iv
+; CHECK: %arrayidx1 = getelementptr inbounds float, ptr %[[VAR2]], i64 %disp
+  %arrayidx1 = getelementptr inbounds float, float* %b, i64 %idx
+  store float %div, float* %arrayidx1
+  %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
+  %exitcond = icmp ne i64 %indvars.iv.next, 1024
+  br i1 %exitcond, label %for.body, label %for.cond.cleanup
+
+for.cond.cleanup:
+  ret i64 %idx
+}
+
+; As test1 but esnure no transformation when we cannot prove the original ADD
+; will become redundant, because the second GEP's ptr is not invariant.
+define void @test3(float* %a, float* %b, i64 %disp) {
+; CHECK-LABEL: @test3(
+entry:
+  br label %for.body
+
+for.body:
+; CHECK: for.body:
+  %indvars.iv = phi i64 [ 0, %entry ], [ %indvars.iv.next, %for.body ]
+; CHECK: %[[VAR1:.*]] = getelementptr float, ptr %a, i64 %indvars.iv
+; CHECK: %arrayidx = getelementptr inbounds float, ptr %[[VAR1]], i64 %disp
+  %idx = add i64 %indvars.iv, %disp
+  %arrayidx = getelementptr inbounds float, float* %a, i64 %idx
+  %0 = load float, float* %arrayidx
+  %div = fdiv float 1.500000e+00, %0
+; CHECK: %[[VAR2:.*]] = getelementptr float, ptr %arrayidx, i64 %indvars.iv
+; CHECK: %arrayidx1 = getelementptr inbounds float, ptr %[[VAR2]], i64 %disp
+  %arrayidx1 = getelementptr inbounds float, float* %arrayidx, i64 %idx
+  store float %div, float* %arrayidx1
+  %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
+  %exitcond = icmp ne i64 %indvars.iv.next, 1024
+  br i1 %exitcond, label %for.body, label %for.cond.cleanup
+
+for.cond.cleanup:
+  ret void
+}
+
 ; This would crash because we did not expect to be able to constant fold a GEP.
 
 define void @PR51485(<2 x i64> %v) {
