@@ -999,7 +999,8 @@ void Preprocessor::LexTokensUntilEOF(std::vector<Token> *Tokens) {
   while (1) {
     Token tok;
     Lex(tok);
-    if (tok.isOneOf(tok::unknown, tok::eof, tok::eod))
+    if (tok.isOneOf(tok::unknown, tok::eof, tok::eod,
+                    tok::annot_repl_input_end))
       break;
     if (Tokens != nullptr)
       Tokens->push_back(tok);
