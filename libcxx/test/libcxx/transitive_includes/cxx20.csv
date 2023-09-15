@@ -188,6 +188,7 @@ condition_variable ratio
 condition_variable stdexcept
 condition_variable string
 condition_variable system_error
+condition_variable thread
 condition_variable type_traits
 condition_variable typeinfo
 condition_variable version

@@ -118,8 +118,11 @@ complex stdexcept
 complex version
 concepts cstddef
 concepts version
+condition_variable atomic
 condition_variable cerrno
 condition_variable cstddef
+condition_variable cstdint
+condition_variable cstring
 condition_variable ctime
 condition_variable iosfwd
 condition_variable limits
@@ -127,6 +130,7 @@ condition_variable new
 condition_variable ratio
 condition_variable stdexcept
 condition_variable string
+condition_variable thread
 condition_variable typeinfo
 condition_variable version
 coroutine compare
