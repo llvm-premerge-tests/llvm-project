@@ -13,6 +13,7 @@
 #include "bolt/Passes/Instrumentation.h"
 #include "bolt/Core/ParallelUtilities.h"
 #include "bolt/RuntimeLibs/InstrumentationRuntimeLibrary.h"
+#include "bolt/Utils/CommandLineOpts.h"
 #include "bolt/Utils/Utils.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/RWMutex.h"
@@ -287,6 +288,21 @@ void Instrumentation::instrumentFunction(BinaryFunction &Function,
   BinaryContext &BC = Function.getBinaryContext();
   if (BC.isMachO() && Function.hasName("___GLOBAL_init_65535/1"))
     return;
+
+  // ARMv8-a architecture reference manual says that software must avoid having
+  // any explicit memory accesses between exlusive load and associated store
+  // instruction. So for now skip instrumentation for functions that have
+  // these instructions, since it might lead to runtime deadlock.
+  if (BC.isAArch64()) {
+    for (const BinaryBasicBlock &BB : Function)
+      for (const MCInst &Inst : BB)
+        if (BC.MIB->isExclusive(Inst)) {
+          if (opts::Verbosity >= 1)
+            outs() << "BOLT-INSTRUMENTER: Function " << Function
+                   << " has exlusive instructions, skip instrumentation\n";
+          return;
+        }
+  }
 
   SplitWorklistTy SplitWorklist;
   SplitInstrsTy SplitInstrs;
