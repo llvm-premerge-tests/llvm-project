@@ -7598,6 +7598,12 @@ static void handleBPFPreserveAccessIndexAttr(Sema &S, Decl *D,
   Rec->addAttr(::new (S.Context) BPFPreserveAccessIndexAttr(S.Context, AL));
 }
 
+static void handleBPFPreserveStaticOffsetAttr(Sema &S, Decl *D,
+                                              const ParsedAttr &AL) {
+  auto *Rec = cast<RecordDecl>(D);
+  Rec->addAttr(::new (S.Context) BPFPreserveStaticOffsetAttr(S.Context, AL));
+}
+
 static bool hasBTFDeclTagAttr(Decl *D, StringRef Tag) {
   for (const auto *I : D->specific_attrs<BTFDeclTagAttr>()) {
     if (I->getBTFDeclTag() == Tag)
@@ -8863,6 +8869,9 @@ ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D, const ParsedAttr &AL,
     break;
   case ParsedAttr::AT_BPFPreserveAccessIndex:
     handleBPFPreserveAccessIndexAttr(S, D, AL);
+    break;
+  case ParsedAttr::AT_BPFPreserveStaticOffset:
+    handleBPFPreserveStaticOffsetAttr(S, D, AL);
     break;
   case ParsedAttr::AT_BTFDeclTag:
     handleBTFDeclTagAttr(S, D, AL);
