@@ -24,6 +24,7 @@ define dso_local void @_Z12d2s_bufferedmPc(i64 %arg, ptr nocapture %arg1) {
 ; CHECK-NEXT:    shrq $32, %rax
 ; CHECK-NEXT:    imull $100, %eax, %r10d
 ; CHECK-NEXT:    subl %r10d, %r9d
+; CHECK-NEXT:    movl %eax, %eax
 ; CHECK-NEXT:    movl %ecx, %r10d
 ; CHECK-NEXT:    movq %rsi, %r11
 ; CHECK-NEXT:    subq %r10, %r11

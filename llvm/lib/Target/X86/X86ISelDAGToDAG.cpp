@@ -2613,7 +2613,8 @@ bool X86DAGToDAGISel::matchAddressRecursively(SDValue N, X86ISelAddressMode &AM,
       // That makes it safe to widen to the destination type.
       APInt HighZeros =
           APInt::getHighBitsSet(ShlSrc.getValueSizeInBits(), ShAmtV);
-      if (!CurDAG->MaskedValueIsZero(ShlSrc, HighZeros & Mask))
+      if (!Src->getFlags().hasNoUnsignedWrap() &&
+          !CurDAG->MaskedValueIsZero(ShlSrc, HighZeros & Mask))
         break;
 
       // zext (shl nuw i8 %x, C1) to i32
