@@ -3520,8 +3520,8 @@ void MachineBlockPlacement::applyExtTsp() {
     for (MachineBasicBlock *Succ : MBB.successors()) {
       auto EP = MBPI->getEdgeProbability(&MBB, Succ);
       BlockFrequency JumpFreq = BlockFreq * EP;
-      auto Jump = std::make_pair(BlockIndex[&MBB], BlockIndex[Succ]);
-      JumpCounts.push_back(std::make_pair(Jump, JumpFreq.getFrequency()));
+      JumpCounts.emplace_back(BlockIndex[&MBB], BlockIndex[Succ],
+                              JumpFreq.getFrequency());
     }
   }
 
@@ -3534,7 +3534,7 @@ void MachineBlockPlacement::applyExtTsp() {
                        calcExtTspScore(BlockSizes, BlockCounts, JumpCounts)));
 
   // Run the layout algorithm.
-  auto NewOrder = applyExtTspLayout(BlockSizes, BlockCounts, JumpCounts);
+  auto NewOrder = computeExtTspLayout(BlockSizes, BlockCounts, JumpCounts);
   std::vector<const MachineBasicBlock *> NewBlockOrder;
   NewBlockOrder.reserve(F->size());
   for (uint64_t Node : NewOrder) {
