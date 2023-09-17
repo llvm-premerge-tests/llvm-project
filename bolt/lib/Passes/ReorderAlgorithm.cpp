@@ -545,7 +545,7 @@ void ExtTSPReorderAlgorithm::reorderBasicBlocks(BinaryFunction &BF,
   }
 
   // Run the layout algorithm
-  auto Result = applyExtTspLayout(BlockSizes, BlockCounts, JumpCounts);
+  auto Result = computeExtTspLayout(BlockSizes, BlockCounts, JumpCounts);
   Order.reserve(BF.getLayout().block_size());
   for (uint64_t R : Result)
     Order.push_back(OrigOrder[R]);

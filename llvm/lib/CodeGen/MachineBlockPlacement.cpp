@@ -3534,7 +3534,7 @@ void MachineBlockPlacement::applyExtTsp() {
                        calcExtTspScore(BlockSizes, BlockCounts, JumpCounts)));
 
   // Run the layout algorithm.
-  auto NewOrder = applyExtTspLayout(BlockSizes, BlockCounts, JumpCounts);
+  auto NewOrder = computeExtTspLayout(BlockSizes, BlockCounts, JumpCounts);
   std::vector<const MachineBasicBlock *> NewBlockOrder;
   NewBlockOrder.reserve(F->size());
   for (uint64_t Node : NewOrder) {

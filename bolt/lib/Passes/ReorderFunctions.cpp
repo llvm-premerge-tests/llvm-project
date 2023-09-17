@@ -346,8 +346,8 @@ void ReorderFunctions::runOnFunctions(BinaryContext &BC) {
     }
 
     // Run the layout algorithm.
-    std::vector<uint64_t> Result =
-        applyCDSLayout(FuncSizes, FuncCounts, CallCounts, CallOffsets);
+    std::vector<uint64_t> Result = computeCacheDirectedLayout(
+        FuncSizes, FuncCounts, CallCounts, CallOffsets);
 
     // Create a single cluster from the computed order of hot functions.
     std::vector<CallGraph::NodeId> NodeOrder(Result.begin(), Result.end());
