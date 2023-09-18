@@ -289,6 +289,7 @@ struct Config {
   bool undefinedVersion;
   bool unique;
   bool useAndroidRelrTags = false;
+  bool useCacheDirectedSort;
   bool warnBackrefs;
   llvm::SmallVector<llvm::GlobPattern, 0> warnBackrefsExclude;
   bool warnCommon;

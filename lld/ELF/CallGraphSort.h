@@ -14,6 +14,8 @@
 namespace lld::elf {
 class InputSectionBase;
 
+llvm::DenseMap<const InputSectionBase *, int> applyCDSort();
+
 llvm::DenseMap<const InputSectionBase *, int> computeCallGraphProfileOrder();
 } // namespace lld::elf
 
