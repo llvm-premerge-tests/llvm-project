@@ -527,7 +527,7 @@ template <class Value, class Hash, class Pred, class Alloc>
 
 */
 
-#include <__algorithm/is_permutation.h>
+#include <__algorithm/mismatch.h>
 #include <__assert> // all public C++ headers provide the assertion handler
 #include <__availability>
 #include <__config>
@@ -1242,11 +1242,16 @@ operator==(const unordered_set<_Value, _Hash, _Pred, _Alloc>& __x,
 {
     if (__x.size() != __y.size())
         return false;
-    typedef typename unordered_set<_Value, _Hash, _Pred, _Alloc>::const_iterator
-                                                                 const_iterator;
-    for (const_iterator __i = __x.begin(), __ex = __x.end(), __ey = __y.end();
-            __i != __ex; ++__i)
-    {
+    using const_iterator = typename unordered_set<_Value, _Hash, _Pred, _Alloc>::const_iterator;
+    using _IteratorRange = pair<const_iterator, const_iterator>;
+
+    // First advance both sequences until we find a mismatch. If the two unordered sets
+    // happen to be in the same order, this can be a lot faster than doing repeated lookups.
+    const_iterator const __xend = __x.end();
+    _IteratorRange __mismatch = std::mismatch(__x.begin(), __xend, __y.begin());
+
+    // Then compare the "tail" of the unordered sets using repeated lookups.
+    for (const_iterator __i = __mismatch.first, __ey = __y.end(); __i != __xend; ++__i) {
         const_iterator __j = __y.find(*__i);
         if (__j == __ey || !(*__i == *__j))
             return false;
@@ -1928,16 +1933,19 @@ operator==(const unordered_multiset<_Value, _Hash, _Pred, _Alloc>& __x,
 {
     if (__x.size() != __y.size())
         return false;
-    typedef typename unordered_multiset<_Value, _Hash, _Pred, _Alloc>::const_iterator
-                                                                 const_iterator;
-    typedef pair<const_iterator, const_iterator> _EqRng;
-    for (const_iterator __i = __x.begin(), __ex = __x.end(); __i != __ex;)
-    {
-        _EqRng __xeq = __x.equal_range(*__i);
-        _EqRng __yeq = __y.equal_range(*__i);
-        if (_VSTD::distance(__xeq.first, __xeq.second) !=
-            _VSTD::distance(__yeq.first, __yeq.second) ||
-                  !_VSTD::is_permutation(__xeq.first, __xeq.second, __yeq.first))
+    using const_iterator = typename unordered_multiset<_Value, _Hash, _Pred, _Alloc>::const_iterator;
+    using _IteratorRange = pair<const_iterator, const_iterator>;
+
+    // First advance both sequences until we find a mismatch. If the two unordered multisets
+    // happen to be in the same order, this can be a lot faster than doing repeated lookups.
+    const_iterator const __xend = __x.end();
+    _IteratorRange __mismatch = std::mismatch(__x.begin(), __xend, __y.begin());
+
+    // Then compare the "tail" of the unordered multisets using repeated lookups.
+    for (const_iterator __i = __mismatch.first; __i != __xend;) {
+        _IteratorRange __xeq = __x.equal_range(*__i);
+        _IteratorRange __yeq = __y.equal_range(*__i);
+        if (std::distance(__xeq.first, __xeq.second) != std::distance(__yeq.first, __yeq.second))
             return false;
         __i = __xeq.second;
     }

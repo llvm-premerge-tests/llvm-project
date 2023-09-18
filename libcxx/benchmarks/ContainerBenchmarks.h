@@ -179,6 +179,58 @@ static void BM_Rehash(benchmark::State& st, Container c, GenInputs gen) {
   }
 }
 
+template <class Container, class GenInputs>
+static void BM_Compare_same_container(benchmark::State& st, Container, GenInputs gen) {
+  auto in = gen(st.range(0));
+  Container c1(in.begin(), in.end());
+  Container c2 = c1;
+
+  benchmark::DoNotOptimize(&(*c1.begin()));
+  benchmark::DoNotOptimize(&(*c2.begin()));
+  while (st.KeepRunning()) {
+    bool res = c1 == c2;
+    benchmark::DoNotOptimize(&res);
+    benchmark::ClobberMemory();
+  }
+}
+
+template <class Container, class GenInputs>
+static void BM_Compare_different_containers(benchmark::State& st, Container, GenInputs gen) {
+  auto in1 = gen(st.range(0));
+  auto in2 = gen(st.range(0));
+  Container c1(in1.begin(), in1.end());
+  Container c2(in2.begin(), in2.end());
+
+  benchmark::DoNotOptimize(&(*c1.begin()));
+  benchmark::DoNotOptimize(&(*c2.begin()));
+  while (st.KeepRunning()) {
+    bool res = c1 == c2;
+    benchmark::DoNotOptimize(&res);
+    benchmark::ClobberMemory();
+  }
+}
+
+template <class Container, class GenInputs>
+static void BM_Compare_shared_prefix(benchmark::State& st, Container, GenInputs gen) {
+  auto in1 = gen(st.range(0));
+  auto in2 = gen(st.range(0));
+  // c1 and c2 both contain the first half of `in1`, but
+  // then c2 contains elements from `in2`.
+  Container c1(in1.begin(), in1.end());
+
+  std::size_t half = st.range(0) / 2;
+  Container c2(in1.begin(), in1.begin() + half);
+  c2.insert(in2.begin(), in2.begin() + half);
+
+  benchmark::DoNotOptimize(&(*c1.begin()));
+  benchmark::DoNotOptimize(&(*c2.begin()));
+  while (st.KeepRunning()) {
+    bool res = c1 == c2;
+    benchmark::DoNotOptimize(&res);
+    benchmark::ClobberMemory();
+  }
+}
+
 } // end namespace ContainerBenchmarks
 
 #endif // BENCHMARK_CONTAINER_BENCHMARKS_H

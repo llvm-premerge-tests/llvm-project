@@ -24,6 +24,8 @@
 #include "test_macros.h"
 #include "min_allocator.h"
 
+#include "test_comparisons.h"
+
 int main(int, char**)
 {
     {
@@ -178,5 +180,16 @@ int main(int, char**)
     }
 #endif
 
-  return 0;
+    // Make sure we take into account the number of times that a key repeats into equality.
+    {
+        typedef int P;
+        P a[] = {P(1), P(1), P(1), P(2)};
+        P b[] = {P(1), P(1), P(1), P(1), P(2)};
+
+        std::unordered_multiset<int> c1(std::begin(a), std::end(a));
+        std::unordered_multiset<int> c2(std::begin(b), std::end(b));
+        assert(testEquality(c1, c2, false));
+    }
+
+    return 0;
 }
