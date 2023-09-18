@@ -217,6 +217,7 @@ template <class T, class Allocator, class Predicate>
 #include <__memory/allocator.h>
 #include <__memory/allocator_traits.h>
 #include <__memory/compressed_pair.h>
+#include <__memory/construct_at.h>
 #include <__memory/pointer_traits.h>
 #include <__memory/swap_allocator.h>
 #include <__memory_resource/polymorphic_allocator.h>
@@ -308,6 +309,9 @@ struct __list_node_base
     __list_node_base() : __prev_(_NodeTraits::__unsafe_link_pointer_cast(__self())),
                          __next_(_NodeTraits::__unsafe_link_pointer_cast(__self())) {}
 
+    _LIBCPP_HIDE_FROM_ABI explicit __list_node_base(__link_pointer __prev, __link_pointer __next)
+        : __prev_(__prev), __next_(__next) {}
+
     _LIBCPP_INLINE_VISIBILITY
     __base_pointer __self() {
         return pointer_traits<__base_pointer>::pointer_to(*this);
@@ -323,10 +327,26 @@ template <class _Tp, class _VoidPtr>
 struct _LIBCPP_STANDALONE_DEBUG __list_node
     : public __list_node_base<_Tp, _VoidPtr>
 {
+    // Allow starting the lifetime of nodes without initializing the value held by the node.
+    // Note that we can't do that in C++03 because unions can't contain non-trivially constructible types.
+#ifndef _LIBCPP_CXX03_LANG
+#  define _LIBCPP_LIST_PROPER_NODE_LIFETIME
+#endif
+
+#ifdef _LIBCPP_LIST_PROPER_NODE_LIFETIME
+    union {
+        _Tp __value_;
+    };
+#else
     _Tp __value_;
+#endif
 
     typedef __list_node_base<_Tp, _VoidPtr> __base;
     typedef typename __base::__link_pointer __link_pointer;
+
+    // Don't construct or destroy the value_type -- this is handled by the list itself to be allocator-aware
+    _LIBCPP_HIDE_FROM_ABI explicit __list_node(__link_pointer __prev, __link_pointer __next) : __base(__prev, __next) {}
+    _LIBCPP_HIDE_FROM_ABI ~__list_node() {}
 
     _LIBCPP_INLINE_VISIBILITY
     __link_pointer __as_link() {
@@ -600,16 +620,36 @@ protected:
     _LIBCPP_HIDE_FROM_ABI __node_pointer __create_node(__link_pointer __prev, __link_pointer __next, _Args&& ...__args) {
         __node_allocator& __alloc = __node_alloc();
         __allocation_guard<__node_allocator> __guard(__alloc, 1);
+        // Begin the lifetime of the node itself. Note that this doesn't begin the lifetime of the value
+        // held inside the node, since we need to use the allocator's construct() method for that.
+        //
+        // We don't use the allocator's construct() method to construct the node itself since the
+        // Cpp17FooInsertable named requirements don't require the allocator's construct() method
+        // to work on anything other than the value_type.
+        //
+        // Note that we don't begin the lifetime properly in C++03 because that would cause the
+        // value_type to be default constructed.
+#ifdef _LIBCPP_LIST_PROPER_NODE_LIFETIME
+        std::__construct_at(std::addressof(*__guard.__get()), __prev, __next);
+#else
         __guard.__get()->__prev_ = __prev;
         __guard.__get()->__next_ = __next;
+#endif
+
+        // Now construct the value_type using the allocator's construct() method.
         __node_alloc_traits::construct(__alloc, std::addressof(__guard.__get()->__value_), std::forward<_Args>(__args)...);
         return __guard.__release_ptr();
     }
 
     template <class ..._Args>
     _LIBCPP_HIDE_FROM_ABI void __delete_node(__node_pointer __node) {
+        // For the same reason as above, we use the allocator's destroy() method for the value_type,
+        // but not for the node itself.
         __node_allocator& __alloc = __node_alloc();
         __node_alloc_traits::destroy(__alloc, std::addressof(__node->__value_));
+#ifdef _LIBCPP_LIST_PROPER_NODE_LIFETIME
+        std::__destroy_at(std::addressof(*__node));
+#endif
         __node_alloc_traits::deallocate(__alloc, __node, 1);
     }
 

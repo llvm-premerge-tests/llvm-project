@@ -21,6 +21,7 @@
 #include <__memory/addressof.h>
 #include <__memory/allocator_traits.h>
 #include <__memory/compressed_pair.h>
+#include <__memory/construct_at.h>
 #include <__memory/pointer_traits.h>
 #include <__memory/swap_allocator.h>
 #include <__memory/unique_ptr.h>
@@ -107,6 +108,7 @@ struct __hash_node_base
     }
 
     _LIBCPP_INLINE_VISIBILITY __hash_node_base() _NOEXCEPT : __next_(nullptr) {}
+    _LIBCPP_HIDE_FROM_ABI explicit __hash_node_base(__next_pointer __next) _NOEXCEPT : __next_(__next) {}
 };
 
 template <class _Tp, class _VoidPtr>
@@ -117,9 +119,28 @@ struct _LIBCPP_STANDALONE_DEBUG __hash_node
              >
 {
     typedef _Tp __node_value_type;
+    using _Base = __hash_node_base<__rebind_pointer_t<_VoidPtr, __hash_node<_Tp, _VoidPtr> > >;
+    using __next_pointer = typename _Base::__next_pointer;
 
     size_t            __hash_;
+
+    // Allow starting the lifetime of nodes without initializing the value held by the node.
+    // Note that we can't do that in C++03 because unions can't contain non-trivially constructible types.
+#ifndef _LIBCPP_CXX03_LANG
+#  define _LIBCPP_HASH_TABLE_PROPER_NODE_LIFETIME
+#endif
+
+#ifdef _LIBCPP_HASH_TABLE_PROPER_NODE_LIFETIME
+    union {
+        __node_value_type __value_;
+    };
+#else
     __node_value_type __value_;
+#endif
+
+    // Don't construct or destroy the value_type -- this is handled by the hash table itself to be allocator-aware
+    _LIBCPP_HIDE_FROM_ABI explicit __hash_node(__next_pointer __next, size_t __hash) : _Base(__next), __hash_(__hash) {}
+    _LIBCPP_HIDE_FROM_ABI ~__hash_node() {}
 };
 
 inline _LIBCPP_INLINE_VISIBILITY
@@ -670,8 +691,12 @@ public:
     _LIBCPP_INLINE_VISIBILITY
     void operator()(pointer __p) _NOEXCEPT
     {
-        if (__value_constructed)
+        if (__value_constructed) {
             __alloc_traits::destroy(__na_, _NodeTypes::__get_ptr(__p->__value_));
+#ifdef _LIBCPP_HASH_TABLE_PROPER_NODE_LIFETIME
+            std::__destroy_at(std::addressof(*__p));
+#endif
+        }
         if (__p)
             __alloc_traits::deallocate(__na_, __p, 1);
     }
@@ -1366,6 +1391,9 @@ __hash_table<_Tp, _Hash, _Equal, _Alloc>::__deallocate_node(__next_pointer __np)
         __next_pointer __next = __np->__next_;
         __node_pointer __real_np = __np->__upcast();
         __node_traits::destroy(__na, _NodeTypes::__get_ptr(__real_np->__value_));
+#ifdef _LIBCPP_HASH_TABLE_PROPER_NODE_LIFETIME
+        std::__destroy_at(std::addressof(*__real_np));
+#endif
         __node_traits::deallocate(__na, __real_np, 1);
         __np = __next;
     }
@@ -2193,10 +2221,28 @@ __hash_table<_Tp, _Hash, _Equal, _Alloc>::__construct_node(_Args&& ...__args)
                   "Construct cannot be called with a hash value type");
     __node_allocator& __na = __node_alloc();
     __node_holder __h(__node_traits::allocate(__na, 1), _Dp(__na));
+
+    // Begin the lifetime of the node itself. Note that this doesn't begin the lifetime of the value
+    // held inside the node, since we need to use the allocator's construct() method for that.
+    //
+    // We don't use the allocator's construct() method to construct the node itself since the
+    // Cpp17FooInsertable named requirements don't require the allocator's construct() method
+    // to work on anything other than the value_type.
+    //
+    // Note that we don't begin the lifetime properly in C++03 because that would cause the
+    // value_type to be default constructed.
+#ifdef _LIBCPP_HASH_TABLE_PROPER_NODE_LIFETIME
+    std::__construct_at(std::addressof(*__h), /* next = */nullptr, /* hash = */0);
+#else
+    __h->__next_ = nullptr;
+    // __hash_ is set below unconditionally
+#endif
+
+    // Now construct the value_type using the allocator's construct() method.
     __node_traits::construct(__na, _NodeTypes::__get_ptr(__h->__value_), _VSTD::forward<_Args>(__args)...);
+
     __h.get_deleter().__value_constructed = true;
     __h->__hash_ = hash_function()(__h->__value_);
-    __h->__next_ = nullptr;
     return __h;
 }
 
@@ -2210,12 +2256,18 @@ __hash_table<_Tp, _Hash, _Equal, _Alloc>::__construct_node_hash(
                   "Construct cannot be called with a hash value type");
     __node_allocator& __na = __node_alloc();
     __node_holder __h(__node_traits::allocate(__na, 1), _Dp(__na));
+
+#ifdef _LIBCPP_HASH_TABLE_PROPER_NODE_LIFETIME
+    std::__construct_at(std::addressof(*__h), /* next = */nullptr, /* hash = */__hash);
+#else
+    __h->__next_ = nullptr;
+    __h->__hash_ = __hash;
+#endif
+
     __node_traits::construct(__na, _NodeTypes::__get_ptr(__h->__value_),
                              _VSTD::forward<_First>(__f),
                              _VSTD::forward<_Rest>(__rest)...);
     __h.get_deleter().__value_constructed = true;
-    __h->__hash_ = __hash;
-    __h->__next_ = nullptr;
     return __h;
 }
 
