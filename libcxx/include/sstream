@@ -1192,8 +1192,16 @@ swap(basic_stringstream<_CharT, _Traits, _Allocator>& __x,
     __x.swap(__y);
 }
 
-#if defined(_LIBCPP_ABI_ENABLE_ADDITIONAL_IOSTREAM_EXPLICIT_INSTANTIATIONS_1)
+#ifndef _LIBCPP_AVAILABILITY_HAS_NO_ADDITIONAL_IOSTREAM_EXPLICIT_INSTANTIATIONS_1
+// TODO: Remove this condition once GCC supports exclude_from_explicit_instantiation
+#if !defined(_LIBCPP_COMPILER_GCC) || defined(_LIBCPP_BUILDING_LIBRARY)
+
+// This is a work-around for https://llvm.org/PR41018
+// TODO(LLVM-20): Remove this condition
+#if !defined(_WIN32) || _LIBCPP_CLANG_VER >= 1800
 extern template class _LIBCPP_EXTERN_TEMPLATE_TYPE_VIS basic_stringbuf<char>;
+#endif
+#endif
 extern template class _LIBCPP_EXTERN_TEMPLATE_TYPE_VIS basic_stringstream<char>;
 extern template class _LIBCPP_EXTERN_TEMPLATE_TYPE_VIS basic_ostringstream<char>;
 extern template class _LIBCPP_EXTERN_TEMPLATE_TYPE_VIS basic_istringstream<char>;
