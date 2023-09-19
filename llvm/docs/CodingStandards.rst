@@ -590,6 +590,18 @@ templates like :ref:`isa\<>, cast\<>, and dyn_cast\<> <isa>`.
 This form of RTTI is opt-in and can be
 :doc:`added to any class <HowToSetUpLLVMStyleRTTI>`.
 
+Prefer C++-style casts
+^^^^^^^^^^^^^^^^^^^^^^
+
+When casting, use ``static_cast``, ``reinterpret_cast``, and ``const_cast``,
+rather than C-style casts. There are two exceptions to this:
+
+* When casting to void to suppress warnings about unused variables (as an
+  alternative to `[[maybe_unused]]`). Prefer C-style casts in this instance.
+  
+* When casting integral types (including enums), prefer the prevailing style in
+  the area being worked on.
+
 .. _static constructor:
 
 Do not use Static Constructors
