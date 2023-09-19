@@ -346,3 +346,14 @@ void RISCVTargetInfo::fillValidTuneCPUList(
   bool Is64Bit = getTriple().isArch64Bit();
   llvm::RISCV::fillValidTuneCPUArchList(Values, Is64Bit);
 }
+
+TargetInfo::CallingConvCheckResult
+RISCVTargetInfo::checkCallingConvention(CallingConv CC) const {
+  switch (CC) {
+    default:
+      return CCCR_Warning;
+    case CC_C:
+    case CC_RISCVVectorCall:
+      return CCCR_OK;
+  }
+}
