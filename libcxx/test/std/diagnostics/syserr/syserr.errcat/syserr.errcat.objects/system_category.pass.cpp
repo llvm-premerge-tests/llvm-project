@@ -14,6 +14,7 @@
 
 // XFAIL: suse-linux-enterprise-server-11
 // XFAIL: stdlib=apple-libc++ && target={{.+}}-apple-macosx10.{{9|10|11|12}}
+// XFAIL: LIBCXX-PICOLIBC-FIXME
 
 #include <system_error>
 #include <cassert>

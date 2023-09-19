@@ -22,7 +22,12 @@ config.substitutions.append(('%{link_flags}',
     ' -Wl,--defsym=__stack_size=0x1000'
 ))
 config.substitutions.append(('%{exec}',
-    'true' # TODO use qemu-system-arm
+    '%{executor}'
+    ' --execdir %T'
+    ' @LIBCXXABI_LIBCXX_PATH@/utils/run-qemu.sh'
+    ' @QEMU_SYSTEM_ARM@'
+    ' mps2-an385'
+    ' cortex-m3'
 ))
 
 # LIBCXX-PICOLIBC-FIXME is the feature name used to XFAIL the
