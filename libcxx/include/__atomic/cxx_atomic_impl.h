@@ -315,6 +315,13 @@ struct __cxx_atomic_base_impl {
 
 #define __cxx_atomic_is_lock_free(__s) __c11_atomic_is_lock_free(__s)
 
+_LIBCPP_DIAGNOSTIC_PUSH
+#  ifdef __arm__
+// Disable warning "large atomic operation may incur significant performance
+// penalty; the access size (4 bytes) exceeds the max lock-free size (0  bytes)"
+_LIBCPP_CLANG_DIAGNOSTIC_IGNORED("-Watomic-alignment")
+#  endif
+
 _LIBCPP_HIDE_FROM_ABI inline
 void __cxx_atomic_thread_fence(memory_order __order) _NOEXCEPT {
     __c11_atomic_thread_fence(static_cast<__memory_order_underlying_t>(__order));
@@ -513,6 +520,8 @@ _Tp __cxx_atomic_fetch_xor(__cxx_atomic_base_impl<_Tp> * __a, _Tp __pattern, mem
   return __c11_atomic_fetch_xor(
       std::addressof(__a->__a_value), __pattern, static_cast<__memory_order_underlying_t>(__order));
 }
+
+_LIBCPP_DIAGNOSTIC_POP
 
 #endif // _LIBCPP_HAS_GCC_ATOMIC_IMP, _LIBCPP_HAS_C_ATOMIC_IMP
 

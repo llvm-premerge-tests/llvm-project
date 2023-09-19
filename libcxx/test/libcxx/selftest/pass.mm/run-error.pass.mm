@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 // REQUIRES: objective-c++
+// UNSUPPORTED: LIBCXX-PICOLIBC-FIXME
 
 // XFAIL: *
 
