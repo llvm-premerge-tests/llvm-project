@@ -1,0 +1,43 @@
+# This testing configuration handles running the test suite against LLVM's libc++
+# using a static library.
+
+lit_config.load_config(config, '@CMAKE_CURRENT_BINARY_DIR@/cmake-bridge.cfg')
+
+config.substitutions.append(('%{libc-linker-script}', '@CMAKE_INSTALL_PREFIX@/lib/picolibcpp.ld'))
+
+config.substitutions.append(('%{flags}', '--sysroot=@CMAKE_INSTALL_PREFIX@'))
+
+config.substitutions.append(('%{compile_flags}',
+    '-nostdinc++ -I %{include} -I %{target-include} -I %{libcxx}/test/support'
+    ' -include picolibc.h'
+))
+config.substitutions.append(('%{link_flags}',
+    '-nostdlib -nostdlib++ -L %{lib} -lc++ -lc++abi'
+    ' -lc -lm -lclang_rt.builtins -lsemihost -lcrt0-semihost'
+    ' -T %{libc-linker-script}'
+    ' -Wl,--defsym=__flash=0x0'
+    ' -Wl,--defsym=__flash_size=0x400000'
+    ' -Wl,--defsym=__ram=0x21000000'
+    ' -Wl,--defsym=__ram_size=0x1000000'
+    ' -Wl,--defsym=__stack_size=0x1000'
+))
+config.substitutions.append(('%{exec}',
+    'true' # TODO use qemu-system-arm
+))
+
+# LIBCXX-PICOLIBC-FIXME is the feature name used to XFAIL the
+# initial picolibc failures until they can be properly diagnosed
+# and fixed. This allows easier detection of new test failures
+# and regressions. Note: New failures should not be suppressed
+# using this feature.
+config.available_features.add('LIBCXX-PICOLIBC-FIXME')
+
+import os, site
+site.addsitedir(os.path.join('@LIBCXX_SOURCE_DIR@', 'utils'))
+import libcxx.test.params, libcxx.test.config
+libcxx.test.config.configure(
+    libcxx.test.params.DEFAULT_PARAMETERS,
+    libcxx.test.features.DEFAULT_FEATURES,
+    config,
+    lit_config
+)
