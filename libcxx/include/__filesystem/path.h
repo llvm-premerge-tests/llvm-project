@@ -19,6 +19,7 @@
 #include <__fwd/hash.h>
 #include <__iterator/back_insert_iterator.h>
 #include <__iterator/iterator_traits.h>
+#include <__memory/pointer_traits.h>
 #include <__type_traits/decay.h>
 #include <__type_traits/is_pointer.h>
 #include <__type_traits/remove_const.h>
@@ -443,6 +444,58 @@ struct _PathExport<char8_t> {
 #endif /* !_LIBCPP_HAS_NO_CHAR8_T */
 #endif /* _LIBCPP_WIN32API */
 
+#  if !defined(_LIBCPP_HAS_NO_LOCALIZATION) && !defined(_LIBCPP_HAS_NO_WIDE_CHARACTERS)
+template <class _Iterator, __enable_if_t<__libcpp_is_contiguous_iterator<_Iterator>::value, int> = 0>
+_LIBCPP_HIDE_FROM_ABI wstring __widen_char_source(_Iterator __first, _Iterator __last, const locale& __loc) {
+  static_assert(__is_pathable_iter<_Iterator>::value, "this function requires a pathable iterator");
+
+  wstring __r;
+  if (!has_facet<codecvt<wchar_t, char, mbstate_t>>(__loc))
+    return __r;
+
+  __r.reserve(__last - __first);
+  std::__widen_using_codecvt(
+      use_facet<codecvt<wchar_t, char, mbstate_t>>(__loc),
+      back_inserter(__r),
+      std::__to_address(__first),
+      std::__to_address(__last));
+  return __r;
+}
+
+template <class _Iterator, __enable_if_t<!__libcpp_is_contiguous_iterator<_Iterator>::value, int> = 0>
+_LIBCPP_HIDE_FROM_ABI wstring __widen_char_source(_Iterator __first, _Iterator __last, const locale& __loc) {
+  static_assert(__is_pathable_iter<_Iterator>::value, "this function requires a pathable iterator");
+  string __tmp(__first, __last);
+  return filesystem::__widen_char_source(__tmp.begin(), __tmp.end(), __loc);
+}
+
+template <class _Traits>
+_LIBCPP_HIDE_FROM_ABI wstring __widen_char_source(basic_string_view<char, _Traits> const& __sv, const locale& __loc) {
+  return filesystem::__widen_char_source(__sv.begin(), __sv.end(), __loc);
+}
+
+template <class _Traits, class _Alloc>
+_LIBCPP_HIDE_FROM_ABI wstring __widen_char_source(basic_string<char, _Traits, _Alloc> const& __s, const locale& __loc) {
+  return filesystem::__widen_char_source(__s.begin(), __s.end(), __loc);
+}
+
+template <class _Iterator, __enable_if_t<__libcpp_is_contiguous_iterator<_Iterator>::value, int> = 0>
+_LIBCPP_HIDE_FROM_ABI wstring __widen_char_source(_Iterator __it, const locale& __loc) {
+  static_assert(__is_pathable_iter<_Iterator>::value, "this function requires a pathable iterator");
+  auto __len = char_traits<char>::length(std::__to_address(__it));
+  return filesystem::__widen_char_source(std::__to_address(__it), std::__to_address(__it) + __len, __loc);
+}
+
+template <class _Iterator, __enable_if_t<!__libcpp_is_contiguous_iterator<_Iterator>::value, int> = 0>
+_LIBCPP_HIDE_FROM_ABI wstring __widen_char_source(_Iterator __it, const locale& __loc) {
+  static_assert(__is_pathable_iter<_Iterator>::value, "this function requires a pathable iterator");
+  string __s;
+  for (char __c = *__it; __c != '\0'; ++__it, (void)(__c = *__it))
+    __s.push_back(__c);
+  return filesystem::__widen_char_source(__s.begin(), __s.end(), __loc);
+}
+#  endif // !defined(_LIBCPP_HAS_NO_LOCALIZATION) && !defined(_LIBCPP_HAS_NO_WIDE_CHARACTERS)
+
 class _LIBCPP_EXPORTED_FROM_ABI path {
   template <class _SourceOrIter, class _Tp = path&>
   using _EnableIfPathable = __enable_if_t<__is_pathable<_SourceOrIter>::value, _Tp>;
@@ -493,16 +546,17 @@ public:
     _PathCVT<_ItVal>::__append_range(__pn_, __first, __last);
   }
 
-/*
-#if !defined(_LIBCPP_HAS_NO_LOCALIZATION)
-  // TODO Implement locale conversions.
-  template <class _Source, class = _EnableIfPathable<_Source, void> >
-  path(const _Source& __src, const locale& __loc, format = format::auto_format);
+#  if !defined(_LIBCPP_HAS_NO_LOCALIZATION) && !defined(_LIBCPP_HAS_NO_WIDE_CHARACTERS)
+  template <class _Source, _EnableIfPathable<_Source, int> = 0>
+  path(const _Source& __src, const locale& __loc, format = format::auto_format) {
+    _SourceCVT<std::wstring>::__append_source(__pn_, filesystem::__widen_char_source(__src, __loc));
+  }
+
   template <class _InputIt>
-  path(_InputIt __first, _InputIt _last, const locale& __loc,
-       format = format::auto_format);
-#endif
-*/
+  path(_InputIt __first, _InputIt __last, const locale& __loc, format = format::auto_format) {
+    _SourceCVT<std::wstring>::__append_source(__pn_, filesystem::__widen_char_source(__first, __last, __loc));
+  }
+#  endif
 
   _LIBCPP_HIDE_FROM_ABI
   ~path() = default;
