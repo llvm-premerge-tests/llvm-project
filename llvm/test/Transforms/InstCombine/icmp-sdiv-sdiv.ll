@@ -9,10 +9,8 @@ define i1 @icmp_sdiv_sdiv_normal_i8(i8 %x, i8 %C) {
 ; CHECK-LABEL: @icmp_sdiv_sdiv_normal_i8(
 ; CHECK-NEXT:    [[PRECOND:%.*]] = icmp eq i8 [[C:%.*]], 12
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[PRECOND]])
-; CHECK-NEXT:    [[NEGC:%.*]] = sub nsw i8 0, [[C]]
-; CHECK-NEXT:    [[D1:%.*]] = sdiv i8 [[X:%.*]], [[NEGC]]
-; CHECK-NEXT:    [[D2:%.*]] = sdiv i8 [[X]], [[C]]
-; CHECK-NEXT:    [[C:%.*]] = icmp eq i8 [[D1]], [[D2]]
+; CHECK-NEXT:    [[D2:%.*]] = sdiv i8 [[X:%.*]], [[C]]
+; CHECK-NEXT:    [[C:%.*]] = icmp eq i8 [[D2]], 0
 ; CHECK-NEXT:    ret i1 [[C]]
 ;
   %precond = icmp eq i8 %C, 12
@@ -28,10 +26,8 @@ define i1 @icmp_sdiv_sdiv_normal_i64(i64 %x, i64 %C) {
 ; CHECK-LABEL: @icmp_sdiv_sdiv_normal_i64(
 ; CHECK-NEXT:    [[PRECOND:%.*]] = icmp eq i64 [[C:%.*]], -9223372036854775807
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[PRECOND]])
-; CHECK-NEXT:    [[NEGC:%.*]] = sub nsw i64 0, [[C]]
-; CHECK-NEXT:    [[D1:%.*]] = sdiv i64 [[X:%.*]], [[NEGC]]
-; CHECK-NEXT:    [[D2:%.*]] = sdiv i64 [[X]], [[C]]
-; CHECK-NEXT:    [[C:%.*]] = icmp eq i64 [[D1]], [[D2]]
+; CHECK-NEXT:    [[D2:%.*]] = sdiv i64 [[X:%.*]], [[C]]
+; CHECK-NEXT:    [[C:%.*]] = icmp eq i64 [[D2]], 0
 ; CHECK-NEXT:    ret i1 [[C]]
 ;
   %precond = icmp eq i64 %C, -9223372036854775807 ; off by one
@@ -47,10 +43,8 @@ define i1 @icmp_sdiv_sdiv_normal_ne(i6 %x, i6 %C) {
 ; CHECK-LABEL: @icmp_sdiv_sdiv_normal_ne(
 ; CHECK-NEXT:    [[PRECOND:%.*]] = icmp eq i6 [[C:%.*]], 4
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[PRECOND]])
-; CHECK-NEXT:    [[NEGC:%.*]] = sub nsw i6 0, [[C]]
-; CHECK-NEXT:    [[D1:%.*]] = sdiv i6 [[X:%.*]], [[NEGC]]
-; CHECK-NEXT:    [[D2:%.*]] = sdiv i6 [[X]], [[C]]
-; CHECK-NEXT:    [[C:%.*]] = icmp ne i6 [[D1]], [[D2]]
+; CHECK-NEXT:    [[D2:%.*]] = sdiv i6 [[X:%.*]], [[C]]
+; CHECK-NEXT:    [[C:%.*]] = icmp ne i6 [[D2]], 0
 ; CHECK-NEXT:    ret i1 [[C]]
 ;
   %precond = icmp eq i6 %C, 4
