@@ -31,8 +31,9 @@ T* test3(B* x) { return &dynamic_cast<T&>(*x); }
 // CHECK-NEXT:   [[VBOFFP:%.*]] = getelementptr inbounds i32, ptr [[VBTBL]], i32 1
 // CHECK-NEXT:   [[VBOFFS:%.*]] = load i32, ptr [[VBOFFP]], align 4
 // CHECK-NEXT:   [[DELTA:%.*]] = add nsw i32 [[VBOFFS]], 4
-// CHECK-NEXT:   [[ADJ:%.*]] = getelementptr inbounds i8, ptr %x, i32 [[DELTA]]
-// CHECK-NEXT:   [[CALL:%.*]] = tail call ptr @__RTDynamicCast(ptr [[ADJ]], i32 [[DELTA]], ptr nonnull @"??_R0?AUB@@@8", ptr nonnull @"??_R0?AUT@@@8", i32 1)
+// CHECK-NEXT:   [[ADJ1:%.*]] = getelementptr i8, ptr %x, i32 [[VBOFFS]]
+// CHECK-NEXT:   [[ADJ2:%.*]] = getelementptr inbounds i8, ptr [[ADJ1]], i32 4
+// CHECK-NEXT:   [[CALL:%.*]] = tail call ptr @__RTDynamicCast(ptr nonnull [[ADJ2]], i32 [[DELTA]], ptr nonnull @"??_R0?AUB@@@8", ptr nonnull @"??_R0?AUT@@@8", i32 1)
 // CHECK-NEXT:   ret ptr [[CALL]]
 
 T* test4(V* x) { return dynamic_cast<T*>(x); }
@@ -62,8 +63,9 @@ T* test6(B* x) { return dynamic_cast<T*>(x); }
 // CHECK-NEXT:   [[VBOFFP:%.*]] = getelementptr inbounds i32, ptr [[VBTBL]], i32 1
 // CHECK-NEXT:   [[VBOFFS:%.*]] = load i32, ptr [[VBOFFP]], align 4
 // CHECK-NEXT:   [[DELTA:%.*]] = add nsw i32 [[VBOFFS]], 4
-// CHECK-NEXT:   [[ADJ:%.*]] = getelementptr inbounds i8, ptr %x, i32 [[DELTA]]
-// CHECK-NEXT:   [[CALL:%.*]] = tail call ptr @__RTDynamicCast(ptr nonnull [[ADJ]], i32 [[DELTA]], ptr {{.*}}@"??_R0?AUB@@@8", ptr {{.*}}@"??_R0?AUT@@@8", i32 0)
+// CHECK-NEXT:   [[ADJ1:%.*]] = getelementptr i8, ptr %x, i32 [[VBOFFS]]
+// CHECK-NEXT:   [[ADJ2:%.*]] = getelementptr inbounds i8, ptr [[ADJ1]], i32 4
+// CHECK-NEXT:   [[CALL:%.*]] = tail call ptr @__RTDynamicCast(ptr nonnull [[ADJ2]], i32 [[DELTA]], ptr {{.*}}@"??_R0?AUB@@@8", ptr {{.*}}@"??_R0?AUT@@@8", i32 0)
 // CHECK-NEXT:   br label
 // CHECK:        [[RET:%.*]] = phi ptr
 // CHECK-NEXT:   ret ptr [[RET]]
@@ -94,9 +96,9 @@ void* test9(B* x) { return dynamic_cast<void*>(x); }
 // CHECK-NEXT:   [[VBTBL:%.*]] = load ptr, ptr [[VBPTR]], align 4
 // CHECK-NEXT:   [[VBOFFP:%.*]] = getelementptr inbounds i32, ptr [[VBTBL]], i32 1
 // CHECK-NEXT:   [[VBOFFS:%.*]] = load i32, ptr [[VBOFFP]], align 4
-// CHECK-NEXT:   [[DELTA:%.*]] = add nsw i32 [[VBOFFS]], 4
-// CHECK-NEXT:   [[ADJ:%.*]] = getelementptr inbounds i8, ptr %x, i32 [[DELTA]]
-// CHECK-NEXT:   [[CALL:%.*]] = tail call ptr @__RTCastToVoid(ptr nonnull [[ADJ]])
+// CHECK-NEXT:   [[ADJ1:%.*]] = getelementptr i8, ptr %x, i32 [[VBOFFS]]
+// CHECK-NEXT:   [[ADJ2:%.*]] = getelementptr inbounds i8, ptr [[ADJ1]], i32 4
+// CHECK-NEXT:   [[CALL:%.*]] = tail call ptr @__RTCastToVoid(ptr nonnull [[ADJ2]])
 // CHECK-NEXT:   br label
 // CHECK:        [[RET:%.*]] = phi ptr
 // CHECK-NEXT:   ret ptr [[RET]]
