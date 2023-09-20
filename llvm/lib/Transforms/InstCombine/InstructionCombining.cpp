@@ -2329,7 +2329,24 @@ Instruction *InstCombinerImpl::visitGetElementPtrInst(GetElementPtrInst &GEP) {
         return CastInst::CreatePointerBitCastOrAddrSpaceCast(Y, GEPType);
     }
   }
-
+  if (GEP.getNumIndices() == 1 && !GEP.getType()->isVectorTy()) {
+    // Try to reassociate loop invariant index calculations to enable LICM.
+    if (BinaryOperator *Idx =
+            dyn_cast_or_null<BinaryOperator>(GEP.getOperand(1)))
+      if ((Idx->getOpcode() == Instruction::Add) && Idx->hasOneUse()) {
+        //   %idx = add i64 %idx1, %idx2
+        //   %gep = getelementptr i32, i32* %ptr, i64 %idx
+        // as:
+        //   %newptr = getelementptr i32, i32* %ptr, i64 %idx1
+        //   %newgep = getelementptr i32, i32* %newptr, i64 %idx2
+        Value *Ptr = GEP.getOperand(0);
+        auto *NewPtr = GetElementPtrInst::Create(
+            GEP.getResultElementType(), Ptr, Idx->getOperand(0), "", &GEP);
+        auto *NewGEP = GetElementPtrInst::Create(GEP.getResultElementType(),
+                                                 NewPtr, Idx->getOperand(1));
+        return NewGEP;
+      }
+  }
   // We do not handle pointer-vector geps here.
   if (GEPType->isVectorTy())
     return nullptr;
