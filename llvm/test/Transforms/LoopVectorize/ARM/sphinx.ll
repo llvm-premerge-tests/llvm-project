@@ -34,7 +34,7 @@ define i32 @test(ptr nocapture readonly %x) {
 ; CHECK-NEXT:    [[ARRAYIDX113:%.*]] = getelementptr inbounds float, ptr [[T7]], i32 [[T2]]
 ; CHECK-NEXT:    [[T8:%.*]] = load float, ptr [[ARRAYIDX113]], align 4
 ; CHECK-NEXT:    [[CONV114:%.*]] = fpext float [[T8]] to double
-; CHECK-NEXT:    [[MIN_ITERS_CHECK:%.*]] = icmp ult i32 [[T]], 2
+; CHECK-NEXT:    [[MIN_ITERS_CHECK:%.*]] = icmp ult i32 [[T]], 8
 ; CHECK-NEXT:    br i1 [[MIN_ITERS_CHECK]], label [[SCALAR_PH:%.*]], label [[VECTOR_PH:%.*]]
 ; CHECK:       vector.ph:
 ; CHECK-NEXT:    [[N_MOD_VF:%.*]] = urem i32 [[T]], 2
@@ -88,7 +88,7 @@ define i32 @test(ptr nocapture readonly %x) {
 ; CHECK-NEXT:    [[SUB127]] = fsub fast double [[DVAL1_4131]], [[MUL126]]
 ; CHECK-NEXT:    [[INC129]] = add nuw nsw i32 [[I_2132]], 1
 ; CHECK-NEXT:    [[EXITCOND143:%.*]] = icmp eq i32 [[INC129]], [[T]]
-; CHECK-NEXT:    br i1 [[EXITCOND143]], label [[OUTEREND]], label [[INNERLOOP]], !llvm.loop [[LOOP2:![0-9]+]]
+; CHECK-NEXT:    br i1 [[EXITCOND143]], label [[OUTEREND]], label [[INNERLOOP]], !llvm.loop [[LOOP3:![0-9]+]]
 ; CHECK:       outerend:
 ; CHECK-NEXT:    [[SUB127_LCSSA:%.*]] = phi double [ [[SUB127]], [[INNERLOOP]] ], [ [[TMP15]], [[MIDDLE_BLOCK]] ]
 ; CHECK-NEXT:    [[CONV138:%.*]] = fptosi double [[SUB127_LCSSA]] to i32
