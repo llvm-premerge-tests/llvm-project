@@ -40,6 +40,14 @@ code bases.
 
 C/C++ Language Potentially Breaking Changes
 -------------------------------------------
+- Clang is now more precise with regards to the lifetime of temporary objects
+  such as when aggregates are passed by value to a function, resulting in
+  better sharing of stack slots and reduced stack usage. If recompiling with
+  ``-fsanitize=address`` shows a use-after-scope warning, then this is likely
+  the case, and the report printed should be able to help users pinpoint where
+  the use-after-scope is occurring. Users can use ``-Xclang
+  -sloppy-temporary-lifetimes`` to retain the old behavior until they are able
+  to find and resolve issues in their code.
 
 C++ Specific Potentially Breaking Changes
 -----------------------------------------
