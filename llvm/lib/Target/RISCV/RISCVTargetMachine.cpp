@@ -131,7 +131,7 @@ RISCVTargetMachine::RISCVTargetMachine(const Target &T, const Triple &TT,
   setSupportsDefaultOutlining(true);
 
   if (TT.isOSFuchsia() && !TT.isArch64Bit())
-    report_fatal_error("Fuchsia is only supported for 64-bit");
+    report_fatal_error("Fuchsia is only supported for 64-bit", false);
 }
 
 const RISCVSubtarget *
@@ -206,7 +206,8 @@ RISCVTargetMachine::getSubtargetImpl(const Function &F) const {
       auto TargetABI = RISCVABI::getTargetABI(ABIName);
       if (TargetABI != RISCVABI::ABI_Unknown &&
           ModuleTargetABI->getString() != ABIName) {
-        report_fatal_error("-target-abi option != target-abi module flag");
+        report_fatal_error("-target-abi option != target-abi module flag",
+                           false);
       }
       ABIName = ModuleTargetABI->getString();
     }

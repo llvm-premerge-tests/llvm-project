@@ -419,7 +419,8 @@ bool RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
   if (!isInt<32>(Offset.getFixed())) {
     report_fatal_error(
-        "Frame offsets outside of the signed 32-bit range not supported");
+        "Frame offsets outside of the signed 32-bit range not supported",
+        false);
   }
 
   if (!IsRVVSpill) {

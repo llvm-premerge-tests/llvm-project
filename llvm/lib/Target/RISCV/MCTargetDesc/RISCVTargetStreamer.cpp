@@ -51,7 +51,7 @@ void RISCVTargetStreamer::setTargetABI(RISCVABI::ABI ABI) {
 void RISCVTargetStreamer::emitTargetAttributes(const MCSubtargetInfo &STI,
                                                bool EmitStackAlign) {
   if (STI.hasFeature(RISCV::FeatureRVE))
-    report_fatal_error("Codegen not yet implemented for RVE");
+    report_fatal_error("Codegen not yet implemented for RVE", false);
 
   if (EmitStackAlign)
     emitAttribute(RISCVAttrs::STACK_ALIGN, RISCVAttrs::ALIGN_16);
@@ -59,7 +59,7 @@ void RISCVTargetStreamer::emitTargetAttributes(const MCSubtargetInfo &STI,
   auto ParseResult = RISCVFeatures::parseFeatureBits(
       STI.hasFeature(RISCV::Feature64Bit), STI.getFeatureBits());
   if (!ParseResult) {
-    report_fatal_error(ParseResult.takeError());
+    report_fatal_error(ParseResult.takeError(), false);
   } else {
     auto &ISAInfo = *ParseResult;
     emitTextAttribute(RISCVAttrs::ARCH, ISAInfo->toString());

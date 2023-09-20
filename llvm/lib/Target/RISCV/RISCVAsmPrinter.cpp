@@ -343,7 +343,8 @@ void RISCVAsmPrinter::LowerHWASAN_CHECK_MEMACCESS(const MachineInstr &MI) {
   if (!Sym) {
     // FIXME: Make this work on non-ELF.
     if (!TM.getTargetTriple().isOSBinFormatELF())
-      report_fatal_error("llvm.hwasan.check.memaccess only supported on ELF");
+      report_fatal_error("llvm.hwasan.check.memaccess only supported on ELF",
+                         false);
 
     std::string SymName = "__hwasan_check_x" + utostr(Reg - RISCV::X0) + "_" +
                           utostr(AccessInfo) + "_short";

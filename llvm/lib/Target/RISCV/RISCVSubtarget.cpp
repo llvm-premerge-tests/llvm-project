@@ -129,7 +129,8 @@ unsigned RISCVSubtarget::getMaxRVVVectorSizeInBits() const {
   // riscv-v-vector-bits-max should be no less than it.
   if (RVVVectorBitsMax != 0 && RVVVectorBitsMax < ZvlLen)
     report_fatal_error("riscv-v-vector-bits-max specified is lower "
-                       "than the Zvl*b limitation");
+                       "than the Zvl*b limitation",
+                       false);
 
   return RVVVectorBitsMax;
 }
@@ -145,7 +146,8 @@ unsigned RISCVSubtarget::getMinRVVVectorSizeInBits() const {
   // riscv-v-vector-bits-min should be no less than it.
   if (RVVVectorBitsMin != 0 && RVVVectorBitsMin < ZvlLen)
     report_fatal_error("riscv-v-vector-bits-min specified is lower "
-                       "than the Zvl*b limitation");
+                       "than the Zvl*b limitation",
+                       false);
 
   return RVVVectorBitsMin;
 }

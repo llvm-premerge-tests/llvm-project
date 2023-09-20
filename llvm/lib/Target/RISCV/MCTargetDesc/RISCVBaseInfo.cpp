@@ -75,7 +75,7 @@ ABI computeTargetABI(const Triple &TT, const FeatureBitset &FeatureBits,
   // If no explicit ABI is given, try to compute the default ABI.
   auto ISAInfo = RISCVFeatures::parseFeatureBits(IsRV64, FeatureBits);
   if (!ISAInfo)
-    report_fatal_error(ISAInfo.takeError());
+    report_fatal_error(ISAInfo.takeError(), false);
   return getTargetABI((*ISAInfo)->computeDefaultABI());
 }
 
@@ -107,12 +107,12 @@ namespace RISCVFeatures {
 
 void validate(const Triple &TT, const FeatureBitset &FeatureBits) {
   if (TT.isArch64Bit() && !FeatureBits[RISCV::Feature64Bit])
-    report_fatal_error("RV64 target requires an RV64 CPU");
+    report_fatal_error("RV64 target requires an RV64 CPU", false);
   if (!TT.isArch64Bit() && !FeatureBits[RISCV::Feature32Bit])
-    report_fatal_error("RV32 target requires an RV32 CPU");
+    report_fatal_error("RV32 target requires an RV32 CPU", false);
   if (FeatureBits[RISCV::Feature32Bit] &&
       FeatureBits[RISCV::Feature64Bit])
-    report_fatal_error("RV32 and RV64 can't be combined");
+    report_fatal_error("RV32 and RV64 can't be combined", false);
 }
 
 llvm::Expected<std::unique_ptr<RISCVISAInfo>>

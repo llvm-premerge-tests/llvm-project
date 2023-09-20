@@ -436,7 +436,8 @@ void RISCVDAGToDAGISel::selectVLXSEG(SDNode *Node, bool IsMasked,
   unsigned IndexLog2EEW = Log2_32(IndexVT.getScalarSizeInBits());
   if (IndexLog2EEW == 6 && !Subtarget->is64Bit()) {
     report_fatal_error("The V extension does not support EEW=64 for index "
-                       "values when XLEN=32");
+                       "values when XLEN=32",
+                       false);
   }
   const RISCV::VLXSEGPseudo *P = RISCV::getVLXSEGPseudo(
       NF, IsMasked, IsOrdered, IndexLog2EEW, static_cast<unsigned>(LMUL),
@@ -518,7 +519,8 @@ void RISCVDAGToDAGISel::selectVSXSEG(SDNode *Node, bool IsMasked,
   unsigned IndexLog2EEW = Log2_32(IndexVT.getScalarSizeInBits());
   if (IndexLog2EEW == 6 && !Subtarget->is64Bit()) {
     report_fatal_error("The V extension does not support EEW=64 for index "
-                       "values when XLEN=32");
+                       "values when XLEN=32",
+                       false);
   }
   const RISCV::VSXSEGPseudo *P = RISCV::getVSXSEGPseudo(
       NF, IsMasked, IsOrdered, IndexLog2EEW, static_cast<unsigned>(LMUL),
@@ -1704,7 +1706,8 @@ void RISCVDAGToDAGISel::Select(SDNode *Node) {
       unsigned IndexLog2EEW = Log2_32(IndexVT.getScalarSizeInBits());
       if (IndexLog2EEW == 6 && !Subtarget->is64Bit()) {
         report_fatal_error("The V extension does not support EEW=64 for index "
-                           "values when XLEN=32");
+                           "values when XLEN=32",
+                           false);
       }
       const RISCV::VLX_VSXPseudo *P = RISCV::getVLXPseudo(
           IsMasked, IsOrdered, IndexLog2EEW, static_cast<unsigned>(LMUL),
@@ -1902,7 +1905,8 @@ void RISCVDAGToDAGISel::Select(SDNode *Node) {
       unsigned IndexLog2EEW = Log2_32(IndexVT.getScalarSizeInBits());
       if (IndexLog2EEW == 6 && !Subtarget->is64Bit()) {
         report_fatal_error("The V extension does not support EEW=64 for index "
-                           "values when XLEN=32");
+                           "values when XLEN=32",
+                           false);
       }
       const RISCV::VLX_VSXPseudo *P = RISCV::getVSXPseudo(
           IsMasked, IsOrdered, IndexLog2EEW,

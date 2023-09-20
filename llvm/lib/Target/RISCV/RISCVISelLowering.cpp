@@ -79,7 +79,7 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
     : TargetLowering(TM), Subtarget(STI) {
 
   if (Subtarget.isRVE())
-    report_fatal_error("Codegen not yet implemented for RVE");
+    report_fatal_error("Codegen not yet implemented for RVE", false);
 
   RISCVABI::ABI ABI = Subtarget.getTargetABI();
   assert(ABI != RISCVABI::ABI_Unknown && "Improperly initialised target ABI");
@@ -5618,7 +5618,7 @@ SDValue RISCVTargetLowering::LowerOperation(SDValue Op,
     // vscale as VLENB / 8.
     static_assert(RISCV::RVVBitsPerBlock == 64, "Unexpected bits per block!");
     if (Subtarget.getRealMinVLen() < RISCV::RVVBitsPerBlock)
-      report_fatal_error("Support for VLEN==32 is incomplete.");
+      report_fatal_error("Support for VLEN==32 is incomplete.", false);
     // We assume VLENB is a multiple of 8. We manually choose the best shift
     // here because SimplifyDemandedBits isn't always able to simplify it.
     uint64_t Val = Op.getConstantOperandVal(0);
@@ -6348,7 +6348,7 @@ SDValue RISCVTargetLowering::getAddr(NodeTy *N, SelectionDAG &DAG,
 
   switch (getTargetMachine().getCodeModel()) {
   default:
-    report_fatal_error("Unsupported code model for lowering");
+    report_fatal_error("Unsupported code model for lowering", false);
   case CodeModel::Small: {
     // Generate a sequence for accessing addresses within the first 2 GiB of
     // address space. This generates the pattern (addi (lui %hi(sym)) %lo(sym)).
@@ -6504,7 +6504,7 @@ SDValue RISCVTargetLowering::lowerGlobalTLSAddress(SDValue Op,
 
   if (DAG.getMachineFunction().getFunction().getCallingConv() ==
       CallingConv::GHC)
-    report_fatal_error("In GHC calling convention TLS is not supported");
+    report_fatal_error("In GHC calling convention TLS is not supported", false);
 
   SDValue Addr;
   switch (Model) {
@@ -16483,7 +16483,7 @@ bool RISCV::CC_RISCV_GHC(unsigned ValNo, MVT ValVT, MVT LocVT,
                          ISD::ArgFlagsTy ArgFlags, CCState &State) {
   if (ArgFlags.isNest()) {
     report_fatal_error(
-        "Attribute 'nest' is not supported in GHC calling convention");
+        "Attribute 'nest' is not supported in GHC calling convention", false);
   }
 
   static const MCPhysReg GPRList[] = {
@@ -16535,7 +16535,7 @@ bool RISCV::CC_RISCV_GHC(unsigned ValNo, MVT ValVT, MVT LocVT,
     }
   }
 
-  report_fatal_error("No registers left in GHC calling convention");
+  report_fatal_error("No registers left in GHC calling convention", false);
   return true;
 }
 
@@ -16556,21 +16556,23 @@ SDValue RISCVTargetLowering::LowerFormalArguments(
   case CallingConv::GHC:
     if (!Subtarget.hasStdExtFOrZfinx() || !Subtarget.hasStdExtDOrZdinx())
       report_fatal_error("GHC calling convention requires the (Zfinx/F) and "
-                         "(Zdinx/D) instruction set extensions");
+                         "(Zdinx/D) instruction set extensions",
+                         false);
   }
 
   const Function &Func = MF.getFunction();
   if (Func.hasFnAttribute("interrupt")) {
     if (!Func.arg_empty())
       report_fatal_error(
-        "Functions with the interrupt attribute cannot have arguments!");
+          "Functions with the interrupt attribute cannot have arguments!",
+          false);
 
     StringRef Kind =
       MF.getFunction().getFnAttribute("interrupt").getValueAsString();
 
     if (!(Kind == "user" || Kind == "supervisor" || Kind == "machine"))
-      report_fatal_error(
-        "Function interrupt attribute argument not supported!");
+      report_fatal_error("Function interrupt attribute argument not supported!",
+                         false);
   }
 
   EVT PtrVT = getPointerTy(DAG.getDataLayout());
@@ -16803,7 +16805,8 @@ SDValue RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
     ++NumTailCalls;
   else if (CLI.CB && CLI.CB->isMustTailCall())
     report_fatal_error("failed to perform tail call elimination on a call "
-                       "site marked musttail");
+                       "site marked musttail",
+                       false);
 
   // Get a count of how many bytes are to be pushed on the stack.
   unsigned NumBytes = ArgCCInfo.getStackSize();
@@ -17115,7 +17118,7 @@ RISCVTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                     nullptr, RISCV::CC_RISCV);
 
   if (CallConv == CallingConv::GHC && !RVLocs.empty())
-    report_fatal_error("GHC functions return void only");
+    report_fatal_error("GHC functions return void only", false);
 
   SDValue Glue;
   SmallVector<SDValue, 4> RetOps(1, Chain);
@@ -17182,7 +17185,8 @@ RISCVTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   if (Func.hasFnAttribute("interrupt")) {
     if (!Func.getReturnType()->isVoidTy())
       report_fatal_error(
-          "Functions with the interrupt attribute must have void return type!");
+          "Functions with the interrupt attribute must have void return type!",
+          false);
 
     MachineFunction &MF = DAG.getMachineFunction();
     StringRef Kind =
