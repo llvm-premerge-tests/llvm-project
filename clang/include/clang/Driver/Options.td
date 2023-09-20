@@ -6849,6 +6849,9 @@ def fexperimental_assignment_tracking_EQ : Joined<["-"], "fexperimental-assignme
   NormalizedValuesScope<"CodeGenOptions::AssignmentTrackingOpts">,
   Values<"disabled,enabled,forced">, NormalizedValues<["Disabled","Enabled","Forced"]>,
   MarshallingInfoEnum<CodeGenOpts<"AssignmentTrackingMode">, "Enabled">;
+def sloppy_temporary_lifetimes : Flag<["-"], "sloppy-temporary-lifetimes">,
+  HelpText<"Don't emit lifetime markers for temporary objects">,
+  MarshallingInfoFlag<CodeGenOpts<"NoLifetimeMarkersForTemporaries">>;
 
 } // let Visibility = [CC1Option]
 

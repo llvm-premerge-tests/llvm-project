@@ -514,6 +514,10 @@ ENUM_CODEGENOPT(ZeroCallUsedRegs, llvm::ZeroCallUsedRegs::ZeroCallUsedRegsKind,
 /// non-deleting destructors. (No effect on Microsoft ABI.)
 CODEGENOPT(CtorDtorReturnThis, 1, 0)
 
+/// Set via -Xclang -sloppy-temporary-lifetimes to disable emission of lifetime
+/// marker intrinsic calls.
+CODEGENOPT(NoLifetimeMarkersForTemporaries, 1, 0)
+
 #undef CODEGENOPT
 #undef ENUM_CODEGENOPT
 #undef VALUE_CODEGENOPT
