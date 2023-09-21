@@ -20,8 +20,10 @@
 #include "mlir/Interfaces/InferTypeOpInterface.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 #include "mlir/Interfaces/ViewLikeInterface.h"
+#include "mlir/Support/LogicalResult.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallBitVector.h"
+#include "llvm/Support/Casting.h"
 
 using namespace mlir;
 using namespace mlir::memref;
@@ -354,17 +356,81 @@ struct SimplifyDeadAlloc : public OpRewritePattern<T> {
     return success();
   }
 };
+
+/// Fold casted alloc/alloca operations so they will have the destination's
+/// type, and the memref.cast will not be needed. This is allowed if the cast
+/// does not lose information, of rank and size. In some cases the allocated
+/// buffer type cannot change, for example if it is used by a func.call. Thus
+/// the pattern is limited to alloc/alloca ops that are used by ops from the
+/// memref dialect. Note that the pattern is applied only on alloc and cast ops
+/// that are in the same block, to avoid folding a cast that appears inside a
+/// control flow.
+template <typename T>
+struct SimplifyCastedAlloc : public OpRewritePattern<T> {
+  using OpRewritePattern<T>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(T alloc,
+                                PatternRewriter &rewriter) const override {
+    // Valid users are ops of memref dialect. Folding the castOp is allowed only
+    // if result types of both alloc and cast are ranked, have static shape,
+    // strides and offsets. All memref.cast should have the same type, which
+    // will be the alloc's new type.
+    auto srcBaseMemRefType =
+        alloc.getMemref().getType().template cast<BaseMemRefType>();
+    MemRefType dstType;
+    Dialect *memrefDialect = alloc->getDialect();
+    for (auto user : alloc->getUsers()) {
+      if (user->getDialect() != memrefDialect)
+        return failure();
+      auto castUser = dyn_cast<CastOp>(user);
+      if (!castUser)
+        continue;
+      if (castUser->getBlock() != alloc->getBlock())
+        return failure();
+      auto dstBaseMemRefType =
+          castUser.getDest().getType().template cast<BaseMemRefType>();
+      if (!srcBaseMemRefType.hasRank() || !dstBaseMemRefType.hasRank())
+        return failure();
+      if (!srcBaseMemRefType.hasStaticShape() ||
+          !dstBaseMemRefType.hasStaticShape())
+        return failure();
+      auto currDstType = dstBaseMemRefType.template cast<MemRefType>();
+      auto [strides, offset] = getStridesAndOffset(currDstType);
+      if (offset == ShapedType::kDynamic ||
+          llvm::is_contained(strides, ShapedType::kDynamic))
+        return failure();
+      if (!dstType)
+        dstType = currDstType;
+      else if (dstType != currDstType)
+        return failure();
+    }
+
+    // If no cast operations were found, the pattern fails.
+    if (!dstType)
+      return failure();
+
+    // If the alloc type should not change, the pattern fails.
+    if (alloc.getMemref().getType().template cast<MemRefType>() == dstType)
+      return failure();
+
+    rewriter.replaceOpWithNewOp<T>(alloc, dstType, alloc.getDynamicSizes(),
+                                   alloc.getSymbolOperands(),
+                                   alloc.getAlignmentAttr());
+    return success();
+  }
+};
 } // namespace
 
 void AllocOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
-  results.add<SimplifyAllocConst<AllocOp>, SimplifyDeadAlloc<AllocOp>>(context);
+  results.add<SimplifyAllocConst<AllocOp>, SimplifyDeadAlloc<AllocOp>,
+              SimplifyCastedAlloc<AllocOp>>(context);
 }
 
 void AllocaOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
-  results.add<SimplifyAllocConst<AllocaOp>, SimplifyDeadAlloc<AllocaOp>>(
-      context);
+  results.add<SimplifyAllocConst<AllocaOp>, SimplifyDeadAlloc<AllocaOp>,
+              SimplifyCastedAlloc<AllocaOp>>(context);
 }
 
 //===----------------------------------------------------------------------===//
