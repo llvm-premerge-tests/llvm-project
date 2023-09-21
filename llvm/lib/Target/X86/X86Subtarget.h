@@ -332,9 +332,14 @@ public:
 
   bool isTargetCygMing() const { return TargetTriple.isOSCygMing(); }
 
+  // bool isOSWindows() const { return (TargetTriple.isOSWindows() ||
+  // TargetTriple.isUEFI()); }
+
   bool isOSWindows() const { return TargetTriple.isOSWindows(); }
 
-  bool isTargetWin64() const { return Is64Bit && isOSWindows(); }
+  bool isTargetWin64() const {
+    return Is64Bit && (isOSWindows() || TargetTriple.isUEFI());
+  }
 
   bool isTargetWin32() const { return !Is64Bit && isOSWindows(); }
 
@@ -360,9 +365,11 @@ public:
     case CallingConv::X86_ThisCall:
     case CallingConv::X86_VectorCall:
     case CallingConv::Intel_OCL_BI:
+      llvm::outs() << "RETURNING TRUE FOR CALLING CONVENTION PRABPRAB \n";
       return isTargetWin64();
     // This convention allows using the Win64 convention on other targets.
     case CallingConv::Win64:
+      llvm::outs() << "RETURNING TRUE FOR CALLING CONVENTION PRABPRAB \n";
       return true;
     // This convention allows using the SysV convention on Windows targets.
     case CallingConv::X86_64_SysV:

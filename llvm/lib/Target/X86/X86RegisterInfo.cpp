@@ -54,7 +54,7 @@ X86RegisterInfo::X86RegisterInfo(const Triple &TT)
 
   // Cache some information.
   Is64Bit = TT.isArch64Bit();
-  IsWin64 = Is64Bit && TT.isOSWindows();
+  IsWin64 = Is64Bit && (TT.isOSWindows() || TT.isUEFI());
 
   // Use a callee-saved register as the base pointer.  These registers must
   // not conflict with any ABI requirements.  For example, in 32-bit mode PIC
