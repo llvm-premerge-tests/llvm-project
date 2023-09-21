@@ -1090,6 +1090,71 @@ bool PPCMIPeephole::simplifyCode() {
           ++NumRotatesCollapsed;
         break;
       }
+      case PPC::ANDI_rec:
+      case PPC::ANDI8_rec:
+      case PPC::ANDIS_rec:
+      case PPC::ANDIS8_rec: {
+        Register TrueReg =
+            TRI->lookThruCopyLike(MI.getOperand(1).getReg(), MRI);
+        if (!TrueReg.isVirtual() || !MRI->hasOneNonDBGUse(TrueReg))
+          break;
+
+        MachineInstr *SrcMI = MRI->getVRegDef(TrueReg);
+        if (!SrcMI)
+          break;
+
+        unsigned SrcOpCode = SrcMI->getOpcode();
+        if (SrcOpCode != PPC::RLDICL && SrcOpCode != PPC::RLDICR)
+          break;
+
+        uint64_t AndImm = MI.getOperand(2).getImm();
+        if (MI.getOpcode() == PPC::ANDIS_rec ||
+            MI.getOpcode() == PPC::ANDIS8_rec)
+          AndImm <<= 16;
+        uint64_t LZeroAndImm = llvm::countl_zero<uint64_t>(AndImm);
+        uint64_t RZeroAndImm = llvm::countr_zero<uint64_t>(AndImm);
+        uint64_t ImmSrc = SrcMI->getOperand(3).getImm();
+        MachineInstr *NewInstr = nullptr;
+
+        // We can eliminate ANDI_rec or ANDIS_rec if all bits to AND are
+        // already zero in the input.
+        if ((SrcOpCode == PPC::RLDICL && (RZeroAndImm + ImmSrc > 63)) ||
+            (SrcOpCode == PPC::RLDICR && LZeroAndImm > ImmSrc)) {
+          LLVM_DEBUG(dbgs() << "Combining pair: ");
+          LLVM_DEBUG(SrcMI->dump());
+          LLVM_DEBUG(MI.dump());
+          NewInstr =
+              BuildMI(MBB, &MI, MI.getDebugLoc(),
+                      TII->get(SrcOpCode == PPC::RLDICL ? PPC::RLDICL_rec
+                                                        : PPC::RLDICR_rec),
+                      MI.getOperand(0).getReg())
+                  .add(SrcMI->getOperand(1))
+                  .add(SrcMI->getOperand(2))
+                  .add(SrcMI->getOperand(3))
+                  .add(MI.getOperand(3));
+          ToErase = &MI;
+        } else if (SrcMI->getOperand(2).getImm() != 0)
+          break;
+
+        // We can eliminate RLDICL or RLDICR if it's used to clear the
+        // high-order or low-order n bits and all bits cleared will be ANDed
+        // with 0 by ANDI_rec or ANDIS_rec.
+        if ((SrcOpCode == PPC::RLDICL && LZeroAndImm >= ImmSrc) ||
+            (SrcOpCode == PPC::RLDICR && (RZeroAndImm + ImmSrc > 63))) {
+          LLVM_DEBUG(dbgs() << "Combining pair: ");
+          LLVM_DEBUG(SrcMI->dump());
+          LLVM_DEBUG(MI.dump());
+          MI.getOperand(1).setReg(SrcMI->getOperand(1).getReg());
+          NewInstr = &MI;
+        }
+        if (!NewInstr)
+          break;
+        LLVM_DEBUG(dbgs() << "To: ");
+        LLVM_DEBUG(NewInstr->dump());
+        Simplified = true;
+        SrcMI->eraseFromParent();
+        break;
+      }
       // We will replace TD/TW/TDI/TWI with an unconditional trap if it will
       // always trap, we will delete the node if it will never trap.
       case PPC::TDI:
