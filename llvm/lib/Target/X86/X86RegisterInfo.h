@@ -27,7 +27,7 @@ private:
   ///
   bool Is64Bit;
 
-  /// IsWin64 - Is the target on of win64 flavours
+  /// IsWin64 - Is the target one of win64 flavours
   ///
   bool IsWin64;
 
