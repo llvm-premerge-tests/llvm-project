@@ -1676,7 +1676,7 @@ struct MemorySanitizerVisitor : public InstVisitor<MemorySanitizerVisitor> {
           VectTy->getElementCount());
     }
     assert(IntPtrTy == MS.IntptrTy);
-    return ShadowTy->getPointerTo();
+    return PointerType::getUnqual(ShadowTy->getContext());
   }
 
   Constant *constToIntPtr(Type *IntPtrTy, uint64_t C) const {
@@ -1799,12 +1799,12 @@ struct MemorySanitizerVisitor : public InstVisitor<MemorySanitizerVisitor> {
 
     // TODO: Support callbacs with vectors of addresses.
     unsigned NumElements = cast<FixedVectorType>(VectTy)->getNumElements();
-    Value *ShadowPtrs = ConstantInt::getNullValue(
-        FixedVectorType::get(ShadowTy->getPointerTo(), NumElements));
+    Value *ShadowPtrs = ConstantInt::getNullValue(FixedVectorType::get(
+        PointerType::getUnqual(ShadowTy->getContext()), NumElements));
     Value *OriginPtrs = nullptr;
     if (MS.TrackOrigins)
-      OriginPtrs = ConstantInt::getNullValue(
-          FixedVectorType::get(MS.OriginTy->getPointerTo(), NumElements));
+      OriginPtrs = ConstantInt::getNullValue(FixedVectorType::get(
+          PointerType::getUnqual(MS.OriginTy->getContext()), NumElements));
     for (unsigned i = 0; i < NumElements; ++i) {
       Value *OneAddr =
           IRB.CreateExtractElement(Addr, ConstantInt::get(IRB.getInt32Ty(), i));
@@ -3385,8 +3385,7 @@ struct MemorySanitizerVisitor : public InstVisitor<MemorySanitizerVisitor> {
     Value *ShadowPtr =
         getShadowOriginPtr(Addr, IRB, Ty, Align(1), /*isStore*/ true).first;
 
-    IRB.CreateStore(getCleanShadow(Ty),
-                    IRB.CreatePointerCast(ShadowPtr, Ty->getPointerTo()));
+    IRB.CreateStore(getCleanShadow(Ty), ShadowPtr);
 
     if (ClCheckAccessAddress)
       insertShadowCheck(Addr, &I);

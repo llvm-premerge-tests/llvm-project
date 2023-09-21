@@ -553,8 +553,6 @@ static void createCmpXchgInstFun(IRBuilderBase &Builder, Value *Addr,
   bool NeedBitcast = OrigTy->isFloatingPointTy();
   if (NeedBitcast) {
     IntegerType *IntTy = Builder.getIntNTy(OrigTy->getPrimitiveSizeInBits());
-    unsigned AS = Addr->getType()->getPointerAddressSpace();
-    Addr = Builder.CreateBitCast(Addr, IntTy->getPointerTo(AS));
     NewVal = Builder.CreateBitCast(NewVal, IntTy);
     Loaded = Builder.CreateBitCast(Loaded, IntTy);
   }
@@ -727,7 +725,8 @@ static PartwordMaskValues createMaskInstrs(IRBuilderBase &Builder,
   assert(ValueSize < MinWordSize);
 
   PointerType *PtrTy = cast<PointerType>(Addr->getType());
-  Type *WordPtrType = PMV.WordType->getPointerTo(PtrTy->getAddressSpace());
+  Type *WordPtrType =
+      PointerType::get(PMV.WordType->getContext(), PtrTy->getAddressSpace());
   IntegerType *IntTy = DL.getIntPtrType(Ctx, PtrTy->getAddressSpace());
   Value *PtrLSB;
 

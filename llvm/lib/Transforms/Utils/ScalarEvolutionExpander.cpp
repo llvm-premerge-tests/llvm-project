@@ -2244,7 +2244,7 @@ Value *SCEVExpander::fixupLCSSAFormFor(Value *V) {
   // instruction.
   Type *ToTy;
   if (DefI->getType()->isIntegerTy())
-    ToTy = DefI->getType()->getPointerTo();
+    ToTy = PointerType::getUnqual(DefI->getContext());
   else
     ToTy = Type::getInt32Ty(DefI->getContext());
   Instruction *User =

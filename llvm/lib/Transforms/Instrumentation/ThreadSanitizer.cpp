@@ -262,7 +262,7 @@ void ThreadSanitizer::initialize(Module &M, const TargetLibraryInfo &TLI) {
         UnalignedCompoundRWName, Attr, IRB.getVoidTy(), IRB.getInt8PtrTy());
 
     Type *Ty = Type::getIntNTy(Ctx, BitSize);
-    Type *PtrTy = Ty->getPointerTo();
+    Type *PtrTy = PointerType::getUnqual(Ty->getContext());
     SmallString<32> AtomicLoadName("__tsan_atomic" + BitSizeStr + "_load");
     TsanAtomicLoad[i] =
         M.getOrInsertFunction(AtomicLoadName,
@@ -727,7 +727,7 @@ bool ThreadSanitizer::instrumentAtomic(Instruction *I, const DataLayout &DL) {
     const unsigned ByteSize = 1U << Idx;
     const unsigned BitSize = ByteSize * 8;
     Type *Ty = Type::getIntNTy(IRB.getContext(), BitSize);
-    Type *PtrTy = Ty->getPointerTo();
+    Type *PtrTy = PointerType::getUnqual(Ty->getContext());
     Value *Args[] = {IRB.CreatePointerCast(Addr, PtrTy),
                      createOrdering(&IRB, LI->getOrdering())};
     Value *C = IRB.CreateCall(TsanAtomicLoad[Idx], Args);
@@ -742,7 +742,7 @@ bool ThreadSanitizer::instrumentAtomic(Instruction *I, const DataLayout &DL) {
     const unsigned ByteSize = 1U << Idx;
     const unsigned BitSize = ByteSize * 8;
     Type *Ty = Type::getIntNTy(IRB.getContext(), BitSize);
-    Type *PtrTy = Ty->getPointerTo();
+    Type *PtrTy = PointerType::getUnqual(Ty->getContext());
     Value *Args[] = {IRB.CreatePointerCast(Addr, PtrTy),
                      IRB.CreateBitOrPointerCast(SI->getValueOperand(), Ty),
                      createOrdering(&IRB, SI->getOrdering())};
@@ -760,7 +760,7 @@ bool ThreadSanitizer::instrumentAtomic(Instruction *I, const DataLayout &DL) {
     const unsigned ByteSize = 1U << Idx;
     const unsigned BitSize = ByteSize * 8;
     Type *Ty = Type::getIntNTy(IRB.getContext(), BitSize);
-    Type *PtrTy = Ty->getPointerTo();
+    Type *PtrTy = PointerType::getUnqual(Ty->getContext());
     Value *Args[] = {IRB.CreatePointerCast(Addr, PtrTy),
                      IRB.CreateIntCast(RMWI->getValOperand(), Ty, false),
                      createOrdering(&IRB, RMWI->getOrdering())};
@@ -775,7 +775,7 @@ bool ThreadSanitizer::instrumentAtomic(Instruction *I, const DataLayout &DL) {
     const unsigned ByteSize = 1U << Idx;
     const unsigned BitSize = ByteSize * 8;
     Type *Ty = Type::getIntNTy(IRB.getContext(), BitSize);
-    Type *PtrTy = Ty->getPointerTo();
+    Type *PtrTy = PointerType::getUnqual(Ty->getContext());
     Value *CmpOperand =
       IRB.CreateBitOrPointerCast(CASI->getCompareOperand(), Ty);
     Value *NewOperand =
