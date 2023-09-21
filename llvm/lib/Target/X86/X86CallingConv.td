@@ -1127,6 +1127,9 @@ def CC_X86_64 : CallingConv<[
   // Mingw64 and native Win64 use Win64 CC
   CCIfSubtarget<"isTargetWin64()", CCDelegateTo<CC_X86_Win64_C>>,
 
+  // UEFI64 uses Win64 CC
+  CCIfSubtarget<"isTargetUEFI64()", CCDelegateTo<CC_X86_Win64_C>>,
+
   // Otherwise, drop to normal X86-64 CC
   CCDelegateTo<CC_X86_64_C>
 ]>;
