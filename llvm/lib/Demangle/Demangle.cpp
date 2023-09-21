@@ -27,6 +27,10 @@ std::string llvm::demangle(std::string_view MangledName) {
       nonMicrosoftDemangle(MangledName.substr(1), Result))
     return Result;
 
+  if (starts_with(MangledName, '.') &&
+      nonMicrosoftDemangle(MangledName.substr(1), Result))
+    return "." + Result;
+
   if (char *Demangled = microsoftDemangle(MangledName, nullptr, nullptr)) {
     Result = Demangled;
     std::free(Demangled);
