@@ -92,6 +92,11 @@ static cl::opt<int> InlineSavingsMultiplier(
     "inline-savings-multiplier", cl::Hidden, cl::init(8),
     cl::desc("Multiplier to multiply cycle savings by during inlining"));
 
+static cl::opt<int> InlineSavingsProfitableMultiplier(
+    "inline-savings-profitable-multiplier", cl::Hidden, cl::init(4),
+    cl::desc("A multiplier on top of cycle savings to decide whether the "
+             "savings won't justify the cost"));
+
 static cl::opt<int>
     InlineSizeAllowance("inline-size-allowance", cl::Hidden, cl::init(100),
                         cl::desc("The maximum size of a callee that get's "
@@ -815,6 +820,32 @@ class InlineCostCallAnalyzer final : public CallAnalyzer {
     return true;
   }
 
+  // A helper function to choose between command line override and default.
+  unsigned getInliningCostBenefitAnalysisSavingsMultiplier() const {
+    if (InlineSavingsMultiplier.getNumOccurrences())
+      return InlineSavingsMultiplier;
+    return TTI.getInliningCostBenefitAnalysisSavingsMultiplier();
+  }
+
+  // A helper function to choose between command line override and default.
+  unsigned getInliningCostBenefitAnalysisProfitableMultiplier() const {
+    if (InlineSavingsProfitableMultiplier.getNumOccurrences())
+      return InlineSavingsProfitableMultiplier;
+    return TTI.getInliningCostBenefitAnalysisProfitableMultiplier();
+  }
+
+  void OverrideCycleSavingsAndSizeForTesting(APInt &CycleSavings, int &Size) {
+    if (std::optional<int> AttrCycleSavings = getStringFnAttrAsInt(
+            CandidateCall, "inline-cycle-savings-for-test")) {
+      CycleSavings = *AttrCycleSavings;
+    }
+
+    if (std::optional<int> AttrRuntimeCost = getStringFnAttrAsInt(
+            CandidateCall, "inline-runtime-cost-for-test")) {
+      Size = *AttrRuntimeCost;
+    }
+  }
+
   // Determine whether we should inline the given call site, taking into account
   // both the size cost and the cycle savings.  Return std::nullopt if we don't
   // have sufficient profiling information to determine.
@@ -884,13 +915,16 @@ class InlineCostCallAnalyzer final : public CallAnalyzer {
     CycleSavings += getCallsiteCost(this->CandidateCall, DL);
     CycleSavings *= *CallerBFI->getBlockProfileCount(CallerBB);
 
-    // Remove the cost of the cold basic blocks.
+    // Remove the cost of the cold basic blocks to model the runtime cost more
+    // accurately. Both machine block placement and function splitting could
+    // place cold blocks further from hot blocks.
     int Size = Cost - ColdSize;
 
     // Allow tiny callees to be inlined regardless of whether they meet the
     // savings threshold.
     Size = Size > InlineSizeAllowance ? Size - InlineSizeAllowance : 1;
 
+    OverrideCycleSavingsAndSizeForTesting(CycleSavings, Size);
     CostBenefit.emplace(APInt(128, Size), CycleSavings);
 
     // Return true if the savings justify the cost of inlining.  Specifically,
@@ -902,11 +936,24 @@ class InlineCostCallAnalyzer final : public CallAnalyzer {
     //
     // Note that the left hand side is specific to a call site.  The right hand
     // side is a constant for the entire executable.
-    APInt LHS = CycleSavings;
-    LHS *= InlineSavingsMultiplier;
-    APInt RHS(128, PSI->getOrCompHotCountThreshold());
-    RHS *= Size;
-    return LHS.uge(RHS);
+    APInt Threshold(128, PSI->getOrCompHotCountThreshold());
+    Threshold *= Size;
+
+    APInt UpperBoundCycleSavings = CycleSavings;
+    UpperBoundCycleSavings *= getInliningCostBenefitAnalysisSavingsMultiplier();
+    if (UpperBoundCycleSavings.uge(Threshold))
+      return true;
+
+    // If the savings doesn't justify the size cost, do not inline.
+    APInt LowerBoundCycleSavings = CycleSavings;
+    LowerBoundCycleSavings *=
+        getInliningCostBenefitAnalysisProfitableMultiplier();
+
+    if (LowerBoundCycleSavings.ult(Threshold))
+      return false;
+
+    // Otherwise, fallback to cost-threshold analysis.
+    return std::nullopt;
   }
 
   InlineResult finalizeAnalysis() override {
