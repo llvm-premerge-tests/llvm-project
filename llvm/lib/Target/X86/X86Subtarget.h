@@ -334,7 +334,9 @@ public:
 
   bool isOSWindows() const { return TargetTriple.isOSWindows(); }
 
-  bool isTargetWin64() const { return Is64Bit && isOSWindows(); }
+  bool isTargetWin64() const {
+    return Is64Bit && (isOSWindows() || TargetTriple.isUEFI());
+  }
 
   bool isTargetWin32() const { return !Is64Bit && isOSWindows(); }
 
