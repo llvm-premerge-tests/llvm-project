@@ -412,11 +412,6 @@ generic-debug-mode)
     check-runtimes
     check-abi-list
 ;;
-generic-with_llvm_unwinder)
-    clean
-    generate-cmake -DLIBCXXABI_USE_LLVM_UNWINDER=ON
-    check-runtimes
-;;
 #
 # Module builds
 #
