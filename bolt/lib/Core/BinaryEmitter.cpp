@@ -319,6 +319,14 @@ bool BinaryEmitter::emitFunction(BinaryFunction &Function,
     Streamer.emitCodeAlignment(Function.getAlign(), &*BC.STI);
   }
 
+  if (Function.size() == 0 && Function.hasIslandsInfo()) {
+    // If function has only constant island emit alignment before emitting
+    // symbols, so the emitted nops (if any) won't be part of the constant
+    // islands data and we would address data correctly.
+    const uint16_t Alignment = Function.getConstantIslandAlignment();
+    Streamer.emitCodeAlignment(Align(Alignment), &*BC.STI);
+  }
+
   MCContext &Context = Streamer.getContext();
   const MCAsmInfo *MAI = Context.getAsmInfo();
 
