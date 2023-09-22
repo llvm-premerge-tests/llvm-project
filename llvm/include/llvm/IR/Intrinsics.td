@@ -2190,6 +2190,11 @@ def int_vp_is_fpclass:
                                 llvm_i32_ty],
                               [IntrNoMem, IntrSpeculatable, ImmArg<ArgIndex<1>>]>;
 
+def int_experimental_cttz_elts:
+  DefaultAttrsIntrinsic<[llvm_anyint_ty],
+            [llvm_anyvector_ty, llvm_i32_ty],
+            [IntrNoMem, IntrNoSync, IntrWillReturn, ImmArg<ArgIndex<1>>]>;
+
 //===-------------------------- Masked Intrinsics -------------------------===//
 //
 def int_masked_load:

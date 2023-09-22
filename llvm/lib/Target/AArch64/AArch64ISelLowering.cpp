@@ -1777,6 +1777,13 @@ bool AArch64TargetLowering::shouldExpandGetActiveLaneMask(EVT ResVT,
   return false;
 }
 
+bool AArch64TargetLowering::shouldExpandCttzElements(EVT VT) const {
+  if (!Subtarget->hasSVE() || VT != MVT::nxv16i1)
+    return true;
+
+  return false;
+}
+
 void AArch64TargetLowering::addTypeForFixedLengthSVE(MVT VT,
                                                      bool StreamingSVE) {
   assert(VT.isFixedLengthVector() && "Expected fixed length vector type!");
@@ -5339,6 +5346,17 @@ SDValue AArch64TargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
       return EXTRACT_VEC_ELT;
     }
     return SDValue();
+  }
+  case Intrinsic::experimental_cttz_elts: {
+    EVT Ty = Op.getValueType();
+    if (Ty == MVT::i64)
+      return Op;
+
+    SDValue NewCttzElts =
+        DAG.getNode(ISD::INTRINSIC_WO_CHAIN, dl, MVT::i64, Op.getOperand(0),
+                    Op.getOperand(1), Op.getOperand(2));
+
+    return DAG.getZExtOrTrunc(NewCttzElts, dl, Ty);
   }
   }
 }
