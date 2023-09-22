@@ -67,12 +67,15 @@ static void error(const Twine &Message) {
 static std::string demangle(const std::string &Mangled) {
   using llvm::itanium_demangle::starts_with;
   std::string_view DecoratedStr = Mangled;
+  bool StripDot = true;
   if (StripUnderscore)
-    if (DecoratedStr[0] == '_')
+    if (DecoratedStr[0] == '_') {
       DecoratedStr.remove_prefix(1);
+      StripDot = false;
+    }
 
   std::string Result;
-  if (nonMicrosoftDemangle(DecoratedStr, Result))
+  if (nonMicrosoftDemangle(DecoratedStr, Result, StripDot))
     return Result;
 
   std::string Prefix;
