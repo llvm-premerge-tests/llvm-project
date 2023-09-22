@@ -1347,6 +1347,9 @@ static void WriteOptimizationInfo(raw_ostream &Out, const User *U) {
   } else if (const GEPOperator *GEP = dyn_cast<GEPOperator>(U)) {
     if (GEP->isInBounds())
       Out << " inbounds";
+  } else if (const NonNegOperator *NNEG = dyn_cast<NonNegOperator>(U)) {
+    if (NNEG->hasNonNeg())
+      Out << " nneg";
   }
 }
 

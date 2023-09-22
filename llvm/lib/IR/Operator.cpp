@@ -37,6 +37,8 @@ bool Operator::hasPoisonGeneratingFlags() const {
     // Note: inrange exists on constexpr only
     return GEP->isInBounds() || GEP->getInRangeIndex() != std::nullopt;
   }
+  case Instruction::ZExt:
+    return cast<NonNegOperator>(this)->hasNonNeg();
   default:
     if (const auto *FP = dyn_cast<FPMathOperator>(this))
       return FP->hasNoNaNs() || FP->hasNoInfs();

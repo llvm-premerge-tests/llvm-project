@@ -1042,7 +1042,8 @@ public:
   static Constant *getAShr(Constant *C1, Constant *C2, bool isExact = false);
   static Constant *getTrunc(Constant *C, Type *Ty, bool OnlyIfReduced = false);
   static Constant *getSExt(Constant *C, Type *Ty, bool OnlyIfReduced = false);
-  static Constant *getZExt(Constant *C, Type *Ty, bool OnlyIfReduced = false);
+  static Constant *getZExt(Constant *C, Type *Ty, bool OnlyIfReduced = false,
+                           bool NonNeg = false);
   static Constant *getFPTrunc(Constant *C, Type *Ty,
                               bool OnlyIfReduced = false);
   static Constant *getFPExtend(Constant *C, Type *Ty,

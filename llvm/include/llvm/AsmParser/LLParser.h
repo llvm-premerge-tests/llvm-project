@@ -614,7 +614,8 @@ namespace llvm {
                          unsigned Opc, bool IsFP);
     bool parseLogical(Instruction *&Inst, PerFunctionState &PFS, unsigned Opc);
     bool parseCompare(Instruction *&Inst, PerFunctionState &PFS, unsigned Opc);
-    bool parseCast(Instruction *&Inst, PerFunctionState &PFS, unsigned Opc);
+    bool parseCast(Instruction *&Inst, PerFunctionState &PFS, unsigned Opc,
+                   bool NonNeg = false);
     bool parseSelect(Instruction *&Inst, PerFunctionState &PFS);
     bool parseVAArg(Instruction *&Inst, PerFunctionState &PFS);
     bool parseExtractElement(Instruction *&Inst, PerFunctionState &PFS);
