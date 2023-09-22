@@ -66,4 +66,4 @@ CHECK: Foo}
 CHECK: Foo~,,
 CHECK: Foo⦙Bar
 CHECK: Foo,,Bar::Baz  Foo,Bar:Baz
-CHECK: _Z3Foo$ ._Z3Foo
+CHECK: _Z3Foo$ .Foo

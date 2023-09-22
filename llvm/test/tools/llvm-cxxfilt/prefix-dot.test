@@ -1,0 +1,9 @@
+## Show that the llvm-cxxfilt does not consider the prefix dot to be part of the symbol name to be demangled.
+
+RUN: echo '._Z3Foo ._Z3f.0v' \
+RUN:      '._ZL5func0v ._Z5func1i' > %t
+RUN:      llvm-cxxfilt -n < %t | FileCheck %s
+
+CHECK: .Foo .f.0()
+CHECK: .func0()
+CHECK: .func1(int)

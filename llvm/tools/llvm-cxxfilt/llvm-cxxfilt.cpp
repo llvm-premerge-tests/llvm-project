@@ -67,13 +67,19 @@ static void error(const Twine &Message) {
 static std::string demangle(const std::string &Mangled) {
   using llvm::itanium_demangle::starts_with;
   std::string_view DecoratedStr = Mangled;
-  if (StripUnderscore)
-    if (DecoratedStr[0] == '_')
-      DecoratedStr.remove_prefix(1);
+  std::string DotPrefix;
+
+  if (StripUnderscore && DecoratedStr[0] == '_')
+    DecoratedStr.remove_prefix(1);
+  // Do not consider the prefix dot as part of the demangled symbol name.
+  else if (DecoratedStr[0] == '.') {
+    DecoratedStr.remove_prefix(1);
+    DotPrefix = ".";
+  }
 
   std::string Result;
   if (nonMicrosoftDemangle(DecoratedStr, Result))
-    return Result;
+    return DotPrefix + Result;
 
   std::string Prefix;
   char *Undecorated = nullptr;
@@ -86,7 +92,7 @@ static std::string demangle(const std::string &Mangled) {
     Undecorated = itaniumDemangle(DecoratedStr.substr(6));
   }
 
-  Result = Undecorated ? Prefix + Undecorated : Mangled;
+  Result = Undecorated ? DotPrefix + Prefix + Undecorated : Mangled;
   free(Undecorated);
   return Result;
 }
