@@ -11,6 +11,7 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
+#include "llvm/TargetParser/Triple.h"
 #include "llvm/Testing/Support/Error.h"
 #include "gtest/gtest.h"
 
@@ -102,6 +103,11 @@ TEST(DataLayoutTest, VectorAlign) {
   // the natural alignment as a fallback.
   EXPECT_EQ(Align(4 * 8), DL->getABITypeAlign(V8F32Ty));
   EXPECT_EQ(Align(4 * 8), DL->getPrefTypeAlign(V8F32Ty));
+}
+
+TEST(DataLayoutTest, TargetTripleManglingComponent) {
+  Triple TT = Triple("x86_64-unknown-uefi");
+  EXPECT_STREQ(DataLayout::getManglingComponent(TT), "-m:w");
 }
 
 } // anonymous namespace
