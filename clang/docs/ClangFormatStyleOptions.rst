@@ -4114,6 +4114,29 @@ the configuration (without a prefix: ``Auto``).
              }]
      }
 
+.. _ObjCPropertyAttributeOrder:
+
+**ObjCPropertyAttributeOrder** (``List of Strings``) :versionbadge:`clang-format 18` :ref:`¶ <ObjCPropertyAttributeOrder>`
+  The order in which ObjC property attributes should appear.
+
+  Attributes in code will be sorted in the order specified. Any attributes
+  encountered that are not mentioned in this array will be sorted last, in
+  stable order. Duplicate attributes will be removed, but no other conflict
+  checking is performed. A leading or trailing comment is allowed to the
+  whole set, but comments encountered between attributes will leave the
+  entire set untouched.
+
+
+  .. code-block:: yaml
+
+    ObjCPropertyAttributeOrder: [
+        class, direct,
+        atomic, nonatomic,
+        assign, retain, strong, copy, weak, unsafe_unretained,
+        readonly, readwrite, getter, setter,
+        nullable, nonnull, null_resettable, null_unspecified
+    ]
+
 .. _ObjCSpaceAfterProperty:
 
 **ObjCSpaceAfterProperty** (``Boolean``) :versionbadge:`clang-format 3.7` :ref:`¶ <ObjCSpaceAfterProperty>`

@@ -456,6 +456,8 @@ clang/lib/Format/MacroExpander.cpp
 clang/lib/Format/Macros.h
 clang/lib/Format/NamespaceEndCommentsFixer.cpp
 clang/lib/Format/NamespaceEndCommentsFixer.h
+clang/lib/Format/ObjCPropertyAttributeOrderFixer.h
+clang/lib/Format/ObjCPropertyAttributeOrderFixer.cpp
 clang/lib/Format/QualifierAlignmentFixer.cpp
 clang/lib/Format/QualifierAlignmentFixer.h
 clang/lib/Format/SortJavaScriptImports.cpp
@@ -670,6 +672,7 @@ clang/unittests/Format/FormatTestTextProto.cpp
 clang/unittests/Format/FormatTestUtils.h
 clang/unittests/Format/MacroExpanderTest.cpp
 clang/unittests/Format/NamespaceEndCommentsFixerTest.cpp
+clang/unittests/Format/ObjCPropertyAttributeOrderFixerTest.cpp
 clang/unittests/Format/QualifierFixerTest.cpp
 clang/unittests/Format/SortImportsTestJava.cpp
 clang/unittests/Format/SortImportsTestJS.cpp
