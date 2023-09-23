@@ -473,6 +473,8 @@ AST Matchers
 clang-format
 ------------
 - Add ``AllowBreakBeforeNoexceptSpecifier`` option.
+- Improve handling of ``AttributeMacros`` to behave more consistently like
+  regular attribute macros (aka ``__attribute__``)
 
 libclang
 --------

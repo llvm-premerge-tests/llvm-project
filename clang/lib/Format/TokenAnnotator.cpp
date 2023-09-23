@@ -376,7 +376,7 @@ private:
     // Infer the role of the l_paren based on the previous token if we haven't
     // detected one yet.
     if (PrevNonComment && OpeningParen.is(TT_Unknown)) {
-      if (PrevNonComment->is(tok::kw___attribute)) {
+      if (PrevNonComment->isOneOf(tok::kw___attribute, TT_AttributeMacro)) {
         OpeningParen.setType(TT_AttributeParen);
       } else if (PrevNonComment->isOneOf(TT_TypenameMacro, tok::kw_decltype,
                                          tok::kw_typeof,
@@ -4678,7 +4678,9 @@ bool TokenAnnotator::spaceRequiredBefore(const AnnotatedLine &Line,
   if (Line.Type == LT_ObjCMethodDecl) {
     if (Left.is(TT_ObjCMethodSpecifier))
       return true;
-    if (Left.is(tok::r_paren) && canBeObjCSelectorComponent(Right)) {
+    // Apply this logic for parens that are not function attribute macros.
+    if (Left.is(tok::r_paren) && Left.isNot(TT_AttributeParen) &&
+        canBeObjCSelectorComponent(Right)) {
       // Don't space between ')' and <id> or ')' and 'new'. 'new' is not a
       // keyword in Objective-C, and '+ (instancetype)new;' is a standard class
       // method declaration.
@@ -5191,8 +5193,10 @@ bool TokenAnnotator::mustBreakBefore(const AnnotatedLine &Line,
   }
 
   // Ensure wrapping after __attribute__((XX)) and @interface etc.
-  if (Left.is(TT_AttributeParen) && Right.is(TT_ObjCDecl))
+  if (Left.isOneOf(TT_AttributeMacro, TT_AttributeParen) &&
+      Right.is(TT_ObjCDecl)) {
     return true;
+  }
 
   if (Left.is(TT_LambdaLBrace)) {
     if (IsFunctionArgument(Left) &&
@@ -5600,10 +5604,12 @@ bool TokenAnnotator::canBreakBefore(const AnnotatedLine &Line,
                           tok::less, tok::coloncolon);
   }
 
-  if (Right.is(tok::kw___attribute) ||
-      (Right.is(tok::l_square) && Right.is(TT_AttributeSquare))) {
+  if (Right.isOneOf(tok::kw___attribute, TT_AttributeMacro))
     return Left.isNot(TT_AttributeSquare);
-  }
+
+  // Don't split `[[` on C++ attributes.
+  if (Right.is(tok::l_square) && Right.is(TT_AttributeSquare))
+    return Left.isNot(TT_AttributeSquare);
 
   if (Left.is(tok::identifier) && Right.is(tok::string_literal))
     return true;
