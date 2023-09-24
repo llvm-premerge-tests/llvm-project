@@ -1,0 +1,7 @@
+# Validate the usage of the `--assume-abi` option in conjunction with
+# CFG-related options.
+
+REQUIRES: system-linux
+
+RUN: %clang %cflags %p/Inputs/hello.c -o %t -Wl,-q
+RUN: llvm-bolt %t -o %t.bolt --assume-abi --indirect-call-promotion=all
