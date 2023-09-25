@@ -1425,6 +1425,8 @@ static void readConfigs(opt::InputArgList &args) {
   config->unique = args.hasArg(OPT_unique);
   config->useAndroidRelrTags = args.hasFlag(
       OPT_use_android_relr_tags, OPT_no_use_android_relr_tags, false);
+  config->useCacheDirectedSort = args.hasFlag(
+      OPT_use_cache_directed_sort, OPT_no_use_cache_directed_sort, false);
   config->warnBackrefs =
       args.hasFlag(OPT_warn_backrefs, OPT_no_warn_backrefs, false);
   config->warnCommon = args.hasFlag(OPT_warn_common, OPT_no_warn_common, false);

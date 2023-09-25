@@ -337,6 +337,10 @@ defm use_android_relr_tags: BB<"use-android-relr-tags",
     "Use SHT_ANDROID_RELR / DT_ANDROID_RELR* tags instead of SHT_RELR / DT_RELR*",
     "Use SHT_RELR / DT_RELR* tags (default)">;
 
+defm use_cache_directed_sort: BB<"use-cache-directed-sort",
+    "Reorder input sections with cache-directed sort",
+    "Do not use cache-directed sort to reorder input sections">;
+
 def pic_veneer: F<"pic-veneer">,
   HelpText<"Always generate position independent thunks (veneers)">;
 
