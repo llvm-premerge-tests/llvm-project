@@ -60,7 +60,7 @@ enum class BsymbolicKind { None, NonWeakFunctions, Functions, NonWeak, All };
 enum class BuildIdKind { None, Fast, Md5, Sha1, Hexstring, Uuid };
 
 // For --call-graph-profile-sort={none,hfsort}.
-enum class CGProfileSortKind { None, Hfsort };
+enum class CGProfileSortKind { None, Hfsort, Cdsort };
 
 // For --discard-{all,locals,none}.
 enum class DiscardPolicy { Default, All, Locals, None };
@@ -293,6 +293,7 @@ struct Config {
   bool undefinedVersion;
   bool unique;
   bool useAndroidRelrTags = false;
+  bool useCacheDirectedSort;
   bool warnBackrefs;
   llvm::SmallVector<llvm::GlobPattern, 0> warnBackrefsExclude;
   bool warnCommon;
