@@ -2589,8 +2589,18 @@ bool X86DAGToDAGISel::matchAddressRecursively(SDValue N, X86ISelAddressMode &AM,
     if (AM.IndexReg.getNode() != nullptr || AM.Scale != 1)
       break;
 
-    // Peek through mask: zext(and(shl(x,c1),c2))
     SDValue Src = N.getOperand(0);
+
+    // See if we can match a zext(addlike(x,c)).
+    // TODO: Move more ZERO_EXTEND patterns into matchIndexRecursively.
+    if (Src.getOpcode() == ISD::ADD || Src.getOpcode() == ISD::OR)
+      if (SDValue Index = matchIndexRecursively(N, AM, Depth + 1))
+        if (Index != N) {
+          AM.IndexReg = Index;
+          return false;
+        }
+
+    // Peek through mask: zext(and(shl(x,c1),c2))
     APInt Mask = APInt::getAllOnes(Src.getScalarValueSizeInBits());
     if (Src.getOpcode() == ISD::AND && Src.hasOneUse())
       if (auto *MaskC = dyn_cast<ConstantSDNode>(Src.getOperand(1))) {
@@ -2613,7 +2623,8 @@ bool X86DAGToDAGISel::matchAddressRecursively(SDValue N, X86ISelAddressMode &AM,
       // That makes it safe to widen to the destination type.
       APInt HighZeros =
           APInt::getHighBitsSet(ShlSrc.getValueSizeInBits(), ShAmtV);
-      if (!CurDAG->MaskedValueIsZero(ShlSrc, HighZeros & Mask))
+      if (!Src->getFlags().hasNoUnsignedWrap() &&
+          !CurDAG->MaskedValueIsZero(ShlSrc, HighZeros & Mask))
         break;
 
       // zext (shl nuw i8 %x, C1) to i32
