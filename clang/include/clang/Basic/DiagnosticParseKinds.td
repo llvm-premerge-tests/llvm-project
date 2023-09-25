@@ -1382,6 +1382,10 @@ def err_omp_map_type_missing : Error<
   "missing map type">;
 def err_omp_map_type_modifier_missing : Error<
   "missing map type modifier">;
+def err_omp_step_modifier_missing : Error<
+  "expected step size in 'step' modifier">;
+def err_omp_linear_modifier_missing : Error<
+  "expected linear modifier ('val', 'uval', or 'ref')">;
 def err_omp_declare_simd_inbranch_notinbranch : Error<
   "unexpected '%0' clause, '%1' is specified already">;
 def err_omp_expected_clause_argument

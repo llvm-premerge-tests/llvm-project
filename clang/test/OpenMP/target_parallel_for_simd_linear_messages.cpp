@@ -1,6 +1,8 @@
 // RUN: %clang_cc1 -verify -fopenmp %s -Wuninitialized
+// RUN: %clang_cc1 -verify=expected,omp52 -fopenmp -fopenmp-version=52 -DOMP52 %s -Wuninitialized
 
 // RUN: %clang_cc1 -verify -fopenmp-simd %s -Wuninitialized
+// RUN: %clang_cc1 -verify=expected,omp52 -fopenmp-simd -fopenmp-version=52 -DOMP52 %s -Wuninitialized
 
 #pragma omp requires dynamic_allocators
 
@@ -272,16 +274,28 @@ int main(int argc, char **argv) {
 #pragma omp target parallel for simd linear(i)
     for (int k = 0; k < argc; ++k)
       ++k;
+#ifdef OMP52
+#pragma omp target parallel for simd linear(i : uval, step(4)) // expected-error {{variable of non-reference type 'int' can be used only with 'val' modifier, but used with 'uval'}}
+#else
 #pragma omp target parallel for simd linear(i : 4)
+#endif
     for (int k = 0; k < argc; ++k) {
       ++k;
       i += 4;
     }
   }
+#ifdef OMP52
+#pragma omp target parallel for simd linear(j: step() //omp52-error{{expected expression}} omp52-error{{expected ')'}} omp52-note{{to match this '('}}
+#else
 #pragma omp target parallel for simd linear(j)
+#endif
   for (int k = 0; k < argc; ++k)
     ++k;
+#ifdef OMP52
+#pragma omp target parallel for simd linear(i: step(1),) // omp52-error{{expected linear modifier ('val', 'uval', or 'ref')}}
+#else  
 #pragma omp target parallel for simd linear(i)
+#endif
   for (int k = 0; k < argc; ++k)
     ++k;
 

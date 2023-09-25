@@ -1,6 +1,8 @@
 // RUN: %clang_cc1 -verify -fopenmp %s -Wno-openmp-mapping -Wuninitialized
+// RUN: %clang_cc1 -verify=expected,omp52 -fopenmp -fopenmp-version=52 -DOMP52 %s -Wno-openmp-mapping -Wuninitialized
 
 // RUN: %clang_cc1 -verify -fopenmp-simd %s -Wno-openmp-mapping -Wuninitialized
+// RUN: %clang_cc1 -verify=expected,omp52 -fopenmp-simd -fopenmp-version=52 -DOMP52 %s -Wno-openmp-mapping -Wuninitialized
 
 extern int omp_default_mem_alloc;
 
@@ -333,6 +335,25 @@ int main(int argc, char **argv) {
     #pragma omp teams
     #pragma omp distribute parallel for simd linear(i : 4)
       for (i = 0; i < argc; ++i) { ++i; i += 4; }
+
+#ifdef OMP52
+    #pragma omp target
+    #pragma omp teams
+    #pragma omp distribute parallel for simd linear(i: step() //omp52-error{{expected expression}} omp52-error{{expected ')'}} omp52-note{{to match this '('}}
+      for (i = 0; i < argc; ++i) ++i;
+    #pragma omp target
+    #pragma omp teams
+    #pragma omp distribute parallel for simd linear(i: step(1),) // omp52-error{{expected linear modifier ('val', 'uval', or 'ref')}}
+      for (i = 0; i < argc; ++i) ++i;
+    #pragma omp target
+    #pragma omp teams
+    #pragma omp distribute parallel for simd linear(i: step()) // omp52-error{{expected expression}}
+      for (i = 0; i < argc; ++i) ++i;
+    #pragma omp target
+    #pragma omp teams
+    #pragma omp distribute parallel for simd linear(i: step(1), pval) // omp52-error{{expected one of 'ref', val' or 'uval' modifiers}}
+      for (i = 0; i < argc; ++i) ++i;
+#endif
   }
 
   foomain<int,char>(argc,argv); // expected-note {{in instantiation of function template specialization 'foomain<int, char>' requested here}}

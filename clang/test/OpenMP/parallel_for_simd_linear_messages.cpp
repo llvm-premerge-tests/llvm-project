@@ -1,6 +1,8 @@
 // RUN: %clang_cc1 -verify -fopenmp %s -Wuninitialized
+// RUN: %clang_cc1 -verify=expected,omp52 -fopenmp -fopenmp-version=52 -DOMP52 %s -Wuninitialized
 
 // RUN: %clang_cc1 -verify -fopenmp-simd %s -Wuninitialized
+// RUN: %clang_cc1 -verify=expected,omp52 -fopenmp-simd -fopenmp-version=52 -DOMP52 %s -Wuninitialized
 
 extern int omp_default_mem_alloc;
 void xxx(int argc) {
@@ -210,12 +212,24 @@ int main(int argc, char **argv) {
     int i;
     #pragma omp parallel for simd linear(i)
     for (int k = 0; k < argc; ++k) ++k;
+#ifdef OMP52
+    #pragma omp parallel for simd linear(i : step(4))
+#else
     #pragma omp parallel for simd linear(i : 4)
+#endif
     for (int k = 0; k < argc; ++k) { ++k; i += 4; }
   }
+#ifdef OMP52
+  #pragma omp for linear(j: step() //omp52-error{{expected expression}} omp52-error{{expected ')'}} omp52-note{{to match this '('}}
+#else
   #pragma omp parallel for simd linear(j)
+#endif
   for (int k = 0; k < argc; ++k) ++k;
+#ifdef OMP52
+  #pragma omp for linear(i: step(1),) // omp52-error{{expected linear modifier ('val', 'uval', or 'ref')}}
+#else
   #pragma omp parallel for simd linear(i)
+#endif
   for (int k = 0; k < argc; ++k) ++k;
 
   foomain<int,char>(argc,argv); // expected-note {{in instantiation of function template specialization 'foomain<int, char>' requested here}}

@@ -4,6 +4,9 @@
 // RUN: %clang_cc1 -verify -fopenmp -fopenmp-version=51 -ast-print %s -Wsign-conversion -DOMP51 | FileCheck %s --check-prefix=CHECK --check-prefix=OMP51
 // RUN: %clang_cc1 -fopenmp -fopenmp-version=51 -x c++ -std=c++11 -emit-pch -o %t %s -DOMP51
 // RUN: %clang_cc1 -fopenmp -fopenmp-version=51 -std=c++11 -include-pch %t -fsyntax-only -verify %s -ast-print -DOMP51 | FileCheck %s --check-prefix=CHECK --check-prefix=OMP51
+// RUN: %clang_cc1 -verify -fopenmp -fopenmp-version=52 -ast-print %s -Wsign-conversion -DOMP52 | FileCheck %s --check-prefix=CHECK --check-prefix=OMP52
+// RUN: %clang_cc1 -fopenmp -fopenmp-version=52 -x c++ -std=c++11 -emit-pch -o %t %s -DOMP52
+// RUN: %clang_cc1 -fopenmp -fopenmp-version=52 -std=c++11 -include-pch %t -fsyntax-only -verify %s -ast-print -DOMP52 | FileCheck %s --check-prefix=CHECK --check-prefix=OMP52
 
 // RUN: %clang_cc1 -verify -fopenmp-simd -ast-print %s -Wsign-conversion | FileCheck %s --check-prefix=CHECK --check-prefix=OMP50
 // RUN: %clang_cc1 -fopenmp-simd -x c++ -std=c++11 -emit-pch -o %t %s
@@ -11,6 +14,9 @@
 // RUN: %clang_cc1 -verify -fopenmp-simd -fopenmp-version=51 -ast-print %s -Wsign-conversion -DOMP51 | FileCheck %s --check-prefix=CHECK --check-prefix=OMP51
 // RUN: %clang_cc1 -fopenmp-simd -fopenmp-version=51 -x c++ -std=c++11 -emit-pch -o %t %s -DOMP51
 // RUN: %clang_cc1 -fopenmp-simd -fopenmp-version=51 -std=c++11 -include-pch %t -fsyntax-only -verify %s -ast-print -DOMP51 | FileCheck %s --check-prefix=CHECK --check-prefix=OMP51
+// RUN: %clang_cc1 -verify -fopenmp-simd -fopenmp-version=52 -ast-print %s -Wsign-conversion -DOMP52 | FileCheck %s --check-prefix=CHECK --check-prefix=OMP52
+// RUN: %clang_cc1 -fopenmp-simd -fopenmp-version=52 -x c++ -std=c++11 -emit-pch -o %t %s -DOMP52
+// RUN: %clang_cc1 -fopenmp-simd -fopenmp-version=52 -std=c++11 -include-pch %t -fsyntax-only -verify %s -ast-print -DOMP52 | FileCheck %s --check-prefix=CHECK --check-prefix=OMP52
 // expected-no-diagnostics
 
 #ifndef HEADER
@@ -227,19 +233,26 @@ int main(int argc, char **argv) {
   float arr[20];
   static int a;
 // CHECK: static int a;
-#ifdef OMP51
+#ifdef OMP52
+#pragma omp for schedule(guided, argc) reduction(+:argv[0][:1]) order(unconstrained:concurrent)
+#elif OMP51
 #pragma omp for schedule(guided, argc) reduction(+:argv[0][:1]) order(unconstrained:concurrent)
 #else
 #pragma omp for schedule(guided, argc) reduction(+:argv[0][:1]) order(concurrent)
 #endif // OMP51
   // OMP50: #pragma omp for schedule(guided, argc) reduction(+: argv[0][:1]) order(concurrent)
   // OMP51: #pragma omp for schedule(guided, argc) reduction(+: argv[0][:1]) order(unconstrained: concurrent)
+  // OMP52: #pragma omp for schedule(guided, argc) reduction(+: argv[0][:1]) order(unconstrained: concurrent)
   for (int i = argc; i < c; ++i)
     a = 2;
 // CHECK-NEXT: for (int i = argc; i < c; ++i)
 // CHECK-NEXT: a = 2;
 #pragma omp parallel
+#ifdef OMP52 
+#pragma omp for private(argc, b), firstprivate(argv, c), lastprivate(d, f) collapse(3) schedule(auto) ordered nowait linear(g: step(-1)) reduction(task, +:e)
+#else
 #pragma omp for private(argc, b), firstprivate(argv, c), lastprivate(d, f) collapse(3) schedule(auto) ordered nowait linear(g:-1) reduction(task, +:e)
+#endif
   for (int i = 0; i < 10; ++i)
     for (int j = 0; j < 10; ++j)
       for (auto x : arr)

@@ -1,6 +1,8 @@
 // RUN: %clang_cc1 -verify -fopenmp %s -Wuninitialized
+// RUN: %clang_cc1 -verify=expected,omp52 -fopenmp -fopenmp-version=52 -DOMP52 %s -Wuninitialized
 
 // RUN: %clang_cc1 -verify -fopenmp-simd %s -Wuninitialized
+// RUN: %clang_cc1 -verify=expected,omp52 -fopenmp-simd -fopenmp-version=52 -DOMP52 %s -Wuninitialized
 
 typedef void **omp_allocator_handle_t;
 extern const omp_allocator_handle_t omp_null_allocator;
@@ -255,13 +257,31 @@ int main(int argc, char **argv) {
     int i;
     #pragma omp taskloop simd linear(val(i))
     for (int k = 0; k < argc; ++k) ++k;
+#ifdef OMP52
+    #pragma omp taskloop simd linear(i : uval, step(4)) // expected-error {{variable of non-reference type 'int' can be used only with 'val' modifier, but used with 'uval'}}
+#else
     #pragma omp taskloop simd linear(uval(i) : 4) // expected-error {{variable of non-reference type 'int' can be used only with 'val' modifier, but used with 'uval'}}
+#endif
     for (int k = 0; k < argc; ++k) { ++k; i += 4; }
   }
+#ifdef OMP52
+  #pragma omp taskloop simd linear(j: ref)
+#else  
   #pragma omp taskloop simd linear(ref(j))
+#endif
   for (int k = 0; k < argc; ++k) ++k;
+#ifdef OMP52
+  #pragma omp taskloop simd linear(i: step(1),) // omp52-error{{expected linear modifier ('val', 'uval', or 'ref')}}
+#else  
   #pragma omp taskloop simd linear(i)
+#endif
   for (int k = 0; k < argc; ++k) ++k;
+#ifdef OMP52
+  #pragma omp taskloop simd linear(j: step()) // omp52-error{{expected expression}}
+  for (int k = 0; k < argc; ++k) ++k;
+  #pragma omp taskloop simd linear(j: step(1), pval) // omp52-error{{expected one of 'ref', val' or 'uval' modifiers}}
+  for (int k = 0; k < argc; ++k) ++k;
+#endif
 
   foomain<int,char>(argc,argv); // expected-note {{in instantiation of function template specialization 'foomain<int, char>' requested here}}
   return 0;
