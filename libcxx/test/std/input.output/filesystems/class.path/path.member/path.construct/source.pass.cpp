@@ -116,7 +116,7 @@ void test_sfinae() {
     static_assert(std::is_constructible<path, It>::value, "");
   }
   {
-    using It = cpp17_output_iterator<const char*>;
+    using It = cpp17_output_iterator<char*>;
     static_assert(!std::is_constructible<path, It>::value, "");
 
   }
