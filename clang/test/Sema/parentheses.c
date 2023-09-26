@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -fsyntax-only -verify %s
+// RUN: %clang_cc1 -Wparentheses -fsyntax-only -verify %s
 // RUN: %clang_cc1 -Wparentheses -fsyntax-only -verify %s
 // RUN: %clang_cc1 -Wparentheses -fsyntax-only -fdiagnostics-parseable-fixits %s 2>&1 | FileCheck %s
 
@@ -84,10 +84,10 @@ void conditional_op(int x, int y, _Bool b, void* p) {
   // CHECK: fix-it:"{{.*}}":{[[@LINE-5]]:14-[[@LINE-5]]:14}:"("
   // CHECK: fix-it:"{{.*}}":{[[@LINE-6]]:24-[[@LINE-6]]:24}:")"
 
-  (void)(x % 2 ? 1 : 2); // no warning
+  (void)(x % 2 ? 1 : 2); // expected-warning {{operator '?:' has lower precedence than '%'}} expected-note 2{{place parenthese}}
 
   (void)(x + p ? 1 : 2); // expected-warning {{operator '?:' has lower precedence than '+'}} expected-note 2{{place parentheses}}
-  (void)(p + x ? 1 : 2); // no warning
+  (void)(p + x ? 1 : 2); // expected-warning {{operator '?:' has lower precedence than '+'}} expected-note 2{{place parentheses}}
 
   (void)(p + b ? 1 : 2); // expected-warning {{operator '?:' has lower precedence than '+'}} expected-note 2{{place parentheses}}
 

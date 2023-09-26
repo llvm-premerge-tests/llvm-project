@@ -87,7 +87,7 @@ void test_templates() {
 }
 
 #define SIZE 10
-#define ARR_IN_MACRO(flag, arr, idx) flag ? arr[idx] : 1
+#define ARR_IN_MACRO(flag, arr, idx) (flag ? arr[idx] : 1)
 
 int test_no_warn_macro_unreachable() {
   int arr[SIZE]; // expected-note {{array 'arr' declared here}}

@@ -32,7 +32,7 @@ int f2(void) {
 int f2_b(void) {
   int x; // expected-note{{'x' declared without an initial value}}
   
-  return ((1+x)+2+((x))) + 1 ? 1 : 2; // expected-warning{{The right operand of '+' is a garbage value}}
+  return (((1+x)+2+((x))) + 1) ? 1 : 2; // expected-warning{{The right operand of '+' is a garbage value}}
                                       // expected-note@-1{{The right operand of '+' is a garbage value}}
 }
 

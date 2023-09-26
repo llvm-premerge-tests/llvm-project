@@ -264,6 +264,9 @@ Bug Fixes in This Version
   (`#64836 <https://github.com/llvm/llvm-project/issues/64836>`_)
 - Clang now allows an ``_Atomic`` qualified integer in a switch statement. Fixes
   (`#65557 <https://github.com/llvm/llvm-project/issues/65557>`_)
+- Print diagnostic warning about precedence when integer expression is used
+  without parentheses in an conditional operator expression.
+  (`#61943 <https://github.com/llvm/llvm-project/issues/61943>`_)
 
 Bug Fixes to Compiler Builtins
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
