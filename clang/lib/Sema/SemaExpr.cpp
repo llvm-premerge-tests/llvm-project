@@ -9543,10 +9543,12 @@ static bool ExprLooksBoolean(Expr *E) {
   if (E->getType()->isBooleanType())
     return true;
   if (BinaryOperator *OP = dyn_cast<BinaryOperator>(E))
-    return OP->isComparisonOp() || OP->isLogicalOp();
+    return OP->isComparisonOp() || OP->isLogicalOp() || (OP->getOpcode() == BO_And);
   if (UnaryOperator *OP = dyn_cast<UnaryOperator>(E))
     return OP->getOpcode() == UO_LNot;
   if (E->getType()->isPointerType())
+    return true;
+  if (E->getType()->isIntegerType())
     return true;
   // FIXME: What about overloaded operator calls returning "unspecified boolean
   // type"s (commonly pointer-to-members)?
