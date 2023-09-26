@@ -35,6 +35,7 @@ class LegalizationArtifactCombiner {
   MachineIRBuilder &Builder;
   MachineRegisterInfo &MRI;
   const LegalizerInfo &LI;
+  GISelKnownBits *KB;
 
   static bool isArtifactCast(unsigned Opc) {
     switch (Opc) {
@@ -50,8 +51,9 @@ class LegalizationArtifactCombiner {
 
 public:
   LegalizationArtifactCombiner(MachineIRBuilder &B, MachineRegisterInfo &MRI,
-                    const LegalizerInfo &LI)
-      : Builder(B), MRI(MRI), LI(LI) {}
+                               const LegalizerInfo &LI,
+                               GISelKnownBits *KB = nullptr)
+      : Builder(B), MRI(MRI), LI(LI), KB(KB) {}
 
   bool tryCombineAnyExt(MachineInstr &MI,
                         SmallVectorImpl<MachineInstr *> &DeadInsts,
@@ -131,13 +133,20 @@ public:
       LLVM_DEBUG(dbgs() << ".. Combine MI: " << MI;);
       LLT SrcTy = MRI.getType(SrcReg);
       APInt MaskVal = APInt::getAllOnes(SrcTy.getScalarSizeInBits());
-      auto Mask = Builder.buildConstant(
-        DstTy, MaskVal.zext(DstTy.getScalarSizeInBits()));
       if (SextSrc && (DstTy != MRI.getType(SextSrc)))
         SextSrc = Builder.buildSExtOrTrunc(DstTy, SextSrc).getReg(0);
       if (TruncSrc && (DstTy != MRI.getType(TruncSrc)))
         TruncSrc = Builder.buildAnyExtOrTrunc(DstTy, TruncSrc).getReg(0);
-      Builder.buildAnd(DstReg, SextSrc ? SextSrc : TruncSrc, Mask);
+      APInt ExtMaskVal = MaskVal.zext(DstTy.getScalarSizeInBits());
+      Register AndSrc = SextSrc ? SextSrc : TruncSrc;
+      // Elide AND if it is proven redundant (e.g between boolean uses and defs)
+      if (KB && (KB->getKnownZeroes(AndSrc) | ExtMaskVal).isAllOnes()) {
+        replaceRegOrBuildCopy(DstReg, AndSrc, MRI, Builder, UpdatedDefs,
+                              Observer);
+      } else {
+        auto Mask = Builder.buildConstant(DstTy, ExtMaskVal);
+        Builder.buildAnd(DstReg, AndSrc, Mask);
+      }
       markInstAndDefDead(MI, *MRI.getVRegDef(SrcReg), DeadInsts);
       return true;
     }
