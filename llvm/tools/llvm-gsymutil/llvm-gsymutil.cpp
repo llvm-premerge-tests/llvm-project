@@ -213,7 +213,7 @@ static bool filterArch(MachOObjectFile &Obj) {
   Triple ObjTriple(Obj.getArchTriple());
   StringRef ObjArch = ObjTriple.getArchName();
 
-  for (auto Arch : ArchFilters) {
+  for (const auto &Arch : ArchFilters) {
     // Match name.
     if (Arch == ObjArch)
       return true;
@@ -469,7 +469,7 @@ static llvm::Error convertFileToGSYM(raw_ostream &OS) {
     error(DsymObjectsOrErr.takeError());
   }
 
-  for (auto Object : Objects) {
+  for (const auto &Object : Objects) {
     if (auto Err = handleFileConversionToGSYM(Object, OutFile))
       return Err;
   }

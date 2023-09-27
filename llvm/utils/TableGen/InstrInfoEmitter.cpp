@@ -482,7 +482,7 @@ void InstrInfoEmitter::emitOperandTypeMappings(
       SizeToOperandName[Size].push_back(Op->getName());
   }
   OS << "  default: return 0;\n";
-  for (auto KV : SizeToOperandName) {
+  for (const auto &KV : SizeToOperandName) {
     for (const StringRef &OperandName : KV.second)
       OS << "  case OpTypes::" << OperandName << ":\n";
     OS << "    return " << KV.first << ";\n\n";
