@@ -900,7 +900,8 @@ void NullabilityChecker::checkPostCall(const CallEvent &Call,
       State->get<NullabilityMap>(Region);
 
   if (!TrackedNullability &&
-      getNullabilityAnnotation(ReturnType) == Nullability::Nullable) {
+      getNullabilityAnnotation(Call.getOriginExpr()->getType()) ==
+          Nullability::Nullable) {
     State = State->set<NullabilityMap>(Region, Nullability::Nullable);
     C.addTransition(State);
   }
@@ -1053,7 +1054,7 @@ void NullabilityChecker::checkPostObjCMessage(const ObjCMethodCall &M,
   }
 
   // No tracked information. Use static type information for return value.
-  Nullability RetNullability = getNullabilityAnnotation(RetType);
+  Nullability RetNullability = getNullabilityAnnotation(Message->getType());
 
   // Properties might be computed, which means the property value could
   // theoretically change between calls even in commonly-observed cases like
