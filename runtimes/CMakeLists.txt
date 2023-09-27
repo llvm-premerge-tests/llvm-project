@@ -162,13 +162,11 @@ include(GetHostTriple)
 get_host_triple(LLVM_HOST_TRIPLE)
 message(STATUS "LLVM host triple: ${LLVM_HOST_TRIPLE}")
 
-# TODO: We shouldn't be using LLVM_DEFAULT_TARGET_TRIPLE for runtimes since we
-# aren't generating code, LLVM_TARGET_TRIPLE is a better fit.
 set(LLVM_DEFAULT_TARGET_TRIPLE "${LLVM_HOST_TRIPLE}" CACHE STRING
     "Default target for which the runtimes will be built.")
 message(STATUS "LLVM default target triple: ${LLVM_DEFAULT_TARGET_TRIPLE}")
 
-set(LLVM_TARGET_TRIPLE "${LLVM_DEFAULT_TARGET_TRIPLE}")
+set(LLVM_RUNTIME_TARGET "${LLVM_DEFAULT_TARGET_TRIPLE}")
 
 option(LLVM_INCLUDE_TESTS "Generate build targets for the runtimes unit tests." ON)
 option(LLVM_INCLUDE_DOCS "Generate build targets for the runtimes documentation." ON)

@@ -25,6 +25,11 @@ if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   include(base-config-ix)
   include(CompilerRTUtils)
 
+  set(LLVM_DEFAULT_TARGET_TRIPLE "" CACHE STRING
+      "Default target for which the builtins will be built.")
+
+  set(LLVM_RUNTIME_TARGET "${LLVM_DEFAULT_TARGET_TRIPLE}")
+
   if (NOT LLVM_RUNTIMES_BUILD)
     load_llvm_config()
   endif()

@@ -895,6 +895,10 @@ message(STATUS "LLVM default target triple: ${LLVM_DEFAULT_TARGET_TRIPLE}")
 
 set(LLVM_TARGET_TRIPLE "${LLVM_DEFAULT_TARGET_TRIPLE}")
 
+# TODO: This would ideally only be set in the runtimes build, but not until
+# we deprecate support for building compiler-rt with LLVM_ENABLE_PROJECTS.
+set(LLVM_RUNTIME_TARGET "${LLVM_TARGET_TRIPLE}")
+
 if(WIN32 OR CYGWIN)
   if(BUILD_SHARED_LIBS OR LLVM_BUILD_LLVM_DYLIB)
     set(LLVM_ENABLE_PLUGINS_default ON)

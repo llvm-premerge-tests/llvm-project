@@ -31,7 +31,7 @@ serialize_lit_param(hardening_mode "\"${LIBCXX_HARDENING_MODE}\"")
 if (CMAKE_CXX_COMPILER_TARGET)
   serialize_lit_param(target_triple "\"${CMAKE_CXX_COMPILER_TARGET}\"")
 else()
-  serialize_lit_param(target_triple "\"${LLVM_DEFAULT_TARGET_TRIPLE}\"")
+  serialize_lit_param(target_triple "\"${LLVM_RUNTIME_TARGET}\"")
 endif()
 
 if (LLVM_USE_SANITIZER)
