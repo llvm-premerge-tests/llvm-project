@@ -573,7 +573,7 @@ void MCPseudoProbeDecoder::printProbeForAddress(raw_ostream &OS,
 
 void MCPseudoProbeDecoder::printProbesForAllAddresses(raw_ostream &OS) {
   std::vector<uint64_t> Addresses;
-  for (auto Entry : Address2ProbesMap)
+  for (const auto &Entry : Address2ProbesMap)
     Addresses.push_back(Entry.first);
   llvm::sort(Addresses);
   for (auto K : Addresses) {
