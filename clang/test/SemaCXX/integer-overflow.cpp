@@ -41,7 +41,7 @@ uint64_t check_integer_overflows(int i) { //expected-note 0+{{declared here}}
   uint64_t not_overflow2 = (1ULL * ((uint64_t)(4608) * (1024 * 1024)) + 2ULL);
 
 // expected-warning@+1 2{{overflow in expression; result is 536870912 with type 'int'}}
-  overflow = 4608 * 1024 * 1024 ?  4608 * 1024 * 1024 : 0;
+  overflow = (4608 * 1024 * 1024) ?  4608 * 1024 * 1024 : 0;
 
 // expected-warning@+1 {{overflow in expression; result is 536870912 with type 'int'}}
   overflow =  0 ? 0 : 4608 * 1024 * 1024;

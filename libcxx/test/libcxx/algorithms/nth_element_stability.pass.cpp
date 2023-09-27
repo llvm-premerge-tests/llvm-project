@@ -32,7 +32,7 @@ std::vector<MyType> deterministic() {
   std::vector<MyType> v;
   v.resize(kSize);
   for (int i = 0; i < kSize; ++i) {
-    v[i].value = (i % 2 ? i : kSize / 2 + i);
+    v[i].value = ((i % 2) ? i : kSize / 2 + i);
   }
   std::__nth_element<std::_ClassicAlgPolicy>(v.begin(), v.begin() + kSize / 2, v.end(), std::less<MyType>());
   return v;
@@ -43,7 +43,7 @@ void test_randomization() {
   std::vector<MyType> v;
   v.resize(kSize);
   for (int i = 0; i < kSize; ++i) {
-    v[i].value = (i % 2 ? i : kSize / 2 + i);
+    v[i].value = ((i % 2) ? i : kSize / 2 + i);
   }
   auto deterministic_v = deterministic();
   std::nth_element(v.begin(), v.begin() + kSize / 2, v.end());
@@ -61,7 +61,7 @@ void test_same() {
   std::vector<MyType> v;
   v.resize(kSize);
   for (int i = 0; i < kSize; ++i) {
-    v[i].value = (i % 2 ? i : kSize / 2 + i);
+    v[i].value = ((i % 2) ? i : kSize / 2 + i);
   }
   auto snapshot_v = v;
   auto snapshot_custom_v = v;

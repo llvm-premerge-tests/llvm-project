@@ -40,7 +40,7 @@ std::size_t hash_scale(T val) {
 }
 template <class T>
 std::size_t hash_even(T val) {
-  return val & 1 ? 1 : 0;
+  return (val & 1) ? 1 : 0;
 }
 template <class T>
 std::size_t hash_same(T /*val*/) {
@@ -61,7 +61,7 @@ std::size_t hash_scale(T* val) {
 }
 template <class T>
 std::size_t hash_even(T* val) {
-  return *val & 1 ? 1 : 0;
+  return (*val & 1) ? 1 : 0;
 }
 
 template <class Map, class Ittr>
