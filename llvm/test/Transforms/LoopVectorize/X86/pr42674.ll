@@ -9,11 +9,19 @@
 define zeroext i8 @sum() {
 ; CHECK-LABEL: @sum(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[WIDE_LOAD2:%.*]] = load <64 x i8>, ptr getelementptr inbounds ([128 x i8], ptr @bytes, i64 0, i64 64), align 1
-; CHECK-NEXT:    [[WIDE_LOAD:%.*]] = load <64 x i8>, ptr @bytes, align 1
-; CHECK-NEXT:    [[BIN_RDX:%.*]] = add <64 x i8> [[WIDE_LOAD2]], [[WIDE_LOAD]]
-; CHECK-NEXT:    [[TMP0:%.*]] = call i8 @llvm.vector.reduce.add.v64i8(<64 x i8> [[BIN_RDX]])
-; CHECK-NEXT:    ret i8 [[TMP0]]
+; CHECK-NEXT:    br label [[VECTOR_BODY:%.*]]
+; CHECK:       vector.body:
+; CHECK-NEXT:    [[INDEX:%.*]] = phi i64 [ 0, [[ENTRY:%.*]] ], [ [[INDEX_NEXT:%.*]], [[VECTOR_BODY]] ]
+; CHECK-NEXT:    [[VEC_PHI:%.*]] = phi <64 x i8> [ zeroinitializer, [[ENTRY]] ], [ [[TMP1:%.*]], [[VECTOR_BODY]] ]
+; CHECK-NEXT:    [[TMP0:%.*]] = getelementptr inbounds [128 x i8], ptr @bytes, i64 0, i64 [[INDEX]]
+; CHECK-NEXT:    [[WIDE_LOAD:%.*]] = load <64 x i8>, ptr [[TMP0]], align 1
+; CHECK-NEXT:    [[TMP1]] = add <64 x i8> [[WIDE_LOAD]], [[VEC_PHI]]
+; CHECK-NEXT:    [[INDEX_NEXT]] = add nuw i64 [[INDEX]], 64
+; CHECK-NEXT:    [[TMP2:%.*]] = icmp eq i64 [[INDEX_NEXT]], 128
+; CHECK-NEXT:    br i1 [[TMP2]], label [[MIDDLE_BLOCK:%.*]], label [[VECTOR_BODY]], !llvm.loop [[LOOP0:![0-9]+]]
+; CHECK:       middle.block:
+; CHECK-NEXT:    [[TMP3:%.*]] = call i8 @llvm.vector.reduce.add.v64i8(<64 x i8> [[TMP1]])
+; CHECK-NEXT:    ret i8 [[TMP3]]
 ;
 entry:
   br label %for.body
