@@ -264,11 +264,6 @@ static cl::opt<bool> EnableMaskedInterleavedMemAccesses(
     "enable-masked-interleaved-mem-accesses", cl::init(false), cl::Hidden,
     cl::desc("Enable vectorization on masked interleaved memory accesses in a loop"));
 
-static cl::opt<unsigned> TinyTripCountInterleaveThreshold(
-    "tiny-trip-count-interleave-threshold", cl::init(128), cl::Hidden,
-    cl::desc("We don't interleave loops with a estimated constant trip count "
-             "below this number"));
-
 static cl::opt<unsigned> ForceTargetNumScalarRegs(
     "force-target-num-scalar-regs", cl::init(0), cl::Hidden,
     cl::desc("A flag that overrides the target's number of scalar registers."));
@@ -5664,14 +5659,6 @@ LoopVectorizationCostModel::selectInterleaveCount(ElementCount VF,
 
   auto BestKnownTC = getSmallBestKnownTC(*PSE.getSE(), TheLoop);
   const bool HasReductions = !Legal->getReductionVars().empty();
-  // Do not interleave loops with a relatively small known or estimated trip
-  // count. But we will interleave when InterleaveSmallLoopScalarReduction is
-  // enabled, and the code has scalar reductions(HasReductions && VF = 1),
-  // because with the above conditions interleaving can expose ILP and break
-  // cross iteration dependences for reductions.
-  if (BestKnownTC && (*BestKnownTC < TinyTripCountInterleaveThreshold) &&
-      !(InterleaveSmallLoopScalarReduction && HasReductions && VF.isScalar()))
-    return 1;
 
   // If we did not calculate the cost for VF (because the user selected the VF)
   // then we calculate the cost of VF here.
@@ -5745,8 +5732,11 @@ LoopVectorizationCostModel::selectInterleaveCount(ElementCount VF,
   }
 
   // If trip count is known or estimated compile time constant, limit the
-  // interleave count to be less than the trip count divided by VF, provided it
-  // is at least 1.
+  // interleave count to be less than the trip count divided by VF * 2,
+  // provided VF is at least 1, such that the vector loop runs at least twice
+  // to make interleaving seem profitable. When
+  // InterleaveSmallLoopScalarReduction is true, we allow interleaving even when
+  // the vector loop runs once.
   //
   // For scalable vectors we can't know if interleaving is beneficial. It may
   // not be beneficial for small loops if none of the lanes in the second vector
@@ -5755,8 +5745,12 @@ LoopVectorizationCostModel::selectInterleaveCount(ElementCount VF,
   // the InterleaveCount as if vscale is '1', although if some information about
   // the vector is known (e.g. min vector size), we can make a better decision.
   if (BestKnownTC) {
-    MaxInterleaveCount =
-        std::min(*BestKnownTC / VF.getKnownMinValue(), MaxInterleaveCount);
+    if (InterleaveSmallLoopScalarReduction)
+      MaxInterleaveCount =
+          std::min(*BestKnownTC / VF.getKnownMinValue(), MaxInterleaveCount);
+    else
+      MaxInterleaveCount = std::min(*BestKnownTC / (VF.getKnownMinValue() * 2),
+                                    MaxInterleaveCount);
     // Make sure MaxInterleaveCount is greater than 0.
     MaxInterleaveCount = std::max(1u, MaxInterleaveCount);
   }
