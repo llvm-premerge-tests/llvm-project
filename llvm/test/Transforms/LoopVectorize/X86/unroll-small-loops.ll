@@ -8,9 +8,157 @@ target triple = "x86_64-apple-macosx10.8.0"
 
 ; We don't unroll this loop because it has a small constant trip count.
 ;
-; CHECK-VECTOR-LABEL: @foo(
+; CHECK-VECTOR-LABEL: @foo_trip_count_8(
 ; CHECK-VECTOR: load <4 x i32>
 ; CHECK-VECTOR-NOT: load <4 x i32>
+; CHECK-VECTOR: store <4 x i32>
+; CHECK-VECTOR-NOT: store <4 x i32>
+; CHECK-VECTOR: ret
+;
+; CHECK-SCALAR-LABEL: @foo_trip_count_8(
+; CHECK-SCALAR: load i32, ptr
+; CHECK-SCALAR-NOT: load i32, ptr
+; CHECK-SCALAR: store i32
+; CHECK-SCALAR-NOT: store i32
+; CHECK-SCALAR: ret
+define i32 @foo_trip_count_8(ptr nocapture %A) nounwind uwtable ssp {
+  br label %1
+
+; <label>:1                                       ; preds = %1, %0
+  %indvars.iv = phi i64 [ 0, %0 ], [ %indvars.iv.next, %1 ]
+  %2 = getelementptr inbounds i32, ptr %A, i64 %indvars.iv
+  %3 = load i32, ptr %2, align 4
+  %4 = add nsw i32 %3, 6
+  store i32 %4, ptr %2, align 4
+  %indvars.iv.next = add i64 %indvars.iv, 1
+  %lftr.wideiv = trunc i64 %indvars.iv.next to i32
+  %exitcond = icmp eq i32 %lftr.wideiv, 8
+  br i1 %exitcond, label %5, label %1
+
+; <label>:5                                       ; preds = %1
+  ret i32 undef
+}
+
+;
+; CHECK-VECTOR-LABEL: @foo_trip_count_16(
+; CHECK-VECTOR: load <4 x i32>
+; CHECK-VECTOR: load <4 x i32>
+; CHECK-VECTOR-NOT: load <4 x i32>
+; CHECK-VECTOR: store <4 x i32>
+; CHECK-VECTOR: store <4 x i32>
+; CHECK-VECTOR-NOT: store <4 x i32>
+; CHECK-VECTOR: ret
+;
+; CHECK-SCALAR-LABEL: @foo_trip_count_16(
+; CHECK-SCALAR: load i32, ptr
+; CHECK-SCALAR-NOT: load i32, ptr
+; CHECK-SCALAR: store i32
+; CHECK-SCALAR-NOT: store i32
+; CHECK-SCALAR: ret
+define i32 @foo_trip_count_16(ptr nocapture %A) nounwind uwtable ssp {
+  br label %1
+
+; <label>:1                                       ; preds = %1, %0
+  %indvars.iv = phi i64 [ 0, %0 ], [ %indvars.iv.next, %1 ]
+  %2 = getelementptr inbounds i32, ptr %A, i64 %indvars.iv
+  %3 = load i32, ptr %2, align 4
+  %4 = add nsw i32 %3, 6
+  store i32 %4, ptr %2, align 4
+  %indvars.iv.next = add i64 %indvars.iv, 1
+  %lftr.wideiv = trunc i64 %indvars.iv.next to i32
+  %exitcond = icmp eq i32 %lftr.wideiv, 16
+  br i1 %exitcond, label %5, label %1
+
+; <label>:5                                       ; preds = %1
+  ret i32 undef
+}
+
+;
+; CHECK-VECTOR-LABEL: @foo_trip_count_24(
+; CHECK-VECTOR: load <4 x i32>
+; CHECK-VECTOR: load <4 x i32>
+; CHECK-VECTOR: load <4 x i32>
+; CHECK-VECTOR-NOT: load <4 x i32>
+; CHECK-VECTOR: store <4 x i32>
+; CHECK-VECTOR: store <4 x i32>
+; CHECK-VECTOR: store <4 x i32>
+; CHECK-VECTOR-NOT: store <4 x i32>
+; CHECK-VECTOR: ret
+;
+; CHECK-SCALAR-LABEL: @foo_trip_count_24(
+; CHECK-SCALAR: load i32, ptr
+; CHECK-SCALAR-NOT: load i32, ptr
+; CHECK-SCALAR: store i32
+; CHECK-SCALAR-NOT: store i32
+; CHECK-SCALAR: ret
+define i32 @foo_trip_count_24(ptr nocapture %A) nounwind uwtable ssp {
+  br label %1
+
+; <label>:1                                       ; preds = %1, %0
+  %indvars.iv = phi i64 [ 0, %0 ], [ %indvars.iv.next, %1 ]
+  %2 = getelementptr inbounds i32, ptr %A, i64 %indvars.iv
+  %3 = load i32, ptr %2, align 4
+  %4 = add nsw i32 %3, 6
+  store i32 %4, ptr %2, align 4
+  %indvars.iv.next = add i64 %indvars.iv, 1
+  %lftr.wideiv = trunc i64 %indvars.iv.next to i32
+  %exitcond = icmp eq i32 %lftr.wideiv, 24
+  br i1 %exitcond, label %5, label %1
+
+; <label>:5                                       ; preds = %1
+  ret i32 undef
+}
+
+; We unroll this loop because it has a trip count that's profitable to interleave
+;
+; CHECK-VECTOR-LABEL: @foo_trip_count_32(
+; CHECK-VECTOR: load <4 x i32>
+; CHECK-VECTOR: load <4 x i32>
+; CHECK-VECTOR: load <4 x i32>
+; CHECK-VECTOR: load <4 x i32>
+; CHECK-VECTOR-NOT: load <4 x i32>
+; CHECK-VECTOR: store <4 x i32>
+; CHECK-VECTOR: store <4 x i32>
+; CHECK-VECTOR: store <4 x i32>
+; CHECK-VECTOR: store <4 x i32>
+; CHECK-VECTOR-NOT: store <4 x i32>
+; CHECK-VECTOR: ret
+;
+; CHECK-SCALAR-LABEL: @foo_trip_count_32(
+; CHECK-SCALAR: load i32, ptr
+; CHECK-SCALAR-NOT: load i32, ptr
+; CHECK-SCALAR: store i32
+; CHECK-SCALAR-NOT: store i32
+; CHECK-SCALAR: ret
+define i32 @foo_trip_count_32(ptr nocapture %A) nounwind uwtable ssp {
+  br label %1
+
+; <label>:1                                       ; preds = %1, %0
+  %indvars.iv = phi i64 [ 0, %0 ], [ %indvars.iv.next, %1 ]
+  %2 = getelementptr inbounds i32, ptr %A, i64 %indvars.iv
+  %3 = load i32, ptr %2, align 4
+  %4 = add nsw i32 %3, 6
+  store i32 %4, ptr %2, align 4
+  %indvars.iv.next = add i64 %indvars.iv, 1
+  %lftr.wideiv = trunc i64 %indvars.iv.next to i32
+  %exitcond = icmp eq i32 %lftr.wideiv, 32
+  br i1 %exitcond, label %5, label %1
+
+; <label>:5                                       ; preds = %1
+  ret i32 undef
+}
+
+; We unroll this loop because it has a trip count that's profitable to interleave
+;
+; CHECK-VECTOR-LABEL: @foo(
+; CHECK-VECTOR: load <4 x i32>
+; CHECK-VECTOR: load <4 x i32>
+; CHECK-VECTOR: load <4 x i32>
+; CHECK-VECTOR: load <4 x i32>
+; CHECK-VECTOR-NOT: load <4 x i32>
+; CHECK-VECTOR: store <4 x i32>
+; CHECK-VECTOR: store <4 x i32>
+; CHECK-VECTOR: store <4 x i32>
 ; CHECK-VECTOR: store <4 x i32>
 ; CHECK-VECTOR-NOT: store <4 x i32>
 ; CHECK-VECTOR: ret
