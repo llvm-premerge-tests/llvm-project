@@ -65,6 +65,7 @@
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/TimeProfiler.h"
 #include "llvm/Support/raw_ostream.h"
+#include <algorithm>
 #include <cstdlib>
 #include <tuple>
 #include <utility>
@@ -459,6 +460,8 @@ static void checkOptions() {
       error("-z force-bti only supported on AArch64");
     if (config->zBtiReport != "none")
       error("-z bti-report only supported on AArch64");
+    if (config->zPauthReport != "none")
+      error("-z pauth-report only supported on AArch64");
   }
 
   if (config->emachine != EM_386 && config->emachine != EM_X86_64 &&
@@ -558,6 +561,7 @@ constexpr const char *knownZFlags[] = {
     "nognustack",
     "nokeep-text-section-prefix",
     "nopack-relative-relocs",
+    "nopack-relative-auth-relocs",
     "norelro",
     "noseparate-code",
     "nostart-stop-gc",
@@ -566,6 +570,7 @@ constexpr const char *knownZFlags[] = {
     "origin",
     "pac-plt",
     "pack-relative-relocs",
+    "pack-relative-auth-relocs",
     "rel",
     "rela",
     "relro",
@@ -583,7 +588,7 @@ constexpr const char *knownZFlags[] = {
 static bool isKnownZFlag(StringRef s) {
   return llvm::is_contained(knownZFlags, s) ||
          s.starts_with("common-page-size=") || s.starts_with("bti-report=") ||
-         s.starts_with("cet-report=") ||
+         s.starts_with("cet-report=") || s.starts_with("pauth-report=") ||
          s.starts_with("dead-reloc-in-nonalloc=") ||
          s.starts_with("max-page-size=") || s.starts_with("stack-size=") ||
          s.starts_with("start-stop-visibility=");
@@ -1514,7 +1519,8 @@ static void readConfigs(opt::InputArgList &args) {
   }
 
   auto reports = {std::make_pair("bti-report", &config->zBtiReport),
-                  std::make_pair("cet-report", &config->zCetReport)};
+                  std::make_pair("cet-report", &config->zCetReport),
+                  std::make_pair("pauth-report", &config->zPauthReport)};
   for (opt::Arg *arg : args.filtered(OPT_z)) {
     std::pair<StringRef, StringRef> option =
         StringRef(arg->getValue()).split('=');
@@ -1670,6 +1676,9 @@ static void readConfigs(opt::InputArgList &args) {
     std::tie(config->androidPackDynRelocs, config->relrPackDynRelocs) =
         getPackDynRelocs(args);
   }
+
+  config->relrPackAuthDynRelocs = getZFlag(
+      args, "pack-relative-auth-relocs", "nopack-relative-auth-relocs", false);
 
   if (auto *arg = args.getLastArg(OPT_symbol_ordering_file)){
     if (args.hasArg(OPT_call_graph_ordering_file))
@@ -2657,6 +2666,43 @@ static uint32_t getAndFeatures() {
   return ret;
 }
 
+static void getAarch64PauthInfo() {
+  if (ctx.objectFiles.empty())
+    return;
+
+  auto NonEmptyIt = std::find_if(
+      ctx.objectFiles.begin(), ctx.objectFiles.end(),
+      [](const ELFFileBase *f) { return !f->aarch64PauthAbiTag.empty(); });
+  if (NonEmptyIt == ctx.objectFiles.end())
+    return;
+
+  ctx.aarch64PauthAbiTag = (*NonEmptyIt)->aarch64PauthAbiTag;
+  StringRef f1 = (*NonEmptyIt)->getName();
+  for (ELFFileBase *f : ArrayRef(ctx.objectFiles)) {
+    StringRef f2 = f->getName();
+    const SmallVector<uint8_t, 0> &d1 = ctx.aarch64PauthAbiTag;
+    const SmallVector<uint8_t, 0> &d2 = f->aarch64PauthAbiTag;
+    if (d1.empty() != d2.empty()) {
+      Twine Msg = (d1.empty() ? f1 : f2) +
+                  " has no AArch64 PAuth compatibility info while " +
+                  (d1.empty() ? f2 : f1) +
+                  " has one; either all or no input files must have it";
+      if (config->zPauthReport == "warning")
+        warn(Msg);
+      else if (config->zPauthReport == "error")
+        error(Msg);
+    }
+
+    if (!d1.empty() && !d2.empty() &&
+        !std::equal(d1.begin(), d1.end(), d2.begin(), d2.end()))
+      errorOrWarn(
+          "incompatible values of AArch64 PAuth compatibility info found"
+          "\n" +
+          f1 + ": 0x" + toHex(ArrayRef(d1.data(), d1.size())) + "\n" + f2 +
+          ": 0x" + toHex(ArrayRef(d2.data(), d2.size())));
+  }
+}
+
 static void initSectionsAndLocalSyms(ELFFileBase *file, bool ignoreComdats) {
   switch (file->ekind) {
   case ELF32LEKind:
@@ -2993,6 +3039,9 @@ void LinkerDriver::link(opt::InputArgList &args) {
   // Read .note.gnu.property sections from input object files which
   // contain a hint to tweak linker's and loader's behaviors.
   config->andFeatures = getAndFeatures();
+
+  if (config->emachine == EM_AARCH64)
+    getAarch64PauthInfo();
 
   // The Target instance handles target-specific stuff, such as applying
   // relocations or writing a PLT section. It also contains target-dependent
