@@ -6116,33 +6116,36 @@ bool Sema::mapLoopConstruct(llvm::SmallVector<OMPClause *> &ClausesWithoutBind,
                             ArrayRef<OMPClause *> Clauses,
                             OpenMPBindClauseKind BindKind,
                             OpenMPDirectiveKind &Kind,
-                            OpenMPDirectiveKind &PrevMappedDirective) {
+                            OpenMPDirectiveKind &PrevMappedDirective,
+                            SourceLocation StartLoc, SourceLocation EndLoc) {
 
   bool UseClausesWithoutBind = false;
 
   // Restricting to "#pragma omp loop bind"
   if (getLangOpts().OpenMP >= 50 && Kind == OMPD_loop) {
+
+    const OpenMPDirectiveKind ParentDirective = DSAStack->getParentDirective();
+
     if (BindKind == OMPC_BIND_unknown) {
       // Setting the enclosing teams or parallel construct for the loop
       // directive without bind clause.
       BindKind = OMPC_BIND_thread; // Default bind(thread) if binding is unknown
 
-      const OpenMPDirectiveKind ParentDirective =
-          DSAStack->getParentDirective();
       if (ParentDirective == OMPD_unknown) {
         Diag(DSAStack->getDefaultDSALocation(),
              diag::err_omp_bind_required_on_loop);
-      } else if (ParentDirective == OMPD_parallel ||
-                 ParentDirective == OMPD_target_parallel) {
+      } else if (isOpenMPParallelDirective(ParentDirective) &&
+                 !isOpenMPTeamsDirective(ParentDirective)) {
         BindKind = OMPC_BIND_parallel;
-      } else if (ParentDirective == OMPD_teams ||
-                 ParentDirective == OMPD_target_teams) {
+      } else if (isOpenMPNestingTeamsDirective(ParentDirective) ||
+                 (ParentDirective == OMPD_target_teams)) {
         BindKind = OMPC_BIND_teams;
       }
     } else {
-      // bind clause is present, so we should set flag indicating to only
-      // use the clauses that aren't the bind clause for the new directive that
-      // loop is lowered to.
+      // bind clause is present in loop directive. When the loop directive is
+      // changed to a new directive the bind clause is not used. So, we should
+      // set flag indicating to only use the clauses that aren't the
+      // bind clause.
       UseClausesWithoutBind = true;
     }
 
@@ -6161,12 +6164,23 @@ bool Sema::mapLoopConstruct(llvm::SmallVector<OMPClause *> &ClausesWithoutBind,
 
     switch (BindKind) {
     case OMPC_BIND_parallel:
+      if (isOpenMPWorksharingDirective(ParentDirective) ||
+          ParentDirective == OMPD_loop) {
+        Diag(StartLoc, diag::err_omp_prohibited_region)
+            << true << getOpenMPDirectiveName(ParentDirective) << 1
+            << getOpenMPDirectiveName(Kind);
+      }
       Kind = OMPD_for;
       DSAStack->setCurrentDirective(OMPD_for);
       DSAStack->setMappedDirective(OMPD_loop);
       PrevMappedDirective = OMPD_loop;
       break;
     case OMPC_BIND_teams:
+      if (isOpenMPWorksharingDirective(ParentDirective)) {
+        Diag(StartLoc, diag::err_omp_prohibited_region)
+            << true << getOpenMPDirectiveName(ParentDirective) << 1
+            << getOpenMPDirectiveName(Kind);
+      }
       Kind = OMPD_distribute;
       DSAStack->setCurrentDirective(OMPD_distribute);
       DSAStack->setMappedDirective(OMPD_loop);
@@ -6206,6 +6220,7 @@ StmtResult Sema::ActOnOpenMPExecutableDirective(
   if (const OMPBindClause *BC =
           OMPExecutableDirective::getSingleClause<OMPBindClause>(Clauses))
     BindKind = BC->getBindKind();
+
   // First check CancelRegion which is then used in checkNestingOfRegions.
   if (checkCancelRegion(*this, Kind, CancelRegion, StartLoc) ||
       checkNestingOfRegions(*this, DSAStack, Kind, DirName, CancelRegion,
@@ -6220,8 +6235,9 @@ StmtResult Sema::ActOnOpenMPExecutableDirective(
   llvm::SmallVector<OMPClause *> ClausesWithoutBind;
   bool UseClausesWithoutBind = false;
 
-  UseClausesWithoutBind = mapLoopConstruct(ClausesWithoutBind, Clauses,
-                                           BindKind, Kind, PrevMappedDirective);
+  UseClausesWithoutBind =
+      mapLoopConstruct(ClausesWithoutBind, Clauses, BindKind, Kind,
+                       PrevMappedDirective, StartLoc, EndLoc);
 
   llvm::SmallVector<OMPClause *, 8> ClausesWithImplicit;
   VarsWithInheritedDSAType VarsWithInheritedDSA;
