@@ -156,7 +156,8 @@ enum ArchExtKind : unsigned {
   AEK_RASv2 =         55, // FEAT_RASv2
   AEK_ITE =           56, // FEAT_ITE
   AEK_GCS =           57, // FEAT_GCS
-  AEK_NUM_EXTENSIONS =  AEK_GCS + 1
+  AEK_FPAC =          58, // FEAT_FPAC
+  AEK_NUM_EXTENSIONS =  AEK_FPAC + 1
 };
 using ExtensionBitset = Bitset<AEK_NUM_EXTENSIONS>;
 // clang-format on
@@ -264,6 +265,7 @@ inline constexpr ExtensionInfo Extensions[] = {
     {"tme", AArch64::AEK_TME, "+tme", "-tme", FEAT_MAX, "", 0},
     {"wfxt", AArch64::AEK_NONE, {}, {}, FEAT_WFXT, "+wfxt", 550},
     {"gcs", AArch64::AEK_GCS, "+gcs", "-gcs", FEAT_MAX, "", 0},
+    {"fpac", AArch64::AEK_FPAC, "+fpac", "-fpac", FEAT_MAX, "", 0},
     // Special cases
     {"none", AArch64::AEK_NONE, {}, {}, FEAT_MAX, "", ExtensionInfo::MaxFMVPriority},
 };

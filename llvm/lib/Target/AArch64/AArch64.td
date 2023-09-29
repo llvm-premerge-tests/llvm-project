@@ -314,6 +314,10 @@ def FeaturePAuth : SubtargetFeature<
     "pauth", "HasPAuth", "true",
     "Enable v8.3-A Pointer Authentication extension (FEAT_PAuth)">;
 
+def FeatureFPAC : SubtargetFeature<
+    "fpac", "HasFPAC", "true",
+    "Assume AUT* instructions generate fault on invalid PAC (FEAT_FPAC)">;
+
 def FeatureJS : SubtargetFeature<
     "jsconv", "HasJS", "true",
     "Enable v8.3-A JavaScript FP conversion instructions (FEAT_JSCVT)",
