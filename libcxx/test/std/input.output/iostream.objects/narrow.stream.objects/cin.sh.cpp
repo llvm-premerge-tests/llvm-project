@@ -8,6 +8,7 @@
 
 // TODO: Investigate
 // UNSUPPORTED: LIBCXX-AIX-FIXME
+// XFAIL: LIBCXX-PICOLIBC-FIXME
 
 // <iostream>
 
