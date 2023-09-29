@@ -8336,6 +8336,97 @@ static void handleZeroCallUsedRegsAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
   D->addAttr(ZeroCallUsedRegsAttr::Create(S.Context, Kind, AL));
 }
 
+static void handleCountedByAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
+  if (!AL.isArgIdent(0)) {
+    S.Diag(AL.getLoc(), diag::err_attribute_argument_type)
+        << AL << AANT_ArgumentIdentifier;
+    return;
+  }
+
+  IdentifierLoc *IL = AL.getArgAsIdent(0);
+  CountedByAttr *CBA =
+      ::new (S.Context) CountedByAttr(S.Context, AL, IL->Ident);
+  CBA->setCountedByFieldLoc(IL->Loc);
+  D->addAttr(CBA);
+}
+
+bool Sema::CheckCountedByAttr(Scope *S, const FieldDecl *FD) {
+  const RecordDecl *RD = FD->getParent();
+  const auto *CBA = FD->getAttr<CountedByAttr>();
+
+  auto Pred = [&](const Decl *D) {
+    if (const auto *Field = dyn_cast<FieldDecl>(D))
+      return Field->getName() == CBA->getCountedByField()->getName();
+    return false;
+  };
+  const FieldDecl *Field = RD->findFieldIf(Pred);
+
+  if (!Field) {
+    // The "counted_by" field needs to exist within the struct.
+    DeclarationNameInfo NameInfo(CBA->getCountedByField(),
+                                 CBA->getCountedByFieldLoc().getBegin());
+    LookupResult Result(*this, NameInfo, Sema::LookupOrdinaryName);
+
+    LookupName(Result, S);
+    if (Result.getResultKind() == LookupResult::Found) {
+      SourceRange SR = CBA->getCountedByFieldLoc();
+      Diag(SR.getBegin(),
+           diag::err_flexible_array_counted_by_attr_field_not_found_in_struct)
+          << CBA->getCountedByField() << SR;
+
+      SR = Result.getAsSingle<NamedDecl>()->getSourceRange();
+      Diag(SR.getBegin(), diag::note_var_declared_here)
+          << Result.getAsSingle<NamedDecl>() << SR;
+    } else {
+      // FIXME: We should add a "did you mean?" hint.
+      SourceRange SR = CBA->getCountedByFieldLoc();
+      Diag(SR.getBegin(),
+           diag::err_flexible_array_counted_by_attr_field_not_found)
+          << CBA->getCountedByField() << SR;
+    }
+
+    return true;
+  }
+
+  LangOptions::StrictFlexArraysLevelKind StrictFlexArraysLevel =
+      Context.getLangOpts().getStrictFlexArraysLevel();
+
+  if (!Decl::isFlexibleArrayMemberLike(Context, FD, FD->getType(),
+                                       StrictFlexArraysLevel, true)) {
+    // The "counted_by" attribute must be on a flexible array member.
+    SourceRange SR = FD->getLocation();
+    Diag(SR.getBegin(),
+         diag::err_counted_by_attr_not_on_flexible_array_member)
+        << SR;
+    return true;
+  }
+
+  if (Field->hasAttr<CountedByAttr>()) {
+    // The "counted_by" field can't point to the flexible array member.
+    SourceRange SR = CBA->getCountedByFieldLoc();
+    Diag(SR.getBegin(),
+         diag::err_flexible_array_counted_by_attr_refers_to_self)
+        << CBA->getCountedByField() << SR;
+    return true;
+  }
+
+  if (!Field->getType()->isIntegerType() ||
+      Field->getType()->isBooleanType()) {
+    // The "counted_by" field must have an integer type.
+    SourceRange SR = Field->getLocation();
+    Diag(SR.getBegin(),
+         diag::err_flexible_array_counted_by_attr_field_not_integer)
+        << Field << SR;
+
+    SR = CBA->getCountedByFieldLoc();
+    Diag(SR.getBegin(), diag::note_flexible_array_counted_by_attr_field)
+        << CBA->getCountedByField() << SR;
+    return true;
+  }
+
+  return false;
+}
+
 static void handleFunctionReturnThunksAttr(Sema &S, Decl *D,
                                            const ParsedAttr &AL) {
   StringRef KindStr;
@@ -9280,6 +9371,10 @@ ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D, const ParsedAttr &AL,
 
   case ParsedAttr::AT_AvailableOnlyInDefaultEvalMethod:
     handleAvailableOnlyInDefaultEvalMethod(S, D, AL);
+    break;
+
+  case ParsedAttr::AT_CountedBy:
+    handleCountedByAttr(S, D, AL);
     break;
 
   // Microsoft attributes:
