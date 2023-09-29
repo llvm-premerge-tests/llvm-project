@@ -1078,6 +1078,20 @@ steps:
             limit: 2
       timeout_in_minutes: 120
 
+    - label: "Armv7-M picolibc"
+      command: "libcxx/utils/ci/run-buildbot armv7m-picolibc"
+      artifact_paths:
+        - "**/test-results.xml"
+        - "**/*.abilist"
+      agents:
+        queue: "libcxx-builders-linaro-arm"
+        arch: "aarch64"
+      retry:
+        automatic:
+          - exit_status: -1  # Agent was lost
+            limit: 2
+      timeout_in_minutes: 120
+
   - group: "AIX"
     steps:
     - label: "AIX (32-bit)"
