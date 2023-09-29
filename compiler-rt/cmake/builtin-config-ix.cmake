@@ -33,6 +33,19 @@ asm(\".arch armv8-a+lse\");
 asm(\"cas w0, w1, [x2]\");
 ")
 
+builtin_check_c_compiler_source(COMPILER_RT_HAS_ASM_SME
+"
+asm(\".arch armv9-a+sme\");
+asm(\"smstart\");
+")
+
+builtin_check_c_compiler_source(COMPILER_RT_HAS_HWCAP2_SME
+"
+#include <sys/auxv.h>
+
+unsigned long Unused = HWCAP2_SME;
+")
+
 if(ANDROID)
   set(OS_NAME "Android")
 else()
