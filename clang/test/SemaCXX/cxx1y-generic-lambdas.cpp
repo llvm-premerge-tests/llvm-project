@@ -883,7 +883,9 @@ struct X1 {
                                           //expected-error{{not an integral constant}}\
                                           //expected-note{{non-literal type}}
     int arr[([](int i) { return i; })(3)]; //expected-error{{inside of a constant expression}}\
-                                           //expected-error{{must have a constant size}}
+                                           //expected-error{{must have a constant size}}\
+                                           //expected-warning{{variable length arrays are a Clang extension}}\
+                                           //expected-note-re{{non-literal type '{{.*}}' cannot be used in a constant expression}}
     int (*fp)(int) = [](int i) { return i; };
     void fooptr(int (*fp)(char) = [](char c) { return 0; }) { }
     int L2 = ([](auto i) { return i; })(2);
@@ -892,7 +894,10 @@ struct X1 {
                                             //expected-error{{not an integral constant}}\
                                             //expected-note{{non-literal type}}
     int arrG[([](auto i) { return i; })(3)]; //expected-error{{inside of a constant expression}}\
-                                             //expected-error{{must have a constant size}}
+                                             //expected-error{{must have a constant size}}\
+                                             //expected-warning{{variable length arrays are a Clang extension}}\
+                                             //expected-note-re{{non-literal type '{{.*}}' cannot be used in a constant expression}}
+
     int (*fpG)(int) = [](auto i) { return i; };
     void fooptrG(int (*fp)(char) = [](auto c) { return 0; }) { }
   };
@@ -909,7 +914,10 @@ struct X1 {
                                         //expected-error{{not an integral constant}}\
                                         //expected-note{{non-literal type}}
     int arr[([](T i) { return i; })(3)]; //expected-error{{inside of a constant expression}}\
-                                         //expected-error{{must have a constant size}}
+                                         //expected-error{{must have a constant size}}\
+                                         //expected-warning{{variable length arrays are a Clang extension}}\
+                                         //expected-note-re{{non-literal type '{{.*}}' cannot be used in a constant expression}}
+
     int (*fp)(T) = [](T i) { return i; };
     void fooptr(T (*fp)(char) = [](char c) { return 0; }) { }
     int L2 = ([](auto i) { return i; })(2);
@@ -918,7 +926,10 @@ struct X1 {
                                             //expected-note{{non-literal type}}\
                                             //expected-error{{inside of a constant expression}}
     int arrG[([](auto i) { return i; })(3)]; //expected-error{{must have a constant size}} \
-                                             //expected-error{{inside of a constant expression}}
+                                             //expected-error{{inside of a constant expression}}\
+                                             //expected-warning{{variable length arrays are a Clang extension}}\
+                                             //expected-note-re{{non-literal type '{{.*}}' cannot be used in a constant expression}}
+
     int (*fpG)(T) = [](auto i) { return i; };
     void fooptrG(T (*fp)(char) = [](auto c) { return 0; }) { }
     template<class U = char> int fooG2(T (*fp)(U) = [](auto a) { return 0; }) { return 0; }
