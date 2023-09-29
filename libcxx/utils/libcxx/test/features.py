@@ -95,6 +95,17 @@ DEFAULT_FEATURES = [
         when=lambda cfg: hasCompileFlag(cfg, "-Xclang -verify-ignore-unexpected"),
     ),
     Feature(
+        name="has-64-bit-atomics",
+        when=lambda cfg: sourceBuilds(
+            cfg,
+            """
+            #include <atomic>
+            std::atomic_uint64_t x;
+            int main(int, char**) { (void)x.load(); return 0; }
+          """,
+        ),
+    ),
+    Feature(
         name="non-lockfree-atomics",
         when=lambda cfg: sourceBuilds(
             cfg,
@@ -199,7 +210,8 @@ DEFAULT_FEATURES = [
             #include <unistd.h>
             #include <sys/wait.h>
             int main(int, char**) {
-              return 0;
+              int fd[2];
+              return pipe(fd);
             }
           """,
         ),

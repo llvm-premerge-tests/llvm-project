@@ -8,6 +8,9 @@
 
 // UNSUPPORTED: c++03
 
+// This test fails with picolibc since 42d55676833bacfdc6ec66785b74a7a51e6de474
+// XFAIL: LIBCXX-PICOLIBC-FIXME
+
 #include "assert_macros.h"
 #include "concat_macros.h"
 #include "../src/cxa_exception.h"
