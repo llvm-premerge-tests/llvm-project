@@ -208,6 +208,8 @@ Improvements to Clang's diagnostics
   (`#54678: <https://github.com/llvm/llvm-project/issues/54678>`_).
 - Clang now prints its 'note' diagnostic in cyan instead of black, to be more compatible
   with terminals with dark background colors. This is also more consistent with GCC.
+- Clang now displays an improved diagnostic and a note when defaulted special 
+  member is a contexpr in a class with virtual base class
 
 Bug Fixes in This Version
 -------------------------

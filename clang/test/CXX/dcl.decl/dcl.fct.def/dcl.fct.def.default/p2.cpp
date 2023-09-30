@@ -23,6 +23,15 @@ struct S2 {
   NoCopyMove ncm;
 };
 
+struct Base {
+ constexpr Base() = default;
+};
+struct Derived : virtual Base { // expected-note 3{{virtual base class declared here}}
+  constexpr Derived() = default; // expected-error {{default constructor cannot be 'constexpr' in a class with virtual base class}}
+  constexpr Derived(const Derived&) = default; // expected-error {{copy constructor cannot be 'constexpr' in a class with virtual base class}}
+  constexpr Derived(Derived&&) = default; // expected-error {{move constructor cannot be 'constexpr' in a class with virtual base class}}
+};
+
 // If a function is explicitly defaulted on its first declaration
 //   -- it is implicitly considered to be constexpr if the implicit declaration
 //      would be
