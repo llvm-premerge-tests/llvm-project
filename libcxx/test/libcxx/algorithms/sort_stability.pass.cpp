@@ -32,7 +32,7 @@ std::vector<EqualType> deterministic() {
   std::vector<EqualType> v;
   v.resize(kSize);
   for (int i = 0; i < kSize; ++i) {
-    v[i].value = kSize / 2 - i * (i % 2 ? -1 : 1);
+    v[i].value = kSize / 2 - i * ((i % 2) ? -1 : 1);
   }
   std::less<EqualType> comp;
   std::__sort_dispatch<std::_ClassicAlgPolicy>(v.begin(), v.end(), comp);
@@ -44,7 +44,7 @@ void test_randomization() {
   std::vector<EqualType> v;
   v.resize(kSize);
   for (int i = 0; i < kSize; ++i) {
-    v[i].value = kSize / 2 - i * (i % 2 ? -1 : 1);
+    v[i].value = kSize / 2 - i * ((i % 2) ? -1 : 1);
   }
   auto deterministic_v = deterministic();
   std::sort(v.begin(), v.end());
@@ -62,7 +62,7 @@ void test_same() {
   std::vector<EqualType> v;
   v.resize(kSize);
   for (int i = 0; i < kSize; ++i) {
-    v[i].value = kSize / 2 - i * (i % 2 ? -1 : 1);
+    v[i].value = kSize / 2 - i * ((i % 2) ? -1 : 1);
   }
   auto snapshot_v = v;
   auto snapshot_custom_v = v;

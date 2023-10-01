@@ -274,6 +274,9 @@ Bug Fixes in This Version
   Fixes (`#67603 <https://github.com/llvm/llvm-project/issues/67603>`_)
 - Fixes a crash caused by a multidimensional array being captured by a lambda
   (`#67722 <https://github.com/llvm/llvm-project/issues/67722>`_).
+- Print diagnostic warning about precedence when integer expression is used
+  without parentheses in an conditional operator expression.
+  (`#61943 <https://github.com/llvm/llvm-project/issues/61943>`_)
 
 Bug Fixes to Compiler Builtins
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
