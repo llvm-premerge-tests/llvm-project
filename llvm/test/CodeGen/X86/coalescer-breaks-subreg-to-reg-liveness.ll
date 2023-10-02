@@ -53,7 +53,7 @@ define void @foo(ptr %arg, ptr %arg1, i40 %arg2, ptr %arg3, i32 %arg4) #0 {
 ; CHECK-NEXT:    sete %r15b
 ; CHECK-NEXT:    xorl %edi, %edi
 ; CHECK-NEXT:    callq _Znwm@PLT
-; CHECK-NEXT:    shlq $4, %r15
+; CHECK-NEXT:    shll $4, %r15d
 ; CHECK-NEXT:    addq {{[-0-9]+}}(%r{{[sb]}}p), %r15 # 8-byte Folded Reload
 ; CHECK-NEXT:    movq %r12, %rcx
 ; CHECK-NEXT:    shrq $32, %rcx
