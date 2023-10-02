@@ -1417,6 +1417,12 @@ TEST(CrossFileRenameTests, DirtyBuffer) {
       return true; // has more references
     }
 
+    bool refersTo(const RefsRequest &Req,
+                  llvm::function_ref<void(const RefersToResult &)> Callback)
+        const override {
+      return false;
+    }
+
     bool fuzzyFind(
         const FuzzyFindRequest &Req,
         llvm::function_ref<void(const Symbol &)> Callback) const override {
@@ -1465,6 +1471,12 @@ TEST(CrossFileRenameTests, DeduplicateRefsFromIndex) {
       // Return two duplicated refs.
       Callback(ReturnedRef);
       Callback(ReturnedRef);
+      return false;
+    }
+
+    bool refersTo(const RefsRequest &Req,
+                  llvm::function_ref<void(const RefersToResult &)> Callback)
+        const override {
       return false;
     }
 

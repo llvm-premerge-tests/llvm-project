@@ -1644,6 +1644,12 @@ public:
     return false;
   }
 
+  bool
+  refersTo(const RefsRequest &,
+           llvm::function_ref<void(const RefersToResult &)>) const override {
+    return false;
+  }
+
   void relations(const RelationsRequest &,
                  llvm::function_ref<void(const SymbolID &, const Symbol &)>)
       const override {}
