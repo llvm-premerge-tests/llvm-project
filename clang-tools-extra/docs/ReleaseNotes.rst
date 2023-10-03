@@ -321,6 +321,11 @@ Changes in existing checks
   <clang-tidy/checks/readability/static-accessed-through-instance>` check to
   identify calls to static member functions with out-of-class inline definitions.
 
+- Updated :doc:`readability-identifier-naming
+  <clang-tidy/checks/readability/identifier-naming>` check to use `none`
+  rather than `-1` to disable some parameters.
+
+
 Removed checks
 ^^^^^^^^^^^^^^
 
