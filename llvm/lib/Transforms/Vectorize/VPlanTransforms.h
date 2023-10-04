@@ -79,6 +79,10 @@ struct VPlanTransforms {
                                 bool UseActiveLaneMaskForControlFlow,
                                 bool DataAndControlFlowWithoutRuntimeCheck);
 
+  /// Replace (ICMP_ULE, wide canonical IV, backedge-taken-count) checks with a
+  /// Vector Predicated instructions.
+  static void addVectorPredication(VPlan &Plan);
+
 private:
   /// Remove redundant VPBasicBlocks by merging them into their predecessor if
   /// the predecessor has a single successor.

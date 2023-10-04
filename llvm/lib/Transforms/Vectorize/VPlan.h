@@ -241,6 +241,12 @@ struct VPTransformState {
   ElementCount VF;
   unsigned UF;
 
+  /// If EVL is not nullptr, then EVL must be a valid value set during plan
+  /// creation, possibly a default value = whole vector register length. EVL is
+  /// created only if TTI prefers predicated vectorization, thus if EVL is
+  /// not nullptr it also implies preference for predicated vectorization.
+  VPValue *EVL = nullptr;
+
   /// Hold the indices to generate specific scalar instructions. Null indicates
   /// that all instances are to be generated, using either scalar or vector
   /// instructions.
@@ -1028,6 +1034,8 @@ public:
     SLPLoad,
     SLPStore,
     ActiveLaneMask,
+    ExplicitVectorLength,
+    ExplicitVectorLengthIVIncrement,
     CalculateTripCountMinusVF,
     CanonicalIVIncrement,
     // The next op is similar to the above, but instead increment the
@@ -1138,6 +1146,8 @@ public:
     default:
       return false;
     case VPInstruction::ActiveLaneMask:
+    case VPInstruction::ExplicitVectorLength:
+    case VPInstruction::ExplicitVectorLengthIVIncrement:
     case VPInstruction::CalculateTripCountMinusVF:
     case VPInstruction::CanonicalIVIncrement:
     case VPInstruction::CanonicalIVIncrementForPart:
@@ -2118,6 +2128,39 @@ public:
 
   /// Generate the active lane mask phi of the vector loop.
   void execute(VPTransformState &State) override;
+
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+  /// Print the recipe.
+  void print(raw_ostream &O, const Twine &Indent,
+             VPSlotTracker &SlotTracker) const override;
+#endif
+};
+
+/// A recipe for generating the correct countable exit condition for loops with
+/// the predicated vectorization.
+class VPExplicitVectorLengthExitPHIRecipe : public VPHeaderPHIRecipe {
+public:
+  VPExplicitVectorLengthExitPHIRecipe(VPValue *StartMask, DebugLoc DL)
+      : VPHeaderPHIRecipe(VPDef::VPActiveLaneMaskPHISC, nullptr, StartMask,
+                          DL) {}
+
+  ~VPExplicitVectorLengthExitPHIRecipe() override = default;
+
+  VP_CLASSOF_IMPL(VPDef::VPExplicitVectorLengthExitPHISC)
+
+  static inline bool classof(const VPHeaderPHIRecipe *D) {
+    return D->getVPDefID() == VPDef::VPExplicitVectorLengthExitPHISC;
+  }
+
+  /// Generate the active lane mask phi of the vector loop.
+  void execute(VPTransformState &State) override;
+
+  /// Returns true if the recipe only uses the first lane of operand \p Op.
+  bool onlyFirstLaneUsed(const VPValue *Op) const override {
+    assert(is_contained(operands(), Op) &&
+           "Op must be an operand of the recipe");
+    return true;
+  }
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
   /// Print the recipe.
