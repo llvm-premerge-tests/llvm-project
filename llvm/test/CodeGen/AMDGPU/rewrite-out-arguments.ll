@@ -483,75 +483,41 @@ attributes #2 = { alwaysinline nounwind }
 ; CHECK-NEXT:    ret void
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@void_one_out_arg_i32_1_use.body
-; CHECK-SAME: (ptr [[VAL:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    ret [[VOID_ONE_OUT_ARG_I32_1_USE:%.*]] zeroinitializer
-;
-;
 ; CHECK-LABEL: define {{[^@]+}}@void_one_out_arg_i32_1_use
-; CHECK-SAME: (ptr [[TMP0:%.*]]) #[[ATTR2:[0-9]+]] {
-; CHECK-NEXT:    [[TMP2:%.*]] = call [[VOID_ONE_OUT_ARG_I32_1_USE:%.*]] @void_one_out_arg_i32_1_use.body(ptr poison)
-; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [[VOID_ONE_OUT_ARG_I32_1_USE]] [[TMP2]], 0
-; CHECK-NEXT:    store i32 [[TMP3]], ptr [[TMP0]], align 4
+; CHECK-SAME: (ptr [[VAL:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    store i32 0, ptr [[VAL]], align 4
 ; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@void_one_out_arg_i32_1_use_align.body
-; CHECK-SAME: (ptr align 8 [[VAL:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    ret [[VOID_ONE_OUT_ARG_I32_1_USE_ALIGN:%.*]] zeroinitializer
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@void_one_out_arg_i32_1_use_align
-; CHECK-SAME: (ptr align 8 [[TMP0:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP2:%.*]] = call [[VOID_ONE_OUT_ARG_I32_1_USE_ALIGN:%.*]] @void_one_out_arg_i32_1_use_align.body(ptr poison)
-; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [[VOID_ONE_OUT_ARG_I32_1_USE_ALIGN]] [[TMP2]], 0
-; CHECK-NEXT:    store i32 [[TMP3]], ptr [[TMP0]], align 8
+; CHECK-SAME: (ptr align 8 [[VAL:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    store i32 0, ptr [[VAL]], align 8
 ; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@void_one_out_arg_i32_2_use.body
-; CHECK-SAME: (i1 [[ARG0:%.*]], ptr [[VAL:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    br i1 [[ARG0]], label [[RET0:%.*]], label [[RET1:%.*]]
-; CHECK:       ret0:
-; CHECK-NEXT:    ret [[VOID_ONE_OUT_ARG_I32_2_USE:%.*]] zeroinitializer
-; CHECK:       ret1:
-; CHECK-NEXT:    ret [[VOID_ONE_OUT_ARG_I32_2_USE]] { i32 9 }
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@void_one_out_arg_i32_2_use
-; CHECK-SAME: (i1 [[TMP0:%.*]], ptr [[TMP1:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP3:%.*]] = call [[VOID_ONE_OUT_ARG_I32_2_USE:%.*]] @void_one_out_arg_i32_2_use.body(i1 [[TMP0]], ptr poison)
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[VOID_ONE_OUT_ARG_I32_2_USE]] [[TMP3]], 0
-; CHECK-NEXT:    store i32 [[TMP4]], ptr [[TMP1]], align 4
-; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@void_one_out_arg_i32_2_stores.body
-; CHECK-SAME: (ptr [[VAL:%.*]]) #[[ATTR0]] {
+; CHECK-SAME: (i1 [[ARG0:%.*]], ptr [[VAL:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    br i1 [[ARG0]], label [[RET0:%.*]], label [[RET1:%.*]]
+; CHECK:       ret0:
 ; CHECK-NEXT:    store i32 0, ptr [[VAL]], align 4
-; CHECK-NEXT:    ret [[VOID_ONE_OUT_ARG_I32_2_STORES:%.*]] { i32 1 }
+; CHECK-NEXT:    ret void
+; CHECK:       ret1:
+; CHECK-NEXT:    store i32 9, ptr [[VAL]], align 4
+; CHECK-NEXT:    ret void
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@void_one_out_arg_i32_2_stores
-; CHECK-SAME: (ptr [[TMP0:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP2:%.*]] = call [[VOID_ONE_OUT_ARG_I32_2_STORES:%.*]] @void_one_out_arg_i32_2_stores.body(ptr poison)
-; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [[VOID_ONE_OUT_ARG_I32_2_STORES]] [[TMP2]], 0
-; CHECK-NEXT:    store i32 [[TMP3]], ptr [[TMP0]], align 4
+; CHECK-SAME: (ptr [[VAL:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    store i32 0, ptr [[VAL]], align 4
+; CHECK-NEXT:    store i32 1, ptr [[VAL]], align 4
 ; CHECK-NEXT:    ret void
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@void_one_out_arg_i32_2_stores_clobber.body
+; CHECK-LABEL: define {{[^@]+}}@void_one_out_arg_i32_2_stores_clobber
 ; CHECK-SAME: (ptr [[VAL:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:    store i32 0, ptr [[VAL]], align 4
 ; CHECK-NEXT:    call void @may.clobber()
-; CHECK-NEXT:    ret [[VOID_ONE_OUT_ARG_I32_2_STORES_CLOBBER:%.*]] { i32 1 }
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@void_one_out_arg_i32_2_stores_clobber
-; CHECK-SAME: (ptr [[TMP0:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP2:%.*]] = call [[VOID_ONE_OUT_ARG_I32_2_STORES_CLOBBER:%.*]] @void_one_out_arg_i32_2_stores_clobber.body(ptr poison)
-; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [[VOID_ONE_OUT_ARG_I32_2_STORES_CLOBBER]] [[TMP2]], 0
-; CHECK-NEXT:    store i32 [[TMP3]], ptr [[TMP0]], align 4
+; CHECK-NEXT:    store i32 1, ptr [[VAL]], align 4
 ; CHECK-NEXT:    ret void
 ;
 ;
@@ -562,17 +528,10 @@ attributes #2 = { alwaysinline nounwind }
 ; CHECK-NEXT:    ret void
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@void_one_out_arg_i32_pre_call_may_clobber.body
+; CHECK-LABEL: define {{[^@]+}}@void_one_out_arg_i32_pre_call_may_clobber
 ; CHECK-SAME: (ptr [[VAL:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:    call void @may.clobber()
-; CHECK-NEXT:    ret [[VOID_ONE_OUT_ARG_I32_PRE_CALL_MAY_CLOBBER:%.*]] zeroinitializer
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@void_one_out_arg_i32_pre_call_may_clobber
-; CHECK-SAME: (ptr [[TMP0:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP2:%.*]] = call [[VOID_ONE_OUT_ARG_I32_PRE_CALL_MAY_CLOBBER:%.*]] @void_one_out_arg_i32_pre_call_may_clobber.body(ptr poison)
-; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [[VOID_ONE_OUT_ARG_I32_PRE_CALL_MAY_CLOBBER]] [[TMP2]], 0
-; CHECK-NEXT:    store i32 [[TMP3]], ptr [[TMP0]], align 4
+; CHECK-NEXT:    store i32 0, ptr [[VAL]], align 4
 ; CHECK-NEXT:    ret void
 ;
 ;
@@ -602,101 +561,48 @@ attributes #2 = { alwaysinline nounwind }
 ; CHECK-NEXT:    ret void
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@void_one_out_arg_v2i32_1_use.body
-; CHECK-SAME: (ptr [[VAL:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    ret [[VOID_ONE_OUT_ARG_V2I32_1_USE:%.*]] { <2 x i32> <i32 17, i32 9> }
-;
-;
 ; CHECK-LABEL: define {{[^@]+}}@void_one_out_arg_v2i32_1_use
-; CHECK-SAME: (ptr [[TMP0:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP2:%.*]] = call [[VOID_ONE_OUT_ARG_V2I32_1_USE:%.*]] @void_one_out_arg_v2i32_1_use.body(ptr poison)
-; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [[VOID_ONE_OUT_ARG_V2I32_1_USE]] [[TMP2]], 0
-; CHECK-NEXT:    store <2 x i32> [[TMP3]], ptr [[TMP0]], align 8
+; CHECK-SAME: (ptr [[VAL:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    store <2 x i32> <i32 17, i32 9>, ptr [[VAL]], align 8
 ; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@void_one_out_arg_struct_1_use.body
-; CHECK-SAME: (ptr [[OUT:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    ret [[VOID_ONE_OUT_ARG_STRUCT_1_USE:%.*]] { [[STRUCT:%.*]] { i32 9, i8 99, float 4.000000e+00 } }
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@void_one_out_arg_struct_1_use
-; CHECK-SAME: (ptr [[TMP0:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP2:%.*]] = call [[VOID_ONE_OUT_ARG_STRUCT_1_USE:%.*]] @void_one_out_arg_struct_1_use.body(ptr poison)
-; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [[VOID_ONE_OUT_ARG_STRUCT_1_USE]] [[TMP2]], 0
-; CHECK-NEXT:    store [[STRUCT:%.*]] [[TMP3]], ptr [[TMP0]], align 4
+; CHECK-SAME: (ptr [[OUT:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    store [[STRUCT:%.*]] { i32 9, i8 99, float 4.000000e+00 }, ptr [[OUT]], align 4
 ; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@i32_one_out_arg_i32_1_use.body
-; CHECK-SAME: (ptr [[VAL:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    ret [[I32_ONE_OUT_ARG_I32_1_USE:%.*]] { i32 9, i32 24 }
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@i32_one_out_arg_i32_1_use
-; CHECK-SAME: (ptr [[TMP0:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP2:%.*]] = call [[I32_ONE_OUT_ARG_I32_1_USE:%.*]] @i32_one_out_arg_i32_1_use.body(ptr poison)
-; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [[I32_ONE_OUT_ARG_I32_1_USE]] [[TMP2]], 1
-; CHECK-NEXT:    store i32 [[TMP3]], ptr [[TMP0]], align 4
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[I32_ONE_OUT_ARG_I32_1_USE]] [[TMP2]], 0
-; CHECK-NEXT:    ret i32 [[TMP4]]
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@unused_different_type.body
-; CHECK-SAME: (ptr [[ARG0:%.*]], ptr nocapture [[ARG1:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    ret [[UNUSED_DIFFERENT_TYPE:%.*]] { float 4.000000e+00 }
+; CHECK-SAME: (ptr [[VAL:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    store i32 24, ptr [[VAL]], align 4
+; CHECK-NEXT:    ret i32 9
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@unused_different_type
-; CHECK-SAME: (ptr [[TMP0:%.*]], ptr nocapture [[TMP1:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP3:%.*]] = call [[UNUSED_DIFFERENT_TYPE:%.*]] @unused_different_type.body(ptr [[TMP0]], ptr poison)
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[UNUSED_DIFFERENT_TYPE]] [[TMP3]], 0
-; CHECK-NEXT:    store float [[TMP4]], ptr [[TMP1]], align 4
+; CHECK-SAME: (ptr [[ARG0:%.*]], ptr nocapture [[ARG1:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    store float 4.000000e+00, ptr [[ARG1]], align 4
 ; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@multiple_same_return_noalias.body
-; CHECK-SAME: (ptr noalias [[OUT0:%.*]], ptr noalias [[OUT1:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    ret [[MULTIPLE_SAME_RETURN_NOALIAS:%.*]] { i32 1, i32 2 }
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@multiple_same_return_noalias
-; CHECK-SAME: (ptr noalias [[TMP0:%.*]], ptr noalias [[TMP1:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP3:%.*]] = call [[MULTIPLE_SAME_RETURN_NOALIAS:%.*]] @multiple_same_return_noalias.body(ptr poison, ptr poison)
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[MULTIPLE_SAME_RETURN_NOALIAS]] [[TMP3]], 0
-; CHECK-NEXT:    store i32 [[TMP4]], ptr [[TMP0]], align 4
-; CHECK-NEXT:    [[TMP5:%.*]] = extractvalue [[MULTIPLE_SAME_RETURN_NOALIAS]] [[TMP3]], 1
-; CHECK-NEXT:    store i32 [[TMP5]], ptr [[TMP1]], align 4
+; CHECK-SAME: (ptr noalias [[OUT0:%.*]], ptr noalias [[OUT1:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    store i32 1, ptr [[OUT0]], align 4
+; CHECK-NEXT:    store i32 2, ptr [[OUT1]], align 4
 ; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@multiple_same_return_mayalias.body
-; CHECK-SAME: (ptr [[OUT0:%.*]], ptr [[OUT1:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    ret [[MULTIPLE_SAME_RETURN_MAYALIAS:%.*]] { i32 2, i32 1 }
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@multiple_same_return_mayalias
-; CHECK-SAME: (ptr [[TMP0:%.*]], ptr [[TMP1:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP3:%.*]] = call [[MULTIPLE_SAME_RETURN_MAYALIAS:%.*]] @multiple_same_return_mayalias.body(ptr poison, ptr poison)
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[MULTIPLE_SAME_RETURN_MAYALIAS]] [[TMP3]], 0
-; CHECK-NEXT:    store i32 [[TMP4]], ptr [[TMP0]], align 4
-; CHECK-NEXT:    [[TMP5:%.*]] = extractvalue [[MULTIPLE_SAME_RETURN_MAYALIAS]] [[TMP3]], 1
-; CHECK-NEXT:    store i32 [[TMP5]], ptr [[TMP1]], align 4
+; CHECK-SAME: (ptr [[OUT0:%.*]], ptr [[OUT1:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    store i32 1, ptr [[OUT0]], align 4
+; CHECK-NEXT:    store i32 2, ptr [[OUT1]], align 4
 ; CHECK-NEXT:    ret void
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@multiple_same_return_mayalias_order.body
-; CHECK-SAME: (ptr [[OUT0:%.*]], ptr [[OUT1:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    ret [[MULTIPLE_SAME_RETURN_MAYALIAS_ORDER:%.*]] { i32 1, i32 2 }
-;
-;
 ; CHECK-LABEL: define {{[^@]+}}@multiple_same_return_mayalias_order
-; CHECK-SAME: (ptr [[TMP0:%.*]], ptr [[TMP1:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP3:%.*]] = call [[MULTIPLE_SAME_RETURN_MAYALIAS_ORDER:%.*]] @multiple_same_return_mayalias_order.body(ptr poison, ptr poison)
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[MULTIPLE_SAME_RETURN_MAYALIAS_ORDER]] [[TMP3]], 0
-; CHECK-NEXT:    store i32 [[TMP4]], ptr [[TMP0]], align 4
-; CHECK-NEXT:    [[TMP5:%.*]] = extractvalue [[MULTIPLE_SAME_RETURN_MAYALIAS_ORDER]] [[TMP3]], 1
-; CHECK-NEXT:    store i32 [[TMP5]], ptr [[TMP1]], align 4
+; CHECK-SAME: (ptr [[OUT0:%.*]], ptr [[OUT1:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    store i32 2, ptr [[OUT1]], align 4
+; CHECK-NEXT:    store i32 1, ptr [[OUT0]], align 4
 ; CHECK-NEXT:    ret void
 ;
 ;
@@ -714,60 +620,28 @@ attributes #2 = { alwaysinline nounwind }
 ; CHECK-NEXT:    ret i32 [[PHI]]
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@i1_one_out_arg_i32_1_use.body
-; CHECK-SAME: (ptr [[VAL:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    ret [[I1_ONE_OUT_ARG_I32_1_USE:%.*]] { i1 true, i32 24 }
-;
-;
 ; CHECK-LABEL: define {{[^@]+}}@i1_one_out_arg_i32_1_use
-; CHECK-SAME: (ptr [[TMP0:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP2:%.*]] = call [[I1_ONE_OUT_ARG_I32_1_USE:%.*]] @i1_one_out_arg_i32_1_use.body(ptr poison)
-; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [[I1_ONE_OUT_ARG_I32_1_USE]] [[TMP2]], 1
-; CHECK-NEXT:    store i32 [[TMP3]], ptr [[TMP0]], align 4
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[I1_ONE_OUT_ARG_I32_1_USE]] [[TMP2]], 0
-; CHECK-NEXT:    ret i1 [[TMP4]]
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@i1_zeroext_one_out_arg_i32_1_use.body
 ; CHECK-SAME: (ptr [[VAL:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    ret [[I1_ZEROEXT_ONE_OUT_ARG_I32_1_USE:%.*]] { i1 true, i32 24 }
+; CHECK-NEXT:    store i32 24, ptr [[VAL]], align 4
+; CHECK-NEXT:    ret i1 true
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@i1_zeroext_one_out_arg_i32_1_use
-; CHECK-SAME: (ptr [[TMP0:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP2:%.*]] = call [[I1_ZEROEXT_ONE_OUT_ARG_I32_1_USE:%.*]] @i1_zeroext_one_out_arg_i32_1_use.body(ptr poison)
-; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [[I1_ZEROEXT_ONE_OUT_ARG_I32_1_USE]] [[TMP2]], 1
-; CHECK-NEXT:    store i32 [[TMP3]], ptr [[TMP0]], align 4
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[I1_ZEROEXT_ONE_OUT_ARG_I32_1_USE]] [[TMP2]], 0
-; CHECK-NEXT:    ret i1 [[TMP4]]
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@i1_signext_one_out_arg_i32_1_use.body
 ; CHECK-SAME: (ptr [[VAL:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    ret [[I1_SIGNEXT_ONE_OUT_ARG_I32_1_USE:%.*]] { i1 true, i32 24 }
+; CHECK-NEXT:    store i32 24, ptr [[VAL]], align 4
+; CHECK-NEXT:    ret i1 true
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@i1_signext_one_out_arg_i32_1_use
-; CHECK-SAME: (ptr [[TMP0:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP2:%.*]] = call [[I1_SIGNEXT_ONE_OUT_ARG_I32_1_USE:%.*]] @i1_signext_one_out_arg_i32_1_use.body(ptr poison)
-; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [[I1_SIGNEXT_ONE_OUT_ARG_I32_1_USE]] [[TMP2]], 1
-; CHECK-NEXT:    store i32 [[TMP3]], ptr [[TMP0]], align 4
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[I1_SIGNEXT_ONE_OUT_ARG_I32_1_USE]] [[TMP2]], 0
-; CHECK-NEXT:    ret i1 [[TMP4]]
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@p1i32_noalias_one_out_arg_i32_1_use.body
 ; CHECK-SAME: (ptr [[VAL:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    ret [[P1I32_NOALIAS_ONE_OUT_ARG_I32_1_USE:%.*]] { ptr addrspace(1) null, i32 24 }
+; CHECK-NEXT:    store i32 24, ptr [[VAL]], align 4
+; CHECK-NEXT:    ret i1 true
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@p1i32_noalias_one_out_arg_i32_1_use
-; CHECK-SAME: (ptr [[TMP0:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP2:%.*]] = call [[P1I32_NOALIAS_ONE_OUT_ARG_I32_1_USE:%.*]] @p1i32_noalias_one_out_arg_i32_1_use.body(ptr poison)
-; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [[P1I32_NOALIAS_ONE_OUT_ARG_I32_1_USE]] [[TMP2]], 1
-; CHECK-NEXT:    store i32 [[TMP3]], ptr [[TMP0]], align 4
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[P1I32_NOALIAS_ONE_OUT_ARG_I32_1_USE]] [[TMP2]], 0
-; CHECK-NEXT:    ret ptr addrspace(1) [[TMP4]]
+; CHECK-SAME: (ptr [[VAL:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    store i32 24, ptr [[VAL]], align 4
+; CHECK-NEXT:    ret ptr addrspace(1) null
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@void_one_out_non_private_arg_i32_1_use
@@ -776,46 +650,23 @@ attributes #2 = { alwaysinline nounwind }
 ; CHECK-NEXT:    ret void
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@func_ptr_type.body
-; CHECK-SAME: (ptr [[OUT:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    [[FUNC:%.*]] = load ptr, ptr poison, align 8
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[FUNC_PTR_TYPE:%.*]] poison, ptr [[FUNC]], 0
-; CHECK-NEXT:    ret [[FUNC_PTR_TYPE]] [[TMP1]]
-;
-;
 ; CHECK-LABEL: define {{[^@]+}}@func_ptr_type
-; CHECK-SAME: (ptr [[TMP0:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP2:%.*]] = call [[FUNC_PTR_TYPE:%.*]] @func_ptr_type.body(ptr poison)
-; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [[FUNC_PTR_TYPE]] [[TMP2]], 0
-; CHECK-NEXT:    store ptr [[TMP3]], ptr [[TMP0]], align 8
-; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@bitcast_func_ptr_type.body
 ; CHECK-SAME: (ptr [[OUT:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:    [[FUNC:%.*]] = load ptr, ptr poison, align 8
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[BITCAST_FUNC_PTR_TYPE:%.*]] poison, ptr [[FUNC]], 0
-; CHECK-NEXT:    ret [[BITCAST_FUNC_PTR_TYPE]] [[TMP1]]
+; CHECK-NEXT:    store ptr [[FUNC]], ptr [[OUT]], align 8
+; CHECK-NEXT:    ret void
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@bitcast_func_ptr_type
-; CHECK-SAME: (ptr [[TMP0:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP2:%.*]] = call [[BITCAST_FUNC_PTR_TYPE:%.*]] @bitcast_func_ptr_type.body(ptr poison)
-; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [[BITCAST_FUNC_PTR_TYPE]] [[TMP2]], 0
-; CHECK-NEXT:    store ptr [[TMP3]], ptr [[TMP0]], align 8
+; CHECK-SAME: (ptr [[OUT:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    [[FUNC:%.*]] = load ptr, ptr poison, align 8
+; CHECK-NEXT:    store ptr [[FUNC]], ptr [[OUT]], align 8
 ; CHECK-NEXT:    ret void
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@out_arg_small_array.body
-; CHECK-SAME: (ptr [[VAL:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    ret [[OUT_ARG_SMALL_ARRAY:%.*]] { [4 x i32] [i32 0, i32 1, i32 2, i32 3] }
-;
-;
 ; CHECK-LABEL: define {{[^@]+}}@out_arg_small_array
-; CHECK-SAME: (ptr [[TMP0:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP2:%.*]] = call [[OUT_ARG_SMALL_ARRAY:%.*]] @out_arg_small_array.body(ptr poison)
-; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [[OUT_ARG_SMALL_ARRAY]] [[TMP2]], 0
-; CHECK-NEXT:    store [4 x i32] [[TMP3]], ptr [[TMP0]], align 4
+; CHECK-SAME: (ptr [[VAL:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    store [4 x i32] [i32 0, i32 1, i32 2, i32 3], ptr [[VAL]], align 4
 ; CHECK-NEXT:    ret void
 ;
 ;
@@ -832,325 +683,151 @@ attributes #2 = { alwaysinline nounwind }
 ; CHECK-NEXT:    ret <16 x i32> [[LOAD]]
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@num_regs_reach_limit.body
+; CHECK-LABEL: define {{[^@]+}}@num_regs_reach_limit
 ; CHECK-SAME: (ptr [[OUT:%.*]], i32 [[VAL:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:    [[LOAD:%.*]] = load volatile [15 x i32], ptr addrspace(1) poison, align 4
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[NUM_REGS_REACH_LIMIT:%.*]] poison, [15 x i32] [[LOAD]], 0
-; CHECK-NEXT:    [[TMP2:%.*]] = insertvalue [[NUM_REGS_REACH_LIMIT]] [[TMP1]], i32 [[VAL]], 1
-; CHECK-NEXT:    ret [[NUM_REGS_REACH_LIMIT]] [[TMP2]]
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@num_regs_reach_limit
-; CHECK-SAME: (ptr [[TMP0:%.*]], i32 [[TMP1:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP3:%.*]] = call [[NUM_REGS_REACH_LIMIT:%.*]] @num_regs_reach_limit.body(ptr poison, i32 [[TMP1]])
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[NUM_REGS_REACH_LIMIT]] [[TMP3]], 1
-; CHECK-NEXT:    store i32 [[TMP4]], ptr [[TMP0]], align 4
-; CHECK-NEXT:    [[TMP5:%.*]] = extractvalue [[NUM_REGS_REACH_LIMIT]] [[TMP3]], 0
-; CHECK-NEXT:    ret [15 x i32] [[TMP5]]
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@num_regs_reach_limit_leftover.body
-; CHECK-SAME: (ptr [[OUT0:%.*]], ptr [[OUT1:%.*]], i32 [[VAL0:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    [[LOAD0:%.*]] = load volatile [15 x i32], ptr addrspace(1) poison, align 4
-; CHECK-NEXT:    [[LOAD1:%.*]] = load volatile i32, ptr addrspace(1) poison, align 4
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[NUM_REGS_REACH_LIMIT_LEFTOVER:%.*]] poison, [15 x i32] [[LOAD0]], 0
-; CHECK-NEXT:    [[TMP2:%.*]] = insertvalue [[NUM_REGS_REACH_LIMIT_LEFTOVER]] [[TMP1]], i32 [[LOAD1]], 1
-; CHECK-NEXT:    [[TMP3:%.*]] = insertvalue [[NUM_REGS_REACH_LIMIT_LEFTOVER]] [[TMP2]], i32 [[VAL0]], 2
-; CHECK-NEXT:    ret [[NUM_REGS_REACH_LIMIT_LEFTOVER]] [[TMP3]]
+; CHECK-NEXT:    store i32 [[VAL]], ptr [[OUT]], align 4
+; CHECK-NEXT:    ret [15 x i32] [[LOAD]]
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@num_regs_reach_limit_leftover
-; CHECK-SAME: (ptr [[TMP0:%.*]], ptr [[TMP1:%.*]], i32 [[TMP2:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP4:%.*]] = call [[NUM_REGS_REACH_LIMIT_LEFTOVER:%.*]] @num_regs_reach_limit_leftover.body(ptr poison, ptr poison, i32 [[TMP2]])
-; CHECK-NEXT:    [[TMP5:%.*]] = extractvalue [[NUM_REGS_REACH_LIMIT_LEFTOVER]] [[TMP4]], 1
-; CHECK-NEXT:    store i32 [[TMP5]], ptr [[TMP0]], align 4
-; CHECK-NEXT:    [[TMP6:%.*]] = extractvalue [[NUM_REGS_REACH_LIMIT_LEFTOVER]] [[TMP4]], 2
-; CHECK-NEXT:    store i32 [[TMP6]], ptr [[TMP1]], align 4
-; CHECK-NEXT:    [[TMP7:%.*]] = extractvalue [[NUM_REGS_REACH_LIMIT_LEFTOVER]] [[TMP4]], 0
-; CHECK-NEXT:    ret [15 x i32] [[TMP7]]
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@preserve_debug_info.body
-; CHECK-SAME: (i32 [[ARG0:%.*]], ptr [[VAL:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    call void @may.clobber(), !dbg [[DBG5:![0-9]+]]
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[PRESERVE_DEBUG_INFO:%.*]] poison, i32 [[ARG0]], 0, !dbg [[DBG11:![0-9]+]]
-; CHECK-NEXT:    ret [[PRESERVE_DEBUG_INFO]] [[TMP1]], !dbg [[DBG11]]
+; CHECK-SAME: (ptr [[OUT0:%.*]], ptr [[OUT1:%.*]], i32 [[VAL0:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    [[LOAD0:%.*]] = load volatile [15 x i32], ptr addrspace(1) poison, align 4
+; CHECK-NEXT:    [[LOAD1:%.*]] = load volatile i32, ptr addrspace(1) poison, align 4
+; CHECK-NEXT:    store i32 [[VAL0]], ptr [[OUT0]], align 4
+; CHECK-NEXT:    store i32 [[LOAD1]], ptr [[OUT1]], align 4
+; CHECK-NEXT:    ret [15 x i32] [[LOAD0]]
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@preserve_debug_info
-; CHECK-SAME: (i32 [[TMP0:%.*]], ptr [[TMP1:%.*]]) #[[ATTR2]] !dbg [[DBG6:![0-9]+]] {
-; CHECK-NEXT:    [[TMP3:%.*]] = call [[PRESERVE_DEBUG_INFO:%.*]] @preserve_debug_info.body(i32 [[TMP0]], ptr poison)
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[PRESERVE_DEBUG_INFO]] [[TMP3]], 0
-; CHECK-NEXT:    store i32 [[TMP4]], ptr [[TMP1]], align 4
-; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@preserve_metadata.body
-; CHECK-SAME: (i32 [[ARG0:%.*]], ptr [[VAL:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    call void @may.clobber()
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[PRESERVE_METADATA:%.*]] poison, i32 [[ARG0]], 0
-; CHECK-NEXT:    ret [[PRESERVE_METADATA]] [[TMP1]]
+; CHECK-SAME: (i32 [[ARG0:%.*]], ptr [[VAL:%.*]]) #[[ATTR0]] !dbg [[DBG5:![0-9]+]] {
+; CHECK-NEXT:    call void @may.clobber(), !dbg [[DBG10:![0-9]+]]
+; CHECK-NEXT:    store i32 [[ARG0]], ptr [[VAL]], align 4, !dbg [[DBG11:![0-9]+]]
+; CHECK-NEXT:    ret void, !dbg [[DBG12:![0-9]+]]
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@preserve_metadata
-; CHECK-SAME: (i32 [[TMP0:%.*]], ptr [[TMP1:%.*]]) #[[ATTR2]] !kernel_arg_access_qual !12 {
-; CHECK-NEXT:    [[TMP3:%.*]] = call [[PRESERVE_METADATA:%.*]] @preserve_metadata.body(i32 [[TMP0]], ptr poison)
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[PRESERVE_METADATA]] [[TMP3]], 0
-; CHECK-NEXT:    store i32 [[TMP4]], ptr [[TMP1]], align 4
+; CHECK-SAME: (i32 [[ARG0:%.*]], ptr [[VAL:%.*]]) #[[ATTR0]] !kernel_arg_access_qual !13 {
+; CHECK-NEXT:    call void @may.clobber()
+; CHECK-NEXT:    store i32 [[ARG0]], ptr [[VAL]], align 4
 ; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@bitcast_pointer_v4i32_v3i32.body
-; CHECK-SAME: (ptr [[OUT:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    [[LOAD:%.*]] = load volatile <4 x i32>, ptr addrspace(1) poison, align 16
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[BITCAST_POINTER_V4I32_V3I32:%.*]] poison, <4 x i32> [[LOAD]], 0
-; CHECK-NEXT:    ret [[BITCAST_POINTER_V4I32_V3I32]] [[TMP1]]
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@bitcast_pointer_v4i32_v3i32
-; CHECK-SAME: (ptr [[TMP0:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP2:%.*]] = call [[BITCAST_POINTER_V4I32_V3I32:%.*]] @bitcast_pointer_v4i32_v3i32.body(ptr poison)
-; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [[BITCAST_POINTER_V4I32_V3I32]] [[TMP2]], 0
-; CHECK-NEXT:    store <4 x i32> [[TMP3]], ptr [[TMP0]], align 16
-; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@bitcast_pointer_v4i32_v3f32.body
 ; CHECK-SAME: (ptr [[OUT:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:    [[LOAD:%.*]] = load volatile <4 x i32>, ptr addrspace(1) poison, align 16
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[BITCAST_POINTER_V4I32_V3F32:%.*]] poison, <4 x i32> [[LOAD]], 0
-; CHECK-NEXT:    ret [[BITCAST_POINTER_V4I32_V3F32]] [[TMP1]]
+; CHECK-NEXT:    store <4 x i32> [[LOAD]], ptr [[OUT]], align 16
+; CHECK-NEXT:    ret void
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@bitcast_pointer_v4i32_v3f32
-; CHECK-SAME: (ptr [[TMP0:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP2:%.*]] = call [[BITCAST_POINTER_V4I32_V3F32:%.*]] @bitcast_pointer_v4i32_v3f32.body(ptr poison)
-; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [[BITCAST_POINTER_V4I32_V3F32]] [[TMP2]], 0
-; CHECK-NEXT:    store <4 x i32> [[TMP3]], ptr [[TMP0]], align 16
-; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@bitcast_pointer_i32_f32.body
 ; CHECK-SAME: (ptr [[OUT:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    [[LOAD:%.*]] = load volatile i32, ptr addrspace(1) poison, align 4
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[BITCAST_POINTER_I32_F32:%.*]] poison, i32 [[LOAD]], 0
-; CHECK-NEXT:    ret [[BITCAST_POINTER_I32_F32]] [[TMP1]]
+; CHECK-NEXT:    [[LOAD:%.*]] = load volatile <4 x i32>, ptr addrspace(1) poison, align 16
+; CHECK-NEXT:    store <4 x i32> [[LOAD]], ptr [[OUT]], align 16
+; CHECK-NEXT:    ret void
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@bitcast_pointer_i32_f32
-; CHECK-SAME: (ptr [[TMP0:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP2:%.*]] = call [[BITCAST_POINTER_I32_F32:%.*]] @bitcast_pointer_i32_f32.body(ptr poison)
-; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [[BITCAST_POINTER_I32_F32]] [[TMP2]], 0
-; CHECK-NEXT:    store i32 [[TMP3]], ptr [[TMP0]], align 4
-; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@bitcast_pointer_i32_f16.body
 ; CHECK-SAME: (ptr [[OUT:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:    [[LOAD:%.*]] = load volatile i32, ptr addrspace(1) poison, align 4
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[BITCAST_POINTER_I32_F16:%.*]] poison, i32 [[LOAD]], 0
-; CHECK-NEXT:    ret [[BITCAST_POINTER_I32_F16]] [[TMP1]]
+; CHECK-NEXT:    store i32 [[LOAD]], ptr [[OUT]], align 4
+; CHECK-NEXT:    ret void
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@bitcast_pointer_i32_f16
-; CHECK-SAME: (ptr [[TMP0:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP2:%.*]] = call [[BITCAST_POINTER_I32_F16:%.*]] @bitcast_pointer_i32_f16.body(ptr poison)
-; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [[BITCAST_POINTER_I32_F16]] [[TMP2]], 0
-; CHECK-NEXT:    store i32 [[TMP3]], ptr [[TMP0]], align 4
-; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@bitcast_pointer_f16_i32.body
 ; CHECK-SAME: (ptr [[OUT:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    [[LOAD:%.*]] = load volatile half, ptr addrspace(1) poison, align 2
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[BITCAST_POINTER_F16_I32:%.*]] poison, half [[LOAD]], 0
-; CHECK-NEXT:    ret [[BITCAST_POINTER_F16_I32]] [[TMP1]]
+; CHECK-NEXT:    [[LOAD:%.*]] = load volatile i32, ptr addrspace(1) poison, align 4
+; CHECK-NEXT:    store i32 [[LOAD]], ptr [[OUT]], align 4
+; CHECK-NEXT:    ret void
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@bitcast_pointer_f16_i32
-; CHECK-SAME: (ptr [[TMP0:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP2:%.*]] = call [[BITCAST_POINTER_F16_I32:%.*]] @bitcast_pointer_f16_i32.body(ptr poison)
-; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [[BITCAST_POINTER_F16_I32]] [[TMP2]], 0
-; CHECK-NEXT:    store half [[TMP3]], ptr [[TMP0]], align 2
+; CHECK-SAME: (ptr [[OUT:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    [[LOAD:%.*]] = load volatile half, ptr addrspace(1) poison, align 2
+; CHECK-NEXT:    store half [[LOAD]], ptr [[OUT]], align 2
 ; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@bitcast_struct_v3f32_v3f32.body
-; CHECK-SAME: (ptr [[OUT:%.*]], <3 x float> [[VALUE:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    [[EXTRACTVEC:%.*]] = shufflevector <3 x float> [[VALUE]], <3 x float> poison, <4 x i32> <i32 0, i32 1, i32 2, i32 poison>
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[BITCAST_STRUCT_V3F32_V3F32:%.*]] poison, <4 x float> [[EXTRACTVEC]], 0
-; CHECK-NEXT:    ret [[BITCAST_STRUCT_V3F32_V3F32]] [[TMP1]]
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@bitcast_struct_v3f32_v3f32
-; CHECK-SAME: (ptr [[TMP0:%.*]], <3 x float> [[TMP1:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP3:%.*]] = call [[BITCAST_STRUCT_V3F32_V3F32:%.*]] @bitcast_struct_v3f32_v3f32.body(ptr poison, <3 x float> [[TMP1]])
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[BITCAST_STRUCT_V3F32_V3F32]] [[TMP3]], 0
-; CHECK-NEXT:    store <4 x float> [[TMP4]], ptr [[TMP0]], align 16
+; CHECK-SAME: (ptr [[OUT:%.*]], <3 x float> [[VALUE:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    [[EXTRACTVEC:%.*]] = shufflevector <3 x float> [[VALUE]], <3 x float> poison, <4 x i32> <i32 0, i32 1, i32 2, i32 poison>
+; CHECK-NEXT:    store <4 x float> [[EXTRACTVEC]], ptr [[OUT]], align 16
 ; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@bitcast_struct_v3f32_v3i32.body
-; CHECK-SAME: (ptr [[OUT:%.*]], <3 x i32> [[VALUE:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    [[EXTRACTVEC:%.*]] = shufflevector <3 x i32> [[VALUE]], <3 x i32> poison, <4 x i32> <i32 0, i32 1, i32 2, i32 poison>
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[BITCAST_STRUCT_V3F32_V3I32:%.*]] poison, <4 x i32> [[EXTRACTVEC]], 0
-; CHECK-NEXT:    ret [[BITCAST_STRUCT_V3F32_V3I32]] [[TMP1]]
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@bitcast_struct_v3f32_v3i32
-; CHECK-SAME: (ptr [[TMP0:%.*]], <3 x i32> [[TMP1:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP3:%.*]] = call [[BITCAST_STRUCT_V3F32_V3I32:%.*]] @bitcast_struct_v3f32_v3i32.body(ptr poison, <3 x i32> [[TMP1]])
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[BITCAST_STRUCT_V3F32_V3I32]] [[TMP3]], 0
-; CHECK-NEXT:    store <4 x i32> [[TMP4]], ptr [[TMP0]], align 16
+; CHECK-SAME: (ptr [[OUT:%.*]], <3 x i32> [[VALUE:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    [[EXTRACTVEC:%.*]] = shufflevector <3 x i32> [[VALUE]], <3 x i32> poison, <4 x i32> <i32 0, i32 1, i32 2, i32 poison>
+; CHECK-NEXT:    store <4 x i32> [[EXTRACTVEC]], ptr [[OUT]], align 16
 ; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@bitcast_struct_v4f32_v4f32.body
-; CHECK-SAME: (ptr [[OUT:%.*]], <4 x float> [[VALUE:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[BITCAST_STRUCT_V4F32_V4F32:%.*]] poison, <4 x float> [[VALUE]], 0
-; CHECK-NEXT:    ret [[BITCAST_STRUCT_V4F32_V4F32]] [[TMP1]]
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@bitcast_struct_v4f32_v4f32
-; CHECK-SAME: (ptr [[TMP0:%.*]], <4 x float> [[TMP1:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP3:%.*]] = call [[BITCAST_STRUCT_V4F32_V4F32:%.*]] @bitcast_struct_v4f32_v4f32.body(ptr poison, <4 x float> [[TMP1]])
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[BITCAST_STRUCT_V4F32_V4F32]] [[TMP3]], 0
-; CHECK-NEXT:    store <4 x float> [[TMP4]], ptr [[TMP0]], align 16
+; CHECK-SAME: (ptr [[OUT:%.*]], <4 x float> [[VALUE:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    store <4 x float> [[VALUE]], ptr [[OUT]], align 16
 ; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@bitcast_struct_v3f32_v4i32.body
-; CHECK-SAME: (ptr [[OUT:%.*]], <4 x i32> [[VALUE:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[BITCAST_STRUCT_V3F32_V4I32:%.*]] poison, <4 x i32> [[VALUE]], 0
-; CHECK-NEXT:    ret [[BITCAST_STRUCT_V3F32_V4I32]] [[TMP1]]
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@bitcast_struct_v3f32_v4i32
-; CHECK-SAME: (ptr [[TMP0:%.*]], <4 x i32> [[TMP1:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP3:%.*]] = call [[BITCAST_STRUCT_V3F32_V4I32:%.*]] @bitcast_struct_v3f32_v4i32.body(ptr poison, <4 x i32> [[TMP1]])
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[BITCAST_STRUCT_V3F32_V4I32]] [[TMP3]], 0
-; CHECK-NEXT:    store <4 x i32> [[TMP4]], ptr [[TMP0]], align 16
+; CHECK-SAME: (ptr [[OUT:%.*]], <4 x i32> [[VALUE:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    store <4 x i32> [[VALUE]], ptr [[OUT]], align 16
 ; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@bitcast_struct_v4f32_v3f32.body
-; CHECK-SAME: (ptr [[OUT:%.*]], <3 x float> [[VALUE:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    [[EXTRACTVEC:%.*]] = shufflevector <3 x float> [[VALUE]], <3 x float> poison, <4 x i32> <i32 0, i32 1, i32 2, i32 poison>
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[BITCAST_STRUCT_V4F32_V3F32:%.*]] poison, <4 x float> [[EXTRACTVEC]], 0
-; CHECK-NEXT:    ret [[BITCAST_STRUCT_V4F32_V3F32]] [[TMP1]]
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@bitcast_struct_v4f32_v3f32
-; CHECK-SAME: (ptr [[TMP0:%.*]], <3 x float> [[TMP1:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP3:%.*]] = call [[BITCAST_STRUCT_V4F32_V3F32:%.*]] @bitcast_struct_v4f32_v3f32.body(ptr poison, <3 x float> [[TMP1]])
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[BITCAST_STRUCT_V4F32_V3F32]] [[TMP3]], 0
-; CHECK-NEXT:    store <4 x float> [[TMP4]], ptr [[TMP0]], align 16
+; CHECK-SAME: (ptr [[OUT:%.*]], <3 x float> [[VALUE:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    [[EXTRACTVEC:%.*]] = shufflevector <3 x float> [[VALUE]], <3 x float> poison, <4 x i32> <i32 0, i32 1, i32 2, i32 poison>
+; CHECK-NEXT:    store <4 x float> [[EXTRACTVEC]], ptr [[OUT]], align 16
 ; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@bitcast_struct_v3f32_v2f32.body
-; CHECK-SAME: (ptr [[OUT:%.*]], <2 x float> [[VALUE:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[BITCAST_STRUCT_V3F32_V2F32:%.*]] poison, <2 x float> [[VALUE]], 0
-; CHECK-NEXT:    ret [[BITCAST_STRUCT_V3F32_V2F32]] [[TMP1]]
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@bitcast_struct_v3f32_v2f32
-; CHECK-SAME: (ptr [[TMP0:%.*]], <2 x float> [[TMP1:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP3:%.*]] = call [[BITCAST_STRUCT_V3F32_V2F32:%.*]] @bitcast_struct_v3f32_v2f32.body(ptr poison, <2 x float> [[TMP1]])
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[BITCAST_STRUCT_V3F32_V2F32]] [[TMP3]], 0
-; CHECK-NEXT:    store <2 x float> [[TMP4]], ptr [[TMP0]], align 8
+; CHECK-SAME: (ptr [[OUT:%.*]], <2 x float> [[VALUE:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    store <2 x float> [[VALUE]], ptr [[OUT]], align 8
 ; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@bitcast_struct_v3f32_f32_v3f32.body
-; CHECK-SAME: (ptr [[OUT:%.*]], <3 x float> [[VALUE:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    [[EXTRACTVEC:%.*]] = shufflevector <3 x float> [[VALUE]], <3 x float> poison, <4 x i32> <i32 0, i32 1, i32 2, i32 poison>
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[BITCAST_STRUCT_V3F32_F32_V3F32:%.*]] poison, <4 x float> [[EXTRACTVEC]], 0
-; CHECK-NEXT:    ret [[BITCAST_STRUCT_V3F32_F32_V3F32]] [[TMP1]]
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@bitcast_struct_v3f32_f32_v3f32
-; CHECK-SAME: (ptr [[TMP0:%.*]], <3 x float> [[TMP1:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP3:%.*]] = call [[BITCAST_STRUCT_V3F32_F32_V3F32:%.*]] @bitcast_struct_v3f32_f32_v3f32.body(ptr poison, <3 x float> [[TMP1]])
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[BITCAST_STRUCT_V3F32_F32_V3F32]] [[TMP3]], 0
-; CHECK-NEXT:    store <4 x float> [[TMP4]], ptr [[TMP0]], align 16
+; CHECK-SAME: (ptr [[OUT:%.*]], <3 x float> [[VALUE:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    [[EXTRACTVEC:%.*]] = shufflevector <3 x float> [[VALUE]], <3 x float> poison, <4 x i32> <i32 0, i32 1, i32 2, i32 poison>
+; CHECK-NEXT:    store <4 x float> [[EXTRACTVEC]], ptr [[OUT]], align 16
 ; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@bitcast_struct_v3f32_f32_v4f32.body
-; CHECK-SAME: (ptr [[OUT:%.*]], <4 x float> [[VALUE:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[BITCAST_STRUCT_V3F32_F32_V4F32:%.*]] poison, <4 x float> [[VALUE]], 0
-; CHECK-NEXT:    ret [[BITCAST_STRUCT_V3F32_F32_V4F32]] [[TMP1]]
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@bitcast_struct_v3f32_f32_v4f32
-; CHECK-SAME: (ptr [[TMP0:%.*]], <4 x float> [[TMP1:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP3:%.*]] = call [[BITCAST_STRUCT_V3F32_F32_V4F32:%.*]] @bitcast_struct_v3f32_f32_v4f32.body(ptr poison, <4 x float> [[TMP1]])
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[BITCAST_STRUCT_V3F32_F32_V4F32]] [[TMP3]], 0
-; CHECK-NEXT:    store <4 x float> [[TMP4]], ptr [[TMP0]], align 16
-; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@bitcast_struct_i128_v4f32.body
 ; CHECK-SAME: (ptr [[OUT:%.*]], <4 x float> [[VALUE:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[BITCAST_STRUCT_I128_V4F32:%.*]] poison, <4 x float> [[VALUE]], 0
-; CHECK-NEXT:    ret [[BITCAST_STRUCT_I128_V4F32]] [[TMP1]]
+; CHECK-NEXT:    store <4 x float> [[VALUE]], ptr [[OUT]], align 16
+; CHECK-NEXT:    ret void
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@bitcast_struct_i128_v4f32
-; CHECK-SAME: (ptr [[TMP0:%.*]], <4 x float> [[TMP1:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP3:%.*]] = call [[BITCAST_STRUCT_I128_V4F32:%.*]] @bitcast_struct_i128_v4f32.body(ptr poison, <4 x float> [[TMP1]])
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[BITCAST_STRUCT_I128_V4F32]] [[TMP3]], 0
-; CHECK-NEXT:    store <4 x float> [[TMP4]], ptr [[TMP0]], align 16
+; CHECK-SAME: (ptr [[OUT:%.*]], <4 x float> [[VALUE:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    store <4 x float> [[VALUE]], ptr [[OUT]], align 16
 ; CHECK-NEXT:    ret void
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@bitcast_array_v4i32_v4f32.body
-; CHECK-SAME: (ptr [[OUT:%.*]], [4 x float] [[VALUE:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[BITCAST_ARRAY_V4I32_V4F32:%.*]] poison, [4 x float] [[VALUE]], 0
-; CHECK-NEXT:    ret [[BITCAST_ARRAY_V4I32_V4F32]] [[TMP1]]
 ;
 ;
 ; CHECK-LABEL: define {{[^@]+}}@bitcast_array_v4i32_v4f32
-; CHECK-SAME: (ptr [[TMP0:%.*]], [4 x float] [[TMP1:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP3:%.*]] = call [[BITCAST_ARRAY_V4I32_V4F32:%.*]] @bitcast_array_v4i32_v4f32.body(ptr poison, [4 x float] [[TMP1]])
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[BITCAST_ARRAY_V4I32_V4F32]] [[TMP3]], 0
-; CHECK-NEXT:    store [4 x float] [[TMP4]], ptr [[TMP0]], align 4
+; CHECK-SAME: (ptr [[OUT:%.*]], [4 x float] [[VALUE:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    store [4 x float] [[VALUE]], ptr [[OUT]], align 4
 ; CHECK-NEXT:    ret void
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@multi_return_bitcast_struct_v3f32_v3f32.body
+; CHECK-LABEL: define {{[^@]+}}@multi_return_bitcast_struct_v3f32_v3f32
 ; CHECK-SAME: (i1 [[COND:%.*]], ptr [[OUT:%.*]], <3 x float> [[VALUE:%.*]]) #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    br i1 [[COND]], label [[RET0:%.*]], label [[RET1:%.*]]
 ; CHECK:       ret0:
 ; CHECK-NEXT:    [[EXTRACTVEC:%.*]] = shufflevector <3 x float> [[VALUE]], <3 x float> poison, <4 x i32> <i32 0, i32 1, i32 2, i32 poison>
-; CHECK-NEXT:    [[TMP0:%.*]] = insertvalue [[MULTI_RETURN_BITCAST_STRUCT_V3F32_V3F32:%.*]] poison, <4 x float> [[EXTRACTVEC]], 0
-; CHECK-NEXT:    ret [[MULTI_RETURN_BITCAST_STRUCT_V3F32_V3F32]] [[TMP0]]
+; CHECK-NEXT:    store <4 x float> [[EXTRACTVEC]], ptr [[OUT]], align 16
+; CHECK-NEXT:    ret void
 ; CHECK:       ret1:
 ; CHECK-NEXT:    [[LOAD:%.*]] = load <4 x float>, ptr addrspace(1) poison, align 16
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[MULTI_RETURN_BITCAST_STRUCT_V3F32_V3F32]] poison, <4 x float> [[LOAD]], 0
-; CHECK-NEXT:    ret [[MULTI_RETURN_BITCAST_STRUCT_V3F32_V3F32]] [[TMP1]]
-;
-;
-; CHECK-LABEL: define {{[^@]+}}@multi_return_bitcast_struct_v3f32_v3f32
-; CHECK-SAME: (i1 [[TMP0:%.*]], ptr [[TMP1:%.*]], <3 x float> [[TMP2:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP4:%.*]] = call [[MULTI_RETURN_BITCAST_STRUCT_V3F32_V3F32:%.*]] @multi_return_bitcast_struct_v3f32_v3f32.body(i1 [[TMP0]], ptr poison, <3 x float> [[TMP2]])
-; CHECK-NEXT:    [[TMP5:%.*]] = extractvalue [[MULTI_RETURN_BITCAST_STRUCT_V3F32_V3F32]] [[TMP4]], 0
-; CHECK-NEXT:    store <4 x float> [[TMP5]], ptr [[TMP1]], align 16
+; CHECK-NEXT:    store <4 x float> [[LOAD]], ptr [[OUT]], align 16
 ; CHECK-NEXT:    ret void
 ;
 ;
-; CHECK-LABEL: define {{[^@]+}}@bitcast_v3f32_struct_v3f32.body
-; CHECK-SAME: (ptr [[OUT:%.*]], [[STRUCT_V3F32:%.*]] [[VALUE:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:    [[TMP1:%.*]] = insertvalue [[BITCAST_V3F32_STRUCT_V3F32:%.*]] poison, [[STRUCT_V3F32]] [[VALUE]], 0
-; CHECK-NEXT:    ret [[BITCAST_V3F32_STRUCT_V3F32]] [[TMP1]]
-;
-;
 ; CHECK-LABEL: define {{[^@]+}}@bitcast_v3f32_struct_v3f32
-; CHECK-SAME: (ptr [[TMP0:%.*]], [[STRUCT_V3F32:%.*]] [[TMP1:%.*]]) #[[ATTR2]] {
-; CHECK-NEXT:    [[TMP3:%.*]] = call [[BITCAST_V3F32_STRUCT_V3F32:%.*]] @bitcast_v3f32_struct_v3f32.body(ptr poison, [[STRUCT_V3F32]] [[TMP1]])
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [[BITCAST_V3F32_STRUCT_V3F32]] [[TMP3]], 0
-; CHECK-NEXT:    store [[STRUCT_V3F32]] [[TMP4]], ptr [[TMP0]], align 16
+; CHECK-SAME: (ptr [[OUT:%.*]], [[STRUCT_V3F32:%.*]] [[VALUE:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    store [[STRUCT_V3F32]] [[VALUE]], ptr [[OUT]], align 4
 ; CHECK-NEXT:    ret void
 ;
