@@ -178,7 +178,7 @@ round(const duration<_Rep, _Period>& __d)
         return __lower;
     if (__lower_diff > __upper_diff)
         return __upper;
-    return __lower.count() & 1 ? __upper : __lower;
+    return (__lower.count() & 1) ? __upper : __lower;
 }
 #endif
 

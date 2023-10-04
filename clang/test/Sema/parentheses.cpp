@@ -1,5 +1,5 @@
-// RUN: %clang_cc1 -Wparentheses -fsyntax-only -verify %s
-// RUN: %clang_cc1 -Wparentheses -fsyntax-only -fdiagnostics-parseable-fixits %s 2>&1 | FileCheck %s
+// RUN: %clang_cc1 -Wparentheses -Woverloaded-shift-op-parentheses -fsyntax-only -verify %s
+// RUN: %clang_cc1 -Wparentheses -Woverloaded-shift-op-parentheses -fsyntax-only -fdiagnostics-parseable-fixits %s 2>&1 | FileCheck %s
 
 bool someConditionFunc();
 
@@ -38,7 +38,7 @@ public:
   Stream &operator>>(const char*);
 };
 
-void f(Stream& s, bool b) {
+void f(Stream& s, bool b, int x) {
   (void)(s << b ? "foo" : "bar"); // expected-warning {{operator '?:' has lower precedence than '<<'}} \
                                   // expected-note {{place parentheses around the '<<' expression to silence this warning}} \
                                   // expected-note {{place parentheses around the '?:' expression to evaluate it first}}
@@ -62,6 +62,30 @@ void f(Stream& s, bool b) {
   // CHECK: fix-it:"{{.*}}":{[[@LINE-4]]:16-[[@LINE-4]]:16}:")"
   // CHECK: fix-it:"{{.*}}":{[[@LINE-5]]:15-[[@LINE-5]]:15}:"("
   // CHECK: fix-it:"{{.*}}":{[[@LINE-6]]:21-[[@LINE-6]]:21}:")"
+
+  void(s << "Test" << x ? "foo" : "bar"); //expected-warning {{operator '?:' has lower precedence than '<<'}} \
+                                         // expected-note {{place parentheses around the '<<' expression to silence this warning}} \
+                                        // expected-note {{place parentheses around the '?:' expression to evaluate it first}}
+  // CHECK: fix-it:"{{.*}}":{[[@LINE-3]]:8-[[@LINE-3]]:8}:"("
+  // CHECK: fix-it:"{{.*}}":{[[@LINE-4]]:24-[[@LINE-4]]:24}:")"
+  // CHECK: fix-it:"{{.*}}":{[[@LINE-5]]:23-[[@LINE-5]]:23}:"("
+  // CHECK: fix-it:"{{.*}}":{[[@LINE-6]]:40-[[@LINE-6]]:40}:")"
+
+  void(s << x == 1 ? "foo": "bar"); //expected-warning {{overloaded operator << has higher precedence than comparison operator}} \
+                                    //expected-note {{place parentheses around the '<<' expression to silence this warning}} \
+                                    //expected-note {{place parentheses around comparison expression to evaluate it first}}
+  // CHECK: fix-it:"{{.*}}":{[[@LINE-3]]:8-[[@LINE-3]]:8}:"("
+  // CHECK: fix-it:"{{.*}}":{[[@LINE-4]]:14-[[@LINE-4]]:14}:")"
+  // CHECK: fix-it:"{{.*}}":{[[@LINE-5]]:13-[[@LINE-5]]:13}:"("
+  // CHECK: fix-it:"{{.*}}":{[[@LINE-6]]:19-[[@LINE-6]]:19}:")"
+
+  void(s << static_cast<bool>(x) ? "foo" : "bar"); //expected-warning {{operator '?:' has lower precedence than '<<'}} \
+                                                  //expected-note {{place parentheses around the '<<' expression to silence this warning}} \
+                                                 //expected-note {{place parentheses around the '?:' expression to evaluate it first}}
+  // CHECK: fix-it:"{{.*}}":{[[@LINE-3]]:8-[[@LINE-3]]:8}:"("
+  // CHECK: fix-it:"{{.*}}":{[[@LINE-4]]:33-[[@LINE-4]]:33}:")"
+  // CHECK: fix-it:"{{.*}}":{[[@LINE-5]]:13-[[@LINE-5]]:13}:"("
+  // CHECK: fix-it:"{{.*}}":{[[@LINE-6]]:49-[[@LINE-6]]:49}:")"
 }
 
 struct S {

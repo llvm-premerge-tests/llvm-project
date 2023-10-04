@@ -718,9 +718,7 @@ static void scan_eh_tab(scan_results &results, _Unwind_Action actions,
             if (actionEntry == 0)
             {
                 // Found a cleanup
-                results.reason = actions & _UA_SEARCH_PHASE
-                                     ? _URC_CONTINUE_UNWIND
-                                     : _URC_HANDLER_FOUND;
+                results.reason = (actions & _UA_SEARCH_PHASE) ? _URC_CONTINUE_UNWIND : _URC_HANDLER_FOUND;
                 return;
             }
             // Convert 1-based byte offset into
@@ -832,9 +830,8 @@ static void scan_eh_tab(scan_results &results, _Unwind_Action actions,
                     // End of action list. If this is phase 2 and we have found
                     // a cleanup (ttypeIndex=0), return _URC_HANDLER_FOUND;
                     // otherwise return _URC_CONTINUE_UNWIND.
-                    results.reason = hasCleanup && actions & _UA_CLEANUP_PHASE
-                                         ? _URC_HANDLER_FOUND
-                                         : _URC_CONTINUE_UNWIND;
+                    results.reason =
+                        (hasCleanup && (actions & _UA_CLEANUP_PHASE)) ? _URC_HANDLER_FOUND : _URC_CONTINUE_UNWIND;
                     return;
                 }
                 // Go to next action
@@ -1250,10 +1247,9 @@ __cxa_call_unexpected(void* arg)
             {
                 const __shim_type_info* excpType =
                     static_cast<const __shim_type_info*>(new_exception_header->exceptionType);
-                adjustedPtr =
-                    __getExceptionClass(&new_exception_header->unwindHeader) == kOurDependentExceptionClass ?
-                        ((__cxa_dependent_exception*)new_exception_header)->primaryException :
-                        new_exception_header + 1;
+                adjustedPtr = (__getExceptionClass(&new_exception_header->unwindHeader) == kOurDependentExceptionClass)
+                                  ? ((__cxa_dependent_exception*)new_exception_header)->primaryException
+                                  : new_exception_header + 1;
                 if (!exception_spec_can_catch(ttypeIndex, classInfo, ttypeEncoding,
                                               excpType, adjustedPtr,
                                               unwind_exception, base))
