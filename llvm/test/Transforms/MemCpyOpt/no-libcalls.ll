@@ -37,13 +37,9 @@ define void @dont_create_memset(ptr %p) {
 %ty = type { i64 }
 
 define void @dont_create_memcpy(ptr %p1, ptr %p2) {
-; LIBCALLS-LABEL: @dont_create_memcpy(
-; LIBCALLS-NEXT:    call void @llvm.memmove.p0.p0.i64(ptr align 4 [[P2:%.*]], ptr align 4 [[P1:%.*]], i64 8, i1 false)
-; LIBCALLS-NEXT:    ret void
-;
 ; NO-LIBCALLS-LABEL: @dont_create_memcpy(
-; NO-LIBCALLS-NEXT:    [[V:%.*]] = load [[TY:%.*]], ptr [[P1:%.*]], align 4
-; NO-LIBCALLS-NEXT:    store [[TY]] [[V]], ptr [[P2:%.*]], align 4
+; NO-LIBCALLS-NEXT:    [[V:%.*]] = load [[TY:%.*]], ptr [[P1:%.*]], align 8
+; NO-LIBCALLS-NEXT:    store [[TY]] [[V]], ptr [[P2:%.*]], align 8
 ; NO-LIBCALLS-NEXT:    ret void
 ;
   %v = load %ty, ptr %p1
