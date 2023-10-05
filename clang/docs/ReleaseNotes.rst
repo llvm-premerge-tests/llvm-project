@@ -141,6 +141,9 @@ C23 Feature Support
   ``-std=gnu2x`` as aliases for C23 and GNU C23, respectively.
 - Clang now supports `requires c23` for module maps.
 
+- Clang now supports ``<stdckdint.h>`` which defines several macros for performing
+  checked integer arithmetic.
+
 Non-comprehensive list of changes in this release
 -------------------------------------------------
 
