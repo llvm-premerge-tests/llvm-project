@@ -9,7 +9,7 @@ set(Clang_DIR_SAVE ${Clang_DIR})
 # libc++ normally prefers the use the last stable release instead of the ToT.
 # For modules we need ToT since they are still under heavy development. So
 # temporary the ToT version is preferred.
-find_package(Clang 17)
+find_package(Clang 18)
 if (NOT Clang_FOUND)
   find_package(Clang 16)
 endif()
