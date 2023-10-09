@@ -160,6 +160,8 @@ class TargetRegisterInfo;
                               MachineBasicBlock *SuccBB,
                               MachineBasicBlock *PredBB);
 
+    unsigned HashEndOfMBB(const MachineBasicBlock &MBB) const;
+
     /// Remove all blocks with hash CurHash from MergePotentials, restoring
     /// branches at ends of blocks as appropriate.
     void RemoveBlocksWithHash(unsigned CurHash, MachineBasicBlock* SuccBB,

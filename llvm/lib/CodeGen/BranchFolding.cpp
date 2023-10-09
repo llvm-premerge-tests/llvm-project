@@ -289,12 +289,20 @@ static unsigned HashMachineInstr(const MachineInstr &MI) {
 }
 
 /// HashEndOfMBB - Hash the last instruction in the MBB.
-static unsigned HashEndOfMBB(const MachineBasicBlock &MBB) {
+unsigned BranchFolder::HashEndOfMBB(const MachineBasicBlock &MBB) const {
+  unsigned LastInstrHash = 0;
   MachineBasicBlock::const_iterator I = MBB.getLastNonDebugInstr(false);
-  if (I == MBB.end())
-    return 0;
+  if (I != MBB.end())
+    LastInstrHash = HashMachineInstr(*I);
 
-  return HashMachineInstr(*I);
+  // Avoid trying to tail merge across EH scopes.
+  unsigned EHScope = 0;
+  if (!EHScopeMembership.empty()) {
+    assert(EHScopeMembership.count(&MBB));
+    EHScope = EHScopeMembership.find(&MBB)->second;
+    llvm::errs() << "EHScope for " << printMBBReference(MBB) << ": " << EHScope << '\n';
+  }
+  return LastInstrHash + EHScope;
 }
 
 /// Whether MI should be counted as an instruction when calculating common tail.
@@ -1051,6 +1059,8 @@ bool BranchFolder::TailMergeBlocks(MachineFunction &MF) {
   // a compile-time infinite loop repeatedly doing and undoing the same
   // transformations.)
 
+  llvm::errs() << "after TryTailMergeBlocks\n";
+
   for (MachineFunction::iterator I = std::next(MF.begin()), E = MF.end();
        I != E; ++I) {
     if (I->pred_size() < 2) continue;
@@ -1150,6 +1160,7 @@ bool BranchFolder::TailMergeBlocks(MachineFunction &MF) {
         MergePotentials.begin()->getBlock() != PredBB)
       FixTail(MergePotentials.begin()->getBlock(), IBB, TII);
   }
+  llvm::errs() << "after after TryTailMergeBlocks\n";
 
   return MadeChange;
 }
@@ -1216,6 +1227,8 @@ bool BranchFolder::OptimizeBranches(MachineFunction &MF) {
 
     // If it is dead, remove it.
     if (MBB.pred_empty() && !MBB.isMachineBlockAddressTaken()) {
+      LLVM_DEBUG(dbgs() << "OptimizeBlock removed predecessors of "
+                        << printMBBReference(MBB) << '\n');
       RemoveDeadBlock(&MBB);
       MadeChange = true;
       ++NumDeadBlocks;
@@ -1350,7 +1363,7 @@ ReoptimizeBlock:
   // points to this block.  Blocks with their addresses taken shouldn't be
   // optimized away.
   if (IsEmptyBlock(MBB) && !MBB->isEHPad() && !MBB->hasAddressTaken() &&
-      SameEHScope) {
+      SameEHScope && !MBB->hasEHPadSuccessor()) {
     salvageDebugInfoFromEmptyBlock(TII, *MBB);
     // Dead block?  Leave for cleanup later.
     if (MBB->pred_empty()) return MadeChange;
