@@ -20,10 +20,12 @@ namespace clang {
 namespace interp {
 class Block;
 class Record;
+struct InitMap;
 struct Descriptor;
 enum PrimType : unsigned;
 
 using DeclTy = llvm::PointerUnion<const Decl *, const Expr *>;
+using InitMapPtr = std::optional<std::pair<bool, std::shared_ptr<InitMap>>>;
 
 /// Invoked whenever a block is created. The constructor method fills in the
 /// inline descriptors of all fields and array elements. It also initializes
@@ -192,10 +194,6 @@ public:
   bool isRecord() const { return !IsArray && ElemRecord; }
 };
 
-/// Bitfield tracking the initialisation status of elements of primitive arrays.
-/// A pointer to this is embedded at the end of all primitive arrays.
-/// If the map was not yet created and nothing was initialized, the pointer to
-/// this structure is 0. If the object was fully initialized, the pointer is -1.
 struct InitMap final {
 private:
   /// Type packing bits.
@@ -203,6 +201,7 @@ private:
   /// Bits stored in a single field.
   static constexpr uint64_t PER_FIELD = sizeof(T) * CHAR_BIT;
 
+public:
   /// Initializes the map with no fields set.
   InitMap(unsigned N);
 
@@ -210,19 +209,19 @@ private:
   T *data();
   const T *data() const;
 
-public:
   /// Initializes an element. Returns true when object if fully initialized.
   bool initialize(unsigned I);
 
   /// Checks if an element was initialized.
   bool isInitialized(unsigned I) const;
 
-  /// Allocates a map holding N elements.
-  static InitMap *allocate(unsigned N);
-
 private:
+  static constexpr size_t numFields(unsigned N) {
+    return (N + PER_FIELD - 1) / PER_FIELD;
+  }
   /// Number of fields initialized.
   unsigned UninitFields;
+  std::unique_ptr<T[]> Data;
 };
 
 } // namespace interp
