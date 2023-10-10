@@ -84,6 +84,11 @@ public:
     return false;
   }
 
+#ifdef INCLUDED_FROM_UNITTEST
+  // Returns the program. This is only needed for unittests.
+  Program &getProgram() const { return *P.get(); }
+#endif
+
 private:
   /// Runs a function.
   bool Run(State &Parent, const Function *Func, APValue &Result);

@@ -78,6 +78,17 @@ public:
   void operator=(const Pointer &P);
   void operator=(Pointer &&P);
 
+#ifdef INCLUDED_FROM_UNITTEST
+  // Equality operators are just for tests.
+  bool operator==(const Pointer &P) const {
+    return Pointee == P.Pointee && Base == P.Base && Offset == P.Offset;
+  }
+
+  bool operator!=(const Pointer &P) const {
+    return Pointee != P.Pointee || Base != P.Base || Offset != P.Offset;
+  }
+#endif
+
   /// Converts the pointer to an APValue.
   APValue toAPValue() const;
 
@@ -276,7 +287,8 @@ public:
   const Record *getRecord() const { return getFieldDesc()->ElemRecord; }
   /// Returns the element record type, if this is a non-primive array.
   const Record *getElemRecord() const {
-    return getFieldDesc()->ElemDesc->ElemRecord;
+    const Descriptor *ElemDesc = getFieldDesc()->ElemDesc;
+    return ElemDesc ? ElemDesc->ElemRecord : nullptr;
   }
   /// Returns the field information.
   const FieldDecl *getField() const { return getFieldDesc()->asFieldDecl(); }
@@ -326,6 +338,11 @@ public:
   int64_t getIndex() const {
     if (isElementPastEnd())
       return 1;
+
+    // narrow()ed element in a composite array.
+    if (Base > 0 && Base == Offset)
+      return 0;
+
     if (auto ElemSize = elemSize())
       return getOffset() / ElemSize;
     return 0;
