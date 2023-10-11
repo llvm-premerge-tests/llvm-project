@@ -10,6 +10,8 @@
 #define LLVM_LIB_TARGET_RISCV_MCTARGETDESC_MATINT_H
 
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/MC/MCInst.h"
+#include "llvm/MC/MCRegisterInfo.h"
 #include "llvm/TargetParser/SubtargetFeature.h"
 #include <cstdint>
 
@@ -55,6 +57,11 @@ InstSeq generateInstSeq(int64_t Val, const FeatureBitset &ActiveFeatures);
 // provides the SLLI and AddOpc indicates ADD or ADD_UW.
 InstSeq generateTwoRegInstSeq(int64_t Val, const FeatureBitset &ActiveFeatures,
                               unsigned &ShiftAmt, unsigned &AddOpc);
+
+// Helper to generate the generateInstSeq instruction sequence using MCInsts
+SmallVector<MCInst, 8> generateMCInstSeq(int64_t Val,
+                                         const FeatureBitset &ActiveFeatures,
+                                         MCRegister DestReg);
 
 // Helper to estimate the number of instructions required to materialise the
 // given immediate value into a register. This estimate does not account for
