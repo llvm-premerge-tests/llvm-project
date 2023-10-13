@@ -812,6 +812,8 @@ static bool isConstantOne(VPValue *V) {
 static unsigned getOpcodeForRecipe(VPRecipeBase &R) {
   if (auto *WidenR = dyn_cast<VPWidenRecipe>(&R))
     return WidenR->getUnderlyingInstr()->getOpcode();
+  if (auto *WidenC = dyn_cast<VPWidenCastRecipe>(&R))
+    return WidenC->getOpcode();
   if (auto *RepR = dyn_cast<VPReplicateRecipe>(&R))
     return RepR->getUnderlyingInstr()->getOpcode();
   if (auto *VPI = dyn_cast<VPInstruction>(&R))
@@ -819,16 +821,39 @@ static unsigned getOpcodeForRecipe(VPRecipeBase &R) {
   return 0;
 }
 
+/// Return the scalar size in bits for \p VPV if possible.
+static unsigned getTypeSizeInBits(VPValue *VPV) {
+  if (auto *VPC = dyn_cast<VPWidenCastRecipe>(VPV))
+    return VPC->getResultType()->getScalarSizeInBits();
+  auto *UV = VPV->getUnderlyingValue();
+  return UV->getType()->getScalarSizeInBits();
+}
+
 /// Try to simplify recipe \p R.
 static void simplifyRecipe(VPRecipeBase &R) {
-  unsigned Opcode = getOpcodeForRecipe(R);
-  if (Opcode == Instruction::Mul) {
+  switch (getOpcodeForRecipe(R)) {
+  case Instruction::Mul: {
     VPValue *A = R.getOperand(0);
     VPValue *B = R.getOperand(1);
     if (isConstantOne(A))
       return R.getVPSingleValue()->replaceAllUsesWith(B);
     if (isConstantOne(B))
       return R.getVPSingleValue()->replaceAllUsesWith(A);
+    break;
+  }
+  case Instruction::Trunc: {
+    VPValue *A = R.getOperand(0);
+    VPRecipeBase *ADef = A->getDefiningRecipe();
+    // Simplify (trunc (zext A) to Ty) -> A if Ty is equal to the type of A.
+    if (!ADef || getOpcodeForRecipe(*ADef) != Instruction::ZExt)
+      break;
+    VPValue *RVal = R.getVPSingleValue();
+    if (getTypeSizeInBits(RVal) == getTypeSizeInBits(ADef->getOperand(0)))
+      RVal->replaceAllUsesWith(ADef->getOperand(0));
+    break;
+  }
+  default:
+    break;
   }
 }
 
