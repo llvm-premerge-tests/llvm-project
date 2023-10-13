@@ -202,7 +202,27 @@ static bool verifyVPBasicBlock(const VPBasicBlock *VPBB,
   for (const VPRecipeBase &R : *VPBB)
     RecipeNumbering[&R] = Cnt++;
 
+  // Check if VPEVLRecipe exists only in Entry block and only once.
+  bool VPEVLFound = false;
+  const VPBlockBase *Entry = VPBB->getPlan()->getVectorLoopRegion()->getEntry();
+  auto CheckEVLRecipies = [&](const VPRecipeBase *R) {
+    if (auto *RInst = dyn_cast<VPInstruction>(R);
+        RInst && RInst->getOpcode() == VPInstruction::ExplicitVectorLength) {
+      if (VPBB != Entry || VPEVLFound) {
+        if (VPBB != Entry)
+          errs() << "EVL recipe not in entry block!\n";
+        else
+          errs() << "EVL recipe inserted more than once!\n";
+        return false;
+      }
+      VPEVLFound = true;
+    }
+    return true;
+  };
+
   for (const VPRecipeBase &R : *VPBB) {
+    if (!CheckEVLRecipies(&R))
+      return false;
     for (const VPValue *V : R.definedValues()) {
       for (const VPUser *U : V->users()) {
         auto *UI = dyn_cast<VPRecipeBase>(U);

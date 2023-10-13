@@ -961,6 +961,35 @@ static VPActiveLaneMaskPHIRecipe *addVPLaneMaskPhiAndUpdateExitBranch(
   return LaneMaskPhi;
 }
 
+/// Replaces (ICMP_ULE, WideCanonicalIV, backedge-taken-count) pattern using
+/// the given idion \p Idiom.
+static void replaceExitConditionWithIdiom(VPlan &Plan, VPValue &Idiom) {
+  auto *FoundWidenCanonicalIVUser =
+      find_if(Plan.getCanonicalIV()->users(),
+              [](VPUser *U) { return isa<VPWidenCanonicalIVRecipe>(U); });
+  assert(FoundWidenCanonicalIVUser &&
+         "Must have widened canonical IV when tail folding!");
+  auto *WideCanonicalIV =
+      cast<VPWidenCanonicalIVRecipe>(*FoundWidenCanonicalIVUser);
+  // Walk users of WideCanonicalIV and replace all compares of the form
+  // (ICMP_ULE, WideCanonicalIV, backedge-taken-count) with
+  // the given idiom VPValue.
+  VPValue *BTC = Plan.getOrCreateBackedgeTakenCount();
+  for (VPUser *U : SmallVector<VPUser *>(WideCanonicalIV->users())) {
+    auto *CompareToReplace = dyn_cast<VPInstruction>(U);
+    if (!CompareToReplace ||
+        CompareToReplace->getOpcode() != Instruction::ICmp ||
+        CompareToReplace->getPredicate() != CmpInst::ICMP_ULE ||
+        CompareToReplace->getOperand(1) != BTC)
+      continue;
+
+    assert(CompareToReplace->getOperand(0) == WideCanonicalIV &&
+           "WidenCanonicalIV must be the first operand of the compare");
+    CompareToReplace->replaceAllUsesWith(&Idiom);
+    CompareToReplace->eraseFromParent();
+  }
+}
+
 void VPlanTransforms::addActiveLaneMask(
     VPlan &Plan, bool UseActiveLaneMaskForControlFlow,
     bool DataAndControlFlowWithoutRuntimeCheck) {
@@ -990,18 +1019,46 @@ void VPlanTransforms::addActiveLaneMask(
   // Walk users of WideCanonicalIV and replace all compares of the form
   // (ICMP_ULE, WideCanonicalIV, backedge-taken-count) with an
   // active-lane-mask.
-  VPValue *BTC = Plan.getOrCreateBackedgeTakenCount();
-  for (VPUser *U : SmallVector<VPUser *>(WideCanonicalIV->users())) {
-    auto *CompareToReplace = dyn_cast<VPInstruction>(U);
-    if (!CompareToReplace ||
-        CompareToReplace->getOpcode() != Instruction::ICmp ||
-        CompareToReplace->getPredicate() != CmpInst::ICMP_ULE ||
-        CompareToReplace->getOperand(1) != BTC)
-      continue;
+  replaceExitConditionWithIdiom(Plan, *LaneMask->getVPSingleValue());
+}
 
-    assert(CompareToReplace->getOperand(0) == WideCanonicalIV &&
-           "WidenCanonicalIV must be the first operand of the compare");
-    CompareToReplace->replaceAllUsesWith(LaneMask->getVPSingleValue());
-    CompareToReplace->eraseFromParent();
+void VPlanTransforms::addVectorPredication(VPlan &Plan) {
+  VPBasicBlock *Entry = Plan.getVectorLoopRegion()->getEntryBasicBlock();
+  // Now create the ExplicitVectorLengthExitPhi recipe in the main loop using
+  // the preheader ActiveLaneMask instruction.
+  auto *EVLExitPhi = new VPExplicitVectorLengthExitPHIRecipe(
+      Plan.getCanonicalIV()->getStartValue(), DebugLoc());
+  EVLExitPhi->insertBefore(*Entry, Entry->getFirstNonPhi());
+  auto *VPEVL =
+      new VPInstruction(VPInstruction::ExplicitVectorLength,
+                        {Plan.getCanonicalIV(), &Plan.getVectorTripCount()});
+  VPEVL->insertBefore(*Entry, Entry->getFirstNonPhi());
+  VPBasicBlock *EB = Plan.getVectorLoopRegion()->getExitingBasicBlock();
+  VPRecipeBase *Term = EB->getTerminator();
+  auto EndIter = Term ? Term->getIterator() : EB->end();
+  for (VPRecipeBase &Ingredient :
+       make_early_inc_range(make_range(EB->begin(), EndIter))) {
+    auto *I = dyn_cast<VPInstruction>(&Ingredient);
+    if (!I)
+      continue;
+    if (I->getOpcode() != VPInstruction::CanonicalIVIncrement)
+      continue;
+    auto *NewInst =
+        new VPInstruction(VPInstruction::ExplicitVectorLengthIVIncrement,
+                          {I->getOperand(0), VPEVL},
+                          {I->hasNoUnsignedWrap(), I->hasNoSignedWrap()},
+                          I->getDebugLoc(), "index.next");
+    NewInst->insertBefore(&Ingredient);
+    cast<VPCanonicalIVPHIRecipe>(I->getOperand(0))
+        ->setOperand(1, NewInst->getVPSingleValue());
+    EVLExitPhi->addOperand(I);
+    I->setOperand(0, EVLExitPhi->getVPSingleValue());
   }
+  // Walk users of WideCanonicalIV and replace all compares of the form
+  // (ICMP_ULE, WideCanonicalIV, backedge-taken-count) with an
+  // all-true-mask.
+  Value *TrueMask = ConstantInt::getTrue(
+      Plan.getCanonicalIV()->getScalarType()->getContext());
+  VPValue *VPTrueMask = Plan.getVPValueOrAddLiveIn(TrueMask);
+  replaceExitConditionWithIdiom(Plan, *VPTrueMask);
 }
