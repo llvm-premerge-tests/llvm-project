@@ -2736,6 +2736,28 @@ static StmtResult RebuildForRangeWithDereference(Sema &SemaRef, Scope *S,
       AdjustedRange.get(), RParenLoc, Sema::BFRK_Rebuild);
 }
 
+namespace {
+struct ForRangeInitTemporaryLifetimeExtensionVisitor
+    : public RecursiveASTVisitor<
+          ForRangeInitTemporaryLifetimeExtensionVisitor> {
+  InitializedEntity &Entity;
+  ForRangeInitTemporaryLifetimeExtensionVisitor(InitializedEntity &Entity)
+      : Entity(Entity) {}
+  bool VisitMaterializeTemporaryExpr(MaterializeTemporaryExpr *MTE) {
+    MTE->setExtendingDecl(Entity.getDecl(), Entity.allocateManglingNumber());
+    return RecursiveASTVisitor<
+        ForRangeInitTemporaryLifetimeExtensionVisitor>::VisitStmt(MTE);
+  }
+
+  bool VisitCXXDefaultArgExpr(CXXDefaultArgExpr *D) {
+    if (D->hasRewrittenInit())
+      TraverseStmt(D->getRewrittenExpr());
+    return RecursiveASTVisitor<
+        ForRangeInitTemporaryLifetimeExtensionVisitor>::VisitStmt(D);
+  }
+};
+} // namespace
+
 /// BuildCXXForRangeStmt - Build or instantiate a C++11 for-range statement.
 StmtResult Sema::BuildCXXForRangeStmt(SourceLocation ForLoc,
                                       SourceLocation CoawaitLoc, Stmt *InitStmt,
@@ -2779,6 +2801,13 @@ StmtResult Sema::BuildCXXForRangeStmt(SourceLocation ForLoc,
       LoopVar->setType(SubstAutoTypeDependent(LoopVar->getType()));
     }
   } else if (!BeginDeclStmt.get()) {
+    // P2718R0 - Lifetime extension in range-based for loops.
+    if (getLangOpts().CPlusPlus23) {
+      auto Entity = InitializedEntity::InitializeVariable(RangeVar);
+      ForRangeInitTemporaryLifetimeExtensionVisitor V(Entity);
+      V.TraverseStmt(RangeVar->getInit());
+    }
+
     SourceLocation RangeLoc = RangeVar->getLocation();
 
     const QualType RangeVarNonRefType = RangeVarType.getNonReferenceType();
