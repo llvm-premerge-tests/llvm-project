@@ -352,7 +352,12 @@ LnoR2Fix:
   std   0,  PPC64_OFFS_CR(3)
   mfxer 0
   std   0,  PPC64_OFFS_XER(3)
+#if defined(_AIX)
+  // LR value saved from the register is not used, initialize it to 0.
+  li 0, 0
+#else
   mflr  0
+#endif
   std   0,  PPC64_OFFS_LR(3)
   mfctr 0
   std   0,  PPC64_OFFS_CTR(3)
@@ -610,6 +615,11 @@ LnoR2Fix:
   // save CR registers
   mfcr    0
   stw     0, 136(3)
+#if defined(_AIX)
+  // LR value from the register is not used, initialize it to 0.
+  li      0, 0
+  stw     0, 144(3)
+#endif
   // save CTR register
   mfctr   0
   stw     0, 148(3)
