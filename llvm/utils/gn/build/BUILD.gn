@@ -266,7 +266,7 @@ config("compiler_defaults") {
         ]
       }
     }
-    if (is_clang && use_goma) {
+    if (is_clang && compiler_wrapper != "") {
       # goma converts all paths to lowercase on the server, breaking this
       # warning.
       cflags += [ "-Wno-nonportable-include-path" ]
@@ -373,9 +373,6 @@ config("compiler_defaults") {
   if (sysroot != "" && current_os != "win" && is_clang) {
     cflags += [ "-Wpoison-system-directories" ]
   }
-  assert(
-      !use_goma || sysroot != "",
-      "goma needs a sysroot: run `llvm/utils/sysroot.py make-fake --out-dir=sysroot` and add `sysroot = \"//sysroot\"` to your args.gn")
 
   if (use_ubsan) {
     assert(is_clang && (current_os == "ios" || current_os == "linux" ||
