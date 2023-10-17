@@ -59,7 +59,8 @@ struct VPlanTransforms {
   /// Apply VPlan-to-VPlan optimizations to \p Plan, including induction recipe
   /// optimizations, dead recipe removal, replicate region optimizations and
   /// block merging.
-  static void optimize(VPlan &Plan, ScalarEvolution &SE);
+  static void optimize(VPlan &Plan, ScalarEvolution &SE,
+                       const MapVector<Instruction *, uint64_t> &MinBWs);
 
   /// Wrap predicated VPReplicateRecipes with a mask operand in an if-then
   /// region block and remove the mask operand. Optimize the created regions by
@@ -78,6 +79,12 @@ struct VPlanTransforms {
   static void addActiveLaneMask(VPlan &Plan,
                                 bool UseActiveLaneMaskForControlFlow,
                                 bool DataAndControlFlowWithoutRuntimeCheck);
+
+  /// Insert truncates and extends for any truncated instructions as hints to
+  /// InstCombine.
+  static void
+  truncateToMinimalBitwidths(VPlan &Plan,
+                             const MapVector<Instruction *, uint64_t> &MinBWs);
 
 private:
   /// Remove redundant VPBasicBlocks by merging them into their predecessor if

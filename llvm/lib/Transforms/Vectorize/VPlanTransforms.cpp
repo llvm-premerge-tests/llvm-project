@@ -843,12 +843,130 @@ static void simplifyRecipes(VPlan &Plan) {
   }
 }
 
-void VPlanTransforms::optimize(VPlan &Plan, ScalarEvolution &SE) {
+void VPlanTransforms::truncateToMinimalBitwidths(
+    VPlan &Plan, const MapVector<Instruction *, uint64_t> &MinBWs) {
+#ifndef NDEBUG
+  unsigned ProcessedRecipes = 0;
+#endif
+  VPBasicBlock *PH =
+      cast<VPBasicBlock>(Plan.getVectorLoopRegion()->getSinglePredecessor());
+
+  // First truncate live-ins that represent relevant instructions.
+  for (VPValue *VPV : Plan.getLiveIns()) {
+    auto *LiveInInst = dyn_cast<Instruction>(VPV->getLiveInIRValue());
+    unsigned NewResSizeInBits = MinBWs.lookup(LiveInInst);
+    if (!LiveInInst || !NewResSizeInBits)
+      continue;
+
+    Type *ResTy = LiveInInst->getType();
+    if (!ResTy->isIntegerTy())
+      continue;
+
+    LLVMContext &Ctx = ResTy->getContext();
+    auto *NewResTy = IntegerType::get(Ctx, NewResSizeInBits);
+    auto *Shrunk = new VPWidenCastRecipe(Instruction::Trunc, VPV, NewResTy);
+    PH->appendRecipe(Shrunk);
+    VPV->replaceAllUsesWith(Shrunk);
+    Shrunk->setOperand(0, VPV);
+#ifndef NDEBUG
+    ProcessedRecipes++;
+#endif
+  }
+
+  for (VPBasicBlock *VPBB : VPBlockUtils::blocksOnly<VPBasicBlock>(
+           vp_depth_first_deep(Plan.getEntry()))) {
+    for (VPRecipeBase &R : make_early_inc_range(*VPBB)) {
+      if (auto *Mem = dyn_cast<VPWidenMemoryInstructionRecipe>(&R)) {
+#ifndef NDEBUG
+        ProcessedRecipes += MinBWs.count(&Mem->getIngredient());
+#endif
+        continue;
+      }
+      if (!isa<VPWidenRecipe, VPWidenCastRecipe, VPReplicateRecipe,
+               VPWidenSelectRecipe>(&R))
+        continue;
+
+      VPValue *ResultVPV = R.getVPSingleValue();
+      auto *UI = cast_or_null<Instruction>(ResultVPV->getUnderlyingValue());
+      unsigned NewResSizeInBits = MinBWs.lookup(UI);
+      if (!UI || !NewResSizeInBits)
+        continue;
+
+#ifndef NDEBUG
+      ProcessedRecipes++;
+#endif
+
+      // Only widen recipes are handled at the moment, but there may be entries
+      // for replicate recipes in MinBWs. Skip those here, after incrementing
+      // ProcessedRecipes.
+      if (isa<VPReplicateRecipe>(&R))
+        continue;
+      unsigned ResSizeInBits = getTypeSizeInBits(ResultVPV);
+      Type *ResTy = UI->getType();
+      assert(ResTy->isIntegerTy() && "only integer types supported");
+      if (ResSizeInBits == NewResSizeInBits)
+        continue;
+
+      LLVMContext &Ctx = ResTy->getContext();
+      auto *NewResTy = IntegerType::get(Ctx, NewResSizeInBits);
+
+      // Try to replace wider SExt/ZExts with narrower ones if possible.
+      if (auto *VPC = dyn_cast<VPWidenCastRecipe>(&R)) {
+        unsigned Opc = VPC->getOpcode();
+        if (Opc == Instruction::SExt || Opc == Instruction::ZExt) {
+          assert(ResSizeInBits > NewResSizeInBits && "Nothing to shrink?");
+          // SExt/Zext is redundant - stick with its operand.
+          Instruction::CastOps Opcode = VPC->getOpcode();
+          VPValue *Op = R.getOperand(0);
+          if (getTypeSizeInBits(Op) > NewResSizeInBits)
+            Opcode = Instruction::Trunc;
+          auto *C = new VPWidenCastRecipe(Opcode, Op, NewResTy);
+          C->insertBefore(VPC);
+          VPC->replaceAllUsesWith(C);
+          continue;
+        }
+      }
+
+      // Shrink operands by introducing truncates as needed.
+      unsigned StartIdx = isa<VPWidenSelectRecipe>(&R) ? 1 : 0;
+      for (unsigned Idx = StartIdx; Idx != R.getNumOperands(); ++Idx) {
+        auto *Op = R.getOperand(Idx);
+        unsigned OpSizeInBits = getTypeSizeInBits(Op);
+        if (OpSizeInBits == NewResSizeInBits)
+          continue;
+        assert(OpSizeInBits > NewResSizeInBits && "nothing to truncate");
+        auto *Shrunk = new VPWidenCastRecipe(Instruction::Trunc, Op, NewResTy);
+        Shrunk->insertBefore(&R);
+        R.setOperand(Idx, Shrunk);
+      }
+
+      if (auto *VPW = dyn_cast<VPRecipeWithIRFlags>(&R))
+        VPW->dropPoisonGeneratingFlags();
+
+      // Extend result to original width.
+      auto *Ext = new VPWidenCastRecipe(Instruction::ZExt, ResultVPV, ResTy);
+      Ext->insertAfter(&R);
+      ResultVPV->replaceAllUsesWith(Ext);
+      Ext->setOperand(0, ResultVPV);
+    }
+  }
+
+  assert(MinBWs.size() == ProcessedRecipes &&
+         "some entries in MinBWs haven't been processed");
+}
+
+void VPlanTransforms::optimize(
+    VPlan &Plan, ScalarEvolution &SE,
+    const MapVector<Instruction *, uint64_t> &MinBWs) {
   removeRedundantCanonicalIVs(Plan);
   removeRedundantInductionCasts(Plan);
-
   optimizeInductions(Plan, SE);
+
+  if (!Plan.hasVF(ElementCount::getFixed(1)))
+    truncateToMinimalBitwidths(Plan, MinBWs);
+
   simplifyRecipes(Plan);
+
   removeDeadRecipes(Plan);
 
   createAndOptimizeReplicateRegions(Plan);
