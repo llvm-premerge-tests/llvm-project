@@ -1348,6 +1348,12 @@ def warn_pragma_omp_ignored : Warning<
 def warn_omp_extra_tokens_at_eol : Warning<
   "extra tokens at the end of '#pragma omp %0' are ignored">,
   InGroup<ExtraTokens>;
+def warn_omp_extra_tokens_at_eo_simple_step_modifier : Warning<
+  "extra tokens at the end of 'simple step modifier' are ignored">,
+  InGroup<ExtraTokens>;
+def warn_omp_multiple_step_or_linear_modifier : Warning<
+  "multiple %select{'step size'|'linear modifier'}0 found, ignoring the previous one">,
+  InGroup<ExtraTokens>;
 def warn_pragma_expected_colon_r_paren : Warning<
   "missing ':' or ')' after %0 - ignoring">, InGroup<IgnoredPragmas>;
 def err_omp_unknown_directive : Error<
@@ -1384,6 +1390,8 @@ def err_omp_map_type_missing : Error<
   "missing map type">;
 def err_omp_map_type_modifier_missing : Error<
   "missing map type modifier">;
+def err_omp_step_simple_modifier_exclusive : Error<
+  "step simple modifier is exclusive and can't be use with 'val', 'uval', 'ref'  or 'step' modifier">;
 def err_omp_declare_simd_inbranch_notinbranch : Error<
   "unexpected '%0' clause, '%1' is specified already">;
 def err_omp_expected_clause_argument

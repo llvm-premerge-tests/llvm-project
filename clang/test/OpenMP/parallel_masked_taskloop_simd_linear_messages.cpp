@@ -1,6 +1,8 @@
 // RUN: %clang_cc1 -verify -fopenmp %s -Wuninitialized
+// RUN: %clang_cc1 -verify=expected,omp52 -fopenmp -fopenmp-version=52 -DOMP52 %s -Wuninitialized
 
 // RUN: %clang_cc1 -verify -fopenmp-simd %s -Wuninitialized
+// RUN: %clang_cc1 -verify=expected,omp52 -fopenmp-simd -fopenmp-version=52 -DOMP52 %s -Wuninitialized
 
 typedef void **omp_allocator_handle_t;
 extern const omp_allocator_handle_t omp_null_allocator;
@@ -14,8 +16,8 @@ extern const omp_allocator_handle_t omp_pteam_mem_alloc;
 extern const omp_allocator_handle_t omp_thread_mem_alloc;
 
 void xxx(int argc) {
-  int i, lin, step; // expected-note {{initialize the variable 'lin' to silence this warning}} expected-note {{initialize the variable 'step' to silence this warning}}
-#pragma omp parallel masked taskloop simd linear(i, lin : step) // expected-warning {{variable 'lin' is uninitialized when used here}} expected-warning {{variable 'step' is uninitialized when used here}}
+  int i, lin, step_sz; // expected-note {{initialize the variable 'lin' to silence this warning}} expected-note {{initialize the variable 'step_sz' to silence this warning}}
+#pragma omp parallel masked taskloop simd linear(i, lin : step_sz) // expected-warning {{variable 'lin' is uninitialized when used here}} expected-warning {{variable 'step_sz' is uninitialized when used here}}
   for (i = 0; i < 10; ++i)
     ;
 }
@@ -255,13 +257,31 @@ int main(int argc, char **argv) {
     int i;
     #pragma omp parallel masked taskloop simd linear(val(i))
     for (int k = 0; k < argc; ++k) ++k;
+#ifdef OMP52
+    #pragma omp parallel masked taskloop simd linear(i : uval, step(4)) // expected-error {{variable of non-reference type 'int' can be used only with 'val' modifier, but used with 'uval'}}
+#else
     #pragma omp parallel masked taskloop simd linear(uval(i) : 4) // expected-error {{variable of non-reference type 'int' can be used only with 'val' modifier, but used with 'uval'}}
+#endif
     for (int k = 0; k < argc; ++k) { ++k; i += 4; }
   }
+#ifdef OMP52
+  #pragma omp parallel masked taskloop simd linear(j: ref)
+#else  
   #pragma omp parallel masked taskloop simd linear(ref(j))
+#endif
   for (int k = 0; k < argc; ++k) ++k;
+#ifdef OMP52
+  #pragma omp parallel masked taskloop simd linear(i: step(1), step(2)) // omp52-warning {{multiple 'step size' found, ignoring the previous one}} 
+#else  
   #pragma omp parallel masked taskloop simd linear(i)
+#endif
   for (int k = 0; k < argc; ++k) ++k;
+#ifdef OMP52
+  #pragma omp parallel masked taskloop simd linear(j: step()) // omp52-error 2 {{expected expression}}
+  for (int k = 0; k < argc; ++k) ++k;
+  #pragma omp parallel masked taskloop simd linear(j: pval, step(1)) // omp52-error {{use of undeclared identifier 'pval'}} omp52-warning {{extra tokens at the end of 'simple step modifier' are ignored}}
+  for (int k = 0; k < argc; ++k) ++k;
+#endif
 
   foomain<int,char>(argc,argv); // expected-note {{in instantiation of function template specialization 'foomain<int, char>' requested here}}
   return 0;

@@ -2207,16 +2207,20 @@ void OMPClausePrinter::VisitOMPInReductionClause(OMPInReductionClause *Node) {
 void OMPClausePrinter::VisitOMPLinearClause(OMPLinearClause *Node) {
   if (!Node->varlist_empty()) {
     OS << "linear";
-    if (Node->getModifierLoc().isValid()) {
-      OS << '('
-         << getOpenMPSimpleClauseTypeName(OMPC_linear, Node->getModifier());
-    }
     VisitOMPClauseList(Node, '(');
-    if (Node->getModifierLoc().isValid())
-      OS << ')';
-    if (Node->getStep() != nullptr) {
+    if (Node->getModifierLoc().isValid() || Node->getStep() != nullptr) {
       OS << ": ";
+    }
+    if (Node->getModifierLoc().isValid()) {
+      OS << getOpenMPSimpleClauseTypeName(OMPC_linear, Node->getModifier());
+    }
+    if (Node->getStep() != nullptr) {
+      if (Node->getModifierLoc().isValid()) {
+        OS << ", ";
+      }
+      OS << "step(";
       Node->getStep()->printPretty(OS, nullptr, Policy, 0);
+      OS << ")";
     }
     OS << ")";
   }
