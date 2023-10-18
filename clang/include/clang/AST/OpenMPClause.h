@@ -2308,6 +2308,137 @@ public:
   }
 };
 
+/// This represents 'fail' clause in the '#pragma omp atomic'
+/// directive.
+///
+/// \code
+/// #pragma omp atomic compare fail
+/// \endcode
+/// In this example directive '#pragma omp atomic compare' has 'fail' clause.
+class OMPFailClause final : public OMPClause {
+
+  OMPClause *MemoryOrderClause = nullptr;
+  OpenMPClauseKind FailParameter = llvm::omp::OMPC_unknown;
+  SourceLocation ArgumentLoc;
+  SourceLocation LParenLoc;
+
+  friend class OMPClauseReader;
+
+  /// Sets the location of '(' in fail clause.
+  void setLParenLoc(SourceLocation Loc) {
+    LParenLoc = Loc;
+  }
+
+  /// Sets the location of memoryOrder clause argument in fail clause.
+  void setArgumentLoc(SourceLocation Loc) {
+    ArgumentLoc = Loc;
+  }
+
+  /// Sets the mem_order clause for 'atomic compare fail' directive.
+  void setMemoryOrderClauseKind(OpenMPClauseKind MemOrderKind) {
+
+    switch (MemOrderKind) {
+    case llvm::omp::OMPC_acq_rel:
+    case llvm::omp::OMPC_acquire:
+      FailParameter = llvm::omp::OMPC_acquire;
+      break;
+    case llvm::omp::OMPC_relaxed:
+    case llvm::omp::OMPC_release:
+      FailParameter = llvm::omp::OMPC_relaxed;
+      break;
+    case llvm::omp::OMPC_seq_cst:
+      FailParameter = llvm::omp::OMPC_seq_cst;
+      break;
+    default:
+      FailParameter = llvm::omp::OMPC_unknown;
+      break;
+    }
+  }
+
+  /// Sets the mem_order clause for 'atomic compare fail' directive.
+  void setMemoryOrderClause(OMPClause *MemoryOrderClause) {
+    this->MemoryOrderClause = MemoryOrderClause;
+  }
+
+public:
+  /// Build 'fail' clause.
+  ///
+  /// \param StartLoc Starting location of the clause.
+  /// \param EndLoc Ending location of the clause.
+  OMPFailClause(SourceLocation StartLoc, SourceLocation EndLoc)
+      : OMPClause(llvm::omp::OMPC_fail, StartLoc, EndLoc) {}
+
+  OMPFailClause(OpenMPClauseKind FailParameter, SourceLocation ArgumentLoc,
+                SourceLocation StartLoc, SourceLocation LParenLoc,
+		SourceLocation EndLoc)
+      : OMPClause(llvm::omp::OMPC_fail, StartLoc, EndLoc), ArgumentLoc(ArgumentLoc), LParenLoc(LParenLoc)  {
+
+    setMemoryOrderClauseKind(FailParameter);
+  }
+
+  /// Build an empty clause.
+  OMPFailClause()
+      : OMPClause(llvm::omp::OMPC_fail, SourceLocation(), SourceLocation()) {}
+
+  static OMPFailClause *CreateEmpty(const ASTContext &C);
+  static OMPFailClause *Create(const ASTContext &C, SourceLocation StartLoc,
+                               SourceLocation EndLoc);
+  static OMPFailClause *Create(const ASTContext &C,
+		OpenMPClauseKind FailParameter, 
+		SourceLocation ArgumentLoc,
+                SourceLocation StartLoc, SourceLocation LParenLoc,
+		SourceLocation EndLoc);
+
+  child_range children() {
+    return child_range(child_iterator(), child_iterator());
+  }
+
+  const_child_range children() const {
+    return const_child_range(const_child_iterator(), const_child_iterator());
+  }
+
+  child_range used_children() {
+    return child_range(child_iterator(), child_iterator());
+  }
+  const_child_range used_children() const {
+    return const_child_range(const_child_iterator(), const_child_iterator());
+  }
+
+  static bool classof(const OMPClause *T) {
+    return T->getClauseKind() == llvm::omp::OMPC_fail;
+  }
+
+  void initFailClause(SourceLocation LParenLoc, OMPClause *MemOClause,
+                      SourceLocation MemOrderLoc) {
+
+    setLParenLoc(LParenLoc);
+    MemoryOrderClause = MemOClause;
+    setArgumentLoc(MemOrderLoc);
+
+    OpenMPClauseKind ClauseKind = MemoryOrderClause->getClauseKind();
+    setMemoryOrderClauseKind(ClauseKind);
+  }
+
+  /// Gets the location of '(' in fail clause.
+  SourceLocation getLParenLoc() const {
+    return LParenLoc;
+  }
+
+  OMPClause *getMemoryOrderClause() { return MemoryOrderClause; }
+
+  const OMPClause *const_getMemoryOrderClause() const {
+    return static_cast<const OMPClause *>(MemoryOrderClause);
+  }
+
+  /// Gets the location of memoryOrder clause argument in fail clause.
+  SourceLocation getArgumentLoc() const {
+    return ArgumentLoc;
+  }
+
+  /// Gets the dependence kind in clause for 'depobj' directive.
+  OpenMPClauseKind getMemoryOrderClauseKind() const { return FailParameter; }
+};
+
 /// This represents 'seq_cst' clause in the '#pragma omp atomic'
 /// directive.
 ///

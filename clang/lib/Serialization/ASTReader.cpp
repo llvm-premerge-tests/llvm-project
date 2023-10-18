@@ -10275,6 +10275,9 @@ OMPClause *OMPClauseReader::readClause() {
   case llvm::omp::OMPC_compare:
     C = new (Context) OMPCompareClause();
     break;
+  case llvm::omp::OMPC_fail:
+    C = OMPFailClause::CreateEmpty(Context);
+    break;
   case llvm::omp::OMPC_seq_cst:
     C = new (Context) OMPSeqCstClause();
     break;
@@ -10667,6 +10670,31 @@ void OMPClauseReader::VisitOMPUpdateClause(OMPUpdateClause *C) {
 void OMPClauseReader::VisitOMPCaptureClause(OMPCaptureClause *) {}
 
 void OMPClauseReader::VisitOMPCompareClause(OMPCompareClause *) {}
+
+// Read the parameter of fail clause. This will have been saved when
+// OMPClauseWriter is called.
+void OMPClauseReader::VisitOMPFailClause(OMPFailClause *C) {
+  C->setLParenLoc(Record.readSourceLocation());
+  SourceLocation SourceLoc = Record.readSourceLocation();
+  C->setArgumentLoc(SourceLoc);
+  OpenMPClauseKind CKind = Record.readEnum<OpenMPClauseKind>();
+  C->setMemoryOrderClauseKind(CKind);
+
+  SourceLocation EndLoc;
+  OMPClause *MemoryOrderClause = NULL;
+  switch (CKind) {
+  case llvm::omp::OMPC_acquire:
+    MemoryOrderClause = new (Context) OMPAcquireClause(SourceLoc, EndLoc);
+    break;
+  case llvm::omp::OMPC_relaxed:
+    MemoryOrderClause = new (Context) OMPRelaxedClause(SourceLoc, EndLoc);
+    break;
+  case llvm::omp::OMPC_seq_cst:
+    MemoryOrderClause = new (Context) OMPSeqCstClause(SourceLoc, EndLoc);
+    break;
+  }
+  C->setMemoryOrderClause(MemoryOrderClause);
+}
 
 void OMPClauseReader::VisitOMPSeqCstClause(OMPSeqCstClause *) {}
 
