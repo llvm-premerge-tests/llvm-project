@@ -79,6 +79,13 @@ struct VPlanTransforms {
                                 bool UseActiveLaneMaskForControlFlow,
                                 bool DataAndControlFlowWithoutRuntimeCheck);
 
+  /// Add a VPExplicitVectorLengthPHIRecipe and related recipes to \p Plan and
+  /// replaces all uses of VPCanonicalIVPHIRecipe with a
+  /// VPExplicitVectorLengthPHIRecipe. The only user instructions are
+  /// CanonicalIVIncrement and branch-on-count. VPCanonicalIVPHIRecipe is used
+  /// only for loop iterations counting after this transformation.
+  static void addVectorPredication(VPlan &Plan);
+
 private:
   /// Remove redundant VPBasicBlocks by merging them into their predecessor if
   /// the predecessor has a single successor.
