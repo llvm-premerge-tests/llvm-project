@@ -486,6 +486,27 @@
 # CHECK-NEXT:      ],
 # CHECK-NEXT:      "command": "clangd.applyFix",
 # CHECK-NEXT:      "title": "Apply fix: fix all includes"
+# CHECK-NEXT:    },
+# CHECK-NEXT: {
+# CHECK-NEXT:      "arguments": [
+# CHECK-NEXT:        {
+# CHECK-NEXT:          "file": "file:///clangd-test/simple.cpp",
+# CHECK-NEXT:          "requestedActionKinds": [],
+# CHECK-NEXT:          "selection": {
+# CHECK-NEXT:            "end": {
+# CHECK-NEXT:              "character": 17,
+# CHECK-NEXT:              "line": 0
+# CHECK-NEXT:            },
+# CHECK-NEXT:            "start": {
+# CHECK-NEXT:              "character": 0,
+# CHECK-NEXT:              "line": 0
+# CHECK-NEXT:            }
+# CHECK-NEXT:          },
+# CHECK-NEXT:          "tweakID": "OrganizeImports"
+# CHECK-NEXT:        }
+# CHECK-NEXT:      ],
+# CHECK-NEXT:      "command": "clangd.applyTweak",
+# CHECK-NEXT:      "title": "Remove unused and add missing includes"
 # CHECK-NEXT:    }
 # CHECK-NEXT:  ]
 ---

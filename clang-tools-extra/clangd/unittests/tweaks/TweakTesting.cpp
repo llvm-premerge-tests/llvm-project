@@ -8,6 +8,7 @@
 
 #include "TweakTesting.h"
 
+#include "Protocol.h"
 #include "SourceCode.h"
 #include "TestTU.h"
 #include "refactor/Tweak.h"
@@ -16,6 +17,7 @@
 #include "gtest/gtest.h"
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace clang {
 namespace clangd {
@@ -63,12 +65,14 @@ llvm::Annotations::Range rangeOrPoint(const llvm::Annotations &A) {
 // Returns std::nullopt if and only if prepare() failed.
 std::optional<llvm::Expected<Tweak::Effect>>
 applyTweak(ParsedAST &AST, llvm::Annotations::Range Range, StringRef TweakID,
-           const SymbolIndex *Index, llvm::vfs::FileSystem *FS) {
+           const SymbolIndex *Index, llvm::vfs::FileSystem *FS,
+           const std::vector<std::string> &RequestedActionKinds) {
   std::optional<llvm::Expected<Tweak::Effect>> Result;
   SelectionTree::createEach(AST.getASTContext(), AST.getTokens(), Range.Begin,
                             Range.End, [&](SelectionTree ST) {
                               Tweak::Selection S(Index, AST, Range.Begin,
-                                                 Range.End, std::move(ST), FS);
+                                                 Range.End, std::move(ST), FS,
+                                                 RequestedActionKinds);
                               if (auto T = prepareTweak(TweakID, S, nullptr)) {
                                 Result = (*T)->apply(S);
                                 return true;
@@ -82,8 +86,10 @@ applyTweak(ParsedAST &AST, llvm::Annotations::Range Range, StringRef TweakID,
 
 } // namespace
 
-std::string TweakTest::apply(llvm::StringRef MarkedCode,
-                             llvm::StringMap<std::string> *EditedFiles) const {
+std::string
+TweakTest::apply(llvm::StringRef MarkedCode,
+                 llvm::StringMap<std::string> *EditedFiles,
+                 const std::vector<std::string> &RequestedActionKinds) const {
   std::string WrappedCode = wrap(Context, MarkedCode);
   llvm::Annotations Input(WrappedCode);
   TestTU TU;
@@ -96,7 +102,8 @@ std::string TweakTest::apply(llvm::StringRef MarkedCode,
 
   auto Result = applyTweak(
       AST, rangeOrPoint(Input), TweakID, Index.get(),
-      &AST.getSourceManager().getFileManager().getVirtualFileSystem());
+      &AST.getSourceManager().getFileManager().getVirtualFileSystem(),
+      RequestedActionKinds);
   if (!Result)
     return "unavailable";
   if (!*Result)
@@ -126,14 +133,16 @@ std::string TweakTest::apply(llvm::StringRef MarkedCode,
   return EditedMainFile;
 }
 
-bool TweakTest::isAvailable(WrappedAST &AST,
-                            llvm::Annotations::Range Range) const {
+bool TweakTest::isAvailable(
+    WrappedAST &AST, llvm::Annotations::Range Range,
+    const std::vector<std::string> &RequestedActionKinds) const {
   // Adjust range for wrapping offset.
   Range.Begin += AST.second;
   Range.End += AST.second;
   auto Result = applyTweak(
       AST.first, Range, TweakID, Index.get(),
-      &AST.first.getSourceManager().getFileManager().getVirtualFileSystem());
+      &AST.first.getSourceManager().getFileManager().getVirtualFileSystem(),
+      RequestedActionKinds);
   // We only care if prepare() succeeded, but must handle Errors.
   if (Result && !*Result)
     consumeError(Result->takeError());

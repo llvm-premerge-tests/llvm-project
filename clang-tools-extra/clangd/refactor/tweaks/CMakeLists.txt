@@ -24,6 +24,7 @@ add_clang_library(clangDaemonTweaks OBJECT
   MemberwiseConstructor.cpp
   ObjCLocalizeStringLiteral.cpp
   ObjCMemberwiseInitializer.cpp
+  OrganizeImports.cpp
   PopulateSwitch.cpp
   RawStringLiteral.cpp
   RemoveUsingNamespace.cpp

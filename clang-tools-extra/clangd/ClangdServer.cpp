@@ -629,7 +629,8 @@ void ClangdServer::rename(PathRef File, Position Pos, llvm::StringRef NewName,
 // vector of pointers because GCC doesn't like non-copyable Selection.
 static llvm::Expected<std::vector<std::unique_ptr<Tweak::Selection>>>
 tweakSelection(const Range &Sel, const InputsAndAST &AST,
-               llvm::vfs::FileSystem *FS) {
+               llvm::vfs::FileSystem *FS,
+               const std::vector<std::string> &RequestedActionKinds) {
   auto Begin = positionToOffset(AST.Inputs.Contents, Sel.start);
   if (!Begin)
     return Begin.takeError();
@@ -637,13 +638,14 @@ tweakSelection(const Range &Sel, const InputsAndAST &AST,
   if (!End)
     return End.takeError();
   std::vector<std::unique_ptr<Tweak::Selection>> Result;
-  SelectionTree::createEach(
-      AST.AST.getASTContext(), AST.AST.getTokens(), *Begin, *End,
-      [&](SelectionTree T) {
-        Result.push_back(std::make_unique<Tweak::Selection>(
-            AST.Inputs.Index, AST.AST, *Begin, *End, std::move(T), FS));
-        return false;
-      });
+  SelectionTree::createEach(AST.AST.getASTContext(), AST.AST.getTokens(),
+                            *Begin, *End, [&](SelectionTree T) {
+                              Result.push_back(
+                                  std::make_unique<Tweak::Selection>(
+                                      AST.Inputs.Index, AST.AST, *Begin, *End,
+                                      std::move(T), FS, RequestedActionKinds));
+                              return false;
+                            });
   assert(!Result.empty() && "Expected at least one SelectionTree");
   return std::move(Result);
 }
@@ -681,7 +683,8 @@ void ClangdServer::codeAction(const CodeActionInputs &Params,
     }
 
     // Collect Tweaks
-    auto Selections = tweakSelection(Params.Selection, *InpAST, /*FS=*/nullptr);
+    auto Selections = tweakSelection(Params.Selection, *InpAST, /*FS=*/nullptr,
+                                     Params.RequestedActionKinds);
     if (!Selections)
       return CB(Selections.takeError());
     // Don't allow a tweak to fire more than once across ambiguous selections.
@@ -704,7 +707,7 @@ void ClangdServer::codeAction(const CodeActionInputs &Params,
                             Transient);
 }
 
-void ClangdServer::applyTweak(PathRef File, Range Sel, StringRef TweakID,
+void ClangdServer::applyTweak(std::string TweakID, CodeActionInputs Inputs,
                               Callback<Tweak::Effect> CB) {
   // Tracks number of times a tweak has been attempted.
   static constexpr trace::Metric TweakAttempt(
@@ -713,13 +716,14 @@ void ClangdServer::applyTweak(PathRef File, Range Sel, StringRef TweakID,
   static constexpr trace::Metric TweakFailed(
       "tweak_failed", trace::Metric::Counter, "tweak_id");
   TweakAttempt.record(1, TweakID);
-  auto Action = [File = File.str(), Sel, TweakID = TweakID.str(),
-                 CB = std::move(CB),
+  auto Action = [File = Inputs.File, Sel = std::move(Inputs.Selection),
+                 TweakID = std::move(TweakID), CB = std::move(CB),
+                 ActionKinds = std::move(Inputs.RequestedActionKinds),
                  this](Expected<InputsAndAST> InpAST) mutable {
     if (!InpAST)
       return CB(InpAST.takeError());
     auto FS = DirtyFS->view(std::nullopt);
-    auto Selections = tweakSelection(Sel, *InpAST, FS.get());
+    auto Selections = tweakSelection(Sel, *InpAST, FS.get(), ActionKinds);
     if (!Selections)
       return CB(Selections.takeError());
     std::optional<llvm::Expected<Tweak::Effect>> Effect;
@@ -748,7 +752,7 @@ void ClangdServer::applyTweak(PathRef File, Range Sel, StringRef TweakID,
     }
     return CB(std::move(*Effect));
   };
-  WorkScheduler->runWithAST("ApplyTweak", File, std::move(Action));
+  WorkScheduler->runWithAST("ApplyTweak", Inputs.File, std::move(Action));
 }
 
 void ClangdServer::locateSymbolAt(PathRef File, Position Pos,

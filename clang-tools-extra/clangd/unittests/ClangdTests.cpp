@@ -1303,12 +1303,15 @@ TEST(ClangdServer, RespectsTweakFormatting) {
 
   // Ensure that disabled formatting is respected.
   Notification N;
-  Server.applyTweak(FooCpp, {}, TweakID, [&](llvm::Expected<Tweak::Effect> E) {
-    ASSERT_TRUE(static_cast<bool>(E));
-    EXPECT_THAT(llvm::cantFail(E->ApplyEdits.lookup(FooCpp).apply()),
-                NewContents);
-    N.notify();
-  });
+  ClangdServer::CodeActionInputs Inputs;
+  Inputs.File = FooCpp;
+  Server.applyTweak(
+      TweakID, Inputs, [&](llvm::Expected<Tweak::Effect> E) {
+        ASSERT_TRUE(static_cast<bool>(E));
+        EXPECT_THAT(llvm::cantFail(E->ApplyEdits.lookup(FooCpp).apply()),
+                    NewContents);
+        N.notify();
+      });
   N.wait();
 }
 

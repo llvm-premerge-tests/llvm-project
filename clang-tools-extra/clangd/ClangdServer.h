@@ -386,8 +386,8 @@ public:
   void codeAction(const CodeActionInputs &Inputs,
                   Callback<CodeActionResult> CB);
 
-  /// Apply the code tweak with a specified \p ID.
-  void applyTweak(PathRef File, Range Sel, StringRef ID,
+  /// Apply the code tweak with a specified \p tweakID.
+  void applyTweak(std::string TweakID, CodeActionInputs Inputs,
                   Callback<Tweak::Effect> CB);
 
   /// Called when an event occurs for a watched file in the workspace.

@@ -33,6 +33,7 @@
 # CHECK-NEXT:      "arguments": [
 # CHECK-NEXT:        {
 # CHECK-NEXT:          "file": "file://{{.*}}/clangd-test/main.cpp",
+# CHECK-NEXT:          "requestedActionKinds": [],
 # CHECK-NEXT:          "selection": {
 # CHECK-NEXT:            "end": {
 # CHECK-NEXT:              "character": 4,
@@ -92,7 +93,7 @@
 # CHECK-NEXT:  "result": [
 # CHECK-NEXT:    {
 ---
-{"jsonrpc":"2.0","id":4,"method":"workspace/executeCommand","params":{"command":"clangd.applyTweak","arguments":[{"file":"test:///main.cpp","selection":{"end":{"character":4,"line":0},"start":{"character":0,"line":0}},"tweakID":"ExpandDeducedType"}]}}
+{"jsonrpc":"2.0","id":4,"method":"workspace/executeCommand","params":{"command":"clangd.applyTweak","arguments":[{"file":"test:///main.cpp","requestedActionKinds": [],"selection":{"end":{"character":4,"line":0},"start":{"character":0,"line":0}},"tweakID":"ExpandDeducedType"}]}}
 #      CHECK:    "newText": "int",
 # CHECK-NEXT:    "range": {
 # CHECK-NEXT:      "end": {

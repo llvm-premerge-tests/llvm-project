@@ -28,6 +28,7 @@
 #include "clang-include-cleaner/Record.h"
 #include "support/Path.h"
 #include "clang/Frontend/FrontendAction.h"
+#include "clang/Lex/Lexer.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Tooling/Syntax/Tokens.h"
 #include "llvm/ADT/ArrayRef.h"
@@ -118,6 +119,9 @@ public:
   /// AST. Might be std::nullopt if no Preamble is used.
   std::optional<llvm::StringRef> preambleVersion() const;
 
+  // Describes the bounds of the preamble.
+  std::optional<PreambleBounds> getPreambleBounds() const { return Bounds; }
+
   const HeuristicResolver *getHeuristicResolver() const {
     return Resolver.get();
   }
@@ -129,7 +133,8 @@ private:
             std::unique_ptr<FrontendAction> Action, syntax::TokenBuffer Tokens,
             MainFileMacros Macros, std::vector<PragmaMark> Marks,
             std::vector<Decl *> LocalTopLevelDecls, std::vector<Diag> Diags,
-            IncludeStructure Includes);
+            IncludeStructure Includes,
+            std::optional<PreambleBounds> PreambleBounds);
   Path TUPath;
   std::string Version;
   // In-memory preambles must outlive the AST, it is important that this member
@@ -160,6 +165,8 @@ private:
   std::vector<Decl *> LocalTopLevelDecls;
   IncludeStructure Includes;
   std::unique_ptr<HeuristicResolver> Resolver;
+  // Describes the preamble bounds.
+  std::optional<PreambleBounds> Bounds;
 };
 
 } // namespace clangd

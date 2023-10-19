@@ -716,10 +716,13 @@ ParsedAST::build(llvm::StringRef Filename, const ParseInputs &Inputs,
     std::vector<Diag> D = ASTDiags.take(&*CTContext);
     Diags.insert(Diags.end(), D.begin(), D.end());
   }
+  std::optional<PreambleBounds> Bounds;
+  if (Patch)
+    Bounds = Patch->modifiedBounds();
   ParsedAST Result(Filename, Inputs.Version, std::move(Preamble),
                    std::move(Clang), std::move(Action), std::move(Tokens),
                    std::move(Macros), std::move(Marks), std::move(ParsedDecls),
-                   std::move(Diags), std::move(Includes));
+                   std::move(Diags), std::move(Includes), std::move(Bounds));
   llvm::move(getIncludeCleanerDiags(Result, Inputs.Contents),
              std::back_inserter(Result.Diags));
   return std::move(Result);
@@ -812,13 +815,14 @@ ParsedAST::ParsedAST(PathRef TUPath, llvm::StringRef Version,
                      syntax::TokenBuffer Tokens, MainFileMacros Macros,
                      std::vector<PragmaMark> Marks,
                      std::vector<Decl *> LocalTopLevelDecls,
-                     std::vector<Diag> Diags, IncludeStructure Includes)
+                     std::vector<Diag> Diags, IncludeStructure Includes,
+                     std::optional<PreambleBounds> Bounds)
     : TUPath(TUPath), Version(Version), Preamble(std::move(Preamble)),
       Clang(std::move(Clang)), Action(std::move(Action)),
       Tokens(std::move(Tokens)), Macros(std::move(Macros)),
       Marks(std::move(Marks)), Diags(std::move(Diags)),
       LocalTopLevelDecls(std::move(LocalTopLevelDecls)),
-      Includes(std::move(Includes)) {
+      Includes(std::move(Includes)), Bounds(Bounds) {
   Resolver = std::make_unique<HeuristicResolver>(getASTContext());
   assert(this->Clang);
   assert(this->Action);
