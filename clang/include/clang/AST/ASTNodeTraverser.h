@@ -214,10 +214,26 @@ public:
   }
 
   void Visit(const OMPClause *C) {
+    if (const auto *OMPC = dyn_cast<OMPFailClause>(C)) {
+      // Parameter of the OMPFailClause is a MemoryClause.
+      // e.g. in case of -ast-dump to see this parameter of the FailClause
+      // we have a special logic to call Visit(const OMPFailClause *C).
+      Visit(OMPC);
+      return;
+    }
+
     getNodeDelegate().AddChild([=] {
       getNodeDelegate().Visit(C);
       for (const auto *S : C->children())
         Visit(S);
+    });
+  }
+
+  void Visit(const OMPFailClause *C) {
+    getNodeDelegate().AddChild([=] {
+      getNodeDelegate().Visit(C);
+      const OMPClause *MOC = C->getMemoryOrderClause();
+      Visit(MOC);
     });
   }
 
