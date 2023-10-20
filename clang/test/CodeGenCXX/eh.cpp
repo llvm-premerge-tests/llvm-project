@@ -1,5 +1,6 @@
-// RUN: %clang_cc1 -fcxx-exceptions -fexceptions -triple x86_64-apple-macosx10.13.99 -std=c++11 -emit-llvm -o - %s | FileCheck --check-prefix=CHECK --check-prefix=UNALIGNED %s
-// RUN: %clang_cc1 -fcxx-exceptions -fexceptions -triple x86_64-apple-macosx10.14 -std=c++11 -emit-llvm -o - %s | FileCheck --check-prefix=CHECK --check-prefix=ALIGNED %s
+// RUN: %clang_cc1 -fcxx-exceptions -fexceptions -triple x86_64-apple-macosx10.13.99 -std=c++11 -emit-llvm -o - %s | FileCheck --check-prefixes=CHECK,UNALIGNED,THROWEND %s
+// RUN: %clang_cc1 -fcxx-exceptions -fexceptions -triple x86_64-apple-macosx10.14 -std=c++11 -emit-llvm -o - %s | FileCheck --check-prefixes=CHECK,ALIGNED,THROWEND %s
+// RUN: %clang_cc1 -fcxx-exceptions -fexceptions -triple x86_64-apple-macosx10.14 -std=c++11 -emit-llvm -o - %s -fassume-nothrow-exception-dtor | FileCheck --check-prefixes=CHECK,ALIGNED,NOTHROWEND %s
 
 struct test1_D {
   double d;
@@ -218,13 +219,16 @@ namespace test10 {
     } catch (B a) {
     // CHECK:      call ptr @__cxa_begin_catch
     // CHECK-NEXT: call void @llvm.memcpy
-    // CHECK-NEXT: invoke void @__cxa_end_catch()
+    // THROWEND-NEXT:   invoke void @__cxa_end_catch()
+    // NOTHROWEND-NEXT: call void @__cxa_end_catch() [[NUW]]
     } catch (...) {
     // CHECK:      call ptr @__cxa_begin_catch
-    // CHECK-NEXT: invoke void @__cxa_end_catch()
+    // THROWEND-NEXT:   invoke void @__cxa_end_catch()
+    // NOTHROWEND-NEXT: call void @__cxa_end_catch() [[NUW]]
     }
 
-    // CHECK: call void @_ZN6test101AD1Ev(
+    // THROWEND:       call void @_ZN6test101AD1Ev(
+    // NOTHROWEND-NOT: call void @_ZN6test101AD1Ev(
   }
 }
 
