@@ -130,6 +130,7 @@ const OMPClauseWithPreInit *OMPClauseWithPreInit::get(const OMPClause *C) {
   case OMPC_update:
   case OMPC_capture:
   case OMPC_compare:
+  case OMPC_fail:
   case OMPC_seq_cst:
   case OMPC_acq_rel:
   case OMPC_acquire:
@@ -227,6 +228,7 @@ const OMPClauseWithPostUpdate *OMPClauseWithPostUpdate::get(const OMPClause *C) 
   case OMPC_update:
   case OMPC_capture:
   case OMPC_compare:
+  case OMPC_fail:
   case OMPC_seq_cst:
   case OMPC_acq_rel:
   case OMPC_acquire:
@@ -420,6 +422,25 @@ OMPUpdateClause *OMPUpdateClause::CreateEmpty(const ASTContext &C,
   auto *Clause = new (Mem) OMPUpdateClause(/*IsExtended=*/true);
   Clause->IsExtended = true;
   return Clause;
+}
+
+OMPFailClause *OMPFailClause::Create(const ASTContext &C,
+                                     SourceLocation StartLoc,
+                                     SourceLocation EndLoc) {
+  return new (C) OMPFailClause(StartLoc, EndLoc);
+}
+
+OMPFailClause *OMPFailClause::CreateEmpty(const ASTContext &C) {
+  return new (C) OMPFailClause();
+}
+
+OMPFailClause *OMPFailClause::Create(const ASTContext &C,
+		OpenMPClauseKind FailParameter,
+		SourceLocation ArgumentLoc,
+                SourceLocation StartLoc, SourceLocation LParenLoc,
+		SourceLocation EndLoc) {
+  return new (C) OMPFailClause(FailParameter, ArgumentLoc, StartLoc, LParenLoc,
+		               EndLoc);
 }
 
 void OMPPrivateClause::setPrivateCopies(ArrayRef<Expr *> VL) {
@@ -1921,6 +1942,17 @@ void OMPClausePrinter::VisitOMPCaptureClause(OMPCaptureClause *) {
 
 void OMPClausePrinter::VisitOMPCompareClause(OMPCompareClause *) {
   OS << "compare";
+}
+
+void OMPClausePrinter::VisitOMPFailClause(OMPFailClause *Node) {
+  OS << "fail";
+  if (Node) {
+    OS << "(";
+    OS << getOpenMPSimpleClauseTypeName(
+        Node->getClauseKind(),
+        static_cast<int>(Node->getMemoryOrderClauseKind()));
+    OS << ")";
+  }
 }
 
 void OMPClausePrinter::VisitOMPSeqCstClause(OMPSeqCstClause *) {
