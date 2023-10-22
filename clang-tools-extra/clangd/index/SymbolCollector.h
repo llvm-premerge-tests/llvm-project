@@ -201,6 +201,7 @@ private:
     SourceLocation Loc;
     FileID FID;
     index::SymbolRoleSet Roles;
+    index::SymbolKind Kind;
     const Decl *Container;
     bool Spelled;
   };
