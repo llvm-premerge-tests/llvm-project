@@ -4392,6 +4392,25 @@ bool Parser::ParseOpenMPReservedLocator(OpenMPClauseKind Kind,
   return false;
 }
 
+/// Parse step size expression. Returns true if parsing is successfull,
+/// otherwise returns false.
+static bool parseStepSize(Parser &P, Sema::OpenMPVarListDataTy &Data,
+                          OpenMPClauseKind CKind, SourceLocation ELoc) {
+  ExprResult Tail = P.ParseAssignmentExpression();
+  Sema &Actions = P.getActions();
+  Tail = Actions.ActOnFinishFullExpr(Tail.get(), ELoc,
+                                     /*DiscardedValue*/ false);
+  if (Tail.isUsable()) {
+    Data.DepModOrTailExpr = Tail.get();
+    Token CurTok = P.getCurToken();
+    if (CurTok.isNot(tok::r_paren) && CurTok.isNot(tok::comma)) {
+      P.Diag(CurTok, diag::err_expected_punc) << "step expression";
+    }
+    return true;
+  }
+  return false;
+}
+
 /// Parses clauses with list.
 bool Parser::ParseOpenMPVarList(OpenMPDirectiveKind DKind,
                                 OpenMPClauseKind Kind,
@@ -4756,17 +4775,79 @@ bool Parser::ParseOpenMPVarList(OpenMPDirectiveKind DKind,
 
   // Parse ':' linear-step (or ':' alignment).
   const bool MustHaveTail = MayHaveTail && Tok.is(tok::colon);
+  bool StepFound = false;
+  bool ModifierFound = false;
   if (MustHaveTail) {
     Data.ColonLoc = Tok.getLocation();
     SourceLocation ELoc = ConsumeToken();
-    ExprResult Tail = ParseAssignmentExpression();
-    Tail =
-        Actions.ActOnFinishFullExpr(Tail.get(), ELoc, /*DiscardedValue*/ false);
-    if (Tail.isUsable())
-      Data.DepModOrTailExpr = Tail.get();
-    else
-      SkipUntil(tok::comma, tok::r_paren, tok::annot_pragma_openmp_end,
-                StopBeforeMatch);
+
+    if (getLangOpts().OpenMP >= 52 && Kind == OMPC_linear) {
+      while (Tok.isNot(tok::r_paren)) {
+        if (Tok.is(tok::identifier)) {
+          // identifier could be a linear kind (val, uval, ref) or step
+          // modifier or step size
+          OpenMPLinearClauseKind LinKind =
+              static_cast<OpenMPLinearClauseKind>(getOpenMPSimpleClauseType(
+                  Kind, Tok.isAnnotation() ? "" : PP.getSpelling(Tok),
+                  getLangOpts()));
+
+          if (LinKind == OMPC_LINEAR_step) {
+            if (StepFound)
+              Diag(Tok, diag::warn_omp_multiple_step_or_linear_modifier) << 0;
+
+            BalancedDelimiterTracker T(*this, tok::l_paren,
+                                       tok::annot_pragma_openmp_end);
+            SourceLocation StepModifierLoc = ConsumeToken();
+            // parse '('
+            if (Tok.is(tok::l_paren))
+              T.consumeOpen();
+            else
+              Diag(StepModifierLoc, diag::err_expected_lparen_after) << "step";
+
+            // parse step size expression
+            if ((StepFound =
+                     parseStepSize(*this, Data, Kind, Tok.getLocation())))
+              Data.StepModifierLoc = StepModifierLoc;
+
+            // parse ')'
+            if (Tok.is(tok::r_paren))
+              T.consumeClose();
+            else
+              Diag(Tok.getLocation(), diag::err_expected_rparen_after)
+                  << "step expression";
+          } else if (LinKind >= 0 && LinKind < OMPC_LINEAR_step) {
+            if (ModifierFound)
+              Diag(Tok, diag::warn_omp_multiple_step_or_linear_modifier) << 1;
+
+            Data.ExtraModifier = LinKind;
+            Data.ExtraModifierLoc = ConsumeToken();
+            ModifierFound = true;
+          } else {
+            StepFound = parseStepSize(*this, Data, Kind, Tok.getLocation());
+          }
+        } else {
+          // parse an integer expression as step size
+          StepFound = parseStepSize(*this, Data, Kind, Tok.getLocation());
+        }
+
+        if (Tok.is(tok::comma))
+          ConsumeToken();
+        if (Tok.is(tok::r_paren) || Tok.is(tok::annot_pragma_openmp_end))
+          break;
+      }
+      if (!StepFound && !ModifierFound)
+        Diag(ELoc, diag::err_expected_expression);
+    } else {
+      // for OMPC_aligned and OMPC_linear (with OpenMP <= 5.1)
+      ExprResult Tail = ParseAssignmentExpression();
+      Tail = Actions.ActOnFinishFullExpr(Tail.get(), ELoc,
+                                         /*DiscardedValue*/ false);
+      if (Tail.isUsable())
+        Data.DepModOrTailExpr = Tail.get();
+      else
+        SkipUntil(tok::comma, tok::r_paren, tok::annot_pragma_openmp_end,
+                  StopBeforeMatch);
+    }
   }
 
   // Parse ')'.
@@ -4778,8 +4859,8 @@ bool Parser::ParseOpenMPVarList(OpenMPDirectiveKind DKind,
     ExitScope();
   return (Kind != OMPC_depend && Kind != OMPC_doacross && Kind != OMPC_map &&
           Vars.empty()) ||
-         (MustHaveTail && !Data.DepModOrTailExpr) || InvalidReductionId ||
-         IsInvalidMapperModifier || InvalidIterator;
+         (MustHaveTail && !Data.DepModOrTailExpr && StepFound) ||
+         InvalidReductionId || IsInvalidMapperModifier || InvalidIterator;
 }
 
 /// Parsing of OpenMP clause 'private', 'firstprivate', 'lastprivate',
