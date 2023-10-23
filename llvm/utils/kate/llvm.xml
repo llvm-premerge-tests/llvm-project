@@ -104,6 +104,7 @@
       <item> nofree </item>
       <item> noimplicitfloat </item>
       <item> noinline </item>
+      <item> noipa </item>
       <item> nomerge </item>
       <item> noprofile </item>
       <item> noredzone </item>

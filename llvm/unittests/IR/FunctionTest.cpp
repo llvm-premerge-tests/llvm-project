@@ -486,4 +486,16 @@ TEST(FunctionTest, EraseBBs) {
   It = F->erase(F->begin(), F->end());
   EXPECT_EQ(F->size(), 0u);
 }
+
+TEST(FunctionTest, NoIPAInexact) {
+  LLVMContext Ctx;
+  std::unique_ptr<Module> M = parseIR(Ctx, R"(
+    define void @foo() { bb1: ret void }
+    define void @bar() #0 { bb1: ret void }
+    attributes #0 = { noipa }
+  )");
+  EXPECT_TRUE(M->getFunction("foo")->isDefinitionExact());
+  EXPECT_FALSE(M->getFunction("bar")->isDefinitionExact());
+}
+
 } // end namespace
