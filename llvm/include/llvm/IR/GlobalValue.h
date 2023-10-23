@@ -149,7 +149,7 @@ private:
       // nobuiltin due to attributes at call-sites. To avoid applying IPO based
       // on nobuiltin semantics, treat such function definitions as maybe
       // derefined.
-      return isInterposable() || isNobuiltinFnDef();
+      return isInterposable() || isNobuiltinFnDef() || isNoipaFnDef();
     }
 
     llvm_unreachable("Fully covered switch above!");
@@ -158,6 +158,10 @@ private:
   /// Returns true if the global is a function definition with the nobuiltin
   /// attribute.
   bool isNobuiltinFnDef() const;
+
+  /// Returns true if the global is a function definition with the noipa
+  /// attribute.
+  bool isNoipaFnDef() const;
 
 protected:
   /// The intrinsic ID for this subclass (which must be a Function).

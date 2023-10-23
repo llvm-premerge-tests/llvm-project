@@ -228,6 +228,7 @@ patterns:
             \\bnofree\\b|\
             \\bnoimplicitfloat\\b|\
             \\bnoinline\\b|\
+            \\bnoipa\\b|\
             \\bnomerge\\b|\
             \\bnonlazybind\\b|\
             \\bnonnull\\b|\
