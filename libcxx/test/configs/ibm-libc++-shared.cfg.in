@@ -4,6 +4,14 @@
 
 lit_config.load_config(config, '@CMAKE_CURRENT_BINARY_DIR@/cmake-bridge.cfg')
 
+if 'aix' in config.target_triple:
+  import subprocess, re
+  # Add the AIX version to the triple here because there currently isn't a good
+  # way to retrieve the AIX version in the driver.
+  os_cmd = "oslevel -s | awk -F\'-\' \'{printf \"%.1f.%d.%d\", $1/1000, $2, $3}\'" 
+  os_version = subprocess.run(os_cmd, capture_output=True, shell=True).stdout.decode()
+  config.target_triple=re.sub('aix', 'aix' + os_version, config.target_triple)
+
 config.substitutions.append(('%{flags}', '-pthread'))
 config.substitutions.append(('%{compile_flags}',
     '-nostdinc++ -D__LIBC_NO_CPP_MATH_OVERLOADS__ -I %{include} -I %{libcxx}/test/support'
