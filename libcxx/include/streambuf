@@ -111,6 +111,7 @@ protected:
 #include <__config>
 #include <__fwd/streambuf.h>
 #include <cstdint>
+#include <climits>
 #include <ios>
 #include <iosfwd>
 #include <version>
