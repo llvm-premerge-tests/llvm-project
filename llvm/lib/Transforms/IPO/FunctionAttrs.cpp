@@ -743,7 +743,7 @@ static void addArgumentReturnedAttrs(const SCCNodeSet &SCCNodes,
   for (Function *F : SCCNodes) {
     // We can infer and propagate function attributes only when we know that the
     // definition we'll get at link time is *exactly* the definition we see now.
-    // For more details, see GlobalValue::mayBeDerefined.
+    // For more details, see GlobalValue::mayBeDerefinedOrNoIPA.
     if (!F->hasExactDefinition())
       continue;
 
@@ -860,7 +860,7 @@ static void addArgumentAttrs(const SCCNodeSet &SCCNodes,
   for (Function *F : SCCNodes) {
     // We can infer and propagate function attributes only when we know that the
     // definition we'll get at link time is *exactly* the definition we see now.
-    // For more details, see GlobalValue::mayBeDerefined.
+    // For more details, see GlobalValue::mayBeDerefinedOrNoIPA.
     if (!F->hasExactDefinition())
       continue;
 
@@ -1111,7 +1111,7 @@ static void addNoAliasAttrs(const SCCNodeSet &SCCNodes,
 
     // We can infer and propagate function attributes only when we know that the
     // definition we'll get at link time is *exactly* the definition we see now.
-    // For more details, see GlobalValue::mayBeDerefined.
+    // For more details, see GlobalValue::mayBeDerefinedOrNoIPA.
     if (!F->hasExactDefinition())
       return;
 
@@ -1223,7 +1223,7 @@ static void addNonNullAttrs(const SCCNodeSet &SCCNodes,
 
     // We can infer and propagate function attributes only when we know that the
     // definition we'll get at link time is *exactly* the definition we see now.
-    // For more details, see GlobalValue::mayBeDerefined.
+    // For more details, see GlobalValue::mayBeDerefinedOrNoIPA.
     if (!F->hasExactDefinition())
       return;
 
@@ -1679,7 +1679,7 @@ static void addNoReturnAttrs(const SCCNodeSet &SCCNodes,
 static bool functionWillReturn(const Function &F) {
   // We can infer and propagate function attributes only when we know that the
   // definition we'll get at link time is *exactly* the definition we see now.
-  // For more details, see GlobalValue::mayBeDerefined.
+  // For more details, see GlobalValue::mayBeDerefinedOrNoIPA.
   if (!F.hasExactDefinition())
     return false;
 

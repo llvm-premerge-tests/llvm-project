@@ -517,6 +517,12 @@ define void @f89() optdebug
         ret void;
 }
 
+define void @f90() noipa
+; CHECK: define void @f90() [[NOIPA:#[0-9]+]]
+{
+  ret void
+}
+
 ; CHECK: attributes #0 = { noreturn }
 ; CHECK: attributes #1 = { nounwind }
 ; CHECK: attributes #2 = { memory(none) }
@@ -573,4 +579,5 @@ define void @f89() optdebug
 ; CHECK: attributes [[FNRETTHUNKEXTERN]] = { fn_ret_thunk_extern }
 ; CHECK: attributes [[SKIPPROFILE]] = { skipprofile }
 ; CHECK: attributes [[OPTDEBUG]] = { optdebug }
+; CHECK: attributes [[NOIPA]] = { noipa }
 ; CHECK: attributes #[[NOBUILTIN]] = { nobuiltin }
