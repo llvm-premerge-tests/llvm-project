@@ -31,6 +31,7 @@ end program
 
 ! CHECK-NEXT: 'func.func' Pipeline
 ! CHECK-NEXT:   MemoryAllocationOpt
+! CHECK-NEXT:   ConstExtruderOpt
 
 ! CHECK-NEXT: Inliner
 ! CHECK-NEXT: SimplifyRegionLite
