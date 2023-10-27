@@ -436,6 +436,13 @@ def isMacOSTriple(target_triple):
     return "darwin" in target_triple or "macos" in target_triple
 
 
+def isAIXTriple(target_triple):
+    """Whether the given target triple is for AIX,
+    e.g. powerpc64-ibm-aix
+    """
+    return "aix" in target_triple
+
+
 def usePlatformSdkOnDarwin(config, lit_config):
     # On Darwin, support relocatable SDKs by providing Clang with a
     # default system root path.
