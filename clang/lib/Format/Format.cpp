@@ -22,6 +22,7 @@
 #include "FormatTokenLexer.h"
 #include "IntegerLiteralSeparatorFixer.h"
 #include "NamespaceEndCommentsFixer.h"
+#include "ObjCPropertyAttributeOrderFixer.h"
 #include "QualifierAlignmentFixer.h"
 #include "SortJavaScriptImports.h"
 #include "TokenAnalyzer.h"
@@ -1037,6 +1038,8 @@ template <> struct MappingTraits<FormatStyle> {
     IO.mapOptional("ObjCBlockIndentWidth", Style.ObjCBlockIndentWidth);
     IO.mapOptional("ObjCBreakBeforeNestedBlockParam",
                    Style.ObjCBreakBeforeNestedBlockParam);
+    IO.mapOptional("ObjCPropertyAttributeOrder",
+                   Style.ObjCPropertyAttributeOrder);
     IO.mapOptional("ObjCSpaceAfterProperty", Style.ObjCSpaceAfterProperty);
     IO.mapOptional("ObjCSpaceBeforeProtocolList",
                    Style.ObjCSpaceBeforeProtocolList);
@@ -3662,6 +3665,12 @@ reformat(const FormatStyle &Style, StringRef Code,
       S.RemoveParentheses = Style.RemoveParentheses;
       Passes.emplace_back([&, S = std::move(S)](const Environment &Env) {
         return ParensRemover(Env, S).process(/*SkipAnnotation=*/true);
+      });
+    }
+
+    if (!Style.ObjCPropertyAttributeOrder.empty()) {
+      Passes.emplace_back([&](const Environment &Env) {
+        return ObjCPropertyAttributeOrderFixer(Env, Expanded).process();
       });
     }
 
