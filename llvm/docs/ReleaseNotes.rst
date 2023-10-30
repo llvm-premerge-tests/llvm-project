@@ -118,6 +118,8 @@ Changes to the RISC-V Backend
 
 * The Zfa extension version was upgraded to 1.0 and is no longer experimental.
 * Zihintntl extension version was upgraded to 1.0 and is no longer experimental.
+* CodeGen of RV32E/RV64E are supported experimentally.
+* CodeGen of ilp32e/lp64e are supported experimentally.
 
 Changes to the WebAssembly Backend
 ----------------------------------

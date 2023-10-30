@@ -1283,16 +1283,16 @@ RISCVISAInfo::postProcessAndChecking(std::unique_ptr<RISCVISAInfo> &&ISAInfo) {
 
 StringRef RISCVISAInfo::computeDefaultABI() const {
   if (XLen == 32) {
-    if (hasExtension("d"))
-      return "ilp32d";
     if (hasExtension("e"))
       return "ilp32e";
+    if (hasExtension("d"))
+      return "ilp32d";
     return "ilp32";
   } else if (XLen == 64) {
-    if (hasExtension("d"))
-      return "lp64d";
     if (hasExtension("e"))
       return "lp64e";
+    if (hasExtension("d"))
+      return "lp64d";
     return "lp64";
   }
   llvm_unreachable("Invalid XLEN");

@@ -27,6 +27,21 @@
 
 using namespace llvm;
 
+static Align getABIStackAlignment(RISCVABI::ABI ABI) {
+  if (ABI == RISCVABI::ABI_ILP32E)
+    return Align(4);
+  if (ABI == RISCVABI::ABI_LP64E)
+    return Align(8);
+  return Align(16);
+}
+
+RISCVFrameLowering::RISCVFrameLowering(const RISCVSubtarget &STI)
+    : TargetFrameLowering(StackGrowsDown,
+                          getABIStackAlignment(STI.getTargetABI()),
+                          /*LocalAreaOffset=*/0,
+                          /*TransientStackAlignment=*/Align(16)),
+      STI(STI) {}
+
 static const Register AllPopRegs[] = {
     RISCV::X1,  RISCV::X8,  RISCV::X9,  RISCV::X18, RISCV::X19,
     RISCV::X20, RISCV::X21, RISCV::X22, RISCV::X23, RISCV::X24,
@@ -499,7 +514,8 @@ void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
   if (int LibCallRegs = getLibCallID(MF, MFI.getCalleeSavedInfo()) + 1) {
     // Calculate the size of the frame managed by the libcall. The libcalls are
     // implemented such that the stack will always be 16 byte aligned.
-    unsigned LibCallFrameSize = alignTo((STI.getXLen() / 8) * LibCallRegs, 16);
+    unsigned LibCallFrameSize =
+        alignTo((STI.getXLen() / 8) * LibCallRegs, getStackAlign());
     RVFI->setLibCallStackSize(LibCallFrameSize);
   }
 
@@ -973,6 +989,7 @@ void RISCVFrameLowering::determineCalleeSaves(MachineFunction &MF,
   // unconditionally save all Caller-saved registers and
   // all FP registers, regardless whether they are used.
   MachineFrameInfo &MFI = MF.getFrameInfo();
+  auto &Subtarget = MF.getSubtarget<RISCVSubtarget>();
 
   if (MF.getFunction().hasFnAttribute("interrupt") && MFI.hasCalls()) {
 
@@ -984,9 +1001,10 @@ void RISCVFrameLowering::determineCalleeSaves(MachineFunction &MF,
     };
 
     for (unsigned i = 0; CSRegs[i]; ++i)
-      SavedRegs.set(CSRegs[i]);
+      if (CSRegs[i] < RISCV::X16 || !Subtarget.isRVE())
+        SavedRegs.set(CSRegs[i]);
 
-    if (MF.getSubtarget<RISCVSubtarget>().hasStdExtF()) {
+    if (Subtarget.hasStdExtF()) {
 
       // If interrupt is enabled, this list contains all FP registers.
       const MCPhysReg * Regs = MF.getRegInfo().getCalleeSavedRegs();
