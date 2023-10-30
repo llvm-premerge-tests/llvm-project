@@ -999,6 +999,7 @@ set(files
   string.h
   string_view
   strstream
+  syncstream
   system_error
   tgmath.h
   thread
