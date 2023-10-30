@@ -286,7 +286,9 @@ public:
 
     __stdoutbuf(FILE* __fp, state_type* __st);
 
-protected:
+    [[nodiscard]] FILE* __file() { return __file_; }
+
+  protected:
     virtual int_type overflow (int_type __c = traits_type::eof());
     virtual streamsize xsputn(const char_type* __s, streamsize __n);
     virtual int sync();
