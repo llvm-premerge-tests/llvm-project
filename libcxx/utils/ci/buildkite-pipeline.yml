@@ -356,6 +356,8 @@ steps:
     env:
         CC: "clang-${LLVM_HEAD_VERSION}"
         CXX: "clang++-${LLVM_HEAD_VERSION}"
+        CMAKE: "/opt/bin/cmake"
+        ENABLE_CLANG_TIDY: "On"
         LLVM_SYMBOLIZER_PATH: "/usr/bin/llvm-symbolizer-${LLVM_HEAD_VERSION}"
         CLANG_CRASH_DIAGNOSTICS_DIR: "crash_diagnostics"
     agents:
