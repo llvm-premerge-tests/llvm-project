@@ -35,7 +35,9 @@
 #include <__type_traits/is_swappable.h>
 #include <__type_traits/is_void.h>
 #include <__type_traits/remove_extent.h>
+#include <__type_traits/remove_pointer.h>
 #include <__type_traits/type_identity.h>
+#include <__utility/declval.h>
 #include <__utility/forward.h>
 #include <__utility/move.h>
 #include <cstddef>
@@ -267,7 +269,21 @@ public:
     return *this;
   }
 
-  _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX23 __add_lvalue_reference_t<_Tp> operator*() const {
+  _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX23 __add_lvalue_reference_t<_Tp> operator*() const
+#if _LIBCPP_STD_VER >= 20
+      noexcept([] {
+        if constexpr (is_void_v<remove_pointer_t<pointer>>)
+          return true;
+        else
+          // This avoids evaluating noexcept(*declval<pointer>() when pointer == void*.
+          // The issue was triggered by
+          // test/std/utilities/memory/unique.ptr/iterator_concept_conformance.compile.pass.cpp
+          return noexcept(*std::declval<pointer>());
+      }())
+#else  //  _LIBCPP_STD_VER >= 20
+      _NOEXCEPT_(noexcept(*std::declval<pointer>()))
+#endif //  _LIBCPP_STD_VER >= 20
+  {
     return *__ptr_.first();
   }
   _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX23 pointer operator->() const _NOEXCEPT {
