@@ -874,7 +874,7 @@ private:
     }
 
 public:
-  _LIBCPP_TEMPLATE_DATA_VIS static const size_type npos = -1;
+  _LIBCPP_TEMPLATE_DATA_VIS static const size_type npos = numeric_limits<size_type>::max();
 
   _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX20 basic_string()
       _NOEXCEPT_(is_nothrow_default_constructible<allocator_type>::value)
