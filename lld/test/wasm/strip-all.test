@@ -8,3 +8,10 @@ RUN: obj2yaml %t.wasm | FileCheck %s
 
 # Check that there is no name section
 CHECK-NOT:   Name:    name
+
+# Test --keep-section
+RUN: wasm-ld --strip-all --keep-section=name -o %t.wasm %t.start.o
+RUN: obj2yaml %t.wasm | FileCheck --check-prefix=CHECK-FOUND %s
+
+# Check that name section was preserved
+CHECK-FOUND:   Name:    name
