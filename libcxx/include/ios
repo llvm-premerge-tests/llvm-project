@@ -226,6 +226,7 @@ storage-class-specifier const error_category& iostream_category() noexcept;
 #include <__system_error/system_error.h>
 #include <__utility/swap.h>
 #include <__verbose_abort>
+#include <__type_traits/conditional.h>
 #include <version>
 
 // standard-mandated includes
@@ -605,6 +606,29 @@ ios_base::exceptions(iostate __iostate)
     clear(__rdstate_);
 }
 
+template <class _Traits>
+struct _OptionalFill {
+    _OptionalFill() : __set_(false) { }
+    _OptionalFill& operator=(typename _Traits::int_type __x) { __set_ = true; __fill_val_ = __x; return *this; }
+    bool __is_set() const { return __set_; }
+    typename _Traits::int_type __fill() const { return __fill_val_; }
+
+private:
+    typename _Traits::int_type __fill_val_;
+    bool __set_;
+} __attribute__((packed));
+
+template <class _Traits>
+struct _SentinelValueFill {
+    _SentinelValueFill() : __fill_val_(_Traits::eof()) { }
+    _SentinelValueFill& operator=(typename _Traits::int_type __x) { __fill_val_ = __x; return *this; }
+    bool __is_set() const { return __fill_val_ != _Traits::eof(); }
+    typename _Traits::int_type __fill() const { return __fill_val_; }
+
+private:
+    typename _Traits::int_type __fill_val_;
+} __attribute__((packed));
+
 template <class _CharT, class _Traits>
 class _LIBCPP_TEMPLATE_VIS basic_ios
     : public ios_base
@@ -691,7 +715,23 @@ protected:
     void set_rdbuf(basic_streambuf<char_type, traits_type>* __sb);
 private:
     basic_ostream<char_type, traits_type>* __tie_;
-    mutable int_type __fill_;
+
+#if _LIBCPP_BASIC_IOS_MUST_USE_OPTIONAL_FILL
+    using _FillType = _OptionalFill<_Traits>;
+#else
+#if defined(_WIN32)
+    static constexpr bool _OptOutForABICompat = true;
+#else
+    static constexpr bool _OptOutForABICompat = false;
+#endif
+
+    using _FillType = _If<
+        sizeof(char_type) >= sizeof(int_type) && !_OptOutForABICompat,
+        _OptionalFill<_Traits>,
+        _SentinelValueFill<_Traits>
+    >;
+#endif
+    mutable _FillType __fill_;
 };
 
 template <class _CharT, class _Traits>
@@ -713,7 +753,7 @@ basic_ios<_CharT, _Traits>::init(basic_streambuf<char_type, traits_type>* __sb)
 {
     ios_base::init(__sb);
     __tie_ = nullptr;
-    __fill_ = traits_type::eof();
+    __fill_ = widen(' ');
 }
 
 template <class _CharT, class _Traits>
@@ -785,9 +825,9 @@ inline _LIBCPP_INLINE_VISIBILITY
 _CharT
 basic_ios<_CharT, _Traits>::fill() const
 {
-    if (traits_type::eq_int_type(traits_type::eof(), __fill_))
+    if (!__fill_.__is_set())
         __fill_ = widen(' ');
-    return __fill_;
+    return __fill_.__fill();
 }
 
 template <class _CharT, class _Traits>
@@ -795,9 +835,9 @@ inline _LIBCPP_INLINE_VISIBILITY
 _CharT
 basic_ios<_CharT, _Traits>::fill(char_type __ch)
 {
-    if (traits_type::eq_int_type(traits_type::eof(), __fill_))
+    if (!__fill_.__is_set())
         __fill_ = widen(' ');
-    char_type __r = __fill_;
+    char_type __r = __fill_.__fill();
     __fill_ = __ch;
     return __r;
 }
