@@ -2134,6 +2134,18 @@ are listed below.
    new operator will always return a pointer that does not alias any
    other pointer when the function returns.
 
+.. option:: -fassume-nothrow-exception-dtor
+
+   Assume that an exception object' destructor does not throw, and generate
+   less code for catch handlers.
+
+   By default, Clang assumes that the exception object may have a throwing
+   destructor. For the Itanium C++ ABI, Clang generates a landing pad to
+   destroy local variables and call ``_Unwind_Resume`` for the code
+   ``catch (...) { ... }``. This option tells Clang that an exception object's
+   destructor does not throw, even if the destructor is annotated as
+   ``noexcept(false)``.
+
 .. option:: -ftrap-function=[name]
 
    Instruct code generator to emit a function call to the specified
