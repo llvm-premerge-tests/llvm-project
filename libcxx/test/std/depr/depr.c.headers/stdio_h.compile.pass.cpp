@@ -6,6 +6,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+// stderr et al are not macros in picolibc's tinystdio.
+// XFAIL: LIBCXX-PICOLIBC-FIXME
+
 // test <stdio.h>
 
 #include <stdio.h>

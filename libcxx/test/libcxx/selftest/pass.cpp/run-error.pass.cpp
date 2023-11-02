@@ -6,6 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+// UNSUPPORTED: LIBCXX-PICOLIBC-FIXME
 // XFAIL: *
 
 // Make sure the test DOES NOT pass if it fails at runtime.
