@@ -490,6 +490,16 @@
 #    define _LIBCPP_SHORT_WCHAR 1
 #  endif
 
+#  if _LIBCPP_ABI_VERSION < 2
+#    if defined(_AIX) || (defined(__MVS__) && defined(__64BIT__))
+//   AIX and 64-bit MVS must use structure _OptionalFill in basic_ios for compatibility.
+#      define _LIBCPP_BASIC_IOS_MUST_USE_OPTIONAL_FILL 1
+#    elif defined(_WIN32) || defined(__APPLE__) || defined(__sun__) || defined(__linux__) || defined(__FreeBSD__) ||   \
+        defined(__NetBSD__) || defined(__OpenBSD__)
+#      define _LIBCPP_BASIC_IOS_MUST_USE_OPTIONAL_FILL 0
+#    endif
+#  endif
+
 // Libc++ supports various implementations of std::random_device.
 //
 // _LIBCPP_USING_DEV_RANDOM
