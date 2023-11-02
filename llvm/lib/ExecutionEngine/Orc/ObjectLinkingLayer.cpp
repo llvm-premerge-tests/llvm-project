@@ -99,8 +99,7 @@ private:
         continue;
       assert(Sym->hasName() && "Anonymous non-local symbol?");
 
-      LGI.SymbolFlags[ES.intern(Sym->getName())] =
-          getJITSymbolFlagsForSymbol(*Sym);
+      LGI.SymbolFlags[Sym->getName()] = getJITSymbolFlagsForSymbol(*Sym);
     }
 
     if (hasInitializerSection(G))
@@ -123,7 +122,7 @@ private:
 
   void discard(const JITDylib &JD, const SymbolStringPtr &Name) override {
     for (auto *Sym : G->defined_symbols())
-      if (Sym->getName() == *Name) {
+      if (Sym->getName() == Name) {
         assert(Sym->getLinkage() == Linkage::Weak &&
                "Discarding non-weak definition");
         G->makeExternal(*Sym);
@@ -195,7 +194,7 @@ public:
         LookupFlags = orc::SymbolLookupFlags::WeaklyReferencedSymbol;
         break;
       }
-      LookupSet.add(ES.intern(KV.first), LookupFlags);
+      LookupSet.add(KV.first, LookupFlags);
     }
 
     // OnResolve -- De-intern the symbols and pass the result to the linker.
@@ -206,7 +205,7 @@ public:
       else {
         AsyncLookupResult LR;
         for (auto &KV : *Result)
-          LR[*KV.first] = KV.second;
+          LR[KV.first] = KV.second;
         LookupContinuation->run(std::move(LR));
       }
     };
@@ -225,7 +224,6 @@ public:
   }
 
   Error notifyResolved(LinkGraph &G) override {
-    auto &ES = Layer.getExecutionSession();
 
     SymbolFlagsMap ExtraSymbolsToClaim;
     bool AutoClaim = Layer.AutoClaimObjectSymbols;
@@ -233,27 +231,25 @@ public:
     SymbolMap InternedResult;
     for (auto *Sym : G.defined_symbols())
       if (Sym->hasName() && Sym->getScope() != Scope::Local) {
-        auto InternedName = ES.intern(Sym->getName());
         auto Ptr = getJITSymbolPtrForSymbol(*Sym, G.getTargetTriple());
         auto Flags = getJITSymbolFlagsForSymbol(*Sym);
-        InternedResult[InternedName] = {Ptr, Flags};
-        if (AutoClaim && !MR->getSymbols().count(InternedName)) {
-          assert(!ExtraSymbolsToClaim.count(InternedName) &&
+        InternedResult[Sym->getName()] = {Ptr, Flags};
+        if (AutoClaim && !MR->getSymbols().count(Sym->getName())) {
+          assert(!ExtraSymbolsToClaim.count(Sym->getName()) &&
                  "Duplicate symbol to claim?");
-          ExtraSymbolsToClaim[InternedName] = Flags;
+          ExtraSymbolsToClaim[Sym->getName()] = Flags;
         }
       }
 
     for (auto *Sym : G.absolute_symbols())
       if (Sym->hasName() && Sym->getScope() != Scope::Local) {
-        auto InternedName = ES.intern(Sym->getName());
         auto Ptr = getJITSymbolPtrForSymbol(*Sym, G.getTargetTriple());
         auto Flags = getJITSymbolFlagsForSymbol(*Sym);
-        InternedResult[InternedName] = {Ptr, Flags};
-        if (AutoClaim && !MR->getSymbols().count(InternedName)) {
-          assert(!ExtraSymbolsToClaim.count(InternedName) &&
+        InternedResult[Sym->getName()] = {Ptr, Flags};
+        if (AutoClaim && !MR->getSymbols().count(Sym->getName())) {
+          assert(!ExtraSymbolsToClaim.count(Sym->getName()) &&
                  "Duplicate symbol to claim?");
-          ExtraSymbolsToClaim[InternedName] = Flags;
+          ExtraSymbolsToClaim[Sym->getName()] = Flags;
         }
       }
 
@@ -362,7 +358,7 @@ private:
   public:
     BlockDependenciesMap(ExecutionSession &ES,
                          DenseMap<const Block *, DenseSet<Block *>> BlockDeps)
-        : ES(ES), BlockDeps(std::move(BlockDeps)) {}
+        : BlockDeps(std::move(BlockDeps)) {}
 
     const BlockSymbolDependencies &operator[](const Block &B) {
       // Check the cache first.
@@ -393,7 +389,7 @@ private:
       if (I != NameCache.end())
         return I->second;
 
-      return NameCache.insert(std::make_pair(&Sym, ES.intern(Sym.getName())))
+      return NameCache.insert(std::make_pair(&Sym, Sym.getName()))
           .first->second;
     }
 
@@ -420,7 +416,6 @@ private:
           .first->second;
     }
 
-    ExecutionSession &ES;
     DenseMap<const Block *, DenseSet<Block *>> BlockDeps;
     DenseMap<const Symbol *, SymbolStringPtr> NameCache;
     DenseMap<const Block *, BlockSymbolDependencies> BlockImmediateDepsCache;
@@ -428,19 +423,16 @@ private:
   };
 
   Error claimOrExternalizeWeakAndCommonSymbols(LinkGraph &G) {
-    auto &ES = Layer.getExecutionSession();
-
     SymbolFlagsMap NewSymbolsToClaim;
     std::vector<std::pair<SymbolStringPtr, Symbol *>> NameToSym;
 
     auto ProcessSymbol = [&](Symbol *Sym) {
       if (Sym->hasName() && Sym->getLinkage() == Linkage::Weak &&
           Sym->getScope() != Scope::Local) {
-        auto Name = ES.intern(Sym->getName());
-        if (!MR->getSymbols().count(ES.intern(Sym->getName()))) {
-          NewSymbolsToClaim[Name] =
+        if (!MR->getSymbols().count(Sym->getName())) {
+          NewSymbolsToClaim[Sym->getName()] =
               getJITSymbolFlagsForSymbol(*Sym) | JITSymbolFlags::Weak;
-          NameToSym.push_back(std::make_pair(std::move(Name), Sym));
+          NameToSym.push_back(std::make_pair(Sym->getName(), Sym));
         }
       }
     };
@@ -469,15 +461,13 @@ private:
   }
 
   Error markResponsibilitySymbolsLive(LinkGraph &G) const {
-    auto &ES = Layer.getExecutionSession();
     for (auto *Sym : G.defined_symbols())
-      if (Sym->hasName() && MR->getSymbols().count(ES.intern(Sym->getName())))
+      if (Sym->hasName() && MR->getSymbols().count(Sym->getName()))
         Sym->setLive(true);
     return Error::success();
   }
 
   Error computeNamedSymbolDependencies(LinkGraph &G) {
-    auto &ES = MR->getTargetJITDylib().getExecutionSession();
     auto BlockDeps = computeBlockNonLocalDeps(G);
 
     // Compute dependencies for symbols defined in the JITLink graph.
@@ -493,7 +483,7 @@ private:
       if (SymDeps.External.empty() && SymDeps.Internal.empty())
         continue;
 
-      auto SymName = ES.intern(Sym->getName());
+      auto SymName = Sym->getName();
       if (!SymDeps.External.empty())
         ExternalNamedSymbolDeps[SymName] = SymDeps.External;
       if (!SymDeps.Internal.empty())
@@ -668,7 +658,7 @@ void ObjectLinkingLayer::emit(std::unique_ptr<MaterializationResponsibility> R,
 
   auto Ctx = std::make_unique<ObjectLinkingLayerJITLinkContext>(
       *this, std::move(R), std::move(O));
-  if (auto G = createLinkGraphFromObject(ObjBuffer)) {
+  if (auto G = createLinkGraphFromObject(ObjBuffer, getExecutionSession().getSymbolStringPool())) {
     Ctx->notifyMaterializing(**G);
     link(std::move(*G), std::move(Ctx));
   } else {

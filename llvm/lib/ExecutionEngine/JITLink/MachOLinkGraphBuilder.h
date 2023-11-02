@@ -35,8 +35,6 @@ protected:
 
   struct NormalizedSymbol {
     friend class MachOLinkGraphBuilder;
-
-  private:
     NormalizedSymbol(std::optional<StringRef> Name, uint64_t Value,
                      uint8_t Type, uint8_t Sect, uint16_t Desc, Linkage L,
                      Scope S)
@@ -45,6 +43,7 @@ protected:
       assert((!Name || !Name->empty()) && "Name must be none or non-empty");
     }
 
+  private:
   public:
     NormalizedSymbol(const NormalizedSymbol &) = delete;
     NormalizedSymbol &operator=(const NormalizedSymbol &) = delete;
@@ -83,10 +82,10 @@ protected:
 
   using SectionParserFunction = std::function<Error(NormalizedSection &S)>;
 
-  MachOLinkGraphBuilder(const object::MachOObjectFile &Obj, Triple TT,
+  MachOLinkGraphBuilder(const object::MachOObjectFile &Obj,
+                        std::shared_ptr<orc::SymbolStringPool> SSP, Triple TT,
                         SubtargetFeatures Features,
                         LinkGraph::GetEdgeKindNameFunction GetEdgeKindName);
-
   LinkGraph &getGraph() const { return *G; }
 
   const object::MachOObjectFile &getObject() const { return Obj; }

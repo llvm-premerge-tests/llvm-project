@@ -77,9 +77,9 @@ std::unique_ptr<jitlink::LinkGraph> createPlatformGraph(MachOPlatform &MOP,
     llvm_unreachable("Unrecognized architecture");
   }
 
-  return std::make_unique<jitlink::LinkGraph>(std::move(Name), TT, PointerSize,
-                                              Endianness,
-                                              jitlink::getGenericEdgeKindName);
+  return std::make_unique<jitlink::LinkGraph>(
+      std::move(Name), MOP.getExecutionSession().getSymbolStringPool(), TT,
+      PointerSize, Endianness, jitlink::getGenericEdgeKindName);
 }
 
 // Generates a MachO header.
@@ -839,14 +839,14 @@ Error MachOPlatform::MachOPlatformPlugin::
 
   for (auto *Sym : G.defined_symbols()) {
     for (auto &RTSym : RuntimeSymbols) {
-      if (Sym->hasName() && Sym->getName() == RTSym.first) {
+      if (Sym->hasName() && *Sym->getName() == RTSym.first) {
         if (*RTSym.second)
           return make_error<StringError>(
               "Duplicate " + RTSym.first +
                   " detected during MachOPlatform bootstrap",
               inconvertibleErrorCode());
 
-        if (Sym->getName() == *MP.MachOHeaderStartSymbol)
+        if (Sym->getName() == MP.MachOHeaderStartSymbol)
           RegisterMachOHeader = true;
 
         *RTSym.second = Sym->getAddress();
@@ -882,7 +882,7 @@ Error MachOPlatform::MachOPlatformPlugin::bootstrapPipelineEnd(
 Error MachOPlatform::MachOPlatformPlugin::associateJITDylibHeaderSymbol(
     jitlink::LinkGraph &G, MaterializationResponsibility &MR) {
   auto I = llvm::find_if(G.defined_symbols(), [this](jitlink::Symbol *Sym) {
-    return Sym->getName() == *MP.MachOHeaderStartSymbol;
+    return Sym->getName() == MP.MachOHeaderStartSymbol;
   });
   assert(I != G.defined_symbols().end() && "Missing MachO header start symbol");
 
@@ -1055,11 +1055,13 @@ Error MachOPlatform::MachOPlatformPlugin::processObjCImageInfo(
 
 Error MachOPlatform::MachOPlatformPlugin::fixTLVSectionsAndEdges(
     jitlink::LinkGraph &G, JITDylib &JD) {
-
+  auto TLVBootStrapSymbolName = G.intern("__tlv_bootstrap");
   // Rename external references to __tlv_bootstrap to ___orc_rt_tlv_get_addr.
   for (auto *Sym : G.external_symbols())
-    if (Sym->getName() == "__tlv_bootstrap") {
-      Sym->setName("___orc_rt_macho_tlv_get_addr");
+    if (Sym->getName() == TLVBootStrapSymbolName) {
+      auto TLSGetADDR =
+          MP.getExecutionSession().intern("___orc_rt_macho_tlv_get_addr");
+      Sym->setName(std::move(TLSGetADDR));
       break;
     }
 
@@ -1389,19 +1391,19 @@ Error MachOPlatform::MachOPlatformPlugin::populateObjCRuntimeObject(
       // Look for an existing __objc_imageinfo symbol.
       jitlink::Symbol *ObjCImageInfoSym = nullptr;
       for (auto *Sym : G.external_symbols())
-        if (Sym->getName() == ObjCImageInfoSymbolName) {
+        if (Sym->hasName() && *Sym->getName() == ObjCImageInfoSymbolName) {
           ObjCImageInfoSym = Sym;
           break;
         }
       if (!ObjCImageInfoSym)
         for (auto *Sym : G.absolute_symbols())
-          if (Sym->getName() == ObjCImageInfoSymbolName) {
+          if (Sym->hasName() && *Sym->getName() == ObjCImageInfoSymbolName) {
             ObjCImageInfoSym = Sym;
             break;
           }
       if (!ObjCImageInfoSym)
         for (auto *Sym : G.defined_symbols())
-          if (Sym->hasName() && Sym->getName() == ObjCImageInfoSymbolName) {
+          if (Sym->hasName() && *Sym->getName() == ObjCImageInfoSymbolName) {
             ObjCImageInfoSym = Sym;
             break;
           }

@@ -21,13 +21,15 @@
 using namespace llvm;
 using namespace llvm::jitlink;
 
-namespace {
+namespace { 
 
 class MachOLinkGraphBuilder_arm64 : public MachOLinkGraphBuilder {
 public:
   MachOLinkGraphBuilder_arm64(const object::MachOObjectFile &Obj,
+                             std::shared_ptr<orc::SymbolStringPool> SSP, 
                               SubtargetFeatures Features)
-      : MachOLinkGraphBuilder(Obj, Triple("arm64-apple-darwin"),
+      : MachOLinkGraphBuilder(Obj, SSP,
+                              Triple("arm64-apple-darwin"),
                               std::move(Features), aarch64::getEdgeKindName),
         NumSymbols(Obj.getSymtabLoadCommand().nsyms) {}
 
@@ -537,8 +539,8 @@ private:
   uint64_t NullValue = 0;
 };
 
-Expected<std::unique_ptr<LinkGraph>>
-createLinkGraphFromMachOObject_arm64(MemoryBufferRef ObjectBuffer) {
+Expected<std::unique_ptr<LinkGraph>> createLinkGraphFromMachOObject_arm64(
+    MemoryBufferRef ObjectBuffer, std::shared_ptr<orc::SymbolStringPool> SSP) {
   auto MachOObj = object::ObjectFile::createMachOObjectFile(ObjectBuffer);
   if (!MachOObj)
     return MachOObj.takeError();
@@ -547,7 +549,7 @@ createLinkGraphFromMachOObject_arm64(MemoryBufferRef ObjectBuffer) {
   if (!Features)
     return Features.takeError();
 
-  return MachOLinkGraphBuilder_arm64(**MachOObj, std::move(*Features))
+  return MachOLinkGraphBuilder_arm64(**MachOObj, SSP,  std::move(*Features))
       .buildGraph();
 }
 
@@ -567,7 +569,7 @@ void link_MachO_arm64(std::unique_ptr<LinkGraph> G,
     Config.PrePrunePasses.push_back(
         CompactUnwindSplitter("__LD,__compact_unwind"));
 
-    // Add eh-frame passes.
+    // Add eh-frame passses.
     // FIXME: Prune eh-frames for which compact-unwind is available once
     // we support compact-unwind registration with libunwind.
     Config.PrePrunePasses.push_back(createEHFrameSplitterPass_MachO_arm64());

@@ -117,9 +117,9 @@ Error registerMachOGraphInfo(Session &S, LinkGraph &G) {
                                          inconvertibleErrorCode());
 
         if (auto TS = getMachOGOTTarget(G, Sym->getBlock()))
-          FileInfo.GOTEntryInfos[TS->getName()] = {Sym->getSymbolContent(),
-                                                   Sym->getAddress().getValue(),
-                                                   Sym->getTargetFlags()};
+          FileInfo.GOTEntryInfos[*TS->getName()] = {
+              Sym->getSymbolContent(), Sym->getAddress().getValue(),
+              Sym->getTargetFlags()};
         else
           return TS.takeError();
         SectionContainsContent = true;
@@ -129,21 +129,21 @@ Error registerMachOGraphInfo(Session &S, LinkGraph &G) {
                                          inconvertibleErrorCode());
 
         if (auto TS = getMachOStubTarget(G, Sym->getBlock()))
-          FileInfo.StubInfos[TS->getName()] = {Sym->getSymbolContent(),
-                                               Sym->getAddress().getValue(),
-                                               Sym->getTargetFlags()};
+          FileInfo.StubInfos[*TS->getName()] = {Sym->getSymbolContent(),
+                                                Sym->getAddress().getValue(),
+                                                Sym->getTargetFlags()};
         else
           return TS.takeError();
         SectionContainsContent = true;
       } else if (Sym->hasName()) {
         if (Sym->isSymbolZeroFill()) {
-          S.SymbolInfos[Sym->getName()] = {Sym->getSize(),
-                                           Sym->getAddress().getValue()};
+          S.SymbolInfos[*Sym->getName()] = {Sym->getSize(),
+                                            Sym->getAddress().getValue()};
           SectionContainsZeroFill = true;
         } else {
-          S.SymbolInfos[Sym->getName()] = {Sym->getSymbolContent(),
-                                           Sym->getAddress().getValue(),
-                                           Sym->getTargetFlags()};
+          S.SymbolInfos[*Sym->getName()] = {Sym->getSymbolContent(),
+                                            Sym->getAddress().getValue(),
+                                            Sym->getTargetFlags()};
           SectionContainsContent = true;
         }
       }

@@ -226,9 +226,10 @@ private:
 
 public:
   ELFLinkGraphBuilder_x86_64(StringRef FileName,
-                             const object::ELFFile<object::ELF64LE> &Obj,
+                            std::shared_ptr<orc::SymbolStringPool> SSP,
+                            const object::ELFFile<object::ELF64LE> &Obj,
                              SubtargetFeatures Features)
-      : ELFLinkGraphBuilder(Obj, Triple("x86_64-unknown-linux"),
+      : ELFLinkGraphBuilder(Obj, SSP, Triple("x86_64-unknown-linux"),
                             std::move(Features), FileName,
                             x86_64::getEdgeKindName) {}
 };
@@ -249,12 +250,12 @@ public:
 
 private:
   Symbol *GOTSymbol = nullptr;
-
   Error getOrCreateGOTSymbol(LinkGraph &G) {
     auto DefineExternalGOTSymbolIfPresent =
         createDefineExternalSectionStartAndEndSymbolsPass(
             [&](LinkGraph &LG, Symbol &Sym) -> SectionRangeSymbolDesc {
-              if (Sym.getName() == ELFGOTSymbolName)
+              if (Sym.getName() != nullptr &&
+                  *Sym.getName() == ELFGOTSymbolName)
                 if (auto *GOTSection = G.findSectionByName(
                         x86_64::GOTTableManager::getSectionName())) {
                   GOTSymbol = &Sym;
@@ -280,7 +281,7 @@ private:
 
       // Check for an existing defined symbol.
       for (auto *Sym : GOTSection->symbols())
-        if (Sym->getName() == ELFGOTSymbolName) {
+        if (Sym->getName() != nullptr && *Sym->getName() == ELFGOTSymbolName) {
           GOTSymbol = Sym;
           return Error::success();
         }
@@ -302,7 +303,7 @@ private:
     // we just need to point the GOT symbol at some address in this graph.
     if (!GOTSymbol) {
       for (auto *Sym : G.external_symbols()) {
-        if (Sym->getName() == ELFGOTSymbolName) {
+        if (*Sym->getName() == ELFGOTSymbolName) {
           auto Blocks = G.blocks();
           if (!Blocks.empty()) {
             G.makeAbsolute(*Sym, (*Blocks.begin())->getAddress());
@@ -321,8 +322,8 @@ private:
   }
 };
 
-Expected<std::unique_ptr<LinkGraph>>
-createLinkGraphFromELFObject_x86_64(MemoryBufferRef ObjectBuffer) {
+Expected<std::unique_ptr<LinkGraph>> createLinkGraphFromELFObject_x86_64(
+    MemoryBufferRef ObjectBuffer, std::shared_ptr<orc::SymbolStringPool> SSP) {
   LLVM_DEBUG({
     dbgs() << "Building jitlink graph for new input "
            << ObjectBuffer.getBufferIdentifier() << "...\n";
@@ -338,7 +339,7 @@ createLinkGraphFromELFObject_x86_64(MemoryBufferRef ObjectBuffer) {
 
   auto &ELFObjFile = cast<object::ELFObjectFile<object::ELF64LE>>(**ELFObj);
   return ELFLinkGraphBuilder_x86_64((*ELFObj)->getFileName(),
-                                    ELFObjFile.getELFFile(),
+                                    SSP, ELFObjFile.getELFFile(),
                                     std::move(*Features))
       .buildGraph();
 }
@@ -348,7 +349,7 @@ identifyELFSectionStartAndEndSymbols(LinkGraph &G, Symbol &Sym) {
   constexpr StringRef StartSymbolPrefix = "__start";
   constexpr StringRef EndSymbolPrefix = "__end";
 
-  auto SymName = Sym.getName();
+  auto SymName = *Sym.getName();
   if (SymName.startswith(StartSymbolPrefix)) {
     if (auto *Sec =
             G.findSectionByName(SymName.drop_front(StartSymbolPrefix.size())))

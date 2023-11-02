@@ -10,6 +10,7 @@
 #include "llvm/ExecutionEngine/JITLink/x86_64.h"
 #include "llvm/ExecutionEngine/Orc/Layer.h"
 #include "llvm/ExecutionEngine/Orc/ObjectFileInterface.h"
+#include "llvm/ExecutionEngine/Orc/SymbolStringPool.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/GlobalVariable.h"
@@ -561,8 +562,8 @@ DLLImportDefinitionGenerator::createStubsGraph(const SymbolMap &Resolved) {
     return Endianness.takeError();
 
   auto G = std::make_unique<jitlink::LinkGraph>(
-      "<DLLIMPORT_STUBS>", TT, *PointerSize, *Endianness,
-      jitlink::getGenericEdgeKindName);
+      "<DLLIMPORT_STUBS>", ES.getSymbolStringPool(), TT, *PointerSize,
+      *Endianness, jitlink::getGenericEdgeKindName);
   jitlink::Section &Sec =
       G->createSection(getSectionName(), MemProt::Read | MemProt::Exec);
 
@@ -574,9 +575,8 @@ DLLImportDefinitionGenerator::createStubsGraph(const SymbolMap &Resolved) {
     // Create __imp_ symbol
     jitlink::Symbol &Ptr =
         jitlink::x86_64::createAnonymousPointer(*G, Sec, &Target);
-    auto NameCopy = G->allocateContent(Twine(getImpPrefix()) + *KV.first);
-    StringRef NameCopyRef = StringRef(NameCopy.data(), NameCopy.size());
-    Ptr.setName(NameCopyRef);
+    auto name = getImpPrefix() + *KV.first;
+    Ptr.setName(G->intern(name.getSingleStringRef()));
     Ptr.setLinkage(jitlink::Linkage::Strong);
     Ptr.setScope(jitlink::Scope::Default);
 

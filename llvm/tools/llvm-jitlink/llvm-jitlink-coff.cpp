@@ -117,7 +117,7 @@ Error registerCOFFGraphInfo(Session &S, LinkGraph &G) {
         // then add it to the GOT entry info table.
         if (Sym->getSize() != 0) {
           if (auto TS = getCOFFGOTTarget(G, Sym->getBlock()))
-            FileInfo.GOTEntryInfos[TS->getName()] = {
+            FileInfo.GOTEntryInfos[*TS->getName()] = {
                 Sym->getSymbolContent(), Sym->getAddress().getValue(),
                 Sym->getTargetFlags()};
           else
@@ -130,9 +130,9 @@ Error registerCOFFGraphInfo(Session &S, LinkGraph &G) {
                                          inconvertibleErrorCode());
 
         if (auto TS = getCOFFStubTarget(G, Sym->getBlock()))
-          FileInfo.StubInfos[TS->getName()] = {Sym->getSymbolContent(),
-                                               Sym->getAddress().getValue(),
-                                               Sym->getTargetFlags()};
+          FileInfo.StubInfos[*TS->getName()] = {Sym->getSymbolContent(),
+                                                Sym->getAddress().getValue(),
+                                                Sym->getTargetFlags()};
         else
           return TS.takeError();
         SectionContainsContent = true;
@@ -140,13 +140,13 @@ Error registerCOFFGraphInfo(Session &S, LinkGraph &G) {
 
       if (Sym->hasName()) {
         if (Sym->isSymbolZeroFill()) {
-          S.SymbolInfos[Sym->getName()] = {Sym->getSize(),
-                                           Sym->getAddress().getValue()};
+          S.SymbolInfos[*Sym->getName()] = {Sym->getSize(),
+                                            Sym->getAddress().getValue()};
           SectionContainsZeroFill = true;
         } else {
-          S.SymbolInfos[Sym->getName()] = {Sym->getSymbolContent(),
-                                           Sym->getAddress().getValue(),
-                                           Sym->getTargetFlags()};
+          S.SymbolInfos[*Sym->getName()] = {Sym->getSymbolContent(),
+                                            Sym->getAddress().getValue(),
+                                            Sym->getTargetFlags()};
           SectionContainsContent = true;
         }
       }

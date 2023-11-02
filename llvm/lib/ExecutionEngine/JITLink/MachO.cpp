@@ -27,7 +27,8 @@ namespace llvm {
 namespace jitlink {
 
 Expected<std::unique_ptr<LinkGraph>>
-createLinkGraphFromMachOObject(MemoryBufferRef ObjectBuffer) {
+createLinkGraphFromMachOObject(MemoryBufferRef ObjectBuffer,
+                               std::shared_ptr<orc::SymbolStringPool> SSP) {
   StringRef Data = ObjectBuffer.getBuffer();
   if (Data.size() < 4)
     return make_error<JITLinkError>("Truncated MachO buffer \"" +
@@ -63,9 +64,9 @@ createLinkGraphFromMachOObject(MemoryBufferRef ObjectBuffer) {
 
     switch (CPUType) {
     case MachO::CPU_TYPE_ARM64:
-      return createLinkGraphFromMachOObject_arm64(ObjectBuffer);
+      return createLinkGraphFromMachOObject_arm64(ObjectBuffer, SSP);
     case MachO::CPU_TYPE_X86_64:
-      return createLinkGraphFromMachOObject_x86_64(ObjectBuffer);
+      return createLinkGraphFromMachOObject_x86_64(ObjectBuffer, SSP);
     }
     return make_error<JITLinkError>("MachO-64 CPU type not valid");
   } else

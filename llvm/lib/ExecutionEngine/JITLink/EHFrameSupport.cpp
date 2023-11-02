@@ -374,7 +374,7 @@ Error EHFrameEdgeFixer::processFDE(ParseContext &PC, Block &B,
         dbgs() << "      WARNING: Not adding keep-alive edge to FDE at "
                << RecordAddress << ", which points to "
                << ((*PCBegin)->isExternal() ? "external" : "absolute")
-               << " symbol \"" << (*PCBegin)->getName()
+               << " symbol \"" << *(*PCBegin)->getName()
                << "\" -- FDE must be kept alive manually or it will be "
                << "dead stripped.\n";
       });
@@ -527,7 +527,7 @@ Expected<Symbol *> EHFrameEdgeFixer::getOrCreateEncodedPointerEdge(
                << (BlockToFix.getAddress() + PointerFieldOffset) << " to "
                << FieldName << " at " << EdgeI->second.Target->getAddress();
         if (EdgeI->second.Target->hasName())
-          dbgs() << " (" << EdgeI->second.Target->getName() << ")";
+          dbgs() << " (" << *EdgeI->second.Target->getName() << ")";
         dbgs() << "\n";
       });
       if (auto Err = skipEncodedPointer(PointerEncoding, RecordReader))
@@ -593,7 +593,7 @@ Expected<Symbol *> EHFrameEdgeFixer::getOrCreateEncodedPointerEdge(
            << (BlockToFix.getAddress() + PointerFieldOffset) << " to "
            << FieldName << " at " << TargetSym->getAddress();
     if (TargetSym->hasName())
-      dbgs() << " (" << TargetSym->getName() << ")";
+      dbgs() << " (" << *TargetSym->getName() << ")";
     dbgs() << "\n";
   });
 

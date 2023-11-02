@@ -125,7 +125,7 @@ raw_ostream &operator<<(raw_ostream &OS, const Symbol &Sym) {
      << ", linkage: " << formatv("{0:6}", getLinkageName(Sym.getLinkage()))
      << ", scope: " << formatv("{0:8}", getScopeName(Sym.getScope())) << ", "
      << (Sym.isLive() ? "live" : "dead") << "  -   "
-     << (Sym.hasName() ? Sym.getName() : "<anonymous symbol>");
+     << (Sym.hasName() ? *Sym.getName() : "<anonymous symbol>");
   return OS;
 }
 
@@ -137,7 +137,7 @@ void printEdge(raw_ostream &OS, const Block &B, const Edge &E,
 
   auto &TargetSym = E.getTarget();
   if (TargetSym.hasName())
-    OS << TargetSym.getName();
+    OS << *TargetSym.getName();
   else {
     auto &TargetBlock = TargetSym.getBlock();
     auto &TargetSec = TargetBlock.getSection();
@@ -165,6 +165,16 @@ Section::~Section() {
     Sym->~Symbol();
   for (auto *B : Blocks)
     B->~Block();
+}
+
+LinkGraph::~LinkGraph() {
+  for (auto *Sym : AbsoluteSymbols) {
+    Sym->~Symbol();
+  }
+  for (auto *Sym: external_symbols()) {
+    Sym->~Symbol();
+  }
+  ExternalSymbols.clear();
 }
 
 Block &LinkGraph::splitBlock(Block &B, size_t SplitIndex,
@@ -315,7 +325,7 @@ void LinkGraph::dump(raw_ostream &OS) {
             OS << formatv("-{0:x8}", -E.getAddend());
           OS << ", kind = " << getEdgeKindName(E.getKind()) << ", target = ";
           if (E.getTarget().hasName())
-            OS << E.getTarget().getName();
+            OS << *E.getTarget().getName();
           else
             OS << "addressable@"
                << formatv("{0:x16}", E.getTarget().getAddress()) << "+"
@@ -385,7 +395,7 @@ Error makeTargetOutOfRangeError(const LinkGraph &G, const Block &B,
     ErrStream << "In graph " << G.getName() << ", section " << Sec.getName()
               << ": relocation target ";
     if (E.getTarget().hasName()) {
-      ErrStream << "\"" << E.getTarget().getName() << "\"";
+      ErrStream << "\"" << *E.getTarget().getName() << "\"";
     } else
       ErrStream << E.getTarget().getBlock().getSection().getName() << " + "
                 << formatv("{0:x}", E.getOffset());
@@ -402,7 +412,7 @@ Error makeTargetOutOfRangeError(const LinkGraph &G, const Block &B,
         BestSymbolForBlock = Sym;
 
     if (BestSymbolForBlock)
-      ErrStream << BestSymbolForBlock->getName() << ", ";
+      ErrStream << *BestSymbolForBlock->getName() << ", ";
     else
       ErrStream << "<anonymous block> @ ";
 
@@ -454,15 +464,16 @@ PointerJumpStubCreator getPointerJumpStubCreator(const Triple &TT) {
 }
 
 Expected<std::unique_ptr<LinkGraph>>
-createLinkGraphFromObject(MemoryBufferRef ObjectBuffer) {
+createLinkGraphFromObject(MemoryBufferRef ObjectBuffer,
+                          std::shared_ptr<orc::SymbolStringPool> SSP) {
   auto Magic = identify_magic(ObjectBuffer.getBuffer());
   switch (Magic) {
   case file_magic::macho_object:
-    return createLinkGraphFromMachOObject(ObjectBuffer);
+    return createLinkGraphFromMachOObject(ObjectBuffer, SSP);
   case file_magic::elf_relocatable:
-    return createLinkGraphFromELFObject(ObjectBuffer);
+    return createLinkGraphFromELFObject(ObjectBuffer, SSP);
   case file_magic::coff_object:
-    return createLinkGraphFromCOFFObject(ObjectBuffer);
+    return createLinkGraphFromCOFFObject(ObjectBuffer, SSP);
   default:
     return make_error<JITLinkError>("Unsupported file format");
   };

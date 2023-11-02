@@ -39,9 +39,10 @@ protected:
 };
 
 TEST_F(ObjectLinkingLayerTest, AddLinkGraph) {
-  auto G = std::make_unique<LinkGraph>("foo", Triple("x86_64-apple-darwin"), 8,
-                                       llvm::endianness::little,
-                                       x86_64::getEdgeKindName);
+  auto G = std::make_unique<LinkGraph>(
+      "foo", std::make_shared<orc::SymbolStringPool>(),
+      Triple("x86_64-apple-darwin"), 8, llvm::endianness::little,
+      x86_64::getEdgeKindName);
 
   auto &Sec1 = G->createSection("__data", MemProt::Read | MemProt::Write);
   auto &B1 = G->createContentBlock(Sec1, BlockContent,
@@ -104,9 +105,10 @@ TEST_F(ObjectLinkingLayerTest, ClaimLateDefinedWeakSymbols) {
 
   ObjLinkingLayer.addPlugin(std::make_unique<TestPlugin>());
 
-  auto G = std::make_unique<LinkGraph>("foo", Triple("x86_64-apple-darwin"), 8,
-                                       llvm::endianness::little,
-                                       x86_64::getEdgeKindName);
+  auto G = std::make_unique<LinkGraph>(
+      "foo", std::make_shared<orc::SymbolStringPool>(),
+      Triple("x86_64-apple-darwin"), 8, llvm::endianness::little,
+      getGenericEdgeKindName);
 
   auto &DataSec = G->createSection("__data", MemProt::Read | MemProt::Write);
   auto &DataBlock = G->createContentBlock(DataSec, BlockContent,
@@ -158,9 +160,10 @@ TEST_F(ObjectLinkingLayerTest, HandleErrorDuringPostAllocationPass) {
 
   ObjLinkingLayer.addPlugin(std::make_unique<TestPlugin>());
 
-  auto G = std::make_unique<LinkGraph>("foo", Triple("x86_64-apple-darwin"), 8,
-                                       llvm::endianness::little,
-                                       x86_64::getEdgeKindName);
+  auto G = std::make_unique<LinkGraph>(
+      "foo", std::make_shared<orc::SymbolStringPool>(),
+      Triple("x86_64-apple-darwin"), 8, llvm::endianness::little,
+      getGenericEdgeKindName);
 
   auto &DataSec = G->createSection("__data", MemProt::Read | MemProt::Write);
   auto &DataBlock = G->createContentBlock(DataSec, BlockContent,
