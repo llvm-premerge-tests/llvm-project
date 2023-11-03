@@ -286,9 +286,11 @@ static std::string getScopedName(unsigned Scope, const std::string &Name) {
 
 static Expected<LLTCodeGen> getInstResultType(const TreePatternNode *Dst) {
   ArrayRef<TypeSetByHwMode> ChildTypes = Dst->getExtTypes();
-  if (ChildTypes.size() != 1)
-    return failedImport("Dst pattern child has multiple results");
+  if (ChildTypes.size() < 1)
+    return failedImport("Dst pattern child has no result");
 
+  // If there are multiple results, just take the first one (this is how
+  // SelectionDAG does it).
   std::optional<LLTCodeGen> MaybeOpTy;
   if (ChildTypes.front().isMachineValueType()) {
     MaybeOpTy = MVTToLLT(ChildTypes.front().getMachineValueType().SimpleTy);
@@ -1776,10 +1778,11 @@ GlobalISelEmitter::inferRegClassFromPattern(const TreePatternNode *N) {
     return getRegClassFromLeaf(N);
 
   // We don't have a leaf node, so we have to try and infer something. Check
-  // that we have an instruction that we an infer something from.
+  // that we have an instruction that we can infer something from.
 
-  // Only handle things that produce a single type.
-  if (N->getNumTypes() != 1)
+  // Only handle things that produce at least one value (if multiple values,
+  // just take the first one).
+  if (N->getNumTypes() < 1)
     return std::nullopt;
   Record *OpRec = N->getOperator();
 
