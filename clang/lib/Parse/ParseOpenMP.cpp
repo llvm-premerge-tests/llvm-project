@@ -3248,6 +3248,7 @@ OMPClause *Parser::ParseOpenMPClause(OpenMPDirectiveKind DKind,
     else
       Clause = ParseOpenMPSingleExprClause(CKind, WrongDirective);
     break;
+  case OMPC_fail:
   case OMPC_default:
   case OMPC_proc_bind:
   case OMPC_atomic_default_mem_order:
@@ -3833,7 +3834,8 @@ OMPClause *Parser::ParseOpenMPClause(OpenMPClauseKind Kind, bool ParseOnly) {
 
   if (ParseOnly)
     return nullptr;
-  return Actions.ActOnOpenMPClause(Kind, Loc, Tok.getLocation());
+  OMPClause *Clause = Actions.ActOnOpenMPClause(Kind, Loc, Tok.getLocation());
+  return Clause;
 }
 
 /// Parsing of OpenMP clauses with single expressions and some additional
