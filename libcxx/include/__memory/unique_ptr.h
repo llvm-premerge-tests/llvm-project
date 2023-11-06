@@ -35,7 +35,9 @@
 #include <__type_traits/is_swappable.h>
 #include <__type_traits/is_void.h>
 #include <__type_traits/remove_extent.h>
+#include <__type_traits/remove_pointer.h>
 #include <__type_traits/type_identity.h>
+#include <__utility/declval.h>
 #include <__utility/forward.h>
 #include <__utility/move.h>
 #include <cstddef>
@@ -48,6 +50,20 @@ _LIBCPP_PUSH_MACROS
 #include <__undef_macros>
 
 _LIBCPP_BEGIN_NAMESPACE_STD
+
+#ifndef _LIBCPP_CXX03_LANG
+// Dereferencing _Ptr directly in noexcept fails for a void pointer.
+// This is not SFINAE-ed away leading to a hard error.
+// The issue was originally triggered by
+// test/std/utilities/memory/unique.ptr/iterator_concept_conformance.compile.pass.cpp
+template <class _Ptr>
+struct __is_noexcept_deref_or_void {
+  static constexpr bool value = noexcept(*std::declval<_Ptr>());
+};
+
+template <>
+struct __is_noexcept_deref_or_void<void*> : true_type {};
+#endif
 
 template <class _Tp>
 struct _LIBCPP_TEMPLATE_VIS default_delete {
@@ -267,7 +283,8 @@ public:
     return *this;
   }
 
-  _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX23 __add_lvalue_reference_t<_Tp> operator*() const {
+  _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX23 __add_lvalue_reference_t<_Tp> operator*() const
+      _NOEXCEPT(__is_noexcept_deref_or_void<pointer>::value) {
     return *__ptr_.first();
   }
   _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX23 pointer operator->() const _NOEXCEPT {
