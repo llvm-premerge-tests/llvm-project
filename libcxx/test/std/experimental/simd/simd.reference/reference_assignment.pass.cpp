@@ -11,6 +11,9 @@
 // FIXME: Timeouts.
 // UNSUPPORTED: sanitizer-new-delete
 
+// The machine emulated in tests does not have enough memory for code.
+// UNSUPPORTED: LIBCXX-PICOLIBC-FIXME
+
 // <experimental/simd>
 //
 // [simd.reference]
