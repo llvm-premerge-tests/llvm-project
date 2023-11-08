@@ -442,12 +442,13 @@ const char *clang::getOpenMPSimpleClauseTypeName(OpenMPClauseKind Kind,
   case OMPC_fail: {
     OpenMPClauseKind CK = static_cast<OpenMPClauseKind>(Type);
     switch (CK) {
-    case OMPC_unknown:
-      return "unknown";
 #define OPENMP_ATOMIC_FAIL_MODIFIER(Name)                                      \
   case OMPC_##Name:                                                            \
     return #Name;
 #include "clang/Basic/OpenMPKinds.def"
+    case OMPC_unknown:
+    default:
+      return "unknown";
     }
     llvm_unreachable("Invalid OpenMP 'fail' clause modifier");
   }
