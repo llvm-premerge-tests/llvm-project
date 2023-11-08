@@ -330,3 +330,9 @@
 // RUN:   | FileCheck %s --check-prefix=CHECK-PIC2
 // RUN: %clang -c %s --target=i586-pc-haiku -### 2>&1 \
 // RUN:   | FileCheck %s --check-prefix=CHECK-PIC2
+
+// Serenity has PIC and PIE by default
+// RUN: %clang -c %s --target=x86_64-pc-serenity -### 2>&1 \
+// RUN:   | FileCheck %s --check-prefix=CHECK-PIE2
+// RUN: %clang -c %s --target=aarch64-pc-serenity -### 2>&1 \
+// RUN:   | FileCheck %s --check-prefix=CHECK-PIE2
