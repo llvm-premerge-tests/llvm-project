@@ -16680,6 +16680,7 @@ TEST_F(FormatTest, ConfigurableSpacesInParens) {
   Spaces.SpacesInParensOptions = {};
   Spaces.SpacesInParensOptions.Other = true;
   Spaces.SpacesInParensOptions.InConditionalStatements = true;
+  Spaces.SpacesInParensOptions.InAttributeSpecifiers = true;
   verifyFormat("do_something( ::globalVar );", Spaces);
   verifyFormat("call( x, y, z );", Spaces);
   verifyFormat("call();", Spaces);
@@ -16753,6 +16754,12 @@ TEST_F(FormatTest, ConfigurableSpacesInParens) {
   verifyFormat("SomeType *__attribute__((attr)) *a = NULL;", Spaces);
   verifyFormat("void __attribute__((naked)) foo(int bar)", Spaces);
   verifyFormat("void f( ) __attribute__((asdf));", Spaces);
+
+  Spaces.SpacesInParensOptions.InAttributeSpecifiers = true;
+  verifyFormat("SomeType *__attribute__( ( attr ) ) *a = NULL;", Spaces);
+  verifyFormat("void __attribute__( ( naked ) ) foo(int bar)", Spaces);
+  verifyFormat("void f( ) __attribute__( ( asdf ) );", Spaces);
+  Spaces.SpacesInParensOptions.InAttributeSpecifiers = false;
 
   // Run the first set of tests again with:
   Spaces.SpaceAfterCStyleCast = true;

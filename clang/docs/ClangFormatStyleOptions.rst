@@ -5527,6 +5527,13 @@ the configuration (without a prefix: ``Auto``).
       InConditionalStatements: true
       Other: true
 
+  * ``bool InAttributeSpecifiers`` Put a space in parentheses of attribute specifiers.
+
+    .. code-block:: c++
+
+       true:                                  false:
+       __attribute__( ( noreturn ) )    vs.     __attribute__((noreturn))
+
   * ``bool InConditionalStatements`` Put a space in parentheses only inside conditional statements
     (``for/if/while/switch...``).
 
