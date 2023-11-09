@@ -2220,7 +2220,8 @@ private:
     }
 
     if (PreviousNotConst->is(tok::r_paren) &&
-        PreviousNotConst->is(TT_TypeDeclarationParen)) {
+        (PreviousNotConst->isOneOf(TT_TypeDeclarationParen,
+                                   TT_AttributeRParen))) {
       return true;
     }
 
