@@ -852,6 +852,9 @@ clang-format
 - Change ``BreakAfterAttributes`` from ``Never`` to ``Leave`` in LLVM style.
 - Add ``InAttributeSpecifiers`` style option to ``SpacesInParensOptions``
   to control addition of spaces after the ``__attribute__`` keyword.
+- Add ``InFunctionCalls``, ``InFunctionDeclarations``,
+  ``InFunctionDefinitions``, and ``InOverloadedOperators`` style options to
+  ``SpacesInParensOptions`` to control addition of spaces.
 
 libclang
 --------

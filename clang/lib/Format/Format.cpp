@@ -756,6 +756,10 @@ template <> struct MappingTraits<FormatStyle::SpacesInParensCustom> {
     IO.mapOptional("InCStyleCasts", Spaces.InCStyleCasts);
     IO.mapOptional("InConditionalStatements", Spaces.InConditionalStatements);
     IO.mapOptional("InEmptyParentheses", Spaces.InEmptyParentheses);
+    IO.mapOptional("InFunctionCalls", Spaces.InFunctionCalls);
+    IO.mapOptional("InFunctionDeclarations", Spaces.InFunctionDeclarations);
+    IO.mapOptional("InFunctionDefinitions", Spaces.InFunctionDefinitions);
+    IO.mapOptional("InOverloadedOperators", Spaces.InOverloadedOperators);
     IO.mapOptional("Other", Spaces.Other);
   }
 };
@@ -1193,6 +1197,10 @@ template <> struct MappingTraits<FormatStyle> {
             SpacesInCStyleCastParentheses;
         Style.SpacesInParensOptions.InEmptyParentheses =
             SpaceInEmptyParentheses;
+        Style.SpacesInParensOptions.InFunctionCalls = true;
+        Style.SpacesInParensOptions.InFunctionDeclarations = true;
+        Style.SpacesInParensOptions.InFunctionDefinitions = true;
+        Style.SpacesInParensOptions.InOverloadedOperators = true;
         Style.SpacesInParensOptions.Other = true;
       } else {
         Style.SpacesInParensOptions = {};

@@ -5562,12 +5562,41 @@ the configuration (without a prefix: ``Auto``).
          }                                    }
        }                                    }
 
-  * ``bool Other`` Put a space in parentheses not covered by preceding options.
+  * ``bool InFunctionCalls`` Put a space in parentheses of function calls.
 
     .. code-block:: c++
 
        true:                                  false:
        t f( Deleted & ) & = delete;   vs.     t f(Deleted &) & = delete;
+
+  * ``bool InFunctionDeclarations`` Put a space in parentheses of function declarations.
+
+    .. code-block:: c++
+
+       true:                                  false:
+       void foo( int bar );           vs.     void foo(int bar);
+
+  * ``bool InFunctionDefinitions`` Put a space in parentheses of function definitions.
+
+    .. code-block:: c++
+
+       true:                                  false:
+       void foo( int bar ) { }        vs.     void foo(int bar) { }
+
+  * ``bool InOverloadedOperators`` Put a space in parentheses of overloaded operators.
+
+    .. code-block:: c++
+
+       true:                                  false:
+       void operator++( int a )       vs.     void operator++(int a)
+       object.operator++( 10 )        vs.     object.operator++(10)
+
+  * ``bool Other`` Put a space in parentheses not covered by preceding options.
+
+    .. code-block:: c++
+
+       true:                                  false:
+       x = ( y + z );                 vs.     x = (y+z);
 
 
 .. _SpacesInParentheses:

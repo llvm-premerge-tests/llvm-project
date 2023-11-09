@@ -3980,6 +3980,31 @@ bool TokenAnnotator::spaceRequiredBetween(const AnnotatedLine &Line,
                                            TT_AttributeRParen))) {
       return Style.SpacesInParensOptions.InAttributeSpecifiers;
     }
+    // Function declaration or definition
+    if ((Left.Previous && Left.Previous->is(TT_FunctionDeclarationName)) ||
+        (Right.MatchingParen && Right.MatchingParen->Previous &&
+         Right.MatchingParen->Previous->is(TT_FunctionDeclarationName))) {
+      if (Line.MightBeFunctionDecl)
+        if (Line.mightBeFunctionDefinition())
+          return Style.SpacesInParensOptions.InFunctionDefinitions;
+        else
+          return Style.SpacesInParensOptions.InFunctionDeclarations;
+      else
+        return Style.SpacesInParensOptions.Other;
+    }
+    if (Left.is(TT_OverloadedOperatorLParen) ||
+        (Right.MatchingParen &&
+         Right.MatchingParen->is(TT_OverloadedOperatorLParen))) {
+      return Style.SpacesInParensOptions.InOverloadedOperators;
+    }
+    if (((Left.ParameterCount > 0 && Left.Previous &&
+          Left.Previous->is(tok::identifier)) ||
+         (Right.MatchingParen && Right.MatchingParen->ParameterCount > 0 &&
+          Right.MatchingParen->Previous &&
+          Right.MatchingParen->Previous->is(tok::identifier))) &&
+        (Line.Type != LT_PreprocessorDirective)) {
+      return Style.SpacesInParensOptions.InFunctionCalls;
+    }
     return Style.SpacesInParensOptions.Other;
   }
   if (Right.isOneOf(tok::semi, tok::comma))

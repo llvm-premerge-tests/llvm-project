@@ -4451,30 +4451,69 @@ struct FormatStyle {
     ///    }                                    }
     /// \endcode
     bool InEmptyParentheses;
-    /// Put a space in parentheses not covered by preceding options.
+    /// Put a space in parentheses of function calls.
     /// \code
     ///    true:                                  false:
     ///    t f( Deleted & ) & = delete;   vs.     t f(Deleted &) & = delete;
+    /// \endcode
+    bool InFunctionCalls;
+    /// Put a space in parentheses of function declarations.
+    /// \code
+    ///    true:                                  false:
+    ///    void foo( int bar );           vs.     void foo(int bar);
+    /// \endcode
+    bool InFunctionDeclarations;
+    /// Put a space in parentheses of function definitions.
+    /// \code
+    ///    true:                                  false:
+    ///    void foo( int bar ) { }        vs.     void foo(int bar) { }
+    /// \endcode
+    bool InFunctionDefinitions;
+    /// Put a space in parentheses of overloaded operators.
+    /// \code
+    ///    true:                                  false:
+    ///    void operator++( int a )       vs.     void operator++(int a)
+    ///    object.operator++( 10 )        vs.     object.operator++(10)
+    /// \endcode
+    bool InOverloadedOperators;
+    /// Put a space in parentheses not covered by preceding options.
+    /// \code
+    ///    true:                                  false:
+    ///    x = ( y + z );                 vs.     x = (y+z);
     /// \endcode
     bool Other;
 
     SpacesInParensCustom()
         : InAttributeSpecifiers(false), InConditionalStatements(false),
-          InCStyleCasts(false), InEmptyParentheses(false), Other(false) {}
+          InCStyleCasts(false), InEmptyParentheses(false),
+          InFunctionCalls(false), InFunctionDeclarations(false),
+          InFunctionDefinitions(false), InOverloadedOperators(false),
+          Other(false) {}
 
     SpacesInParensCustom(bool InAttributeSpecifiers,
                          bool InConditionalStatements, bool InCStyleCasts,
-                         bool InEmptyParentheses, bool Other)
+                         bool InEmptyParentheses, bool InFunctionCalls,
+                         bool InFunctionDeclarations,
+                         bool InFunctionDefinitions, bool InOverloadedOperators,
+                         bool Other)
         : InAttributeSpecifiers(InAttributeSpecifiers),
           InConditionalStatements(InConditionalStatements),
           InCStyleCasts(InCStyleCasts), InEmptyParentheses(InEmptyParentheses),
-          Other(Other) {}
+          InFunctionCalls(InFunctionCalls),
+          InFunctionDeclarations(InFunctionDeclarations),
+          InFunctionDefinitions(InFunctionDefinitions),
+          InOverloadedOperators(InOverloadedOperators), Other(Other) {}
 
     bool operator==(const SpacesInParensCustom &R) const {
       return InAttributeSpecifiers == R.InAttributeSpecifiers &&
              InConditionalStatements == R.InConditionalStatements &&
              InCStyleCasts == R.InCStyleCasts &&
-             InEmptyParentheses == R.InEmptyParentheses && Other == R.Other;
+             InEmptyParentheses == R.InEmptyParentheses &&
+             InFunctionCalls == R.InFunctionCalls &&
+             InFunctionDeclarations == R.InFunctionDeclarations &&
+             InFunctionDefinitions == R.InFunctionDefinitions &&
+             InOverloadedOperators == R.InOverloadedOperators &&
+             Other == R.Other;
     }
     bool operator!=(const SpacesInParensCustom &R) const {
       return !(*this == R);

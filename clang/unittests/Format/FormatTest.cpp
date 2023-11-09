@@ -11064,7 +11064,8 @@ TEST_F(FormatTest, UnderstandsFunctionRefQualification) {
   verifyFormat("SomeType MemberFunction(const Deleted &) &;", Spaces);
 
   Spaces.SpacesInParensOptions.InCStyleCasts = false;
-  Spaces.SpacesInParensOptions.Other = true;
+  Spaces.SpacesInParensOptions.InFunctionDeclarations = true;
+  Spaces.SpacesInParensOptions.InOverloadedOperators = true;
   verifyFormat("Deleted &operator=( const Deleted & ) & = default;", Spaces);
   verifyFormat("SomeType MemberFunction( const Deleted & ) & = delete;",
                Spaces);
@@ -13631,6 +13632,7 @@ TEST_F(FormatTest, LayoutCxx11BraceInitializers) {
   SpaceBetweenBraces.SpacesInAngles = FormatStyle::SIAS_Always;
   SpaceBetweenBraces.SpacesInParens = FormatStyle::SIPO_Custom;
   SpaceBetweenBraces.SpacesInParensOptions.Other = true;
+  SpaceBetweenBraces.SpacesInParensOptions.InFunctionCalls = true;
   SpaceBetweenBraces.SpacesInSquareBrackets = true;
   verifyFormat("vector< int > x{ 1, 2, 3, 4 };", SpaceBetweenBraces);
   verifyFormat("f( {}, { {}, {} }, MyMap[ { k, v } ] );", SpaceBetweenBraces);
@@ -16685,6 +16687,7 @@ TEST_F(FormatTest, ConfigurableSpacesInParens) {
   Spaces.SpacesInParensOptions.Other = true;
   Spaces.SpacesInParensOptions.InConditionalStatements = true;
   Spaces.SpacesInParensOptions.InAttributeSpecifiers = true;
+  Spaces.SpacesInParensOptions.InFunctionCalls = true;
   verifyFormat("do_something( ::globalVar );", Spaces);
   verifyFormat("call( x, y, z );", Spaces);
   verifyFormat("call();", Spaces);
@@ -16712,7 +16715,7 @@ TEST_F(FormatTest, ConfigurableSpacesInParens) {
                "}",
                Spaces);
   verifyFormat("SomeType *__attribute__( ( attr ) ) *a = NULL;", Spaces);
-  verifyFormat("void __attribute__( ( naked ) ) foo( int bar )", Spaces);
+  verifyFormat("void __attribute__( ( x ) ) foo(int y) { return; }", Spaces);
   verifyFormat("void f() __attribute__( ( asdf ) );", Spaces);
 
   Spaces.SpacesInParens = FormatStyle::SIPO_Custom;
@@ -16726,6 +16729,142 @@ TEST_F(FormatTest, ConfigurableSpacesInParens) {
   verifyFormat("#define AA(X) sizeof((( X * )NULL)->a)", Spaces);
   verifyFormat("my_int a = ( my_int )sizeof(int);", Spaces);
   verifyFormat("#define x (( int )-1)", Spaces);
+
+  // Run the first set of tests again with:
+  Spaces.SpacesInParens = FormatStyle::SIPO_Custom;
+  Spaces.SpacesInParensOptions = {};
+  Spaces.SpacesInParensOptions.InFunctionDeclarations = true;
+  verifyFormat("do_something(::globalVar);", Spaces);
+  verifyFormat("call(x, y, z);", Spaces);
+  verifyFormat("call();", Spaces);
+  verifyFormat("std::function<void(int, int)> callback;", Spaces);
+  verifyFormat("void inFunction() { std::function<void(int, int)> fct; }",
+               Spaces);
+  verifyFormat("while ((bool)1)\n"
+               "  continue;",
+               Spaces);
+  verifyFormat("for (;;)\n"
+               "  continue;",
+               Spaces);
+  verifyFormat("if (true)\n"
+               "  f();\n"
+               "else if (true)\n"
+               "  f();",
+               Spaces);
+  verifyFormat("do {\n"
+               "  do_something((int)i);\n"
+               "} while (something());",
+               Spaces);
+  verifyFormat("switch (x) {\n"
+               "default:\n"
+               "  break;\n"
+               "}",
+               Spaces);
+  verifyFormat("SomeType *__attribute__((attr)) *a = NULL;", Spaces);
+  verifyFormat("void __attribute__((naked)) foo( int bar );", Spaces);
+  verifyFormat("void f( int g ) __attribute__((asdf));", Spaces);
+  verifyFormat("int f();", Spaces);
+  verifyFormat("void f(int a, T b) {}", Spaces);
+  verifyFormat("void __attribute__((asdf)) f(int a, T b) {}", Spaces);
+  verifyFormat("A::A() : a(1) {}", Spaces);
+  verifyFormat("void f( int bar ) __attribute__((asdf));", Spaces);
+  verifyFormat("void __attribute__((asdf)) f( int bar );", Spaces);
+  verifyFormat("#define A(x) x", Spaces);
+  verifyFormat("#define A (x) x", Spaces);
+  verifyFormat("#if defined(x)\n"
+               "#endif",
+               Spaces);
+  verifyFormat("auto i = std::make_unique<int>(5);", Spaces);
+  verifyFormat("size_t x = sizeof(x);", Spaces);
+  verifyFormat("auto f( int x ) -> decltype(x);", Spaces);
+  verifyFormat("auto f( int x ) -> typeof(x);", Spaces);
+  verifyFormat("auto f( int x ) -> _Atomic(x);", Spaces);
+  verifyFormat("auto f( int x ) -> __underlying_type(x);", Spaces);
+  verifyFormat("int f( T x ) noexcept(x.create());", Spaces);
+  verifyFormat("alignas(128) char a[128];", Spaces);
+  verifyFormat("size_t x = alignof(MyType);", Spaces);
+  verifyFormat("static_assert(sizeof(char) == 1, \"Impossible!\");",
+               Spaces);
+  verifyFormat("int f( int g ) throw(Deprecated);", Spaces);
+  verifyFormat("typedef void (*cb)(int);", Spaces);
+  verifyFormat("int x = int(y);", Spaces);
+
+  // Run a subset with:
+  Spaces.SpacesInParensOptions.InFunctionDeclarations = false;
+  Spaces.SpacesInParensOptions.InFunctionDefinitions = true;
+  verifyFormat("do_something(::globalVar);", Spaces);
+  verifyFormat("call(x, y, z);", Spaces);
+  verifyFormat("call();", Spaces);
+  verifyFormat("std::function<void(int, int)> callback;", Spaces);
+  verifyFormat("void inFunction( int x ) { std::function<void(int, int)> f; }",
+               Spaces);
+  verifyFormat("SomeType *__attribute__((attr)) *a = NULL;", Spaces);
+  verifyFormat("void __attribute__((naked)) foo(int bar);", Spaces);
+  verifyFormat("void f(int g) __attribute__((asdf));", Spaces);
+  verifyFormat("int f();", Spaces);
+  verifyFormat("void f( int a, T b ) {}", Spaces);
+  verifyFormat("void __attribute__((asdf)) f( int a, T b ) {}", Spaces);
+  verifyFormat("A::A() : a(1) {}", Spaces);
+  verifyFormat("void f(int bar) __attribute__((asdf));", Spaces);
+  verifyFormat("void __attribute__((asdf)) f(int bar);", Spaces);
+  verifyFormat("#define A(x) x", Spaces);
+  verifyFormat("#define A (x) x", Spaces);
+  verifyFormat("#if defined(x)\n"
+               "#endif",
+               Spaces);
+  verifyFormat("auto i = std::make_unique<int>(5);", Spaces);
+  verifyFormat("size_t x = sizeof(x);", Spaces);
+  verifyFormat("auto f(int x) -> decltype(x);", Spaces);
+  verifyFormat("auto f(int x) -> typeof(x);", Spaces);
+  verifyFormat("auto f(int x) -> _Atomic(x);", Spaces);
+  verifyFormat("auto f(int x) -> __underlying_type(x);", Spaces);
+  verifyFormat("int f(T x) noexcept(x.create());", Spaces);
+  verifyFormat("alignas(128) char a[128];", Spaces);
+  verifyFormat("size_t x = alignof(MyType);", Spaces);
+  verifyFormat("static_assert(sizeof(char) == 1, \"Impossible!\");",
+               Spaces);
+  verifyFormat("int f(int g) throw(Deprecated);", Spaces);
+  verifyFormat("typedef void (*cb)(int);", Spaces);
+  verifyFormat("int x = int(y);", Spaces);
+
+  // Run a subset with:
+  Spaces.SpacesInParensOptions.InFunctionDeclarations = false;
+  Spaces.SpacesInParensOptions.InFunctionDefinitions = false;
+  Spaces.SpacesInParensOptions.InFunctionCalls = true;
+  verifyFormat("do_something( ::globalVar );", Spaces);
+  verifyFormat("call( x, y, z );", Spaces);
+  verifyFormat("call();", Spaces);
+  verifyFormat("std::function<void(int, int)> callback;", Spaces);
+  verifyFormat("void inFunction(int x) { std::function<void(int, int)> f; }",
+               Spaces);
+  verifyFormat("SomeType *__attribute__((attr)) *a = NULL;", Spaces);
+  verifyFormat("void __attribute__((naked)) foo(int bar);", Spaces);
+  verifyFormat("void f(int g) __attribute__((asdf));", Spaces);
+  verifyFormat("int f();", Spaces);
+  verifyFormat("void f(int a, T b) {}", Spaces);
+  verifyFormat("void __attribute__((asdf)) f(int a, T b) {}", Spaces);
+  verifyFormat("A::A() : a( 1 ) {}", Spaces);
+  verifyFormat("void f(int bar) __attribute__((asdf));", Spaces);
+  verifyFormat("void __attribute__((asdf)) f(int bar);", Spaces);
+  verifyFormat("#define A (x) x", Spaces);
+  verifyFormat("#define A(x) x", Spaces);
+  verifyFormat("#if defined(x)\n"
+               "#endif",
+               Spaces);
+  verifyFormat("auto i = std::make_unique<int>(5);", Spaces);
+  verifyFormat("size_t x = sizeof(x);", Spaces);
+  verifyFormat("auto f(int x) -> decltype(x);", Spaces);
+  verifyFormat("auto f(int x) -> typeof(x);", Spaces);
+  verifyFormat("auto f(int x) -> _Atomic(x);", Spaces);
+  verifyFormat("auto f(int x) -> __underlying_type(x);", Spaces);
+  verifyFormat("int f(T x) noexcept(x.create());", Spaces);
+  verifyFormat("alignas(128) char a[128];", Spaces);
+  verifyFormat("size_t x = alignof(MyType);", Spaces);
+  verifyFormat("static_assert(sizeof(char) == 1, \"Impossible!\");",
+               Spaces);
+  verifyFormat("int f(int g) throw(Deprecated);", Spaces);
+  verifyFormat("typedef void (*cb)(int);", Spaces);
+  verifyFormat("int x = int(y);", Spaces);
 
   // Run the first set of tests again with:
   Spaces.SpacesInParens = FormatStyle::SIPO_Custom;
@@ -23851,6 +23990,7 @@ TEST_F(FormatTest, AtomicQualifier) {
   Style.SpacesInParensOptions.InCStyleCasts = true;
   verifyFormat("x = ( _Atomic(uint64_t) )*a;", Style);
   Style.SpacesInParensOptions.InCStyleCasts = false;
+  Style.SpacesInParensOptions.InFunctionCalls = true;
   Style.SpacesInParensOptions.Other = true;
   verifyFormat("x = (_Atomic( uint64_t ))*a;", Style);
   verifyFormat("x = (_Atomic( uint64_t ))&a;", Style);
