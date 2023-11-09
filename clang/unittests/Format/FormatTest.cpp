@@ -25809,6 +25809,38 @@ TEST_F(FormatTest, AlignAfterOpenBracketBlockIndentIfStatement) {
                "  return;\n"
                "}",
                Style);
+
+  verifyFormat("void foo() {\n"
+               "  if (quitelongname < alsolongname ||\n"
+               "      anotherevenlongername <=\n"
+               "          thisreallyreallyreallyreallyreallyreallylongername ||"
+               "\n"
+               "      othername < thislastname) {\n"
+               "    return;\n"
+               "  } else if (quitelongname < alsolongname ||\n"
+               "             anotherevenlongername <=\n"
+               "                 thisreallyreallyreallyreallyreallyreallylonger"
+               "name ||\n"
+               "             othername < thislastname) {\n"
+               "    return;\n"
+               "  }\n"
+               "}",
+               Style);
+
+  Style.ContinuationIndentWidth = 2;
+  verifyFormat("void foo() {\n"
+               "  if (ThisIsRatherALongIfClause && thatIExpectToBeBroken ||\n"
+               "      ontoMultipleLines && whenFormattedCorrectly) {\n"
+               "    if (false) {\n"
+               "      return;\n"
+               "    } else if (thisIsRatherALongIfClause && "
+               "thatIExpectToBeBroken ||\n"
+               "               ontoMultipleLines && whenFormattedCorrectly) {\n"
+               "      return;\n"
+               "    }\n"
+               "  }\n"
+               "}",
+               Style);
 }
 
 TEST_F(FormatTest, AlignAfterOpenBracketBlockIndentForStatement) {
