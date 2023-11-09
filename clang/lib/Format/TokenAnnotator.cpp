@@ -3967,10 +3967,19 @@ bool TokenAnnotator::spaceRequiredBetween(const AnnotatedLine &Line,
   }
 
   if (Left.is(tok::l_paren) || Right.is(tok::r_paren)) {
-    return (Right.is(TT_CastRParen) ||
-            (Left.MatchingParen && Left.MatchingParen->is(TT_CastRParen)))
-               ? Style.SpacesInParensOptions.InCStyleCasts
-               : Style.SpacesInParensOptions.Other;
+    if (Right.is(TT_CastRParen) ||
+        (Left.MatchingParen && Left.MatchingParen->is(TT_CastRParen))) {
+      return Style.SpacesInParensOptions.InCStyleCasts;
+    }
+    if (Left.isOneOf(TT_AttributeLParen, TT_AttributeRParen) ||
+        Right.isOneOf(TT_AttributeLParen, TT_AttributeRParen) ||
+        (Left.Previous && Left.Previous->isOneOf(TT_AttributeLParen,
+                                                 TT_AttributeRParen)) ||
+        (Right.Next && Right.Next->isOneOf(TT_AttributeLParen,
+                                           TT_AttributeRParen))) {
+      return Style.SpacesInParensOptions.InAttributeSpecifiers;
+    }
+    return Style.SpacesInParensOptions.Other;
   }
   if (Right.isOneOf(tok::semi, tok::comma))
     return false;

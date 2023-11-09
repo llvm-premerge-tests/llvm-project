@@ -4420,6 +4420,12 @@ struct FormatStyle {
   ///     Other: true
   /// \endcode
   struct SpacesInParensCustom {
+    /// Put a space in parentheses of attribute specifiers.
+    /// \code
+    ///    true:                                  false:
+    ///    __attribute__( ( noreturn ) )    vs.     __attribute__((noreturn))
+    /// \endcode
+    bool InAttributeSpecifiers;
     /// Put a space in parentheses only inside conditional statements
     /// (``for/if/while/switch...``).
     /// \code
@@ -4453,17 +4459,20 @@ struct FormatStyle {
     bool Other;
 
     SpacesInParensCustom()
-        : InConditionalStatements(false), InCStyleCasts(false),
-          InEmptyParentheses(false), Other(false) {}
+        : InAttributeSpecifiers(false), InConditionalStatements(false),
+          InCStyleCasts(false), InEmptyParentheses(false), Other(false) {}
 
-    SpacesInParensCustom(bool InConditionalStatements, bool InCStyleCasts,
+    SpacesInParensCustom(bool InAttributeSpecifiers,
+                         bool InConditionalStatements, bool InCStyleCasts,
                          bool InEmptyParentheses, bool Other)
-        : InConditionalStatements(InConditionalStatements),
+        : InAttributeSpecifiers(InAttributeSpecifiers),
+          InConditionalStatements(InConditionalStatements),
           InCStyleCasts(InCStyleCasts), InEmptyParentheses(InEmptyParentheses),
           Other(Other) {}
 
     bool operator==(const SpacesInParensCustom &R) const {
-      return InConditionalStatements == R.InConditionalStatements &&
+      return InAttributeSpecifiers == R.InAttributeSpecifiers &&
+             InConditionalStatements == R.InConditionalStatements &&
              InCStyleCasts == R.InCStyleCasts &&
              InEmptyParentheses == R.InEmptyParentheses && Other == R.Other;
     }

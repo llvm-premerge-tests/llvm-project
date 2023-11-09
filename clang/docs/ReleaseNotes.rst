@@ -850,6 +850,8 @@ clang-format
 - Add ``AllowBreakBeforeNoexceptSpecifier`` option.
 - Add ``AllowShortCompoundRequirementOnASingleLine`` option.
 - Change ``BreakAfterAttributes`` from ``Never`` to ``Leave`` in LLVM style.
+- Add ``InAttributeSpecifiers`` style option to ``SpacesInParensOptions``
+  to control addition of spaces after the ``__attribute__`` keyword.
 
 libclang
 --------
