@@ -2513,6 +2513,198 @@ public:
   }
 };
 
+/// This represents 'fail' clause in the '#pragma omp atomic'
+/// directive.
+///
+/// \code
+/// #pragma omp atomic compare fail
+/// \endcode
+/// In this example directive '#pragma omp atomic compare' has 'fail' clause.
+class OMPFailClause final : public OMPClause {
+
+  // FailParameter is a memory-order-clause. Storing the ClauseKind is
+  // sufficient for our purpose.
+  OpenMPClauseKind FailParameter = llvm::omp::Clause::OMPC_unknown;
+  SourceLocation FailParameterLoc;
+  SourceLocation LParenLoc;
+
+  friend class OMPClauseReader;
+
+  /// Sets the location of '(' in fail clause.
+  void setLParenLoc(SourceLocation Loc) { LParenLoc = Loc; }
+
+  /// Sets the location of memoryOrder clause argument in fail clause.
+  void setFailParameterLoc(SourceLocation Loc) { FailParameterLoc = Loc; }
+
+  /// Sets the mem_order clause for 'atomic compare fail' directive.
+  void setFailParameter(OpenMPClauseKind FailParameter) {
+    this->FailParameter = llvm::omp::OMPC_unknown;
+    switch (FailParameter) {
+    case llvm::omp::OMPC_acq_rel:
+    case llvm::omp::OMPC_acquire:
+      this->FailParameter = llvm::omp::OMPC_acquire;
+      break;
+    case llvm::omp::OMPC_relaxed:
+    case llvm::omp::OMPC_release:
+      this->FailParameter = llvm::omp::OMPC_relaxed;
+      break;
+    case llvm::omp::OMPC_seq_cst:
+      this->FailParameter = llvm::omp::OMPC_seq_cst;
+      break;
+    case llvm::omp::OMPC_adjust_args:
+    case llvm::omp::OMPC_affinity:
+    case llvm::omp::OMPC_align:
+    case llvm::omp::OMPC_aligned:
+    case llvm::omp::OMPC_allocate:
+    case llvm::omp::OMPC_allocator:
+    case llvm::omp::OMPC_append_args:
+    case llvm::omp::OMPC_at:
+    case llvm::omp::OMPC_atomic_default_mem_order:
+    case llvm::omp::OMPC_bind:
+    case llvm::omp::OMPC_cancellation_construct_type:
+    case llvm::omp::OMPC_capture:
+    case llvm::omp::OMPC_collapse:
+    case llvm::omp::OMPC_compare:
+    case llvm::omp::OMPC_copyprivate:
+    case llvm::omp::OMPC_copyin:
+    case llvm::omp::OMPC_default:
+    case llvm::omp::OMPC_defaultmap:
+    case llvm::omp::OMPC_depend:
+    case llvm::omp::OMPC_depobj:
+    case llvm::omp::OMPC_destroy:
+    case llvm::omp::OMPC_detach:
+    case llvm::omp::OMPC_device:
+    case llvm::omp::OMPC_device_type:
+    case llvm::omp::OMPC_dist_schedule:
+    case llvm::omp::OMPC_doacross:
+    case llvm::omp::OMPC_dynamic_allocators:
+    case llvm::omp::OMPC_exclusive:
+    case llvm::omp::OMPC_fail:
+    case llvm::omp::OMPC_filter:
+    case llvm::omp::OMPC_final:
+    case llvm::omp::OMPC_firstprivate:
+    case llvm::omp::OMPC_flush:
+    case llvm::omp::OMPC_from:
+    case llvm::omp::OMPC_full:
+    case llvm::omp::OMPC_grainsize:
+    case llvm::omp::OMPC_has_device_addr:
+    case llvm::omp::OMPC_hint:
+    case llvm::omp::OMPC_if:
+    case llvm::omp::OMPC_in_reduction:
+    case llvm::omp::OMPC_inbranch:
+    case llvm::omp::OMPC_inclusive:
+    case llvm::omp::OMPC_indirect:
+    case llvm::omp::OMPC_init:
+    case llvm::omp::OMPC_is_device_ptr:
+    case llvm::omp::OMPC_lastprivate:
+    case llvm::omp::OMPC_linear:
+    case llvm::omp::OMPC_link:
+    case llvm::omp::OMPC_map:
+    case llvm::omp::OMPC_match:
+    case llvm::omp::OMPC_memory_order:
+    case llvm::omp::OMPC_mergeable:
+    case llvm::omp::OMPC_message:
+    case llvm::omp::OMPC_nogroup:
+    case llvm::omp::OMPC_nowait:
+    case llvm::omp::OMPC_nocontext:
+    case llvm::omp::OMPC_nontemporal:
+    case llvm::omp::OMPC_notinbranch:
+    case llvm::omp::OMPC_novariants:
+    case llvm::omp::OMPC_num_tasks:
+    case llvm::omp::OMPC_num_teams:
+    case llvm::omp::OMPC_num_threads:
+    case llvm::omp::OMPC_ompx_attribute:
+    case llvm::omp::OMPC_ompx_dyn_cgroup_mem:
+    case llvm::omp::OMPC_ompx_bare:
+    case llvm::omp::OMPC_order:
+    case llvm::omp::OMPC_ordered:
+    case llvm::omp::OMPC_partial:
+    case llvm::omp::OMPC_priority:
+    case llvm::omp::OMPC_private:
+    case llvm::omp::OMPC_proc_bind:
+    case llvm::omp::OMPC_read:
+    case llvm::omp::OMPC_reduction:
+    case llvm::omp::OMPC_reverse_offload:
+    case llvm::omp::OMPC_safelen:
+    case llvm::omp::OMPC_schedule:
+    case llvm::omp::OMPC_severity:
+    case llvm::omp::OMPC_shared:
+    case llvm::omp::OMPC_simd:
+    case llvm::omp::OMPC_simdlen:
+    case llvm::omp::OMPC_sizes:
+    case llvm::omp::OMPC_task_reduction:
+    case llvm::omp::OMPC_thread_limit:
+    case llvm::omp::OMPC_threadprivate:
+    case llvm::omp::OMPC_threads:
+    case llvm::omp::OMPC_to:
+    case llvm::omp::OMPC_unified_address:
+    case llvm::omp::OMPC_unified_shared_memory:
+    case llvm::omp::OMPC_uniform:
+    case llvm::omp::OMPC_unknown:
+    case llvm::omp::OMPC_untied:
+    case llvm::omp::OMPC_update:
+    case llvm::omp::OMPC_use:
+    case llvm::omp::OMPC_use_device_addr:
+    case llvm::omp::OMPC_use_device_ptr:
+    case llvm::omp::OMPC_uses_allocators:
+    case llvm::omp::OMPC_when:
+    case llvm::omp::OMPC_write:
+      this->FailParameter = llvm::omp::OMPC_unknown;
+      break;
+    }
+  }
+
+public:
+  /// Build 'fail' clause.
+  ///
+  /// \param StartLoc Starting location of the clause.
+  /// \param EndLoc Ending location of the clause.
+  OMPFailClause(SourceLocation StartLoc, SourceLocation EndLoc)
+      : OMPClause(llvm::omp::OMPC_fail, StartLoc, EndLoc) {}
+
+  OMPFailClause(OpenMPClauseKind FailParameter, SourceLocation FailParameterLoc,
+                SourceLocation StartLoc, SourceLocation LParenLoc,
+                SourceLocation EndLoc)
+      : OMPClause(llvm::omp::OMPC_fail, StartLoc, EndLoc),
+        FailParameterLoc(FailParameterLoc), LParenLoc(LParenLoc) {
+
+    setFailParameter(FailParameter);
+  }
+
+  /// Build an empty clause.
+  OMPFailClause()
+      : OMPClause(llvm::omp::OMPC_fail, SourceLocation(), SourceLocation()) {}
+
+  child_range children() {
+    return child_range(child_iterator(), child_iterator());
+  }
+
+  const_child_range children() const {
+    return const_child_range(const_child_iterator(), const_child_iterator());
+  }
+
+  child_range used_children() {
+    return child_range(child_iterator(), child_iterator());
+  }
+  const_child_range used_children() const {
+    return const_child_range(const_child_iterator(), const_child_iterator());
+  }
+
+  static bool classof(const OMPClause *T) {
+    return T->getClauseKind() == llvm::omp::OMPC_fail;
+  }
+
+  /// Gets the location of '(' (for the parameter) in fail clause.
+  SourceLocation getLParenLoc() const { return LParenLoc; }
+
+  /// Gets the location of Fail Parameter (type memory-order-clause) in
+  /// fail clause.
+  SourceLocation getFailParameterLoc() const { return FailParameterLoc; }
+
+  /// Gets the parameter (type memory-order-clause) in Fail clause.
+  OpenMPClauseKind getFailParameter() const { return FailParameter; }
+};
+
 /// This represents clause 'private' in the '#pragma omp ...' directives.
 ///
 /// \code
