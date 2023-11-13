@@ -342,6 +342,17 @@ DIDerivedType *DIBuilder::createTypedef(DIType *Ty, StringRef Name,
                             Annotations);
 }
 
+DIDerivedType *
+DIBuilder::createAnnotationsPlaceholder(DIType *Ty, DINodeArray Annotations) {
+  auto *RetTy =
+      DIDerivedType::getTemporary(
+          VMContext, dwarf::DW_TAG_LLVM_annotation, "", nullptr, 0, nullptr, Ty,
+          0, 0, 0, std::nullopt, DINode::FlagZero, nullptr, Annotations)
+          .release();
+  trackIfUnresolved(RetTy);
+  return RetTy;
+}
+
 DIDerivedType *DIBuilder::createFriend(DIType *Ty, DIType *FriendTy) {
   assert(Ty && "Invalid type!");
   assert(FriendTy && "Invalid friend type!");
