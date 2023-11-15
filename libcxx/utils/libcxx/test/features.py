@@ -197,7 +197,8 @@ DEFAULT_FEATURES = [
             #include <unistd.h>
             #include <sys/wait.h>
             int main(int, char**) {
-              return 0;
+              int fd[2];
+              return pipe(fd);
             }
           """,
         ),
@@ -277,6 +278,19 @@ DEFAULT_FEATURES = [
     Feature(name="msvc", when=_isMSVC),
     Feature(name=lambda cfg: "msvc-{}".format(*_msvcVersion(cfg)), when=_isMSVC),
     Feature(name=lambda cfg: "msvc-{}.{}".format(*_msvcVersion(cfg)), when=_isMSVC),
+    # this feature has to be checked after the "gcc" feature, so that the
+    # "-D_LIBCPP_DISABLE_DEPRECATION_WARNINGS" flag is already in place
+    Feature(
+        name="has-64-bit-atomics",
+        when=lambda cfg: sourceBuilds(
+            cfg,
+            """
+            #include <atomic>
+            std::atomic_uint64_t x;
+            int main(int, char**) { (void)x.load(); return 0; }
+          """,
+        ),
+    ),
 ]
 
 # Deduce and add the test features that that are implied by the #defines in
@@ -400,6 +414,19 @@ DEFAULT_FEATURES += [
     Feature(
         name="LIBCXX-FREEBSD-FIXME",
         when=lambda cfg: "__FreeBSD__" in compilerMacros(cfg),
+    ),
+    Feature(
+        name="LIBCXX-PICOLIBC-FIXME",
+        when=lambda cfg: sourceBuilds(
+            cfg,
+            """
+            #include <string.h>
+            #ifndef __PICOLIBC__
+            #error not picolibc
+            #endif
+            int main(int, char**) { return 0; }
+          """,
+        ),
     ),
 ]
 
