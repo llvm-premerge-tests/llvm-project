@@ -121,6 +121,7 @@
 #include "llvm/IR/User.h"
 #include "llvm/IR/Value.h"
 #include "llvm/IR/ValueHandle.h"
+#include "llvm/IR/VectorBuilder.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/CommandLine.h"
@@ -249,6 +250,44 @@ static cl::opt<TailFoldingStyle> ForceTailFoldingStyle(
             TailFoldingStyle::DataAndControlFlowWithoutRuntimeCheck,
             "data-and-control-without-rt-check",
             "Similar to data-and-control, but remove the runtime check")));
+
+namespace {
+/// Option prefer-predicate-with-vp-intrinsics is a switch to indicate that the
+/// loop vectorizer should try to generate VP intrinsics if tail-folding is
+/// enabled (note that this option is dependent on the
+/// prefer-predicate-over-epilogue option being set to
+/// predicate-dont-vectorize).
+/// This can be particularly useful for targets like RISC-V and SX-Aurora that
+/// support vector length predication.
+/// Currently this switch takes three possible values:
+/// 0. no-predication: Do not generate VP intrinsics.
+/// 1. if-explicit-vector-length-support: Only generate VP intrinsics if the
+/// target supports explicit vector length based predication.
+/// 2. force-explicit-vector-length-support: It forces the loop vectorizer to
+/// assume that the target supports vector length predication.
+enum class EVLOption {
+  NoPredication = 0,
+  IfEVLSupported,
+  ForceEVLSupport
+};
+} // namespace
+
+static cl::opt<EVLOption> PreferPredicateWithVPEVLIntrinsics(
+    "prefer-predicate-with-vp-intrinsics", cl::init(EVLOption::NoPredication),
+    cl::Hidden,
+    cl::desc("Controls emission of vector predication intrinsics with explicit "
+             "vector length if tail-folding is forced."),
+    cl::values(
+        clEnumValN(EVLOption::NoPredication, "no-predication",
+                   "Do not generate VP intrinsics."),
+        clEnumValN(EVLOption::IfEVLSupported,
+                   "if-explicit-vector-length-support",
+                   "Only generate VP intrinsics if the target supports vector "
+                   "length predication."),
+        clEnumValN(EVLOption::ForceEVLSupport,
+                   "force-explicit-vector-length-support",
+                   "Assume that the target supports vector length predication "
+                   "and generate VP intrinsics accordingly.")));
 
 static cl::opt<bool> MaximizeBandwidth(
     "vectorizer-maximize-bandwidth", cl::init(false), cl::Hidden,
@@ -1099,7 +1138,8 @@ void InnerLoopVectorizer::collectPoisonGeneratingRecipes(
           isa<VPInterleaveRecipe>(CurRec) ||
           isa<VPScalarIVStepsRecipe>(CurRec) ||
           isa<VPCanonicalIVPHIRecipe>(CurRec) ||
-          isa<VPActiveLaneMaskPHIRecipe>(CurRec))
+          isa<VPActiveLaneMaskPHIRecipe>(CurRec) ||
+          isa<VPEVLBasedIVPHIRecipe>(CurRec))
         continue;
 
       // This recipe contributes to the address computation of a widen
@@ -1647,6 +1687,23 @@ public:
     return foldTailByMasking() || Legal->blockNeedsPredication(BB);
   }
 
+  /// Returns true if VP intrinsics with explicit vector length support should
+  /// be generated in the tail folded loop.
+  bool useVPWithVPEVLVectorization() const {
+    // TODO: implement support for max safe dependency distance.
+    return PreferVPWithVPEVLIntrinsics && !EnableVPlanNativePath &&
+           foldTailByMasking() && Legal->isSafeForAnyVectorWidth() &&
+           // FIXME: remove this once reductions are supported.
+           Legal->getReductionVars().empty() &&
+           // FIXME: remove this once vp_reverse is supported.
+           none_of(WideningDecisions,
+                   [](const std::pair<std::pair<Instruction *, ElementCount>,
+                                      std::pair<InstWidening, InstructionCost>>
+                          &Data) {
+                     return Data.second.first == CM_Widen_Reverse;
+                   });
+  }
+
   /// Returns true if the Phi is part of an inloop reduction.
   bool isInLoopReduction(PHINode *Phi) const {
     return InLoopReductions.contains(Phi);
@@ -1791,6 +1848,10 @@ private:
 
   /// All blocks of loop are to be masked to fold tail of scalar iterations.
   bool CanFoldTailByMasking = false;
+
+  /// Control whether to generate VP intrinsics with explicit-vector-length
+  /// support in vectorized code.
+  bool PreferVPWithVPEVLIntrinsics = false;
 
   /// A map holding scalar costs for different vectorization factors. The
   /// presence of a cost for an instruction in the mapping indicates that the
@@ -4233,6 +4294,9 @@ bool LoopVectorizationCostModel::isScalarWithPredication(
     Type *VTy = Ty;
     if (VF.isVector())
       VTy = VectorType::get(Ty, VF);
+    if (useVPWithVPEVLVectorization() &&
+        PreferPredicateWithVPEVLIntrinsics == EVLOption::ForceEVLSupport)
+      return false;
     const Align Alignment = getLoadStoreAlignment(I);
     return isa<LoadInst>(I) ? !(isLegalMaskedLoad(Ty, Ptr, Alignment) ||
                                 TTI.isLegalMaskedGather(VTy, Alignment))
@@ -5001,6 +5065,42 @@ LoopVectorizationCostModel::computeMaxVF(ElementCount UserVF, unsigned UserIC) {
   // FIXME: look for a smaller MaxVF that does divide TC rather than masking.
   if (Legal->prepareToFoldTailByMasking()) {
     CanFoldTailByMasking = true;
+    if (PreferPredicateWithVPEVLIntrinsics == EVLOption::NoPredication)
+      return MaxFactors;
+
+    if (UserIC > 1) {
+      LLVM_DEBUG(dbgs() << "LV: Preference for VP intrinsics indicated. Will "
+                           "not generate VP intrinsics since interleave count "
+                           "specified is greater than 1.\n");
+      return MaxFactors;
+    }
+
+    if (MaxFactors.ScalableVF.isScalable() &&
+        MaxFactors.ScalableVF.isNonZero()) {
+      if (PreferPredicateWithVPEVLIntrinsics == EVLOption::IfEVLSupported) {
+        // FIXME: use actual opcode/data type for analysis here.
+        PreferVPWithVPEVLIntrinsics =
+            TTI.hasActiveVectorLength(0, nullptr, Align());
+        if (PreferVPWithVPEVLIntrinsics)
+          LLVM_DEBUG(dbgs()
+                     << "LV: Preference for VP intrinsics indicated. Will "
+                        "try to generate VP Intrinsics if the target "
+                        "support vector length predication.\n");
+        else
+          LLVM_DEBUG(dbgs()
+                     << "LV: Preference for VP intrinsics indicated. Will "
+                        "not try to generate VP Intrinsics since the target "
+                        "does not support vector length predication.\n");
+      } else {
+        PreferVPWithVPEVLIntrinsics = true;
+        LLVM_DEBUG(dbgs() << "LV: Preference for VP intrinsics indicated. Will "
+                             "try to generate VP Intrinsics.\n");
+      }
+
+      if (PreferVPWithVPEVLIntrinsics)
+        MaxFactors.FixedVF = ElementCount::getFixed(1);
+    }
+
     return MaxFactors;
   }
 
@@ -5609,6 +5709,10 @@ LoopVectorizationCostModel::selectInterleaveCount(ElementCount VF,
   // due to the increased register pressure.
 
   if (!isScalarEpilogueAllowed())
+    return 1;
+
+  // Do not interleave if EVL is preferred and no User IC is specified.
+  if (useVPWithVPEVLVectorization())
     return 1;
 
   // We used the distance for the interleave count.
@@ -8675,7 +8779,10 @@ void LoopVectorizationPlanner::buildVPlansWithVPRecipes(ElementCount MinVF,
     VFRange SubRange = {VF, MaxVFTimes2};
     if (auto Plan = tryToBuildVPlanWithVPRecipes(SubRange)) {
       // Now optimize the initial VPlan.
-      VPlanTransforms::optimize(*Plan, *PSE.getSE());
+      VPlanTransforms::optimize(*Plan, *PSE.getSE(),
+                                CM.useVPWithVPEVLVectorization());
+      if (CM.useVPWithVPEVLVectorization())
+        VPlanTransforms::addExplicitVectorLength(*Plan);
       assert(VPlanVerifier::verifyPlanIsValid(*Plan) && "VPlan is invalid");
       VPlans.push_back(std::move(Plan));
     }
@@ -8968,7 +9075,7 @@ LoopVectorizationPlanner::tryToBuildVPlanWithVPRecipes(VFRange &Range) {
   if (!VPlanTransforms::adjustFixedOrderRecurrences(*Plan, Builder))
     return nullptr;
 
-  if (useActiveLaneMask(Style)) {
+  if (!CM.useVPWithVPEVLVectorization() && useActiveLaneMask(Style)) {
     // TODO: Move checks to VPlanTransforms::addActiveLaneMask once
     // TailFoldingStyle is visible there.
     bool ForControlFlow = useActiveLaneMaskForControlFlow(Style);
@@ -9504,6 +9611,51 @@ void VPReplicateRecipe::execute(VPTransformState &State) {
       State.ILV->scalarizeInstruction(UI, this, VPIteration(Part, Lane), State);
 }
 
+/// Creates either vp_store or vp_scatter intrinsics calls to represent
+/// predicated store/scatter.
+static Instruction *
+lowerStoreUsingVectorIntrinsics(IRBuilderBase &Builder, Value *Addr,
+                                Value *StoredVal, bool IsScatter, Value *Mask,
+                                Value *EVLPart, const Align &Alignment) {
+  CallInst *Call;
+  if (IsScatter) {
+    Call = Builder.CreateIntrinsic(Type::getVoidTy(EVLPart->getContext()),
+                                   Intrinsic::vp_scatter,
+                                   {StoredVal, Addr, Mask, EVLPart});
+  } else {
+    VectorBuilder VBuilder(Builder);
+    VBuilder.setEVL(EVLPart).setMask(Mask);
+    Call = cast<CallInst>(VBuilder.createVectorInstruction(
+        Instruction::Store, Type::getVoidTy(EVLPart->getContext()),
+        {StoredVal, Addr}));
+  }
+  Call->addParamAttr(
+      1, Attribute::getWithAlignment(Call->getContext(), Alignment));
+  return Call;
+}
+
+/// Creates either vp_load or vp_gather intrinsics calls to represent
+/// predicated load/gather.
+static Instruction *
+lowerLoadUsingVectorIntrinsics(IRBuilderBase &Builder, VectorType *DataTy,
+                               Value *Addr, bool IsGather, Value *Mask,
+                               Value *EVLPart, const Align &Alignment) {
+  CallInst *Call;
+  if (IsGather) {
+    Call = Builder.CreateIntrinsic(DataTy, Intrinsic::vp_gather,
+                                   {Addr, Mask, EVLPart}, nullptr,
+                                   "wide.masked.gather");
+  } else {
+    VectorBuilder VBuilder(Builder);
+    VBuilder.setEVL(EVLPart).setMask(Mask);
+    Call = cast<CallInst>(VBuilder.createVectorInstruction(
+        Instruction::Load, DataTy, Addr, "vp.op.load"));
+  }
+  Call->addParamAttr(
+      0, Attribute::getWithAlignment(Call->getContext(), Alignment));
+  return Call;
+}
+
 void VPWidenMemoryInstructionRecipe::execute(VPTransformState &State) {
   VPValue *StoredValue = isStore() ? getStoredValue() : nullptr;
 
@@ -9569,6 +9721,12 @@ void VPWidenMemoryInstructionRecipe::execute(VPTransformState &State) {
     return PartPtr;
   };
 
+  auto MaskValue = [&](unsigned Part) -> Value * {
+    if (isMaskRequired)
+      return BlockInMaskParts[Part];
+    return nullptr;
+  };
+
   // Handle Stores:
   if (SI) {
     State.setDebugLocFrom(SI->getDebugLoc());
@@ -9576,7 +9734,21 @@ void VPWidenMemoryInstructionRecipe::execute(VPTransformState &State) {
     for (unsigned Part = 0; Part < State.UF; ++Part) {
       Instruction *NewSI = nullptr;
       Value *StoredVal = State.get(StoredValue, Part);
-      if (CreateGatherScatter) {
+      if (Value *EVLPart = State.EVL ? State.get(State.EVL, Part) : nullptr) {
+        // If EVL is not nullptr, then EVL must be a valid value set during plan
+        // creation, possibly default value = whole vector register length. EVL
+        // is created only if TTI prefers predicated vectorization, thus if EVL
+        // is not nullptr it also implies preference for predicated
+        // vectorization.
+        // FIXME: Support reverse store after vp_reverse is added.
+        NewSI = lowerStoreUsingVectorIntrinsics(
+            Builder,
+            CreateGatherScatter
+                ? State.get(getAddr(), Part)
+                : CreateVecPtr(Part, State.get(getAddr(), VPIteration(0, 0))),
+            StoredVal, CreateGatherScatter, MaskValue(Part), EVLPart,
+            Alignment);
+      } else if (CreateGatherScatter) {
         Value *MaskPart = isMaskRequired ? BlockInMaskParts[Part] : nullptr;
         Value *VectorGep = State.get(getAddr(), Part);
         NewSI = Builder.CreateMaskedScatter(StoredVal, VectorGep, Alignment,
@@ -9607,7 +9779,20 @@ void VPWidenMemoryInstructionRecipe::execute(VPTransformState &State) {
   State.setDebugLocFrom(LI->getDebugLoc());
   for (unsigned Part = 0; Part < State.UF; ++Part) {
     Value *NewLI;
-    if (CreateGatherScatter) {
+    if (Value *EVLPart = State.EVL ? State.get(State.EVL, Part) : nullptr) {
+      // If EVL is not nullptr, then EVL must be a valid value set during plan
+      // creation, possibly default value = whole vector register length. EVL
+      // is created only if TTI prefers predicated vectorization, thus if EVL
+      // is not nullptr it also implies preference for predicated
+      // vectorization.
+      // FIXME: Support reverse loading after vp_reverse is added.
+      NewLI = lowerLoadUsingVectorIntrinsics(
+          Builder, DataTy,
+          CreateGatherScatter
+              ? State.get(getAddr(), Part)
+              : CreateVecPtr(Part, State.get(getAddr(), VPIteration(0, 0))),
+          CreateGatherScatter, MaskValue(Part), EVLPart, Alignment);
+    } else if (CreateGatherScatter) {
       Value *MaskPart = isMaskRequired ? BlockInMaskParts[Part] : nullptr;
       Value *VectorGep = State.get(getAddr(), Part);
       NewLI = Builder.CreateMaskedGather(DataTy, VectorGep, Alignment, MaskPart,

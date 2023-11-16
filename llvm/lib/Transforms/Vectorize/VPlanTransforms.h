@@ -59,7 +59,8 @@ struct VPlanTransforms {
   /// Apply VPlan-to-VPlan optimizations to \p Plan, including induction recipe
   /// optimizations, dead recipe removal, replicate region optimizations and
   /// block merging.
-  static void optimize(VPlan &Plan, ScalarEvolution &SE);
+  static void optimize(VPlan &Plan, ScalarEvolution &SE,
+                       bool KeepVPCanonicalWidenRecipes);
 
   /// Wrap predicated VPReplicateRecipes with a mask operand in an if-then
   /// region block and remove the mask operand. Optimize the created regions by
@@ -79,6 +80,13 @@ struct VPlanTransforms {
                                 bool UseActiveLaneMaskForControlFlow,
                                 bool DataAndControlFlowWithoutRuntimeCheck);
 
+  /// Add a VPEVLBasedIVPHIRecipe and related recipes to \p Plan and
+  /// replaces all uses except the canonical IV increment of
+  /// VPCanonicalIVPHIRecipe with a VPEVLBasedIVPHIRecipe.
+  /// VPCanonicalIVPHIRecipe is only used to control the loop after
+  /// this transformation.
+  static void addExplicitVectorLength(VPlan &Plan);
+
 private:
   /// Remove redundant VPBasicBlocks by merging them into their predecessor if
   /// the predecessor has a single successor.
@@ -94,7 +102,8 @@ private:
 
   /// Try to replace VPWidenCanonicalIVRecipes with a widened canonical IV
   /// recipe, if it exists.
-  static void removeRedundantCanonicalIVs(VPlan &Plan);
+  static void removeRedundantCanonicalIVs(VPlan &Plan,
+                                          bool KeepVPCanonicalWidenRecipes);
 
   static void removeDeadRecipes(VPlan &Plan);
 
