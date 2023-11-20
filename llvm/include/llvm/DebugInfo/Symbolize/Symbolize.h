@@ -106,11 +106,11 @@ public:
                  object::SectionedAddress ModuleOffset);
 
   Expected<std::vector<DILineInfo>> findSymbol(const ObjectFile &Obj,
-                                               StringRef Symbol);
-  Expected<std::vector<DILineInfo>> findSymbol(StringRef ModuleName,
-                                               StringRef Symbol);
+                                               StringRef Symbol, uint64_t Ofs);
+  Expected<std::vector<DILineInfo>> findSymbol(const std::string &ModuleName,
+                                               StringRef Symbol, uint64_t Ofs);
   Expected<std::vector<DILineInfo>> findSymbol(ArrayRef<uint8_t> BuildID,
-                                               StringRef Symbol);
+                                               StringRef Symbol, uint64_t Ofs);
 
   void flush();
 
@@ -155,8 +155,8 @@ private:
   symbolizeFrameCommon(const T &ModuleSpecifier,
                        object::SectionedAddress ModuleOffset);
   template <typename T>
-  Expected<std::vector<DILineInfo>> findSymbolCommon(const T &ModuleSpecifier,
-                                                     StringRef Symbol);
+  Expected<std::vector<DILineInfo>>
+  findSymbolCommon(const T &ModuleSpecifier, StringRef Symbol, uint64_t Ofs);
 
   Expected<SymbolizableModule *> getOrCreateModuleInfo(const ObjectFile &Obj);
 
