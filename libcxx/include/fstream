@@ -256,6 +256,8 @@ public:
     inline static const char*
     __make_mdstring(ios_base::openmode __mode) _NOEXCEPT;
 
+    _LIBCPP_NODISCARD _LIBCPP_HIDE_FROM_ABI FILE* __file() { return __file_; }
+
   protected:
     // 27.9.1.5 Overridden virtual functions:
     int_type underflow() override;
