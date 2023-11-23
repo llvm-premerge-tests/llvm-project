@@ -66,6 +66,29 @@ public:
     typedef decltype(__test((_Tp*)0)) type;
 };
 
+#if _LIBCPP_STD_VER <= 17 || defined(_LIBCPP_ENABLE_CXX20_REMOVED_BINDER_TYPEDEFS)
+template <class _Tp, class = void >
+struct __maybe_has_argument_type {};
+
+template <class _Tp>
+struct __maybe_has_argument_type<_Tp, __void_t<typename _Tp::argument_type> > {
+  using argument_type _LIBCPP_NODEBUG _LIBCPP_DEPRECATED_IN_CXX17 = typename _Tp::argument_type;
+};
+
+template <class _Tp, typename = __void_t<>, typename = __void_t<> >
+struct __maybe_has_first_and_second_argument_type {};
+
+template <class _Tp>
+struct __maybe_has_first_and_second_argument_type<
+    _Tp,
+    __void_t<typename _Tp::first_argument_type>,
+    __void_t<typename _Tp::second_argument_type> > {
+  using first_argument_type _LIBCPP_NODEBUG _LIBCPP_DEPRECATED_IN_CXX17  = typename _Tp::first_argument_type;
+  using second_argument_type _LIBCPP_NODEBUG _LIBCPP_DEPRECATED_IN_CXX17 = typename _Tp::second_argument_type;
+};
+
+#endif // _LIBCPP_STD_VER <= 17 || defined(_LIBCPP_ENABLE_CXX20_REMOVED_BINDER_TYPEDEFS)
+
 template <class _Tp, bool = __derives_from_unary_function<_Tp>::value>
 struct __maybe_derive_from_unary_function  // bool is true
     : public __derives_from_unary_function<_Tp>::type
@@ -74,6 +97,9 @@ struct __maybe_derive_from_unary_function  // bool is true
 
 template <class _Tp>
 struct __maybe_derive_from_unary_function<_Tp, false>
+#if _LIBCPP_STD_VER <= 17 || defined(_LIBCPP_ENABLE_CXX20_REMOVED_BINDER_TYPEDEFS)
+    : public __maybe_has_argument_type<_Tp>
+#endif
 {
 };
 
@@ -85,6 +111,9 @@ struct __maybe_derive_from_binary_function  // bool is true
 
 template <class _Tp>
 struct __maybe_derive_from_binary_function<_Tp, false>
+#if _LIBCPP_STD_VER <= 17 || defined(_LIBCPP_ENABLE_CXX20_REMOVED_BINDER_TYPEDEFS)
+    : public __maybe_has_first_and_second_argument_type<_Tp>
+#endif
 {
 };
 
