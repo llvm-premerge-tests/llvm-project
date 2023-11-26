@@ -2483,7 +2483,8 @@ StmtResult Sema::ActOnCXXForRangeStmt(Scope *S, SourceLocation ForLoc,
                                       SourceLocation CoawaitLoc, Stmt *InitStmt,
                                       Stmt *First, SourceLocation ColonLoc,
                                       Expr *Range, SourceLocation RParenLoc,
-                                      BuildForRangeKind Kind) {
+                                      BuildForRangeKind Kind,
+                                      ArrayRef<MaterializeTemporaryExpr *> LifetimeExtendTemps) {
   // FIXME: recover in order to allow the body to be parsed.
   if (!First)
     return StmtError();
@@ -2533,6 +2534,12 @@ StmtResult Sema::ActOnCXXForRangeStmt(Scope *S, SourceLocation ForLoc,
                             diag::err_for_range_deduction_failure)) {
     ActOnInitializerError(LoopVar);
     return StmtError();
+  }
+
+  if (getLangOpts().CPlusPlus23) {
+    auto Entity = InitializedEntity::InitializeVariable(RangeVar);
+    for (auto *MTE : LifetimeExtendTemps)
+      MTE->setExtendingDecl(RangeVar, Entity.allocateManglingNumber());
   }
 
   // Claim the type doesn't contain auto: we've already done the checking.
@@ -2779,6 +2786,7 @@ StmtResult Sema::BuildCXXForRangeStmt(SourceLocation ForLoc,
       LoopVar->setType(SubstAutoTypeDependent(LoopVar->getType()));
     }
   } else if (!BeginDeclStmt.get()) {
+
     SourceLocation RangeLoc = RangeVar->getLocation();
 
     const QualType RangeVarNonRefType = RangeVarType.getNonReferenceType();
