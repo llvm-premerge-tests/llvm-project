@@ -184,7 +184,7 @@ void foo_uuc() {
   local = ptr;
   local++;  // expected-note{{used in pointer arithmetic here}}
 
-  (local = ptr) += 5;  // expected-warning{{unsafe pointer arithmetic}}
+  (local = ptr) += 5;  // expected-warning{{unsafe arithmetic over raw pointer expression}}
 }
 
 void check_rhs_fix() {

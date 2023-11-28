@@ -9,5 +9,5 @@
 int main(int argc, char *argv[]) { // expected-warning{{'argv' is an unsafe pointer used for buffer access}}
   char tmp;
   tmp = argv[5][5];                // expected-note{{used in buffer access here}} \
-				      expected-warning{{unsafe buffer access}}
+                                   // expected-warning{{unsafe buffer access through raw pointer parameter variable 'argv'}}
 }

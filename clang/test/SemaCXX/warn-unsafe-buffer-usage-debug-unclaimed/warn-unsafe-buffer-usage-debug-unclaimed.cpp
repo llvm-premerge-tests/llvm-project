@@ -19,7 +19,7 @@ void test_unclaimed_use(int *p) { // expected-warning{{'p' is an unsafe pointer 
   p++;           //  expected-note{{used in pointer arithmetic here}} \
                      expected-note{{safe buffers debug: failed to produce fixit for 'p' : has an unclaimed use\n \
  The unclaimed DRE trace: DeclRefExpr, UnaryOperator(++), CompoundStmt}}
-  *((p + 1) + 1); // expected-warning{{unsafe pointer arithmetic}}                      \
+  *((p + 1) + 1); // expected-warning{{unsafe arithmetic over raw pointer expression}} \
                      expected-note{{used in pointer arithmetic here}}			\
 		     expected-note{{safe buffers debug: failed to produce fixit for 'p' : has an unclaimed use\n \
   The unclaimed DRE trace: DeclRefExpr, ImplicitCastExpr(LValueToRValue), BinaryOperator(+), ParenExpr, BinaryOperator(+), ParenExpr, UnaryOperator(*), CompoundStmt}}

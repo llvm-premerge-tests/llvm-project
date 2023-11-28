@@ -48,8 +48,8 @@ struct Struct1 {
 
 void testRefersPtrStructFieldDecl(int i) {
   Struct1 s1;
-  s1.ptr + i;     // expected-warning{{unsafe pointer arithmetic}}
-  s1.ptr[i];      // expected-warning{{unsafe buffer access}}
+  s1.ptr + i;     // expected-warning{{unsafe arithmetic over raw pointer member variable 'ptr'}}
+  s1.ptr[i];      // expected-warning{{unsafe buffer access through raw pointer member variable 'ptr'}}
 }
 
 struct Struct2 {
@@ -58,7 +58,7 @@ struct Struct2 {
 
 void testRefersArrayStructFieldDecl(int i) {
   Struct2 s2;
-  s2.array[i/2];  // expected-warning{{unsafe buffer access}}
+  s2.array[i/2];  // expected-warning{{unsafe buffer access into raw array member variable 'array'}}
 }
 }
 
@@ -67,8 +67,8 @@ struct Struct1 {
   int * ptr;      // FIXME: per-declaration warning aggregated at the struct definition
 
   void testRefersPtrStructFieldDecl(int i) {
-    ptr + i;     // expected-warning{{unsafe pointer arithmetic}}
-    ptr[i];      // expected-warning{{unsafe buffer access}}
+    ptr + i;     // expected-warning{{unsafe arithmetic over raw pointer member variable 'ptr'}}
+    ptr[i];      // expected-warning{{unsafe buffer access through raw pointer member variable 'ptr'}}
   }
 };
 
@@ -77,7 +77,7 @@ struct Struct2 {
 
   void testRefersArrayStructFieldDecl(int i) {
     Struct2 s2;
-    s2.array[i/2];  // expected-warning{{unsafe buffer access}}
+    s2.array[i/2];  // expected-warning{{unsafe buffer access into raw array member variable 'array'}}
   }
 };
 }
@@ -104,6 +104,6 @@ void testRefersArrayStructFieldDecl(int i) {
 int * return_ptr();
 
 void testNoDeclRef(int i) {
-  return_ptr() + i;   // expected-warning{{unsafe pointer arithmetic}}
-  return_ptr()[i];    // expected-warning{{unsafe buffer access}}
+  return_ptr() + i;   // expected-warning{{unsafe arithmetic over raw pointer return value of function 'return_ptr'}}
+  return_ptr()[i];    // expected-warning{{unsafe buffer access through raw pointer return value of function 'return_ptr'}}
 }

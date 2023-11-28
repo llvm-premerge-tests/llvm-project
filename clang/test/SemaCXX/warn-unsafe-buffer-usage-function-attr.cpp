@@ -19,11 +19,11 @@ void overloading(int* x, int size);
 void deprecatedFunction4(int z);
 
 void caller(int z, int* x, int size, char c[]) {
-    deprecatedFunction3(); // expected-warning{{function introduces unsafe buffer manipulation}}
-    deprecatedFunction4(z); // expected-warning{{function introduces unsafe buffer manipulation}}
+    deprecatedFunction3(); // expected-warning{{function call introduces unsafe buffer manipulation over expression}}
+    deprecatedFunction4(z); // expected-warning{{function call introduces unsafe buffer manipulation over expression}}
     someFunction();
 
-    overloading(x); // expected-warning{{function introduces unsafe buffer manipulation}}
+    overloading(x); // expected-warning{{function call introduces unsafe buffer manipulation over expression}}
     overloading(x, size);
     overloading(c);
 }
@@ -47,12 +47,12 @@ template<>
 void foo<int *>(int *t) {}
 
 void caller1(int *p, int *q) {
-    testVariadics(p, q);  // expected-warning{{function introduces unsafe buffer manipulation}}
-    adder(p, q);  // expected-warning{{function introduces unsafe buffer manipulation}}
-    
+    testVariadics(p, q);  // expected-warning{{function call introduces unsafe buffer manipulation over expression}}
+    adder(p, q);  // expected-warning{{function call introduces unsafe buffer manipulation over expression}}
+
     int x;
     foo(x);
-    foo(&x);  // expected-warning{{function introduces unsafe buffer manipulation}}
+    foo(&x);  // expected-warning{{function call introduces unsafe buffer manipulation over expression}}
 }
 
 // Test virtual functions
@@ -75,13 +75,13 @@ public:
 void testInheritance() {
     DerivedClass DC;
     DC.func();
-    DC.func1();  // expected-warning{{function introduces unsafe buffer manipulation}}
-    
+    DC.func1();  // expected-warning{{function call introduces unsafe buffer manipulation over expression}}
+
     BaseClass *BC;
-    BC->func();  // expected-warning{{function introduces unsafe buffer manipulation}}
+    BC->func();  // expected-warning{{function call introduces unsafe buffer manipulation over expression}}
     BC->func1();
-    
+
     BC = &DC;
-    BC->func();  // expected-warning{{function introduces unsafe buffer manipulation}}
+    BC->func();  // expected-warning{{function call introduces unsafe buffer manipulation over expression}}
     BC->func1();
 }
