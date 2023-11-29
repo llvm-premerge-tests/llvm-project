@@ -870,11 +870,99 @@ static void simplifyRecipes(VPlan &Plan, LLVMContext &Ctx) {
   }
 }
 
+void VPlanTransforms::truncateToMinimalBitwidths(
+    VPlan &Plan, const MapVector<Instruction *, uint64_t> &MinBWs,
+    LLVMContext &Ctx) {
+#ifndef NDEBUG
+  unsigned NumProcessedRecipes = 0;
+#endif
+  // Keep track of created truncates, so they can be re-used.
+  DenseMap<VPValue *, VPWidenCastRecipe *> ProcessedTruncs;
+  VPTypeAnalysis TypeInfo(Ctx);
+  VPBasicBlock *PH = Plan.getEntry();
+  for (VPBasicBlock *VPBB : VPBlockUtils::blocksOnly<VPBasicBlock>(
+           vp_depth_first_deep(Plan.getVectorLoopRegion()))) {
+    for (VPRecipeBase &R : make_early_inc_range(*VPBB)) {
+      if (!isa<VPWidenRecipe, VPWidenCastRecipe, VPReplicateRecipe,
+               VPWidenSelectRecipe>(&R))
+        continue;
+
+      VPValue *ResultVPV = R.getVPSingleValue();
+      auto *UI = cast_or_null<Instruction>(ResultVPV->getUnderlyingValue());
+      unsigned NewResSizeInBits = MinBWs.lookup(UI);
+      if (!NewResSizeInBits)
+        continue;
+
+#ifndef NDEBUG
+      NumProcessedRecipes++;
+#endif
+      // If the value wasn't vectorized, we must maintain the original scalar
+      // type. Skip those here, after incrementing NumProcessedRecipes. Also
+      // skip casts, as redundant casts will be removed during recipe
+      // simplification.
+      if (isa<VPReplicateRecipe, VPWidenCastRecipe>(&R))
+        continue;
+
+      Type *OldResTy = TypeInfo.inferScalarType(ResultVPV);
+      unsigned OldResSizeInBits = OldResTy->getScalarSizeInBits();
+      assert(OldResTy->isIntegerTy() && "only integer types supported");
+      assert(OldResSizeInBits > NewResSizeInBits && "Nothing to shrink?");
+
+      LLVMContext &Ctx = OldResTy->getContext();
+      auto *NewResTy = IntegerType::get(Ctx, NewResSizeInBits);
+
+      // Shrink operands by introducing truncates as needed.
+      unsigned StartIdx = isa<VPWidenSelectRecipe>(&R) ? 1 : 0;
+      for (unsigned Idx = StartIdx; Idx != R.getNumOperands(); ++Idx) {
+        auto *Op = R.getOperand(Idx);
+        unsigned OpSizeInBits =
+            TypeInfo.inferScalarType(Op)->getScalarSizeInBits();
+        if (OpSizeInBits == NewResSizeInBits)
+          continue;
+        assert(OpSizeInBits > NewResSizeInBits && "nothing to truncate");
+        auto ProcessedTrunc = ProcessedTruncs.insert({Op, nullptr});
+        if (ProcessedTrunc.second) {
+          auto Shrunk = new VPWidenCastRecipe(Instruction::Trunc, Op, NewResTy);
+          ProcessedTrunc.first->second = Shrunk;
+          if (!Op->isLiveIn()) {
+            Shrunk->insertBefore(&R);
+          } else {
+#ifndef NDEBUG
+            auto *OpInst = dyn_cast<Instruction>(Op->getLiveInIRValue());
+            bool IsContained = MinBWs.contains(OpInst);
+            assert((!OpInst || IsContained) &&
+                   "All processed instructions should be contained in MinBWs.");
+            NumProcessedRecipes += IsContained;
+#endif
+            PH->appendRecipe(Shrunk);
+          }
+        }
+        R.setOperand(Idx, ProcessedTrunc.first->second);
+      }
+
+      // Any wrapping introduced by shrinking this operation shouldn't be
+      // considered undefined behavior. So, we can't unconditionally copy
+      // arithmetic wrapping flags to VPW.
+      if (auto *VPW = dyn_cast<VPRecipeWithIRFlags>(&R))
+        VPW->dropPoisonGeneratingFlags();
+
+      // Extend result to original width.
+      auto *Ext = new VPWidenCastRecipe(Instruction::ZExt, ResultVPV, OldResTy);
+      Ext->insertAfter(&R);
+      ResultVPV->replaceAllUsesWith(Ext);
+      Ext->setOperand(0, ResultVPV);
+    }
+  }
+
+  assert(MinBWs.size() == NumProcessedRecipes &&
+         "some entries in MinBWs haven't been processed");
+}
+
 void VPlanTransforms::optimize(VPlan &Plan, ScalarEvolution &SE) {
   removeRedundantCanonicalIVs(Plan);
   removeRedundantInductionCasts(Plan);
-
   optimizeInductions(Plan, SE);
+
   simplifyRecipes(Plan, SE.getContext());
   removeDeadRecipes(Plan);
 
