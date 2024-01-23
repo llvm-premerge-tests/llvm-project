@@ -13,6 +13,7 @@
 #ifndef LLVM_LIB_TARGET_RISCV_RISCVINSTRINFO_H
 #define LLVM_LIB_TARGET_RISCV_RISCVINSTRINFO_H
 
+#include "RISCV.h"
 #include "RISCVRegisterInfo.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
 #include "llvm/IR/DiagnosticInfo.h"
@@ -20,6 +21,7 @@
 #define GET_INSTRINFO_HEADER
 #define GET_INSTRINFO_OPERAND_ENUM
 #include "RISCVGenInstrInfo.inc"
+#include "RISCVGenRegisterInfo.inc"
 
 namespace llvm {
 
@@ -261,6 +263,43 @@ public:
 
   ArrayRef<std::pair<MachineMemOperand::Flags, const char *>>
   getSerializableMachineMemOperandTargetFlags() const override;
+
+  const TargetRegisterClass *
+  getVRLargestSuperClass(const TargetRegisterClass *RC) const override {
+    if (RISCV::VRM8RegClass.hasSubClassEq(RC))
+      return &RISCV::VRM8RegClass;
+    if (RISCV::VRM4RegClass.hasSubClassEq(RC))
+      return &RISCV::VRM4RegClass;
+    if (RISCV::VRM2RegClass.hasSubClassEq(RC))
+      return &RISCV::VRM2RegClass;
+    if (RISCV::VRRegClass.hasSubClassEq(RC))
+      return &RISCV::VRRegClass;
+    return RC;
+  }
+
+  bool isVectorRegClass(const TargetRegisterClass *RC) const override {
+    return RISCV::VRRegClass.hasSubClassEq(RC) ||
+           RISCV::VRM2RegClass.hasSubClassEq(RC) ||
+           RISCV::VRM4RegClass.hasSubClassEq(RC) ||
+           RISCV::VRM8RegClass.hasSubClassEq(RC);
+  }
+
+  unsigned getUndefInitOpcode(unsigned RegClassID) const override {
+    switch (RegClassID) {
+    case RISCV::VRRegClassID:
+      return RISCV::PseudoRVVInitUndefM1;
+    case RISCV::VRM2RegClassID:
+      return RISCV::PseudoRVVInitUndefM2;
+    case RISCV::VRM4RegClassID:
+      return RISCV::PseudoRVVInitUndefM4;
+    case RISCV::VRM8RegClassID:
+      return RISCV::PseudoRVVInitUndefM8;
+    default:
+      llvm_unreachable("Unexpected register class.");
+    }
+  }
+
+  unsigned getNoRegisterValue() const override { return RISCV::NoRegister; }
 
 protected:
   const RISCVSubtarget &STI;

@@ -196,6 +196,8 @@ namespace llvm {
   /// This pass reads flow sensitive profile.
   extern char &MIRProfileLoaderPassID;
 
+  extern char &InitUndefID;
+
   /// FastRegisterAllocation Pass - This pass register allocates as fast as
   /// possible. It is best suited for debug code where live ranges are short.
   ///
@@ -600,6 +602,8 @@ namespace llvm {
 
   /// Lowers KCFI operand bundles for indirect calls.
   FunctionPass *createKCFIPass();
+
+  FunctionPass *createInitUndefPass();
 } // End llvm namespace
 
 #endif

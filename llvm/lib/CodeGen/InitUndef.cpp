@@ -1,4 +1,4 @@
-//===- RISCVRVVInitUndef.cpp - Initialize undef vector value to pseudo ----===//
+//===- InitUndef.cpp - Initialize undef vector value to pseudo ----===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -7,22 +7,21 @@
 //===----------------------------------------------------------------------===//
 //
 // This file implements a function pass that initializes undef vector value to
-// temporary pseudo instruction and remove it in expandpseudo pass to prevent
-// register allocation resulting in a constraint violated result for vector
-// instruction.  It also rewrites the NoReg tied operand back to an
-// IMPLICIT_DEF.
+// temporary pseudo instruction to prevent register allocation resulting in a
+// constraint violated result for vector instructions.  It also rewrites the
+// NoReg tied operand back to an IMPLICIT_DEF.
 //
-// RISC-V vector instruction has register overlapping constraint for certain
-// instructions, and will cause illegal instruction trap if violated, we use
-// early clobber to model this constraint, but it can't prevent register
-// allocator allocated same or overlapped if the input register is undef value,
-// so convert IMPLICIT_DEF to temporary pseudo instruction and remove it later
-// could prevent that happen, it's not best way to resolve this, and it might
+// Certain vector instructions have register overlapping constraints, and
+// will cause illegal instruction trap if violated, we use early clobber to
+// model this constraint, but it can't prevent register allocator allocating
+// same or overlapped if the input register is undef value, so convert
+// IMPLICIT_DEF to temporary pseudo instruction and remove it later could
+// prevent that happen, it's not best way to resolve this, and it might
 // change the order of program or increase the register pressure, so ideally we
 // should model the constraint right, but before we model the constraint right,
 // it's the only way to prevent that happen.
 //
-// When we enable the subregister liveness option, it will also trigger same
+// When we enable the subregister liveness option, it will also trigger the same
 // issue due to the partial of register is undef. If we pseudoinit the whole
 // register, then it will generate redundant COPY instruction. Currently, it
 // will generate INSERT_SUBREG to make sure the whole register is occupied
@@ -39,23 +38,28 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "RISCV.h"
-#include "RISCVSubtarget.h"
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/CodeGen/DetectDeadLanes.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
+#include "llvm/CodeGen/MachineRegisterInfo.h"
+#include "llvm/CodeGen/TargetInstrInfo.h"
+#include "llvm/CodeGen/TargetRegisterInfo.h"
+#include "llvm/CodeGen/TargetSubtargetInfo.h"
+#include "llvm/InitializePasses.h"
+#include "llvm/Pass.h"
+
 using namespace llvm;
 
-#define DEBUG_TYPE "riscv-init-undef"
-#define RISCV_INIT_UNDEF_NAME "RISC-V init undef pass"
+#define DEBUG_TYPE "init-undef"
+#define INIT_UNDEF_NAME "init-undef-pass"
 
 namespace {
 
-class RISCVInitUndef : public MachineFunctionPass {
+class InitUndef : public MachineFunctionPass {
   const TargetInstrInfo *TII;
   MachineRegisterInfo *MRI;
-  const RISCVSubtarget *ST;
+  const TargetSubtargetInfo *ST;
   const TargetRegisterInfo *TRI;
 
   // Newly added vregs, assumed to be fully rewritten
@@ -65,7 +69,7 @@ class RISCVInitUndef : public MachineFunctionPass {
 public:
   static char ID;
 
-  RISCVInitUndef() : MachineFunctionPass(ID) {}
+  InitUndef() : MachineFunctionPass(ID) {}
   bool runOnMachineFunction(MachineFunction &MF) override;
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
@@ -73,14 +77,11 @@ public:
     MachineFunctionPass::getAnalysisUsage(AU);
   }
 
-  StringRef getPassName() const override { return RISCV_INIT_UNDEF_NAME; }
+  StringRef getPassName() const override { return INIT_UNDEF_NAME; }
 
 private:
   bool processBasicBlock(MachineFunction &MF, MachineBasicBlock &MBB,
                          const DeadLaneDetector &DLD);
-  bool isVectorRegClass(const Register R);
-  const TargetRegisterClass *
-  getVRLargestSuperClass(const TargetRegisterClass *RC) const;
   bool handleSubReg(MachineFunction &MF, MachineInstr &MI,
                     const DeadLaneDetector &DLD);
   bool fixupIllOperand(MachineInstr *MI, MachineOperand &MO);
@@ -89,45 +90,9 @@ private:
 
 } // end anonymous namespace
 
-char RISCVInitUndef::ID = 0;
-INITIALIZE_PASS(RISCVInitUndef, DEBUG_TYPE, RISCV_INIT_UNDEF_NAME, false, false)
-char &llvm::RISCVInitUndefID = RISCVInitUndef::ID;
-
-const TargetRegisterClass *
-RISCVInitUndef::getVRLargestSuperClass(const TargetRegisterClass *RC) const {
-  if (RISCV::VRM8RegClass.hasSubClassEq(RC))
-    return &RISCV::VRM8RegClass;
-  if (RISCV::VRM4RegClass.hasSubClassEq(RC))
-    return &RISCV::VRM4RegClass;
-  if (RISCV::VRM2RegClass.hasSubClassEq(RC))
-    return &RISCV::VRM2RegClass;
-  if (RISCV::VRRegClass.hasSubClassEq(RC))
-    return &RISCV::VRRegClass;
-  return RC;
-}
-
-bool RISCVInitUndef::isVectorRegClass(const Register R) {
-  const TargetRegisterClass *RC = MRI->getRegClass(R);
-  return RISCV::VRRegClass.hasSubClassEq(RC) ||
-         RISCV::VRM2RegClass.hasSubClassEq(RC) ||
-         RISCV::VRM4RegClass.hasSubClassEq(RC) ||
-         RISCV::VRM8RegClass.hasSubClassEq(RC);
-}
-
-static unsigned getUndefInitOpcode(unsigned RegClassID) {
-  switch (RegClassID) {
-  case RISCV::VRRegClassID:
-    return RISCV::PseudoRVVInitUndefM1;
-  case RISCV::VRM2RegClassID:
-    return RISCV::PseudoRVVInitUndefM2;
-  case RISCV::VRM4RegClassID:
-    return RISCV::PseudoRVVInitUndefM4;
-  case RISCV::VRM8RegClassID:
-    return RISCV::PseudoRVVInitUndefM8;
-  default:
-    llvm_unreachable("Unexpected register class.");
-  }
-}
+char InitUndef::ID = 0;
+INITIALIZE_PASS(InitUndef, DEBUG_TYPE, INIT_UNDEF_NAME, false, false)
+char &llvm::InitUndefID = InitUndef::ID;
 
 static bool isEarlyClobberMI(MachineInstr &MI) {
   return llvm::any_of(MI.defs(), [](const MachineOperand &DefMO) {
@@ -143,7 +108,7 @@ static bool findImplictDefMIFromReg(Register Reg, MachineRegisterInfo *MRI) {
   return false;
 }
 
-bool RISCVInitUndef::handleReg(MachineInstr *MI) {
+bool InitUndef::handleReg(MachineInstr *MI) {
   bool Changed = false;
   for (auto &UseMO : MI->uses()) {
     if (!UseMO.isReg())
@@ -152,7 +117,7 @@ bool RISCVInitUndef::handleReg(MachineInstr *MI) {
       continue;
     if (!UseMO.getReg().isVirtual())
       continue;
-    if (!isVectorRegClass(UseMO.getReg()))
+    if (!TII->isVectorRegClass(MRI->getRegClass(UseMO.getReg())))
       continue;
 
     if (UseMO.isUndef() || findImplictDefMIFromReg(UseMO.getReg(), MRI))
@@ -161,8 +126,8 @@ bool RISCVInitUndef::handleReg(MachineInstr *MI) {
   return Changed;
 }
 
-bool RISCVInitUndef::handleSubReg(MachineFunction &MF, MachineInstr &MI,
-                                  const DeadLaneDetector &DLD) {
+bool InitUndef::handleSubReg(MachineFunction &MF, MachineInstr &MI,
+                             const DeadLaneDetector &DLD) {
   bool Changed = false;
 
   for (MachineOperand &UseMO : MI.uses()) {
@@ -183,7 +148,7 @@ bool RISCVInitUndef::handleSubReg(MachineFunction &MF, MachineInstr &MI,
       continue;
 
     const TargetRegisterClass *TargetRegClass =
-        getVRLargestSuperClass(MRI->getRegClass(Reg));
+        TII->getVRLargestSuperClass(MRI->getRegClass(Reg));
 
     LaneBitmask NeedDef = Info.UsedLanes & ~Info.DefinedLanes;
 
@@ -202,11 +167,11 @@ bool RISCVInitUndef::handleSubReg(MachineFunction &MF, MachineInstr &MI,
     Register LatestReg = Reg;
     for (auto ind : SubRegIndexNeedInsert) {
       Changed = true;
-      const TargetRegisterClass *SubRegClass =
-          getVRLargestSuperClass(TRI->getSubRegisterClass(TargetRegClass, ind));
+      const TargetRegisterClass *SubRegClass = TII->getVRLargestSuperClass(
+          TRI->getSubRegisterClass(TargetRegClass, ind));
       Register TmpInitSubReg = MRI->createVirtualRegister(SubRegClass);
       BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
-              TII->get(getUndefInitOpcode(SubRegClass->getID())),
+              TII->get(TII->getUndefInitOpcode(SubRegClass->getID())),
               TmpInitSubReg);
       Register NewReg = MRI->createVirtualRegister(TargetRegClass);
       BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
@@ -223,15 +188,16 @@ bool RISCVInitUndef::handleSubReg(MachineFunction &MF, MachineInstr &MI,
   return Changed;
 }
 
-bool RISCVInitUndef::fixupIllOperand(MachineInstr *MI, MachineOperand &MO) {
+bool InitUndef::fixupIllOperand(MachineInstr *MI, MachineOperand &MO) {
 
   LLVM_DEBUG(
-      dbgs() << "Emitting PseudoRVVInitUndef for implicit vector register "
-             << MO.getReg() << '\n');
+      dbgs()
+      << "Emitting PseudoInitUndef Instruction for implicit vector register "
+      << MO.getReg() << '\n');
 
   const TargetRegisterClass *TargetRegClass =
-      getVRLargestSuperClass(MRI->getRegClass(MO.getReg()));
-  unsigned Opcode = getUndefInitOpcode(TargetRegClass->getID());
+      TII->getVRLargestSuperClass(MRI->getRegClass(MO.getReg()));
+  unsigned Opcode = TII->getUndefInitOpcode(TargetRegClass->getID());
   Register NewReg = MRI->createVirtualRegister(TargetRegClass);
   BuildMI(*MI->getParent(), MI, MI->getDebugLoc(), TII->get(Opcode), NewReg);
   MO.setReg(NewReg);
@@ -240,9 +206,8 @@ bool RISCVInitUndef::fixupIllOperand(MachineInstr *MI, MachineOperand &MO) {
   return true;
 }
 
-bool RISCVInitUndef::processBasicBlock(MachineFunction &MF,
-                                       MachineBasicBlock &MBB,
-                                       const DeadLaneDetector &DLD) {
+bool InitUndef::processBasicBlock(MachineFunction &MF, MachineBasicBlock &MBB,
+                                  const DeadLaneDetector &DLD) {
   bool Changed = false;
   for (MachineBasicBlock::iterator I = MBB.begin(); I != MBB.end(); ++I) {
     MachineInstr &MI = *I;
@@ -252,15 +217,15 @@ bool RISCVInitUndef::processBasicBlock(MachineFunction &MF,
     unsigned UseOpIdx;
     if (MI.getNumDefs() != 0 && MI.isRegTiedToUseOperand(0, &UseOpIdx)) {
       MachineOperand &UseMO = MI.getOperand(UseOpIdx);
-      if (UseMO.getReg() == RISCV::NoRegister) {
+      if (UseMO.getReg() == TII->getNoRegisterValue()) {
         const TargetRegisterClass *RC =
-          TII->getRegClass(MI.getDesc(), UseOpIdx, TRI, MF);
+            TII->getRegClass(MI.getDesc(), UseOpIdx, TRI, MF);
         Register NewDest = MRI->createVirtualRegister(RC);
         // We don't have a way to update dead lanes, so keep track of the
         // new register so that we avoid querying it later.
         NewRegs.insert(NewDest);
-        BuildMI(MBB, I, I->getDebugLoc(),
-                TII->get(TargetOpcode::IMPLICIT_DEF), NewDest);
+        BuildMI(MBB, I, I->getDebugLoc(), TII->get(TargetOpcode::IMPLICIT_DEF),
+                NewDest);
         UseMO.setReg(NewDest);
         Changed = true;
       }
@@ -275,8 +240,14 @@ bool RISCVInitUndef::processBasicBlock(MachineFunction &MF,
   return Changed;
 }
 
-bool RISCVInitUndef::runOnMachineFunction(MachineFunction &MF) {
-  ST = &MF.getSubtarget<RISCVSubtarget>();
+bool InitUndef::runOnMachineFunction(MachineFunction &MF) {
+  ST = &MF.getSubtarget();
+
+  // This checks to ensure that the Subtarget being used has support for Vector
+  // Instructions. The pass will exit if this is not the case, and provides
+  // protection against unnecessary changing register definitions where this is
+  // not needed. By default hasVInstructions will return false, only in the
+  // Architecture specific subtarget override function can this return true.
   if (!ST->hasVInstructions())
     return false;
 
@@ -298,4 +269,4 @@ bool RISCVInitUndef::runOnMachineFunction(MachineFunction &MF) {
   return Changed;
 }
 
-FunctionPass *llvm::createRISCVInitUndefPass() { return new RISCVInitUndef(); }
+FunctionPass *llvm::createInitUndefPass() { return new InitUndef(); }

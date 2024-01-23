@@ -1424,6 +1424,8 @@ void TargetPassConfig::addFastRegAlloc() {
 void TargetPassConfig::addOptimizedRegAlloc() {
   addPass(&DetectDeadLanesID);
 
+  addPass(createInitUndefPass());
+
   addPass(&ProcessImplicitDefsID);
 
   // LiveVariables currently requires pure SSA form.

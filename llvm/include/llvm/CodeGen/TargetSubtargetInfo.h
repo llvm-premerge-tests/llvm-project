@@ -327,6 +327,15 @@ public:
 
   /// Get the list of MacroFusion predicates.
   virtual std::vector<MacroFusionPredTy> getMacroFusions() const { return {}; };
+
+  // hasVInstructions is used to determine if an architecture supports
+  // vector instructions in relation to Vector CodeGen. By default, it is
+  // assumed that it will not support Vector Instructions, with architecture
+  // specific overrides providing the information where they are implemented.
+  // This was originally used in RISC-V's Init Undef pass but has been moved to
+  // be a virtual function when the pass was refactored to support multiple
+  // architectures.
+  virtual bool hasVInstructions() const { return false; }
 };
 
 } // end namespace llvm

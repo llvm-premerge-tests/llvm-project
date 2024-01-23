@@ -123,7 +123,6 @@ static_library("LLVMRISCVCodeGen") {
     "RISCVOptWInstrs.cpp",
     "RISCVPostRAExpandPseudoInsts.cpp",
     "RISCVPushPopOptimizer.cpp",
-    "RISCVRVVInitUndef.cpp",
     "RISCVRedundantCopyElimination.cpp",
     "RISCVRegisterInfo.cpp",
     "RISCVSubtarget.cpp",

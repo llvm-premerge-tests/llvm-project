@@ -2223,6 +2223,25 @@ public:
     llvm_unreachable("unknown number of operands necessary");
   }
 
+  virtual unsigned getUndefInitOpcode(unsigned RegClassID) const {
+    (void)RegClassID;
+
+    llvm_unreachable("Unexpected register class.");
+  }
+
+  virtual const TargetRegisterClass *
+  getVRLargestSuperClass(const TargetRegisterClass *RC) const {
+    llvm_unreachable("Unexpected target register class.");
+  }
+
+  virtual bool isVectorRegClass(const TargetRegisterClass *RC) const {
+    llvm_unreachable("Unexpected Register or MachineRegisterInfo");
+  }
+
+  virtual unsigned getNoRegisterValue() const {
+    llvm_unreachable("Unexpected target register class.");
+  }
+
 private:
   mutable std::unique_ptr<MIRFormatter> Formatter;
   unsigned CallFrameSetupOpcode, CallFrameDestroyOpcode;
