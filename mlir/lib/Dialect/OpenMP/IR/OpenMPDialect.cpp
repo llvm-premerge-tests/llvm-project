@@ -21,6 +21,7 @@
 #include "mlir/Interfaces/FoldInterfaces.h"
 
 #include "llvm/ADT/BitVector.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/STLForwardCompat.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/StringExtras.h"
@@ -426,6 +427,55 @@ static void printScheduleClause(OpAsmPrinter &p, Operation *op,
 //===----------------------------------------------------------------------===//
 // Parser, printer and verifier for ReductionVarList
 //===----------------------------------------------------------------------===//
+
+static ParseResult
+parseWsReduction(OpAsmParser &parser, Region &region,
+                 SmallVectorImpl<OpAsmParser::UnresolvedOperand> &operands,
+                 SmallVectorImpl<Type> &types, ArrayAttr &reductionSymbols) {
+
+  // possibly parse reduction
+  if (failed(parser.parseOptionalKeyword("reduction")))
+    return parser.parseRegion(region);
+
+  SmallVector<SymbolRefAttr> reductionVec;
+  SmallVector<OpAsmParser::Argument> privates;
+
+  if (failed(
+          parser.parseCommaSeparatedList(OpAsmParser::Delimiter::Paren, [&]() {
+            if (parser.parseAttribute(reductionVec.emplace_back()) ||
+                parser.parseOperand(operands.emplace_back()) ||
+                parser.parseArrow() ||
+                parser.parseArgument(privates.emplace_back()) ||
+                parser.parseColonType(types.emplace_back()))
+              return failure();
+            return success();
+          })))
+    return failure();
+
+  for (std::size_t i = 0; i < privates.size(); ++i) {
+    privates[i].type = types[i];
+  }
+  SmallVector<Attribute> reductions(reductionVec.begin(), reductionVec.end());
+  reductionSymbols = ArrayAttr::get(parser.getContext(), reductions);
+  return parser.parseRegion(region, privates);
+}
+
+void printWsReduction(OpAsmPrinter &p, Operation *op, Region &region,
+                      ValueRange operands, TypeRange types,
+                      ArrayAttr reductionSymbols) {
+  if (reductionSymbols) {
+    p << "reduction(";
+    llvm::interleaveComma(llvm::zip_equal(reductionSymbols, operands,
+                                          region.front().getArguments(), types),
+                          p, [&p](auto t) {
+                            auto [sym, op, arg, type] = t;
+                            p << sym << " " << op << " -> " << arg << " : "
+                              << type;
+                          });
+    p << ") ";
+  }
+  p.printRegion(region, /*printEntryBlockArgs=*/false);
+}
 
 /// reduction-entry-list ::= reduction-entry
 ///                        | reduction-entry-list `,` reduction-entry
