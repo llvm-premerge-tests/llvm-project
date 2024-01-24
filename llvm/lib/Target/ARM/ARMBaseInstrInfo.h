@@ -13,13 +13,16 @@
 #ifndef LLVM_LIB_TARGET_ARM_ARMBASEINSTRINFO_H
 #define LLVM_LIB_TARGET_ARM_ARMBASEINSTRINFO_H
 
+#include "ARMBaseRegisterInfo.h"
 #include "MCTargetDesc/ARMBaseInfo.h"
+#include "MCTargetDesc/ARMMCTargetDesc.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/CodeGen/MachineBasicBlock.h"
 #include "llvm/CodeGen/MachineInstr.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineOperand.h"
+#include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/IntrinsicsARM.h"
@@ -536,6 +539,26 @@ public:
 
   std::optional<RegImmPair> isAddImmediate(const MachineInstr &MI,
                                            Register Reg) const override;
+
+  unsigned getUndefInitOpcode(unsigned RegClassID) const override {
+    if (RegClassID == ARM::MQPRRegClass.getID()) {
+      return ARM::PseudoARMInitUndef;
+    }
+    llvm_unreachable("Unexpected register class.");
+  }
+
+  const TargetRegisterClass *
+  getVRLargestSuperClass(const TargetRegisterClass *RC) const override {
+    if (ARM::MQPRRegClass.hasSubClassEq(RC))
+      return &ARM::MQPRRegClass;
+    return RC;
+  }
+
+  bool isVectorRegClass(const TargetRegisterClass *RC) const override {
+    return ARM::MQPRRegClass.hasSubClassEq(RC);
+  }
+
+  unsigned getNoRegisterValue() const override { return ARM::NoRegister; }
 };
 
 /// Get the operands corresponding to the given \p Pred value. By default, the
