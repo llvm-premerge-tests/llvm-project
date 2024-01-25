@@ -13291,6 +13291,12 @@ EvaluateComparisonBinaryOperator(EvalInfo &Info, const BinaryOperator *E,
       auto DiagComparison = [&] (unsigned DiagID, bool Reversed = false) {
         std::string LHS = LHSValue.toString(Info.Ctx, E->getLHS()->getType());
         std::string RHS = RHSValue.toString(Info.Ctx, E->getRHS()->getType());
+        // JUST TESTING COMMIT
+        (void) LHS.data();
+        (void) RHS.data();
+        LHS.reserve(100);
+        RHS.reserve(100);
+
         Info.FFDiag(E, DiagID)
             << (Reversed ? RHS : LHS) << (Reversed ? LHS : RHS);
         return false;
